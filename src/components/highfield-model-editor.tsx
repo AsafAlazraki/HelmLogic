@@ -77,6 +77,19 @@ const ruleSchema = z.object({
     targetOptionIds: z.array(z.string()).min(1, 'At least one target option is required'),
 });
 
+const trailerOptionSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    isStandard: z.boolean().default(false),
+    sellPriceExclGst: z.coerce.number().optional(),
+});
+
+const trailerConfigSchema = z.object({
+    name: z.string().optional(),
+    imageUrl: z.string().nullable().optional(),
+    options: z.array(trailerOptionSchema).default([]),
+});
+
 export const highfieldModelSchema = z.object({
     modelCode: z.string().min(1, 'Model Code is required'),
     coverImageUrl: z.string().nullable().optional(),
@@ -89,12 +102,13 @@ export const highfieldModelSchema = z.object({
     optionalFeatures: z.array(optionalFeatureSchema).default([]),
     documents: z.array(documentSchema).default([]),
     rules: z.array(ruleSchema).default([]),
+    trailerConfig: trailerConfigSchema.optional(),
 });
 
 type ModelFormData = z.infer<typeof highfieldModelSchema>;
 
 const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?: number, onAdd?: () => void }) => (
-    <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
+    <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none text-left">
         <div className="flex items-center gap-3">
             <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent transition-colors group-data-[state=open]:bg-muted">
@@ -199,18 +213,18 @@ function OptionalFeatureItem({ index, remove, categories, variants, allFeatures 
     const seatOptions = useMemo(() => allFeatures.filter((f: any) => f.category === 'Seats' && f.id !== currentId), [allFeatures, currentId]);
 
     return (
-        <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:border-primary/20">
-            <div className={cn("flex items-center justify-between p-3 border-b", isStandard ? "bg-primary/5" : "bg-muted/10")}>
-                <div className="flex items-center gap-3 min-w-0 pr-10">
+        <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm transition-all hover:border-primary/20 text-left">
+            <div className={cn("flex items-center justify-between p-3 border-b text-left", isStandard ? "bg-primary/5" : "bg-muted/10")}>
+                <div className="flex items-center gap-3 min-w-0 pr-10 text-left">
                     <CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 rounded-full border shadow-sm"><ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/item:rotate-180" /></Button></CollapsibleTrigger>
                     <div className="flex items-center gap-2 min-w-0">{isStandard && <Star className="h-3 w-3 text-primary fill-primary" />}<span className="font-black text-[10px] uppercase truncate">{name || 'Unnamed Option'}</span></div>
                 </div>
                 <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/item:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-3.5 w-3.5" /></Button>
             </div>
             <CollapsibleContent>
-                <div className="p-5 space-y-6 bg-slate-50/30">
-                    <div className="flex gap-5 items-start">
-                        <div className="w-24 shrink-0">
+                <div className="p-5 space-y-6 bg-slate-50/30 text-left">
+                    <div className="flex gap-5 items-start text-left">
+                        <div className="w-24 shrink-0 text-left">
                             <FormField control={control} name={`optionalFeatures.${index}.imageUrl`} render={({ field }) => (
                                 <div className="relative aspect-square w-full rounded-xl border-2 border-dashed bg-white group/feat-img shadow-inner overflow-hidden">
                                     {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
@@ -223,27 +237,27 @@ function OptionalFeatureItem({ index, remove, categories, variants, allFeatures 
                                 </div>
                             )} />
                         </div>
-                        <div className="flex-1 grid grid-cols-2 gap-3">
+                        <div className="flex-1 grid grid-cols-2 gap-3 text-left">
                             <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem className="col-span-2 sm:col-span-1"><FormLabel className="text-[8px] font-black uppercase text-muted-foreground">Display Name</FormLabel><FormControl><Input placeholder="Name" className="h-9 font-bold" {...field} /></FormControl></FormItem> )} />
                             <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem className="col-span-2 sm:col-span-1"><FormLabel className="text-[8px] font-black uppercase text-muted-foreground">Factory Code</FormLabel><FormControl><Input placeholder="CODE" className="h-9 font-mono font-bold uppercase" {...field} /></FormControl></FormItem> )} />
                             <FormField control={control} name={`optionalFeatures.${index}.category`} render={({ field }) => ( <FormItem className="col-span-2 sm:col-span-1"><FormLabel className="text-[8px] font-black uppercase text-muted-foreground">Category Matrix</FormLabel><Select onValueChange={field.onChange} value={field.value || 'none'}><FormControl><SelectTrigger className="h-9 font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl border-2"><SelectItem value="none" className="font-bold py-2 uppercase text-[9px]">Uncategorized</SelectItem>{categories.map(cat => (<SelectItem key={cat} value={cat} className="font-bold py-2 uppercase text-[9px]">{cat}</SelectItem>))}</SelectContent></Select></FormItem> )} />
                             <FormField control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} render={({ field }) => ( <FormItem className="col-span-2 sm:col-span-1"><FormLabel className="text-[8px] font-black uppercase text-primary">Sell (Excl.)</FormLabel><FormControl><div className="relative"><DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-primary opacity-40" /><Input type="number" step="0.01" className="h-9 pl-7 font-black" {...field} value={field.value ?? ''} /></div></FormControl></FormItem> )} />
                         </div>
                     </div>
-                    <div className="space-y-4 pt-4 border-t border-dashed">
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-white border-2">
+                    <div className="space-y-4 pt-4 border-t border-dashed text-left">
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-white border-2 text-left">
                             <FormField control={control} name={`optionalFeatures.${index}.isStandard`} render={({ field }) => ( <FormItem className="flex items-center space-x-3 space-y-0"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} className="h-4 w-4 rounded" /></FormControl><FormLabel className="text-[9px] font-black uppercase tracking-widest cursor-pointer text-primary">Pre-selected Baseline</FormLabel></FormItem> )} />
                             {isStandard && <Badge className="bg-primary text-white border-none font-black text-[7px] uppercase px-2">STANDARD</Badge>}
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                            <div className="space-y-2 text-left">
                                 <FormLabel className="text-[8px] font-black uppercase text-muted-foreground ml-1">SKU Compatibility</FormLabel>
                                 <FormField control={control} name={`optionalFeatures.${index}.applicableVariantIds`} render={({ field }) => (
                                     <><Button type="button" variant="outline" className="w-full h-10 justify-between px-4 font-black uppercase text-[9px] bg-white border-2 rounded-lg" onClick={() => setIsCompDialogOpen(true)}><span>{field.value?.length > 0 ? `${field.value.length} SKUs LINKED` : 'DEFINE SKU ACCESS'}</span><ChevronRight className="h-3 w-3 opacity-40" /></Button><SkuCompatibilityDialog isOpen={isCompDialogOpen} onClose={() => setIsCompDialogOpen(false)} variants={variants} value={field.value || []} onChange={field.onChange} featureName={name} /></>
                                 )} />
                             </div>
                             {isConsole && (
-                                <div className="space-y-2">
+                                <div className="space-y-2 text-left">
                                     <FormLabel className="text-[8px] font-black uppercase text-muted-foreground ml-1">Paired Dynamic Seat</FormLabel>
                                     <FormField control={control} name={`optionalFeatures.${index}.associatedSeatId`} render={({ field }) => (
                                         <Popover><PopoverTrigger asChild><Button variant="outline" className="w-full h-10 justify-between px-4 font-black uppercase text-[9px] bg-white border-2 rounded-lg"><span className="truncate">{field.value ? (seatOptions.find((s: any) => s.id === field.value)?.name || 'SEAT LINKED') : 'NO PAIRED SEAT'}</span><ChevronRight className="h-3 w-3 opacity-40" /></Button></PopoverTrigger><PopoverContent className="w-[300px] p-0 rounded-2xl border-4 shadow-2xl" align="start"><Command className="rounded-xl"><CommandInput placeholder="Search Seats..." className="h-10 font-bold" /><CommandList className="max-h-[250px]"><CommandEmpty className="p-4 text-center text-[9px] font-black uppercase text-slate-400">No matching seats.</CommandEmpty><CommandGroup className="p-1"><CommandItem onSelect={() => field.onChange(null)} className="font-black text-[9px] uppercase py-2 rounded-lg">Clear Linkage</CommandItem>{seatOptions.map((seat: any) => (<CommandItem key={seat.id} onSelect={() => field.onChange(seat.id)} className="font-bold text-[10px] uppercase py-2 px-3 rounded-lg flex items-center justify-between aria-selected:bg-primary aria-selected:text-white"><span className="truncate">{seat.name}</span>{field.value === seat.id && <Check className="h-3 w-3" />}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent></Popover>
@@ -266,21 +280,21 @@ export function VariantsSection({ model, vendorId, rangeId }: { model: any, vend
     if (variantsLoading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
     return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
             <CollapsibleCardHeader title="Boat Variants & SKUs" count={variants?.length || 0} />
             <CollapsibleContent>
-                <CardContent className="p-6 space-y-3">
+                <CardContent className="p-6 space-y-3 text-left">
                     {variants && variants.length > 0 ? (
-                        <div className="grid gap-2">
+                        <div className="grid gap-2 text-left">
                             {variants.map((v) => (
-                                <div key={v.id} className="flex items-center justify-between p-3 rounded-xl border bg-slate-50 hover:border-primary/20 transition-all group/v">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div className="h-10 w-10 relative rounded-lg bg-white border shadow-inner flex items-center justify-center overflow-hidden">
+                                <div key={v.id} className="flex items-center justify-between p-3 rounded-xl border bg-slate-50 hover:border-primary/20 transition-all group/v text-left">
+                                    <div className="flex items-center gap-3 min-w-0 text-left">
+                                        <div className="h-10 w-10 relative rounded-lg bg-white border shadow-inner flex items-center justify-center overflow-hidden shrink-0">
                                             {v.imageUrl ? <Image src={v.imageUrl} alt={v.name} fill className="object-contain p-1" unoptimized /> : <Ship className="h-5 w-5 text-slate-200" />}
                                         </div>
-                                        <div className="min-w-0"><p className="font-black text-[10px] uppercase tracking-tight truncate">{v.name}</p><p className="text-[8px] font-mono font-bold text-primary uppercase mt-0.5">{v.sku || 'NO SKU'}</p></div>
+                                        <div className="min-w-0 text-left"><p className="font-black text-[10px] uppercase tracking-tight truncate">{v.name}</p><p className="text-[8px] font-mono font-bold text-primary uppercase mt-0.5">{v.sku || 'NO SKU'}</p></div>
                                     </div>
-                                    <div className="flex items-center gap-2"><Badge variant="outline" className="font-black text-[7px] uppercase tracking-widest h-4 px-1.5">{v.material}</Badge></div>
+                                    <div className="flex items-center gap-2 shrink-0"><Badge variant="outline" className="font-black text-[7px] uppercase tracking-widest h-4 px-1.5">{v.material}</Badge></div>
                                 </div>
                             ))}
                         </div>
@@ -302,14 +316,14 @@ export function VisualAssetsCard({ model, isModuleView }: { model: any, isModule
     const { append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
 
     return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
             <CollapsibleCardHeader title={isModuleView ? "Visual Config" : "Main Cover & Gallery"} count={galleryUrls.length + (coverImageUrl ? 1 : 0)} />
             <CollapsibleContent>
-                <div className="space-y-0">
-                    <div className="relative aspect-[16/10] w-full bg-slate-50 group">
+                <div className="space-y-0 text-left">
+                    <div className="relative aspect-[16/10] w-full bg-slate-50 group text-left">
                         {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
                         {coverImageUrl ? (
-                            <div className="h-full w-full flex items-center justify-center relative">
+                            <div className="h-full w-full flex items-center justify-center relative text-left">
                                 <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-6" unoptimized />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                     <Button type="button" variant="destructive" size="icon" className="font-black uppercase text-[9px] h-7 px-3" onClick={() => setValue('coverImageUrl', null)}>Remove Render</Button>
@@ -326,7 +340,7 @@ export function VisualAssetsCard({ model, isModuleView }: { model: any, isModule
                             </label>
                         )}
                     </div>
-                    <div className="p-6 space-y-2 bg-white border-t">
+                    <div className="p-6 space-y-2 bg-white border-t text-left">
                         <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Gallery Assets</Label>
                         <div className="grid grid-cols-3 gap-2">
                             {galleryUrls.map((url, index) => (
@@ -389,15 +403,15 @@ export function DocumentsSection() {
 
     return (
         <>
-            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
                 <CollapsibleCardHeader title="Technical Docs" count={fields.length} />
                 <CollapsibleContent>
-                    <CardContent className="pt-6 space-y-4">
-                        <div className="grid gap-2">
+                    <CardContent className="pt-6 space-y-4 text-left">
+                        <div className="grid gap-2 text-left">
                             {fields.map((field, index) => (
-                                <div key={field.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/5 group/doc">
+                                <div key={field.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/5 group/doc text-left">
                                     <FileText className="h-5 w-5 text-primary/40 shrink-0" />
-                                    <div className="flex-1 min-w-0">
+                                    <div className="flex-1 min-w-0 text-left">
                                         <FormField control={control} name={`documents.${index}.name`} render={({ field }) => (
                                             <FormControl><Input {...field} className="h-7 text-[11px] font-bold border-none bg-transparent shadow-none focus-visible:ring-0 p-0" placeholder="Document Name" /></FormControl>
                                         )} />
@@ -423,8 +437,8 @@ export function DocumentsSection() {
                         <DialogTitle className="text-2xl font-black uppercase tracking-tight italic">Asset Identity</DialogTitle>
                         <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Assign a tactical label to this document</DialogDescription>
                     </DialogHeader>
-                    <div className="p-8 space-y-6">
-                        <div className="space-y-2">
+                    <div className="p-8 space-y-6 text-left">
+                        <div className="space-y-2 text-left">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Document Name</Label>
                             <Input 
                                 autoFocus
@@ -467,13 +481,13 @@ function SpecsSection() {
     };
 
     return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
             <CollapsibleCardHeader title="Engineering Data" count={fields.length} onAdd={() => append({ id: `spec-${Date.now()}`, label: '', value: '' })} />
             <CollapsibleContent>
-                <CardContent className="space-y-4 pt-6">
-                    <div className="grid gap-2">
+                <CardContent className="space-y-4 pt-6 text-left">
+                    <div className="grid gap-2 text-left">
                         {fields.map((field, index) => (
-                            <div key={field.id} className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 border-2 border-transparent hover:border-slate-100 transition-all group/field">
+                            <div key={field.id} className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 border-2 border-transparent hover:border-slate-100 transition-all group/field text-left">
                                 <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Param" className="h-8 text-[10px] font-bold border-none bg-transparent shadow-none" {...field} /></FormControl></FormItem> )} />
                                 <div className="h-4 w-px bg-slate-200" />
                                 <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-8 text-[10px] font-black text-primary border-none bg-transparent shadow-none" {...field} /></FormControl></FormItem> )} />
@@ -481,7 +495,7 @@ function SpecsSection() {
                             </div>
                         ))}
                     </div>
-                    <div className="p-4 bg-slate-50/50 rounded-xl border-2 border-dashed border-slate-200 space-y-3"><Textarea placeholder="Paste specs (Key: Value) one per line..." className="bg-white min-h-[100px] rounded-lg border-2 font-bold text-[10px]" value={bulkSpecs} onChange={(e) => setBulkSpecs(e.target.value)} /><Button type="button" variant="outline" className="w-full h-9 font-black uppercase text-[9px] tracking-widest rounded-lg border-2 bg-white" onClick={handleBulkImport}>Sync Bulk Parameters</Button></div>
+                    <div className="p-4 bg-slate-50/50 rounded-xl border-2 border-dashed border-slate-200 space-y-3 text-left"><Textarea placeholder="Paste specs (Key: Value) one per line..." className="bg-white min-h-[100px] rounded-lg border-2 font-bold text-[10px]" value={bulkSpecs} onChange={(e) => setBulkSpecs(e.target.value)} /><Button type="button" variant="outline" className="w-full h-9 font-black uppercase text-[9px] tracking-widest rounded-lg border-2 bg-white" onClick={handleBulkImport}>Sync Bulk Parameters</Button></div>
                 </CardContent>
             </CollapsibleContent>
         </Collapsible>
@@ -500,19 +514,19 @@ function MotorConfigurationsSection() {
     ];
 
     return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
-                <div className="flex items-center gap-3"><CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent group-data-[state=open]:bg-muted"><ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger><div><CardTitle className="text-[10px] font-black uppercase tracking-[0.2em]">Motor Setup</CardTitle><span className="text-[8px] font-bold text-muted-foreground uppercase">{fields.length} SCENARIOS</span></div></div>
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
+            <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none text-left">
+                <div className="flex items-center gap-3 text-left"><CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent group-data-[state=open]:bg-muted"><ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger><div className="text-left"><CardTitle className="text-[10px] font-black uppercase tracking-[0.2em]">Motor Setup</CardTitle><span className="text-[8px] font-bold text-muted-foreground uppercase">{fields.length} SCENARIOS</span></div></div>
                 <Select onValueChange={(type) => { const opt = configOptions.find(o => o.id === type); if (opt) append({ type, engines: Array.from({ length: opt.engineCount }, (_, i) => ({ label: opt.engineLabels[i], minHp: 0, maxHp: 0, recommendedHp: 0 })) }); }}><SelectTrigger className="h-8 w-[160px] font-black text-[9px] uppercase tracking-widest border-2 rounded-lg"><Plus className="h-3 w-3 mr-1.5 text-primary" /><SelectValue placeholder="Add Scenario" /></SelectTrigger><SelectContent className="rounded-xl border-2">{configOptions.map(opt => <SelectItem key={opt.id} value={opt.id} className="font-bold py-2 uppercase text-[9px]">{opt.label}</SelectItem>)}</SelectContent></Select>
             </div>
             <CollapsibleContent>
-                <CardContent className="p-6 space-y-4">
+                <CardContent className="p-6 space-y-4 text-left">
                     {fields.map((field, index) => (
-                        <div key={field.id} className="relative p-4 bg-slate-50 border-2 rounded-2xl space-y-4">
+                        <div key={field.id} className="relative p-4 bg-slate-50 border-2 rounded-2xl space-y-4 text-left">
                             <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive" onClick={() => remove(index)}><Trash2 className="h-3.5 w-3.5" /></Button>
                             <h4 className="font-black text-[10px] uppercase tracking-tighter text-primary flex items-center gap-2"><Zap className="h-3 w-3 fill-current" />{field.type.replace(/([A-Z])/g, ' $1').trim()} Deployment</h4>
-                            <div className="grid gap-3">{(field as any).engines.map((engine: any, eIdx: number) => (
-                                <div key={eIdx} className="grid grid-cols-4 gap-3 items-end bg-white p-3 rounded-xl border"><Label className="text-[9px] font-black uppercase text-muted-foreground truncate">{engine.label}</Label><FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${eIdx}.minHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[7px] font-black uppercase">Min HP</FormLabel><FormControl><Input type="number" className="h-7 text-[10px] font-black border-none bg-slate-50 rounded-md text-center" {...field} /></FormControl></FormItem> )} /><FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${eIdx}.maxHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[7px] font-black uppercase">Max HP</FormLabel><FormControl><Input type="number" className="h-7 text-[10px] font-black border-none bg-slate-50 rounded-md text-center" {...field} /></FormControl></FormItem> )} /><FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${eIdx}.recommendedHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[7px] font-black uppercase">Rec. HP</FormLabel><FormControl><Input type="number" className="h-7 text-[10px] font-black text-primary border-none bg-primary/5 rounded-md text-center" {...field} /></FormControl></FormItem> )} /></div>
+                            <div className="grid gap-3 text-left">{(field as any).engines.map((engine: any, eIdx: number) => (
+                                <div key={eIdx} className="grid grid-cols-4 gap-3 items-end bg-white p-3 rounded-xl border text-left"><Label className="text-[9px] font-black uppercase text-muted-foreground truncate">{engine.label}</Label><FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${eIdx}.minHp`} render={({ field }) => ( <FormItem className="space-y-1 text-left"><FormLabel className="text-[7px] font-black uppercase">Min HP</FormLabel><FormControl><Input type="number" className="h-7 text-[10px] font-black border-none bg-slate-50 rounded-md text-center" {...field} /></FormControl></FormItem> )} /><FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${eIdx}.maxHp`} render={({ field }) => ( <FormItem className="space-y-1 text-left"><FormLabel className="text-[7px] font-black uppercase">Max HP</FormLabel><FormControl><Input type="number" className="h-7 text-[10px] font-black border-none bg-slate-50 rounded-md text-center" {...field} /></FormControl></FormItem> )} /><FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${eIdx}.recommendedHp`} render={({ field }) => ( <FormItem className="space-y-1 text-left"><FormLabel className="text-[7px] font-black uppercase">Rec. HP</FormLabel><FormControl><Input type="number" className="h-7 text-[10px] font-black text-primary border-none bg-primary/5 rounded-md text-center" {...field} /></FormControl></FormItem> )} /></div>
                             ))}</div>
                         </div>
                     ))}
@@ -548,12 +562,12 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
     const featureOptions = useMemo(() => optionalFeatures.map((f: any) => ({ id: f.id, label: `${f.name}${f.code ? ` (${f.code})` : ''}` })), [optionalFeatures]);
 
     return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none"><div className="flex items-center gap-3"><CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent group-data-[state=open]:bg-muted"><ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger><CardTitle className="text-[10px] font-black uppercase tracking-[0.2em]">Guardrails</CardTitle></div><div className="flex items-center gap-2"><Button type="button" variant="secondary" className="h-8 px-4 font-black uppercase text-[8px] rounded-lg" onClick={handleSyncRules} disabled={isSyncing}>{isSyncing ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <RefreshCw className="h-3 w-3 mr-1.5" />} Sync Series</Button><Button type="button" variant="outline" className="h-8 px-4 font-black uppercase text-[8px] rounded-lg border-2" onClick={() => append({ id: `rule-${Date.now()}`, sourceType: 'option', sourceOptionId: '', type: 'include', targetOptionIds: [] })}><Plus className="h-3 w-3 mr-1.5" /> New Constraint</Button></div></div>
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
+            <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none text-left"><div className="flex items-center gap-3 text-left"><CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent group-data-[state=open]:bg-muted"><ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger><CardTitle className="text-[10px] font-black uppercase tracking-[0.2em]">Guardrails</CardTitle></div><div className="flex items-center gap-2"><Button type="button" variant="secondary" className="h-8 px-4 font-black uppercase text-[8px] rounded-lg" onClick={handleSyncRules} disabled={isSyncing}>{isSyncing ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <RefreshCw className="h-3 w-3 mr-1.5" />} Sync Series</Button><Button type="button" variant="outline" className="h-8 px-4 font-black uppercase text-[8px] rounded-lg border-2" onClick={() => append({ id: `rule-${Date.now()}`, sourceType: 'option', sourceOptionId: '', type: 'include', targetOptionIds: [] })}><Plus className="h-3 w-3 mr-1.5" /> New Constraint</Button></div></div>
             <CollapsibleContent>
-                <CardContent className="p-6 space-y-3">
+                <CardContent className="p-6 space-y-3 text-left">
                     {fields.map((field, idx) => (
-                        <div key={field.id} className="p-4 rounded-xl border-2 bg-slate-50 relative group/rule"><div className="grid grid-cols-3 gap-4 pr-8"><FormField control={control} name={`rules.${idx}.sourceOptionId`} render={({ field }) => (<FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 font-bold text-[10px] border-2 bg-white"><SelectValue placeholder="If..." /></SelectTrigger></FormControl><SelectContent>{featureOptions.map(opt => <SelectItem key={opt.id} value={opt.id} className="font-bold py-2 uppercase text-[9px]">{opt.label}</SelectItem>)}</SelectContent></Select></FormItem>)} /><FormField control={control} name={`rules.${idx}.type`} render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 font-black text-[10px] border-2 bg-white"><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="include" className="font-black py-2 uppercase text-[9px]">MUST INCLUDE</SelectItem><SelectItem value="exclude" className="font-black py-2 uppercase text-[9px]">EXCLUDES</SelectItem></SelectContent></Select></FormItem> )} /><FormField control={control} name={`rules.${idx}.targetOptionIds`} render={({ field }) => ( <FormItem><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full h-9 justify-between px-3 font-bold border-2 bg-white text-[10px]"><span>{(field.value as any)?.length > 0 ? `${(field.value as any).length} TARGETS` : 'Targets...'}</span><ChevronRight className="h-3 w-3 opacity-40" /></Button></PopoverTrigger><PopoverContent className="w-[280px] p-0 rounded-xl border-4 shadow-2xl"><Command><CommandInput placeholder="Search..." className="h-9" /><CommandList><CommandGroup>{featureOptions.map(opt => (<CommandItem key={opt.id} onSelect={() => { const next = (field.value as any)?.includes(opt.id) ? (field.value as any).filter((i:any)=>i!==opt.id) : [...((field.value as any)||[]), opt.id]; field.onChange(next); }} className="font-bold uppercase text-[9px] py-2.5 flex items-center justify-between"><span>{opt.label}</span>{(field.value as any)?.includes(opt.id) && <Check className="h-3 w-3 text-primary" />}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent></Popover></FormItem>)} /></div><Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive opacity-0 group-hover/rule:opacity-100 transition-opacity" onClick={() => remove(idx)}><Trash2 className="h-3.5 w-3.5" /></Button></div>
+                        <div key={field.id} className="p-4 rounded-xl border-2 bg-slate-50 relative group/rule text-left"><div className="grid grid-cols-3 gap-4 pr-8 text-left"><FormField control={control} name={`rules.${idx}.sourceOptionId`} render={({ field }) => (<FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 font-bold text-[10px] border-2 bg-white"><SelectValue placeholder="If..." /></SelectTrigger></FormControl><SelectContent>{featureOptions.map(opt => <SelectItem key={opt.id} value={opt.id} className="font-bold py-2 uppercase text-[9px]">{opt.label}</SelectItem>)}</SelectContent></Select></FormItem>)} /><FormField control={control} name={`rules.${idx}.type`} render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 font-black text-[10px] border-2 bg-white"><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="include" className="font-black py-2 uppercase text-[9px]">MUST INCLUDE</SelectItem><SelectItem value="exclude" className="font-black py-2 uppercase text-[9px]">EXCLUDES</SelectItem></SelectContent></Select></FormItem> )} /><FormField control={control} name={`rules.${idx}.targetOptionIds`} render={({ field }) => ( <FormItem><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full h-9 justify-between px-3 font-bold border-2 bg-white text-[10px]"><span>{(field.value as any)?.length > 0 ? `${(field.value as any).length} TARGETS` : 'Targets...'}</span><ChevronRight className="h-3 w-3 opacity-40" /></Button></PopoverTrigger><PopoverContent className="w-[280px] p-0 rounded-xl border-4 shadow-2xl"><Command><CommandInput placeholder="Search..." className="h-9" /><CommandList><CommandGroup>{featureOptions.map(opt => (<CommandItem key={opt.id} onSelect={() => { const next = (field.value as any)?.includes(opt.id) ? (field.value as any).filter((i:any)=>i!==opt.id) : [...((field.value as any)||[]), opt.id]; field.onChange(next); }} className="font-bold uppercase text-[9px] py-2.5 flex items-center justify-between"><span>{opt.label}</span>{(field.value as any)?.includes(opt.id) && <Check className="h-3 w-3 text-primary" />}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent></Popover></FormItem>)} /></div><Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive opacity-0 group-hover/rule:opacity-100 transition-opacity" onClick={() => remove(idx)}><Trash2 className="h-3.5 w-3.5" /></Button></div>
                     ))}
                 </CardContent>
             </CollapsibleContent>
@@ -588,21 +602,21 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
     }, [optionalFeatureFields, watchedOptionalFeatures]);
 
     return (
-        <div className="space-y-8 pb-32">
-            <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
-                <div className="lg:col-span-4 space-y-8 min-w-0">
+        <div className="space-y-8 pb-32 text-left">
+            <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start text-left">
+                <div className="lg:col-span-4 space-y-8 min-w-0 text-left">
                     <VariantsSection model={model} vendorId={vendorId} rangeId={rangeId} />
                     <SpecsSection />
                     <MotorConfigurationsSection />
                 </div>
-                <div className="lg:col-span-3 space-y-8 min-w-0">
+                <div className="lg:col-span-3 space-y-8 min-w-0 text-left">
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
                     
-                    <Collapsible className="group/config overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+                    <Collapsible className="group/config overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
                         <CollapsibleCardHeader title="Factory Configurator" />
                         <CollapsibleContent>
-                            <div className="p-6 space-y-8">
-                                <div className="inline-flex items-center p-1.5 bg-white rounded-full border-2 shadow-sm focus-within:border-primary/40 transition-colors w-full">
+                            <div className="p-6 space-y-8 text-left">
+                                <div className="inline-flex items-center p-1.5 bg-white rounded-full border-2 shadow-sm focus-within:border-primary/40 transition-colors w-full text-left">
                                     <Input 
                                         placeholder="CREATE CATEGORY..." 
                                         value={newCategoryName} 
@@ -625,18 +639,18 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                     </Button>
                                 </div>
 
-                                <div className="space-y-10">
+                                <div className="space-y-10 text-left">
                                     {categorizedFeatures.map(([cat, items]) => (
-                                        <Collapsible key={cat} defaultOpen className="space-y-4">
-                                            <div className="flex items-center justify-between border-b-2 border-primary/5 pb-2 px-1">
-                                                <div className="flex items-center gap-2">
+                                        <Collapsible key={cat} defaultOpen className="space-y-4 text-left">
+                                            <div className="flex items-center justify-between border-b-2 border-primary/5 pb-2 px-1 text-left">
+                                                <div className="flex items-center gap-2 text-left">
                                                     <CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 rounded-full border shadow-sm group-data-[state=open]:bg-muted"><ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger>
                                                     <span className="font-black text-[9px] uppercase tracking-[0.15em] text-slate-900 italic">{cat}</span>
                                                     <Badge className="bg-primary/10 text-primary border-none font-black text-[7px] h-4 px-1.5">{items.length}</Badge>
                                                 </div>
                                                 <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat === 'General Options' ? null : cat, imageUrl: null, code: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}><Plus className="h-3 w-3" /></Button>
                                             </div>
-                                            <CollapsibleContent><div className="grid gap-2 animate-in slide-in-from-top-1 duration-200">{items.map(item => (<OptionalFeatureItem key={item.field.id} index={item.idx} remove={removeOptionalFeature} categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'General Options' && n !== 'Consoles' && n !== 'Seats')} variants={variants} allFeatures={watchedOptionalFeatures} />))}</div></CollapsibleContent>
+                                            <CollapsibleContent><div className="grid gap-2 animate-in slide-in-from-top-1 duration-200 text-left">{items.map(item => (<OptionalFeatureItem key={item.field.id} index={item.idx} remove={removeOptionalFeature} categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'General Options' && n !== 'Consoles' && n !== 'Seats')} variants={variants} allFeatures={watchedOptionalFeatures} />))}</div></CollapsibleContent>
                                         </Collapsible>
                                     ))}
                                 </div>

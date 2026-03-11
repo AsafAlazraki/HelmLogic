@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useCollection, useMemoFirebase, useFirestore, useUser, useDoc } from '@/firebase';
-import { collection, query, doc, getDocs, orderBy, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, doc, getDocs, orderBy, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronDown, ChevronRight, Settings2, Maximize2, Minimize2, Beaker, Zap, Wrench, Anchor, Save } from 'lucide-react';
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
@@ -93,7 +93,7 @@ function AccessoryCategory({
 }) {
     return (
         <div className="space-y-2 text-left">
-            <div className="flex items-center justify-between group/cat">
+            <div className="flex items-center justify-between group/cat text-left">
                 <div className="flex items-center gap-1.5 text-left">
                     <div className="h-1 w-1 rounded-full bg-primary/40" />
                     <span className="text-[9px] font-black uppercase text-muted-foreground/70 tracking-widest">{label}</span>
@@ -142,7 +142,7 @@ function AccessoryCategory({
                         </div>
                     </div>
                 )) : (
-                    <div className="py-3 border border-dashed rounded-lg flex items-center justify-center text-[8px] text-muted-foreground/30 uppercase font-black tracking-widest bg-muted/5">
+                    <div className="py-3 border border-dashed rounded-lg flex items-center justify-center text-[8px] text-muted-foreground/30 uppercase font-black tracking-widest bg-muted/5 text-left">
                         None Linked
                     </div>
                 )}
@@ -220,7 +220,7 @@ function MotorCard({
                 className="relative cursor-pointer text-left"
                 onClick={() => setIsExpanded(!isExpanded)}
             >
-                <div className="relative h-32 bg-muted/30 border-b flex items-center justify-center">
+                <div className="relative h-32 bg-muted/30 border-b flex items-center justify-center text-left">
                     {itemImageUrl ? (
                         <Image 
                             src={itemImageUrl} 
@@ -231,11 +231,11 @@ function MotorCard({
                             unoptimized
                         />
                     ) : (
-                        <div className="text-muted-foreground/10">
+                        <div className="text-muted-foreground/10 text-left">
                             <Ship className="w-10 h-10"/>
                         </div>
                     )}
-                    <div className="absolute top-2 right-2 opacity-0 group-hover/motor:opacity-100 transition-opacity flex items-center gap-1">
+                    <div className="absolute top-2 right-2 opacity-0 group-hover/motor:opacity-100 transition-opacity flex items-center gap-1 text-left">
                         <Button 
                             type="button"
                             variant="destructive" 
@@ -421,7 +421,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         
         setIsSeeding(true);
         try {
-            // Find a target motor to update (e.g., F25)
+            // 1. Motor Injection
             const targetMotor = motorDataSet.find(m => String(m['Model Name']).includes('F25SMHC')) || motorDataSet[0];
             if (targetMotor) {
                 const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, targetMotor.id);
@@ -429,12 +429,44 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                     { id: 'test-prop-1', name: 'Aluminum Propeller 11 1/8 x 13-G', category: 'Propeller', isStandard: true, items: [] },
                     { id: 'test-rig-1', name: 'Mech Rigging Kit - 703 Remote Control', category: 'Rigging', isStandard: false, items: [] }
                 ];
-                
-                // Directly write to Firestore to ensure it's visible in categories
                 await updateDoc(motorRef, { masterAccessories: testAccs });
             }
 
-            // Also inject some factory options into the model
+            // 2. Trailer Injection
+            const testTrailer = {
+                name: 'Redco - CL380 Trailer',
+                imageUrl: null,
+                options: [
+                    { id: 'tr-opt-1', name: 'Spare wheel holder', isStandard: false, sellPriceExclGst: 120 },
+                    { id: 'tr-opt-2', name: 'Extra winch handle', isStandard: false, sellPriceExclGst: 45 },
+                    { id: 'tr-opt-3', name: 'Tie down straps', isStandard: true, sellPriceExclGst: 65 }
+                ]
+            };
+            setValue('trailerConfig', testTrailer, { shouldDirty: true });
+
+            // 3. Dealer Fit Seeding (Organisation Specific)
+            const organisationId = userProfile?.organisationId;
+            if (organisationId) {
+                const catsSnap = await getDocs(collection(firestore, 'dealerFitCategories'));
+                const cats = catsSnap.docs.map(d => ({ id: d.id, name: d.data().name }));
+                
+                const electronicsCat = cats.find(c => c.name.toLowerCase().includes('electronics')) || { id: 'demo-electronics', name: 'Electronics Pack' };
+                const safetyCat = cats.find(c => c.name.toLowerCase().includes('safety')) || { id: 'demo-safety', name: 'Safety Gear' };
+                
+                const dfCol = collection(firestore, `organisations/${organisationId}/dealerFitSelections`);
+                const testDF = [
+                    { name: 'Garmin EchoMAP 95sv', categoryId: electronicsCat.id, category: electronicsCat.name, type: 'item', items: [{ data: { Description: 'Garmin EchoMAP 95sv with Transducer', sellPriceExclGst: 1850 }}] },
+                    { name: 'Fusion MS-RA210 System', categoryId: electronicsCat.id, category: electronicsCat.name, type: 'item', items: [{ data: { Description: 'Fusion RA210 Marine Stereo', sellPriceExclGst: 650 }}] },
+                    { name: 'Offshore Safety Kit (4 Person)', categoryId: safetyCat.id, category: safetyCat.name, type: 'item', items: [{ data: { Description: 'Flares, Jackets, Anchor, V-Sheet', sellPriceExclGst: 450 }}] },
+                    { name: 'GME GX700 VHF Radio', categoryId: safetyCat.id, category: safetyCat.name, type: 'item', items: [{ data: { Description: 'GME VHF Marine Radio White', sellPriceExclGst: 320 }}] }
+                ];
+                
+                for (const df of testDF) {
+                    await addDoc(dfCol, { ...df, createdAt: serverTimestamp() });
+                }
+            }
+
+            // 4. Model Factory Options
             const currentOptions = watch('optionalFeatures') || model?.optionalFeatures || [];
             const testOptions = [
                 { id: 'test-factory-1', name: 'Motor Ram Support', category: 'General Options', sellPriceExclGst: 150, isStandard: false, applicableVariantIds: [] },
@@ -447,7 +479,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             });
 
             setValue('optionalFeatures', mergedOptions, { shouldDirty: true });
-            toast({ title: "Tactical Data Injected", description: "Hardcoded motor accessories and factory options are now staged." });
+            toast({ title: "Tactical Data Injected", description: "Trailer, Dealer Fit, and Factory accessories staged." });
         } catch (e: any) {
             console.error("Generator failed:", e);
             toast({ variant: 'destructive', title: "Generator Failed", description: e.message || "An unexpected error occurred." });
@@ -606,8 +638,8 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                     <div className="flex items-center gap-3 text-left">
                         <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center text-primary"><Beaker className="h-5 w-5" /></div>
                         <div className="text-left">
-                            <CardTitle className="text-sm font-black uppercase italic tracking-tight">Tactical Data Injector</CardTitle>
-                            <CardDescription className="text-[9px] font-black uppercase tracking-widest text-primary/60">Prototype Environment Accelerator</CardDescription>
+                            <CardTitle className="text-sm font-black uppercase italic tracking-tight">Tactical Build Seeder</CardTitle>
+                            <CardDescription className="text-[9px] font-black uppercase tracking-widest text-primary/60">Stage Factory & Trailer Data Instantly</CardDescription>
                         </div>
                     </div>
                     <Button type="button" onClick={handleSeedTestData} disabled={isSeeding} className="h-9 px-6 font-black uppercase text-[10px] tracking-widest bg-primary shadow-xl text-white">
@@ -625,7 +657,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                             <CardDescription className="text-[10px] uppercase font-black tracking-widest opacity-60">Configurations matching the boat's horsepower and quantity ratings.</CardDescription>
                         </div>
                         {motorVendor?.logoUrl && (
-                            <div className="bg-white border rounded-lg p-2 shadow-sm">
+                            <div className="bg-white border rounded-lg p-2 shadow-sm text-left">
                                 <Image src={motorVendor.logoUrl} alt={motorVendor.name} width={100} height={32} className="object-contain" unoptimized />
                             </div>
                         )}
@@ -635,9 +667,9 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                     {motorCombinations.length > 0 ? (
                         <Accordion type="multiple" className="w-full space-y-4" defaultValue={['config-0']}>
                             {motorCombinations.map((configGroup, index) => (
-                                <AccordionItem value={`config-${index}`} key={configGroup.configType} className="border rounded-xl overflow-hidden shadow-sm bg-background">
+                                <AccordionItem value={`config-${index}`} key={configGroup.configType} className="border rounded-xl overflow-hidden shadow-sm bg-background text-left">
                                     <div className="flex border-b bg-muted/20 hover:bg-muted/30 transition-colors group/trigger items-center justify-between pr-6 text-left">
-                                        <AccordionPrimitive.Header className="flex flex-1">
+                                        <AccordionPrimitive.Header className="flex flex-1 text-left">
                                             <AccordionPrimitive.Trigger className="flex flex-1 items-center justify-between px-6 py-4 font-medium transition-all hover:no-underline [&[data-state=open]>svg]:rotate-180 text-left">
                                                 <div className="flex items-center gap-3 text-left">
                                                     <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center text-primary"><Star className="h-4 w-4" /></div>
@@ -652,8 +684,8 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                                         <Button type="button" variant="outline" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest transition-opacity" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveConfigType(configGroup.configType); setIsEngineManagerOpen(true); }}><Settings2 className="h-3 w-3 mr-1.5" />Manage Engines</Button>
                                     </div>
                                     <AccordionContent className="p-0 text-left">
-                                        <ScrollArea className="h-[600px] w-full">
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-6">
+                                        <ScrollArea className="h-[600px] w-full text-left">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-6 text-left">
                                                 {configGroup.combinations.map((combo, comboIdx) => (
                                                     <div key={comboIdx} className="relative group/combo h-full text-left">
                                                         {combo.map((motor, motorIdx) => (
@@ -677,9 +709,9 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                             ))}
                         </Accordion>
                     ) : (
-                        <div className="py-20 text-center flex flex-col items-center gap-4 bg-muted/5 rounded-2xl border-2 border-dashed border-muted-foreground/20">
+                        <div className="py-20 text-center flex flex-col items-center gap-4 bg-muted/5 rounded-2xl border-2 border-dashed border-muted-foreground/20 text-left">
                             <AlertCircle className="h-12 w-12 text-muted-foreground opacity-20" />
-                            <div className="max-w-xs mx-auto">
+                            <div className="max-w-xs mx-auto text-center">
                                 <p className="text-sm font-black uppercase tracking-widest">No Motor Matches Found</p>
                                 <p className="text-[10px] text-muted-foreground/60 mt-2 leading-relaxed uppercase font-bold">Adjust the boat's ratings or use the engine manager to add motors manually.</p>
                             </div>

@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck, Tag, Building, Hammer } from 'lucide-react';
+import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck, Tag, Building, Hammer, Truck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 import { HighfieldModelEditor, highfieldModelSchema } from '@/components/highfield-model-editor';
@@ -25,6 +25,7 @@ import { StabicraftModelEditor, stabicraftModelSchema } from '@/components/stabi
 import { SurteesModelEditor, surteesModelSchema } from '@/components/surtees-model-editor';
 import { MotorOptions } from './motor-options';
 import { DealerFitOptions } from './dealer-fit-options';
+import { TrailerOptions } from './trailer-options';
 import { FormField, FormItem, FormControl, FormLabel, FormMessage } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -118,6 +119,7 @@ const getSafeDefaultValues = (modelData: any, vendorSlug?: string): any => {
         },
         standardFeatures: data.standardFeatures ?? [],
         documents: (data.documents || []).map((d: any) => ({ ...d, id: d.id || `doc-${Math.random()}` })),
+        trailerConfig: data.trailerConfig ?? { name: '', imageUrl: null, options: [] },
     };
 
     if (vendorSlug === 'highfield') {
@@ -314,22 +316,22 @@ export function ModelConfigurationEditor({
     return (
         <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
-                <div className="space-y-6">
-                    <Card className="border-primary/20 bg-primary/5 rounded-xl shadow-inner">
-                        <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
+                <div className="space-y-6 text-left">
+                    <Card className="border-primary/20 bg-primary/5 rounded-xl shadow-inner text-left">
+                        <CardContent className="p-4 text-left">
+                            <div className="flex items-center justify-between text-left">
+                                <div className="flex items-center gap-3 text-left">
                                     <div className="h-10 w-10 bg-primary text-primary-foreground rounded-md flex items-center justify-center shadow-md">
                                         <Wrench className="h-6 w-6" />
                                     </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
+                                    <div className="text-left">
+                                        <div className="flex items-center gap-2 text-left">
                                             <h2 className="text-xl font-bold">{model.name}</h2>
                                         </div>
                                         {breadcrumbs}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-4 text-left">
                                     {canEdit && (
                                         <Button type="submit" disabled={isSubmitting} className="font-black uppercase tracking-widest shadow-lg min-w-[160px]">
                                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -341,46 +343,46 @@ export function ModelConfigurationEditor({
                         </CardContent>
                     </Card>
 
-                    <Tabs defaultValue="boat" className="w-full">
-                        <TabsList className={cn("grid w-full", isModuleView ? "grid-cols-5" : "grid-cols-1 max-w-[200px]")}>
-                            <TabsTrigger value="boat">Series Details</TabsTrigger>
+                    <Tabs defaultValue="boat" className="w-full text-left">
+                        <TabsList className={cn("grid w-full text-left", isModuleView ? "grid-cols-5" : "grid-cols-1 max-w-[200px]")}>
+                            <TabsTrigger value="boat" className="font-black text-[10px] uppercase tracking-widest">Series Details</TabsTrigger>
                             {isModuleView && (
                                 <>
-                                    <TabsTrigger value="motor">Motor Options</TabsTrigger>
-                                    <TabsTrigger value="fit-up">Fit Up</TabsTrigger>
-                                    <TabsTrigger value="trailer">Trailer Options</TabsTrigger>
-                                    <TabsTrigger value="dealer-fit">Dealer Fit Options</TabsTrigger>
+                                    <TabsTrigger value="motor" className="font-black text-[10px] uppercase tracking-widest">Motor Options</TabsTrigger>
+                                    <TabsTrigger value="fit-up" className="font-black text-[10px] uppercase tracking-widest">Fit Up</TabsTrigger>
+                                    <TabsTrigger value="trailer" className="font-black text-[10px] uppercase tracking-widest">Trailer Options</TabsTrigger>
+                                    <TabsTrigger value="dealer-fit" className="font-black text-[10px] uppercase tracking-widest">Dealer Fit Options</TabsTrigger>
                                 </>
                             )}
                         </TabsList>
                         
-                        <TabsContent value="boat" className="mt-6 space-y-8">
-                            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-                                <CardHeader className="flex flex-row items-center justify-between py-4 px-6 border-b bg-card select-none">
-                                    <div className="flex items-center gap-3">
+                        <TabsContent value="boat" className="mt-6 space-y-8 text-left">
+                            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
+                                <CardHeader className="flex flex-row items-center justify-between py-4 px-6 border-b bg-card select-none text-left">
+                                    <div className="flex items-center gap-3 text-left">
                                         <CollapsibleTrigger asChild>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
                                                 <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                                             </Button>
                                         </CollapsibleTrigger>
-                                        <div className="flex flex-col">
-                                            <CardTitle className="text-lg font-bold flex items-center gap-2">
+                                        <div className="flex flex-col text-left">
+                                            <CardTitle className="text-lg font-bold flex items-center gap-2 text-left">
                                                 <ShieldCheck className="h-5 w-5 text-primary" />
                                                 Range Identity
                                             </CardTitle>
-                                            <CardDescription className="text-xs">Configure the core parameters for this model series.</CardDescription>
+                                            <CardDescription className="text-xs text-left">Configure the core parameters for this model series.</CardDescription>
                                         </div>
                                     </div>
                                 </CardHeader>
                                 <CollapsibleContent>
-                                    <CardContent className="pt-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <CardContent className="pt-6 text-left">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                                             <FormField
                                                 control={control}
                                                 name="name"
                                                 render={({ field }) => (
-                                                    <FormItem className="space-y-3">
-                                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                                    <FormItem className="space-y-3 text-left">
+                                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 text-left">
                                                             <Tag className="h-3 w-3" />
                                                             Series Display Name
                                                         </FormLabel>
@@ -399,8 +401,8 @@ export function ModelConfigurationEditor({
                                                 control={control}
                                                 name="modelCode"
                                                 render={({ field }) => (
-                                                    <FormItem className="space-y-3">
-                                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                                    <FormItem className="space-y-3 text-left">
+                                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 text-left">
                                                             <Hash className="h-3 w-3" />
                                                             Master Model Code
                                                         </FormLabel>
@@ -426,47 +428,37 @@ export function ModelConfigurationEditor({
 
                         {isModuleView && (
                             <>
-                                <TabsContent value="motor" className="mt-6">
+                                <TabsContent value="motor" className="mt-6 text-left">
                                     <MotorOptions model={model} module={module} />
                                 </TabsContent>
-                                <TabsContent value="fit-up" className="mt-6">
-                                    <Card className="rounded-xl border-2">
-                                        <CardHeader className="bg-muted/10 border-b">
-                                            <div className="flex items-center gap-3">
+                                <TabsContent value="fit-up" className="mt-6 text-left">
+                                    <Card className="rounded-xl border-2 text-left">
+                                        <CardHeader className="bg-muted/10 border-b text-left">
+                                            <div className="flex items-center gap-3 text-left">
                                                 <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center text-primary">
                                                     <Hammer className="h-4 w-4" />
                                                 </div>
-                                                <div>
+                                                <div className="text-left">
                                                     <CardTitle className="text-xl font-bold uppercase tracking-tight italic text-primary">Fit Up Workspace</CardTitle>
                                                     <CardDescription className="text-[10px] font-black uppercase tracking-widest opacity-60">Manage technical assembly and labor requirements</CardDescription>
                                                 </div>
                                             </div>
                                         </CardHeader>
-                                        <CardContent className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-muted/5">
-                                            <div className="h-16 w-16 bg-white rounded-3xl border-2 border-dashed flex items-center justify-center text-muted-foreground/20">
+                                        <CardContent className="flex flex-col items-center justify-center py-20 text-center gap-4 bg-muted/5 text-left">
+                                            <div className="h-16 w-16 bg-white rounded-3xl border-2 border-dashed flex items-center justify-center text-muted-foreground/20 text-left">
                                                 <Hammer className="h-8 w-8" />
                                             </div>
-                                            <div className="space-y-1">
+                                            <div className="space-y-1 text-left">
                                                 <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">Assembly Console Ready</p>
                                                 <p className="text-[10px] font-bold text-muted-foreground/60 uppercase">Technical man-hours and rigging templates will be synchronized here.</p>
                                             </div>
                                         </CardContent>
                                     </Card>
                                 </TabsContent>
-                                <TabsContent value="trailer" className="mt-6">
-                                    <Card className="rounded-xl">
-                                        <CardHeader>
-                                            <CardTitle>Trailer Options</CardTitle>
-                                            <CardDescription>Associated trailer configuration sets</CardDescription>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg text-muted-foreground bg-muted/5">
-                                                <p>Trailer configuration coming soon.</p>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+                                <TabsContent value="trailer" className="mt-6 text-left">
+                                    <TrailerOptions model={model} />
                                 </TabsContent>
-                                <TabsContent value="dealer-fit" className="mt-6">
+                                <TabsContent value="dealer-fit" className="mt-6 text-left">
                                     <DealerFitOptions 
                                         module={module} 
                                         organisationId={organisationId} 
