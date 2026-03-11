@@ -152,7 +152,7 @@ export function HighfieldQuoteFlow({
                 if (viewport && colorSectionRef.current) {
                     viewport.scrollTo({ top: colorSectionRef.current.offsetTop - 20, behavior: 'smooth' });
                 }
-            }, 600); 
+            }, 800); 
             return () => clearTimeout(timer);
         }
     }, [selectedMaterial, currentStep]);
@@ -274,7 +274,7 @@ export function HighfieldQuoteFlow({
 
     const carouselSlides = useMemo(() => {
         const slides = [];
-        // Primary Anchor: Main boat render (index 0) - MUST STAY PERMANENT
+        // Primary Anchor: Main boat render (index 0)
         if (model.coverImageUrl) slides.push({ type: 'boat', url: model.coverImageUrl });
         
         // Variant: Color-specific render
@@ -294,6 +294,11 @@ export function HighfieldQuoteFlow({
         return slides;
     }, [activeVariant, model, buildPreviewSlide]);
 
+    // Ensure carousel re-initializes when slides are added/removed
+    useEffect(() => {
+        if (api) api.reInit();
+    }, [api, carouselSlides]);
+
     // Robust Auto-Slide Effect for configuration changes
     useEffect(() => {
         if (!api) return;
@@ -309,9 +314,10 @@ export function HighfieldQuoteFlow({
         
         // 2. Build Slide: If any options selected
         if (selectedOptionIds.length > 0) {
-            const buildSlideIndex = carouselSlides.findIndex(s => s.type === 'build');
-            if (buildSlideIndex !== -1) {
-                setTimeout(() => api.scrollTo(buildSlideIndex), 550);
+            const buildSlideIndex = carouselSlides.findIndex(s => s.type['build']);
+            const actualIdx = carouselSlides.findIndex(s => s.type === 'build');
+            if (actualIdx !== -1) {
+                setTimeout(() => api.scrollTo(actualIdx), 600);
             }
         } else {
             // 3. Reset to main if cleared
@@ -382,9 +388,8 @@ export function HighfieldQuoteFlow({
             // EXCLUSIVE CONSOLE RULE
             if (currentCat === 'Consoles') {
                 const consoleIds = relevantFeatures.filter((f: any) => f.category === 'Consoles').map((f: any) => f.id);
-                nextSelectedIds = nextSelectedIds.filter(i => !consoleIds.includes(i));
                 const seatIds = relevantFeatures.filter((f: any) => f.category === 'Seats').map((f: any) => f.id);
-                nextSelectedIds = nextSelectedIds.filter(i => !seatIds.includes(i));
+                nextSelectedIds = nextSelectedIds.filter(i => !consoleIds.includes(i) && !seatIds.includes(i));
             }
 
             nextSelectedIds.push(id);
@@ -431,7 +436,7 @@ export function HighfieldQuoteFlow({
                     if (viewport && targetElement) {
                         viewport.scrollTo({ top: targetElement.offsetTop - 20, behavior: 'smooth' });
                     }
-                }, 800); 
+                }, 1000); // 1s delay for a premium feel
             }
         }
     };
@@ -551,7 +556,7 @@ export function HighfieldQuoteFlow({
                                             <div className="grid grid-cols-2 gap-6">
                                                 {availableColors.map((color) => (
                                                     <button key={color.id} onClick={() => setSelectedColor(color.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent", selectedColor === color.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full bg-white p-2">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-1" unoptimized />}</div>
+                                                        <div className="relative aspect-video w-full bg-white p-1">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-1" unoptimized />}</div>
                                                         <div className={cn("p-5 text-center border-t transition-colors", selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-50")}><p className={cn("text-[10px] font-black uppercase tracking-widest", selectedColor === color.id ? "text-primary" : "text-slate-600")}>{color.name}</p></div>
                                                     </button>
                                                 ))}
@@ -572,7 +577,7 @@ export function HighfieldQuoteFlow({
                                             <div className="grid grid-cols-2 gap-6">
                                                 {opts.map((opt: any) => (
                                                     <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 p-2">{opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Package className="h-12 w-12" /></div>}</div>
+                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 p-1">{opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Package className="h-12 w-12" /></div>}</div>
                                                         <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
                                                             <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
                                                             <p className={cn(
@@ -601,7 +606,7 @@ export function HighfieldQuoteFlow({
                                                 const motorImgUrl = motorImgPath ? (motorImgPath.startsWith('http') ? motorImgPath : `https://www.yamaha-motor.com.au${motorImgPath.startsWith('/') ? '' : '/'}${motorImgPath}`) : null;
                                                 return (
                                                     <button key={m.id} onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full", selectedMotor?.id === m.id ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 p-2">{motorImgUrl && <Image src={motorImgUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
+                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 p-1">{motorImgUrl && <Image src={motorImgUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
                                                         <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
                                                             <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", selectedMotor?.id === m.id ? "text-primary" : "text-slate-900")}>
                                                                 {m.vendorName || 'YAMAHA'} - {m['Model Name']}
