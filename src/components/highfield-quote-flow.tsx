@@ -109,6 +109,8 @@ export function HighfieldQuoteFlow({
     const colorSectionRef = useRef<HTMLDivElement>(null);
     const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
     
+    const displayedModelName = model.name || 'Boat';
+
     // Carousel State
     const [api, setApi] = useState<CarouselApi>();
 
@@ -142,8 +144,6 @@ export function HighfieldQuoteFlow({
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
 
-    const displayedModelName = model.name || 'Boat';
-
     // Step 1 Scroll Fix - Material to Color
     useEffect(() => {
         if (selectedMaterial && currentStep === 1) {
@@ -152,7 +152,7 @@ export function HighfieldQuoteFlow({
                 if (viewport && colorSectionRef.current) {
                     viewport.scrollTo({ top: colorSectionRef.current.offsetTop - 20, behavior: 'smooth' });
                 }
-            }, 400); 
+            }, 500); 
             return () => clearTimeout(timer);
         }
     }, [selectedMaterial, currentStep]);
@@ -302,12 +302,12 @@ export function HighfieldQuoteFlow({
         if (activeVariant?.imageUrl && activeVariant.imageUrl !== model.coverImageUrl) {
             const variantIdx = carouselSlides.findIndex(s => s.type === 'variant' && s.url === activeVariant.imageUrl);
             if (variantIdx !== -1) {
-                setTimeout(() => api.scrollTo(variantIdx), 300);
+                setTimeout(() => api.scrollTo(variantIdx), 400);
             }
         } else if (selectedOptionIds.length > 0) {
             const buildSlideIndex = carouselSlides.findIndex(s => s.type === 'build');
             if (buildSlideIndex !== -1) {
-                setTimeout(() => api.scrollTo(buildSlideIndex), 350);
+                setTimeout(() => api.scrollTo(buildSlideIndex), 450);
             }
         }
     }, [selectedColor, selectedOptionIds, api, carouselSlides, activeVariant, model.coverImageUrl]);
@@ -364,58 +364,72 @@ export function HighfieldQuoteFlow({
         const currentCat = feature.category || 'General Options';
         const isCurrentlySelected = selectedOptionIds.includes(id);
 
-        setSelectedOptionIds(prev => {
-            let next = [...prev];
+        let nextSelectedIds = [...selectedOptionIds];
 
-            if (isCurrentlySelected) {
-                next = next.filter(i => i !== id);
-                if (currentCat === 'Consoles') {
-                    const riggingItem = relevantFeatures.find((f: any) => f.category === 'Rigging' || String(f.name).includes('Rigging'));
-                    if (riggingItem) next = next.filter(i => i !== riggingItem.id);
-                    const seatIds = relevantFeatures.filter((f: any) => f.category === 'Seats').map((f: any) => f.id);
-                    next = next.filter(i => !seatIds.includes(i));
-                }
-            } else {
-                // EXCLUSIVE CONSOLE RULE
-                if (currentCat === 'Consoles') {
-                    const consoleIds = relevantFeatures.filter((f: any) => f.category === 'Consoles').map((f: any) => f.id);
-                    next = next.filter(i => !consoleIds.includes(i));
-                    // PURGE PREVIOUS SEATS
-                    const seatIds = relevantFeatures.filter((f: any) => f.category === 'Seats').map((f: any) => f.id);
-                    next = next.filter(i => !seatIds.includes(i));
-                }
-
-                next.push(id);
-
-                if (currentCat === 'Consoles') {
-                    if (feature.associatedSeatId && !next.includes(feature.associatedSeatId)) {
-                        next.push(feature.associatedSeatId);
-                    }
-                    const riggingItem = relevantFeatures.find((f: any) => f.category === 'Rigging' || String(f.name).includes('Rigging'));
-                    if (riggingItem && !next.includes(riggingItem.id)) {
-                        next.push(riggingItem.id);
-                    }
-                }
+        if (isCurrentlySelected) {
+            nextSelectedIds = nextSelectedIds.filter(i => i !== id);
+            if (currentCat === 'Consoles') {
+                const riggingItem = relevantFeatures.find((f: any) => f.category === 'Rigging' || String(f.name).includes('Rigging'));
+                if (riggingItem) nextSelectedIds = nextSelectedIds.filter(i => i !== riggingItem.id);
+                const seatIds = relevantFeatures.filter((f: any) => f.category === 'Seats').map((f: any) => f.id);
+                nextSelectedIds = nextSelectedIds.filter(i => !seatIds.includes(i));
+            }
+        } else {
+            // EXCLUSIVE CONSOLE RULE
+            if (currentCat === 'Consoles') {
+                const consoleIds = relevantFeatures.filter((f: any) => f.category === 'Consoles').map((f: any) => f.id);
+                nextSelectedIds = nextSelectedIds.filter(i => !consoleIds.includes(i));
+                // PURGE PREVIOUS SEATS (in case FCT doesn't have seats but GT did)
+                const seatIds = relevantFeatures.filter((f: any) => f.category === 'Seats').map((f: any) => f.id);
+                nextSelectedIds = nextSelectedIds.filter(i => !seatIds.includes(i));
             }
 
-            return next;
-        });
+            nextSelectedIds.push(id);
 
-        // Deliberate Auto-Scroll Logic
+            if (currentCat === 'Consoles') {
+                if (feature.associatedSeatId && !nextSelectedIds.includes(feature.associatedSeatId)) {
+                    nextSelectedIds.push(feature.associatedSeatId);
+                }
+                const riggingItem = relevantFeatures.find((f: any) => f.category === 'Rigging' || String(f.name).includes('Rigging'));
+                if (riggingItem && !nextSelectedIds.includes(riggingItem.id)) {
+                    nextSelectedIds.push(riggingItem.id);
+                }
+            }
+        }
+
+        setSelectedOptionIds(nextSelectedIds);
+
+        // --- ENHANCED PRECISION AUTO-SCROLL ---
         if (currentStep === 2 && !isCurrentlySelected) {
-            const nextIdx = groupedOptions.findIndex(([n]) => n === currentCat) + 1;
-            const targetCat = (currentCat === 'Consoles' && groupedOptions.some(([n]) => n === 'Seats')) 
-                ? 'Seats' 
-                : (groupedOptions[nextIdx]?.[0]);
+            // Predict visible categories after the state update
+            const newConsoleId = nextSelectedIds.find(id => relevantFeatures.filter(f => f.category === 'Consoles').some(f => f.id === id));
+            const newConsole = relevantFeatures.find(f => f.id === newConsoleId);
+            
+            const predictedVisibleCats = [...new Set(relevantFeatures.map(f => f.category || 'General Options'))].filter(cat => {
+                if (cat === 'Seats') {
+                    if (newConsole && !newConsole.associatedSeatId) return false;
+                    return true;
+                }
+                if (cat === 'Rigging') return !!newConsoleId;
+                return true;
+            }).sort((a, b) => {
+                if (a === 'Consoles') return -1; if (b === 'Consoles') return 1;
+                if (a === 'Seats') return -1; if (b === 'Seats') return 1;
+                if (a === 'Rigging') return -1; if (b === 'Rigging') return 1;
+                return a.localeCompare(b);
+            });
+
+            const currentIdx = predictedVisibleCats.indexOf(currentCat);
+            const targetCat = predictedVisibleCats[currentIdx + 1];
 
             if (targetCat) {
                 setTimeout(() => {
                     const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-                    const targetElement = categoryRefs.current[targetCat!];
+                    const targetElement = categoryRefs.current[targetCat];
                     if (viewport && targetElement) {
                         viewport.scrollTo({ top: targetElement.offsetTop - 20, behavior: 'smooth' });
                     }
-                }, 550);
+                }, 600); // 600ms for premium deliberate glide
             }
         }
     };
@@ -479,8 +493,8 @@ export function HighfieldQuoteFlow({
                                     </CarouselItem>
                                 ))}
                             </CarouselContent>
-                            <CarouselPrevious className="left-6 h-12 w-12 bg-white/90 border-2 border-transparent shadow-2xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 active:scale-95 transition-all disabled:opacity-0 z-[110]" />
-                            <CarouselNext className="right-6 h-12 w-12 bg-white/90 border-2 border-transparent shadow-2xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 active:scale-95 transition-all disabled:opacity-0 z-[110]" />
+                            <CarouselPrevious className="left-6 h-12 w-12 bg-white/90 border-2 border-slate-200 shadow-2xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 active:scale-95 transition-all disabled:opacity-0 z-[110]" />
+                            <CarouselNext className="right-6 h-12 w-12 bg-white/90 border-2 border-slate-200 shadow-2xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 active:scale-95 transition-all disabled:opacity-0 z-[110]" />
                         </Carousel>
                     </div>
 
