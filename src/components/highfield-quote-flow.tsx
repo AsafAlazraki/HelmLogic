@@ -117,25 +117,26 @@ export function HighfieldQuoteFlow({
     const colorSectionRef = useRef<HTMLDivElement>(null);
     const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
     
-    // Core Identity
-    const boatSeriesIdentity = model?.name || 'Boat';
-
-    // Carousel State
-    const [api, setApi] = useState<CarouselApi>();
-
     // Selection State
     const [selectedMaterial, setSelectedMaterial] = useState<'PVC' | 'HYP' | null>(null);
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
     const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
     const [selectedMotor, setSelectedMotor] = useState<any | null>(null);
     const [selectedMotorAccessoryIds, setSelectedMotorAccessoryIds] = useState<string[]>([]);
-    
-    // Trailer & Dealer Fit State
     const [selectedTrailerId, setSelectedTrailerId] = useState<string | null>(null);
     const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>([]);
     const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>([]);
 
+    // Carousel State
+    const [api, setApi] = useState<CarouselApi>();
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+    // Change detection refs for smart carousel scrolling
+    const prevSelectedColor = useRef(selectedColor);
+    const prevSelectedOptions = useRef(selectedOptionIds);
+    const prevSelectedMotor = useRef(selectedMotor?.id);
+    const prevSelectedTrailer = useRef(selectedTrailerId);
+    const prevSelectedDealerFit = useRef(selectedDealerFitIds);
 
     // Modal State
     const [showFeatures, setShowFeatures] = useState(false);
@@ -157,6 +158,31 @@ export function HighfieldQuoteFlow({
     [firestore, orgId]);
     const { data: dealerFitSelections, isLoading: dealerFitLoading } = useCollection<any>(dealerFitQuery);
 
+    const [motors, setMotors] = useState<any[]>([]);
+    const [motorsLoading, setMotorsLoading] = useState(false);
+
+    const boatSeriesIdentity = model?.name || 'Boat';
+
+    // Utility for image URL resolution (handles local paths, Yamaha API paths, and absolute URLs)
+    const resolveImageUrl = (item: any) => {
+        const path = item?.imageUrl || item?.SummaryImage || item?.url || item?.image;
+        if (!path || typeof path !== 'string') return null;
+        if (path.startsWith('http') || path.startsWith('data:image')) return path;
+        
+        // Handle Yamaha specific paths
+        if (path.includes('images/products') || path.includes('images/accessories')) {
+            const prefix = path.startsWith('/') ? '' : '/';
+            return `https://www.yamaha-motor.com.au${prefix}${path.trim().replace(/\\/g, '/')}`;
+        }
+        return path.trim().replace(/\\/g, '/');
+    };
+
+    const getMotorDisplayName = (m: any) => {
+        if (!m) return 'Unnamed Motor';
+        const name = m['Model Name'] || m.name || m.Description || 'Unnamed Model';
+        return `${m.vendorName || 'YAMAHA'} - ${name}`;
+    };
+
     const availableMaterials = useMemo(() => {
         if (!variants) return [];
         return Array.from(new Set(variants.map(v => v.material).filter(Boolean) as string[]));
@@ -167,27 +193,12 @@ export function HighfieldQuoteFlow({
         return variants.filter(v => v.material === selectedMaterial);
     }, [variants, selectedMaterial]);
 
-    const [motors, setMotors] = useState<any[]>([]);
-    const [motorsLoading, setMotorsLoading] = useState(false);
-
-    // Filter motors based on steering requirement
     const hasConsoleSelected = useMemo(() => {
         const consoleOptions = model.optionalFeatures?.filter((f: any) => f.category === 'Consoles') || [];
         return selectedOptionIds.some(id => consoleOptions.some(f => f.id === id));
     }, [selectedOptionIds, model.optionalFeatures]);
 
-    // Step 1 Scroll: Material to Color
-    useEffect(() => {
-        if (selectedMaterial && currentStep === 1) {
-            const timer = setTimeout(() => {
-                if (colorSectionRef.current) {
-                    colorSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            }, 800); 
-            return () => clearTimeout(timer);
-        }
-    }, [selectedMaterial, currentStep]);
-
+    // Motor fetching logic
     useEffect(() => {
         const fetchMotors = async () => {
             if (currentStep !== 3) return;
@@ -224,7 +235,7 @@ export function HighfieldQuoteFlow({
         fetchMotors();
     }, [currentStep, firestore, module, model, hasConsoleSelected]);
 
-    // Auto-select standard motor accessories when motor changes
+    // Auto-select standard motor accessories
     useEffect(() => {
         if (selectedMotor) {
             const allStandard = (selectedMotor.masterAccessories || []).filter((a: any) => a.isStandard);
@@ -242,27 +253,11 @@ export function HighfieldQuoteFlow({
                     finalStandardIds.push(a.id);
                 }
             });
-
             setSelectedMotorAccessoryIds(finalStandardIds);
-            
-            if (currentStep === 3) {
-                setTimeout(() => {
-                    const firstCat = (selectedMotor.masterAccessories || [])[0]?.category || 'Propeller';
-                    const target = categoryRefs.current[firstCat];
-                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 1000);
-            }
         } else {
             setSelectedMotorAccessoryIds([]);
         }
-    }, [selectedMotor, currentStep]);
-
-    useEffect(() => {
-        if (scrollAreaRef.current) {
-            const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-            if (viewport) viewport.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    }, [currentStep]);
+    }, [selectedMotor]);
 
     const activeVariant = useMemo(() => {
         if (!selectedColor || !variants) return null;
@@ -288,25 +283,17 @@ export function HighfieldQuoteFlow({
 
     const totalPrice = useMemo(() => {
         let total = activeVariant?.sellPriceExclGst || 0;
-        selectedOptionsData.forEach(opt => {
-            total += (opt.sellPriceExclGst || 0);
-        });
+        selectedOptionsData.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
         if (selectedMotor) {
             total += (selectedMotor.sellPriceExclGst || 0);
-            selectedMotorAccessories.forEach((a: any) => {
-                total += (a.sellPriceExclGst || 0);
-            });
+            selectedMotorAccessories.forEach((a: any) => { total += (a.sellPriceExclGst || 0); });
         }
         if (selectedTrailerId && model.trailerConfig) {
             total += (model.trailerConfig.sellPriceExclGst || 0);
-            selectedTrailerOptionsData.forEach((o: any) => {
-                total += (o.sellPriceExclGst || 0);
-            });
+            selectedTrailerOptionsData.forEach((o: any) => { total += (o.sellPriceExclGst || 0); });
         }
         selectedDealerFitData.forEach(s => {
-            s.items?.forEach((i: any) => {
-                total += (i.data?.sellPriceExclGst || 0);
-            });
+            s.items?.forEach((i: any) => { total += (i.data?.sellPriceExclGst || 0); });
         });
         return total;
     }, [activeVariant, selectedOptionsData, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData]);
@@ -322,10 +309,7 @@ export function HighfieldQuoteFlow({
         if (itemsToShow.length === 0) return null;
 
         return (
-            <div className={cn(
-                "h-full w-full grid bg-white",
-                itemsToShow.length === 2 ? "grid-cols-2" : "grid-cols-1"
-            )}>
+            <div className={cn("h-full w-full grid bg-white", itemsToShow.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
                 {itemsToShow.map((item: any, i) => (
                     <div key={item.id} className={cn(
                         "relative flex items-center justify-center transition-colors",
@@ -333,13 +317,7 @@ export function HighfieldQuoteFlow({
                         "hover:bg-slate-50"
                     )}>
                         {item.imageUrl && (
-                            <Image 
-                                src={item.imageUrl} 
-                                alt={item.name} 
-                                fill 
-                                className="object-contain p-8 mix-blend-multiply" 
-                                unoptimized 
-                            />
+                            <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-8 mix-blend-multiply" unoptimized />
                         )}
                         <div className="absolute bottom-8 left-8 px-3 py-1 bg-slate-900/5 rounded-full text-[8px] font-black uppercase tracking-widest text-slate-400">
                             {item.name}
@@ -350,34 +328,33 @@ export function HighfieldQuoteFlow({
         );
     }, [selectedOptionsData]);
 
-    const getMotorImgUrl = (m: any) => {
-        const imgPath = m.SummaryImage || m.imageUrl;
-        if (!imgPath) return null;
-        if (imgPath.startsWith('http')) return imgPath;
-        const prefix = imgPath.startsWith('/') ? '' : '/';
-        return `https://www.yamaha-motor.com.au${prefix}${imgPath}`;
-    };
-
     const carouselSlides = useMemo(() => {
         const slides: { type: string; url?: string; content?: React.ReactNode }[] = [];
         slides.push({ type: 'boat', url: model.coverImageUrl || '' });
         if (activeVariant?.imageUrl) slides.push({ type: 'variant', url: activeVariant.imageUrl });
         if (buildPreviewSlide) slides.push({ type: 'build', content: buildPreviewSlide });
+        
         if (selectedMotor) {
-            const mUrl = getMotorImgUrl(selectedMotor);
+            const mUrl = resolveImageUrl(selectedMotor);
             if (mUrl) slides.push({ type: 'motor', url: mUrl });
         }
+        
         selectedMotorAccessories.forEach((acc: any) => {
-            if (acc.imageUrl) slides.push({ type: 'accessory', url: acc.imageUrl });
+            const url = resolveImageUrl(acc);
+            if (url) slides.push({ type: 'accessory', url });
         });
+
         if (selectedTrailerId && model.trailerConfig?.imageUrl) {
             slides.push({ type: 'trailer', url: model.trailerConfig.imageUrl });
         }
+
         selectedDealerFitData.forEach(s => {
             s.items?.forEach((i: any) => {
-                if (i.data?.imageUrl) slides.push({ type: 'dealerfit', url: i.data.imageUrl });
+                const url = resolveImageUrl(i.data);
+                if (url) slides.push({ type: 'dealerfit', url });
             });
         });
+
         if (model.galleryImageUrls) {
             model.galleryImageUrls.forEach((url: string) => {
                 if (url !== model.coverImageUrl) slides.push({ type: 'gallery', url });
@@ -386,57 +363,82 @@ export function HighfieldQuoteFlow({
         return slides;
     }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedMotorAccessories, selectedTrailerId, selectedDealerFitData]);
 
+    // SMART CAROUSEL SYNC: Only scrolls when selections change, preserving index on step transitions.
     useEffect(() => {
         if (!api) return;
+        
+        // Always re-init so recognizer picks up array length changes
         api.reInit();
 
-        if (currentStep === 3 && selectedMotor) {
-            const mUrl = getMotorImgUrl(selectedMotor);
+        // Determine if a selection actually changed
+        const colorChanged = prevSelectedColor.current !== selectedColor;
+        const optionsChanged = JSON.stringify(prevSelectedOptions.current) !== JSON.stringify(selectedOptionIds);
+        const motorChanged = prevSelectedMotor.current !== selectedMotor?.id;
+        const trailerChanged = prevSelectedTrailer.current !== selectedTrailerId;
+        const dealerFitChanged = JSON.stringify(prevSelectedDealerFit.current) !== JSON.stringify(selectedDealerFitIds);
+
+        // Update refs for next check
+        prevSelectedColor.current = selectedColor;
+        prevSelectedOptions.current = selectedOptionIds;
+        prevSelectedMotor.current = selectedMotor?.id;
+        prevSelectedTrailer.current = selectedTrailerId;
+        prevSelectedDealerFit.current = selectedDealerFitIds;
+
+        // Auto-scroll logic (triggered ONLY by selection changes)
+        if (motorChanged && selectedMotor) {
+            const mUrl = resolveImageUrl(selectedMotor);
             const idx = carouselSlides.findIndex(s => s.type === 'motor' && s.url === mUrl);
-            if (idx !== -1) { setTimeout(() => api.scrollTo(idx), 800); return; }
+            if (idx !== -1) { setTimeout(() => api.scrollTo(idx), 500); return; }
         }
 
-        if (currentStep === 4 && selectedTrailerId && model.trailerConfig?.imageUrl) {
+        if (trailerChanged && selectedTrailerId && model.trailerConfig?.imageUrl) {
             const idx = carouselSlides.findIndex(s => s.type === 'trailer' && s.url === model.trailerConfig.imageUrl);
-            if (idx !== -1) { setTimeout(() => api.scrollTo(idx), 800); return; }
+            if (idx !== -1) { setTimeout(() => api.scrollTo(idx), 500); return; }
         }
 
-        if (currentStep === 5 && selectedDealerFitIds.length > 0) {
+        if (dealerFitChanged && selectedDealerFitIds.length > 0) {
             const lastId = selectedDealerFitIds[selectedDealerFitIds.length - 1];
             const sel = selectedDealerFitData.find(s => s.id === lastId);
-            const imgUrl = sel?.items?.[0]?.data?.imageUrl;
+            const imgUrl = resolveImageUrl(sel?.items?.[0]?.data);
             if (imgUrl) {
-                const idx = carouselSlides.findIndex(s => s.type === 'dealerfit' && s.url === imgUrl);
-                if (idx !== -1) { setTimeout(() => api.scrollTo(idx), 800); return; }
+                const idx = carouselSlides.findIndex(s => (s.type === 'dealerfit' || s.type === 'accessory') && (s.url?.includes(imgUrl) || s.url === imgUrl));
+                if (idx !== -1) { setTimeout(() => api.scrollTo(idx), 500); return; }
             }
         }
 
-        const buildIdx = carouselSlides.findIndex(s => s.type === 'build');
-        if (buildIdx !== -1 && selectedOptionIds.length > 0 && currentStep === 2) {
-            setTimeout(() => api.scrollTo(buildIdx), 800);
-            return;
+        if (optionsChanged && selectedOptionIds.length > 0) {
+            const buildIdx = carouselSlides.findIndex(s => s.type === 'build');
+            if (buildIdx !== -1) { setTimeout(() => api.scrollTo(buildIdx), 500); return; }
         }
 
-        if (activeVariant?.imageUrl && currentStep === 1) {
+        if (colorChanged && activeVariant?.imageUrl) {
             const variantIdx = carouselSlides.findIndex(s => s.type === 'variant' && s.url === activeVariant.imageUrl);
-            if (variantIdx !== -1) {
-                setTimeout(() => api.scrollTo(variantIdx), 800);
-                return;
-            }
+            if (variantIdx !== -1) { setTimeout(() => api.scrollTo(variantIdx), 500); return; }
         }
 
-        api.scrollTo(0);
+        // NOFALLBACK: If nothing changed (like just a step transition), do nothing. Carousel stays on current index.
     }, [selectedColor, selectedOptionIds, selectedMotor, selectedTrailerId, selectedDealerFitIds, api, carouselSlides, activeVariant, currentStep]);
+
+    // Handle smooth category/section scrolling
+    useEffect(() => {
+        if (selectedMaterial && currentStep === 1) {
+            setTimeout(() => colorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800);
+        }
+    }, [selectedMaterial, currentStep]);
+
+    useEffect(() => {
+        if (scrollAreaRef.current) {
+            const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+            if (viewport) viewport.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, [currentStep]);
 
     const relevantFeatures = useMemo(() => {
         const features = model.optionalFeatures || [];
         if (!activeVariant) return features;
-        
         return features.filter((f: any) => {
             const hasVariantRestriction = f.applicableVariantIds && f.applicableVariantIds.length > 0;
-            if (hasVariantRestriction && !f.applicableVariantIds.includes(activeVariant.id)) {
-                return false;
-            }
+            if (hasVariantRestriction && !f.applicableVariantIds.includes(activeVariant.id)) return false;
             const name = String(f.name).toUpperCase();
             if (selectedMaterial === 'PVC' && name.includes('HYP')) return false;
             if (selectedMaterial === 'HYP' && name.includes('PVC')) return false;
@@ -453,10 +455,7 @@ export function HighfieldQuoteFlow({
 
         const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
-            if (cat === 'Seats') {
-                if (!selectedConsole || !selectedConsole.associatedSeatId) return acc;
-                if (opt.id !== selectedConsole.associatedSeatId) return acc;
-            }
+            if (cat === 'Seats' && (!selectedConsole || opt.id !== selectedConsole.associatedSeatId)) return acc;
             if (cat === 'Rigging' && !hasConsoleSelected) return acc;
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(opt);
@@ -482,7 +481,6 @@ export function HighfieldQuoteFlow({
             acc[cat].push(opt);
             return acc;
         }, {});
-
         return Object.entries(groups).sort(([a], [b]) => {
             if (a === 'Propeller') return -1; if (b === 'Propeller') return 1;
             if (a === 'Rigging') return -1; if (b === 'Rigging') return 1;
@@ -504,10 +502,8 @@ export function HighfieldQuoteFlow({
     const toggleOption = (id: string) => {
         const feature = relevantFeatures.find((f: any) => f.id === id);
         if (!feature) return;
-
         const currentCat = feature.category || 'General Options';
         const isCurrentlySelected = selectedOptionIds.includes(id);
-
         let nextSelectedIds = [...selectedOptionIds];
 
         if (isCurrentlySelected) {
@@ -526,25 +522,19 @@ export function HighfieldQuoteFlow({
             }
             nextSelectedIds.push(id);
             if (currentCat === 'Consoles') {
-                if (feature.associatedSeatId && !nextSelectedIds.includes(feature.associatedSeatId)) {
-                    nextSelectedIds.push(feature.associatedSeatId);
-                }
+                if (feature.associatedSeatId && !nextSelectedIds.includes(feature.associatedSeatId)) nextSelectedIds.push(feature.associatedSeatId);
                 const riggingItem = relevantFeatures.find((f: any) => f.category === 'Rigging' || String(f.name).includes('Rigging'));
-                if (riggingItem && !nextSelectedIds.includes(riggingItem.id)) {
-                    nextSelectedIds.push(riggingItem.id);
-                }
+                if (riggingItem && !nextSelectedIds.includes(riggingItem.id)) nextSelectedIds.push(riggingItem.id);
             }
         }
         setSelectedOptionIds(nextSelectedIds);
 
+        // Auto-glide logic
         if (currentStep === 2 && !isCurrentlySelected) {
             const newConsoleId = nextSelectedIds.find(id => relevantFeatures.filter(f => f.category === 'Consoles').some(f => f.id === id));
             const newConsole = relevantFeatures.find(f => f.id === newConsoleId);
-            const predictedVisibleCats = [...new Set(relevantFeatures.map(f => f.category || 'General Options'))].filter(cat => {
-                if (cat === 'Seats') {
-                    if (newConsole && !newConsole.associatedSeatId) return false;
-                    return !!newConsoleId;
-                }
+            const cats = [...new Set(relevantFeatures.map(f => f.category || 'General Options'))].filter(cat => {
+                if (cat === 'Seats') return !!(newConsole && newConsole.associatedSeatId);
                 if (cat === 'Rigging') return !!newConsoleId;
                 return true;
             }).sort((a, b) => {
@@ -553,14 +543,8 @@ export function HighfieldQuoteFlow({
                 if (a === 'Rigging') return -1; if (b === 'Rigging') return 1;
                 return a.localeCompare(b);
             });
-            const currentIdx = predictedVisibleCats.indexOf(currentCat);
-            const targetCat = predictedVisibleCats[currentIdx + 1];
-            if (targetCat) {
-                setTimeout(() => {
-                    const targetElement = categoryRefs.current[targetCat];
-                    if (targetElement) targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 1200); 
-            }
+            const targetCat = cats[cats.indexOf(currentCat) + 1];
+            if (targetCat) setTimeout(() => categoryRefs.current[targetCat]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
         }
     };
 
@@ -568,52 +552,34 @@ export function HighfieldQuoteFlow({
         const isSelected = selectedMotorAccessoryIds.includes(id);
         const accessory = selectedMotor?.masterAccessories?.find((a: any) => a.id === id);
         if (!accessory) return;
-
         const cat = accessory.category || 'Other Hardware';
-        const isSingleSelectCat = cat === 'Propeller' || cat === 'Rigging';
-
-        let next = [...selectedMotorAccessoryIds];
-
-        if (isSelected) {
-            next = next.filter(i => i !== id);
-        } else {
-            if (isSingleSelectCat) {
-                const sameCatIds = (selectedMotor.masterAccessories || [])
-                    .filter((a: any) => a.category === cat)
-                    .map((a: any) => a.id);
-                next = next.filter(i => !sameCatIds.includes(i));
-            }
+        const isSingleSelect = cat === 'Propeller' || cat === 'Rigging';
+        let next = isSelected ? selectedMotorAccessoryIds.filter(i => i !== id) : [...selectedMotorAccessoryIds];
+        if (!isSelected) {
+            if (isSingleSelect) next = next.filter(i => (selectedMotor.masterAccessories || []).find((a: any) => a.id === i)?.category !== cat);
             next.push(id);
         }
         setSelectedMotorAccessoryIds(next);
-
         if (!isSelected) {
             const cats = groupedMotorAccessories.map(([name]) => name);
-            const currentIdx = cats.indexOf(cat);
-            const targetCat = cats[currentIdx + 1];
+            const targetCat = cats[cats.indexOf(cat) + 1];
             if (targetCat) setTimeout(() => categoryRefs.current[targetCat]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
         }
     };
 
     const toggleTrailerOption = (id: string) => {
         const isSelected = selectedTrailerOptionIds.includes(id);
-        let next = isSelected ? selectedTrailerOptionIds.filter(i => i !== id) : [...selectedTrailerOptionIds, id];
-        setSelectedTrailerOptionIds(next);
+        setSelectedTrailerOptionIds(isSelected ? selectedTrailerOptionIds.filter(i => i !== id) : [...selectedTrailerOptionIds, id]);
     };
 
     const toggleDealerFitSelection = (id: string) => {
         const isSelected = selectedDealerFitIds.includes(id);
         const sel = dealerFitSelections?.find(s => s.id === id);
         if (!sel) return;
-
-        const cat = sel.category || 'Other Gear';
-        let next = isSelected ? selectedDealerFitIds.filter(i => i !== id) : [...selectedDealerFitIds, id];
-        setSelectedDealerFitIds(next);
-
+        setSelectedDealerFitIds(isSelected ? selectedDealerFitIds.filter(i => i !== id) : [...selectedDealerFitIds, id]);
         if (!isSelected) {
             const cats = groupedDealerFit.map(([name]) => name);
-            const currentIdx = cats.indexOf(cat);
-            const targetCat = cats[currentIdx + 1];
+            const targetCat = cats[cats.indexOf(sel.category || 'Other Gear') + 1];
             if (targetCat) setTimeout(() => categoryRefs.current[targetCat]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
         }
     };
@@ -621,27 +587,9 @@ export function HighfieldQuoteFlow({
     const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
     const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
-    const getMotorDisplayName = (m: any) => {
-        const name = m['Model Name'] || m.name || m.Description || 'Unnamed Motor';
-        return `${m.vendorName || 'YAMAHA'} - ${name}`;
-    };
-
-    const handleTrailerSelection = () => {
-        const isCurrentlySelected = selectedTrailerId === 'primary-trailer';
-        if (isCurrentlySelected) {
-            setSelectedTrailerId(null);
-            setSelectedTrailerOptionIds([]);
-        } else {
-            setSelectedTrailerId('primary-trailer');
-            const standardIds = (model.trailerConfig?.options || [])
-                .filter((o: any) => o.isStandard)
-                .map((o: any) => o.id);
-            setSelectedTrailerOptionIds(standardIds);
-        }
-    };
-
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
+            {/* Steps Progress */}
             <div className="sticky top-0 z-[100] px-12 h-24 border-b bg-card/90 backdrop-blur-xl shrink-0 flex items-center shadow-sm">
                 <div className="w-full flex items-center justify-between">
                     <div className="flex-1 flex items-center justify-between mr-24">
@@ -664,57 +612,51 @@ export function HighfieldQuoteFlow({
                             </div>
                         ))}
                     </div>
-                    <button 
-                        type="button" 
-                        className="font-black text-destructive uppercase tracking-widest text-[10px] hover:opacity-70 transition-opacity"
-                        onClick={() => router.push(`/modules/${module.slug || module.id}`)}
-                    >
-                        Exit Build
-                    </button>
+                    <button type="button" className="font-black text-destructive uppercase tracking-widest text-[10px] hover:opacity-70 transition-opacity" onClick={() => router.push(`/modules/${module.slug || module.id}`)}>Exit Build</button>
                 </div>
             </div>
 
+            {/* Main Interactive Interface */}
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
+                {/* Visual Anchor (Carousel) */}
                 <div className="w-full lg:w-7/12 relative flex flex-col p-6 bg-slate-50/50 overflow-hidden">
                     <div className="relative flex-1 w-full bg-white rounded-[3rem] border-2 border-slate-100 shadow-2xl overflow-hidden group">
                         <Carousel className="w-full h-full" opts={{ loop: true }} setApi={setApi}>
                             <CarouselContent className="h-full">
-                                {carouselSlides.map((slide, idx) => {
-                                    const isHardware = slide.type === 'motor' || slide.type === 'accessory' || slide.type === 'trailer' || slide.type === 'dealerfit';
-                                    return (
-                                        <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
-                                            {slide.type === 'build' ? slide.content : (
-                                                <>
-                                                    {slide.url && (
-                                                        <Image 
-                                                            src={slide.url} 
-                                                            alt="Build Preview" 
-                                                            fill 
-                                                            className={cn(
-                                                                "transition-all",
-                                                                isHardware ? "object-contain p-12" : "object-cover"
-                                                            )} 
-                                                            unoptimized 
-                                                        />
-                                                    )}
-                                                    <Button 
-                                                        variant="ghost" size="icon" 
-                                                        className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20"
-                                                        onClick={() => setLightboxUrl(slide.url || null)}
-                                                    >
-                                                        <Maximize2 className="h-6 w-6" />
-                                                    </Button>
-                                                </>
-                                            )}
-                                        </CarouselItem>
-                                    );
-                                })}
+                                {carouselSlides.map((slide, idx) => (
+                                    <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
+                                        {slide.type === 'build' ? slide.content : (
+                                            <>
+                                                {slide.url && (
+                                                    <Image 
+                                                        src={slide.url} 
+                                                        alt="Build Preview" 
+                                                        fill 
+                                                        className={cn(
+                                                            "transition-all",
+                                                            (slide.type === 'motor' || slide.type === 'accessory' || slide.type === 'trailer' || slide.type === 'dealerfit') ? "object-contain p-12" : "object-cover"
+                                                        )} 
+                                                        unoptimized 
+                                                    />
+                                                )}
+                                                <Button 
+                                                    variant="ghost" size="icon" 
+                                                    className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20 focus:ring-0 focus:outline-none"
+                                                    onClick={() => setLightboxUrl(slide.url || null)}
+                                                >
+                                                    <Maximize2 className="h-6 w-6" />
+                                                </Button>
+                                            </>
+                                        )}
+                                    </CarouselItem>
+                                ))}
                             </CarouselContent>
                             <CarouselPrevious className="left-6 h-12 w-12 bg-white/90 border-2 border-slate-200 shadow-2xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 active:scale-95 transition-all disabled:opacity-0 z-[110]" />
                             <CarouselNext className="right-6 h-12 w-12 bg-white/90 border-2 border-slate-200 shadow-2xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 active:scale-95 transition-all disabled:opacity-0 z-[110]" />
                         </Carousel>
                     </div>
 
+                    {/* Dynamic Pricing Plate */}
                     <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-2xl p-10 rounded-[3rem] mt-8 shrink-0">
                         <div className="flex flex-col items-start px-1 text-left">
                             <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2">Package Pricing (Excl. GST)</span>
@@ -725,6 +667,7 @@ export function HighfieldQuoteFlow({
                         </div>
                     </div>
 
+                    {/* Secondary Navigation Nodes */}
                     <div className="flex items-center justify-start gap-4 mt-8 px-6 shrink-0 relative z-10">
                         <Button variant="ghost" size="sm" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-400 hover:text-primary hover:bg-primary/5 rounded-2xl border-2 border-transparent hover:border-primary/10 transition-all" onClick={() => setShowFeatures(true)}><ListChecks className="h-4 w-4 mr-2" /> Standard Features</Button>
                         <Button variant="ghost" size="sm" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-400 hover:text-primary hover:bg-primary/5 rounded-2xl border-2 border-transparent hover:border-primary/10 transition-all" onClick={() => setShowSpecs(true)}><ClipboardList className="h-4 w-4 mr-2" /> General Specifications</Button>
@@ -732,6 +675,7 @@ export function HighfieldQuoteFlow({
                     </div>
                 </div>
 
+                {/* Tactical Configurator Panel */}
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
                     <div className="pt-6 px-12 pb-4 bg-transparent shrink-0">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
@@ -790,10 +734,7 @@ export function HighfieldQuoteFlow({
                                                         <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !opt.imageUrl && "hidden")}>{opt.imageUrl && <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}</div>
                                                         <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
                                                             <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
-                                                            <p className={cn(
-                                                                "text-[10px] font-black",
-                                                                selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400"
-                                                            )}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            <p className={cn("text-[10px] font-black", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400")}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                         </div>
                                                     </button>
                                                 ))}
@@ -813,16 +754,14 @@ export function HighfieldQuoteFlow({
                                         {motorsLoading ? <div className="flex flex-col items-center py-20 gap-4"><Loader2 className="animate-spin h-12 w-12 text-primary" /><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Scanning Factory Datasets...</p></div> : (
                                             <div className="grid grid-cols-2 gap-6">
                                                 {motors.map(m => {
-                                                    const mUrl = getMotorImgUrl(m);
+                                                    const mUrl = resolveImageUrl(m);
                                                     const displayName = getMotorDisplayName(m);
                                                     const isSelected = selectedMotor?.id === m.id;
                                                     return (
                                                         <button key={m.id} onClick={() => setSelectedMotor(isSelected ? null : m)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                             <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">{mUrl && <Image src={mUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
                                                             <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
-                                                                <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>
-                                                                    {displayName}
-                                                                </p>
+                                                                <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{displayName}</p>
                                                                 <p className={cn("text-[9px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-primary")}>{m['HP Rating']} HP PERFORMANCE • ${(m.sellPriceExclGst || 0).toLocaleString()}</p>
                                                             </div>
                                                         </button>
@@ -841,21 +780,17 @@ export function HighfieldQuoteFlow({
                                             <div className="grid grid-cols-2 gap-6">
                                                 {opts.map((opt: any) => {
                                                     const isSelected = selectedMotorAccessoryIds.includes(opt.id);
+                                                    const imgUrl = resolveImageUrl(opt);
                                                     return (
                                                         <button key={opt.id} onClick={() => toggleMotorAccessory(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1 group", isSelected ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                            <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !opt.imageUrl && "hidden")}>
-                                                                {opt.imageUrl && <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain p-2 mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}
-                                                                {opt.isStandard && (
-                                                                    <Badge className="absolute top-2 left-2 bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-4">STANDARD</Badge>
-                                                                )}
+                                                            <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !imgUrl && "hidden")}>
+                                                                {imgUrl && <Image src={imgUrl} alt={opt.name} fill className="object-contain p-2 mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}
+                                                                {opt.isStandard && <Badge className="absolute top-2 left-2 bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-4">STANDARD</Badge>}
                                                             </div>
                                                             <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                                {opt.isStandard && !opt.imageUrl && <Badge className="mb-2 bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-4">STANDARD</Badge>}
+                                                                {opt.isStandard && !imgUrl && <Badge className="mb-2 bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-4">STANDARD</Badge>}
                                                                 <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", isSelected ? "text-primary" : "text-slate-700")}>{opt.name}</p>
-                                                                <p className={cn(
-                                                                    "text-[10px] font-black",
-                                                                    isSelected ? "text-primary" : "text-slate-400"
-                                                                )}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                                <p className={cn("text-[10px] font-black", isSelected ? "text-primary" : "text-slate-400")}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                             </div>
                                                         </button>
                                                     );
@@ -875,7 +810,7 @@ export function HighfieldQuoteFlow({
                                         </div>
                                         {model.trailerConfig ? (
                                             <div className="grid grid-cols-2 gap-6">
-                                                <button onClick={handleTrailerSelection} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); setSelectedTrailerOptionIds(isSelected ? [] : (model.trailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); }} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                     <div className={cn("relative aspect-video w-full bg-white shrink-0", !model.trailerConfig.imageUrl && "hidden")}>{model.trailerConfig.imageUrl && <Image src={model.trailerConfig.imageUrl} alt="Trailer" fill className="object-contain mix-blend-multiply p-4" unoptimized />}</div>
                                                     <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
                                                         <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", selectedTrailerId === 'primary-trailer' ? "text-primary" : "text-slate-900")}>{model.trailerConfig.name}</p>
@@ -926,18 +861,15 @@ export function HighfieldQuoteFlow({
                                                     {opts.map((sel: any) => {
                                                         const isSelected = selectedDealerFitIds.includes(sel.id);
                                                         const firstItem = sel.items?.[0]?.data;
-                                                        const hasImg = firstItem?.imageUrl || firstItem?.SummaryImage;
+                                                        const imgUrl = resolveImageUrl(firstItem);
                                                         return (
                                                             <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                                <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !hasImg && "hidden")}>
-                                                                    {hasImg && <Image src={hasImg} alt={sel.name} fill className="object-contain p-4 mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}
+                                                                <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !imgUrl && "hidden")}>
+                                                                    {imgUrl && <Image src={imgUrl} alt={sel.name} fill className="object-contain p-4 mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}
                                                                 </div>
                                                                 <div className="p-6 flex flex-col items-center justify-center text-center gap-1 flex-grow">
                                                                     <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{sel.name}</p>
-                                                                    <p className={cn("text-[9px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>
-                                                                        {sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}
-                                                                        ${sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0).toLocaleString()}
-                                                                    </p>
+                                                                    <p className={cn("text-[9px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0)).toLocaleString()}</p>
                                                                 </div>
                                                             </button>
                                                         );
@@ -960,104 +892,41 @@ export function HighfieldQuoteFlow({
                                     
                                     <div className="space-y-6">
                                         <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden">
-                                            <CardHeader className="bg-muted/30 border-b p-6">
-                                                <div className="flex items-center gap-3">
-                                                    <Ship className="h-5 w-5 text-primary" />
-                                                    <CardTitle className="text-sm font-black uppercase tracking-widest">Base Vessel</CardTitle>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent className="p-6 space-y-4">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="space-y-1">
-                                                        <p className="font-black text-lg uppercase tracking-tight text-slate-900">{range?.name} {boatSeriesIdentity}</p>
-                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase">{selectedMaterial} • {activeVariant?.name || 'Standard Color'}</p>
-                                                    </div>
-                                                    <p className="font-black text-primary italic text-lg">${(activeVariant?.sellPriceExclGst || 0).toLocaleString()}</p>
-                                                </div>
-                                            </CardContent>
+                                            <CardHeader className="bg-muted/30 border-b p-6"><div className="flex items-center gap-3"><Ship className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Base Vessel</CardTitle></div></CardHeader>
+                                            <CardContent className="p-6 space-y-4"><div className="flex items-center justify-between"><div className="space-y-1"><p className="font-black text-lg uppercase tracking-tight text-slate-900">{range?.name} {boatSeriesIdentity}</p><p className="text-[10px] font-bold text-muted-foreground uppercase">{selectedMaterial} • {activeVariant?.name || 'Standard Color'}</p></div><p className="font-black text-primary italic text-lg">${(activeVariant?.sellPriceExclGst || 0).toLocaleString()}</p></div></CardContent>
                                         </Card>
 
                                         {selectedOptionsData.length > 0 && (
                                             <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden">
-                                                <CardHeader className="bg-muted/30 border-b p-6">
-                                                    <div className="flex items-center gap-3">
-                                                        <Package className="h-5 w-5 text-primary" />
-                                                        <CardTitle className="text-sm font-black uppercase tracking-widest">Factory Options</CardTitle>
-                                                    </div>
-                                                </CardHeader>
-                                                <CardContent className="p-0">
-                                                    <div className="divide-y">
-                                                        {selectedOptionsData.map((opt: any) => (
-                                                            <div key={opt.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                                                                <div className="flex items-center gap-4">
-                                                                    <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center"><Check className="h-4 w-4 text-emerald-500" /></div>
-                                                                    <div><p className="text-xs font-black uppercase tracking-tight">{opt.name}</p><Badge variant="outline" className="text-[8px] font-black h-4 px-1">{opt.category || 'Standard'}</Badge></div>
-                                                                </div>
-                                                                <p className="text-xs font-bold text-slate-600">${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </CardContent>
+                                                <CardHeader className="bg-muted/30 border-b p-6"><div className="flex items-center gap-3"><Package className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Factory Options</CardTitle></div></CardHeader>
+                                                <CardContent className="p-0"><div className="divide-y">{selectedOptionsData.map((opt: any) => (<div key={opt.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors"><div className="flex items-center gap-4"><div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center"><Check className="h-4 w-4 text-emerald-500" /></div><div><p className="text-xs font-black uppercase tracking-tight">{opt.name}</p><Badge variant="outline" className="text-[8px] font-black h-4 px-1">{opt.category || 'Standard'}</Badge></div></div><p className="text-xs font-bold text-slate-600">${(opt.sellPriceExclGst || 0).toLocaleString()}</p></div>))}</div></CardContent>
                                             </Card>
                                         )}
 
                                         {selectedMotor && (
                                             <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden">
-                                                <CardHeader className="bg-muted/30 border-b p-6">
-                                                    <div className="flex items-center gap-3"><Activity className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Powertrain</CardTitle></div>
-                                                </CardHeader>
+                                                <CardHeader className="bg-muted/30 border-b p-6"><div className="flex items-center gap-3"><Activity className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Powertrain</CardTitle></div></CardHeader>
                                                 <CardContent className="p-0">
-                                                    <div className="p-6 border-b flex items-center justify-between">
-                                                        <div className="space-y-1"><p className="font-black text-lg uppercase tracking-tight text-slate-900">{getMotorDisplayName(selectedMotor)}</p><p className="text-[10px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Performance Series</p></div>
-                                                        <p className="font-black text-primary italic text-lg">${(selectedMotor.sellPriceExclGst || 0).toLocaleString()}</p>
-                                                    </div>
-                                                    {selectedMotorAccessories.length > 0 && (
-                                                        <div className="divide-y bg-slate-50/50">
-                                                            {selectedMotorAccessories.map((acc: any) => (
-                                                                <div key={acc.id} className="p-6 flex items-center justify-between"><div className="flex items-center gap-4"><div className="h-8 w-8 rounded-lg bg-white border flex items-center justify-center"><Wrench className="h-4 w-4 text-primary/40" /></div><div><p className="text-xs font-black uppercase tracking-tight">{acc.name}</p><Badge variant="outline" className="text-[8px] font-black h-4 px-1 border-primary/10 text-primary/60">{acc.category || 'Standard'}</Badge></div></div><p className="text-xs font-bold text-slate-600">+${(acc.sellPriceExclGst || 0).toLocaleString()}</p></div>
-                                                            ))}
-                                                        </div>
-                                                    )}
+                                                    <div className="p-6 border-b flex items-center justify-between"><div className="space-y-1"><p className="font-black text-lg uppercase tracking-tight text-slate-900">{getMotorDisplayName(selectedMotor)}</p><p className="text-[10px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Performance Series</p></div><p className="font-black text-primary italic text-lg">${(selectedMotor.sellPriceExclGst || 0).toLocaleString()}</p></div>
+                                                    {selectedMotorAccessories.length > 0 && (<div className="divide-y bg-slate-50/50">{selectedMotorAccessories.map((acc: any) => (<div key={acc.id} className="p-6 flex items-center justify-between"><div className="flex items-center gap-4"><div className="h-8 w-8 rounded-lg bg-white border flex items-center justify-center"><Wrench className="h-4 w-4 text-primary/40" /></div><div><p className="text-xs font-black uppercase tracking-tight">{acc.name}</p><Badge variant="outline" className="text-[8px] font-black h-4 px-1 border-primary/10 text-primary/60">{acc.category || 'Standard'}</Badge></div></div><p className="text-xs font-bold text-slate-600">+${(acc.sellPriceExclGst || 0).toLocaleString()}</p></div>))}</div>)}
                                                 </CardContent>
                                             </Card>
                                         )}
 
-                                        {selectedTrailerId && (
+                                        {selectedTrailerId && model.trailerConfig && (
                                             <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden">
-                                                <CardHeader className="bg-muted/30 border-b p-6">
-                                                    <div className="flex items-center gap-3"><Truck className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Towing Solution</CardTitle></div>
-                                                </CardHeader>
+                                                <CardHeader className="bg-muted/30 border-b p-6"><div className="flex items-center gap-3"><Truck className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Towing Solution</CardTitle></div></CardHeader>
                                                 <CardContent className="p-0">
-                                                    <div className="p-6 border-b flex items-center justify-between">
-                                                        <div className="space-y-1"><p className="font-black text-lg uppercase tracking-tight text-slate-900">{model.trailerConfig.name}</p><p className="text-[10px] font-bold text-muted-foreground uppercase">Precision Transport Chassis</p></div>
-                                                        <p className="font-black text-primary italic text-lg">${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
-                                                    </div>
-                                                    {selectedTrailerOptionsData.length > 0 && (
-                                                        <div className="divide-y bg-slate-50/50">
-                                                            {selectedTrailerOptionsData.map((opt: any) => (
-                                                                <div key={opt.id} className="p-6 flex items-center justify-between"><div className="flex items-center gap-4"><div className="h-8 w-8 rounded-lg bg-white border flex items-center justify-center"><Layers className="h-4 w-4 text-primary/40" /></div><p className="text-xs font-black uppercase tracking-tight">{opt.name}</p></div><p className="text-xs font-bold text-slate-600">+${(opt.sellPriceExclGst || 0).toLocaleString()}</p></div>
-                                                            ))}
-                                                        </div>
-                                                    )}
+                                                    <div className="p-6 border-b flex items-center justify-between"><div className="space-y-1"><p className="font-black text-lg uppercase tracking-tight text-slate-900">{model.trailerConfig.name}</p><p className="text-[10px] font-bold text-muted-foreground uppercase">Precision Transport Chassis</p></div><p className="font-black text-primary italic text-lg">${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p></div>
+                                                    {selectedTrailerOptionsData.length > 0 && (<div className="divide-y bg-slate-50/50">{selectedTrailerOptionsData.map((opt: any) => (<div key={opt.id} className="p-6 flex items-center justify-between"><div className="flex items-center gap-4"><div className="h-8 w-8 rounded-lg bg-white border flex items-center justify-center"><Layers className="h-4 w-4 text-primary/40" /></div><p className="text-xs font-black uppercase tracking-tight">{opt.name}</p></div><p className="text-xs font-bold text-slate-600">+${(opt.sellPriceExclGst || 0).toLocaleString()}</p></div>))}</div>)}
                                                 </CardContent>
                                             </Card>
                                         )}
 
                                         {selectedDealerFitData.length > 0 && (
                                             <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden">
-                                                <CardHeader className="bg-muted/30 border-b p-6">
-                                                    <div className="flex items-center gap-3"><Wrench className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Dealer Installations</CardTitle></div>
-                                                </CardHeader>
-                                                <CardContent className="p-0">
-                                                    <div className="divide-y">
-                                                        {selectedDealerFitData.map((sel: any) => (
-                                                            <div key={sel.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                                                                <div className="flex items-center gap-4"><div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center"><Check className="h-4 w-4 text-emerald-500" /></div><div><p className="text-xs font-black uppercase tracking-tight">{sel.name}</p><Badge variant="outline" className="text-[8px] font-black h-4 px-1">{sel.category || 'Gear'}</Badge></div></div>
-                                                                <p className="text-xs font-bold text-slate-600">${sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0).toLocaleString()}</p>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </CardContent>
+                                                <CardHeader className="bg-muted/30 border-b p-6"><div className="flex items-center gap-3"><Wrench className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Dealer Installations</CardTitle></div></CardHeader>
+                                                <CardContent className="p-0"><div className="divide-y">{selectedDealerFitData.map((sel: any) => (<div key={sel.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors"><div className="flex items-center gap-4"><div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center"><Check className="h-4 w-4 text-emerald-500" /></div><div><p className="text-xs font-black uppercase tracking-tight">{sel.name}</p><Badge variant="outline" className="text-[8px] font-black h-4 px-1">{sel.category || 'Gear'}</Badge></div></div><p className="text-xs font-bold text-slate-600">${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0)).toLocaleString()}</p></div>))}</div></CardContent>
                                             </Card>
                                         )}
                                     </div>
@@ -1066,6 +935,7 @@ export function HighfieldQuoteFlow({
                         </div>
                     </ScrollArea>
 
+                    {/* Step Navigation */}
                     <div className="p-12 pt-6 bg-slate-50/80 backdrop-blur-xl border-t shrink-0 flex gap-4">
                         {currentStep > 1 && <Button variant="outline" className="h-16 w-24 rounded-2xl border-2 border-slate-200 hover:bg-slate-100 transition-colors shadow-sm" onClick={prevStep}><ChevronLeft className="h-6 w-6" /></Button>}
                         <Button size="lg" className="flex-1 h-16 rounded-2xl font-black uppercase text-sm shadow-2xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 bg-primary text-white" onClick={nextStep}>
@@ -1075,6 +945,7 @@ export function HighfieldQuoteFlow({
                 </div>
             </div>
 
+            {/* Immersive Lightbox */}
             <Dialog open={!!lightboxUrl} onOpenChange={(open) => !open && setLightboxUrl(null)}>
                 <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12 [&>button]:bg-transparent [&>button]:hover:bg-transparent [&>button]:border-none [&>button]:shadow-none [&>button]:focus:ring-0 [&>button]:focus:outline-none [&>button]:right-6 [&>button]:top-6">
                     <DialogHeader className="sr-only"><DialogTitle>Immersive Inspection</DialogTitle></DialogHeader>
@@ -1082,6 +953,7 @@ export function HighfieldQuoteFlow({
                 </DialogContent>
             </Dialog>
 
+            {/* Modals for Technical Data */}
             <Dialog open={showFeatures} onOpenChange={setShowFeatures}>
                 <DialogContent className="sm:max-w-2xl rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-8 border-b bg-muted/5"><DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">Standard Features</DialogTitle><DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Included Factory Equipment</DialogDescription></DialogHeader>
