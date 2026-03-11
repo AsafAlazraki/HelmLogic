@@ -12,7 +12,6 @@ import {
     ChevronLeft, 
     Ship, 
     CheckCircle2, 
-    ShieldCheck, 
     PlusCircle, 
     Package, 
     X, 
@@ -145,7 +144,7 @@ export function HighfieldQuoteFlow({
 
     const displayedModelName = model.name || 'Boat';
 
-    // Step 1 Scroll Fix
+    // Step 1 Scroll Fix - Material to Color
     useEffect(() => {
         if (selectedMaterial && currentStep === 1) {
             const timer = setTimeout(() => {
@@ -153,7 +152,7 @@ export function HighfieldQuoteFlow({
                 if (viewport && colorSectionRef.current) {
                     viewport.scrollTo({ top: colorSectionRef.current.offsetTop - 20, behavior: 'smooth' });
                 }
-            }, 400); // Deliberate speed
+            }, 500); 
             return () => clearTimeout(timer);
         }
     }, [selectedMaterial, currentStep]);
@@ -207,16 +206,6 @@ export function HighfieldQuoteFlow({
         }
     }, [currentStep]);
 
-    // Auto-slide to build preview when options are changed
-    useEffect(() => {
-        if (api && selectedOptionIds.length > 0) {
-            const buildSlideIndex = carouselSlides.findIndex(s => s.type === 'build');
-            if (buildSlideIndex !== -1) {
-                setTimeout(() => api.scrollTo(buildSlideIndex), 200);
-            }
-        }
-    }, [selectedOptionIds, api]);
-
     const activeVariant = useMemo(() => {
         if (!selectedColor || !variants) return null;
         return variants.find(v => v.id === selectedColor);
@@ -235,6 +224,18 @@ export function HighfieldQuoteFlow({
         if (selectedMotor) total += (selectedMotor.sellPriceExclGst || 0);
         return total;
     }, [activeVariant, selectedOptionIds, model.optionalFeatures, selectedMotor]);
+
+    // Robust Auto-Slide Effect
+    useEffect(() => {
+        if (api && selectedOptionIds.length > 0) {
+            const buildSlideIndex = carouselSlides.findIndex(s => s.type === 'build');
+            if (buildSlideIndex !== -1) {
+                // Stabilized delay for smooth UI feedback
+                const timer = setTimeout(() => api.scrollTo(buildSlideIndex), 350);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [selectedOptionIds, api]);
 
     const relevantFeatures = useMemo(() => {
         const features = model.optionalFeatures || [];
@@ -260,9 +261,8 @@ export function HighfieldQuoteFlow({
             if (cat === 'Seats') {
                 // Rule: If console is selected, only show associated seat. 
                 // If console is selected but has NO associated seat, hide category.
-                if (!selectedConsole) return acc;
                 if (selectedConsole && !selectedConsole.associatedSeatId) return acc;
-                if (selectedConsole.associatedSeatId && opt.id !== selectedConsole.associatedSeatId) return acc;
+                if (selectedConsole && selectedConsole.associatedSeatId && opt.id !== selectedConsole.associatedSeatId) return acc;
             }
 
             if (cat === 'Rigging' && !hasConsoleSelected) return acc;
@@ -290,10 +290,9 @@ export function HighfieldQuoteFlow({
         const isCurrentlySelected = selectedOptionIds.includes(id);
 
         setSelectedOptionIds(prev => {
-            const isSelected = prev.includes(id);
             let next = [...prev];
 
-            if (isSelected) {
+            if (isCurrentlySelected) {
                 next = next.filter(i => i !== id);
                 if (currentCat === 'Consoles') {
                     const riggingItem = relevantFeatures.find((f: any) => f.category === 'Rigging' || String(f.name).includes('Rigging'));
@@ -302,9 +301,11 @@ export function HighfieldQuoteFlow({
                     next = next.filter(i => !seatIds.includes(i));
                 }
             } else {
+                // EXCLUSIVE CONSOLE RULE
                 if (currentCat === 'Consoles') {
                     const consoleIds = relevantFeatures.filter((f: any) => f.category === 'Consoles').map((f: any) => f.id);
                     next = next.filter(i => !consoleIds.includes(i));
+                    // PURGE PREVIOUS SEATS
                     const seatIds = relevantFeatures.filter((f: any) => f.category === 'Seats').map((f: any) => f.id);
                     next = next.filter(i => !seatIds.includes(i));
                 }
@@ -325,7 +326,7 @@ export function HighfieldQuoteFlow({
             return next;
         });
 
-        // Deliberate Auto-Scroll
+        // Deliberate Auto-Scroll Logic
         if (currentStep === 2 && !isCurrentlySelected) {
             const nextIdx = groupedOptions.findIndex(([n]) => n === currentCat) + 1;
             const targetCat = (currentCat === 'Consoles' && groupedOptions.some(([n]) => n === 'Seats')) 
@@ -339,7 +340,7 @@ export function HighfieldQuoteFlow({
                     if (viewport && targetElement) {
                         viewport.scrollTo({ top: targetElement.offsetTop - 20, behavior: 'smooth' });
                     }
-                }, 450); // Slower, premium transition
+                }, 550); // Premium pace
             }
         }
     };
@@ -378,7 +379,7 @@ export function HighfieldQuoteFlow({
             <div className="h-full w-full grid grid-cols-2 grid-rows-2 bg-white">
                 {[consoleOpt, seatOpt, ...otherOpts].filter(Boolean).slice(0, 4).map((item: any, i) => (
                     <div key={item.id} className={cn(
-                        "relative flex items-center justify-center p-2 transition-colors",
+                        "relative flex items-center justify-center p-1 transition-colors",
                         i === 0 && "border-r border-b",
                         i === 1 && "border-b",
                         i === 2 && "border-r",
@@ -396,11 +397,20 @@ export function HighfieldQuoteFlow({
 
     const carouselSlides = useMemo(() => {
         const slides = [];
-        const mainUrl = activeVariant?.imageUrl || model.coverImageUrl;
-        if (mainUrl) slides.push({ type: 'boat', url: mainUrl });
+        // Primary Anchor: Main boat render (index 0)
+        if (model.coverImageUrl) slides.push({ type: 'boat', url: model.coverImageUrl });
+        
+        // Variant: Color-specific render (if different)
+        if (activeVariant?.imageUrl && activeVariant.imageUrl !== model.coverImageUrl) {
+            slides.push({ type: 'boat', url: activeVariant.imageUrl });
+        }
+
+        // Build: Composite option render
         if (buildPreviewSlide) {
             slides.push({ type: 'build', content: buildPreviewSlide });
         }
+
+        // Gallery
         if (model.galleryImageUrls) {
             model.galleryImageUrls.forEach((url: string) => slides.push({ type: 'gallery', url }));
         }
@@ -463,8 +473,8 @@ export function HighfieldQuoteFlow({
                                     </CarouselItem>
                                 ))}
                             </CarouselContent>
-                            <CarouselPrevious className="left-6 h-12 w-12 bg-white/90 border-none shadow-2xl hover:bg-white hover:scale-110 active:scale-95 transition-all disabled:opacity-0 z-[110]" />
-                            <CarouselNext className="right-6 h-12 w-12 bg-white/90 border-none shadow-2xl hover:bg-white hover:scale-110 active:scale-95 transition-all disabled:opacity-0 z-[110]" />
+                            <CarouselPrevious className="left-6 h-12 w-12 bg-white/90 border-2 border-transparent shadow-2xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 active:scale-95 transition-all disabled:opacity-0 z-[110]" />
+                            <CarouselNext className="right-6 h-12 w-12 bg-white/90 border-2 border-transparent shadow-2xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 active:scale-95 transition-all disabled:opacity-0 z-[110]" />
                         </Carousel>
                     </div>
 
