@@ -110,7 +110,7 @@ export function HighfieldQuoteFlow({
     const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
     
     // Core Identity
-    const displayedModelName = model?.name || 'Boat';
+    const boatSeriesIdentity = model?.name || 'Boat';
 
     // Carousel State
     const [api, setApi] = useState<CarouselApi>();
@@ -151,7 +151,7 @@ export function HighfieldQuoteFlow({
         return selectedOptionIds.some(id => consoleOptions.some(f => f.id === id));
     }, [selectedOptionIds, model.optionalFeatures]);
 
-    // Step 1 Scroll: Material to Color (Premium deliberate delay)
+    // Step 1 Scroll: Material to Color
     useEffect(() => {
         if (selectedMaterial && currentStep === 1) {
             const timer = setTimeout(() => {
@@ -231,20 +231,32 @@ export function HighfieldQuoteFlow({
 
         const consoleOpt = imagedOptions.find((f: any) => f.category === 'Consoles');
         const seatOpt = imagedOptions.find((f: any) => f.category === 'Seats');
-        const otherOpts = imagedOptions.filter((f: any) => f.category !== 'Consoles' && f.category !== 'Seats');
+        
+        // Side-by-side horizontal split for Console & Seat
+        const itemsToShow = [consoleOpt, seatOpt].filter(Boolean);
+        if (itemsToShow.length === 0) return null;
 
         return (
-            <div className="h-full w-full grid grid-cols-2 grid-rows-2 bg-white">
-                {[consoleOpt, seatOpt, ...otherOpts].filter(Boolean).slice(0, 4).map((item: any, i) => (
+            <div className={cn(
+                "h-full w-full grid bg-white",
+                itemsToShow.length === 2 ? "grid-cols-2" : "grid-cols-1"
+            )}>
+                {itemsToShow.map((item: any, i) => (
                     <div key={item.id} className={cn(
-                        "relative flex items-center justify-center p-1 transition-colors",
-                        i === 0 && "border-r border-b",
-                        i === 1 && "border-b",
-                        i === 2 && "border-r",
+                        "relative flex items-center justify-center transition-colors p-12",
+                        i === 0 && itemsToShow.length === 2 && "border-r",
                         "hover:bg-slate-50"
                     )}>
-                        {item.imageUrl && <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-1 mix-blend-multiply" unoptimized />}
-                        <div className="absolute bottom-3 left-3 px-2 py-0.5 bg-slate-900/5 rounded-md text-[7px] font-black uppercase tracking-tighter text-slate-400">
+                        {item.imageUrl && (
+                            <Image 
+                                src={item.imageUrl} 
+                                alt={item.name} 
+                                fill 
+                                className="object-contain p-16 mix-blend-multiply" 
+                                unoptimized 
+                            />
+                        )}
+                        <div className="absolute bottom-8 left-8 px-3 py-1 bg-slate-900/5 rounded-full text-[8px] font-black uppercase tracking-widest text-slate-400">
                             {item.name}
                         </div>
                     </div>
@@ -419,7 +431,7 @@ export function HighfieldQuoteFlow({
                     if (targetElement) {
                         targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
-                }, 1200); // Slow deliberate pace
+                }, 1200); 
             }
         }
     };
@@ -509,7 +521,7 @@ export function HighfieldQuoteFlow({
                     <div className="pt-6 px-12 pb-4 bg-transparent shrink-0">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
                             {STEPS[currentStep - 1].label.toUpperCase()}
-                            <span className="text-primary"> - {range?.name?.toUpperCase()} {displayedModelName.toUpperCase()}</span>
+                            <span className="text-primary"> - {range?.name?.toUpperCase()} {boatSeriesIdentity.toUpperCase()}</span>
                         </h2>
                     </div>
 
@@ -540,7 +552,7 @@ export function HighfieldQuoteFlow({
                                                 {availableColors.map((color) => (
                                                     <button key={color.id} onClick={() => setSelectedColor(color.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1", selectedColor === color.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
                                                         <div className="relative aspect-video w-full bg-white">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-1" unoptimized />}</div>
-                                                        <div className={cn("p-5 text-center border-t transition-colors", selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-50")}><p className={cn("text-[10px] font-black uppercase tracking-widest", selectedColor === color.id ? "text-primary" : "text-slate-600")}>{color.name}</p></div>
+                                                        <div className={cn("p-2 text-center border-t transition-colors", selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-50")}><p className={cn("text-[10px] font-black uppercase tracking-widest", selectedColor === color.id ? "text-primary" : "text-slate-600")}>{color.name}</p></div>
                                                     </button>
                                                 ))}
                                             </div>
@@ -561,10 +573,10 @@ export function HighfieldQuoteFlow({
                                                 {opts.map((opt: any) => (
                                                     <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                         <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">{opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Package className="h-12 w-12" /></div>}</div>
-                                                        <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
+                                                        <div className="p-2 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
                                                             <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
                                                             <p className={cn(
-                                                                "text-[10px] font-black text-sm",
+                                                                "text-[10px] font-black",
                                                                 selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400"
                                                             )}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                         </div>
@@ -590,7 +602,7 @@ export function HighfieldQuoteFlow({
                                                 return (
                                                     <button key={m.id} onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", selectedMotor?.id === m.id ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                         <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">{motorImgUrl && <Image src={motorImgUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
-                                                        <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
+                                                        <div className="p-2 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
                                                             <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", selectedMotor?.id === m.id ? "text-primary" : "text-slate-900")}>
                                                                 {m.vendorName || 'YAMAHA'} - {m['Model Name']}
                                                             </p>
@@ -622,7 +634,7 @@ export function HighfieldQuoteFlow({
                                             <CardContent className="p-6 space-y-4">
                                                 <div className="flex items-center justify-between">
                                                     <div className="space-y-1">
-                                                        <p className="font-black text-lg uppercase tracking-tight text-slate-900">{range?.name} {displayedModelName}</p>
+                                                        <p className="font-black text-lg uppercase tracking-tight text-slate-900">{range?.name} {boatSeriesIdentity}</p>
                                                         <p className="text-[10px] font-bold text-muted-foreground uppercase">{selectedMaterial} • {activeVariant?.name || 'Standard Color'}</p>
                                                     </div>
                                                     <p className="font-black text-primary italic text-lg">${(activeVariant?.sellPriceExclGst || 0).toLocaleString()}</p>

@@ -85,7 +85,7 @@ service cloud.firestore {
       }
     }
 
-    // Temporarily allow write for prototyping across the entire data-warehouse
+    // Recursive permission for prototyping across the data-warehouse hierarchy
     match /data-warehouse/{allPaths=**} {
       allow read, write: if isSignedIn();
     }
