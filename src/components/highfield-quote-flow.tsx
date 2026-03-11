@@ -305,7 +305,7 @@ export function HighfieldQuoteFlow({
     };
 
     const carouselSlides = useMemo(() => {
-        const slides = [];
+        const slides: { type: string; url?: string; content?: React.ReactNode }[] = [];
         // 0: Primary Anchor
         slides.push({ type: 'boat', url: model.coverImageUrl || '' });
         
@@ -569,22 +569,36 @@ export function HighfieldQuoteFlow({
                     <div className="relative flex-1 w-full bg-white rounded-[3rem] border-2 border-slate-100 shadow-2xl overflow-hidden group">
                         <Carousel className="w-full h-full" opts={{ loop: true }} setApi={setApi}>
                             <CarouselContent className="h-full">
-                                {carouselSlides.map((slide, idx) => (
-                                    <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
-                                        {slide.type === 'build' ? slide.content : (
-                                            <>
-                                                {slide.url && <Image src={slide.url} alt="Build Preview" fill className="object-cover transition-all" unoptimized />}
-                                                <Button 
-                                                    variant="ghost" size="icon" 
-                                                    className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20"
-                                                    onClick={() => setLightboxUrl(slide.url || null)}
-                                                >
-                                                    <Maximize2 className="h-6 w-6" />
-                                                </Button>
-                                            </>
-                                        )}
-                                    </CarouselItem>
-                                ))}
+                                {carouselSlides.map((slide, idx) => {
+                                    const isHardware = slide.type === 'motor' || slide.type === 'accessory';
+                                    return (
+                                        <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
+                                            {slide.type === 'build' ? slide.content : (
+                                                <>
+                                                    {slide.url && (
+                                                        <Image 
+                                                            src={slide.url} 
+                                                            alt="Build Preview" 
+                                                            fill 
+                                                            className={cn(
+                                                                "transition-all",
+                                                                isHardware ? "object-contain p-12" : "object-cover"
+                                                            )} 
+                                                            unoptimized 
+                                                        />
+                                                    )}
+                                                    <Button 
+                                                        variant="ghost" size="icon" 
+                                                        className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20"
+                                                        onClick={() => setLightboxUrl(slide.url || null)}
+                                                    >
+                                                        <Maximize2 className="h-6 w-6" />
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </CarouselItem>
+                                    );
+                                })}
                             </CarouselContent>
                             <CarouselPrevious className="left-6 h-12 w-12 bg-white/90 border-2 border-slate-200 shadow-2xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 active:scale-95 transition-all disabled:opacity-0 z-[110]" />
                             <CarouselNext className="right-6 h-12 w-12 bg-white/90 border-2 border-slate-200 shadow-2xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 active:scale-95 transition-all disabled:opacity-0 z-[110]" />
@@ -669,7 +683,7 @@ export function HighfieldQuoteFlow({
                                                             <p className={cn(
                                                                 "text-[10px] font-black",
                                                                 selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400"
-                                                            )}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            )}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                         </div>
                                                     </button>
                                                 ))}
@@ -719,17 +733,21 @@ export function HighfieldQuoteFlow({
                                                     const isSelected = selectedMotorAccessoryIds.includes(opt.id);
                                                     return (
                                                         <button key={opt.id} onClick={() => toggleMotorAccessory(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1 group", isSelected ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                            <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">
-                                                                {opt.imageUrl ? (
+                                                            {opt.imageUrl ? (
+                                                                <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">
                                                                     <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain p-2 mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />
-                                                                ) : (
-                                                                    <div className="flex h-full w-full items-center justify-center opacity-10"><Wrench className="h-12 w-12" /></div>
-                                                                )}
-                                                                {opt.isStandard && (
-                                                                    <Badge className="absolute top-2 left-2 bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-4">STANDARD</Badge>
-                                                                )}
-                                                            </div>
-                                                            <div className="p-2 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
+                                                                    {opt.isStandard && (
+                                                                        <Badge className="absolute top-2 left-2 bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-4">STANDARD</Badge>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                opt.isStandard && (
+                                                                    <div className="p-2 pb-0 flex justify-start">
+                                                                        <Badge className="bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-4">STANDARD</Badge>
+                                                                    </div>
+                                                                )
+                                                            )}
+                                                            <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
                                                                 <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", isSelected ? "text-primary" : "text-slate-700")}>{opt.name}</p>
                                                                 <p className={cn(
                                                                     "text-[10px] font-black",
