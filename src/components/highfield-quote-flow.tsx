@@ -196,6 +196,79 @@ export function HighfieldQuoteFlow({
         return selectedOptionIds.some(id => consoleOptions.some(f => f.id === id));
     }, [selectedOptionIds, model.optionalFeatures]);
 
+    // Intelligent Selection Reconciliation
+    const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
+        if (selectedMaterial === mat) return;
+        
+        const currentVariant = variants?.find(v => v.id === selectedColor);
+        const prevColorName = currentVariant?.colorName;
+        
+        setSelectedMaterial(mat);
+        
+        // Strategy: Try to find the SAME color in the new material
+        if (variants && prevColorName) {
+            const matchingVariant = variants.find(v => v.material === mat && v.colorName === prevColorName);
+            if (matchingVariant) {
+                // Same logical color, different material. Keep downstream configuration.
+                setSelectedColor(matchingVariant.id);
+                return;
+            }
+        }
+        
+        // If no match found, or no color was selected, reset downstream build
+        setSelectedColor(null);
+        setSelectedOptionIds([]);
+        setSelectedMotor(null);
+        setSelectedMotorAccessoryIds([]);
+        setSelectedTrailerId(null);
+        setSelectedTrailerOptionIds([]);
+        setSelectedDealerFitIds([]);
+    };
+
+    // Smart Option Relinking when Color/Variant changes
+    useEffect(() => {
+        if (!selectedColor || !variants || !model.optionalFeatures) return;
+        
+        const newVariant = variants.find(v => v.id === selectedColor);
+        if (!newVariant) return;
+
+        setSelectedOptionIds(prevIds => {
+            let changed = false;
+            const nextIds = [...prevIds].map(id => {
+                const currentOption = model.optionalFeatures.find((f: any) => f.id === id);
+                if (!currentOption) return id;
+
+                // Check if this option is incompatible with the new variant
+                const isCompatible = !currentOption.applicableVariantIds?.length || 
+                                    currentOption.applicableVariantIds.includes(newVariant.id);
+
+                if (!isCompatible) {
+                    // Try to find a sibling option (e.g. "FCT Console - White" -> "FCT Console - Grey")
+                    const baseName = currentOption.name.split(' - ')[0]; // Extract identity (FCT Console)
+                    
+                    const sibling = model.optionalFeatures.find((f: any) => 
+                        f.id !== id &&
+                        f.name.startsWith(baseName) &&
+                        (!f.applicableVariantIds?.length || f.applicableVariantIds.includes(newVariant.id)) &&
+                        (f.category === currentOption.category)
+                    );
+
+                    if (sibling) {
+                        changed = true;
+                        return sibling.id;
+                    } else {
+                        // No sibling found, must purge this selection
+                        changed = true;
+                        return null;
+                    }
+                }
+                return id;
+            }).filter(Boolean) as string[];
+
+            return changed ? nextIds : prevIds;
+        });
+    }, [selectedColor, variants, model.optionalFeatures]);
+
     // Motor fetching logic
     useEffect(() => {
         const fetchMotors = async () => {
@@ -622,7 +695,7 @@ export function HighfieldQuoteFlow({
                                                         fill 
                                                         className={cn(
                                                             "transition-all",
-                                                            (slide.type === 'motor' || slide.type === 'accessory' || slide.type === 'trailer' || slide.type === 'dealerfit') ? "object-contain p-12" : "object-cover"
+                                                            (slide.type === 'boat' || slide.type === 'variant' || slide.type === 'gallery') ? "object-cover" : "object-contain p-12"
                                                         )} 
                                                         unoptimized 
                                                     />
@@ -683,7 +756,7 @@ export function HighfieldQuoteFlow({
                                         </div>
                                         <div className="grid grid-cols-2 gap-6">
                                             {availableMaterials.map((mat) => (
-                                                <button key={mat} onClick={() => { setSelectedMaterial(mat as any); setSelectedColor(null); }} className={cn("group flex flex-col items-center justify-center p-1 rounded-[2.5rem] transition-all bg-white shadow-2xl border-2 border-transparent h-40", selectedMaterial === mat ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
+                                                <button key={mat} onClick={() => handleMaterialChange(mat as any)} className={cn("group flex flex-col items-center justify-center p-1 rounded-[2.5rem] transition-all bg-white shadow-2xl border-2 border-transparent h-40", selectedMaterial === mat ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
                                                     <span className={cn("text-sm font-black uppercase tracking-widest transition-colors", selectedMaterial === mat ? "text-primary" : "text-slate-600")}>{mat}</span>
                                                 </button>
                                             ))}
@@ -992,3 +1065,15 @@ export function HighfieldQuoteFlow({
         </div>
     );
 }
+
+const resolveImageUrl = (item: any) => {
+    const path = item?.imageUrl || item?.SummaryImage || item?.url || item?.image;
+    if (!path || typeof path !== 'string') return null;
+    if (path.startsWith('http') || path.startsWith('data:image')) return path;
+    
+    if (path.includes('images/products') || path.includes('images/accessories')) {
+        const prefix = path.startsWith('/') ? '' : '/';
+        return `https://www.yamaha-motor.com.au${prefix}${path.trim().replace(/\\/g, '/')}`;
+    }
+    return path.trim().replace(/\\/g, '/');
+};
