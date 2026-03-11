@@ -92,9 +92,9 @@ function AccessoryCategory({
     onToggleStandard: (idx: number) => void
 }) {
     return (
-        <div className="space-y-2">
+        <div className="space-y-2 text-left">
             <div className="flex items-center justify-between group/cat">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 text-left">
                     <div className="h-1 w-1 rounded-full bg-primary/40" />
                     <span className="text-[9px] font-black uppercase text-muted-foreground/70 tracking-widest">{label}</span>
                 </div>
@@ -109,11 +109,11 @@ function AccessoryCategory({
                 </Button>
             </div>
             
-            <div className="space-y-1 min-h-[32px]">
+            <div className="space-y-1 min-h-[32px] text-left">
                 {items.length > 0 ? items.map((opt, i) => (
-                    <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-background border shadow-sm group/opt animate-in fade-in slide-in-from-left-1">
+                    <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-background border shadow-sm group/opt animate-in fade-in slide-in-from-left-1 text-left">
                         <Package className="h-3 w-3 text-primary/40 shrink-0" />
-                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                        <div className="flex-1 min-w-0 flex items-center gap-2 text-left">
                             <span className="text-[10px] font-bold truncate leading-tight">{opt.name}</span>
                             {opt.isStandard && (
                                 <Badge className="bg-emerald-500 text-white border-none text-[7px] font-black h-3.5 px-1 tracking-tighter shrink-0">STANDARD</Badge>
@@ -215,9 +215,9 @@ function MotorCard({
     };
 
     return (
-        <Card className="overflow-hidden flex flex-col border-2 shadow-sm hover:border-primary/20 transition-all rounded-xl h-fit min-w-0 max-w-full bg-card group/motor">
+        <Card className="overflow-hidden flex flex-col border-2 shadow-sm hover:border-primary/20 transition-all rounded-xl h-fit min-w-0 max-w-full bg-card group/motor text-left">
             <div 
-                className="relative cursor-pointer"
+                className="relative cursor-pointer text-left"
                 onClick={() => setIsExpanded(!isExpanded)}
             >
                 <div className="relative h-32 bg-muted/30 border-b flex items-center justify-center">
@@ -253,13 +253,13 @@ function MotorCard({
                     )}
                 </div>
                 
-                <div className="p-4 bg-background flex items-center justify-between gap-3 border-b min-h-[56px]">
-                    <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-black uppercase leading-tight text-foreground tracking-tight truncate italic">
+                <div className="p-4 bg-background flex items-center justify-between gap-3 border-b min-h-[56px] text-left">
+                    <div className="min-w-0 flex-1 text-left">
+                        <p className="text-[10px] font-black uppercase leading-tight text-foreground tracking-tight truncate italic text-left">
                             {motor.vendorName || 'YAMAHA'} - {String(modelName)}
                         </p>
                         {motor.steeringType && (
-                            <div className="flex items-center gap-1 mt-1">
+                            <div className="flex items-center gap-1 mt-1 text-left">
                                 <Anchor className="h-2 w-2 text-primary" />
                                 <span className="text-[7px] font-black uppercase tracking-widest text-primary">{motor.steeringType}</span>
                             </div>
@@ -270,9 +270,9 @@ function MotorCard({
             </div>
             
             {isExpanded && (
-                <CardContent className="p-4 space-y-5 min-w-0 animate-in slide-in-from-top-2 duration-200">
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
+                <CardContent className="p-4 space-y-5 min-w-0 animate-in slide-in-from-top-2 duration-200 text-left">
+                    <div className="space-y-3 text-left">
+                        <div className="flex items-center justify-between text-left">
                             {hpRating && (
                                 <Badge variant="default" className="font-black text-[10px] bg-primary shadow-sm uppercase tracking-tighter shrink-0 px-2 py-0.5">
                                     {hpRating} HP
@@ -283,7 +283,7 @@ function MotorCard({
                             </Badge>
                         </div>
                         
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 text-left">
                             <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Building Profile (Steering)</Label>
                             <Select value={motor.steeringType || ''} onValueChange={handleSteeringTypeChange}>
                                 <SelectTrigger className="h-8 text-[9px] font-black uppercase tracking-widest border-2 rounded-lg bg-slate-50">
@@ -297,7 +297,7 @@ function MotorCard({
                         </div>
                     </div>
 
-                    <div className="space-y-5 pt-4 border-t border-dashed">
+                    <div className="space-y-5 pt-4 border-t border-dashed text-left">
                         <AccessoryCategory 
                             label="Propeller" 
                             items={categorized.Propeller} 
@@ -421,6 +421,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         
         setIsSeeding(true);
         try {
+            // Find a target motor to update (e.g., F25)
             const targetMotor = motorDataSet.find(m => String(m['Model Name']).includes('F25SMHC')) || motorDataSet[0];
             if (targetMotor) {
                 const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, targetMotor.id);
@@ -429,16 +430,11 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                     { id: 'test-rig-1', name: 'Mech Rigging Kit - 703 Remote Control', category: 'Rigging', isStandard: false, items: [] }
                 ];
                 
-                updateDoc(motorRef, { masterAccessories: [...(targetMotor.masterAccessories || []), ...testAccs] })
-                    .catch(async (serverError) => {
-                        errorEmitter.emit('permission-error', new FirestorePermissionError({
-                            path: motorRef.path,
-                            operation: 'update',
-                            requestResourceData: { masterAccessories: [...(targetMotor.masterAccessories || []), ...testAccs] },
-                        } satisfies SecurityRuleContext));
-                    });
+                // Directly write to Firestore to ensure it's visible in categories
+                await updateDoc(motorRef, { masterAccessories: testAccs });
             }
 
+            // Also inject some factory options into the model
             const currentOptions = watch('optionalFeatures') || model?.optionalFeatures || [];
             const testOptions = [
                 { id: 'test-factory-1', name: 'Motor Ram Support', category: 'General Options', sellPriceExclGst: 150, isStandard: false, applicableVariantIds: [] },
@@ -604,12 +600,12 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     };
 
     return (
-        <div className="space-y-6">
-            <Card className="border-primary/20 bg-primary/5 shadow-inner rounded-xl overflow-hidden">
-                <CardHeader className="py-4 border-b bg-white/50 flex flex-row items-center justify-between">
-                    <div className="flex items-center gap-3">
+        <div className="space-y-6 text-left">
+            <Card className="border-primary/20 bg-primary/5 shadow-inner rounded-xl overflow-hidden text-left">
+                <CardHeader className="py-4 border-b bg-white/50 flex flex-row items-center justify-between text-left">
+                    <div className="flex items-center gap-3 text-left">
                         <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center text-primary"><Beaker className="h-5 w-5" /></div>
-                        <div>
+                        <div className="text-left">
                             <CardTitle className="text-sm font-black uppercase italic tracking-tight">Tactical Data Injector</CardTitle>
                             <CardDescription className="text-[9px] font-black uppercase tracking-widest text-primary/60">Prototype Environment Accelerator</CardDescription>
                         </div>
@@ -621,10 +617,10 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 </CardHeader>
             </Card>
 
-            <Card className="rounded-xl border shadow-sm overflow-hidden bg-background">
-                <CardHeader className="bg-muted/10 border-b">
-                    <div className="flex items-center justify-between">
-                        <div>
+            <Card className="rounded-xl border shadow-sm overflow-hidden bg-background text-left">
+                <CardHeader className="bg-muted/10 border-b text-left">
+                    <div className="flex items-center justify-between text-left">
+                        <div className="text-left">
                             <CardTitle className="text-xl font-bold">Compatible Motor Configurations</CardTitle>
                             <CardDescription className="text-[10px] uppercase font-black tracking-widest opacity-60">Configurations matching the boat's horsepower and quantity ratings.</CardDescription>
                         </div>
@@ -635,17 +631,17 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                         )}
                     </div>
                 </CardHeader>
-                <CardContent className="pt-6">
+                <CardContent className="pt-6 text-left">
                     {motorCombinations.length > 0 ? (
                         <Accordion type="multiple" className="w-full space-y-4" defaultValue={['config-0']}>
                             {motorCombinations.map((configGroup, index) => (
                                 <AccordionItem value={`config-${index}`} key={configGroup.configType} className="border rounded-xl overflow-hidden shadow-sm bg-background">
-                                    <div className="flex border-b bg-muted/20 hover:bg-muted/30 transition-colors group/trigger items-center justify-between pr-6">
+                                    <div className="flex border-b bg-muted/20 hover:bg-muted/30 transition-colors group/trigger items-center justify-between pr-6 text-left">
                                         <AccordionPrimitive.Header className="flex flex-1">
                                             <AccordionPrimitive.Trigger className="flex flex-1 items-center justify-between px-6 py-4 font-medium transition-all hover:no-underline [&[data-state=open]>svg]:rotate-180 text-left">
-                                                <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-3 text-left">
                                                     <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center text-primary"><Star className="h-4 w-4" /></div>
-                                                    <div>
+                                                    <div className="text-left">
                                                         <p className="font-black text-xs uppercase tracking-widest">{formatConfigType(configGroup.configType)} Layout</p>
                                                         <p className="text-[9px] font-bold text-muted-foreground uppercase opacity-60">{configGroup.combinations.length} Variations Available</p>
                                                     </div>
@@ -655,11 +651,11 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                                         </AccordionPrimitive.Header>
                                         <Button type="button" variant="outline" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest transition-opacity" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActiveConfigType(configGroup.configType); setIsEngineManagerOpen(true); }}><Settings2 className="h-3 w-3 mr-1.5" />Manage Engines</Button>
                                     </div>
-                                    <AccordionContent className="p-0">
+                                    <AccordionContent className="p-0 text-left">
                                         <ScrollArea className="h-[600px] w-full">
                                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-6">
                                                 {configGroup.combinations.map((combo, comboIdx) => (
-                                                    <div key={comboIdx} className="relative group/combo h-full">
+                                                    <div key={comboIdx} className="relative group/combo h-full text-left">
                                                         {combo.map((motor, motorIdx) => (
                                                             <MotorCard 
                                                                 key={`${motor.id}-${motorIdx}`} 
