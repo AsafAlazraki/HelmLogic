@@ -3,8 +3,8 @@
 import { useForm, FormProvider, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, setDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck, Tag, Building, Hammer, Truck } from 'lucide-react';
+import { Loader2, Save, Wrench, Hash, ChevronDown, ShieldCheck, Tag, Building, Hammer, Truck, Zap, Beaker } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 import { HighfieldModelEditor, highfieldModelSchema } from '@/components/highfield-model-editor';
@@ -29,6 +29,7 @@ import { TrailerOptions } from './trailer-options';
 import { FormField, FormItem, FormControl, FormLabel, FormMessage } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useUser } from '@/firebase/auth/use-user';
 
 interface Permissions {
     can_access_module: boolean;
@@ -213,6 +214,7 @@ export function ModelConfigurationEditor({
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSeeding, setIsSeeding] = useState(false);
     
     const isRecentlySaved = useRef(false);
     const saveTimer = useRef<NodeJS.Timeout | null>(null);
@@ -225,7 +227,7 @@ export function ModelConfigurationEditor({
         defaultValues: getSafeDefaultValues(model, vendor?.slug),
     });
     
-    const { reset, control, formState: { isDirty } } = form;
+    const { reset, control, formState: { isDirty }, setValue, watch } = form;
 
     useEffect(() => {
         if (model && !isSubmitting && !isDirty && !isRecentlySaved.current) {
@@ -233,6 +235,86 @@ export function ModelConfigurationEditor({
             reset(currentDefaults);
         }
     }, [model, vendor?.slug, reset, isSubmitting, isDirty]);
+
+    const handleSeedTestData = async () => {
+        setIsSeeding(true);
+        try {
+            // 1. Trailer Injection
+            const testTrailer = {
+                name: 'Redco - CL380 Trailer',
+                imageUrl: null,
+                options: [
+                    { id: 'tr-opt-1', name: 'Spare wheel holder', isStandard: false, sellPriceExclGst: 120 },
+                    { id: 'tr-opt-2', name: 'Extra winch handle', isStandard: false, sellPriceExclGst: 45 },
+                    { id: 'tr-opt-3', name: 'Tie down straps', isStandard: true, sellPriceExclGst: 65 }
+                ]
+            };
+            setValue('trailerConfig', testTrailer, { shouldDirty: true });
+
+            // 2. Dealer Fit Seeding (Organisation Specific)
+            const orgId = organisationId;
+            if (orgId) {
+                const catsSnap = await getDocs(collection(firestore, 'dealerFitCategories'));
+                const cats = catsSnap.docs.map(d => ({ id: d.id, name: d.data().name }));
+                
+                const electronicsCat = cats.find(c => c.name.toLowerCase().includes('electronics')) || { id: 'demo-electronics', name: 'Electronics Pack' };
+                const safetyCat = cats.find(c => c.name.toLowerCase().includes('safety')) || { id: 'demo-safety', name: 'Safety Gear' };
+                
+                const dfCol = collection(firestore, `organisations/${orgId}/dealerFitSelections`);
+                const testDF = [
+                    { name: 'Garmin EchoMAP 95sv', categoryId: electronicsCat.id, category: electronicsCat.name, type: 'item', items: [{ data: { Description: 'Garmin EchoMAP 95sv with Transducer', sellPriceExclGst: 1850 }}] },
+                    { name: 'Fusion MS-RA210 System', categoryId: electronicsCat.id, category: electronicsCat.name, type: 'item', items: [{ data: { Description: 'Fusion RA210 Marine Stereo', sellPriceExclGst: 650 }}] },
+                    { name: 'Offshore Safety Kit (4 Person)', categoryId: safetyCat.id, category: safetyCat.name, type: 'item', items: [{ data: { Description: 'Flares, Jackets, Anchor, V-Sheet', sellPriceExclGst: 450 }}] },
+                    { name: 'GME GX700 VHF Radio', categoryId: safetyCat.id, category: safetyCat.name, type: 'item', items: [{ data: { Description: 'GME VHF Marine Radio White', sellPriceExclGst: 320 }}] }
+                ];
+                
+                for (const df of testDF) {
+                    await addDoc(dfCol, { ...df, createdAt: serverTimestamp() });
+                }
+            }
+
+            // 3. Motor Accessory Seeding
+            const allVendorsSnap = await getDocs(collection(firestore, 'data-warehouse'));
+            const motorVendor = allVendorsSnap.docs.map(d => ({ id: d.id, ...d.data() as any })).find(v => v.vendorType === 'Motor Brand');
+            
+            if (motorVendor) {
+                const dsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets`));
+                const targetDS = dsSnap.docs.find(d => d.data().name.toLowerCase().includes('outboard'));
+                if (targetDS) {
+                    const motorsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`));
+                    const batch = motorsSnap.docs.slice(0, 10); // Update first 10 motors for demo
+                    for (const mDoc of batch) {
+                        const testAccs = [
+                            { id: 'test-prop-1', name: 'Aluminum Propeller 11 1/8 x 13-G', category: 'Propeller', isStandard: true, items: [] },
+                            { id: 'test-rig-1', name: 'Mech Rigging Kit - 703 Remote Control', category: 'Rigging', isStandard: true, items: [] }
+                        ];
+                        await updateDoc(mDoc.ref, { masterAccessories: testAccs });
+                    }
+                }
+            }
+
+            // 4. Model Factory Options
+            const currentOptions = watch('optionalFeatures') || model?.optionalFeatures || [];
+            const testOptions = [
+                { id: 'test-factory-1', name: 'Motor Ram Support', category: 'General Options', sellPriceExclGst: 150, isStandard: false, applicableVariantIds: [] },
+                { id: 'test-factory-2', name: 'Fuel Filter', category: 'General Options', sellPriceExclGst: 85, isStandard: false, applicableVariantIds: [] }
+            ];
+            
+            const mergedOptions = [...currentOptions];
+            testOptions.forEach(opt => {
+                if (!mergedOptions.some(o => o.name === opt.name)) mergedOptions.push(opt);
+            });
+
+            setValue('optionalFeatures', mergedOptions, { shouldDirty: true });
+            
+            toast({ title: "Universal Demo Suite Synced", description: "Trailer, Motor Accessories, and Dealer Fit options are now live." });
+        } catch (e: any) {
+            console.error("Generator failed:", e);
+            toast({ variant: 'destructive', title: "Generator Failed", description: e.message });
+        } finally {
+            setIsSeeding(false);
+        }
+    };
 
     const onSubmit = async (values: any) => {
         const canEdit = isAdmin || permissions.can_edit_boat_data;
@@ -317,7 +399,20 @@ export function ModelConfigurationEditor({
         <FormProvider {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
                 <div className="space-y-6 text-left">
-                    <Card className="border-primary/20 bg-primary/5 rounded-xl shadow-inner text-left">
+                    <Card className="border-primary/20 bg-primary/5 rounded-xl shadow-inner text-left overflow-hidden">
+                        <CardHeader className="py-4 border-b bg-white/50 flex flex-row items-center justify-between text-left shrink-0">
+                            <div className="flex items-center gap-3 text-left">
+                                <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center text-primary"><Beaker className="h-5 w-5" /></div>
+                                <div className="text-left">
+                                    <CardTitle className="text-sm font-black uppercase italic tracking-tight">Tactical Demo Suite</CardTitle>
+                                    <CardDescription className="text-[9px] font-black uppercase tracking-widest text-primary/60">Initialize Trailer, Motor Accessories & Dealer Fit</CardDescription>
+                                </div>
+                            </div>
+                            <Button type="button" onClick={handleSeedTestData} disabled={isSeeding} className="h-9 px-6 font-black uppercase text-[10px] tracking-widest bg-primary shadow-xl text-white hover:scale-105 active:scale-95 transition-all">
+                                {isSeeding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
+                                Initialize Demo Suite
+                            </Button>
+                        </CardHeader>
                         <CardContent className="p-4 text-left">
                             <div className="flex items-center justify-between text-left">
                                 <div className="flex items-center gap-3 text-left">
