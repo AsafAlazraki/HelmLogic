@@ -109,7 +109,7 @@ export function HighfieldQuoteFlow({
     const colorSectionRef = useRef<HTMLDivElement>(null);
     const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
     
-    const displayedModelName = model.name || 'Boat';
+    const displayedModelName = model?.name || 'Boat';
 
     // Carousel State
     const [api, setApi] = useState<CarouselApi>();
@@ -152,7 +152,7 @@ export function HighfieldQuoteFlow({
                 if (viewport && colorSectionRef.current) {
                     viewport.scrollTo({ top: colorSectionRef.current.offsetTop - 20, behavior: 'smooth' });
                 }
-            }, 500); 
+            }, 600); 
             return () => clearTimeout(timer);
         }
     }, [selectedMaterial, currentStep]);
@@ -274,10 +274,10 @@ export function HighfieldQuoteFlow({
 
     const carouselSlides = useMemo(() => {
         const slides = [];
-        // Primary Anchor: Main boat render (index 0)
+        // Primary Anchor: Main boat render (index 0) - MUST STAY PERMANENT
         if (model.coverImageUrl) slides.push({ type: 'boat', url: model.coverImageUrl });
         
-        // Variant: Color-specific render (if different)
+        // Variant: Color-specific render
         if (activeVariant?.imageUrl && activeVariant.imageUrl !== model.coverImageUrl) {
             slides.push({ type: 'variant', url: activeVariant.imageUrl });
         }
@@ -294,21 +294,28 @@ export function HighfieldQuoteFlow({
         return slides;
     }, [activeVariant, model, buildPreviewSlide]);
 
-    // Robust Auto-Slide Effect
+    // Robust Auto-Slide Effect for configuration changes
     useEffect(() => {
         if (!api) return;
 
-        // Auto-slide to variant when color changes
+        // 1. Priority: Variant Render if color selected
         if (activeVariant?.imageUrl && activeVariant.imageUrl !== model.coverImageUrl) {
             const variantIdx = carouselSlides.findIndex(s => s.type === 'variant' && s.url === activeVariant.imageUrl);
             if (variantIdx !== -1) {
-                setTimeout(() => api.scrollTo(variantIdx), 400);
+                setTimeout(() => api.scrollTo(variantIdx), 500);
+                return;
             }
-        } else if (selectedOptionIds.length > 0) {
+        } 
+        
+        // 2. Build Slide: If any options selected
+        if (selectedOptionIds.length > 0) {
             const buildSlideIndex = carouselSlides.findIndex(s => s.type === 'build');
             if (buildSlideIndex !== -1) {
-                setTimeout(() => api.scrollTo(buildSlideIndex), 450);
+                setTimeout(() => api.scrollTo(buildSlideIndex), 550);
             }
+        } else {
+            // 3. Reset to main if cleared
+            api.scrollTo(0);
         }
     }, [selectedColor, selectedOptionIds, api, carouselSlides, activeVariant, model.coverImageUrl]);
 
@@ -325,7 +332,6 @@ export function HighfieldQuoteFlow({
     const groupedOptions = useMemo(() => {
         const features = [...relevantFeatures];
         
-        // Find selected console
         const availableConsoles = features.filter((f: any) => f.category === 'Consoles');
         const selectedConsoleId = selectedOptionIds.find(id => availableConsoles.some(f => f.id === id));
         const selectedConsole = availableConsoles.find(f => f.id === selectedConsoleId);
@@ -334,8 +340,6 @@ export function HighfieldQuoteFlow({
             const cat = opt.category || 'General Options';
             
             if (cat === 'Seats') {
-                // Rule: If console is selected, only show associated seat. 
-                // If console is selected but has NO associated seat, hide category.
                 if (selectedConsole && !selectedConsole.associatedSeatId) return acc;
                 if (selectedConsole && selectedConsole.associatedSeatId && opt.id !== selectedConsole.associatedSeatId) return acc;
             }
@@ -379,7 +383,6 @@ export function HighfieldQuoteFlow({
             if (currentCat === 'Consoles') {
                 const consoleIds = relevantFeatures.filter((f: any) => f.category === 'Consoles').map((f: any) => f.id);
                 nextSelectedIds = nextSelectedIds.filter(i => !consoleIds.includes(i));
-                // PURGE PREVIOUS SEATS (in case FCT doesn't have seats but GT did)
                 const seatIds = relevantFeatures.filter((f: any) => f.category === 'Seats').map((f: any) => f.id);
                 nextSelectedIds = nextSelectedIds.filter(i => !seatIds.includes(i));
             }
@@ -401,7 +404,6 @@ export function HighfieldQuoteFlow({
 
         // --- ENHANCED PRECISION AUTO-SCROLL ---
         if (currentStep === 2 && !isCurrentlySelected) {
-            // Predict visible categories after the state update
             const newConsoleId = nextSelectedIds.find(id => relevantFeatures.filter(f => f.category === 'Consoles').some(f => f.id === id));
             const newConsole = relevantFeatures.find(f => f.id === newConsoleId);
             
@@ -429,7 +431,7 @@ export function HighfieldQuoteFlow({
                     if (viewport && targetElement) {
                         viewport.scrollTo({ top: targetElement.offsetTop - 20, behavior: 'smooth' });
                     }
-                }, 600); // 600ms for premium deliberate glide
+                }, 800); 
             }
         }
     };
@@ -544,12 +546,12 @@ export function HighfieldQuoteFlow({
                                         <div ref={colorSectionRef} className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-1000 ease-out scroll-mt-10">
                                             <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
                                                 <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Select Hull & Tube Color</h3>
+                                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Hull & Tube Color</h3>
                                             </div>
                                             <div className="grid grid-cols-2 gap-6">
                                                 {availableColors.map((color) => (
                                                     <button key={color.id} onClick={() => setSelectedColor(color.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent", selectedColor === color.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full bg-white p-1">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-1" unoptimized />}</div>
+                                                        <div className="relative aspect-video w-full bg-white p-2">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-1" unoptimized />}</div>
                                                         <div className={cn("p-5 text-center border-t transition-colors", selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-50")}><p className={cn("text-[10px] font-black uppercase tracking-widest", selectedColor === color.id ? "text-primary" : "text-slate-600")}>{color.name}</p></div>
                                                     </button>
                                                 ))}
@@ -570,7 +572,7 @@ export function HighfieldQuoteFlow({
                                             <div className="grid grid-cols-2 gap-6">
                                                 {opts.map((opt: any) => (
                                                     <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 p-1">{opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Package className="h-12 w-12" /></div>}</div>
+                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 p-2">{opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Package className="h-12 w-12" /></div>}</div>
                                                         <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
                                                             <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
                                                             <p className={cn(
@@ -599,7 +601,7 @@ export function HighfieldQuoteFlow({
                                                 const motorImgUrl = motorImgPath ? (motorImgPath.startsWith('http') ? motorImgPath : `https://www.yamaha-motor.com.au${motorImgPath.startsWith('/') ? '' : '/'}${motorImgPath}`) : null;
                                                 return (
                                                     <button key={m.id} onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full", selectedMotor?.id === m.id ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 p-1">{motorImgUrl && <Image src={motorImgUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
+                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 p-2">{motorImgUrl && <Image src={motorImgUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
                                                         <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
                                                             <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", selectedMotor?.id === m.id ? "text-primary" : "text-slate-900")}>
                                                                 {m.vendorName || 'YAMAHA'} - {m['Model Name']}
@@ -713,21 +715,21 @@ export function HighfieldQuoteFlow({
             <Dialog open={showFeatures} onOpenChange={setShowFeatures}>
                 <DialogContent className="sm:max-w-2xl rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-8 border-b bg-muted/5"><DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">Standard Features</DialogTitle><DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Included Factory Equipment</DialogDescription></DialogHeader>
-                    <ScrollArea className="max-h-[60vh]"><div className="p-0"><Table><TableBody>{model.standardFeatures?.map((f: string, i: number) => (<TableRow key={i} className="hover:bg-primary/5 border-b"><TableCell className="w-10 pl-8"><Check className="h-4 w-4 text-emerald-500" /></TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-8 py-4 leading-relaxed">{f}</TableCell></TableRow>))}</TableBody></Table></div></ScrollArea>
+                    <ScrollArea className="max-h-[60vh]"><div className="p-0"><Table><TableBody>{model?.standardFeatures?.map((f: string, i: number) => (<TableRow key={i} className="hover:bg-primary/5 border-b"><TableCell className="w-10 pl-8"><Check className="h-4 w-4 text-emerald-500" /></TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-8 py-4 leading-relaxed">{f}</TableCell></TableRow>))}</TableBody></Table></div></ScrollArea>
                 </DialogContent>
             </Dialog>
 
             <Dialog open={showSpecs} onOpenChange={setShowSpecs}>
                 <DialogContent className="sm:max-w-2xl rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-8 border-b bg-muted/5"><DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">General Specifications</DialogTitle><DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Engineering & Technical Data</DialogDescription></DialogHeader>
-                    <ScrollArea className="max-h-[60vh]"><div className="p-0"><Table><TableBody>{model.specifications?.otherSpecs?.map((s: any, i: number) => (<TableRow key={i} className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-8 py-4">{s.label}</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-8 py-4">{s.value}</TableCell></TableRow>))}</TableBody></Table></div></ScrollArea>
+                    <ScrollArea className="max-h-[60vh]"><div className="p-0"><Table><TableBody>{model?.specifications?.otherSpecs?.map((s: any, i: number) => (<TableRow key={i} className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-8 py-4">{s.label}</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-8 py-4">{s.value}</TableCell></TableRow>))}</TableBody></Table></div></ScrollArea>
                 </DialogContent>
             </Dialog>
 
             <Dialog open={showDocs} onOpenChange={setShowDocs}>
                 <DialogContent className="sm:max-w-md rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-8 border-b bg-muted/5"><DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">Technical Assets</DialogTitle><DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Factory Manuals & Schematics</DialogDescription></DialogHeader>
-                    <div className="p-8 space-y-3">{model.documents?.length > 0 ? model.documents.map((doc: any, i: number) => (
+                    <div className="p-8 space-y-3">{model?.documents?.length > 0 ? model.documents.map((doc: any, i: number) => (
                         <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-2xl border-2 hover:border-primary/40 hover:bg-primary/5 transition-all group">
                             <div className="flex items-center gap-4">
                                 <FileText className="h-5 w-5 text-primary/40 group-hover:text-primary transition-colors" />

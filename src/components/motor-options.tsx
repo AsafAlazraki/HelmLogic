@@ -170,7 +170,6 @@ function MotorCard({
 }) {
     const [isExpanded, setIsExpanded] = useState(false);
     const firestore = useFirestore();
-    const { toast } = useToast();
 
     let itemImageUrl: string | null = null;
     if (motor.SummaryImage && typeof motor.SummaryImage === 'string') {
@@ -357,7 +356,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
     const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
     
-    const motorConfigurations = watch('specifications.motorConfigurations') || model.specifications?.motorConfigurations || [];
+    const motorConfigurations = watch('specifications.motorConfigurations') || model?.specifications?.motorConfigurations || [];
     const motorOverrides = watch('motorOverrides') || {};
 
     const motorVendor = useMemo(() => {
@@ -421,7 +420,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             return;
         }
 
-        if (!motorDataSet || !motorVendor || !targetDataSet || !model.id) {
+        if (!motorDataSet || !motorVendor || !targetDataSet || !model?.id) {
             toast({ variant: 'destructive', title: "Context Error", description: "Datasets or Model identity not yet synchronized." });
             return;
         }
@@ -438,7 +437,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 await updateDoc(motorRef, { masterAccessories: [...(targetMotor.masterAccessories || []), ...testAccs] });
             }
 
-            const currentOptions = watch('optionalFeatures') || model.optionalFeatures || [];
+            const currentOptions = watch('optionalFeatures') || model?.optionalFeatures || [];
             const testOptions = [
                 { id: 'test-factory-1', name: 'Motor Ram Support', category: 'General Options', sellPriceExclGst: 150, isStandard: false, applicableVariantIds: [] },
                 { id: 'test-factory-2', name: 'Fuel Filter', category: 'General Options', sellPriceExclGst: 85, isStandard: false, applicableVariantIds: [] }
@@ -595,10 +594,6 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 errorEmitter.emit('permission-error', permissionError);
             });
     };
-
-    const loading = vendorsLoading || motorsLoading;
-
-    if (loading) return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
     const currentStagedEngines = (configType: string) => {
         const overrides = motorOverrides[configType] || { manualIds: [] };
