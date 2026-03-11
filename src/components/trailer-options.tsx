@@ -32,7 +32,8 @@ import {
     Package, 
     Star,
     CheckCircle2,
-    ArrowRight
+    ArrowRight,
+    Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';

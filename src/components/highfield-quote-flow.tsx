@@ -482,7 +482,7 @@ export function HighfieldQuoteFlow({
                                     <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
                                         {slide.type === 'build' ? slide.content : (
                                             <>
-                                                {slide.url && <Image src={slide.url} alt="Build Preview" fill className="object-cover" unoptimized />}
+                                                {slide.url && <Image src={slide.url} alt="Build Preview" fill className="object-contain p-16 mix-blend-multiply" unoptimized />}
                                                 <Button 
                                                     variant="ghost" size="icon" 
                                                     className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20"
