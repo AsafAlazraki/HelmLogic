@@ -143,6 +143,21 @@ export function HighfieldQuoteFlow({
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
 
+    const displayedModelName = model.name || 'Boat';
+
+    // Step 1 Scroll Fix
+    useEffect(() => {
+        if (selectedMaterial && currentStep === 1) {
+            const timer = setTimeout(() => {
+                const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+                if (viewport && colorSectionRef.current) {
+                    viewport.scrollTo({ top: colorSectionRef.current.offsetTop - 20, behavior: 'smooth' });
+                }
+            }, 400); // Deliberate speed
+            return () => clearTimeout(timer);
+        }
+    }, [selectedMaterial, currentStep]);
+
     // Filter motors based on steering type requirement
     const hasConsoleSelected = useMemo(() => {
         const consoleOptions = model.optionalFeatures?.filter((f: any) => f.category === 'Consoles') || [];
@@ -197,8 +212,7 @@ export function HighfieldQuoteFlow({
         if (api && selectedOptionIds.length > 0) {
             const buildSlideIndex = carouselSlides.findIndex(s => s.type === 'build');
             if (buildSlideIndex !== -1) {
-                // Wait for render cycle to complete build slide update
-                setTimeout(() => api.scrollTo(buildSlideIndex), 100);
+                setTimeout(() => api.scrollTo(buildSlideIndex), 200);
             }
         }
     }, [selectedOptionIds, api]);
@@ -235,18 +249,20 @@ export function HighfieldQuoteFlow({
     const groupedOptions = useMemo(() => {
         const features = [...relevantFeatures];
         
+        // Find selected console
+        const availableConsoles = features.filter((f: any) => f.category === 'Consoles');
+        const selectedConsoleId = selectedOptionIds.find(id => availableConsoles.some(f => f.id === id));
+        const selectedConsole = availableConsoles.find(f => f.id === selectedConsoleId);
+
         const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
             
             if (cat === 'Seats') {
-                const availableConsoles = features.filter((f: any) => f.category === 'Consoles');
-                const selectedConsoleId = selectedOptionIds.find(id => availableConsoles.some(f => f.id === id));
-                const selectedConsole = availableConsoles.find(f => f.id === selectedConsoleId);
-                if (selectedConsole && selectedConsole.associatedSeatId) {
-                    if (opt.id !== selectedConsole.associatedSeatId) return acc;
-                } else if (!hasConsoleSelected) {
-                    return acc;
-                }
+                // Rule: If console is selected, only show associated seat. 
+                // If console is selected but has NO associated seat, hide category.
+                if (!selectedConsole) return acc;
+                if (selectedConsole && !selectedConsole.associatedSeatId) return acc;
+                if (selectedConsole.associatedSeatId && opt.id !== selectedConsole.associatedSeatId) return acc;
             }
 
             if (cat === 'Rigging' && !hasConsoleSelected) return acc;
@@ -282,18 +298,13 @@ export function HighfieldQuoteFlow({
                 if (currentCat === 'Consoles') {
                     const riggingItem = relevantFeatures.find((f: any) => f.category === 'Rigging' || String(f.name).includes('Rigging'));
                     if (riggingItem) next = next.filter(i => i !== riggingItem.id);
-                    // Also purge associated seats
                     const seatIds = relevantFeatures.filter((f: any) => f.category === 'Seats').map((f: any) => f.id);
                     next = next.filter(i => !seatIds.includes(i));
                 }
             } else {
                 if (currentCat === 'Consoles') {
-                    const consoleIds = relevantFeatures
-                        .filter((f: any) => f.category === 'Consoles')
-                        .map((f: any) => f.id);
-                    // One console only rule
+                    const consoleIds = relevantFeatures.filter((f: any) => f.category === 'Consoles').map((f: any) => f.id);
                     next = next.filter(i => !consoleIds.includes(i));
-                    // Purge all old seats before applying new console rules
                     const seatIds = relevantFeatures.filter((f: any) => f.category === 'Seats').map((f: any) => f.id);
                     next = next.filter(i => !seatIds.includes(i));
                 }
@@ -304,7 +315,6 @@ export function HighfieldQuoteFlow({
                     if (feature.associatedSeatId && !next.includes(feature.associatedSeatId)) {
                         next.push(feature.associatedSeatId);
                     }
-                    
                     const riggingItem = relevantFeatures.find((f: any) => f.category === 'Rigging' || String(f.name).includes('Rigging'));
                     if (riggingItem && !next.includes(riggingItem.id)) {
                         next.push(riggingItem.id);
@@ -315,11 +325,12 @@ export function HighfieldQuoteFlow({
             return next;
         });
 
-        // Auto-scroll precision
+        // Deliberate Auto-Scroll
         if (currentStep === 2 && !isCurrentlySelected) {
+            const nextIdx = groupedOptions.findIndex(([n]) => n === currentCat) + 1;
             const targetCat = (currentCat === 'Consoles' && groupedOptions.some(([n]) => n === 'Seats')) 
                 ? 'Seats' 
-                : groupedOptions[groupedOptions.findIndex(([n]) => n === currentCat) + 1]?.[0];
+                : (groupedOptions[nextIdx]?.[0]);
 
             if (targetCat) {
                 setTimeout(() => {
@@ -328,7 +339,7 @@ export function HighfieldQuoteFlow({
                     if (viewport && targetElement) {
                         viewport.scrollTo({ top: targetElement.offsetTop - 20, behavior: 'smooth' });
                     }
-                }, 100);
+                }, 450); // Slower, premium transition
             }
         }
     };
@@ -478,14 +489,14 @@ export function HighfieldQuoteFlow({
                     <div className="pt-6 px-12 pb-4 bg-transparent shrink-0">
                         <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">
                             {STEPS[currentStep - 1].label.toUpperCase()}
-                            <span className="text-primary"> - {range?.name?.toUpperCase()} {model?.name?.toUpperCase()}</span>
+                            <span className="text-primary"> - {range?.name?.toUpperCase()} {displayedModelName.toUpperCase()}</span>
                         </h2>
                     </div>
 
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
                         <div className="px-12 pb-12 space-y-8">
                             {currentStep === 1 && (
-                                <div className="space-y-10 animate-in fade-in duration-700 ease-in-out text-left mt-4">
+                                <div className="space-y-10 animate-in fade-in duration-1000 ease-in-out text-left mt-4">
                                     <div className="space-y-6">
                                         <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
                                             <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
@@ -500,7 +511,7 @@ export function HighfieldQuoteFlow({
                                         </div>
                                     </div>
                                     {selectedMaterial && (
-                                        <div ref={colorSectionRef} className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-700 ease-out scroll-mt-10">
+                                        <div ref={colorSectionRef} className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-1000 ease-out scroll-mt-10">
                                             <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
                                                 <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">2. Select Hull & Tube Color</h3>
@@ -508,8 +519,8 @@ export function HighfieldQuoteFlow({
                                             <div className="grid grid-cols-2 gap-6">
                                                 {availableColors.map((color) => (
                                                     <button key={color.id} onClick={() => setSelectedColor(color.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent", selectedColor === color.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full bg-white p-2">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-1" unoptimized />}</div>
-                                                        <div className={cn("p-5 text-center border-t transition-colors", selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-50")}><p className={cn("text-xs font-bold uppercase tracking-widest", selectedColor === color.id ? "text-primary" : "text-slate-600")}>{color.name}</p></div>
+                                                        <div className="relative aspect-video w-full bg-white p-1">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-1" unoptimized />}</div>
+                                                        <div className={cn("p-5 text-center border-t transition-colors", selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-50")}><p className={cn("text-[10px] font-black uppercase tracking-widest", selectedColor === color.id ? "text-primary" : "text-slate-600")}>{color.name}</p></div>
                                                     </button>
                                                 ))}
                                             </div>
@@ -519,7 +530,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 2 && (
-                                <div className="space-y-16 animate-in fade-in duration-700 ease-in-out text-left mt-4">
+                                <div className="space-y-16 animate-in fade-in duration-1000 ease-in-out text-left mt-4">
                                     {groupedOptions.map(([cat, opts]: [string, any]) => (
                                         <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-8 scroll-mt-10">
                                             <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
@@ -546,7 +557,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 3 && (
-                                <div className="space-y-8 animate-in fade-in duration-700 ease-in-out text-left mt-4">
+                                <div className="space-y-8 animate-in fade-in duration-1000 ease-in-out text-left mt-4">
                                     <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full mb-8">
                                         <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Motor</h3>
@@ -558,7 +569,7 @@ export function HighfieldQuoteFlow({
                                                 const motorImgUrl = motorImgPath ? (motorImgPath.startsWith('http') ? motorImgPath : `https://www.yamaha-motor.com.au${motorImgPath.startsWith('/') ? '' : '/'}${motorImgPath}`) : null;
                                                 return (
                                                     <button key={m.id} onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full", selectedMotor?.id === m.id ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 p-1">{motorImgUrl ? <Image src={motorImgUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Ship className="h-12 w-12" /></div>}</div>
+                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 p-1">{motorImgUrl && <Image src={motorImgUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
                                                         <div className="p-6 flex flex-col items-center justify-center text-center gap-2 flex-grow border-t border-slate-50">
                                                             <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", selectedMotor?.id === m.id ? "text-primary" : "text-slate-900")}>
                                                                 {m.vendorName || 'YAMAHA'} - {m['Model Name']}
@@ -574,7 +585,7 @@ export function HighfieldQuoteFlow({
                             )}
 
                             {currentStep === 6 && (
-                                <div className="space-y-10 animate-in fade-in duration-700 text-left mt-4">
+                                <div className="space-y-10 animate-in fade-in duration-1000 text-left mt-4">
                                     <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
                                         <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                                         <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Project Build Summary</h3>
