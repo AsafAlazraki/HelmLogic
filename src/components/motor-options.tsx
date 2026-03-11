@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useCollection, useMemoFirebase, useFirestore, useUser, useDoc } from '@/firebase';
 import { collection, query, doc, getDocs, orderBy, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronDown, ChevronRight, Settings2, Maximize2, Minimize2, Beaker, Zap, Wrench, Anchor, Save } from 'lucide-react';
+import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronDown, ChevronRight, Settings2, Maximize2, Minimize2, Beaker, Zap, Wrench, Anchor, Save, Trash2 } from 'lucide-react';
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import Image from 'next/image';
@@ -83,13 +83,17 @@ function AccessoryCategory({
     items = [], 
     onAdd, 
     onRemove,
-    onToggleStandard
+    onToggleStandard,
+    onClear,
+    onSync
 }: { 
     label: string, 
     items: any[], 
     onAdd: () => void, 
     onRemove: (idx: number) => void,
-    onToggleStandard: (idx: number) => void
+    onToggleStandard: (idx: number) => void,
+    onClear: () => void,
+    onSync: () => void
 }) {
     return (
         <div className="space-y-2 text-left">
@@ -98,15 +102,38 @@ function AccessoryCategory({
                     <div className="h-1 w-1 rounded-full bg-primary/40" />
                     <span className="text-[9px] font-black uppercase text-muted-foreground/70 tracking-widest">{label}</span>
                 </div>
-                <Button 
-                    type="button"
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6 rounded-full hover:bg-primary/10 text-primary transition-all opacity-40 group-hover/cat:opacity-100"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(); }}
-                >
-                    <PlusCircle className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex items-center gap-1 opacity-40 group-hover/cat:opacity-100 transition-opacity">
+                    <Button 
+                        type="button"
+                        variant="secondary" 
+                        size="sm" 
+                        className="h-6 px-2 font-black uppercase text-[8px] tracking-widest bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all border-none"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSync(); }}
+                    >
+                        <Zap className="h-2.5 w-2.5 mr-1 fill-current" />
+                        Sync Demo
+                    </Button>
+                    {items.length > 0 && (
+                        <Button 
+                            type="button"
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 rounded-md hover:bg-destructive/10 text-destructive"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onClear(); }}
+                        >
+                            <Trash2 className="h-3 w-3" />
+                        </Button>
+                    )}
+                    <Button 
+                        type="button"
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 rounded-full hover:bg-primary/10 text-primary transition-all"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAdd(); }}
+                    >
+                        <PlusCircle className="h-3.5 w-3.5" />
+                    </Button>
+                </div>
             </div>
             
             <div className="space-y-1 min-h-[32px] text-left">
@@ -170,6 +197,7 @@ function MotorCard({
 }) {
     const [isExpanded, setIsExpanded] = useState(false);
     const firestore = useFirestore();
+    const { toast } = useToast();
 
     let itemImageUrl: string | null = null;
     if (motor.SummaryImage && typeof motor.SummaryImage === 'string') {
@@ -212,6 +240,40 @@ function MotorCard({
                 } satisfies SecurityRuleContext);
                 errorEmitter.emit('permission-error', permissionError);
             });
+    };
+
+    const handleClearCategory = async (category: string) => {
+        const motorRef = doc(firestore, `data-warehouse/${vendorId}/dataSets/${dataSetId}/rows`, motor.id);
+        const newAccessories = masterAccessories.filter(a => a.category !== category);
+        
+        await updateDoc(motorRef, { masterAccessories: newAccessories });
+        toast({ title: `${category} Cleared` });
+    };
+
+    const handleSyncDemoCategory = async (category: string) => {
+        const motorRef = doc(firestore, `data-warehouse/${vendorId}/dataSets/${dataSetId}/rows`, motor.id);
+        let demoItems: any[] = [];
+
+        if (category === 'Propeller') {
+            demoItems = [
+                { id: `demo-p1-${Date.now()}`, name: 'Black Stainless Propeller', category: 'Propeller', isStandard: true, sellPriceExclGst: 450, items: [] },
+                { id: `demo-p2-${Date.now()}`, name: 'Polished Stainless Propeller', category: 'Propeller', isStandard: false, sellPriceExclGst: 680, items: [] }
+            ];
+        } else if (category === 'Rigging') {
+            demoItems = [
+                { id: `demo-r1-${Date.now()}`, name: 'Mechanical Rigging Kit', category: 'Rigging', isStandard: false, sellPriceExclGst: 1200, items: [] },
+                { id: `demo-r2-${Date.now()}`, name: 'Digital Electronic Controls (DEC)', category: 'Rigging', isStandard: false, sellPriceExclGst: 2850, items: [] }
+            ];
+        } else {
+            demoItems = [
+                { id: `demo-o1-${Date.now()}`, name: 'Fuel Filter Kit', category: 'Other', isStandard: true, sellPriceExclGst: 125, items: [] },
+                { id: `demo-o2-${Date.now()}`, name: 'Outboard Storage Cover', category: 'Other', isStandard: false, sellPriceExclGst: 340, items: [] }
+            ];
+        }
+
+        const newAccessories = [...masterAccessories, ...demoItems];
+        await updateDoc(motorRef, { masterAccessories: newAccessories });
+        toast({ title: `${category} Seeded`, description: "Demo hardware linked." });
     };
 
     return (
@@ -260,7 +322,7 @@ function MotorCard({
                         </p>
                         {motor.steeringType && (
                             <div className="flex items-center gap-1 mt-1 text-left">
-                                <Anchor className="h-2 w-2 text-primary" />
+                                <Anchor className="h-2.5 w-2.5 text-primary" />
                                 <span className="text-[7px] font-black uppercase tracking-widest text-primary">{motor.steeringType}</span>
                             </div>
                         )}
@@ -302,6 +364,8 @@ function MotorCard({
                             label="Propeller" 
                             items={categorized.Propeller} 
                             onAdd={() => onAddOption('Propeller')}
+                            onClear={() => handleClearCategory('Propeller')}
+                            onSync={() => handleSyncDemoCategory('Propeller')}
                             onToggleStandard={(idx) => {
                                 const actualIdx = masterAccessories.findIndex(o => o === categorized.Propeller[idx]);
                                 onToggleStandard(actualIdx);
@@ -315,6 +379,8 @@ function MotorCard({
                             label="Rigging" 
                             items={categorized.Rigging} 
                             onAdd={() => onAddOption('Rigging')}
+                            onClear={() => handleClearCategory('Rigging')}
+                            onSync={() => handleSyncDemoCategory('Rigging')}
                             onToggleStandard={(idx) => {
                                 const actualIdx = masterAccessories.findIndex(o => o === categorized.Rigging[idx]);
                                 onToggleStandard(actualIdx);
@@ -328,6 +394,8 @@ function MotorCard({
                             label="Other Parts" 
                             items={categorized.Other} 
                             onAdd={() => onAddOption('Other')}
+                            onClear={() => handleClearCategory('Other')}
+                            onSync={() => handleSyncDemoCategory('Other')}
                             onToggleStandard={(idx) => {
                                 const actualIdx = masterAccessories.findIndex(o => o === categorized.Other[idx]);
                                 onToggleStandard(actualIdx);
@@ -508,17 +576,19 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
 
     const handleHideMotor = (configType: string, motorId: string) => {
         const current = motorOverrides[configType] || { hiddenIds: [], manualIds: [] };
-        const newHidden = [...new Set([...current.hiddenIds, motorId])];
-        setValue('motorOverrides', { ...motorOverrides, [configType]: { ...current, hiddenIds: newHidden } }, { shouldDirty: true });
+        const newHidden = [...(current.hiddenIds || []), motorId];
+        const uniqueHidden = Array.from(new Set(newHidden));
+        setValue('motorOverrides', { ...motorOverrides, [configType]: { ...current, hiddenIds: uniqueHidden } }, { shouldDirty: true });
         toast({ title: "Motor Hidden" });
     };
 
     const handleAddManualEngine = (selection: any) => {
         if (!activeConfigType) return;
         const current = motorOverrides[activeConfigType] || { hiddenIds: [], manualIds: [] };
-        const newManualIds = [...new Set([...current.manualIds, ...selection.items.map((i: any) => i.rowId)])];
-        const newHidden = current.hiddenIds.filter(id => !newManualIds.includes(id));
-        setValue('motorOverrides', { ...motorOverrides, [activeConfigType]: { hiddenIds: newHidden, manualIds: newManualIds } }, { shouldDirty: true });
+        const newManualIds = [...(current.manualIds || []), ...selection.items.map((i: any) => i.rowId)];
+        const uniqueManualIds = Array.from(new Set(newManualIds));
+        const newHidden = (current.hiddenIds || []).filter(id => !uniqueManualIds.includes(id));
+        setValue('motorOverrides', { ...motorOverrides, [activeConfigType]: { hiddenIds: newHidden, manualIds: uniqueManualIds } }, { shouldDirty: true });
         setIsEngineManagerOpen(false);
         setActiveConfigType(null);
         toast({ title: "Engine Added" });
@@ -552,7 +622,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
     const currentStagedEngines = (configType: string) => {
         const overrides = motorOverrides[configType] || { manualIds: [] };
         if (!motorDataSet) return [];
-        return motorDataSet.filter(m => overrides.manualIds.includes(m.id)).map(m => ({ vendorId: motorVendor?.id || '', vendorName: motorVendor?.name || '', row: m }));
+        return motorDataSet.filter(m => (overrides.manualIds || []).includes(m.id)).map(m => ({ vendorId: motorVendor?.id || '', vendorName: motorVendor?.name || '', row: m, label: m['Model Name'] || m.name || m.id }));
     };
 
     return (
