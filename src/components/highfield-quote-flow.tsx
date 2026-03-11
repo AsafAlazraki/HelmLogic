@@ -128,7 +128,7 @@ export function HighfieldQuoteFlow({
     const [selectedMotor, setSelectedMotor] = useState<any | null>(null);
     const [selectedMotorAccessoryIds, setSelectedMotorAccessoryIds] = useState<string[]>([]);
     
-    // New: Trailer & Dealer Fit State
+    // Trailer & Dealer Fit State
     const [selectedTrailerId, setSelectedTrailerId] = useState<string | null>(null);
     const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>([]);
     const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>([]);
@@ -167,17 +167,6 @@ export function HighfieldQuoteFlow({
 
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
-
-    // Auto-select standard trailer when initializing
-    useEffect(() => {
-        if (model?.trailerConfig?.name) {
-            setSelectedTrailerId('primary-trailer');
-            const standardIds = (model.trailerConfig.options || [])
-                .filter((o: any) => o.isStandard)
-                .map((o: any) => o.id);
-            setSelectedTrailerOptionIds(standardIds);
-        }
-    }, [model]);
 
     // Filter motors based on steering requirement
     const hasConsoleSelected = useMemo(() => {
@@ -234,7 +223,6 @@ export function HighfieldQuoteFlow({
     }, [currentStep, firestore, module, model, hasConsoleSelected]);
 
     // Auto-select standard motor accessories when motor changes
-    // Refined to only pick one standard Prop and one standard Rigging
     useEffect(() => {
         if (selectedMotor) {
             const allStandard = (selectedMotor.masterAccessories || []).filter((a: any) => a.isStandard);
@@ -255,7 +243,6 @@ export function HighfieldQuoteFlow({
 
             setSelectedMotorAccessoryIds(finalStandardIds);
             
-            // Auto-scroll to accessories
             if (currentStep === 3) {
                 setTimeout(() => {
                     const firstCat = (selectedMotor.masterAccessories || [])[0]?.category || 'Propeller';
@@ -267,6 +254,22 @@ export function HighfieldQuoteFlow({
             setSelectedMotorAccessoryIds([]);
         }
     }, [selectedMotor, currentStep]);
+
+    // Handle trailer selection logic
+    const handleTrailerSelection = () => {
+        const isCurrentlySelected = selectedTrailerId === 'primary-trailer';
+        if (isCurrentlySelected) {
+            setSelectedTrailerId(null);
+            setSelectedTrailerOptionIds([]);
+        } else {
+            setSelectedTrailerId('primary-trailer');
+            // Auto-select standard options
+            const standardIds = (model.trailerConfig?.options || [])
+                .filter((o: any) => o.isStandard)
+                .map((o: any) => o.id);
+            setSelectedTrailerOptionIds(standardIds);
+        }
+    };
 
     useEffect(() => {
         if (scrollAreaRef.current) {
@@ -372,39 +375,24 @@ export function HighfieldQuoteFlow({
 
     const carouselSlides = useMemo(() => {
         const slides: { type: string; url?: string; content?: React.ReactNode }[] = [];
-        // 0: Primary Anchor
         slides.push({ type: 'boat', url: model.coverImageUrl || '' });
-        
-        // Variant
         if (activeVariant?.imageUrl) slides.push({ type: 'variant', url: activeVariant.imageUrl });
-
-        // Build (Console/Seat)
         if (buildPreviewSlide) slides.push({ type: 'build', content: buildPreviewSlide });
-
-        // Motor
         if (selectedMotor) {
             const mUrl = getMotorImgUrl(selectedMotor);
             if (mUrl) slides.push({ type: 'motor', url: mUrl });
         }
-
-        // Motor Accessories
         selectedMotorAccessories.forEach((acc: any) => {
             if (acc.imageUrl) slides.push({ type: 'accessory', url: acc.imageUrl });
         });
-
-        // Trailer
         if (selectedTrailerId && model.trailerConfig?.imageUrl) {
             slides.push({ type: 'trailer', url: model.trailerConfig.imageUrl });
         }
-
-        // Dealer Fit
         selectedDealerFitData.forEach(s => {
             s.items?.forEach((i: any) => {
                 if (i.data?.imageUrl) slides.push({ type: 'dealerfit', url: i.data.imageUrl });
             });
         });
-
-        // Gallery
         if (model.galleryImageUrls) {
             model.galleryImageUrls.forEach((url: string) => {
                 if (url !== model.coverImageUrl) slides.push({ type: 'gallery', url });
@@ -413,12 +401,10 @@ export function HighfieldQuoteFlow({
         return slides;
     }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedMotorAccessories, selectedTrailerId, selectedDealerFitData]);
 
-    // GALLERY INTELLIGENCE
     useEffect(() => {
         if (!api) return;
         api.reInit();
 
-        // Auto-slide to hardware
         if (currentStep === 3 && selectedMotor) {
             const mUrl = getMotorImgUrl(selectedMotor);
             const idx = carouselSlides.findIndex(s => s.type === 'motor' && s.url === mUrl);
@@ -462,41 +448,31 @@ export function HighfieldQuoteFlow({
         if (!activeVariant) return features;
         
         return features.filter((f: any) => {
-            // 1. Strict SKU Compatibility check
             const hasVariantRestriction = f.applicableVariantIds && f.applicableVariantIds.length > 0;
             if (hasVariantRestriction && !f.applicableVariantIds.includes(activeVariant.id)) {
                 return false;
             }
-
-            // 2. Intelligent Material Filtering
             const name = String(f.name).toUpperCase();
             if (selectedMaterial === 'PVC' && name.includes('HYP')) return false;
             if (selectedMaterial === 'HYP' && name.includes('PVC')) return false;
-
-            // 3. Prevent Hardware Leakage
             if (name.includes('FUEL FILTER') || name.includes('RAM SUPPORT')) return false;
-
             return true;
         });
     }, [model.optionalFeatures, activeVariant, selectedMaterial]);
 
     const groupedOptions = useMemo(() => {
         const features = [...relevantFeatures];
-        
         const availableConsoles = features.filter((f: any) => f.category === 'Consoles');
         const selectedConsoleId = selectedOptionIds.find(id => availableConsoles.some(f => f.id === id));
         const selectedConsole = availableConsoles.find(f => f.id === selectedConsoleId);
 
         const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
-            
             if (cat === 'Seats') {
                 if (!selectedConsole || !selectedConsole.associatedSeatId) return acc;
                 if (opt.id !== selectedConsole.associatedSeatId) return acc;
             }
-
             if (cat === 'Rigging' && !hasConsoleSelected) return acc;
-            
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(opt);
             return acc;
@@ -563,9 +539,7 @@ export function HighfieldQuoteFlow({
                 const seatIds = relevantFeatures.filter((f: any) => f.category === 'Seats').map((f: any) => f.id);
                 nextSelectedIds = nextSelectedIds.filter(i => !consoleIds.includes(i) && !seatIds.includes(i));
             }
-
             nextSelectedIds.push(id);
-
             if (currentCat === 'Consoles') {
                 if (feature.associatedSeatId && !nextSelectedIds.includes(feature.associatedSeatId)) {
                     nextSelectedIds.push(feature.associatedSeatId);
@@ -576,14 +550,11 @@ export function HighfieldQuoteFlow({
                 }
             }
         }
-
         setSelectedOptionIds(nextSelectedIds);
 
-        // AUTO-SCROLL
         if (currentStep === 2 && !isCurrentlySelected) {
             const newConsoleId = nextSelectedIds.find(id => relevantFeatures.filter(f => f.category === 'Consoles').some(f => f.id === id));
             const newConsole = relevantFeatures.find(f => f.id === newConsoleId);
-            
             const predictedVisibleCats = [...new Set(relevantFeatures.map(f => f.category || 'General Options'))].filter(cat => {
                 if (cat === 'Seats') {
                     if (newConsole && !newConsole.associatedSeatId) return false;
@@ -597,10 +568,8 @@ export function HighfieldQuoteFlow({
                 if (a === 'Rigging') return -1; if (b === 'Rigging') return 1;
                 return a.localeCompare(b);
             });
-
             const currentIdx = predictedVisibleCats.indexOf(currentCat);
             const targetCat = predictedVisibleCats[currentIdx + 1];
-
             if (targetCat) {
                 setTimeout(() => {
                     const targetElement = categoryRefs.current[targetCat];
@@ -624,7 +593,6 @@ export function HighfieldQuoteFlow({
             next = next.filter(i => i !== id);
         } else {
             if (isSingleSelectCat) {
-                // Remove existing items from the same category
                 const sameCatIds = (selectedMotor.masterAccessories || [])
                     .filter((a: any) => a.category === cat)
                     .map((a: any) => a.id);
@@ -632,7 +600,6 @@ export function HighfieldQuoteFlow({
             }
             next.push(id);
         }
-
         setSelectedMotorAccessoryIds(next);
 
         if (!isSelected) {
@@ -908,12 +875,12 @@ export function HighfieldQuoteFlow({
                                             <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Trailer Base</h3>
                                         </div>
                                         {model.trailerConfig ? (
-                                            <div className="grid grid-cols-1 gap-6">
-                                                <button onClick={() => setSelectedTrailerId(selectedTrailerId ? null : 'primary-trailer')} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1", selectedTrailerId ? "border-primary ring-2 ring-primary/20 scale-[1.01]" : "hover:border-primary/20")}>
-                                                    <div className={cn("relative aspect-video w-full bg-white", !model.trailerConfig.imageUrl && "hidden")}>{model.trailerConfig.imageUrl && <Image src={model.trailerConfig.imageUrl} alt="Trailer" fill className="object-contain mix-blend-multiply p-4" unoptimized />}</div>
-                                                    <div className="p-6 text-center border-t border-slate-50">
-                                                        <p className={cn("text-lg font-black uppercase tracking-tight", selectedTrailerId ? "text-primary" : "text-slate-900")}>{model.trailerConfig.name}</p>
-                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Staged for {boatSeriesIdentity}</p>
+                                            <div className="grid grid-cols-2 gap-6">
+                                                <button onClick={handleTrailerSelection} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                    <div className={cn("relative aspect-video w-full bg-white shrink-0", !model.trailerConfig.imageUrl && "hidden")}>{model.trailerConfig.imageUrl && <Image src={model.trailerConfig.imageUrl} alt="Trailer" fill className="object-contain mix-blend-multiply p-4" unoptimized />}</div>
+                                                    <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
+                                                        <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", selectedTrailerId === 'primary-trailer' ? "text-primary" : "text-slate-900")}>{model.trailerConfig.name}</p>
+                                                        <p className={cn("text-[9px] font-black uppercase tracking-widest", selectedTrailerId === 'primary-trailer' ? "text-primary/70" : "text-slate-400")}>${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
                                                     </div>
                                                 </button>
                                             </div>
