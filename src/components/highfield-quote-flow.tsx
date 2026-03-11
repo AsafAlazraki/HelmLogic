@@ -446,12 +446,27 @@ export function HighfieldQuoteFlow({
     const relevantFeatures = useMemo(() => {
         const features = model.optionalFeatures || [];
         if (!activeVariant) return features;
-        return features.filter((f: any) => 
-            !f.applicableVariantIds || 
-            f.applicableVariantIds.length === 0 || 
-            f.applicableVariantIds.includes(activeVariant.id)
-        );
-    }, [model.optionalFeatures, activeVariant]);
+        
+        return features.filter((f: any) => {
+            // 1. Strict SKU Compatibility check
+            const hasVariantRestriction = f.applicableVariantIds && f.applicableVariantIds.length > 0;
+            if (hasVariantRestriction && !f.applicableVariantIds.includes(activeVariant.id)) {
+                return false;
+            }
+
+            // 2. Intelligent Material Filtering (Safety net for un-tagged data)
+            // If the option name mentions a material that doesn't match our current selection, hide it.
+            const name = String(f.name).toUpperCase();
+            if (selectedMaterial === 'PVC' && name.includes('HYP')) return false;
+            if (selectedMaterial === 'HYP' && name.includes('PVC')) return false;
+
+            // 3. Prevent Hardware Leakage
+            // If it's a motor ram support or fuel filter, hide it from boat factory options
+            if (name.includes('FUEL FILTER') || name.includes('RAM SUPPORT')) return false;
+
+            return true;
+        });
+    }, [model.optionalFeatures, activeVariant, selectedMaterial]);
 
     const groupedOptions = useMemo(() => {
         const features = [...relevantFeatures];

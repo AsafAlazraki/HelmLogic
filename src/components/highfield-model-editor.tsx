@@ -576,11 +576,12 @@ function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
 }
 
 export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }: { model: any, vendorId: string, rangeId: string, isModuleView?: boolean }) {
-    const { control, watch } = useFormContext<ModelFormData>();
+    const { control, watch, setValue } = useFormContext<ModelFormData>();
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
     const watchedOptionalFeatures = useWatch({ control, name: 'optionalFeatures' }) || [];
     const [newCategoryName, setNewCategoryName] = useState('');
     const firestore = useFirestore();
+    const { toast } = useToast();
 
     const variantsQuery = useMemoFirebase(() => query(collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')), [firestore, vendorId, rangeId, model.id]);
     const { data: variants = [] } = useCollection<any>(variantsQuery);
@@ -600,6 +601,36 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
             return a.localeCompare(b);
         });
     }, [optionalFeatureFields, watchedOptionalFeatures]);
+
+    const handleClearCategory = (catName: string) => {
+        const next = watchedOptionalFeatures.filter((f: any) => (f.category || 'General Options') !== catName);
+        setValue('optionalFeatures', next, { shouldDirty: true });
+        toast({ title: "Category Purged" });
+    };
+
+    const handleSyncDemoData = (catName: string) => {
+        let demoItems: any[] = [];
+        if (catName.includes('Console')) {
+            demoItems = [
+                { id: `demo-c1-${Date.now()}`, name: 'FCT Console (Standard)', category: 'Consoles', code: 'FCT-S', sellPriceExclGst: 1850, isStandard: false, applicableVariantIds: [] },
+                { id: `demo-c2-${Date.now()}`, name: 'FCT Console (Carbon)', category: 'Consoles', code: 'FCT-C', sellPriceExclGst: 2450, isStandard: false, applicableVariantIds: [] }
+            ];
+        } else if (catName.includes('Seats')) {
+            demoItems = [
+                { id: `demo-s1-${Date.now()}`, name: 'FCT Bench Seat', category: 'Seats', code: 'FCT-BENCH', sellPriceExclGst: 850, isStandard: false, applicableVariantIds: [] }
+            ];
+        } else if (catName.includes('General')) {
+            demoItems = [
+                { id: `demo-g1-${Date.now()}`, name: 'Tailored Boat Cover', category: 'General Options', code: 'H-COV', sellPriceExclGst: 680, isStandard: false, applicableVariantIds: [] },
+                { id: `demo-g2-${Date.now()}`, name: 'FRP Bow Step with Cleat', category: 'General Options', code: 'H-BSTEP', sellPriceExclGst: 540, isStandard: false, applicableVariantIds: [] }
+            ];
+        }
+
+        if (demoItems.length > 0) {
+            setValue('optionalFeatures', [...watchedOptionalFeatures, ...demoItems], { shouldDirty: true });
+            toast({ title: "Demo Config Injected", description: `Added hardware to ${catName}` });
+        }
+    };
 
     return (
         <div className="space-y-8 pb-32 text-left">
@@ -648,7 +679,29 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                                     <span className="font-black text-[9px] uppercase tracking-[0.15em] text-slate-900 italic">{cat}</span>
                                                     <Badge className="bg-primary/10 text-primary border-none font-black text-[7px] h-4 px-1.5">{items.length}</Badge>
                                                 </div>
-                                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat === 'General Options' ? null : cat, imageUrl: null, code: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}><Plus className="h-3 w-3" /></Button>
+                                                <div className="flex items-center gap-1.5">
+                                                    <Button 
+                                                        type="button" 
+                                                        variant="secondary" 
+                                                        className="h-6 px-2 font-black uppercase text-[8px] tracking-widest bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all border-none"
+                                                        onClick={() => handleSyncDemoData(cat)}
+                                                    >
+                                                        <Zap className="h-2.5 w-2.5 mr-1 fill-current" />
+                                                        Sync Demo
+                                                    </Button>
+                                                    {items.length > 0 && (
+                                                        <Button 
+                                                            type="button" 
+                                                            variant="ghost" 
+                                                            className="h-6 px-2 font-black uppercase text-[8px] tracking-widest text-destructive hover:bg-destructive/10"
+                                                            onClick={() => handleClearCategory(cat)}
+                                                        >
+                                                            <Trash2 className="h-3 w-3 mr-1" />
+                                                            Clear
+                                                        </Button>
+                                                    )}
+                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat === 'General Options' ? null : cat, imageUrl: null, code: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}><Plus className="h-3 w-3" /></Button>
+                                                </div>
                                             </div>
                                             <CollapsibleContent><div className="grid gap-2 animate-in slide-in-from-top-1 duration-200 text-left">{items.map(item => (<OptionalFeatureItem key={item.field.id} index={item.idx} remove={removeOptionalFeature} categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'General Options' && n !== 'Consoles' && n !== 'Seats')} variants={variants} allFeatures={watchedOptionalFeatures} />))}</div></CollapsibleContent>
                                         </Collapsible>
