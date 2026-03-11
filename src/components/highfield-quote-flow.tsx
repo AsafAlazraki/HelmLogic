@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, doc, where, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,13 +31,18 @@ import {
     ExternalLink,
     ChevronDown,
     Activity,
-    CreditCard
+    CreditCard,
+    Truck,
+    Box,
+    Monitor,
+    Speaker
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useRouter } from 'next/navigation';
+import { useUser } from '@/firebase/auth/use-user';
 import {
     type CarouselApi,
     Carousel,
@@ -104,6 +109,7 @@ export function HighfieldQuoteFlow({
 }) {
     const firestore = useFirestore();
     const router = useRouter();
+    const { user } = useUser();
     const [currentStep, setCurrentStep] = useState(1);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const colorSectionRef = useRef<HTMLDivElement>(null);
@@ -121,6 +127,12 @@ export function HighfieldQuoteFlow({
     const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
     const [selectedMotor, setSelectedMotor] = useState<any | null>(null);
     const [selectedMotorAccessoryIds, setSelectedMotorAccessoryIds] = useState<string[]>([]);
+    
+    // New: Trailer & Dealer Fit State
+    const [selectedTrailerId, setSelectedTrailerId] = useState<string | null>(null);
+    const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>([]);
+    const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>([]);
+
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
     // Modal State
@@ -128,10 +140,20 @@ export function HighfieldQuoteFlow({
     const [showSpecs, setShowSpecs] = useState(false);
     const [showDocs, setShowDocs] = useState(false);
 
+    // Context Data
+    const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+    const { data: userProfile } = useDoc<any>(userProfileRef);
+    const orgId = userProfile?.organisationId;
+
     const variantsQuery = useMemoFirebase(() => 
         query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')),
     [firestore, vendor.id, rangeId, model.id]);
     const { data: variants, isLoading: variantsLoading } = useCollection<Variant>(variantsQuery);
+
+    const dealerFitQuery = useMemoFirebase(() => 
+        orgId ? collection(firestore, `organisations/${orgId}/dealerFitSelections`) : null,
+    [firestore, orgId]);
+    const { data: dealerFitSelections, isLoading: dealerFitLoading } = useCollection<any>(dealerFitQuery);
 
     const availableMaterials = useMemo(() => {
         if (!variants) return [];
@@ -145,6 +167,17 @@ export function HighfieldQuoteFlow({
 
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
+
+    // Auto-select standard trailer when initializing
+    useEffect(() => {
+        if (model?.trailerConfig?.name) {
+            setSelectedTrailerId('primary-trailer');
+            const standardIds = (model.trailerConfig.options || [])
+                .filter((o: any) => o.isStandard)
+                .map((o: any) => o.id);
+            setSelectedTrailerOptionIds(standardIds);
+        }
+    }, [model]);
 
     // Filter motors based on steering requirement
     const hasConsoleSelected = useMemo(() => {
@@ -242,6 +275,14 @@ export function HighfieldQuoteFlow({
         return (selectedMotor.masterAccessories || []).filter((a: any) => selectedMotorAccessoryIds.includes(a.id));
     }, [selectedMotor, selectedMotorAccessoryIds]);
 
+    const selectedTrailerOptionsData = useMemo(() => {
+        return model.trailerConfig?.options?.filter((o: any) => selectedTrailerOptionIds.includes(o.id)) || [];
+    }, [selectedTrailerOptionIds, model.trailerConfig]);
+
+    const selectedDealerFitData = useMemo(() => {
+        return dealerFitSelections?.filter(s => selectedDealerFitIds.includes(s.id)) || [];
+    }, [selectedDealerFitIds, dealerFitSelections]);
+
     const totalPrice = useMemo(() => {
         let total = activeVariant?.sellPriceExclGst || 0;
         selectedOptionIds.forEach(id => {
@@ -254,8 +295,19 @@ export function HighfieldQuoteFlow({
                 total += (a.sellPriceExclGst || 0);
             });
         }
+        if (selectedTrailerId && model.trailerConfig) {
+            total += (model.trailerConfig.sellPriceExclGst || 0);
+            selectedTrailerOptionsData.forEach((o: any) => {
+                total += (o.sellPriceExclGst || 0);
+            });
+        }
+        selectedDealerFitData.forEach(s => {
+            s.items?.forEach((i: any) => {
+                total += (i.data?.sellPriceExclGst || 0);
+            });
+        });
         return total;
-    }, [activeVariant, selectedOptionIds, model.optionalFeatures, selectedMotor, selectedMotorAccessories]);
+    }, [activeVariant, selectedOptionIds, model.optionalFeatures, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData]);
 
     const buildPreviewSlide = useMemo(() => {
         const imagedOptions = selectedOptionsData.filter(f => f.imageUrl && f.imageUrl !== "");
@@ -321,9 +373,21 @@ export function HighfieldQuoteFlow({
             if (mUrl) slides.push({ type: 'motor', url: mUrl });
         }
 
-        // Accessories
+        // Motor Accessories
         selectedMotorAccessories.forEach((acc: any) => {
             if (acc.imageUrl) slides.push({ type: 'accessory', url: acc.imageUrl });
+        });
+
+        // Trailer
+        if (selectedTrailerId && model.trailerConfig?.imageUrl) {
+            slides.push({ type: 'trailer', url: model.trailerConfig.imageUrl });
+        }
+
+        // Dealer Fit
+        selectedDealerFitData.forEach(s => {
+            s.items?.forEach((i: any) => {
+                if (i.data?.imageUrl) slides.push({ type: 'dealerfit', url: i.data.imageUrl });
+            });
         });
 
         // Gallery
@@ -333,30 +397,42 @@ export function HighfieldQuoteFlow({
             });
         }
         return slides;
-    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedMotorAccessories]);
+    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedMotorAccessories, selectedTrailerId, selectedDealerFitData]);
 
     // GALLERY INTELLIGENCE
     useEffect(() => {
         if (!api) return;
         api.reInit();
 
-        // High-priority: Auto-slide to hardware
-        if (selectedMotor) {
+        // Auto-slide to hardware
+        if (currentStep === 3 && selectedMotor) {
             const mUrl = getMotorImgUrl(selectedMotor);
             const idx = carouselSlides.findIndex(s => s.type === 'motor' && s.url === mUrl);
-            if (idx !== -1) {
-                setTimeout(() => api.scrollTo(idx), 800);
-                return;
+            if (idx !== -1) { setTimeout(() => api.scrollTo(idx), 800); return; }
+        }
+
+        if (currentStep === 4 && selectedTrailerId && model.trailerConfig?.imageUrl) {
+            const idx = carouselSlides.findIndex(s => s.type === 'trailer' && s.url === model.trailerConfig.imageUrl);
+            if (idx !== -1) { setTimeout(() => api.scrollTo(idx), 800); return; }
+        }
+
+        if (currentStep === 5 && selectedDealerFitIds.length > 0) {
+            const lastId = selectedDealerFitIds[selectedDealerFitIds.length - 1];
+            const sel = selectedDealerFitData.find(s => s.id === lastId);
+            const imgUrl = sel?.items?.[0]?.data?.imageUrl;
+            if (imgUrl) {
+                const idx = carouselSlides.findIndex(s => s.type === 'dealerfit' && s.url === imgUrl);
+                if (idx !== -1) { setTimeout(() => api.scrollTo(idx), 800); return; }
             }
         }
 
         const buildIdx = carouselSlides.findIndex(s => s.type === 'build');
-        if (buildIdx !== -1 && selectedOptionIds.length > 0) {
+        if (buildIdx !== -1 && selectedOptionIds.length > 0 && currentStep === 2) {
             setTimeout(() => api.scrollTo(buildIdx), 800);
             return;
         }
 
-        if (activeVariant?.imageUrl) {
+        if (activeVariant?.imageUrl && currentStep === 1) {
             const variantIdx = carouselSlides.findIndex(s => s.type === 'variant' && s.url === activeVariant.imageUrl);
             if (variantIdx !== -1) {
                 setTimeout(() => api.scrollTo(variantIdx), 800);
@@ -365,7 +441,7 @@ export function HighfieldQuoteFlow({
         }
 
         api.scrollTo(0);
-    }, [selectedColor, selectedOptionIds, selectedMotor, api, carouselSlides, activeVariant]);
+    }, [selectedColor, selectedOptionIds, selectedMotor, selectedTrailerId, selectedDealerFitIds, api, carouselSlides, activeVariant, currentStep]);
 
     const relevantFeatures = useMemo(() => {
         const features = model.optionalFeatures || [];
@@ -425,6 +501,17 @@ export function HighfieldQuoteFlow({
             return a.localeCompare(b);
         }) as [string, any][];
     }, [selectedMotor]);
+
+    const groupedDealerFit = useMemo(() => {
+        if (!dealerFitSelections) return [];
+        const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
+            const cat = sel.category || 'Other Gear';
+            if (!acc[cat]) acc[cat] = [];
+            acc[cat].push(sel);
+            return acc;
+        }, {});
+        return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b)) as [string, any][];
+    }, [dealerFitSelections]);
 
     const toggleOption = (id: string) => {
         const feature = relevantFeatures.find((f: any) => f.id === id);
@@ -502,23 +589,37 @@ export function HighfieldQuoteFlow({
         if (!accessory) return;
 
         const cat = accessory.category || 'Other Hardware';
-        let next = isSelected 
-            ? selectedMotorAccessoryIds.filter(i => i !== id)
-            : [...selectedMotorAccessoryIds, id];
-
+        let next = isSelected ? selectedMotorAccessoryIds.filter(i => i !== id) : [...selectedMotorAccessoryIds, id];
         setSelectedMotorAccessoryIds(next);
 
-        // Slide logic
         if (!isSelected) {
             const cats = groupedMotorAccessories.map(([name]) => name);
             const currentIdx = cats.indexOf(cat);
             const targetCat = cats[currentIdx + 1];
-            if (targetCat) {
-                setTimeout(() => {
-                    const target = categoryRefs.current[targetCat];
-                    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 1200);
-            }
+            if (targetCat) setTimeout(() => categoryRefs.current[targetCat]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
+        }
+    };
+
+    const toggleTrailerOption = (id: string) => {
+        const isSelected = selectedTrailerOptionIds.includes(id);
+        let next = isSelected ? selectedTrailerOptionIds.filter(i => i !== id) : [...selectedTrailerOptionIds, id];
+        setSelectedTrailerOptionIds(next);
+    };
+
+    const toggleDealerFitSelection = (id: string) => {
+        const isSelected = selectedDealerFitIds.includes(id);
+        const sel = dealerFitSelections?.find(s => s.id === id);
+        if (!sel) return;
+
+        const cat = sel.category || 'Other Gear';
+        let next = isSelected ? selectedDealerFitIds.filter(i => i !== id) : [...selectedDealerFitIds, id];
+        setSelectedDealerFitIds(next);
+
+        if (!isSelected) {
+            const cats = groupedDealerFit.map(([name]) => name);
+            const currentIdx = cats.indexOf(cat);
+            const targetCat = cats[currentIdx + 1];
+            if (targetCat) setTimeout(() => categoryRefs.current[targetCat]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
         }
     };
 
@@ -570,7 +671,7 @@ export function HighfieldQuoteFlow({
                         <Carousel className="w-full h-full" opts={{ loop: true }} setApi={setApi}>
                             <CarouselContent className="h-full">
                                 {carouselSlides.map((slide, idx) => {
-                                    const isHardware = slide.type === 'motor' || slide.type === 'accessory';
+                                    const isHardware = slide.type === 'motor' || slide.type === 'accessory' || slide.type === 'trailer' || slide.type === 'dealerfit';
                                     return (
                                         <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
                                             {slide.type === 'build' ? slide.content : (
@@ -677,8 +778,8 @@ export function HighfieldQuoteFlow({
                                             <div className="grid grid-cols-2 gap-6">
                                                 {opts.map((opt: any) => (
                                                     <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">{opt.imageUrl ? <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Package className="h-12 w-12" /></div>}</div>
-                                                        <div className="p-2 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
+                                                        <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !opt.imageUrl && "hidden")}>{opt.imageUrl && <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}</div>
+                                                        <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
                                                             <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
                                                             <p className={cn(
                                                                 "text-[10px] font-black",
@@ -709,7 +810,7 @@ export function HighfieldQuoteFlow({
                                                     return (
                                                         <button key={m.id} onClick={() => setSelectedMotor(isSelected ? null : m)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                             <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">{mUrl && <Image src={mUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
-                                                            <div className="p-2 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
+                                                            <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
                                                                 <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>
                                                                     {displayName}
                                                                 </p>
@@ -733,21 +834,14 @@ export function HighfieldQuoteFlow({
                                                     const isSelected = selectedMotorAccessoryIds.includes(opt.id);
                                                     return (
                                                         <button key={opt.id} onClick={() => toggleMotorAccessory(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1 group", isSelected ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                            {opt.imageUrl ? (
-                                                                <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">
-                                                                    <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain p-2 mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />
-                                                                    {opt.isStandard && (
-                                                                        <Badge className="absolute top-2 left-2 bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-4">STANDARD</Badge>
-                                                                    )}
-                                                                </div>
-                                                            ) : (
-                                                                opt.isStandard && (
-                                                                    <div className="p-2 pb-0 flex justify-start">
-                                                                        <Badge className="bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-4">STANDARD</Badge>
-                                                                    </div>
-                                                                )
-                                                            )}
+                                                            <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !opt.imageUrl && "hidden")}>
+                                                                {opt.imageUrl && <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain p-2 mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}
+                                                                {opt.isStandard && (
+                                                                    <Badge className="absolute top-2 left-2 bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-4">STANDARD</Badge>
+                                                                )}
+                                                            </div>
                                                             <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
+                                                                {opt.isStandard && !opt.imageUrl && <Badge className="mb-2 bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-4">STANDARD</Badge>}
                                                                 <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", isSelected ? "text-primary" : "text-slate-700")}>{opt.name}</p>
                                                                 <p className={cn(
                                                                     "text-[10px] font-black",
@@ -760,6 +854,91 @@ export function HighfieldQuoteFlow({
                                             </div>
                                         </div>
                                     ))}
+                                </div>
+                            )}
+
+                            {currentStep === 4 && (
+                                <div className="space-y-16 animate-in fade-in duration-1000 ease-in-out text-left mt-4">
+                                    <div className="space-y-8">
+                                        <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
+                                            <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                                            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Trailer Base</h3>
+                                        </div>
+                                        {model.trailerConfig ? (
+                                            <div className="grid grid-cols-1 gap-6">
+                                                <button onClick={() => setSelectedTrailerId(selectedTrailerId ? null : 'primary-trailer')} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1", selectedTrailerId ? "border-primary ring-2 ring-primary/20 scale-[1.01]" : "hover:border-primary/20")}>
+                                                    <div className={cn("relative aspect-video w-full bg-white", !model.trailerConfig.imageUrl && "hidden")}>{model.trailerConfig.imageUrl && <Image src={model.trailerConfig.imageUrl} alt="Trailer" fill className="object-contain mix-blend-multiply p-4" unoptimized />}</div>
+                                                    <div className="p-6 text-center border-t border-slate-50">
+                                                        <p className={cn("text-lg font-black uppercase tracking-tight", selectedTrailerId ? "text-primary" : "text-slate-900")}>{model.trailerConfig.name}</p>
+                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Staged for {boatSeriesIdentity}</p>
+                                                    </div>
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="py-20 text-center border-2 border-dashed rounded-2xl opacity-20"><Truck className="h-12 w-12 mx-auto mb-4" /><p className="text-[10px] font-black uppercase tracking-widest">No primary trailer defined.</p></div>
+                                        )}
+                                    </div>
+
+                                    {selectedTrailerId && model.trailerConfig?.options?.length > 0 && (
+                                        <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-700">
+                                            <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
+                                                <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Trailer Hardware</h3>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-6">
+                                                {model.trailerConfig.options.map((opt: any) => {
+                                                    const isSelected = selectedTrailerOptionIds.includes(opt.id);
+                                                    return (
+                                                        <button key={opt.id} onClick={() => toggleTrailerOption(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                            <div className="p-6 flex flex-col items-center justify-center text-center gap-1 flex-grow">
+                                                                {opt.isStandard && <Badge className="mb-2 bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-4">STANDARD</Badge>}
+                                                                <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", isSelected ? "text-primary" : "text-slate-700")}>{opt.name}</p>
+                                                                <p className={cn("text-[10px] font-black", isSelected ? "text-primary" : "text-slate-400")}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {currentStep === 5 && (
+                                <div className="space-y-16 animate-in fade-in duration-1000 ease-in-out text-left mt-4">
+                                    {dealerFitLoading ? <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div> : groupedDealerFit.length > 0 ? (
+                                        groupedDealerFit.map(([cat, opts]) => (
+                                            <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-8 scroll-mt-10">
+                                                <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
+                                                    <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
+                                                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-6">
+                                                    {opts.map((sel: any) => {
+                                                        const isSelected = selectedDealerFitIds.includes(sel.id);
+                                                        const firstItem = sel.items?.[0]?.data;
+                                                        const hasImg = firstItem?.imageUrl || firstItem?.SummaryImage;
+                                                        return (
+                                                            <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                                <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !hasImg && "hidden")}>
+                                                                    {hasImg && <Image src={hasImg} alt={sel.name} fill className="object-contain p-4 mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}
+                                                                </div>
+                                                                <div className="p-6 flex flex-col items-center justify-center text-center gap-1 flex-grow">
+                                                                    <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{sel.name}</p>
+                                                                    <p className={cn("text-[9px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>
+                                                                        {sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}
+                                                                        ${sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0).toLocaleString()}
+                                                                    </p>
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="py-20 text-center border-2 border-dashed rounded-2xl opacity-20"><Box className="h-12 w-12 mx-auto mb-4" /><p className="text-[10px] font-black uppercase tracking-widest">No dealer fit options configured.</p></div>
+                                    )}
                                 </div>
                             )}
 
@@ -794,7 +973,7 @@ export function HighfieldQuoteFlow({
                                                 <CardHeader className="bg-muted/30 border-b p-6">
                                                     <div className="flex items-center gap-3">
                                                         <Package className="h-5 w-5 text-primary" />
-                                                        <CardTitle className="text-sm font-black uppercase tracking-widest">Selected Factory Options</CardTitle>
+                                                        <CardTitle className="text-sm font-black uppercase tracking-widest">Factory Options</CardTitle>
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent className="p-0">
@@ -802,13 +981,8 @@ export function HighfieldQuoteFlow({
                                                         {selectedOptionsData.map((opt: any) => (
                                                             <div key={opt.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
                                                                 <div className="flex items-center gap-4">
-                                                                    <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
-                                                                        <Check className="h-4 w-4 text-emerald-500" />
-                                                                    </div>
-                                                                    <div>
-                                                                        <p className="text-xs font-black uppercase tracking-tight">{opt.name}</p>
-                                                                        <Badge variant="outline" className="text-[8px] font-black h-4 px-1">{opt.category || 'Standard'}</Badge>
-                                                                    </div>
+                                                                    <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center"><Check className="h-4 w-4 text-emerald-500" /></div>
+                                                                    <div><p className="text-xs font-black uppercase tracking-tight">{opt.name}</p><Badge variant="outline" className="text-[8px] font-black h-4 px-1">{opt.category || 'Standard'}</Badge></div>
                                                                 </div>
                                                                 <p className="text-xs font-bold text-slate-600">${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                             </div>
@@ -821,37 +995,59 @@ export function HighfieldQuoteFlow({
                                         {selectedMotor && (
                                             <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden">
                                                 <CardHeader className="bg-muted/30 border-b p-6">
-                                                    <div className="flex items-center gap-3">
-                                                        <Activity className="h-5 w-5 text-primary" />
-                                                        <CardTitle className="text-sm font-black uppercase tracking-widest">Powertrain Identity</CardTitle>
-                                                    </div>
+                                                    <div className="flex items-center gap-3"><Activity className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Powertrain</CardTitle></div>
                                                 </CardHeader>
                                                 <CardContent className="p-0">
                                                     <div className="p-6 border-b flex items-center justify-between">
-                                                        <div className="space-y-1">
-                                                            <p className="font-black text-lg uppercase tracking-tight text-slate-900">{getMotorDisplayName(selectedMotor)}</p>
-                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Performance Series</p>
-                                                        </div>
+                                                        <div className="space-y-1"><p className="font-black text-lg uppercase tracking-tight text-slate-900">{getMotorDisplayName(selectedMotor)}</p><p className="text-[10px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Performance Series</p></div>
                                                         <p className="font-black text-primary italic text-lg">${(selectedMotor.sellPriceExclGst || 0).toLocaleString()}</p>
                                                     </div>
                                                     {selectedMotorAccessories.length > 0 && (
                                                         <div className="divide-y bg-slate-50/50">
                                                             {selectedMotorAccessories.map((acc: any) => (
-                                                                <div key={acc.id} className="p-6 flex items-center justify-between">
-                                                                    <div className="flex items-center gap-4">
-                                                                        <div className="h-8 w-8 rounded-lg bg-white border flex items-center justify-center">
-                                                                            <Wrench className="h-4 w-4 text-primary/40" />
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="text-xs font-black uppercase tracking-tight">{acc.name}</p>
-                                                                            <Badge variant="outline" className="text-[8px] font-black h-4 px-1 border-primary/10 text-primary/60">{acc.category || 'Standard'}</Badge>
-                                                                        </div>
-                                                                    </div>
-                                                                    <p className="text-xs font-bold text-slate-600">+${(acc.sellPriceExclGst || 0).toLocaleString()}</p>
-                                                                </div>
+                                                                <div key={acc.id} className="p-6 flex items-center justify-between"><div className="flex items-center gap-4"><div className="h-8 w-8 rounded-lg bg-white border flex items-center justify-center"><Wrench className="h-4 w-4 text-primary/40" /></div><div><p className="text-xs font-black uppercase tracking-tight">{acc.name}</p><Badge variant="outline" className="text-[8px] font-black h-4 px-1 border-primary/10 text-primary/60">{acc.category || 'Standard'}</Badge></div></div><p className="text-xs font-bold text-slate-600">+${(acc.sellPriceExclGst || 0).toLocaleString()}</p></div>
                                                             ))}
                                                         </div>
                                                     )}
+                                                </CardContent>
+                                            </Card>
+                                        )}
+
+                                        {selectedTrailerId && (
+                                            <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden">
+                                                <CardHeader className="bg-muted/30 border-b p-6">
+                                                    <div className="flex items-center gap-3"><Truck className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Towing Solution</CardTitle></div>
+                                                </CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="p-6 border-b flex items-center justify-between">
+                                                        <div className="space-y-1"><p className="font-black text-lg uppercase tracking-tight text-slate-900">{model.trailerConfig.name}</p><p className="text-[10px] font-bold text-muted-foreground uppercase">Precision Transport Chassis</p></div>
+                                                        <p className="font-black text-primary italic text-lg">${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                    </div>
+                                                    {selectedTrailerOptionsData.length > 0 && (
+                                                        <div className="divide-y bg-slate-50/50">
+                                                            {selectedTrailerOptionsData.map((opt: any) => (
+                                                                <div key={opt.id} className="p-6 flex items-center justify-between"><div className="flex items-center gap-4"><div className="h-8 w-8 rounded-lg bg-white border flex items-center justify-center"><Layers className="h-4 w-4 text-primary/40" /></div><p className="text-xs font-black uppercase tracking-tight">{opt.name}</p></div><p className="text-xs font-bold text-slate-600">+${(opt.sellPriceExclGst || 0).toLocaleString()}</p></div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </CardContent>
+                                            </Card>
+                                        )}
+
+                                        {selectedDealerFitData.length > 0 && (
+                                            <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden">
+                                                <CardHeader className="bg-muted/30 border-b p-6">
+                                                    <div className="flex items-center gap-3"><Wrench className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Dealer Installations</CardTitle></div>
+                                                </CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="divide-y">
+                                                        {selectedDealerFitData.map((sel: any) => (
+                                                            <div key={sel.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                                                <div className="flex items-center gap-4"><div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center"><Check className="h-4 w-4 text-emerald-500" /></div><div><p className="text-xs font-black uppercase tracking-tight">{sel.name}</p><Badge variant="outline" className="text-[8px] font-black h-4 px-1">{sel.category || 'Gear'}</Badge></div></div>
+                                                                <p className="text-xs font-bold text-slate-600">${sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0).toLocaleString()}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </CardContent>
                                             </Card>
                                         )}
