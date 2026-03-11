@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, AlertCircle, PlusCircle, Trash2, Zap, Box } from 'lucide-react';
+import { Loader2, AlertCircle, PlusCircle, Trash2, Zap, Box, ChevronRight } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from './ui/button';
 import { MasterDataBrowserDialog } from './master-data-browser-dialog';
