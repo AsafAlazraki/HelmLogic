@@ -21,8 +21,15 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    /**
+     * Robust Admin Check
+     * Checks both the dedicated roles_admin collection and the UserProfile.appRole field.
+     */
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.appRole == 'HelmLogic Admin'
+      );
     }
 
     // --- COLLECTION RULES ---

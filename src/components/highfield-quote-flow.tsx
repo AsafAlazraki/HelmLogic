@@ -233,25 +233,6 @@ export function HighfieldQuoteFlow({
         const seatOpt = imagedOptions.find((f: any) => f.category === 'Seats');
         const otherOpts = imagedOptions.filter((f: any) => f.category !== 'Consoles' && f.category !== 'Seats');
 
-        if (imagedOptions.length <= 2 && (consoleOpt || seatOpt) && otherOpts.length === 0) {
-            return (
-                <div className="h-full w-full flex items-center bg-white">
-                    {consoleOpt && (
-                        <div className="flex-1 h-full relative">
-                            {consoleOpt.imageUrl && <Image src={consoleOpt.imageUrl} alt="Console" fill className="object-contain p-2 mix-blend-multiply" unoptimized />}
-                            <div className="absolute bottom-6 left-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Console</div>
-                        </div>
-                    )}
-                    {seatOpt && (
-                        <div className={cn("flex-1 h-full relative", consoleOpt && "border-l-2 border-slate-100")}>
-                            {seatOpt.imageUrl && <Image src={seatOpt.imageUrl} alt="Seat" fill className="object-contain p-2 mix-blend-multiply" unoptimized />}
-                            <div className="absolute bottom-6 right-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Paired Seating</div>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
         return (
             <div className="h-full w-full grid grid-cols-2 grid-rows-2 bg-white">
                 {[consoleOpt, seatOpt, ...otherOpts].filter(Boolean).slice(0, 4).map((item: any, i) => (
@@ -294,35 +275,26 @@ export function HighfieldQuoteFlow({
         return slides;
     }, [activeVariant, model, buildPreviewSlide]);
 
-    // Ensure carousel re-initializes when slides are added/removed
-    useEffect(() => {
-        if (api) api.reInit();
-    }, [api, carouselSlides]);
-
-    // Robust Auto-Slide Effect for configuration changes
     useEffect(() => {
         if (!api) return;
+        api.reInit();
 
-        // 1. Priority: Variant Render if color selected
-        if (activeVariant?.imageUrl && activeVariant.imageUrl !== model.coverImageUrl) {
+        // Auto-Slide Logic
+        const buildIdx = carouselSlides.findIndex(s => s.type === 'build');
+        if (buildIdx !== -1 && selectedOptionIds.length > 0) {
+            setTimeout(() => api.scrollTo(buildIdx), 500);
+            return;
+        }
+
+        if (activeVariant?.imageUrl) {
             const variantIdx = carouselSlides.findIndex(s => s.type === 'variant' && s.url === activeVariant.imageUrl);
             if (variantIdx !== -1) {
                 setTimeout(() => api.scrollTo(variantIdx), 500);
                 return;
             }
-        } 
-        
-        // 2. Build Slide: If any options selected
-        if (selectedOptionIds.length > 0) {
-            const buildSlideIndex = carouselSlides.findIndex(s => s.type['build']);
-            const actualIdx = carouselSlides.findIndex(s => s.type === 'build');
-            if (actualIdx !== -1) {
-                setTimeout(() => api.scrollTo(actualIdx), 600);
-            }
-        } else {
-            // 3. Reset to main if cleared
-            api.scrollTo(0);
         }
+
+        api.scrollTo(0);
     }, [selectedColor, selectedOptionIds, api, carouselSlides, activeVariant, model.coverImageUrl]);
 
     const relevantFeatures = useMemo(() => {
@@ -407,7 +379,7 @@ export function HighfieldQuoteFlow({
 
         setSelectedOptionIds(nextSelectedIds);
 
-        // --- ENHANCED PRECISION AUTO-SCROLL ---
+        // Auto-Scroll Logic
         if (currentStep === 2 && !isCurrentlySelected) {
             const newConsoleId = nextSelectedIds.find(id => relevantFeatures.filter(f => f.category === 'Consoles').some(f => f.id === id));
             const newConsole = relevantFeatures.find(f => f.id === newConsoleId);
@@ -436,7 +408,7 @@ export function HighfieldQuoteFlow({
                     if (viewport && targetElement) {
                         viewport.scrollTo({ top: targetElement.offsetTop - 20, behavior: 'smooth' });
                     }
-                }, 1000); // 1s delay for a premium feel
+                }, 1000);
             }
         }
     };
