@@ -617,7 +617,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                             <CardDescription className="text-[9px] font-black uppercase tracking-widest text-primary/60">Prototype Environment Accelerator</CardDescription>
                         </div>
                     </div>
-                    <Button type="button" onClick={handleSeedTestData} disabled={isSeeding} className="h-9 px-6 font-black uppercase text-[10px] tracking-widest bg-primary shadow-xl">
+                    <Button type="button" onClick={handleSeedTestData} disabled={isSeeding} className="h-9 px-6 font-black uppercase text-[10px] tracking-widest bg-primary shadow-xl text-white">
                         {isSeeding ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Zap className="h-4 w-4 mr-2" />}
                         Inject Build Data
                     </Button>
@@ -716,7 +716,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 title={`Manage Engines: ${formatConfigType(activeConfigType || '')}`}
                 description="Search the catalog to manually add compatible engines."
                 initialVendorId={motorVendor?.id}
-                initialStagedItems={activeConfigType ? currentStagedEngines(activeConfigType) : []}
+                initialStagedItems={activeConfigType ? currentStagedEngines(configType) : []}
             />
         </div>
     );
