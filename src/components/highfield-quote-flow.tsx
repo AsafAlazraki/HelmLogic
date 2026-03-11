@@ -163,13 +163,11 @@ export function HighfieldQuoteFlow({
 
     const boatSeriesIdentity = model?.name || 'Boat';
 
-    // Utility for image URL resolution (handles local paths, Yamaha API paths, and absolute URLs)
     const resolveImageUrl = (item: any) => {
         const path = item?.imageUrl || item?.SummaryImage || item?.url || item?.image;
         if (!path || typeof path !== 'string') return null;
         if (path.startsWith('http') || path.startsWith('data:image')) return path;
         
-        // Handle Yamaha specific paths
         if (path.includes('images/products') || path.includes('images/accessories')) {
             const prefix = path.startsWith('/') ? '' : '/';
             return `https://www.yamaha-motor.com.au${prefix}${path.trim().replace(/\\/g, '/')}`;
@@ -363,28 +361,22 @@ export function HighfieldQuoteFlow({
         return slides;
     }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedMotorAccessories, selectedTrailerId, selectedDealerFitData]);
 
-    // SMART CAROUSEL SYNC: Only scrolls when selections change, preserving index on step transitions.
     useEffect(() => {
         if (!api) return;
-        
-        // Always re-init so recognizer picks up array length changes
         api.reInit();
 
-        // Determine if a selection actually changed
         const colorChanged = prevSelectedColor.current !== selectedColor;
         const optionsChanged = JSON.stringify(prevSelectedOptions.current) !== JSON.stringify(selectedOptionIds);
         const motorChanged = prevSelectedMotor.current !== selectedMotor?.id;
         const trailerChanged = prevSelectedTrailer.current !== selectedTrailerId;
         const dealerFitChanged = JSON.stringify(prevSelectedDealerFit.current) !== JSON.stringify(selectedDealerFitIds);
 
-        // Update refs for next check
         prevSelectedColor.current = selectedColor;
         prevSelectedOptions.current = selectedOptionIds;
         prevSelectedMotor.current = selectedMotor?.id;
         prevSelectedTrailer.current = selectedTrailerId;
         prevSelectedDealerFit.current = selectedDealerFitIds;
 
-        // Auto-scroll logic (triggered ONLY by selection changes)
         if (motorChanged && selectedMotor) {
             const mUrl = resolveImageUrl(selectedMotor);
             const idx = carouselSlides.findIndex(s => s.type === 'motor' && s.url === mUrl);
@@ -415,11 +407,8 @@ export function HighfieldQuoteFlow({
             const variantIdx = carouselSlides.findIndex(s => s.type === 'variant' && s.url === activeVariant.imageUrl);
             if (variantIdx !== -1) { setTimeout(() => api.scrollTo(variantIdx), 500); return; }
         }
-
-        // NOFALLBACK: If nothing changed (like just a step transition), do nothing. Carousel stays on current index.
     }, [selectedColor, selectedOptionIds, selectedMotor, selectedTrailerId, selectedDealerFitIds, api, carouselSlides, activeVariant, currentStep]);
 
-    // Handle smooth category/section scrolling
     useEffect(() => {
         if (selectedMaterial && currentStep === 1) {
             setTimeout(() => colorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800);
@@ -529,7 +518,6 @@ export function HighfieldQuoteFlow({
         }
         setSelectedOptionIds(nextSelectedIds);
 
-        // Auto-glide logic
         if (currentStep === 2 && !isCurrentlySelected) {
             const newConsoleId = nextSelectedIds.find(id => relevantFeatures.filter(f => f.category === 'Consoles').some(f => f.id === id));
             const newConsole = relevantFeatures.find(f => f.id === newConsoleId);
@@ -817,7 +805,14 @@ export function HighfieldQuoteFlow({
                                         </div>
                                         {model.trailerConfig ? (
                                             <div className="grid grid-cols-2 gap-6">
-                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); setSelectedTrailerOptionIds(isSelected ? [] : (model.trailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); }} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                <button onClick={() => { 
+                                                    const isSelected = selectedTrailerId === 'primary-trailer'; 
+                                                    setSelectedTrailerId(isSelected ? null : 'primary-trailer'); 
+                                                    setSelectedTrailerOptionIds(isSelected ? [] : (model.trailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); 
+                                                    if (!isSelected) {
+                                                        setTimeout(() => categoryRefs.current['Trailer Hardware']?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800);
+                                                    }
+                                                }} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                     <div className={cn("relative aspect-video w-full bg-white shrink-0", !model.trailerConfig.imageUrl && "hidden")}>{model.trailerConfig.imageUrl && <Image src={model.trailerConfig.imageUrl} alt="Trailer" fill className="object-contain mix-blend-multiply p-4" unoptimized />}</div>
                                                     <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
                                                         <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", selectedTrailerId === 'primary-trailer' ? "text-primary" : "text-slate-900")}>{model.trailerConfig.name}</p>
@@ -831,7 +826,7 @@ export function HighfieldQuoteFlow({
                                     </div>
 
                                     {selectedTrailerId && model.trailerConfig?.options?.length > 0 && (
-                                        <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-700">
+                                        <div ref={el => { categoryRefs.current['Trailer Hardware'] = el; }} className="space-y-8 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
                                             <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
                                                 <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Trailer Hardware</h3>
