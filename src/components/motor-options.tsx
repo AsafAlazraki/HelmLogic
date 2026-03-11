@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useCollection, useMemoFirebase, useFirestore, useUser, useDoc } from '@/firebase';
 import { collection, query, doc, getDocs, orderBy, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -716,7 +716,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 title={`Manage Engines: ${formatConfigType(activeConfigType || '')}`}
                 description="Search the catalog to manually add compatible engines."
                 initialVendorId={motorVendor?.id}
-                initialStagedItems={activeConfigType ? currentStagedEngines(configType) : []}
+                initialStagedItems={activeConfigType ? currentStagedEngines(activeConfigType) : []}
             />
         </div>
     );
