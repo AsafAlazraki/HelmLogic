@@ -152,7 +152,7 @@ export function HighfieldQuoteFlow({
                 if (viewport && colorSectionRef.current) {
                     viewport.scrollTo({ top: colorSectionRef.current.offsetTop - 20, behavior: 'smooth' });
                 }
-            }, 500); 
+            }, 400); 
             return () => clearTimeout(timer);
         }
     }, [selectedMaterial, currentStep]);
@@ -225,17 +225,92 @@ export function HighfieldQuoteFlow({
         return total;
     }, [activeVariant, selectedOptionIds, model.optionalFeatures, selectedMotor]);
 
+    const buildPreviewSlide = useMemo(() => {
+        const imagedOptions = selectedOptionsData.filter(f => f.imageUrl && f.imageUrl !== "");
+        if (imagedOptions.length === 0) return null;
+
+        const consoleOpt = imagedOptions.find((f: any) => f.category === 'Consoles');
+        const seatOpt = imagedOptions.find((f: any) => f.category === 'Seats');
+        const otherOpts = imagedOptions.filter((f: any) => f.category !== 'Consoles' && f.category !== 'Seats');
+
+        if (imagedOptions.length <= 2 && (consoleOpt || seatOpt) && otherOpts.length === 0) {
+            return (
+                <div className="h-full w-full flex items-center bg-white">
+                    {consoleOpt && (
+                        <div className="flex-1 h-full relative">
+                            {consoleOpt.imageUrl && <Image src={consoleOpt.imageUrl} alt="Console" fill className="object-contain p-2 mix-blend-multiply" unoptimized />}
+                            <div className="absolute bottom-6 left-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Console</div>
+                        </div>
+                    )}
+                    {seatOpt && (
+                        <div className={cn("flex-1 h-full relative", consoleOpt && "border-l-2 border-slate-100")}>
+                            {seatOpt.imageUrl && <Image src={seatOpt.imageUrl} alt="Seat" fill className="object-contain p-2 mix-blend-multiply" unoptimized />}
+                            <div className="absolute bottom-6 right-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Paired Seating</div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        return (
+            <div className="h-full w-full grid grid-cols-2 grid-rows-2 bg-white">
+                {[consoleOpt, seatOpt, ...otherOpts].filter(Boolean).slice(0, 4).map((item: any, i) => (
+                    <div key={item.id} className={cn(
+                        "relative flex items-center justify-center p-1 transition-colors",
+                        i === 0 && "border-r border-b",
+                        i === 1 && "border-b",
+                        i === 2 && "border-r",
+                        "hover:bg-slate-50"
+                    )}>
+                        {item.imageUrl && <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-1 mix-blend-multiply" unoptimized />}
+                        <div className="absolute bottom-3 left-3 px-2 py-0.5 bg-slate-900/5 rounded-md text-[7px] font-black uppercase tracking-tighter text-slate-400">
+                            {item.name}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    }, [selectedOptionsData]);
+
+    const carouselSlides = useMemo(() => {
+        const slides = [];
+        // Primary Anchor: Main boat render (index 0)
+        if (model.coverImageUrl) slides.push({ type: 'boat', url: model.coverImageUrl });
+        
+        // Variant: Color-specific render (if different)
+        if (activeVariant?.imageUrl && activeVariant.imageUrl !== model.coverImageUrl) {
+            slides.push({ type: 'variant', url: activeVariant.imageUrl });
+        }
+
+        // Build: Composite option render
+        if (buildPreviewSlide) {
+            slides.push({ type: 'build', content: buildPreviewSlide });
+        }
+
+        // Gallery
+        if (model.galleryImageUrls) {
+            model.galleryImageUrls.forEach((url: string) => slides.push({ type: 'gallery', url }));
+        }
+        return slides;
+    }, [activeVariant, model, buildPreviewSlide]);
+
     // Robust Auto-Slide Effect
     useEffect(() => {
-        if (api && selectedOptionIds.length > 0) {
+        if (!api) return;
+
+        // Auto-slide to variant when color changes
+        if (activeVariant?.imageUrl && activeVariant.imageUrl !== model.coverImageUrl) {
+            const variantIdx = carouselSlides.findIndex(s => s.type === 'variant' && s.url === activeVariant.imageUrl);
+            if (variantIdx !== -1) {
+                setTimeout(() => api.scrollTo(variantIdx), 300);
+            }
+        } else if (selectedOptionIds.length > 0) {
             const buildSlideIndex = carouselSlides.findIndex(s => s.type === 'build');
             if (buildSlideIndex !== -1) {
-                // Stabilized delay for smooth UI feedback
-                const timer = setTimeout(() => api.scrollTo(buildSlideIndex), 350);
-                return () => clearTimeout(timer);
+                setTimeout(() => api.scrollTo(buildSlideIndex), 350);
             }
         }
-    }, [selectedOptionIds, api]);
+    }, [selectedColor, selectedOptionIds, api, carouselSlides, activeVariant, model.coverImageUrl]);
 
     const relevantFeatures = useMemo(() => {
         const features = model.optionalFeatures || [];
@@ -340,82 +415,13 @@ export function HighfieldQuoteFlow({
                     if (viewport && targetElement) {
                         viewport.scrollTo({ top: targetElement.offsetTop - 20, behavior: 'smooth' });
                     }
-                }, 550); // Premium pace
+                }, 550);
             }
         }
     };
 
     const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, STEPS.length));
     const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
-
-    const buildPreviewSlide = useMemo(() => {
-        const imagedOptions = selectedOptionsData.filter(f => f.imageUrl && f.imageUrl !== "");
-        if (imagedOptions.length === 0) return null;
-
-        const consoleOpt = imagedOptions.find((f: any) => f.category === 'Consoles');
-        const seatOpt = imagedOptions.find((f: any) => f.category === 'Seats');
-        const otherOpts = imagedOptions.filter((f: any) => f.category !== 'Consoles' && f.category !== 'Seats');
-
-        if (imagedOptions.length <= 2 && (consoleOpt || seatOpt) && otherOpts.length === 0) {
-            return (
-                <div className="h-full w-full flex items-center bg-white">
-                    {consoleOpt && (
-                        <div className="flex-1 h-full relative">
-                            {consoleOpt.imageUrl && <Image src={consoleOpt.imageUrl} alt="Console" fill className="object-contain p-2 mix-blend-multiply" unoptimized />}
-                            <div className="absolute bottom-6 left-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Console</div>
-                        </div>
-                    )}
-                    {seatOpt && (
-                        <div className={cn("flex-1 h-full relative", consoleOpt && "border-l-2 border-slate-100")}>
-                            {seatOpt.imageUrl && <Image src={seatOpt.imageUrl} alt="Seat" fill className="object-contain p-2 mix-blend-multiply" unoptimized />}
-                            <div className="absolute bottom-6 right-6 px-3 py-1 bg-primary text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg">Paired Seating</div>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        return (
-            <div className="h-full w-full grid grid-cols-2 grid-rows-2 bg-white">
-                {[consoleOpt, seatOpt, ...otherOpts].filter(Boolean).slice(0, 4).map((item: any, i) => (
-                    <div key={item.id} className={cn(
-                        "relative flex items-center justify-center p-1 transition-colors",
-                        i === 0 && "border-r border-b",
-                        i === 1 && "border-b",
-                        i === 2 && "border-r",
-                        "hover:bg-slate-50"
-                    )}>
-                        {item.imageUrl && <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-1 mix-blend-multiply" unoptimized />}
-                        <div className="absolute bottom-3 left-3 px-2 py-0.5 bg-slate-900/5 rounded-md text-[7px] font-black uppercase tracking-tighter text-slate-400">
-                            {item.name}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        );
-    }, [selectedOptionsData]);
-
-    const carouselSlides = useMemo(() => {
-        const slides = [];
-        // Primary Anchor: Main boat render (index 0)
-        if (model.coverImageUrl) slides.push({ type: 'boat', url: model.coverImageUrl });
-        
-        // Variant: Color-specific render (if different)
-        if (activeVariant?.imageUrl && activeVariant.imageUrl !== model.coverImageUrl) {
-            slides.push({ type: 'boat', url: activeVariant.imageUrl });
-        }
-
-        // Build: Composite option render
-        if (buildPreviewSlide) {
-            slides.push({ type: 'build', content: buildPreviewSlide });
-        }
-
-        // Gallery
-        if (model.galleryImageUrls) {
-            model.galleryImageUrls.forEach((url: string) => slides.push({ type: 'gallery', url }));
-        }
-        return slides;
-    }, [activeVariant, model, buildPreviewSlide]);
 
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
@@ -510,7 +516,7 @@ export function HighfieldQuoteFlow({
                                     <div className="space-y-6">
                                         <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
                                             <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                                            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">1. Tube Material</h3>
+                                            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Tube Material</h3>
                                         </div>
                                         <div className="grid grid-cols-2 gap-6">
                                             {availableMaterials.map((mat) => (
@@ -524,7 +530,7 @@ export function HighfieldQuoteFlow({
                                         <div ref={colorSectionRef} className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-1000 ease-out scroll-mt-10">
                                             <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
                                                 <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">2. Select Hull & Tube Color</h3>
+                                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Select Hull & Tube Color</h3>
                                             </div>
                                             <div className="grid grid-cols-2 gap-6">
                                                 {availableColors.map((color) => (
