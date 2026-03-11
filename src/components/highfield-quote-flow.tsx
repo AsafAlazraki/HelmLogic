@@ -176,7 +176,7 @@ export function HighfieldQuoteFlow({
                         setMotors(allRows.filter(r => {
                             const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
                             const matchesHp = hp >= minHp && hp <= maxHp;
-                            const matchesSteering = r.steeringType === requiredSteering; // Strict Filtering
+                            const matchesSteering = r.steeringType === requiredSteering;
                             return matchesHp && matchesSteering;
                         }).map(m => ({ ...m, vendorName: motorVendor.name })));
                     }
@@ -242,7 +242,6 @@ export function HighfieldQuoteFlow({
         const groups = features.reduce((acc: any, opt: any) => {
             const cat = opt.category || 'General Options';
             
-            // Seat visibility rule: Only show if linked console is selected
             if (cat === 'Seats') {
                 const availableConsoles = features.filter((f: any) => f.category === 'Consoles');
                 const selectedConsoleId = selectedOptionIds.find(id => availableConsoles.some(f => f.id === id));
@@ -254,7 +253,6 @@ export function HighfieldQuoteFlow({
                 }
             }
 
-            // Rigging visibility rule
             if (cat === 'Rigging' && !hasConsoleSelected) return acc;
             
             if (!acc[cat]) acc[cat] = [];
@@ -281,12 +279,10 @@ export function HighfieldQuoteFlow({
             const isSelected = prev.includes(id);
             let next = isSelected ? prev.filter(i => i !== id) : [...prev, id];
             
-            // Auto-Seat rule
             if (!isSelected && feature?.category === 'Consoles' && feature.associatedSeatId) {
                 if (!next.includes(feature.associatedSeatId)) next.push(feature.associatedSeatId);
             }
 
-            // Auto-Rigging rule
             if (!isSelected && feature?.category === 'Consoles') {
                 const riggingItem = relevantFeatures.find((f: any) => f.category === 'Rigging' || String(f.name).includes('Rigging'));
                 if (riggingItem && !next.includes(riggingItem.id)) next.push(riggingItem.id);
@@ -295,7 +291,6 @@ export function HighfieldQuoteFlow({
             return next;
         });
 
-        // Precision Auto-Scroll: Glide to Seats if Console picked, otherwise next section
         if (currentStep === 2 && !isCurrentlySelected) {
             const targetCat = (currentCat === 'Consoles' && groupedOptions.some(([n]) => n === 'Seats')) 
                 ? 'Seats' 
@@ -382,7 +377,6 @@ export function HighfieldQuoteFlow({
         return slides;
     }, [activeVariant, model, buildPreviewSlide]);
 
-    // Automated Gallery Inspection (Auto-Slide to build summary)
     useEffect(() => {
         if (!api || !buildPreviewSlide) return;
         
@@ -554,7 +548,8 @@ export function HighfieldQuoteFlow({
                                     {motorsLoading ? <div className="flex flex-col items-center py-20 gap-4"><Loader2 className="animate-spin h-12 w-12 text-primary" /><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Scanning Factory Datasets...</p></div> : (
                                         <div className="grid grid-cols-2 gap-6">
                                             {motors.map(m => {
-                                                const motorImgUrl = m.SummaryImage ? `https://www.yamaha-motor.com.au${m.SummaryImage.startsWith('/') ? '' : '/'}${m.SummaryImage}` : null;
+                                                const motorImgPath = m.SummaryImage || m.imageUrl;
+                                                const motorImgUrl = motorImgPath ? (motorImgPath.startsWith('http') ? motorImgPath : `https://www.yamaha-motor.com.au${motorImgPath.startsWith('/') ? '' : '/'}${motorImgPath}`) : null;
                                                 return (
                                                     <button key={m.id} onClick={() => setSelectedMotor(selectedMotor?.id === m.id ? null : m)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full", selectedMotor?.id === m.id ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                         <div className="relative aspect-video w-full p-6 bg-white overflow-hidden shrink-0">{motorImgUrl ? <Image src={motorImgUrl} alt="Motor" fill className="object-contain mix-blend-multiply p-4" unoptimized /> : <div className="flex h-full w-full items-center justify-center opacity-10"><Ship className="h-12 w-12" /></div>}</div>

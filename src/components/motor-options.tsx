@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useCollection, useMemoFirebase, useFirestore, useUser, useDoc } from '@/firebase';
 import { collection, query, doc, getDocs, orderBy, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronRight, Settings2, ChevronDown, Maximize2, Minimize2, Beaker, Zap, Wrench, Anchor } from 'lucide-react';
+import { Loader2, AlertCircle, Star, PlusCircle, Package, Check, X, Ship, ChevronRight, Settings2, ChevronDown, Maximize2, Minimize2, Beaker, Zap, Wrench, Anchor, Save } from 'lucide-react';
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import Image from 'next/image';
@@ -17,6 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 interface Vendor {
     id: string;
@@ -198,19 +200,25 @@ function MotorCard({
         Other: masterAccessories.filter(o => !o.category || o.category === 'Other')
     };
 
-    const handleSteeringTypeChange = async (type: string) => {
+    const handleSteeringTypeChange = (type: string) => {
         const motorRef = doc(firestore, `data-warehouse/${vendorId}/dataSets/${dataSetId}/rows`, motor.id);
-        try {
-            await updateDoc(motorRef, { steeringType: type });
-            toast({ title: "Motor Tagged", description: `Assigned ${type} steering.` });
-        } catch (e) {
-            toast({ variant: 'destructive', title: "Update Failed" });
-        }
+        const updateData = { steeringType: type };
+        updateDoc(motorRef, updateData)
+            .then(() => {
+                toast({ title: "Motor Tagged", description: `Assigned ${type} steering.` });
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: motorRef.path,
+                    operation: 'update',
+                    requestResourceData: updateData,
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            });
     };
 
     return (
         <Card className="overflow-hidden flex flex-col border-2 shadow-sm hover:border-primary/20 transition-all rounded-xl h-fit min-w-0 max-w-full bg-card group/motor">
-            {/* Header Area (Always Visible) */}
             <div 
                 className="relative cursor-pointer"
                 onClick={() => setIsExpanded(!isExpanded)}
@@ -264,7 +272,6 @@ function MotorCard({
                 </div>
             </div>
             
-            {/* Expandable Content Area */}
             {isExpanded && (
                 <CardContent className="p-4 space-y-5 min-w-0 animate-in slide-in-from-top-2 duration-200">
                     <div className="space-y-3">
@@ -423,7 +430,6 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         
         setIsSeeding(true);
         try {
-            // 1. Inject Motor Accessories into the specific outboard row
             const targetMotor = motorDataSet.find(m => String(m['Model Name']).includes('F25SMHC')) || motorDataSet[0];
             if (targetMotor) {
                 const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, targetMotor.id);
@@ -434,7 +440,6 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                 await updateDoc(motorRef, { masterAccessories: [...(targetMotor.masterAccessories || []), ...testAccs] });
             }
 
-            // 2. Inject Factory Options into the Model (using form state)
             const currentOptions = watch('optionalFeatures') || model.optionalFeatures || [];
             const testOptions = [
                 { id: 'test-factory-1', name: 'Motor Ram Support', category: 'General Options', sellPriceExclGst: 150, isStandard: false, applicableVariantIds: [] },
@@ -508,35 +513,46 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         setIsBrowserOpen(true);
     };
 
-    const handleToggleStandard = async (motorId: string, optionIndex: number) => {
+    const handleToggleStandard = (motorId: string, optionIndex: number) => {
         if (!motorVendor || !targetDataSet) return;
         const motorDoc = motorDataSet?.find(m => m.id === motorId);
         if (!motorDoc) return;
 
-        try {
-            const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, motorId);
-            const currentAccessories = [...(motorDoc.masterAccessories || [])];
-            const item = { ...currentAccessories[optionIndex] };
-            item.isStandard = !item.isStandard;
-            currentAccessories[optionIndex] = item;
-            
-            await updateDoc(motorRef, { masterAccessories: currentAccessories });
-            toast({ title: "Component Status Updated" });
-        } catch (e) { toast({ variant: 'destructive', title: "Update Failed" }); }
+        const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, motorId);
+        const currentAccessories = [...(motorDoc.masterAccessories || [])];
+        const item = { ...currentAccessories[optionIndex] };
+        item.isStandard = !item.isStandard;
+        currentAccessories[optionIndex] = item;
+        
+        updateDoc(motorRef, { masterAccessories: currentAccessories })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: motorRef.path,
+                    operation: 'update',
+                    requestResourceData: { masterAccessories: currentAccessories },
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            });
     };
 
-    const handleRemoveOption = async (motorId: string, optionIndex: number) => {
+    const handleRemoveOption = (motorId: string, optionIndex: number) => {
         if (!motorVendor || !targetDataSet) return;
         const motorDoc = motorDataSet?.find(m => m.id === motorId);
         if (!motorDoc) return;
 
-        try {
-            const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, motorId);
-            const currentAccessories = motorDoc.masterAccessories || [];
-            const newAccessories = currentAccessories.filter((_: any, i: number) => i !== optionIndex);
-            await updateDoc(motorRef, { masterAccessories: newAccessories });
-            toast({ title: "Master Accessory Removed" });
-        } catch (e) { toast({ variant: 'destructive', title: "Removal Failed" }); }
+        const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, motorId);
+        const currentAccessories = motorDoc.masterAccessories || [];
+        const newAccessories = currentAccessories.filter((_: any, i: number) => i !== optionIndex);
+        
+        updateDoc(motorRef, { masterAccessories: newAccessories })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: motorRef.path,
+                    operation: 'update',
+                    requestResourceData: { masterAccessories: newAccessories },
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            });
     };
 
     const handleHideMotor = (configType: string, motorId: string) => {
@@ -557,20 +573,29 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         toast({ title: "Engine Added" });
     };
 
-    const handleSaveOption = async (selection: any) => {
+    const handleSaveOption = (selection: any) => {
         if (!activeMotorId || !motorVendor || !targetDataSet) return;
         const motorDoc = motorDataSet?.find(m => m.id === activeMotorId);
         if (!motorDoc) return;
 
-        try {
-            const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, activeMotorId);
-            const currentAccessories = motorDoc.masterAccessories || [];
-            const newEntry = { id: `acc-${Date.now()}`, name: selection.name, category: activeCategory, items: selection.items, isStandard: false };
-            await updateDoc(motorRef, { masterAccessories: [...currentAccessories, newEntry] });
-            toast({ title: "Master Accessory Linked" });
-            setIsBrowserOpen(false);
-            setActiveMotorId(null);
-        } catch (e) { toast({ variant: 'destructive', title: "Linking Failed" }); }
+        const motorRef = doc(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDataSet.id}/rows`, activeMotorId);
+        const currentAccessories = motorDoc.masterAccessories || [];
+        const newEntry = { id: `acc-${Date.now()}`, name: selection.name, category: activeCategory, items: selection.items, isStandard: false };
+        
+        updateDoc(motorRef, { masterAccessories: [...currentAccessories, newEntry] })
+            .then(() => {
+                toast({ title: "Master Accessory Linked" });
+                setIsBrowserOpen(false);
+                setActiveMotorId(null);
+            })
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                    path: motorRef.path,
+                    operation: 'update',
+                    requestResourceData: { masterAccessories: [...currentAccessories, newEntry] },
+                } satisfies SecurityRuleContext);
+                errorEmitter.emit('permission-error', permissionError);
+            });
     };
 
     const loading = vendorsLoading || motorsLoading;
