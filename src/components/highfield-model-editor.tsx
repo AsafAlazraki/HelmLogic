@@ -94,6 +94,12 @@ export const highfieldModelSchema = z.object({
     modelCode: z.string().min(1, 'Model Code is required'),
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
+    registration: z.object({
+        price12Months: z.coerce.number().optional(),
+        stickerPrice: z.coerce.number().optional(),
+        tenderToStickerPrice: z.coerce.number().optional(),
+        trailerPrice12Months: z.coerce.number().optional(),
+    }).optional(),
     specifications: z.object({
         motorConfigurations: z.array(motorConfigSchema).default([]),
         otherSpecs: z.array(specSchema).default([]),
@@ -129,6 +135,85 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
         )}
     </div>
 );
+
+function RegistrationCard() {
+  const { control } = useFormContext<ModelFormData>();
+
+  return (
+    <Card className="rounded-xl border-2 shadow-sm text-left overflow-hidden">
+      <CardHeader className="bg-muted/10 border-b py-4">
+        <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            Registration & Compliance
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+                control={control}
+                name="registration.price12Months"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">12 Months Boat Rego</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={control}
+                name="registration.stickerPrice"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Rego Stickers (Supply & Fit)</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={control}
+                name="registration.tenderToStickerPrice"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">"Tender To" Decals</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+            )}
+            />
+            <FormField
+                control={control}
+                name="registration.trailerPrice12Months"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">12 Months Trailer Rego</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function SkuCompatibilityDialog({ 
     isOpen, 
@@ -365,216 +450,6 @@ export function VisualAssetsCard({ model, isModuleView }: { model: any, isModule
     );
 }
 
-export function DocumentsSection() {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({ control, name: "documents" });
-    const storage = useStorage();
-    const [isUploading, setIsUploading] = useState(false);
-    const [pendingFile, setPendingFile] = useState<File | null>(null);
-    const [isNamingOpen, setIsNamingOpen] = useState(false);
-    const [docName, setDocName] = useState('');
-    const { toast } = useToast();
-
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        setPendingFile(file);
-        setDocName(file.name.replace(/\.[^/.]+$/, "")); 
-        setIsNamingOpen(true);
-    };
-
-    const handleUploadConfirm = async () => {
-        if (!pendingFile || !storage || !docName.trim()) return;
-        setIsUploading(true);
-        setIsNamingOpen(false);
-        try {
-            const path = `documents/${Date.now()}-${pendingFile.name}`;
-            const url = await uploadFileToStorage(storage, pendingFile, path);
-            append({ id: `doc-${Date.now()}`, name: docName.trim(), url });
-            toast({ title: "Document Synchronized", description: `${docName} is now live.` });
-            setPendingFile(null);
-            setDocName('');
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: "Upload Failed", description: error.message });
-        } finally {
-            setIsUploading(false);
-        }
-    };
-
-    return (
-        <>
-            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
-                <CollapsibleCardHeader title="Technical Docs" count={fields.length} />
-                <CollapsibleContent>
-                    <CardContent className="pt-6 space-y-4 text-left">
-                        <div className="grid gap-2 text-left">
-                            {fields.map((field, index) => (
-                                <div key={field.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/5 group/doc text-left">
-                                    <FileText className="h-5 w-5 text-primary/40 shrink-0" />
-                                    <div className="flex-1 min-w-0 text-left">
-                                        <FormField control={control} name={`documents.${index}.name`} render={({ field }) => (
-                                            <FormControl><Input {...field} className="h-7 text-[11px] font-bold border-none bg-transparent shadow-none focus-visible:ring-0 p-0" placeholder="Document Name" /></FormControl>
-                                        )} />
-                                    </div>
-                                    <div className="flex items-center gap-1 shrink-0">
-                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 hover:bg-primary/10 text-primary" asChild title="Open Link"><a href={(field as any).url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3.5 w-3.5" /></a></Button>
-                                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/doc:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        <label className="flex flex-col items-center justify-center w-full py-6 border-2 border-dashed rounded-xl cursor-pointer bg-muted/5 hover:bg-muted/10 transition-all group/upload border-muted-foreground/20">
-                            {isUploading ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : (<><Upload className="h-6 w-6 text-muted-foreground/40 group-hover/upload:text-primary transition-colors mb-2" /><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Upload & Name Document</p></>)}
-                            <Input type="file" className="hidden" onChange={handleFileSelect} disabled={isUploading} />
-                        </label>
-                    </CardContent>
-                </CollapsibleContent>
-            </Collapsible>
-
-            <Dialog open={isNamingOpen} onOpenChange={setIsNamingOpen}>
-                <DialogContent className="sm:max-w-md rounded-2xl border-4 shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-8 border-b bg-muted/5">
-                        <DialogTitle className="text-2xl font-black uppercase tracking-tight italic">Asset Identity</DialogTitle>
-                        <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Assign a tactical label to this document</DialogDescription>
-                    </DialogHeader>
-                    <div className="p-8 space-y-6 text-left">
-                        <div className="space-y-2 text-left">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Document Name</Label>
-                            <Input 
-                                autoFocus
-                                value={docName} 
-                                onChange={e => setDocName(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleUploadConfirm()}
-                                className="h-12 font-bold border-2 rounded-xl"
-                                placeholder="e.g. FCT Console Wiring Diagram"
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
-                        <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px] border-2">Cancel</Button></DialogClose>
-                        <Button onClick={handleUploadConfirm} disabled={!docName.trim()} className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-primary text-white">
-                            Initialize Upload
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-        </>
-    );
-}
-
-function SpecsSection() {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({ control, name: "specifications.otherSpecs" });
-    const [bulkSpecs, setBulkSpecs] = useState('');
-
-    const handleBulkImport = () => {
-        const lines = bulkSpecs.split('\n').filter(line => line.trim() !== '');
-        const newSpecs = lines.map(line => {
-            const separatorIndex = line.indexOf(':');
-            let label = line.trim();
-            let value = '';
-            if (separatorIndex !== -1) { label = line.substring(0, separatorIndex).trim(); value = line.substring(separatorIndex + 1).trim(); }
-            return { id: `spec-${Date.now()}-${Math.random()}`, label, value };
-        });
-        append(newSpecs);
-        setBulkSpecs('');
-    };
-
-    return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
-            <CollapsibleCardHeader title="Engineering Data" count={fields.length} onAdd={() => append({ id: `spec-${Date.now()}`, label: '', value: '' })} />
-            <CollapsibleContent>
-                <CardContent className="space-y-4 pt-6 text-left">
-                    <div className="grid gap-2 text-left">
-                        {fields.map((field, index) => (
-                            <div key={field.id} className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 border-2 border-transparent hover:border-slate-100 transition-all group/field text-left">
-                                <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Param" className="h-8 text-[10px] font-bold border-none bg-transparent shadow-none" {...field} /></FormControl></FormItem> )} />
-                                <div className="h-4 w-px bg-slate-200" />
-                                <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-8 text-[10px] font-black text-primary border-none bg-transparent shadow-none" {...field} /></FormControl></FormItem> )} />
-                                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/field:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="p-4 bg-slate-50/50 rounded-xl border-2 border-dashed border-slate-200 space-y-3 text-left"><Textarea placeholder="Paste specs (Key: Value) one per line..." className="bg-white min-h-[100px] rounded-lg border-2 font-bold text-[10px]" value={bulkSpecs} onChange={(e) => setBulkSpecs(e.target.value)} /><Button type="button" variant="outline" className="w-full h-9 font-black uppercase text-[9px] tracking-widest rounded-lg border-2 bg-white" onClick={handleBulkImport}>Sync Bulk Parameters</Button></div>
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-}
-
-function MotorConfigurationsSection() {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({ control, name: "specifications.motorConfigurations" });
-    const configOptions = [
-        { id: 'Single', label: 'Single Engine', engineCount: 1, engineLabels: ['Engine'] },
-        { id: 'Twin', label: 'Twin Engines', engineCount: 2, engineLabels: ['Engine 1', 'Engine 2'] },
-        { id: 'Triple', label: 'Triple Engines', engineCount: 3, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3'] },
-        { id: 'Quad', label: 'Quad Engines', engineCount: 4, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3', 'Engine 4'] },
-        { id: 'SingleWithAux', label: 'Single with Aux', engineCount: 2, engineLabels: ['Main Engine', 'Auxiliary Engine'] },
-    ];
-
-    return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
-            <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none text-left">
-                <div className="flex items-center gap-3 text-left"><CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent group-data-[state=open]:bg-muted"><ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger><div className="text-left"><CardTitle className="text-[10px] font-black uppercase tracking-[0.2em]">Motor Setup</CardTitle><span className="text-[8px] font-bold text-muted-foreground uppercase">{fields.length} SCENARIOS</span></div></div>
-                <Select onValueChange={(type) => { const opt = configOptions.find(o => o.id === type); if (opt) append({ type, engines: Array.from({ length: opt.engineCount }, (_, i) => ({ label: opt.engineLabels[i], minHp: 0, maxHp: 0, recommendedHp: 0 })) }); }}><SelectTrigger className="h-8 w-[160px] font-black text-[9px] uppercase tracking-widest border-2 rounded-lg"><Plus className="h-3 w-3 mr-1.5 text-primary" /><SelectValue placeholder="Add Scenario" /></SelectTrigger><SelectContent className="rounded-xl border-2">{configOptions.map(opt => <SelectItem key={opt.id} value={opt.id} className="font-bold py-2 uppercase text-[9px]">{opt.label}</SelectItem>)}</SelectContent></Select>
-            </div>
-            <CollapsibleContent>
-                <CardContent className="p-6 space-y-4 text-left">
-                    {fields.map((field, index) => (
-                        <div key={field.id} className="relative p-4 bg-slate-50 border-2 rounded-2xl space-y-4 text-left">
-                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive" onClick={() => remove(index)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                            <h4 className="font-black text-[10px] uppercase tracking-tighter text-primary flex items-center gap-2"><Zap className="h-3 w-3 fill-current" />{field.type.replace(/([A-Z])/g, ' $1').trim()} Deployment</h4>
-                            <div className="grid gap-3 text-left">{(field as any).engines.map((engine: any, eIdx: number) => (
-                                <div key={eIdx} className="grid grid-cols-4 gap-3 items-end bg-white p-3 rounded-xl border text-left"><Label className="text-[9px] font-black uppercase text-muted-foreground truncate">{engine.label}</Label><FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${eIdx}.minHp`} render={({ field }) => ( <FormItem className="space-y-1 text-left"><FormLabel className="text-[7px] font-black uppercase">Min HP</FormLabel><FormControl><Input type="number" className="h-7 text-[10px] font-black border-none bg-slate-50 rounded-md text-center" {...field} /></FormControl></FormItem> )} /><FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${eIdx}.maxHp`} render={({ field }) => ( <FormItem className="space-y-1 text-left"><FormLabel className="text-[7px] font-black uppercase">Max HP</FormLabel><FormControl><Input type="number" className="h-7 text-[10px] font-black border-none bg-slate-50 rounded-md text-center" {...field} /></FormControl></FormItem> )} /><FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${eIdx}.recommendedHp`} render={({ field }) => ( <FormItem className="space-y-1 text-left"><FormLabel className="text-[7px] font-black uppercase">Rec. HP</FormLabel><FormControl><Input type="number" className="h-7 text-[10px] font-black text-primary border-none bg-primary/5 rounded-md text-center" {...field} /></FormControl></FormItem> )} /></div>
-                            ))}</div>
-                        </div>
-                    ))}
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-}
-
-function RulesSection({ model, modelCode }: { model: any, modelCode: string }) {
-    const { control, watch } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({ control, name: "rules" });
-    const optionalFeatures = useWatch({ control, name: "optionalFeatures" }) || [];
-    const firestore = useFirestore();
-    const { toast } = useToast();
-    const [isSyncing, setIsSyncing] = useState(false);
-
-    const handleSyncRules = async () => {
-        if (!modelCode || !model.vendorId) return;
-        setIsSyncing(true);
-        try {
-            const q = query(collection(firestore, `data-warehouse/${model.vendorId}/ranges/${model.rangeId}/models`), where('modelCode', '==', modelCode));
-            const snap = await getDocs(q);
-            const batch = writeBatch(firestore);
-            const currentRules = (control as any)._formValues.rules || [];
-            snap.docs.forEach(d => d.id !== model.id && batch.update(d.ref, { rules: currentRules }));
-            await batch.commit();
-            toast({ title: "Rules Synchronized" });
-        } catch (e) { toast({ variant: 'destructive', title: "Sync Failed" }); }
-        finally { setIsSyncing(false); }
-    };
-
-    const featureOptions = useMemo(() => optionalFeatures.map((f: any) => ({ id: f.id, label: `${f.name}${f.code ? ` (${f.code})` : ''}` })), [optionalFeatures]);
-
-    return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
-            <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none text-left"><div className="flex items-center gap-3 text-left"><CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent group-data-[state=open]:bg-muted"><ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger><CardTitle className="text-[10px] font-black uppercase tracking-[0.2em]">Guardrails</CardTitle></div><div className="flex items-center gap-2"><Button type="button" variant="secondary" className="h-8 px-4 font-black uppercase text-[8px] rounded-lg" onClick={handleSyncRules} disabled={isSyncing}>{isSyncing ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <RefreshCw className="h-3 w-3 mr-1.5" />} Sync Series</Button><Button type="button" variant="outline" className="h-8 px-4 font-black uppercase text-[8px] rounded-lg border-2" onClick={() => append({ id: `rule-${Date.now()}`, sourceType: 'option', sourceOptionId: '', type: 'include', targetOptionIds: [] })}><Plus className="h-3 w-3 mr-1.5" /> New Constraint</Button></div></div>
-            <CollapsibleContent>
-                <CardContent className="p-6 space-y-3 text-left">
-                    {fields.map((field, idx) => (
-                        <div key={field.id} className="p-4 rounded-xl border-2 bg-slate-50 relative group/rule text-left"><div className="grid grid-cols-3 gap-4 pr-8 text-left"><FormField control={control} name={`rules.${idx}.sourceOptionId`} render={({ field }) => (<FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 font-bold text-[10px] border-2 bg-white"><SelectValue placeholder="If..." /></SelectTrigger></FormControl><SelectContent>{featureOptions.map(opt => <SelectItem key={opt.id} value={opt.id} className="font-bold py-2 uppercase text-[9px]">{opt.label}</SelectItem>)}</SelectContent></Select></FormItem>)} /><FormField control={control} name={`rules.${idx}.type`} render={({ field }) => ( <FormItem><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-9 font-black text-[10px] border-2 bg-white"><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="include" className="font-black py-2 uppercase text-[9px]">MUST INCLUDE</SelectItem><SelectItem value="exclude" className="font-black py-2 uppercase text-[9px]">EXCLUDES</SelectItem></SelectContent></Select></FormItem> )} /><FormField control={control} name={`rules.${idx}.targetOptionIds`} render={({ field }) => ( <FormItem><Popover><PopoverTrigger asChild><Button variant="outline" className="w-full h-9 justify-between px-3 font-bold border-2 bg-white text-[10px]"><span>{(field.value as any)?.length > 0 ? `${(field.value as any).length} TARGETS` : 'Targets...'}</span><ChevronRight className="h-3 w-3 opacity-40" /></Button></PopoverTrigger><PopoverContent className="w-[280px] p-0 rounded-xl border-4 shadow-2xl"><Command><CommandInput placeholder="Search..." className="h-9" /><CommandList><CommandGroup>{featureOptions.map(opt => (<CommandItem key={opt.id} onSelect={() => { const next = (field.value as any)?.includes(opt.id) ? (field.value as any).filter((i:any)=>i!==opt.id) : [...((field.value as any)||[]), opt.id]; field.onChange(next); }} className="font-bold uppercase text-[9px] py-2.5 flex items-center justify-between"><span>{opt.label}</span>{(field.value as any)?.includes(opt.id) && <Check className="h-3 w-3 text-primary" />}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent></Popover></FormItem>)} /></div><Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive opacity-0 group-hover/rule:opacity-100 transition-opacity" onClick={() => remove(idx)}><Trash2 className="h-3.5 w-3.5" /></Button></div>
-                    ))}
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-}
-
 export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }: { model: any, vendorId: string, rangeId: string, isModuleView?: boolean }) {
     const { control, watch, setValue } = useFormContext<ModelFormData>();
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
@@ -602,43 +477,12 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
         });
     }, [optionalFeatureFields, watchedOptionalFeatures]);
 
-    const handleClearCategory = (catName: string) => {
-        const next = watchedOptionalFeatures.filter((f: any) => (f.category || 'General Options') !== catName);
-        setValue('optionalFeatures', next, { shouldDirty: true });
-        toast({ title: "Category Purged" });
-    };
-
-    const handleSyncDemoData = (catName: string) => {
-        let demoItems: any[] = [];
-        if (catName.includes('Console')) {
-            demoItems = [
-                { id: `demo-c1-${Date.now()}`, name: 'FCT Console (Standard)', category: 'Consoles', code: 'FCT-S', sellPriceExclGst: 1850, isStandard: false, applicableVariantIds: [] },
-                { id: `demo-c2-${Date.now()}`, name: 'FCT Console (Carbon)', category: 'Consoles', code: 'FCT-C', sellPriceExclGst: 2450, isStandard: false, applicableVariantIds: [] }
-            ];
-        } else if (catName.includes('Seats')) {
-            demoItems = [
-                { id: `demo-s1-${Date.now()}`, name: 'FCT Bench Seat', category: 'Seats', code: 'FCT-BENCH', sellPriceExclGst: 850, isStandard: false, applicableVariantIds: [] }
-            ];
-        } else if (catName.includes('General')) {
-            demoItems = [
-                { id: `demo-g1-${Date.now()}`, name: 'Tailored Boat Cover', category: 'General Options', code: 'H-COV', sellPriceExclGst: 680, isStandard: false, applicableVariantIds: [] },
-                { id: `demo-g2-${Date.now()}`, name: 'FRP Bow Step with Cleat', category: 'General Options', code: 'H-BSTEP', sellPriceExclGst: 540, isStandard: false, applicableVariantIds: [] }
-            ];
-        }
-
-        if (demoItems.length > 0) {
-            setValue('optionalFeatures', [...watchedOptionalFeatures, ...demoItems], { shouldDirty: true });
-            toast({ title: "Demo Config Injected", description: `Added hardware to ${catName}` });
-        }
-    };
-
     return (
         <div className="space-y-8 pb-32 text-left">
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start text-left">
                 <div className="lg:col-span-4 space-y-8 min-w-0 text-left">
                     <VariantsSection model={model} vendorId={vendorId} rangeId={rangeId} />
-                    <SpecsSection />
-                    <MotorConfigurationsSection />
+                    <RegistrationCard />
                 </div>
                 <div className="lg:col-span-3 space-y-8 min-w-0 text-left">
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
@@ -679,29 +523,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                                     <span className="font-black text-[9px] uppercase tracking-[0.15em] text-slate-900 italic">{cat}</span>
                                                     <Badge className="bg-primary/10 text-primary border-none font-black text-[7px] h-4 px-1.5">{items.length}</Badge>
                                                 </div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <Button 
-                                                        type="button" 
-                                                        variant="secondary" 
-                                                        className="h-6 px-2 font-black uppercase text-[8px] tracking-widest bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all border-none"
-                                                        onClick={() => handleSyncDemoData(cat)}
-                                                    >
-                                                        <Zap className="h-2.5 w-2.5 mr-1 fill-current" />
-                                                        Sync Demo
-                                                    </Button>
-                                                    {items.length > 0 && (
-                                                        <Button 
-                                                            type="button" 
-                                                            variant="ghost" 
-                                                            className="h-6 px-2 font-black uppercase text-[8px] tracking-widest text-destructive hover:bg-destructive/10"
-                                                            onClick={() => handleClearCategory(cat)}
-                                                        >
-                                                            <Trash2 className="h-3 w-3 mr-1" />
-                                                            Clear
-                                                        </Button>
-                                                    )}
-                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat === 'General Options' ? null : cat, imageUrl: null, code: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}><Plus className="h-3 w-3" /></Button>
-                                                </div>
+                                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat === 'General Options' ? null : cat, imageUrl: null, code: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}><Plus className="h-3 w-3" /></Button>
                                             </div>
                                             <CollapsibleContent><div className="grid gap-2 animate-in slide-in-from-top-1 duration-200 text-left">{items.map(item => (<OptionalFeatureItem key={item.field.id} index={item.idx} remove={removeOptionalFeature} categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'General Options' && n !== 'Consoles' && n !== 'Seats')} variants={variants} allFeatures={watchedOptionalFeatures} />))}</div></CollapsibleContent>
                                         </Collapsible>
@@ -710,9 +532,6 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                             </div>
                         </CollapsibleContent>
                     </Collapsible>
-
-                    <DocumentsSection />
-                    <RulesSection model={model} modelCode={model.modelCode} />
                 </div>
             </div>
         </div>

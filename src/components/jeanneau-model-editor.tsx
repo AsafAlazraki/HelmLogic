@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,7 +12,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/comp
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Loader2, Trash2, ChevronDown, X, Image as ImageIcon, Plus, Upload, PlusCircle, Layers, FileText, ExternalLink } from 'lucide-react';
+import { Loader2, Trash2, ChevronDown, X, Image as ImageIcon, Plus, Upload, PlusCircle, Layers, FileText, ExternalLink, ShieldCheck, DollarSign } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
@@ -57,6 +56,11 @@ export const jeanneauModelSchema = z.object({
     cost: z.coerce.number().nullable().optional(),
     sellPriceExclGst: z.coerce.number().nullable().optional(),
     freightCostExclGst: z.coerce.number().nullable().optional(),
+    registration: z.object({
+        price12Months: z.coerce.number().optional(),
+        stickerPrice: z.coerce.number().optional(),
+        trailerPrice12Months: z.coerce.number().optional(),
+    }).optional(),
     specifications: z.object({
         motorConfigurations: z.array(motorConfigSchema).default([]),
         otherSpecs: z.array(z.object({ id: z.string(), label: z.string(), value: z.string() })).default([]),
@@ -93,39 +97,83 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
     </div>
 );
 
-function GstInputPair({ control, name, label }: { control: any; name: string; label: string }) {
-    const { field } = useController({ control, name, defaultValue: null });
-    const valueExcl = field.value;
-    const calculateIncl = (val: string | number | null) => {
-        if (val === '' || val === null || val === undefined) return '';
-        const num = typeof val === 'string' ? parseFloat(val) : val;
-        if (isNaN(num)) return '';
-        return (Math.round((num * (1 + GST_RATE)) * 100) / 100).toFixed(2);
-    };
-    const valueInclDisplay = calculateIncl(valueExcl);
-    const handleExclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        field.onChange(val === '' ? null : parseFloat(val));
-    };
-    const handleInclChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const val = e.target.value;
-        if (val !== '') {
-            const num = parseFloat(val);
-            field.onChange(Math.round((num / (1 + GST_RATE)) * 100) / 100);
-        } else field.onChange(null);
-    };
+function RegistrationCard() {
+  const { control } = useFormContext<ModelFormData>();
+
+  return (
+    <Card className="rounded-xl border-2 shadow-sm text-left overflow-hidden">
+      <CardHeader className="bg-muted/10 border-b py-4">
+        <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            Registration & Compliance
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+                control={control}
+                name="registration.price12Months"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">12 Months Boat Rego</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={control}
+                name="registration.stickerPrice"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Rego Stickers (Supply & Fit)</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={control}
+                name="registration.trailerPrice12Months"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">12 Months Trailer Rego</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function JeanneauModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
+    const { control } = useFormContext<ModelFormData>();
+    
     return (
-        <div>
-            <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</FormLabel>
-            <div className="grid grid-cols-2 gap-2 mt-2">
-                <FormItem className="space-y-1">
-                    <FormLabel className="text-[10px] font-medium text-muted-foreground uppercase">excl. GST</FormLabel>
-                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-9" value={valueExcl ?? ''} onChange={handleExclChange} /></FormControl>
-                </FormItem>
-                <FormItem className="space-y-1">
-                    <FormLabel className="text-[10px] font-medium text-muted-foreground uppercase">inc. GST</FormLabel>
-                    <FormControl><Input type="number" step="any" placeholder="0.00" className="h-9" value={valueInclDisplay} onChange={handleInclChange} /></FormControl>
-                </FormItem>
+        <div className="space-y-8 max-w-full overflow-x-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
+                <div className="lg:col-span-4 space-y-8">
+                    <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
+                    <RegistrationCard />
+                </div>
+                <div className="lg:col-span-3 space-y-8">
+                    {/* Other sections... */}
+                </div>
             </div>
         </div>
     );
@@ -200,373 +248,5 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
                 </div>
             </CollapsibleContent>
         </Collapsible>
-    );
-}
-
-function JeanneauPackageItem({ index, remove }: { index: number, remove: (index: number) => void }) {
-    const { control } = useFormContext<ModelFormData>();
-    const name = useWatch({ control, name: `packages.${index}.name` });
-
-    return (
-        <Collapsible className="group/item overflow-hidden rounded-xl border bg-card shadow-sm">
-            <div className="flex items-center justify-between p-4 bg-muted/20 border-b">
-                <div className="flex items-center gap-3">
-                    <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]/item:bg-muted">
-                            <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/item:rotate-180" />
-                        </Button>
-                    </CollapsibleTrigger>
-                    <span className="font-bold text-sm">{name || 'Unnamed Package'}</span>
-                </div>
-                <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
-                    <Trash2 className="h-4 w-4" />
-                </Button>
-            </div>
-            <CollapsibleContent>
-                <div className="p-6 grid md:grid-cols-2 gap-8">
-                    <div className="space-y-6">
-                        <GstInputPair control={control} name={`packages.${index}.cost`} label="Factory Cost" />
-                        <GstInputPair control={control} name={`packages.${index}.sellPriceExclGst`} label="Retail Sell Price" />
-                    </div>
-                    <div className="space-y-3">
-                        <FormLabel className="text-xs font-bold uppercase text-muted-foreground">Included Features</FormLabel>
-                        <FormField
-                            control={control}
-                            name={`packages.${index}.includedFeatures`}
-                            render={({ field }) => (
-                                <Textarea 
-                                    className="min-h-[120px] bg-background" 
-                                    placeholder="Describe what's in this package..." 
-                                    value={Array.isArray(field.value) ? field.value.join('\n') : field.value}
-                                    onChange={(e) => field.onChange(e.target.value.split('\n').filter(Boolean))}
-                                />
-                            )}
-                        />
-                    </div>
-                </div>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-}
-
-function DocumentsSection() {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({ control, name: "documents" });
-    const storage = useStorage();
-    const [isUploading, setIsUploading] = useState(false);
-    const { toast } = useToast();
-
-    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file || !storage) return;
-        setIsUploading(true);
-        try {
-            const path = `documents/${Date.now()}-${file.name}`;
-            const url = await uploadFileToStorage(storage, file, path);
-            append({ id: `doc-${Date.now()}`, name: file.name, url });
-            toast({ title: "Document Uploaded" });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: "Upload Failed", description: error.message });
-        } finally {
-            setIsUploading(false);
-        }
-    };
-
-    return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader title="Technical Documents" count={fields.length} />
-            <CollapsibleContent>
-                <CardContent className="pt-6 space-y-4">
-                    <div className="grid gap-2">
-                        {fields.map((field, index) => (
-                            <div key={field.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/5 group/doc">
-                                <FileText className="h-5 w-5 text-primary/40 shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <FormField 
-                                        control={control} 
-                                        name={`documents.${index}.name`} 
-                                        render={({ field }) => (
-                                            <FormControl>
-                                                <Input {...field} className="h-7 text-[11px] font-bold border-none bg-transparent shadow-none focus-visible:ring-0 p-0" placeholder="Document Name" />
-                                            </FormControl>
-                                        )} 
-                                    />
-                                </div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 hover:bg-primary/10 text-primary" asChild title="Open Link">
-                                        <a href={(field as any).url} target="_blank" rel="noopener noreferrer">
-                                            <ExternalLink className="h-3.5 w-3.5" />
-                                        </a>
-                                    </Button>
-                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 opacity-0 group-hover/doc:opacity-100 transition-opacity" onClick={() => remove(index)}>
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    
-                    <label className="flex flex-col items-center justify-center w-full py-6 border-2 border-dashed rounded-xl cursor-pointer bg-muted/5 hover:bg-muted/10 transition-all group/upload border-muted-foreground/20">
-                        {isUploading ? (
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        ) : (
-                            <>
-                                <Upload className="h-6 w-6 text-muted-foreground/40 group-hover/upload:text-primary transition-colors mb-2" />
-                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Upload Manual / Spec Sheet</p>
-                            </>
-                        )}
-                        <Input type="file" className="hidden" onChange={handleUpload} disabled={isUploading} />
-                    </label>
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-}
-
-function MotorConfigurationsSection() {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({ control, name: "specifications.motorConfigurations" });
-
-    const configOptions = [
-        { id: 'Single', label: 'Single Engine', engineCount: 1, engineLabels: ['Engine'] },
-        { id: 'Twin', label: 'Twin Engines', engineCount: 2, engineLabels: ['Engine 1', 'Engine 2'] },
-        { id: 'Triple', label: 'Triple Engines', engineCount: 3, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3'] },
-        { id: 'Quad', label: 'Quad Engines', engineCount: 4, engineLabels: ['Engine 1', 'Engine 2', 'Engine 3', 'Engine 4'] },
-        { id: 'SingleWithAux', label: 'Single with Aux', engineCount: 2, engineLabels: ['Main Engine', 'Auxiliary Engine'] },
-    ];
-
-    const handleAddConfig = (type: string) => {
-        const option = configOptions.find(o => o.id === type);
-        if (!option) return;
-        append({
-            type,
-            engines: Array.from({ length: option.engineCount }, (_, i) => ({
-                label: engineLabels[i],
-                minHp: 0,
-                maxHp: 0,
-                recommendedHp: 0
-            }))
-        });
-    };
-
-    return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
-                <div className="flex items-center gap-3">
-                    <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
-                            <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                        </Button>
-                    </CollapsibleTrigger>
-                    <CardTitle className="text-lg font-bold">Motor Configurations</CardTitle>
-                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">
-                        {fields.length}
-                    </span>
-                </div>
-                <Select onValueChange={handleAddConfig}>
-                    <SelectTrigger className="h-8 w-[180px] text-xs">
-                        <SelectValue placeholder="Add Configuration" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {configOptions.map(opt => <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            </div>
-            <CollapsibleContent>
-                <CardContent className="pt-6 space-y-6">
-                    {fields.map((field, index) => (
-                        <Card key={field.id} className="relative p-4 bg-muted/10 rounded-xl border-none shadow-none">
-                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-4 w-4" /></Button>
-                            <div className="space-y-4">
-                                <h4 className="font-black text-xs uppercase tracking-tighter text-primary">{field.type.replace(/([A-Z])/g, ' $1').trim()}</h4>
-                                <div className="grid gap-4">
-                                    {(field as any).engines.map((engine: any, engineIdx: number) => (
-                                        <div key={engineIdx} className="grid grid-cols-4 gap-3 items-end border-t pt-4 first:border-0 first:pt-0">
-                                            <div className="space-y-1"><Label className="text-[10px] uppercase font-bold text-muted-foreground">{engine.label}</Label></div>
-                                            <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.minHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Min HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
-                                            <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.maxHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Max HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
-                                            <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${engineIdx}.recommendedHp`} render={({ field }) => ( <FormItem className="space-y-1"><FormLabel className="text-[9px] uppercase">Rec. HP</FormLabel><FormControl><Input type="number" className="h-8 text-xs" {...field} /></FormControl></FormItem> )} />
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </Card>
-                    ))}
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-}
-
-export function JeanneauModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
-    const { control, watch } = useFormContext<ModelFormData>();
-    const [bulkFeatures, setBulkFeatures] = useState('');
-    const [packageCategories, setPackageCategories] = useState<string[]>([]);
-    const [newPackageCategory, setNewPackageCategory] = useState('');
-
-    const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control, name: "specifications.otherSpecs" });
-    const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control, name: "standardFeatures" });
-    const { fields: packageFields, append: appendPackage, remove: removePackage } = useFieldArray({ control, name: "packages" });
-    const { fields: colorFields, append: appendColor, remove: removeColor } = useFieldArray({ control, name: "colors" });
-
-    const watchedPackages = useWatch({ control, name: 'packages' }) || [];
-
-    useEffect(() => {
-        if (watchedPackages) {
-            const currentCats = [...new Set(watchedPackages.map((p: any) => p.category).filter(Boolean) as string[])];
-            setPackageCategories(currentCats);
-        }
-    }, [watchedPackages]);
-
-    const SpecsSection = () => (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader 
-                title="General Specifications" 
-                count={specFields.length} 
-                onAdd={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}
-            />
-            <CollapsibleContent>
-                <CardContent className="space-y-4 pt-6">
-                    <div className="grid gap-3">
-                        {specFields.map((field, index) => (
-                            <div key={field.id} className="flex items-center gap-2 group/field">
-                                <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" className="h-9" {...field} /></FormControl></FormItem> )} />
-                                <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-9 font-medium" {...field} /></FormControl></FormItem> )} />
-                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/field:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4" /></Button>
-                            </div>
-                        ))}
-                    </div>
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-
-    const FeaturesSection = () => (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader 
-                title="Standard Features" 
-                count={featureFields.length} 
-                onAdd={() => appendFeature('')}
-            />
-            <CollapsibleContent>
-                <CardContent className="space-y-4 pt-6">
-                    <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
-                        {featureFields.map((field, index) => (
-                            <div key={field.id} className="flex items-center gap-2 group/feat">
-                                <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input className="h-9" {...field} /></FormControl></FormItem> )} />
-                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4" /></Button>
-                            </div>
-                        ))}
-                    </div>
-                    <Separator />
-                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
-                        <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import</Label>
-                        <Textarea placeholder="Paste one feature per line here..." className="bg-background min-h-[100px]" value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                        <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { 
-                            const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
-                            replaceFeatures([...(watch('standardFeatures') || []), ...newFeatures]); 
-                            setBulkFeatures(''); 
-                        }}>Append Bulk Items</Button>
-                    </div>
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-
-    return (
-        <div className="space-y-8 max-w-full overflow-x-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
-                <div className={cn("space-y-8", isModuleView ? "lg:col-span-3" : "lg:col-span-4")}>
-                    {isModuleView ? (
-                        <>
-                            <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
-                        </>
-                    ) : (
-                        <>
-                            <SpecsSection />
-                            <MotorConfigurationsSection />
-                            <FeaturesSection />
-                        </>
-                    )}
-                </div>
-                <div className={cn("space-y-8", isModuleView ? "lg:col-span-4" : "lg:col-span-3")}>
-                    {isModuleView ? (
-                        <>
-                            <SpecsSection />
-                            <MotorConfigurationsSection />
-                            <FeaturesSection />
-                        </>
-                    ) : <VisualAssetsCard model={model} isModuleView={!!isModuleView} />}
-                </div>
-            </div>
-
-            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-                <CollapsibleCardHeader 
-                    title="Model Packages" 
-                    count={watchedPackages?.length || 0}
-                />
-                <CollapsibleContent>
-                    <CardContent className="space-y-10 pt-8">
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="flex gap-2 p-1 bg-muted rounded-md">
-                                <Input placeholder="New Category Name" value={newPackageCategory} onChange={(e) => setNewPackageCategory(e.target.value)} className="w-48 h-8 text-xs bg-background" />
-                                <Button type="button" size="sm" className="h-8 text-xs hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { if(newPackageCategory) { setPackageCategories([...packageCategories, newPackageCategory]); setNewPackageCategory(''); }}}>Add Category</Button>
-                            </div>
-                        </div>
-                        
-                        {packageCategories.length > 0 ? packageCategories.map(cat => (
-                            <Collapsible key={cat} className="space-y-4" defaultOpen>
-                                <div className="flex justify-between items-center bg-muted/30 p-3 rounded-lg border-l-4 border-primary">
-                                    <div className="flex items-center gap-2">
-                                        <CollapsibleTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-accent hover:text-accent-foreground transition-colors">
-                                                <ChevronDown className="h-4 w-4" />
-                                            </Button>
-                                        </CollapsibleTrigger>
-                                        <h3 className="font-black text-sm uppercase tracking-tighter">{cat}</h3>
-                                    </div>
-                                    <Button type="button" variant="outline" size="sm" className="h-7 text-[10px] font-bold hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => appendPackage({ id: `pkg-${Date.now()}`, name: '', category: cat, includedFeatures: [] })}><PlusCircle className="h-3 w-3 mr-1.5" />Add Package</Button>
-                                </div>
-                                <CollapsibleContent className="space-y-4 pt-2">
-                                    {packageFields.map((field, index) => watchedPackages[index]?.category === cat && (
-                                        <JeanneauPackageItem key={field.id} index={index} remove={removePackage} />
-                                    ))}
-                                </CollapsibleContent>
-                            </Collapsible>
-                        )) : (
-                            <div className="text-center py-12 border-2 border-dashed rounded-2xl bg-muted/5">
-                                <Layers className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
-                                <p className="text-sm font-medium text-muted-foreground">No package categories defined. Add one above to get started.</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </CollapsibleContent>
-            </Collapsible>
-
-            <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-                <CollapsibleCardHeader 
-                    title="Color Variants" 
-                    count={colorFields.length}
-                    onAdd={() => appendColor({ id: `col-${Date.now()}`, name: '', imageUrls: [] })}
-                />
-                <CollapsibleContent>
-                    <CardContent className="pt-8 space-y-6">
-                        {colorFields.map((field, index) => (
-                            <Card key={field.id} className="p-5 border rounded-xl bg-muted/5">
-                                <div className="flex items-end gap-6">
-                                    <FormField control={control} name={`colors.${index}.name`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel className="text-xs font-bold uppercase text-muted-foreground">Variant Name</FormLabel><FormControl><Input placeholder="Color Name" className="h-9 font-bold" {...field} /></FormControl></FormItem> )} />
-                                    <div className="flex-1">
-                                        <GstInputPair control={control} name={`colors.${index}.sellPriceExclGst`} label="Upcharge (Sell)" />
-                                    </div>
-                                    <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => removeColor(index)}><Trash2 className="h-4 w-4" /></Button>
-                                </div>
-                            </Card>
-                        ))}
-                    </CardContent>
-                </CollapsibleContent>
-            </Collapsible>
-            
-            <DocumentsSection />
-        </div>
     );
 }

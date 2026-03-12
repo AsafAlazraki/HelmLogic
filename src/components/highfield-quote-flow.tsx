@@ -37,7 +37,9 @@ import {
     Monitor,
     Speaker,
     Trash2,
-    Zap
+    Zap,
+    DollarSign,
+    Tag
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -69,6 +71,7 @@ import {
     TableHead,
     TableHeader
 } from "@/components/ui/table";
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface Variant {
     id: string;
@@ -118,16 +121,23 @@ export function HighfieldQuoteFlow({
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const materialSectionRef = useRef<HTMLDivElement>(null);
     const colorSectionRef = useRef<HTMLDivElement>(null);
+    const registrationSectionRef = useRef<HTMLDivElement>(null);
+    const trailerRegoSectionRef = useRef<HTMLDivElement>(null);
     const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
     
     // Selection State
     const [selectedMaterial, setSelectedMaterial] = useState<'PVC' | 'HYP' | null>(null);
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
+    const [isRegoSelected, setIsRegoSelected] = useState(false);
+    const [isStickerSelected, setIsStickerSelected] = useState(false);
+    const [isTenderToSelected, setIsTenderToSelected] = useState(false);
+    
     const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
     const [selectedMotor, setSelectedMotor] = useState<any | null>(null);
     const [selectedMotorAccessoryIds, setSelectedMotorAccessoryIds] = useState<string[]>([]);
     const [selectedTrailerId, setSelectedTrailerId] = useState<string | null>(null);
     const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>([]);
+    const [isTrailerRegoSelected, setIsTrailerRegoSelected] = useState(false);
     const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>([]);
 
     // Carousel State
@@ -197,59 +207,34 @@ export function HighfieldQuoteFlow({
     // Intelligent Selection Reconciliation
     const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
         if (selectedMaterial === mat) return;
-        
         const currentVariant = variants?.find(v => v.id === selectedColor);
         const prevColorName = currentVariant?.colorName;
-        
         setSelectedMaterial(mat);
-        
         if (variants && prevColorName) {
             const matchingVariant = variants.find(v => v.material === mat && v.colorName === prevColorName);
-            if (matchingVariant) {
-                setSelectedColor(matchingVariant.id);
-                return;
-            }
+            if (matchingVariant) { setSelectedColor(matchingVariant.id); return; }
         }
-        
         setSelectedColor(null);
     };
 
     // Smart Option Relinking
     useEffect(() => {
         if (!selectedColor || !variants || !model.optionalFeatures) return;
-        
         const newVariant = variants.find(v => v.id === selectedColor);
         if (!newVariant) return;
-
         setSelectedOptionIds(prevIds => {
             let changed = false;
             const nextIds = [...prevIds].map(id => {
                 const currentOption = model.optionalFeatures.find((f: any) => f.id === id);
                 if (!currentOption) return id;
-
-                const isCompatible = !currentOption.applicableVariantIds?.length || 
-                                    currentOption.applicableVariantIds.includes(newVariant.id);
-
+                const isCompatible = !currentOption.applicableVariantIds?.length || currentOption.applicableVariantIds.includes(newVariant.id);
                 if (!isCompatible) {
                     const baseName = currentOption.name.split(' - ')[0];
-                    const sibling = model.optionalFeatures.find((f: any) => 
-                        f.id !== id &&
-                        f.name.startsWith(baseName) &&
-                        (!f.applicableVariantIds?.length || f.applicableVariantIds.includes(newVariant.id)) &&
-                        (f.category === currentOption.category)
-                    );
-
-                    if (sibling) {
-                        changed = true;
-                        return sibling.id;
-                    } else {
-                        changed = true;
-                        return null;
-                    }
+                    const sibling = model.optionalFeatures.find((f: any) => f.id !== id && f.name.startsWith(baseName) && (!f.applicableVariantIds?.length || f.applicableVariantIds.includes(newVariant.id)) && (f.category === currentOption.category));
+                    if (sibling) { changed = true; return sibling.id; } else { changed = true; return null; }
                 }
                 return id;
             }).filter(Boolean) as string[];
-
             return changed ? nextIds : prevIds;
         });
     }, [selectedColor, variants, model.optionalFeatures]);
@@ -264,20 +249,16 @@ export function HighfieldQuoteFlow({
                 const allVendors = vendorsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
                 const allModuleVendorIds = [...(module.associatedVendorIds || []), module.mainVendorId].filter(Boolean);
                 const motorVendor = allVendors.find(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
-
                 if (motorVendor) {
                     const dsSnap = await getDocs(collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets'));
                     const datasets = dsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
                     const targetDS = datasets.find(s => s.name.toLowerCase().includes('outboard') || s.name.toLowerCase().includes('motor')) || datasets[0];
-                    
                     if (targetDS) {
                         const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`));
                         const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-                        
                         const maxHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 999;
                         const minHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.minHp || 0;
                         const requiredSteering = hasConsoleSelected ? 'Forward Control' : 'Tiller';
-
                         setMotors(allRows.filter(r => {
                             const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
                             return hp >= minHp && hp <= maxHp && r.steeringType === requiredSteering;
@@ -295,22 +276,12 @@ export function HighfieldQuoteFlow({
             const allStandard = (selectedMotor.masterAccessories || []).filter((a: any) => a.isStandard);
             const finalStandardIds: string[] = [];
             const processedCats = new Set<string>();
-
             allStandard.forEach((a: any) => {
                 const cat = a.category || 'Other';
-                if (cat === 'Propeller' || cat === 'Rigging') {
-                    if (!processedCats.has(cat)) {
-                        finalStandardIds.push(a.id);
-                        processedCats.add(cat);
-                    }
-                } else {
-                    finalStandardIds.push(a.id);
-                }
+                if (cat === 'Propeller' || cat === 'Rigging') { if (!processedCats.has(cat)) { finalStandardIds.push(a.id); processedCats.add(cat); } } else { finalStandardIds.push(a.id); }
             });
             setSelectedMotorAccessoryIds(finalStandardIds);
-        } else {
-            setSelectedMotorAccessoryIds([]);
-        }
+        } else { setSelectedMotorAccessoryIds([]); }
     }, [selectedMotor]);
 
     const activeVariant = useMemo(() => {
@@ -338,6 +309,13 @@ export function HighfieldQuoteFlow({
     const totalPrice = useMemo(() => {
         let total = activeVariant?.sellPriceExclGst || 0;
         selectedOptionsData.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
+        if (isRegoSelected) {
+            total += (model.registration?.price12Months || 0);
+            if (isStickerSelected) {
+                total += (model.registration?.stickerPrice || 0);
+                if (isTenderToSelected) total += (model.registration?.tenderToStickerPrice || 0);
+            }
+        }
         if (selectedMotor) {
             total += (selectedMotor.sellPriceExclGst || 0);
             selectedMotorAccessories.forEach((a: any) => { total += (a.sellPriceExclGst || 0); });
@@ -345,12 +323,11 @@ export function HighfieldQuoteFlow({
         if (selectedTrailerId && model.trailerConfig) {
             total += (model.trailerConfig.sellPriceExclGst || 0);
             selectedTrailerOptionsData.forEach((o: any) => { total += (o.sellPriceExclGst || 0); });
+            if (isTrailerRegoSelected) total += (model.registration?.trailerPrice12Months || 0);
         }
-        selectedDealerFitData.forEach(s => {
-            s.items?.forEach((i: any) => { total += (i.data?.sellPriceExclGst || 0); });
-        });
+        selectedDealerFitData.forEach(s => { s.items?.forEach((i: any) => { total += (i.data?.sellPriceExclGst || 0); }); });
         return total;
-    }, [activeVariant, selectedOptionsData, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData]);
+    }, [activeVariant, selectedOptionsData, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration]);
 
     const resolveImageUrl = (item: any) => {
         const path = item?.imageUrl || item?.SummaryImage || item?.url || item?.image;
@@ -368,7 +345,6 @@ export function HighfieldQuoteFlow({
         const seatOpt = imagedOptions.find((f: any) => f.category === 'Seats');
         const itemsToShow = [consoleOpt, seatOpt].filter(Boolean);
         if (itemsToShow.length === 0) return null;
-
         return (
             <div className={cn("h-full w-full grid bg-white", itemsToShow.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
                 {itemsToShow.map((item: any, i) => (
@@ -402,13 +378,11 @@ export function HighfieldQuoteFlow({
         const motorChanged = prevSelectedMotor.current !== selectedMotor?.id;
         const trailerChanged = prevSelectedTrailer.current !== selectedTrailerId;
         const dealerFitChanged = JSON.stringify(prevSelectedDealerFit.current) !== JSON.stringify(selectedDealerFitIds);
-
         prevSelectedColor.current = selectedColor;
         prevSelectedOptions.current = selectedOptionIds;
         prevSelectedMotor.current = selectedMotor?.id;
         prevSelectedTrailer.current = selectedTrailerId;
         prevSelectedDealerFit.current = selectedDealerFitIds;
-
         if (motorChanged && selectedMotor) {
             const mUrl = resolveImageUrl(selectedMotor);
             const idx = carouselSlides.findIndex(s => s.type === 'motor' && s.url === mUrl);
@@ -439,6 +413,14 @@ export function HighfieldQuoteFlow({
     useEffect(() => {
         if (selectedMaterial && currentStep === 1) setTimeout(() => colorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
     }, [selectedMaterial, currentStep]);
+
+    useEffect(() => {
+        if (selectedColor && currentStep === 1) setTimeout(() => registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
+    }, [selectedColor, currentStep]);
+
+    useEffect(() => {
+        if (selectedTrailerId && currentStep === 4) setTimeout(() => trailerRegoSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
+    }, [selectedTrailerId, currentStep]);
 
     useEffect(() => {
         if (scrollAreaRef.current) {
@@ -486,7 +468,6 @@ export function HighfieldQuoteFlow({
         const currentCat = feature.category || 'General Options';
         const isCurrentlySelected = selectedOptionIds.includes(id);
         let nextSelectedIds = [...selectedOptionIds];
-
         if (isCurrentlySelected) {
             nextSelectedIds = nextSelectedIds.filter(i => i !== id);
             if (currentCat === 'Consoles') {
@@ -521,16 +502,11 @@ export function HighfieldQuoteFlow({
         const isSelected = selectedMotorAccessoryIds.includes(id);
         const cat = accessory.category || 'Other Hardware';
         const isSingleSelect = cat === 'Propeller' || cat === 'Rigging';
-        
         let next = isSelected ? selectedMotorAccessoryIds.filter(i => i !== id) : [...selectedMotorAccessoryIds];
-        
         if (!isSelected) {
-            if (isSingleSelect) {
-                next = next.filter(i => selectedMotor.masterAccessories.find((a: any) => a.id === i)?.category !== cat);
-            }
+            if (isSingleSelect) { next = next.filter(i => selectedMotor.masterAccessories.find((a: any) => a.id === i)?.category !== cat); }
             next.push(id);
         }
-        
         setSelectedMotorAccessoryIds(next);
         if (!isSelected) {
             const motorCats = ['Propeller', 'Rigging', 'Other Hardware'];
@@ -541,10 +517,7 @@ export function HighfieldQuoteFlow({
 
     const toggleTrailerOption = (id: string) => {
         const isSelected = selectedTrailerOptionIds.includes(id);
-        setSelectedTrailerOptionIds(isSelected 
-            ? selectedTrailerOptionIds.filter(i => i !== id) 
-            : [...selectedTrailerOptionIds, id]
-        );
+        setSelectedTrailerOptionIds(isSelected ? selectedTrailerOptionIds.filter(i => i !== id) : [...selectedTrailerOptionIds, id]);
     };
 
     const toggleDealerFitSelection = (id: string) => {
@@ -661,12 +634,49 @@ export function HighfieldQuoteFlow({
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 {availableColors.map((color) => (
-                                                    <button key={color.id} onClick={() => { setSelectedColor(color.id); setTimeout(() => categoryRefs.current[groupedOptions[0]?.[0] || 'Consoles']?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent p-1", selectedColor === color.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
+                                                    <button key={color.id} onClick={() => { setSelectedColor(color.id); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent p-1", selectedColor === color.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
                                                         <div className="relative aspect-video w-full bg-white">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-1" unoptimized />}</div>
                                                         <div className={cn("p-2 text-center border-t transition-colors", selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-50")}><p className={cn("text-[9px] font-black uppercase tracking-widest", selectedColor === color.id ? "text-primary" : "text-slate-600")}>{color.name}</p></div>
                                                     </button>
                                                 ))}
                                             </div>
+                                        </div>
+                                    )}
+                                    {selectedColor && (
+                                        <div ref={registrationSectionRef} className="mt-12 space-y-6 animate-in slide-in-from-bottom-4 duration-1000 scroll-mt-10">
+                                            <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Registration & Compliance</h3>
+                                            </div>
+                                            <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white space-y-6">
+                                                <div className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", isRegoSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={() => setIsRegoSelected(!isRegoSelected)}>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center border-2", isRegoSelected ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-200 text-slate-300")}><Check className="h-4 w-4" /></div>
+                                                        <div><p className={cn("text-[10px] font-black uppercase tracking-widest", isRegoSelected ? "text-primary" : "text-slate-600")}>12 Months Registration</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Maritime Safety Compliance</p></div>
+                                                    </div>
+                                                    <p className={cn("font-black text-xs", isRegoSelected ? "text-primary" : "text-slate-400")}>${(model.registration?.price12Months || 0).toLocaleString()}</p>
+                                                </div>
+                                                {isRegoSelected && (
+                                                    <div className="grid grid-cols-1 gap-3 pt-2 animate-in slide-in-from-top-2 duration-500">
+                                                        <div className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", isStickerSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={() => setIsStickerSelected(!isStickerSelected)}>
+                                                            <div className="flex items-center gap-4">
+                                                                <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center border-2", isStickerSelected ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-200 text-slate-300")}><Tag className="h-4 w-4" /></div>
+                                                                <div><p className={cn("text-[10px] font-black uppercase tracking-widest", isStickerSelected ? "text-primary" : "text-slate-600")}>Registration Stickers</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Custom Cut (Supply & Fit)</p></div>
+                                                            </div>
+                                                            <p className={cn("font-black text-xs", isStickerSelected ? "text-primary" : "text-slate-400")}>+${(model.registration?.stickerPrice || 0).toLocaleString()}</p>
+                                                        </div>
+                                                        {isStickerSelected && vendor.slug === 'highfield' && (
+                                                            <div className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", isTenderToSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={() => setIsTenderToSelected(!isTenderToSelected)}>
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center border-2", isTenderToSelected ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-200 text-slate-300")}><Anchor className="h-4 w-4" /></div>
+                                                                    <div><p className={cn("text-[10px] font-black uppercase tracking-widest", isTenderToSelected ? "text-primary" : "text-slate-600")}>"Tender To" Decal</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Specific Yacht Association</p></div>
+                                                                </div>
+                                                                <p className={cn("font-black text-xs", isTenderToSelected ? "text-primary" : "text-slate-400")}>+${(model.registration?.tenderToStickerPrice || 0).toLocaleString()}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </Card>
                                         </div>
                                     )}
                                 </div>
@@ -711,11 +721,11 @@ export function HighfieldQuoteFlow({
                                                     const displayName = getMotorDisplayName(m);
                                                     const isSelected = selectedMotor?.id === m.id;
                                                     return (
-                                                        <button key={m.id} onClick={() => { setSelectedMotor(isSelected ? null : m); if (!isSelected) setTimeout(() => categoryRefs.current['Propeller']?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                        <button key={m.id} onClick={() => { setSelectedMotor(isSelected ? null : m); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                             <div className="relative h-24 w-full bg-white overflow-hidden shrink-0">{mUrl && <Image src={mUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
                                                             <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
                                                                 <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{displayName}</p>
-                                                                <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-primary")}>{m['HP Rating']} HP • ${(m.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                                <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{m['HP Rating']} HP • ${(m.sellPriceExclGst || 0).toLocaleString()}</p>
                                                             </div>
                                                         </button>
                                                     );
@@ -758,7 +768,7 @@ export function HighfieldQuoteFlow({
                                         </div>
                                         {model.trailerConfig ? (
                                             <div className="grid grid-cols-2 gap-4">
-                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); if (!isSelected) { setSelectedTrailerOptionIds((model.trailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); setTimeout(() => categoryRefs.current['Trailer Hardware']?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200); } }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); if (!isSelected) { setSelectedTrailerOptionIds((model.trailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); } }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                     <div className={cn("relative aspect-video w-full bg-white shrink-0", !model.trailerConfig.imageUrl && "hidden")}>{model.trailerConfig.imageUrl && <Image src={model.trailerConfig.imageUrl} alt="Trailer" fill className="object-contain mix-blend-multiply p-4" unoptimized />}</div>
                                                     <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
                                                         <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", selectedTrailerId === 'primary-trailer' ? "text-primary" : "text-slate-900")}>{model.trailerConfig.name}</p>
@@ -768,27 +778,44 @@ export function HighfieldQuoteFlow({
                                             </div>
                                         ) : <div className="py-16 text-center border-2 border-dashed rounded-xl opacity-20"><Truck className="h-10 w-10 mx-auto mb-3" /><p className="text-[9px] font-black uppercase tracking-widest">No primary trailer defined.</p></div>}
                                     </div>
-                                    {selectedTrailerId && model.trailerConfig?.options?.length > 0 && (
-                                        <div ref={el => { categoryRefs.current['Trailer Hardware'] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
-                                            <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
-                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Hardware</h3>
+                                    {selectedTrailerId && (
+                                        <>
+                                            {model.trailerConfig?.options?.length > 0 && (
+                                                <div ref={el => { categoryRefs.current['Trailer Hardware'] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
+                                                    <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                        <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Hardware</h3>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        {model.trailerConfig.options.map((opt: any) => {
+                                                            const isSelected = selectedTrailerOptionIds.includes(opt.id);
+                                                            return (
+                                                                <button key={opt.id} onClick={() => toggleTrailerOption(opt.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-md border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-sm ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                                    <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
+                                                                        {opt.isStandard && <Badge className="mb-1.5 bg-emerald-500 text-white border-none font-black text-[6px] uppercase h-3.5 px-1">STANDARD</Badge>}
+                                                                        <p className={cn("text-[10px] font-black uppercase tracking-widest leading-tight", isSelected ? "text-primary" : "text-slate-700")}>{opt.name}</p>
+                                                                        <p className={cn("text-[9px] font-black", isSelected ? "text-primary" : "text-slate-400")}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                                    </div>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            <div ref={trailerRegoSectionRef} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
+                                                <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Registration</h3>
+                                                </div>
+                                                <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", isTrailerRegoSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "border-transparent hover:border-primary/20")} onClick={() => setIsTrailerRegoSelected(!isTrailerRegoSelected)}>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", isTrailerRegoSelected ? "bg-primary border-primary text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Truck className="h-5 w-5" /></div>
+                                                        <div><p className={cn("text-[11px] font-black uppercase tracking-widest", isTrailerRegoSelected ? "text-primary" : "text-slate-600")}>12 Months Trailer Rego</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Government Compliance</p></div>
+                                                    </div>
+                                                    <p className={cn("font-black text-sm", isTrailerRegoSelected ? "text-primary" : "text-slate-400")}>${(model.registration?.trailerPrice12Months || 0).toLocaleString()}</p>
+                                                </div>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                {model.trailerConfig.options.map((opt: any) => {
-                                                    const isSelected = selectedTrailerOptionIds.includes(opt.id);
-                                                    return (
-                                                        <button key={opt.id} onClick={() => toggleTrailerOption(opt.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-md border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-sm ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                            <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                                {opt.isStandard && <Badge className="mb-1.5 bg-emerald-500 text-white border-none font-black text-[6px] uppercase h-3.5 px-1">STANDARD</Badge>}
-                                                                <p className={cn("text-[10px] font-black uppercase tracking-widest leading-tight", isSelected ? "text-primary" : "text-slate-700")}>{opt.name}</p>
-                                                                <p className={cn("text-[9px] font-black", isSelected ? "text-primary" : "text-slate-400")}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
-                                                            </div>
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
+                                        </>
                                     )}
                                 </div>
                             )}
@@ -825,10 +852,64 @@ export function HighfieldQuoteFlow({
                                 <div className="space-y-8 animate-in fade-in duration-1000 mt-4">
                                     <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full"><div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /><h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Project Build Summary</h3></div>
                                     <div className="space-y-4">
-                                        <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Ship className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Base Vessel</CardTitle></div></CardHeader><CardContent className="p-4"><div className="flex items-center justify-between"><div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{range?.name} {boatSeriesIdentity}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMaterial} • {activeVariant?.name || 'Standard Color'}</p></div><p className="font-black text-primary italic text-sm">${(activeVariant?.sellPriceExclGst || 0).toLocaleString()}</p></div></CardContent></Card>
+                                        <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Ship className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Base Vessel</CardTitle></div></CardHeader><CardContent className="p-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="space-y-0.5">
+                                                    <p className="font-black text-sm uppercase tracking-tight text-slate-900">{range?.name} {boatSeriesIdentity}</p>
+                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMaterial} • {activeVariant?.name || 'Standard Color'}</p>
+                                                </div>
+                                                <p className="font-black text-primary italic text-sm">${(activeVariant?.sellPriceExclGst || 0).toLocaleString()}</p>
+                                            </div>
+                                            {isRegoSelected && (
+                                                <div className="mt-4 pt-4 border-t border-dashed space-y-2">
+                                                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-600">
+                                                        <span>12 MONTHS REGISTRATION</span>
+                                                        <span>${(model.registration?.price12Months || 0).toLocaleString()}</span>
+                                                    </div>
+                                                    {isStickerSelected && (
+                                                        <div className="flex items-center justify-between text-[10px] font-bold text-slate-600">
+                                                            <span>REGISTRATION STICKERS</span>
+                                                            <span>${(model.registration?.stickerPrice || 0).toLocaleString()}</span>
+                                                        </div>
+                                                    )}
+                                                    {isTenderToSelected && (
+                                                        <div className="flex items-center justify-between text-[10px] font-bold text-slate-600">
+                                                            <span>"TENDER TO" DECAL</span>
+                                                            <span>${(model.registration?.tenderToStickerPrice || 0).toLocaleString()}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </CardContent></Card>
                                         {selectedOptionsData.length > 0 && <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Package className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Factory Options</CardTitle></div></CardHeader><CardContent className="p-0"><div className="divide-y">{selectedOptionsData.map((opt: any) => (<div key={opt.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors"><div className="flex items-center gap-3"><div className="h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center"><Check className="h-3 w-3 text-emerald-500" /></div><div><p className="text-[10px] font-black uppercase tracking-tight">{opt.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1">{opt.category || 'Standard'}</Badge></div></div><p className="text-[10px] font-bold text-slate-600">${(opt.sellPriceExclGst || 0).toLocaleString()}</p></div>))}</div></CardContent></Card>}
                                         {selectedMotor && <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Powertrain</CardTitle></div></CardHeader><CardContent className="p-0"><div className="p-4 border-b flex items-center justify-between"><div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{getMotorDisplayName(selectedMotor)}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Performance</p></div><p className="font-black text-primary italic text-sm">${(selectedMotor.sellPriceExclGst || 0).toLocaleString()}</p></div>{selectedMotorAccessories.length > 0 && <div className="divide-y bg-slate-50/50">{selectedMotorAccessories.length > 0 && selectedMotorAccessories.map((acc: any) => (<div key={acc.id} className="p-4 flex items-center justify-between"><div className="flex items-center gap-3"><div className="h-6 w-6 rounded-lg bg-white border flex items-center justify-center"><Wrench className="h-3 w-3 text-primary/40" /></div><div><p className="text-[10px] font-black uppercase tracking-tight">{acc.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1 border-primary/10 text-primary/60">{acc.category || 'Standard'}</Badge></div></div><p className="text-[10px] font-bold text-slate-600">+${(acc.sellPriceExclGst || 0).toLocaleString()}</p></div>))}</div>}</CardContent></Card>}
-                                        {selectedTrailerId && model.trailerConfig && <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Towing Solution</CardTitle></div></CardHeader><CardContent className="p-0"><div className="p-4 border-b flex items-center justify-between"><div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{model.trailerConfig.name}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">Precision Chassis</p></div><p className="font-black text-primary italic text-sm">${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p></div>{selectedTrailerOptionsData.length > 0 && <div className="divide-y bg-slate-50/50">{selectedTrailerOptionsData.map((opt: any) => (<div key={opt.id} className="p-4 flex items-center justify-between"><div className="flex items-center gap-3"><div className="h-6 w-6 rounded-lg bg-white border flex items-center justify-center"><Layers className="h-3 w-3 text-primary/40" /></div><p className="text-[10px] font-black uppercase tracking-tight">{opt.name}</p></div><p className="text-[10px] font-bold text-slate-600">+${(opt.sellPriceExclGst || 0).toLocaleString()}</p></div>))}</div>}</CardContent></Card>}
+                                        {selectedTrailerId && model.trailerConfig && <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Towing Solution</CardTitle></div></CardHeader><CardContent className="p-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="space-y-0.5">
+                                                    <p className="font-black text-sm uppercase tracking-tight text-slate-900">{model.trailerConfig.name}</p>
+                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Precision Chassis</p>
+                                                </div>
+                                                <p className="font-black text-primary italic text-sm">${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
+                                            </div>
+                                            {isTrailerRegoSelected && (
+                                                <div className="mt-4 pt-4 border-t border-dashed">
+                                                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-600">
+                                                        <span>12 MONTHS TRAILER REGISTRATION</span>
+                                                        <span>${(model.registration?.trailerPrice12Months || 0).toLocaleString()}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {selectedTrailerOptionsData.length > 0 && (
+                                                <div className="mt-4 pt-4 border-t border-dashed space-y-3">
+                                                    {selectedTrailerOptionsData.map((opt: any) => (
+                                                        <div key={opt.id} className="flex items-center justify-between text-[10px] font-bold text-slate-600">
+                                                            <span>{opt.name.toUpperCase()}</span>
+                                                            <span>+${(opt.sellPriceExclGst || 0).toLocaleString()}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </CardContent></Card>}
                                         {selectedDealerFitData.length > 0 && <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Dealer Fitments</CardTitle></div></CardHeader><CardContent className="p-0"><div className="divide-y">{selectedDealerFitData.map((sel: any) => (<div key={sel.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors"><div className="flex items-center gap-3"><div className="h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center"><Check className="h-3 w-3 text-emerald-500" /></div><div><p className="text-[10px] font-black uppercase tracking-tight">{sel.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1">{sel.category || 'Gear'}</Badge></div></div><p className="text-[10px] font-bold text-slate-600">${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0)).toLocaleString()}</p></div>))}</div></CardContent></Card>}
                                     </div>
                                 </div>

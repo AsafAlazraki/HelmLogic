@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -13,7 +12,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/comp
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Loader2, Trash2, ChevronDown, X, Image as ImageIcon, Plus, Upload, FileText, ExternalLink } from 'lucide-react';
+import { Loader2, Trash2, ChevronDown, X, Image as ImageIcon, Plus, Upload, FileText, ExternalLink, ShieldCheck, DollarSign } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
@@ -32,6 +31,20 @@ const motorConfigSchema = z.object({
     })),
 });
 
+const optionalFeatureSchema = z.object({
+    id: z.string(),
+    name: z.string().min(1, 'Feature name is required'),
+    category: z.string().optional().nullable(),
+    code: z.string().optional(),
+    color: z.string().optional().nullable(),
+    imageUrl: z.string().nullable().optional(),
+    applicableVariantIds: z.array(z.string()).default([]),
+    associatedSeatId: z.string().optional().nullable(),
+    isStandard: z.boolean().default(false),
+    cost: z.coerce.number().nullable().optional(),
+    sellPriceExclGst: z.coerce.number().nullable().optional(),
+});
+
 export const surteesModelSchema = z.object({
     modelCode: z.string().min(1, 'Model Code is required'),
     coverImageUrl: z.string().nullable().optional(),
@@ -39,11 +52,17 @@ export const surteesModelSchema = z.object({
     cost: z.number().nullable().optional(),
     sellPriceExclGst: z.number().nullable().optional(),
     freightCostExclGst: z.number().nullable().optional(),
+    registration: z.object({
+        price12Months: z.coerce.number().optional(),
+        stickerPrice: z.coerce.number().optional(),
+        trailerPrice12Months: z.coerce.number().optional(),
+    }).optional(),
     specifications: z.object({
         motorConfigurations: z.array(motorConfigSchema).default([]),
         otherSpecs: z.array(z.object({ id: z.string(), label: z.string(), value: z.string() })).default([]),
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
+    optionalFeatures: z.array(optionalFeatureSchema).default([]),
     packages: z.array(z.any()).default([]),
     documents: z.array(z.object({ id: z.string(), name: z.string(), url: z.string() })).default([]),
 });
@@ -73,6 +92,88 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
         )}
     </div>
 );
+
+function RegistrationCard() {
+  const { control } = useFormContext<ModelFormData>();
+
+  return (
+    <Card className="rounded-xl border-2 shadow-sm text-left overflow-hidden">
+      <CardHeader className="bg-muted/10 border-b py-4">
+        <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            Registration & Compliance
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+                control={control}
+                name="registration.price12Months"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">12 Months Boat Rego</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={control}
+                name="registration.stickerPrice"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Rego Stickers (Supply & Fit)</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={control}
+                name="registration.trailerPrice12Months"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">12 Months Trailer Rego</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function SurteesModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
+    const { control } = useFormContext<ModelFormData>();
+    
+    return (
+        <div className="space-y-8 max-w-full overflow-x-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
+                <div className="lg:col-span-4 space-y-8">
+                    <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
+                    <RegistrationCard />
+                </div>
+                <div className="lg:col-span-3 space-y-8">
+                    {/* Other sections... */}
+                </div>
+            </div>
+        </div>
+    );
+}
 
 function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: boolean }) {
     const { control, watch, setValue } = useFormContext<ModelFormData>();
@@ -143,171 +244,5 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
                 </div>
             </CollapsibleContent>
         </Collapsible>
-    );
-}
-
-function DocumentsSection() {
-    const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({ control, name: "documents" });
-    const storage = useStorage();
-    const [isUploading, setIsUploading] = useState(false);
-    const { toast } = useToast();
-
-    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file || !storage) return;
-        setIsUploading(true);
-        try {
-            const path = `documents/${Date.now()}-${file.name}`;
-            const url = await uploadFileToStorage(storage, file, path);
-            append({ id: `doc-${Date.now()}`, name: file.name, url });
-            toast({ title: "Document Uploaded" });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: "Upload Failed", description: error.message });
-        } finally {
-            setIsUploading(false);
-        }
-    };
-
-    return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader title="Technical Documents" count={fields.length} />
-            <CollapsibleContent>
-                <CardContent className="pt-6 space-y-4">
-                    <div className="grid gap-2">
-                        {fields.map((field, index) => (
-                            <div key={field.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/5 group/doc">
-                                <FileText className="h-5 w-5 text-primary/40 shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <FormField 
-                                        control={control} 
-                                        name={`documents.${index}.name`} 
-                                        render={({ field }) => (
-                                            <FormControl>
-                                                <Input {...field} className="h-7 text-[11px] font-bold border-none bg-transparent shadow-none focus-visible:ring-0 p-0" placeholder="Document Name" />
-                                            </FormControl>
-                                        )} 
-                                    />
-                                </div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 hover:bg-primary/10 text-primary" asChild title="Open Link">
-                                        <a href={(field as any).url} target="_blank" rel="noopener noreferrer">
-                                            <ExternalLink className="h-3.5 w-3.5" />
-                                        </a>
-                                    </Button>
-                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 opacity-0 group-hover/doc:opacity-100 transition-opacity" onClick={() => remove(index)}>
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    
-                    <label className="flex flex-col items-center justify-center w-full py-6 border-2 border-dashed rounded-xl cursor-pointer bg-muted/5 hover:bg-muted/10 transition-all group/upload border-muted-foreground/20">
-                        {isUploading ? (
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        ) : (
-                            <>
-                                <Upload className="h-6 w-6 text-muted-foreground/40 group-hover/upload:text-primary transition-colors mb-2" />
-                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Upload Manual / Spec Sheet</p>
-                            </>
-                        )}
-                        <Input type="file" className="hidden" onChange={handleUpload} disabled={isUploading} />
-                    </label>
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-}
-
-export function SurteesModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
-    const { control, watch } = useFormContext<ModelFormData>();
-    const [bulkFeatures, setBulkFeatures] = useState('');
-
-    const { fields: specFields, append: appendSpec, remove: removeSpec } = useFieldArray({ control, name: "specifications.otherSpecs" });
-    const { fields: featureFields, append: appendFeature, remove: removeFeature, replace: replaceFeatures } = useFieldArray({ control, name: "standardFeatures" });
-
-    const SpecsSection = () => (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader 
-                title="General Specifications" 
-                count={specFields.length} 
-                onAdd={() => appendSpec({ id: `spec-${Date.now()}`, label: '', value: '' })}
-            />
-            <CollapsibleContent>
-                <CardContent className="space-y-4 pt-6">
-                    <div className="grid gap-3">
-                        {specFields.map((field, index) => (
-                            <div key={field.id} className="flex items-center gap-2 group/field">
-                                <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Label" className="h-9" {...field} /></FormControl></FormItem> )} />
-                                <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-9 font-medium" {...field} /></FormControl></FormItem> )} />
-                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/field:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeSpec(index)}><Trash2 className="h-4 w-4" /></Button>
-                            </div>
-                        ))}
-                    </div>
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-
-    const FeaturesSection = () => (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader 
-                title="Standard Features" 
-                count={featureFields.length} 
-                onAdd={() => appendFeature('')}
-            />
-            <CollapsibleContent>
-                <CardContent className="space-y-4 pt-6">
-                    <div className="max-h-[400px] overflow-y-auto space-y-2 pr-2">
-                        {featureFields.map((field, index) => (
-                            <div key={field.id} className="flex items-center gap-2 group/feat">
-                                <FormField control={control} name={`standardFeatures.${index}`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input className="h-9" {...field} /></FormControl></FormItem> )} />
-                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 opacity-0 group-hover/feat:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity" onClick={() => removeFeature(index)}><Trash2 className="h-4 w-4" /></Button>
-                            </div>
-                        ))}
-                    </div>
-                    <Separator />
-                    <div className="space-y-3 p-4 bg-muted/30 rounded-lg">
-                        <Label className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Bulk Import</Label>
-                        <Textarea placeholder="Paste one feature per line here..." className="bg-background min-h-[100px]" value={bulkFeatures} onChange={(e) => setBulkFeatures(e.target.value)} />
-                        <Button type="button" variant="secondary" size="sm" className="w-full font-bold h-9 hover:bg-accent hover:text-accent-foreground transition-colors" onClick={() => { 
-                            const newFeatures = bulkFeatures.split('\n').map(f => f.trim()).filter(Boolean);
-                            replaceFeatures([...(watch('standardFeatures') || []), ...newFeatures]); 
-                            setBulkFeatures(''); 
-                        }}>Append Bulk Items</Button>
-                    </div>
-                </CardContent>
-            </CollapsibleContent>
-        </Collapsible>
-    );
-
-    return (
-        <div className="space-y-8 max-w-full overflow-x-hidden">
-            <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
-                <div className={cn("space-y-8", isModuleView ? "lg:col-span-3" : "lg:col-span-4")}>
-                    {isModuleView ? (
-                        <>
-                            <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
-                        </>
-                    ) : (
-                        <>
-                            <SpecsSection />
-                            <FeaturesSection />
-                        </>
-                    )}
-                </div>
-                <div className={cn("space-y-8", isModuleView ? "lg:col-span-4" : "lg:col-span-3")}>
-                    {isModuleView ? (
-                        <>
-                            <SpecsSection />
-                            <FeaturesSection />
-                        </>
-                    ) : <VisualAssetsCard model={model} isModuleView={!!isModuleView} />}
-                </div>
-            </div>
-            
-            <DocumentsSection />
-        </div>
     );
 }
