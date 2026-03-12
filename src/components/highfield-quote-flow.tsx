@@ -200,32 +200,17 @@ export function HighfieldQuoteFlow({
         
         setSelectedMaterial(mat);
         
-        // Strategy: Try to find the SAME color in the new material
+        // Strategy: Try to find the SAME color name in the new material
         if (variants && prevColorName) {
             const matchingVariant = variants.find(v => v.material === mat && v.colorName === prevColorName);
             if (matchingVariant) {
                 setSelectedColor(matchingVariant.id);
-                // Continuity achieved
                 return;
             }
         }
         
-        // Reset if no color match found
+        // Reset if no direct color match
         setSelectedColor(null);
-        setSelectedOptionIds([]);
-        setSelectedMotor(null);
-        setSelectedMotorAccessoryIds([]);
-        setSelectedTrailerId(null);
-        setSelectedTrailerOptionIds([]);
-        setSelectedDealerFitIds([]);
-    };
-
-    const toggleTrailerOption = (id: string) => {
-        const isSelected = selectedTrailerOptionIds.includes(id);
-        setSelectedTrailerOptionIds(isSelected 
-            ? selectedTrailerOptionIds.filter(i => i !== id) 
-            : [...selectedTrailerOptionIds, id]
-        );
     };
 
     // Smart Option Relinking
@@ -287,6 +272,7 @@ export function HighfieldQuoteFlow({
                     if (targetDS) {
                         const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`));
                         const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+                        
                         const maxHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 999;
                         const minHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.minHp || 0;
                         const requiredSteering = hasConsoleSelected ? 'Forward Control' : 'Tiller';
@@ -302,7 +288,7 @@ export function HighfieldQuoteFlow({
         fetchMotors();
     }, [currentStep, firestore, module, model, hasConsoleSelected]);
 
-    // Motor Accessory Auto-Selection
+    // Motor Accessory Logic
     useEffect(() => {
         if (selectedMotor) {
             const allStandard = (selectedMotor.masterAccessories || []).filter((a: any) => a.isStandard);
@@ -468,7 +454,7 @@ export function HighfieldQuoteFlow({
             const name = String(f.name).toUpperCase();
             if (selectedMaterial === 'PVC' && name.includes('HYP')) return false;
             if (selectedMaterial === 'HYP' && name.includes('PVC')) return false;
-            return !name.includes('FUEL FILTER') && !name.includes('RAM SUPPORT');
+            return true;
         });
     }, [model.optionalFeatures, activeVariant, selectedMaterial]);
 
@@ -533,17 +519,30 @@ export function HighfieldQuoteFlow({
         const isSelected = selectedMotorAccessoryIds.includes(id);
         const cat = accessory.category || 'Other Hardware';
         const isSingleSelect = cat === 'Propeller' || cat === 'Rigging';
+        
         let next = isSelected ? selectedMotorAccessoryIds.filter(i => i !== id) : [...selectedMotorAccessoryIds];
+        
         if (!isSelected) {
-            if (isSingleSelect) next = next.filter(i => selectedMotor.masterAccessories.find((a: any) => a.id === i)?.category !== cat);
+            if (isSingleSelect) {
+                next = next.filter(i => selectedMotor.masterAccessories.find((a: any) => a.id === i)?.category !== cat);
+            }
             next.push(id);
         }
+        
         setSelectedMotorAccessoryIds(next);
         if (!isSelected) {
             const motorCats = ['Propeller', 'Rigging', 'Other Hardware'];
             const nextCat = motorCats[motorCats.indexOf(cat) + 1];
             if (nextCat) setTimeout(() => categoryRefs.current[nextCat]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
         }
+    };
+
+    const toggleTrailerOption = (id: string) => {
+        const isSelected = selectedTrailerOptionIds.includes(id);
+        setSelectedTrailerOptionIds(isSelected 
+            ? selectedTrailerOptionIds.filter(i => i !== id) 
+            : [...selectedTrailerOptionIds, id]
+        );
     };
 
     const toggleDealerFitSelection = (id: string) => {
@@ -679,15 +678,18 @@ export function HighfieldQuoteFlow({
                                                 <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
                                             </div>
                                             <div className="grid grid-cols-2 gap-6">
-                                                {opts.map((opt: any) => (
-                                                    <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                        <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !opt.imageUrl && "hidden")}>{opt.imageUrl && <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}</div>
-                                                        <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                            <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
-                                                            <p className={cn("text-[10px] font-black", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400")}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
-                                                        </div>
-                                                    </button>
-                                                ))}
+                                                {opts.map((opt: any) => {
+                                                    const hasImage = !!opt.imageUrl;
+                                                    return (
+                                                        <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                            <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !hasImage && "hidden")}>{opt.imageUrl && <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}</div>
+                                                            <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
+                                                                <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
+                                                                <p className={cn("text-[10px] font-black", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400")}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     ))}

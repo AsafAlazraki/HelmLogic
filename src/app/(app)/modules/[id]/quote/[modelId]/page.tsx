@@ -10,6 +10,7 @@ import { HighfieldQuoteFlow } from '@/components/highfield-quote-flow';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/firebase/auth/use-user';
 import { HelmLogicLoading } from "@/components/helmlogic-loading";
+import { Ship, Zap } from 'lucide-react';
 
 /**
  * Smart merge function for model configuration.
@@ -56,8 +57,8 @@ function QuoteFlowContent() {
     const router = useRouter();
     const { user } = useUser();
 
-    const slugOrId = params?.id as string;
-    const modelId = params?.modelId as string;
+    const slugOrId = params?.id as string | undefined;
+    const modelId = params?.modelId as string | undefined;
     const rangeId = searchParams.get('range');
     const vendorId = searchParams.get('vendor');
 
@@ -127,7 +128,7 @@ function QuoteFlowContent() {
         );
     }
 
-    if (!moduleData || !effectiveModel || !vendor) {
+    if (!moduleData || !effectiveModel || !vendor || !modelId) {
         return (
             <div className="flex h-screen w-full items-center justify-center flex-col gap-4 bg-background p-12 text-center">
                 <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
