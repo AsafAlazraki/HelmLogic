@@ -5,7 +5,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
-import { useMemo } from 'react';
+import { useMemo, Suspense } from 'react';
 import { HighfieldQuoteFlow } from '@/components/highfield-quote-flow';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/firebase/auth/use-user';
@@ -49,15 +49,15 @@ function getEffectiveModel(master: any, override: any) {
     return merged;
 }
 
-export default function QuoteFlowPage() {
+function QuoteFlowContent() {
     const params = useParams();
     const searchParams = useSearchParams();
     const firestore = useFirestore();
     const router = useRouter();
     const { user } = useUser();
 
-    const slugOrId = params.id as string;
-    const modelId = params.modelId as string;
+    const slugOrId = params?.id as string;
+    const modelId = params?.modelId as string;
     const rangeId = searchParams.get('range');
     const vendorId = searchParams.get('vendor');
 
@@ -112,7 +112,6 @@ export default function QuoteFlowPage() {
 
     const currentMemberOrg = useMemo(() => {
         if (!orgId) return null;
-        // In this context, we just need the org basic info for the loader
         return { name: 'Organisation', primaryLogoUrl: userProfile?.organisationLogoUrl || null };
     }, [orgId, userProfile]);
 
@@ -130,9 +129,13 @@ export default function QuoteFlowPage() {
 
     if (!moduleData || !effectiveModel || !vendor) {
         return (
-            <div className="flex h-screen w-full items-center justify-center flex-col gap-4">
-                <p className="text-muted-foreground font-bold">Context Error: Could not locate configuration data.</p>
-                <Button variant="outline" onClick={() => router.back()}>Return to Module</Button>
+            <div className="flex h-screen w-full items-center justify-center flex-col gap-4 bg-background p-12 text-center">
+                <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                    <Ship className="h-8 w-8 text-primary" />
+                </div>
+                <h2 className="text-xl font-black uppercase tracking-tight">Context Error</h2>
+                <p className="text-muted-foreground font-bold text-sm max-w-sm">We could not locate the required configuration data for this build. Please return to the module and try again.</p>
+                <Button variant="outline" className="mt-4 border-2 font-black uppercase tracking-widest text-[10px] rounded-xl" onClick={() => router.back()}>Return to Module</Button>
             </div>
         );
     }
@@ -152,10 +155,21 @@ export default function QuoteFlowPage() {
 
     // Generic fallback for other brands
     return (
-        <div className="p-12 text-center">
-            <h2 className="text-2xl font-bold">Quotation Engine</h2>
-            <p className="text-muted-foreground mt-2">A specialized quotation flow for {vendor.name} is currently being developed.</p>
-            <Button variant="link" onClick={() => router.back()} className="mt-4">Go Back</Button>
+        <div className="flex h-screen w-full items-center justify-center flex-col gap-4 bg-background p-12 text-center">
+            <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                <Zap className="h-8 w-8 text-primary" />
+            </div>
+            <h2 className="text-xl font-black uppercase tracking-tight italic">Quotation Engine</h2>
+            <p className="text-muted-foreground font-bold text-sm max-w-sm mt-2">A specialized quotation flow for {vendor.name} is currently being developed for deployment.</p>
+            <Button variant="outline" className="mt-6 border-2 font-black uppercase tracking-widest text-[10px] rounded-xl" onClick={() => router.back()}>Return to Module</Button>
         </div>
+    );
+}
+
+export default function QuoteFlowPage() {
+    return (
+        <Suspense fallback={<HelmLogicLoading label="Synchronizing Workspace" />}>
+            <QuoteFlowContent />
+        </Suspense>
     );
 }
