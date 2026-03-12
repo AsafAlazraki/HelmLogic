@@ -217,6 +217,24 @@ export function HighfieldQuoteFlow({
         setSelectedColor(null);
     };
 
+    // Cascading Reset Logic for Registration
+    const handleRegoToggle = () => {
+        const newVal = !isRegoSelected;
+        setIsRegoSelected(newVal);
+        if (!newVal) {
+            setIsStickerSelected(false);
+            setIsTenderToSelected(false);
+        }
+    };
+
+    const handleStickerToggle = () => {
+        const newVal = !isStickerSelected;
+        setIsStickerSelected(newVal);
+        if (!newVal) {
+            setIsTenderToSelected(false);
+        }
+    };
+
     // Smart Option Relinking
     useEffect(() => {
         if (!selectedColor || !variants || !model.optionalFeatures) return;
@@ -309,6 +327,8 @@ export function HighfieldQuoteFlow({
     const totalPrice = useMemo(() => {
         let total = activeVariant?.sellPriceExclGst || 0;
         selectedOptionsData.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
+        
+        // Registration Costs
         if (isRegoSelected) {
             total += (model.registration?.price12Months || 0);
             if (isStickerSelected) {
@@ -316,6 +336,7 @@ export function HighfieldQuoteFlow({
                 if (isTenderToSelected) total += (model.registration?.tenderToStickerPrice || 0);
             }
         }
+
         if (selectedMotor) {
             total += (selectedMotor.sellPriceExclGst || 0);
             selectedMotorAccessories.forEach((a: any) => { total += (a.sellPriceExclGst || 0); });
@@ -417,10 +438,6 @@ export function HighfieldQuoteFlow({
     useEffect(() => {
         if (selectedColor && currentStep === 1) setTimeout(() => registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
     }, [selectedColor, currentStep]);
-
-    useEffect(() => {
-        if (selectedTrailerId && currentStep === 4) setTimeout(() => trailerRegoSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
-    }, [selectedTrailerId, currentStep]);
 
     useEffect(() => {
         if (scrollAreaRef.current) {
@@ -649,7 +666,7 @@ export function HighfieldQuoteFlow({
                                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Registration & Compliance</h3>
                                             </div>
                                             <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white space-y-6">
-                                                <div className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", isRegoSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={() => setIsRegoSelected(!isRegoSelected)}>
+                                                <div className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", isRegoSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={handleRegoToggle}>
                                                     <div className="flex items-center gap-4">
                                                         <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center border-2", isRegoSelected ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-200 text-slate-300")}><Check className="h-4 w-4" /></div>
                                                         <div><p className={cn("text-[10px] font-black uppercase tracking-widest", isRegoSelected ? "text-primary" : "text-slate-600")}>12 Months Registration</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Maritime Safety Compliance</p></div>
@@ -658,7 +675,7 @@ export function HighfieldQuoteFlow({
                                                 </div>
                                                 {isRegoSelected && (
                                                     <div className="grid grid-cols-1 gap-3 pt-2 animate-in slide-in-from-top-2 duration-500">
-                                                        <div className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", isStickerSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={() => setIsStickerSelected(!isStickerSelected)}>
+                                                        <div className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", isStickerSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={handleStickerToggle}>
                                                             <div className="flex items-center gap-4">
                                                                 <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center border-2", isStickerSelected ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-200 text-slate-300")}><Tag className="h-4 w-4" /></div>
                                                                 <div><p className={cn("text-[10px] font-black uppercase tracking-widest", isStickerSelected ? "text-primary" : "text-slate-600")}>Registration Stickers</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Custom Cut (Supply & Fit)</p></div>

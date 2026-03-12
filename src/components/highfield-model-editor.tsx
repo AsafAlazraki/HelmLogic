@@ -79,20 +79,20 @@ const ruleSchema = z.object({
 
 const trailerOptionSchema = z.object({
     id: z.string(),
-    name: z.string(),
+    name : z.string(),
     isStandard: z.boolean().default(false),
     sellPriceExclGst: z.coerce.number().optional(),
 });
 
 const trailerConfigSchema = z.object({
     name: z.string().optional(),
-    imageUrl: z.string().nullable().optional(),
+    imageUrl: z.string ().nullable().optional(),
     options: z.array(trailerOptionSchema).default([]),
 });
 
 export const highfieldModelSchema = z.object({
     modelCode: z.string().min(1, 'Model Code is required'),
-    coverImageUrl: z.string().nullable().optional(),
+    coverImageUrl: z.string().nullable().optional (),
     galleryImageUrls: z.array(z.string()).default([]),
     registration: z.object({
         price12Months: z.coerce.number().optional(),
@@ -104,18 +104,18 @@ export const highfieldModelSchema = z.object({
         motorConfigurations: z.array(motorConfigSchema).default([]),
         otherSpecs: z.array(specSchema).default([]),
     }).optional(),
-    standardFeatures: z.array(z.string()).default([]),
+    standardFeatures: z.array(z.string()).default ([]),
     optionalFeatures: z.array(optionalFeatureSchema).default([]),
     documents: z.array(documentSchema).default([]),
     rules: z.array(ruleSchema).default([]),
     trailerConfig: trailerConfigSchema.optional(),
 });
 
-type ModelFormData = z.infer<typeof highfieldModelSchema>;
+type ModelFormData =  z.infer<typeof highfieldModelSchema>;
 
 const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?: number, onAdd?: () => void }) => (
     <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none text-left">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 text-left">
             <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent transition-colors group-data-[state=open]:bg-muted">
                     <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
@@ -192,7 +192,7 @@ function RegistrationCard() {
                             </div>
                         </FormControl>
                     </FormItem>
-            )}
+                )}
             />
             <FormField
                 control={control}
