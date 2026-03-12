@@ -766,5 +766,5 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 </Tabs>
             </div>
         </FormProvider>
-    ) : null;
+    );
 }
