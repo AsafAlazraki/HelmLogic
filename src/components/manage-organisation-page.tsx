@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -484,7 +483,9 @@ export function ManageOrganisationPage({ orgId }: { orgId: string }) {
         }
     }
 
-    return (
+    if (orgLoading) return <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>;
+
+    return organisation ? (
         <FormProvider {...form}>
             <div className="space-y-4">
                 <div className="flex items-center justify-end gap-2">

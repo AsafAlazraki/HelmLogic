@@ -448,22 +448,14 @@ export function HighfieldQuoteFlow({
         const features = model.optionalFeatures || [];
         if (!activeVariant) return features;
         
-        // Strict Hardware Filter: Remove motor/trailer gear that isn't a boat option
         const hardwareBlocklist = ['MOTOR', 'ENGINE', 'FUEL', 'TRAILER', 'OUTBOARD', 'RAM SUPPORT'];
 
         return features.filter((f: any) => {
             const name = String(f.name).toUpperCase();
-            
-            // 1. Block misplaced motor/trailer hardware
             if (hardwareBlocklist.some(keyword => name.includes(keyword))) return false;
-
-            // 2. SKU Compatibility check
             if (f.applicableVariantIds?.length && !f.applicableVariantIds.includes(activeVariant.id)) return false;
-            
-            // 3. Material-specific exclusion
             if (selectedMaterial === 'PVC' && name.includes('HYP')) return false;
             if (selectedMaterial === 'HYP' && name.includes('PVC')) return false;
-            
             return true;
         });
     }, [model.optionalFeatures, activeVariant, selectedMaterial]);
@@ -669,7 +661,7 @@ export function HighfieldQuoteFlow({
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
                                                 {availableColors.map((color) => (
-                                                    <button key={color.id} onClick={() => setSelectedColor(color.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent p-1", selectedColor === color.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
+                                                    <button key={color.id} onClick={() => { setSelectedColor(color.id); setTimeout(() => categoryRefs.current[groupedOptions[0]?.[0] || 'Consoles']?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent p-1", selectedColor === color.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
                                                         <div className="relative aspect-video w-full bg-white">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-1" unoptimized />}</div>
                                                         <div className={cn("p-2 text-center border-t transition-colors", selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-50")}><p className={cn("text-[9px] font-black uppercase tracking-widest", selectedColor === color.id ? "text-primary" : "text-slate-600")}>{color.name}</p></div>
                                                     </button>
@@ -720,7 +712,7 @@ export function HighfieldQuoteFlow({
                                                     const isSelected = selectedMotor?.id === m.id;
                                                     return (
                                                         <button key={m.id} onClick={() => { setSelectedMotor(isSelected ? null : m); if (!isSelected) setTimeout(() => categoryRefs.current['Propeller']?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                            <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">{mUrl && <Image src={mUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
+                                                            <div className="relative h-24 w-full bg-white overflow-hidden shrink-0">{mUrl && <Image src={mUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
                                                             <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
                                                                 <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{displayName}</p>
                                                                 <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-primary")}>{m['HP Rating']} HP • ${(m.sellPriceExclGst || 0).toLocaleString()}</p>
@@ -766,7 +758,7 @@ export function HighfieldQuoteFlow({
                                         </div>
                                         {model.trailerConfig ? (
                                             <div className="grid grid-cols-2 gap-4">
-                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); setSelectedTrailerOptionIds(isSelected ? [] : (model.trailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); if (!isSelected) setTimeout(() => categoryRefs.current['Trailer Hardware']?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); if (!isSelected) { setSelectedTrailerOptionIds((model.trailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); setTimeout(() => categoryRefs.current['Trailer Hardware']?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800); } }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                     <div className={cn("relative aspect-video w-full bg-white shrink-0", !model.trailerConfig.imageUrl && "hidden")}>{model.trailerConfig.imageUrl && <Image src={model.trailerConfig.imageUrl} alt="Trailer" fill className="object-contain mix-blend-multiply p-4" unoptimized />}</div>
                                                     <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
                                                         <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", selectedTrailerId === 'primary-trailer' ? "text-primary" : "text-slate-900")}>{model.trailerConfig.name}</p>
