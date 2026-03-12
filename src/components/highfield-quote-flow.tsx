@@ -200,7 +200,6 @@ export function HighfieldQuoteFlow({
         
         setSelectedMaterial(mat);
         
-        // Strategy: Try to find the SAME color name in the new material
         if (variants && prevColorName) {
             const matchingVariant = variants.find(v => v.material === mat && v.colorName === prevColorName);
             if (matchingVariant) {
@@ -209,7 +208,6 @@ export function HighfieldQuoteFlow({
             }
         }
         
-        // Reset if no direct color match
         setSelectedColor(null);
     };
 
@@ -449,11 +447,23 @@ export function HighfieldQuoteFlow({
     const relevantFeatures = useMemo(() => {
         const features = model.optionalFeatures || [];
         if (!activeVariant) return features;
+        
+        // Strict Hardware Filter: Remove motor/trailer gear that isn't a boat option
+        const hardwareBlocklist = ['MOTOR', 'ENGINE', 'FUEL', 'TRAILER', 'OUTBOARD', 'RAM SUPPORT'];
+
         return features.filter((f: any) => {
-            if (f.applicableVariantIds?.length && !f.applicableVariantIds.includes(activeVariant.id)) return false;
             const name = String(f.name).toUpperCase();
+            
+            // 1. Block misplaced motor/trailer hardware
+            if (hardwareBlocklist.some(keyword => name.includes(keyword))) return false;
+
+            // 2. SKU Compatibility check
+            if (f.applicableVariantIds?.length && !f.applicableVariantIds.includes(activeVariant.id)) return false;
+            
+            // 3. Material-specific exclusion
             if (selectedMaterial === 'PVC' && name.includes('HYP')) return false;
             if (selectedMaterial === 'HYP' && name.includes('PVC')) return false;
+            
             return true;
         });
     }, [model.optionalFeatures, activeVariant, selectedMaterial]);
