@@ -583,23 +583,23 @@ export function HighfieldQuoteFlow({
 
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
-            <div className="sticky top-0 z-[100] px-12 h-24 border-b bg-card/90 backdrop-blur-xl shrink-0 flex items-center shadow-sm">
+            <div className="sticky top-0 z-[100] px-12 h-20 border-b bg-card/90 backdrop-blur-xl shrink-0 flex items-center shadow-sm">
                 <div className="w-full flex items-center justify-between">
                     <div className="flex-1 flex items-center justify-between mr-24">
                         {STEPS.map((step) => (
-                            <div key={step.id} className="flex items-center gap-3">
-                                <div className={cn("h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-black transition-all border-2", currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-lg" : currentStep > step.id ? "bg-green-500 border-green-500 text-white" : "bg-muted border-transparent text-muted-foreground")}>{currentStep > step.id ? <CheckCircle2 className="h-4 w-4" /> : step.id}</div>
-                                <span className={cn("text-[9px] font-black uppercase tracking-[0.2em] hidden sm:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-muted-foreground")}>{step.label}</span>
+                            <div key={step.id} className="flex items-center gap-2">
+                                <div className={cn("h-7 w-7 rounded-full flex items-center justify-center text-[9px] font-black transition-all border-2", currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-md" : currentStep > step.id ? "bg-green-500 border-green-500 text-white" : "bg-muted border-transparent text-muted-foreground")}>{currentStep > step.id ? <CheckCircle2 className="h-3.5 w-3.5" /> : step.id}</div>
+                                <span className={cn("text-[8px] font-black uppercase tracking-[0.2em] hidden sm:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-muted-foreground")}>{step.label}</span>
                             </div>
                         ))}
                     </div>
-                    <button type="button" className="font-black text-destructive uppercase tracking-widest text-[10px] hover:opacity-70 transition-opacity" onClick={() => router.push(`/modules/${module.slug || module.id}`)}>Exit Build</button>
+                    <button type="button" className="font-black text-destructive uppercase tracking-widest text-[9px] hover:opacity-70 transition-opacity" onClick={() => router.push(`/modules/${module.slug || module.id}`)}>Exit Build</button>
                 </div>
             </div>
 
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
-                <div className="w-full lg:w-7/12 relative flex flex-col p-6 bg-slate-50/50 overflow-hidden">
-                    <div className="relative flex-1 w-full bg-white rounded-[3rem] border-2 border-slate-100 shadow-2xl overflow-hidden group">
+                <div className="w-full lg:w-7/12 relative flex flex-col p-4 bg-slate-50/50 overflow-hidden">
+                    <div className="relative flex-1 w-full bg-white rounded-[2rem] border-2 border-slate-100 shadow-xl overflow-hidden group">
                         <Carousel className="w-full h-full" opts={{ loop: true }} setApi={setApi}>
                             <CarouselContent className="h-full">
                                 {carouselSlides.map((slide, idx) => (
@@ -607,61 +607,61 @@ export function HighfieldQuoteFlow({
                                         {slide.type === 'build' ? slide.content : (
                                             <>
                                                 {slide.url && <Image src={slide.url} alt="Build Preview" fill className={cn("transition-all", (slide.type === 'boat' || slide.type === 'variant' || slide.type === 'gallery') ? "object-cover" : "object-contain p-12")} unoptimized />}
-                                                <Button variant="ghost" size="icon" className="absolute top-6 right-6 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20 focus:ring-0 focus:outline-none" onClick={() => setLightboxUrl(slide.url || null)}><Maximize2 className="h-6 w-6" /></Button>
+                                                <Button variant="ghost" size="icon" className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20 focus:ring-0 focus:outline-none" onClick={() => setLightboxUrl(slide.url || null)}><Maximize2 className="h-5 w-5" /></Button>
                                             </>
                                         )}
                                     </CarouselItem>
                                 ))}
                             </CarouselContent>
-                            <CarouselPrevious className="left-6 h-12 w-12 bg-white/90 border-2 border-slate-200 shadow-2xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
-                            <CarouselNext className="right-6 h-12 w-12 bg-white/90 border-2 border-slate-200 shadow-2xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
+                            <CarouselPrevious className="left-6 h-10 w-10 bg-white/90 border-2 border-slate-200 shadow-xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
+                            <CarouselNext className="right-6 h-10 w-10 bg-white/90 border-2 border-slate-200 shadow-xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
                         </Carousel>
                     </div>
-                    <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-2xl p-10 rounded-[3rem] mt-8 shrink-0">
+                    <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-xl p-6 rounded-[2rem] mt-4 shrink-0">
                         <div className="flex flex-col items-start px-1">
-                            <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-2">Package Pricing (Excl. GST)</span>
-                            <div className="text-6xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-3xl mr-1">$</span><span>{totalPrice.toLocaleString()}</span></div>
+                            <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Package Pricing (Excl. GST)</span>
+                            <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{totalPrice.toLocaleString()}</span></div>
                         </div>
                     </div>
-                    <div className="flex items-center justify-start gap-4 mt-8 px-6 shrink-0">
-                        <Button variant="ghost" size="sm" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-400 hover:text-primary rounded-2xl border-2 border-transparent hover:border-primary/10 transition-all" onClick={() => setShowFeatures(true)}><ListChecks className="h-4 w-4 mr-2" /> Standard Features</Button>
-                        <Button variant="ghost" size="sm" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-400 hover:text-primary rounded-2xl border-2 border-transparent hover:border-primary/10 transition-all" onClick={() => setShowSpecs(true)}><ClipboardList className="h-4 w-4 mr-2" /> General Specifications</Button>
-                        <Button variant="ghost" size="sm" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-400 hover:text-primary rounded-2xl border-2 border-transparent hover:border-primary/10 transition-all" onClick={() => setShowDocs(true)}><FileText className="h-4 w-4 mr-2" /> Documents</Button>
+                    <div className="flex items-center justify-start gap-3 mt-4 px-4 shrink-0">
+                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-primary rounded-xl border-2 border-transparent hover:border-primary/10 transition-all" onClick={() => setShowFeatures(true)}><ListChecks className="h-3.5 w-3.5 mr-1.5" /> Features</Button>
+                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-primary rounded-xl border-2 border-transparent hover:border-primary/10 transition-all" onClick={() => setShowSpecs(true)}><ClipboardList className="h-3.5 w-3.5 mr-1.5" /> Specs</Button>
+                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-primary rounded-xl border-2 border-transparent hover:border-primary/10 transition-all" onClick={() => setShowDocs(true)}><FileText className="h-3.5 w-3.5 mr-1.5" /> Docs</Button>
                     </div>
                 </div>
 
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
-                    <div className="pt-6 px-12 pb-4 shrink-0">
-                        <h2 className="text-2xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">{STEPS[currentStep - 1].label.toUpperCase()}<span className="text-primary"> - {range?.name?.toUpperCase()} {boatSeriesIdentity.toUpperCase()}</span></h2>
+                    <div className="pt-4 px-8 pb-3 shrink-0 border-b bg-white/50 backdrop-blur-sm">
+                        <h2 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">{STEPS[currentStep - 1].label.toUpperCase()}<span className="text-primary"> - {range?.name?.toUpperCase()} {boatSeriesIdentity.toUpperCase()}</span></h2>
                     </div>
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
-                        <div className="px-12 pb-12 space-y-8 mt-4">
+                        <div className="px-8 pb-12 space-y-6 mt-4">
                             {currentStep === 1 && (
-                                <div className="space-y-10 animate-in fade-in duration-1000">
-                                    <div className="space-y-6">
-                                        <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
-                                            <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                                            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Tube Material</h3>
+                                <div className="space-y-8 animate-in fade-in duration-1000">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Tube Material</h3>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-6">
+                                        <div className="grid grid-cols-2 gap-4">
                                             {availableMaterials.map((mat) => (
-                                                <button key={mat} onClick={() => handleMaterialChange(mat as any)} className={cn("group flex flex-col items-center justify-center p-1 rounded-[2.5rem] transition-all bg-white shadow-2xl border-2 border-transparent h-40", selectedMaterial === mat ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
-                                                    <span className={cn("text-sm font-black uppercase tracking-widest transition-colors", selectedMaterial === mat ? "text-primary" : "text-slate-600")}>{mat}</span>
+                                                <button key={mat} onClick={() => handleMaterialChange(mat as any)} className={cn("group flex flex-col items-center justify-center p-1 rounded-[2rem] transition-all bg-white shadow-xl border-2 border-transparent h-32", selectedMaterial === mat ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
+                                                    <span className={cn("text-xs font-black uppercase tracking-widest transition-colors", selectedMaterial === mat ? "text-primary" : "text-slate-600")}>{mat}</span>
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
                                     {selectedMaterial && (
-                                        <div ref={colorSectionRef} className="mt-16 space-y-8 animate-in slide-in-from-bottom-4 duration-1000 scroll-mt-10">
-                                            <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
-                                                <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Hull & Tube Color</h3>
+                                        <div ref={colorSectionRef} className="mt-12 space-y-6 animate-in slide-in-from-bottom-4 duration-1000 scroll-mt-10">
+                                            <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Hull & Tube Color</h3>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-2 gap-4">
                                                 {availableColors.map((color) => (
-                                                    <button key={color.id} onClick={() => setSelectedColor(color.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1", selectedColor === color.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
+                                                    <button key={color.id} onClick={() => setSelectedColor(color.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent p-1", selectedColor === color.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
                                                         <div className="relative aspect-video w-full bg-white">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-1" unoptimized />}</div>
-                                                        <div className={cn("p-2 text-center border-t transition-colors", selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-50")}><p className={cn("text-[10px] font-black uppercase tracking-widest", selectedColor === color.id ? "text-primary" : "text-slate-600")}>{color.name}</p></div>
+                                                        <div className={cn("p-2 text-center border-t transition-colors", selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-50")}><p className={cn("text-[9px] font-black uppercase tracking-widest", selectedColor === color.id ? "text-primary" : "text-slate-600")}>{color.name}</p></div>
                                                     </button>
                                                 ))}
                                             </div>
@@ -670,22 +670,22 @@ export function HighfieldQuoteFlow({
                                 </div>
                             )}
                             {currentStep === 2 && (
-                                <div className="space-y-16 animate-in fade-in duration-1000 mt-4">
+                                <div className="space-y-12 animate-in fade-in duration-1000 mt-4">
                                     {groupedOptions.map(([cat, opts]) => (
-                                        <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-8 scroll-mt-10">
-                                            <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
-                                                <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                        <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 scroll-mt-10">
+                                            <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-2 gap-4">
                                                 {opts.map((opt: any) => {
                                                     const hasImage = !!opt.imageUrl;
                                                     return (
-                                                        <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                        <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                             <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !hasImage && "hidden")}>{opt.imageUrl && <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}</div>
-                                                            <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                                <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
-                                                                <p className={cn("text-[10px] font-black", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400")}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow">
+                                                                <p className={cn("text-[10px] font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
+                                                                <p className={cn("text-[9px] font-black", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400")}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                             </div>
                                                         </button>
                                                     );
@@ -696,24 +696,24 @@ export function HighfieldQuoteFlow({
                                 </div>
                             )}
                             {currentStep === 3 && (
-                                <div className="space-y-16 animate-in fade-in duration-1000 mt-4">
-                                    <div className="space-y-8">
-                                        <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
-                                            <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                                            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Motor Selection</h3>
+                                <div className="space-y-12 animate-in fade-in duration-1000 mt-4">
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Motor Selection</h3>
                                         </div>
-                                        {motorsLoading ? <div className="flex flex-col items-center py-20 gap-4"><Loader2 className="animate-spin h-12 w-12 text-primary" /><p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Scanning Factory Datasets...</p></div> : (
-                                            <div className="grid grid-cols-2 gap-6">
+                                        {motorsLoading ? <div className="flex flex-col items-center py-16 gap-3"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Scanning Factory Datasets...</p></div> : (
+                                            <div className="grid grid-cols-2 gap-4">
                                                 {motors.map(m => {
                                                     const mUrl = resolveImageUrl(m);
                                                     const displayName = getMotorDisplayName(m);
                                                     const isSelected = selectedMotor?.id === m.id;
                                                     return (
-                                                        <button key={m.id} onClick={() => { setSelectedMotor(isSelected ? null : m); if (!isSelected) setTimeout(() => categoryRefs.current['Propeller']?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800); }} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                        <button key={m.id} onClick={() => { setSelectedMotor(isSelected ? null : m); if (!isSelected) setTimeout(() => categoryRefs.current['Propeller']?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                             <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0">{mUrl && <Image src={mUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
-                                                            <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
-                                                                <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{displayName}</p>
-                                                                <p className={cn("text-[9px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-primary")}>{m['HP Rating']} HP PERFORMANCE • ${(m.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
+                                                                <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{displayName}</p>
+                                                                <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-primary")}>{m['HP Rating']} HP • ${(m.sellPriceExclGst || 0).toLocaleString()}</p>
                                                             </div>
                                                         </button>
                                                     );
@@ -722,22 +722,22 @@ export function HighfieldQuoteFlow({
                                         )}
                                     </div>
                                     {selectedMotor && groupedMotorAccessories.map(([cat, opts]) => (
-                                        <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-8 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
-                                            <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
-                                                <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                        <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
+                                            <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-2 gap-4">
                                                 {opts.map((opt: any) => {
                                                     const isSelected = selectedMotorAccessoryIds.includes(opt.id);
                                                     const imgUrl = resolveImageUrl(opt);
                                                     return (
-                                                        <button key={opt.id} onClick={() => toggleMotorAccessory(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1 group", isSelected ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                        <button key={opt.id} onClick={() => toggleMotorAccessory(opt.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-md border-transparent h-full p-1 group", isSelected ? "bg-primary/5 border-primary shadow-sm ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                             <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !imgUrl && "hidden")}>{imgUrl && <Image src={imgUrl} alt={opt.name} fill className="object-contain p-2 mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}</div>
-                                                            <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                                {opt.isStandard && <Badge className="mb-2 bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-4">STANDARD</Badge>}
-                                                                <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", isSelected ? "text-primary" : "text-slate-700")}>{opt.name}</p>
-                                                                <p className={cn("text-[10px] font-black", isSelected ? "text-primary" : "text-slate-400")}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow">
+                                                                {opt.isStandard && <Badge className="mb-1.5 bg-emerald-500 text-white border-none font-black text-[6px] uppercase h-3.5 px-1">STANDARD</Badge>}
+                                                                <p className={cn("text-[10px] font-black uppercase tracking-widest leading-tight", isSelected ? "text-primary" : "text-slate-700")}>{opt.name}</p>
+                                                                <p className={cn("text-[9px] font-black", isSelected ? "text-primary" : "text-slate-400")}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                             </div>
                                                         </button>
                                                     );
@@ -748,39 +748,39 @@ export function HighfieldQuoteFlow({
                                 </div>
                             )}
                             {currentStep === 4 && (
-                                <div className="space-y-16 animate-in fade-in duration-1000 mt-4">
-                                    <div className="space-y-8">
-                                        <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
-                                            <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                                            <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Trailer Base</h3>
+                                <div className="space-y-12 animate-in fade-in duration-1000 mt-4">
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Base</h3>
                                         </div>
                                         {model.trailerConfig ? (
-                                            <div className="grid grid-cols-2 gap-6">
-                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); setSelectedTrailerOptionIds(isSelected ? [] : (model.trailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); if (!isSelected) setTimeout(() => categoryRefs.current['Trailer Hardware']?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800); }} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-2xl ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); setSelectedTrailerOptionIds(isSelected ? [] : (model.trailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); if (!isSelected) setTimeout(() => categoryRefs.current['Trailer Hardware']?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                     <div className={cn("relative aspect-video w-full bg-white shrink-0", !model.trailerConfig.imageUrl && "hidden")}>{model.trailerConfig.imageUrl && <Image src={model.trailerConfig.imageUrl} alt="Trailer" fill className="object-contain mix-blend-multiply p-4" unoptimized />}</div>
-                                                    <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
-                                                        <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", selectedTrailerId === 'primary-trailer' ? "text-primary" : "text-slate-900")}>{model.trailerConfig.name}</p>
+                                                    <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
+                                                        <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", selectedTrailerId === 'primary-trailer' ? "text-primary" : "text-slate-900")}>{model.trailerConfig.name}</p>
                                                         <p className={cn("text-[9px] font-black uppercase tracking-widest", selectedTrailerId === 'primary-trailer' ? "text-primary/70" : "text-slate-400")}>${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
                                                     </div>
                                                 </button>
                                             </div>
-                                        ) : <div className="py-20 text-center border-2 border-dashed rounded-2xl opacity-20"><Truck className="h-12 w-12 mx-auto mb-4" /><p className="text-[10px] font-black uppercase tracking-widest">No primary trailer defined.</p></div>}
+                                        ) : <div className="py-16 text-center border-2 border-dashed rounded-xl opacity-20"><Truck className="h-10 w-10 mx-auto mb-3" /><p className="text-[9px] font-black uppercase tracking-widest">No primary trailer defined.</p></div>}
                                     </div>
                                     {selectedTrailerId && model.trailerConfig?.options?.length > 0 && (
-                                        <div ref={el => { categoryRefs.current['Trailer Hardware'] = el; }} className="space-y-8 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
-                                            <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
-                                                <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                                                <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Trailer Hardware</h3>
+                                        <div ref={el => { categoryRefs.current['Trailer Hardware'] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
+                                            <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Hardware</h3>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-2 gap-4">
                                                 {model.trailerConfig.options.map((opt: any) => {
                                                     const isSelected = selectedTrailerOptionIds.includes(opt.id);
                                                     return (
-                                                        <button key={opt.id} onClick={() => toggleTrailerOption(opt.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                            <div className="p-6 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                                {opt.isStandard && <Badge className="mb-2 bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-4">STANDARD</Badge>}
-                                                                <p className={cn("text-xs font-black uppercase tracking-widest leading-tight", isSelected ? "text-primary" : "text-slate-700")}>{opt.name}</p>
-                                                                <p className={cn("text-[10px] font-black", isSelected ? "text-primary" : "text-slate-400")}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                        <button key={opt.id} onClick={() => toggleTrailerOption(opt.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-md border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-sm ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                            <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
+                                                                {opt.isStandard && <Badge className="mb-1.5 bg-emerald-500 text-white border-none font-black text-[6px] uppercase h-3.5 px-1">STANDARD</Badge>}
+                                                                <p className={cn("text-[10px] font-black uppercase tracking-widest leading-tight", isSelected ? "text-primary" : "text-slate-700")}>{opt.name}</p>
+                                                                <p className={cn("text-[9px] font-black", isSelected ? "text-primary" : "text-slate-400")}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                             </div>
                                                         </button>
                                                     );
@@ -791,24 +791,24 @@ export function HighfieldQuoteFlow({
                                 </div>
                             )}
                             {currentStep === 5 && (
-                                <div className="space-y-16 animate-in fade-in duration-1000 mt-4">
-                                    {dealerFitLoading ? <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div> : groupedDealerFit.length > 0 ? (
+                                <div className="space-y-12 animate-in fade-in duration-1000 mt-4">
+                                    {dealerFitLoading ? <div className="flex justify-center py-16"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div> : groupedDealerFit.length > 0 ? (
                                         groupedDealerFit.map(([cat, opts]) => (
-                                            <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-8 scroll-mt-10">
-                                                <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full">
-                                                    <div className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                                                    <h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                            <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 scroll-mt-10">
+                                                <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-6">
+                                                <div className="grid grid-cols-2 gap-4">
                                                     {opts.map((sel: any) => {
                                                         const isSelected = selectedDealerFitIds.includes(sel.id);
                                                         const imgUrl = resolveImageUrl(sel.items?.[0]?.data);
                                                         return (
-                                                            <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[2rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-lg ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                                <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !imgUrl && "hidden")}>{imgUrl && <Image src={imgUrl} alt={sel.name} fill className="object-contain p-4 mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}</div>
-                                                                <div className="p-6 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                                    <p className={cn("text-xs font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{sel.name}</p>
-                                                                    <p className={cn("text-[9px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0)).toLocaleString()}</p>
+                                                            <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                                <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !imgUrl && "hidden")}>{imgUrl && <Image src={imgUrl} alt={sel.name} fill className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}</div>
+                                                                <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
+                                                                    <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{sel.name}</p>
+                                                                    <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0)).toLocaleString()}</p>
                                                                 </div>
                                                             </button>
                                                         );
@@ -816,26 +816,26 @@ export function HighfieldQuoteFlow({
                                                 </div>
                                             </div>
                                         ))
-                                    ) : <div className="py-20 text-center border-2 border-dashed rounded-2xl opacity-20"><Box className="h-12 w-12 mx-auto mb-4" /><p className="text-[10px] font-black uppercase tracking-widest">No dealer fit options configured.</p></div>}
+                                    ) : <div className="py-16 text-center border-2 border-dashed rounded-xl opacity-20"><Box className="h-10 w-10 mx-auto mb-3" /><p className="text-[9px] font-black uppercase tracking-widest">No dealer fit options configured.</p></div>}
                                 </div>
                             )}
                             {currentStep === 6 && (
-                                <div className="space-y-10 animate-in fade-in duration-1000 mt-4">
-                                    <div className="flex items-center gap-4 bg-primary px-8 py-4 rounded-3xl shadow-2xl w-full"><div className="h-2 w-2 rounded-full bg-white animate-pulse" /><h3 className="text-[11px] font-black uppercase tracking-[0.3em] text-white">Project Build Summary</h3></div>
-                                    <div className="space-y-6">
-                                        <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden"><CardHeader className="bg-muted/30 border-b p-6"><div className="flex items-center gap-3"><Ship className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Base Vessel</CardTitle></div></CardHeader><CardContent className="p-6"><div className="flex items-center justify-between"><div className="space-y-1"><p className="font-black text-lg uppercase tracking-tight text-slate-900">{range?.name} {boatSeriesIdentity}</p><p className="text-[10px] font-bold text-muted-foreground uppercase">{selectedMaterial} • {activeVariant?.name || 'Standard Color'}</p></div><p className="font-black text-primary italic text-lg">${(activeVariant?.sellPriceExclGst || 0).toLocaleString()}</p></div></CardContent></Card>
-                                        {selectedOptionsData.length > 0 && <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden"><CardHeader className="bg-muted/30 border-b p-6"><div className="flex items-center gap-3"><Package className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Factory Options</CardTitle></div></CardHeader><CardContent className="p-0"><div className="divide-y">{selectedOptionsData.map((opt: any) => (<div key={opt.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors"><div className="flex items-center gap-4"><div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center"><Check className="h-4 w-4 text-emerald-500" /></div><div><p className="text-xs font-black uppercase tracking-tight">{opt.name}</p><Badge variant="outline" className="text-[8px] font-black h-4 px-1">{opt.category || 'Standard'}</Badge></div></div><p className="text-xs font-bold text-slate-600">${(opt.sellPriceExclGst || 0).toLocaleString()}</p></div>))}</div></CardContent></Card>}
-                                        {selectedMotor && <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden"><CardHeader className="bg-muted/30 border-b p-6"><div className="flex items-center gap-3"><Activity className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Powertrain</CardTitle></div></CardHeader><CardContent className="p-0"><div className="p-6 border-b flex items-center justify-between"><div className="space-y-1"><p className="font-black text-lg uppercase tracking-tight text-slate-900">{getMotorDisplayName(selectedMotor)}</p><p className="text-[10px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Performance Series</p></div><p className="font-black text-primary italic text-lg">${(selectedMotor.sellPriceExclGst || 0).toLocaleString()}</p></div>{selectedMotorAccessories.length > 0 && <div className="divide-y bg-slate-50/50">{selectedMotorAccessories.map((acc: any) => (<div key={acc.id} className="p-6 flex items-center justify-between"><div className="flex items-center gap-4"><div className="h-8 w-8 rounded-lg bg-white border flex items-center justify-center"><Wrench className="h-4 w-4 text-primary/40" /></div><div><p className="text-xs font-black uppercase tracking-tight">{acc.name}</p><Badge variant="outline" className="text-[8px] font-black h-4 px-1 border-primary/10 text-primary/60">{acc.category || 'Standard'}</Badge></div></div><p className="text-xs font-bold text-slate-600">+${(acc.sellPriceExclGst || 0).toLocaleString()}</p></div>))}</div>}</CardContent></Card>}
-                                        {selectedTrailerId && model.trailerConfig && <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden"><CardHeader className="bg-muted/30 border-b p-6"><div className="flex items-center gap-3"><Truck className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Towing Solution</CardTitle></div></CardHeader><CardContent className="p-0"><div className="p-6 border-b flex items-center justify-between"><div className="space-y-1"><p className="font-black text-lg uppercase tracking-tight text-slate-900">{model.trailerConfig.name}</p><p className="text-[10px] font-bold text-muted-foreground uppercase">Precision Transport Chassis</p></div><p className="font-black text-primary italic text-lg">${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p></div>{selectedTrailerOptionsData.length > 0 && <div className="divide-y bg-slate-50/50">{selectedTrailerOptionsData.map((opt: any) => (<div key={opt.id} className="p-6 flex items-center justify-between"><div className="flex items-center gap-4"><div className="h-8 w-8 rounded-lg bg-white border flex items-center justify-center"><Layers className="h-4 w-4 text-primary/40" /></div><p className="text-xs font-black uppercase tracking-tight">{opt.name}</p></div><p className="text-xs font-bold text-slate-600">+${(opt.sellPriceExclGst || 0).toLocaleString()}</p></div>))}</div>}</CardContent></Card>}
-                                        {selectedDealerFitData.length > 0 && <Card className="rounded-[2rem] border-2 shadow-xl overflow-hidden"><CardHeader className="bg-muted/30 border-b p-6"><div className="flex items-center gap-3"><Wrench className="h-5 w-5 text-primary" /><CardTitle className="text-sm font-black uppercase tracking-widest">Dealer Installations</CardTitle></div></CardHeader><CardContent className="p-0"><div className="divide-y">{selectedDealerFitData.map((sel: any) => (<div key={sel.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors"><div className="flex items-center gap-4"><div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center"><Check className="h-4 w-4 text-emerald-500" /></div><div><p className="text-xs font-black uppercase tracking-tight">{sel.name}</p><Badge variant="outline" className="text-[8px] font-black h-4 px-1">{sel.category || 'Gear'}</Badge></div></div><p className="text-xs font-bold text-slate-600">${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0)).toLocaleString()}</p></div>))}</div></CardContent></Card>}
+                                <div className="space-y-8 animate-in fade-in duration-1000 mt-4">
+                                    <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full"><div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /><h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Project Build Summary</h3></div>
+                                    <div className="space-y-4">
+                                        <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Ship className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Base Vessel</CardTitle></div></CardHeader><CardContent className="p-4"><div className="flex items-center justify-between"><div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{range?.name} {boatSeriesIdentity}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMaterial} • {activeVariant?.name || 'Standard Color'}</p></div><p className="font-black text-primary italic text-sm">${(activeVariant?.sellPriceExclGst || 0).toLocaleString()}</p></div></CardContent></Card>
+                                        {selectedOptionsData.length > 0 && <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Package className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Factory Options</CardTitle></div></CardHeader><CardContent className="p-0"><div className="divide-y">{selectedOptionsData.map((opt: any) => (<div key={opt.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors"><div className="flex items-center gap-3"><div className="h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center"><Check className="h-3 w-3 text-emerald-500" /></div><div><p className="text-[10px] font-black uppercase tracking-tight">{opt.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1">{opt.category || 'Standard'}</Badge></div></div><p className="text-[10px] font-bold text-slate-600">${(opt.sellPriceExclGst || 0).toLocaleString()}</p></div>))}</div></CardContent></Card>}
+                                        {selectedMotor && <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Powertrain</CardTitle></div></CardHeader><CardContent className="p-0"><div className="p-4 border-b flex items-center justify-between"><div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{getMotorDisplayName(selectedMotor)}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Performance</p></div><p className="font-black text-primary italic text-sm">${(selectedMotor.sellPriceExclGst || 0).toLocaleString()}</p></div>{selectedMotorAccessories.length > 0 && <div className="divide-y bg-slate-50/50">{selectedMotorAccessories.map((acc: any) => (<div key={acc.id} className="p-4 flex items-center justify-between"><div className="flex items-center gap-3"><div className="h-6 w-6 rounded-lg bg-white border flex items-center justify-center"><Wrench className="h-3 w-3 text-primary/40" /></div><div><p className="text-[10px] font-black uppercase tracking-tight">{acc.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1 border-primary/10 text-primary/60">{acc.category || 'Standard'}</Badge></div></div><p className="text-[10px] font-bold text-slate-600">+${(acc.sellPriceExclGst || 0).toLocaleString()}</p></div>))}</div>}</CardContent></Card>}
+                                        {selectedTrailerId && model.trailerConfig && <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Towing Solution</CardTitle></div></CardHeader><CardContent className="p-0"><div className="p-4 border-b flex items-center justify-between"><div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{model.trailerConfig.name}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">Precision Chassis</p></div><p className="font-black text-primary italic text-sm">${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p></div>{selectedTrailerOptionsData.length > 0 && <div className="divide-y bg-slate-50/50">{selectedTrailerOptionsData.map((opt: any) => (<div key={opt.id} className="p-4 flex items-center justify-between"><div className="flex items-center gap-3"><div className="h-6 w-6 rounded-lg bg-white border flex items-center justify-center"><Layers className="h-3 w-3 text-primary/40" /></div><p className="text-[10px] font-black uppercase tracking-tight">{opt.name}</p></div><p className="text-[10px] font-bold text-slate-600">+${(opt.sellPriceExclGst || 0).toLocaleString()}</p></div>))}</div>}</CardContent></Card>}
+                                        {selectedDealerFitData.length > 0 && <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Dealer Fitments</CardTitle></div></CardHeader><CardContent className="p-0"><div className="divide-y">{selectedDealerFitData.map((sel: any) => (<div key={sel.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors"><div className="flex items-center gap-3"><div className="h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center"><Check className="h-3 w-3 text-emerald-500" /></div><div><p className="text-[10px] font-black uppercase tracking-tight">{sel.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1">{sel.category || 'Gear'}</Badge></div></div><p className="text-[10px] font-bold text-slate-600">${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0)).toLocaleString()}</p></div>))}</div></CardContent></Card>}
                                     </div>
                                 </div>
                             )}
                         </div>
                     </ScrollArea>
-                    <div className="p-12 pt-6 bg-slate-50/80 backdrop-blur-xl border-t shrink-0 flex gap-4">
-                        {currentStep > 1 && <Button variant="outline" className="h-16 w-24 rounded-2xl border-2 border-slate-200 hover:bg-slate-100 shadow-sm" onClick={prevStep}><ChevronLeft className="h-6 w-6" /></Button>}
-                        <Button size="lg" className="flex-1 h-16 rounded-2xl font-black uppercase text-sm shadow-2xl bg-primary text-white hover:scale-[1.02] active:scale-95" onClick={nextStep}>{currentStep === STEPS.length ? 'Finalize Project' : `Next Step: ${STEPS[currentStep].label.toUpperCase()}`}</Button>
+                    <div className="p-8 pt-4 bg-slate-50/80 backdrop-blur-xl border-t shrink-0 flex gap-3">
+                        {currentStep > 1 && <Button variant="outline" className="h-12 w-20 rounded-xl border-2 border-slate-200 hover:bg-slate-100 shadow-sm" onClick={prevStep}><ChevronLeft className="h-5 w-5" /></Button>}
+                        <Button size="lg" className="flex-1 h-12 rounded-xl font-black uppercase text-xs shadow-xl bg-primary text-white hover:scale-[1.02] active:scale-95" onClick={nextStep}>{currentStep === STEPS.length ? 'Finalize Project' : `Next Step: ${STEPS[currentStep].label.toUpperCase()}`}</Button>
                     </div>
                 </div>
             </div>
@@ -849,24 +849,24 @@ export function HighfieldQuoteFlow({
 
             <Dialog open={showFeatures} onOpenChange={setShowFeatures}>
                 <DialogContent className="sm:max-w-2xl rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-8 border-b bg-muted/5"><DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">Standard Features</DialogTitle></DialogHeader>
-                    <ScrollArea className="max-h-[60vh]"><div className="p-0"><Table><TableBody>{model?.standardFeatures?.map((f: string, i: number) => (<TableRow key={i} className="hover:bg-primary/5 border-b"><TableCell className="w-10 pl-8"><Check className="h-4 w-4 text-emerald-500" /></TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-8 py-4">{f}</TableCell></TableRow>))}</TableBody></Table></div></ScrollArea>
+                    <DialogHeader className="p-6 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Standard Features</DialogTitle></DialogHeader>
+                    <ScrollArea className="max-h-[60vh]"><div className="p-0"><Table><TableBody>{model?.standardFeatures?.map((f: string, i: number) => (<TableRow key={i} className="hover:bg-primary/5 border-b"><TableCell className="w-10 pl-6"><Check className="h-4 w-4 text-emerald-500" /></TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{f}</TableCell></TableRow>))}</TableBody></Table></div></ScrollArea>
                 </DialogContent>
             </Dialog>
 
             <Dialog open={showSpecs} onOpenChange={setShowSpecs}>
                 <DialogContent className="sm:max-w-2xl rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-8 border-b bg-muted/5"><DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">General Specifications</DialogTitle></DialogHeader>
-                    <ScrollArea className="max-h-[60vh]"><div className="p-0"><Table><TableBody>{model?.specifications?.otherSpecs?.map((s: any, i: number) => (<TableRow key={i} className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-8 py-4">{s.label}</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-8 py-4">{s.value}</TableCell></TableRow>))}</TableBody></Table></div></ScrollArea>
+                    <DialogHeader className="p-6 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Specifications</DialogTitle></DialogHeader>
+                    <ScrollArea className="max-h-[60vh]"><div className="p-0"><Table><TableBody>{model?.specifications?.otherSpecs?.map((s: any, i: number) => (<TableRow key={i} className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">{s.label}</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{s.value}</TableCell></TableRow>))}</TableBody></Table></div></ScrollArea>
                 </DialogContent>
             </Dialog>
 
             <Dialog open={showDocs} onOpenChange={setShowDocs}>
                 <DialogContent className="sm:max-w-md rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-8 border-b bg-muted/5"><DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-primary">Technical Assets</DialogTitle></DialogHeader>
-                    <div className="p-8 space-y-3">{model?.documents?.length > 0 ? model.documents.map((doc: any, i: number) => (
-                        <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-2xl border-2 hover:border-primary/40 hover:bg-primary/5 group"><div className="flex items-center gap-4"><FileText className="h-5 w-5 text-primary/40 group-hover:text-primary" /><span className="text-xs font-black uppercase tracking-tight">{doc.name}</span></div><ExternalLink className="h-4 w-4 opacity-20 group-hover:opacity-100" /></a>
-                    )) : <div className="py-12 text-center opacity-20 flex flex-col items-center gap-3"><FileText className="h-12 w-12" /><p className="text-[10px] font-black uppercase tracking-widest">No Documents Linked</p></div>}</div>
+                    <DialogHeader className="p-6 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Technical Assets</DialogTitle></DialogHeader>
+                    <div className="p-6 space-y-3">{model?.documents?.length > 0 ? model.documents.map((doc: any, i: number) => (
+                        <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-xl border-2 hover:border-primary/40 hover:bg-primary/5 group"><div className="flex items-center gap-3"><FileText className="h-4 w-4 text-primary/40 group-hover:text-primary" /><span className="text-[10px] font-black uppercase tracking-tight">{doc.name}</span></div><ExternalLink className="h-3.5 w-3.5 opacity-20 group-hover:opacity-100" /></a>
+                    )) : <div className="py-12 text-center opacity-20 flex flex-col items-center gap-2"><FileText className="h-10 w-10" /><p className="text-[9px] font-black uppercase tracking-widest">No Documents Linked</p></div>}</div>
                 </DialogContent>
             </Dialog>
         </div>
