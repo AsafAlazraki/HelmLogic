@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useFieldArray, useWatch, useController, useFormContext } from 'react-hook-form';
+import { useState } from 'react';
+import { useFieldArray, useWatch, useFormContext } from 'react-hook-form';
 import { z } from 'zod';
 import Image from 'next/image';
 import { useStorage } from '@/firebase/provider';
@@ -10,17 +10,10 @@ import { uploadFileToStorage } from '@/firebase/storage';
 import { Card, CardContent, CardTitle, CardHeader } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Loader2, Trash2, ChevronDown, X, Image as ImageIcon, Plus, Upload, PlusCircle, Layers, FileText, ExternalLink, ShieldCheck, DollarSign } from 'lucide-react';
+import { Loader2, Trash2, ChevronDown, X, Image as ImageIcon, Plus, ShieldCheck, DollarSign } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
-
-const GST_RATE = 0.10;
 
 const motorConfigSchema = z.object({
     type: z.enum(["Single", "Twin", "Triple", "Quad", "SingleWithAux"]),
@@ -32,30 +25,12 @@ const motorConfigSchema = z.object({
     })),
 });
 
-const colorVariantSchema = z.object({
-    id: z.string(),
-    name: z.string().min(1, 'Color name is required'),
-    imageUrls: z.array(z.string()).default([]),
-    cost: z.coerce.number().nullable().optional(),
-    sellPriceExclGst: z.coerce.number().nullable().optional(),
-});
-
-const packageSchema = z.object({
-    id: z.string(),
-    name: z.string().min(1, 'Package name is required'),
-    category: z.string().optional(),
-    cost: z.coerce.number().nullable().optional(),
-    sellPriceExclGst: z.coerce.number().nullable().optional(),
-    includedFeatures: z.array(z.string()).default([]),
-});
-
 export const jeanneauModelSchema = z.object({
     modelCode: z.string().min(1, 'Model Code is required'),
     coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
     cost: z.coerce.number().nullable().optional(),
     sellPriceExclGst: z.coerce.number().nullable().optional(),
-    freightCostExclGst: z.coerce.number().nullable().optional(),
     registration: z.object({
         price12Months: z.coerce.number().optional(),
         stickerPrice: z.coerce.number().optional(),
@@ -66,8 +41,8 @@ export const jeanneauModelSchema = z.object({
         otherSpecs: z.array(z.object({ id: z.string(), label: z.string(), value: z.string() })).default([]),
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
-    packages: z.array(packageSchema).default([]),
-    colors: z.array(colorVariantSchema).default([]),
+    packages: z.array(z.any()).default([]),
+    colors: z.array(z.any()).default([]),
     documents: z.array(z.object({ id: z.string(), name: z.string(), url: z.string() })).default([]),
 });
 
@@ -77,7 +52,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
     <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none">
         <div className="flex items-center gap-3">
             <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors group-data-[state=open]:bg-muted">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full border shadow-sm hover:bg-accent transition-colors group-data-[state=open]:bg-muted">
                     <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                 </Button>
             </CollapsibleTrigger>
@@ -89,7 +64,7 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
             )}
         </div>
         {onAdd && (
-            <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold hover:bg-accent hover:text-accent-foreground transition-colors" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
+            <Button type="button" variant="outline" size="sm" className="h-8 px-3 text-xs font-semibold" onClick={(e) => { e.stopPropagation(); onAdd(); }}>
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 Add
             </Button>
@@ -165,14 +140,11 @@ export function JeanneauModelEditor({ model, isModuleView }: { model: any, isMod
     const { control } = useFormContext<ModelFormData>();
     
     return (
-        <div className="space-y-8 max-w-full overflow-x-hidden">
+        <div className="space-y-8 max-w-full overflow-x-hidden text-left">
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
                 <div className="lg:col-span-4 space-y-8">
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
                     <RegistrationCard />
-                </div>
-                <div className="lg:col-span-3 space-y-8">
-                    {/* Other sections... */}
                 </div>
             </div>
         </div>
@@ -191,7 +163,7 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
 
     return (
         <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
-            <CollapsibleCardHeader title={isModuleView ? "Visual Config & Renders" : "Main Cover Image & Gallery"} count={galleryUrls.length + (coverImageUrl ? 1 : 0)} />
+            <CollapsibleCardHeader title={isModuleView ? "Visual Config" : "Main Cover Image & Gallery"} count={galleryUrls.length + (coverImageUrl ? 1 : 0)} />
             <CollapsibleContent>
                 <div className="space-y-0">
                     <div className="relative aspect-[16/10] w-full bg-secondary group">

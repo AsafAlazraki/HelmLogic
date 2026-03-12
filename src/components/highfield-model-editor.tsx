@@ -1,24 +1,20 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useFieldArray, useWatch, useFormContext, useController } from 'react-hook-form';
+import { useFieldArray, useWatch, useFormContext } from 'react-hook-form';
 import { z } from 'zod';
 import Image from 'next/image';
 import { useStorage, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, query, where, getDocs, writeBatch, doc, orderBy, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, query, where, doc, orderBy, serverTimestamp, setDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { 
-    Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, Hash, Tag, Layers, PlusCircle, ShieldCheck, CheckCircle2, 
-    DollarSign, Ship, RefreshCw, 
-    Pencil, ArrowUp, ArrowDown, Check, Settings2, 
-    Search, ListChecks, Star, ChevronDown, FileText, ExternalLink, ChevronRight, Zap,
-    Waves, Layout, FolderPlus
+    Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, Hash, Tag, PlusCircle, ShieldCheck, Star, ChevronDown, 
+    DollarSign, Ship, Check, Search, ListChecks
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -27,8 +23,6 @@ import { Label } from './ui/label';
 import { ScrollArea } from './ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from './ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -63,36 +57,9 @@ const optionalFeatureSchema = z.object({
     sellPriceExclGst: z.coerce.number().nullable().optional(),
 });
 
-const documentSchema = z.object({
-  id: z.string(),
-  name: z.string().min(1, "Document name is required"),
-  url: z.string().min(1, "Document URL is required"),
-});
-
-const ruleSchema = z.object({
-    id: z.string(),
-    sourceType: z.enum(['option', 'material']).default('option'),
-    sourceOptionId: z.string().min(1, 'Source is required'),
-    type: z.enum(['include', 'exclude']),
-    targetOptionIds: z.array(z.string()).min(1, 'At least one target option is required'),
-});
-
-const trailerOptionSchema = z.object({
-    id: z.string(),
-    name : z.string(),
-    isStandard: z.boolean().default(false),
-    sellPriceExclGst: z.coerce.number().optional(),
-});
-
-const trailerConfigSchema = z.object({
-    name: z.string().optional(),
-    imageUrl: z.string ().nullable().optional(),
-    options: z.array(trailerOptionSchema).default([]),
-});
-
 export const highfieldModelSchema = z.object({
     modelCode: z.string().min(1, 'Model Code is required'),
-    coverImageUrl: z.string().nullable().optional (),
+    coverImageUrl: z.string().nullable().optional(),
     galleryImageUrls: z.array(z.string()).default([]),
     registration: z.object({
         price12Months: z.coerce.number().optional(),
@@ -104,14 +71,18 @@ export const highfieldModelSchema = z.object({
         motorConfigurations: z.array(motorConfigSchema).default([]),
         otherSpecs: z.array(specSchema).default([]),
     }).optional(),
-    standardFeatures: z.array(z.string()).default ([]),
+    standardFeatures: z.array(z.string()).default([]),
     optionalFeatures: z.array(optionalFeatureSchema).default([]),
-    documents: z.array(documentSchema).default([]),
-    rules: z.array(ruleSchema).default([]),
-    trailerConfig: trailerConfigSchema.optional(),
+    documents: z.array(z.object({ id: z.string(), name: z.string(), url: z.string() })).default([]),
+    rules: z.array(z.any()).default([]),
+    trailerConfig: z.object({
+        name: z.string().optional(),
+        imageUrl: z.string().nullable().optional(),
+        options: z.array(z.any()).default([]),
+    }).optional(),
 });
 
-type ModelFormData =  z.infer<typeof highfieldModelSchema>;
+type ModelFormData = z.infer<typeof highfieldModelSchema>;
 
 const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?: number, onAdd?: () => void }) => (
     <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none text-left">
@@ -456,7 +427,6 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
     const watchedOptionalFeatures = useWatch({ control, name: 'optionalFeatures' }) || [];
     const [newCategoryName, setNewCategoryName] = useState('');
     const firestore = useFirestore();
-    const { toast } = useToast();
 
     const variantsQuery = useMemoFirebase(() => query(collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')), [firestore, vendorId, rangeId, model.id]);
     const { data: variants = [] } = useCollection<any>(variantsQuery);

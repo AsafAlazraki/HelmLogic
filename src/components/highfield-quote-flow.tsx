@@ -207,13 +207,20 @@ export function HighfieldQuoteFlow({
     // Intelligent Selection Reconciliation
     const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
         if (selectedMaterial === mat) return;
+        
         const currentVariant = variants?.find(v => v.id === selectedColor);
         const prevColorName = currentVariant?.colorName;
+        
         setSelectedMaterial(mat);
+        
         if (variants && prevColorName) {
             const matchingVariant = variants.find(v => v.material === mat && v.colorName === prevColorName);
-            if (matchingVariant) { setSelectedColor(matchingVariant.id); return; }
+            if (matchingVariant) {
+                setSelectedColor(matchingVariant.id);
+                return;
+            }
         }
+        
         setSelectedColor(null);
     };
 
@@ -238,21 +245,39 @@ export function HighfieldQuoteFlow({
     // Smart Option Relinking
     useEffect(() => {
         if (!selectedColor || !variants || !model.optionalFeatures) return;
+        
         const newVariant = variants.find(v => v.id === selectedColor);
         if (!newVariant) return;
+
         setSelectedOptionIds(prevIds => {
             let changed = false;
             const nextIds = [...prevIds].map(id => {
                 const currentOption = model.optionalFeatures.find((f: any) => f.id === id);
                 if (!currentOption) return id;
-                const isCompatible = !currentOption.applicableVariantIds?.length || currentOption.applicableVariantIds.includes(newVariant.id);
+
+                const isCompatible = !currentOption.applicableVariantIds?.length || 
+                                    currentOption.applicableVariantIds.includes(newVariant.id);
+
                 if (!isCompatible) {
                     const baseName = currentOption.name.split(' - ')[0];
-                    const sibling = model.optionalFeatures.find((f: any) => f.id !== id && f.name.startsWith(baseName) && (!f.applicableVariantIds?.length || f.applicableVariantIds.includes(newVariant.id)) && (f.category === currentOption.category));
-                    if (sibling) { changed = true; return sibling.id; } else { changed = true; return null; }
+                    const sibling = model.optionalFeatures.find((f: any) => 
+                        f.id !== id &&
+                        f.name.startsWith(baseName) &&
+                        (!f.applicableVariantIds?.length || f.applicableVariantIds.includes(newVariant.id)) &&
+                        (f.category === currentOption.category)
+                    );
+
+                    if (sibling) {
+                        changed = true;
+                        return sibling.id;
+                    } else {
+                        changed = true;
+                        return null;
+                    }
                 }
                 return id;
             }).filter(Boolean) as string[];
+
             return changed ? nextIds : prevIds;
         });
     }, [selectedColor, variants, model.optionalFeatures]);
@@ -267,16 +292,20 @@ export function HighfieldQuoteFlow({
                 const allVendors = vendorsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
                 const allModuleVendorIds = [...(module.associatedVendorIds || []), module.mainVendorId].filter(Boolean);
                 const motorVendor = allVendors.find(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
+
                 if (motorVendor) {
                     const dsSnap = await getDocs(collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets'));
                     const datasets = dsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
                     const targetDS = datasets.find(s => s.name.toLowerCase().includes('outboard') || s.name.toLowerCase().includes('motor')) || datasets[0];
+                    
                     if (targetDS) {
                         const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`));
                         const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+                        
                         const maxHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 999;
                         const minHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.minHp || 0;
                         const requiredSteering = hasConsoleSelected ? 'Forward Control' : 'Tiller';
+
                         setMotors(allRows.filter(r => {
                             const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
                             return hp >= minHp && hp <= maxHp && r.steeringType === requiredSteering;
@@ -294,12 +323,22 @@ export function HighfieldQuoteFlow({
             const allStandard = (selectedMotor.masterAccessories || []).filter((a: any) => a.isStandard);
             const finalStandardIds: string[] = [];
             const processedCats = new Set<string>();
+
             allStandard.forEach((a: any) => {
                 const cat = a.category || 'Other';
-                if (cat === 'Propeller' || cat === 'Rigging') { if (!processedCats.has(cat)) { finalStandardIds.push(a.id); processedCats.add(cat); } } else { finalStandardIds.push(a.id); }
+                if (cat === 'Propeller' || cat === 'Rigging') {
+                    if (!processedCats.has(cat)) {
+                        finalStandardIds.push(a.id);
+                        processedCats.add(cat);
+                    }
+                } else {
+                    finalStandardIds.push(a.id);
+                }
             });
             setSelectedMotorAccessoryIds(finalStandardIds);
-        } else { setSelectedMotorAccessoryIds([]); }
+        } else {
+            setSelectedMotorAccessoryIds([]);
+        }
     }, [selectedMotor]);
 
     const activeVariant = useMemo(() => {
@@ -333,7 +372,9 @@ export function HighfieldQuoteFlow({
             total += (model.registration?.price12Months || 0);
             if (isStickerSelected) {
                 total += (model.registration?.stickerPrice || 0);
-                if (isTenderToSelected) total += (model.registration?.tenderToStickerPrice || 0);
+                if (isTenderToSelected) {
+                    total += (model.registration?.tenderToStickerPrice || 0);
+                }
             }
         }
 
@@ -344,9 +385,13 @@ export function HighfieldQuoteFlow({
         if (selectedTrailerId && model.trailerConfig) {
             total += (model.trailerConfig.sellPriceExclGst || 0);
             selectedTrailerOptionsData.forEach((o: any) => { total += (o.sellPriceExclGst || 0); });
-            if (isTrailerRegoSelected) total += (model.registration?.trailerPrice12Months || 0);
+            if (isTrailerRegoSelected) {
+                total += (model.registration?.trailerPrice12Months || 0);
+            }
         }
-        selectedDealerFitData.forEach(s => { s.items?.forEach((i: any) => { total += (i.data?.sellPriceExclGst || 0); }); });
+        selectedDealerFitData.forEach(s => {
+            s.items?.forEach((i: any) => { total += (i.data?.sellPriceExclGst || 0); });
+        });
         return total;
     }, [activeVariant, selectedOptionsData, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration]);
 
@@ -366,6 +411,7 @@ export function HighfieldQuoteFlow({
         const seatOpt = imagedOptions.find((f: any) => f.category === 'Seats');
         const itemsToShow = [consoleOpt, seatOpt].filter(Boolean);
         if (itemsToShow.length === 0) return null;
+
         return (
             <div className={cn("h-full w-full grid bg-white", itemsToShow.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
                 {itemsToShow.map((item: any, i) => (
@@ -399,11 +445,13 @@ export function HighfieldQuoteFlow({
         const motorChanged = prevSelectedMotor.current !== selectedMotor?.id;
         const trailerChanged = prevSelectedTrailer.current !== selectedTrailerId;
         const dealerFitChanged = JSON.stringify(prevSelectedDealerFit.current) !== JSON.stringify(selectedDealerFitIds);
+
         prevSelectedColor.current = selectedColor;
         prevSelectedOptions.current = selectedOptionIds;
         prevSelectedMotor.current = selectedMotor?.id;
         prevSelectedTrailer.current = selectedTrailerId;
         prevSelectedDealerFit.current = selectedDealerFitIds;
+
         if (motorChanged && selectedMotor) {
             const mUrl = resolveImageUrl(selectedMotor);
             const idx = carouselSlides.findIndex(s => s.type === 'motor' && s.url === mUrl);
@@ -485,6 +533,7 @@ export function HighfieldQuoteFlow({
         const currentCat = feature.category || 'General Options';
         const isCurrentlySelected = selectedOptionIds.includes(id);
         let nextSelectedIds = [...selectedOptionIds];
+
         if (isCurrentlySelected) {
             nextSelectedIds = nextSelectedIds.filter(i => i !== id);
             if (currentCat === 'Consoles') {
@@ -519,11 +568,16 @@ export function HighfieldQuoteFlow({
         const isSelected = selectedMotorAccessoryIds.includes(id);
         const cat = accessory.category || 'Other Hardware';
         const isSingleSelect = cat === 'Propeller' || cat === 'Rigging';
+        
         let next = isSelected ? selectedMotorAccessoryIds.filter(i => i !== id) : [...selectedMotorAccessoryIds];
+        
         if (!isSelected) {
-            if (isSingleSelect) { next = next.filter(i => selectedMotor.masterAccessories.find((a: any) => a.id === i)?.category !== cat); }
+            if (isSingleSelect) {
+                next = next.filter(i => selectedMotor.masterAccessories.find((a: any) => a.id === i)?.category !== cat);
+            }
             next.push(id);
         }
+        
         setSelectedMotorAccessoryIds(next);
         if (!isSelected) {
             const motorCats = ['Propeller', 'Rigging', 'Other Hardware'];
@@ -534,7 +588,10 @@ export function HighfieldQuoteFlow({
 
     const toggleTrailerOption = (id: string) => {
         const isSelected = selectedTrailerOptionIds.includes(id);
-        setSelectedTrailerOptionIds(isSelected ? selectedTrailerOptionIds.filter(i => i !== id) : [...selectedTrailerOptionIds, id]);
+        setSelectedTrailerOptionIds(isSelected 
+            ? selectedTrailerOptionIds.filter(i => i !== id) 
+            : [...selectedTrailerOptionIds, id]
+        );
     };
 
     const toggleDealerFitSelection = (id: string) => {
@@ -673,6 +730,7 @@ export function HighfieldQuoteFlow({
                                                     </div>
                                                     <p className={cn("font-black text-xs", isRegoSelected ? "text-primary" : "text-slate-400")}>${(model.registration?.price12Months || 0).toLocaleString()}</p>
                                                 </div>
+
                                                 {isRegoSelected && (
                                                     <div className="grid grid-cols-1 gap-3 pt-2 animate-in slide-in-from-top-2 duration-500">
                                                         <div className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", isStickerSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={handleStickerToggle}>
@@ -682,6 +740,7 @@ export function HighfieldQuoteFlow({
                                                             </div>
                                                             <p className={cn("font-black text-xs", isStickerSelected ? "text-primary" : "text-slate-400")}>+${(model.registration?.stickerPrice || 0).toLocaleString()}</p>
                                                         </div>
+
                                                         {isStickerSelected && vendor.slug === 'highfield' && (
                                                             <div className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", isTenderToSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={() => setIsTenderToSelected(!isTenderToSelected)}>
                                                                 <div className="flex items-center gap-4">
@@ -742,7 +801,7 @@ export function HighfieldQuoteFlow({
                                                             <div className="relative h-24 w-full bg-white overflow-hidden shrink-0">{mUrl && <Image src={mUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
                                                             <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
                                                                 <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{displayName}</p>
-                                                                <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{m['HP Rating']} HP • ${(m.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                                <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-primary")}>{m['HP Rating']} HP • ${(m.sellPriceExclGst || 0).toLocaleString()}</p>
                                                             </div>
                                                         </button>
                                                     );
