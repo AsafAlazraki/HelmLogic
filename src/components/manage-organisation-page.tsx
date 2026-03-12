@@ -334,7 +334,7 @@ function ExistingUsersList({ orgId, roles }: { orgId: string, roles: any[] }) {
     );
 }
 
-export function ManageOrganisationPage({ orgId }: { orgId: string }) {
+export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     const router = useRouter();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -485,7 +485,9 @@ export function ManageOrganisationPage({ orgId }: { orgId: string }) {
 
     if (orgLoading) return <div className="flex justify-center items-center py-24"><Loader2 className="h-16 w-16 animate-spin text-primary" /></div>;
 
-    return organisation ? (
+    if (!organisation) return null;
+
+    return (
         <FormProvider {...form}>
             <div className="space-y-4">
                 <div className="flex items-center justify-end gap-2">
