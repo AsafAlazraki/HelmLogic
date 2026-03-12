@@ -624,9 +624,9 @@ export function HighfieldQuoteFlow({
                         </div>
                     </div>
                     <div className="flex items-center justify-start gap-3 mt-4 px-4 shrink-0">
-                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-primary rounded-xl border-2 border-transparent hover:border-primary/10 transition-all" onClick={() => setShowFeatures(true)}><ListChecks className="h-3.5 w-3.5 mr-1.5" /> Features</Button>
-                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-primary rounded-xl border-2 border-transparent hover:border-primary/10 transition-all" onClick={() => setShowSpecs(true)}><ClipboardList className="h-3.5 w-3.5 mr-1.5" /> Specs</Button>
-                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-primary rounded-xl border-2 border-transparent hover:border-primary/10 transition-all" onClick={() => setShowDocs(true)}><FileText className="h-3.5 w-3.5 mr-1.5" /> Docs</Button>
+                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm" onClick={() => setShowFeatures(true)}><ListChecks className="h-3.5 w-3.5 mr-1.5" /> Features</Button>
+                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm" onClick={() => setShowSpecs(true)}><ClipboardList className="h-3.5 w-3.5 mr-1.5" /> Specs</Button>
+                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm" onClick={() => setShowDocs(true)}><FileText className="h-3.5 w-3.5 mr-1.5" /> Docs</Button>
                     </div>
                 </div>
 
