@@ -6,10 +6,10 @@ import { z } from 'zod';
 import Image from 'next/image';
 import { useStorage, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, query, where, doc, orderBy, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, orderBy, serverTimestamp, setDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { FormField, FormItem, FormLabel, FormMessage, FormControl } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { 

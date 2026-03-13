@@ -218,7 +218,6 @@ export function HighfieldQuoteFlow({
             setIsStickerSelected(false);
             setIsTenderToSelected(false);
         } else {
-            // Trigger auto-glide to fram the rego card
             setTimeout(() => {
                 registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, 100);
@@ -231,52 +230,52 @@ export function HighfieldQuoteFlow({
         if (!newVal) {
             setIsTenderToSelected(false);
         } else {
-            // Trigger auto-glide to reveal sub-options
             setTimeout(() => {
                 registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 100);
         }
     };
 
-    // Smart Option Relinking
+    // Motor Logic with Lenient Filtering
     useEffect(() => {
-        if (!selectedColor || !variants || !model.optionalFeatures) return;
-        
-        const newVariant = variants.find(v => v.id === selectedColor);
-        if (!newVariant) return;
+        const fetchMotors = async () => {
+            if (currentStep !== 3) return;
+            setMotorsLoading(true);
+            try {
+                const vendorsSnap = await getDocs(collection(firestore, 'data-warehouse'));
+                const allVendors = vendorsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+                const allModuleVendorIds = [...(module.associatedVendorIds || []), module.mainVendorId].filter(Boolean);
+                const motorVendor = allVendors.find(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
 
-        setSelectedOptionIds(prevIds => {
-            let changed = false;
-            const nextIds = [...prevIds].map(id => {
-                const currentOption = model.optionalFeatures.find((f: any) => f.id === id);
-                if (!currentOption) return id;
+                if (motorVendor) {
+                    const dsSnap = await getDocs(collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets'));
+                    const datasets = dsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+                    const targetDS = datasets.find(s => s.name.toLowerCase().includes('outboard') || s.name.toLowerCase().includes('motor')) || datasets[0];
+                    
+                    if (targetDS) {
+                        const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`));
+                        const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+                        
+                        const motorConfig = model.specifications?.motorConfigurations?.[0]?.engines?.[0];
+                        const maxHp = motorConfig?.maxHp || 999;
+                        const minHp = motorConfig?.minHp || 0;
+                        const requiredSteering = hasConsoleSelected ? 'Forward Control' : 'Tiller';
 
-                const isCompatible = !currentOption.applicableVariantIds?.length || 
-                                    currentOption.applicableVariantIds.includes(newVariant.id);
+                        setMotors(allRows.filter(r => {
+                            const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
+                            const hpMatch = hp >= minHp && hp <= maxHp;
+                            if (!hpMatch) return false;
 
-                if (!isCompatible) {
-                    const baseName = currentOption.name.split(' - ')[0];
-                    const sibling = model.optionalFeatures.find((f: any) => 
-                        f.id !== id &&
-                        f.name.startsWith(baseName) &&
-                        (!f.applicableVariantIds?.length || f.applicableVariantIds.includes(newVariant.id)) &&
-                        (f.category === currentOption.category)
-                    );
-
-                    if (sibling) {
-                        changed = true;
-                        return sibling.id;
-                    } else {
-                        changed = true;
-                        return null;
+                            // Lenient steering filter: show matches OR items where steering isn't defined yet
+                            // This prevents an empty screen if data isn't fully mapped
+                            return !r.steeringType || r.steeringType === requiredSteering;
+                        }).map(m => ({ ...m, vendorName: motorVendor.name })));
                     }
                 }
-                return id;
-            }).filter(Boolean) as string[];
-
-            return changed ? nextIds : prevIds;
-        });
-    }, [selectedColor, variants, model.optionalFeatures]);
+            } catch (e) { console.error(e); } finally { setMotorsLoading(false); }
+        };
+        fetchMotors();
+    }, [currentStep, firestore, module, model, hasConsoleSelected]);
 
     const activeVariant = useMemo(() => {
         if (!selectedColor || !variants) return null;
@@ -304,7 +303,6 @@ export function HighfieldQuoteFlow({
         let total = activeVariant?.sellPriceExclGst || 0;
         selectedOptionsData.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
         
-        // Registration Costs
         if (isRegoSelected) {
             total += (model.registration?.price12Months || 0);
             if (isStickerSelected) {
@@ -342,90 +340,16 @@ export function HighfieldQuoteFlow({
         return path.trim().replace(/\\/g, '/');
     };
 
-    const buildPreviewSlide = useMemo(() => {
-        const imagedOptions = selectedOptionsData.filter(f => f.imageUrl && f.imageUrl !== "");
-        const consoleOpt = imagedOptions.find((f: any) => f.category === 'Consoles');
-        const seatOpt = imagedOptions.find((f: any) => f.category === 'Seats');
-        const itemsToShow = [consoleOpt, seatOpt].filter(Boolean);
-        if (itemsToShow.length === 0) return null;
-
-        return (
-            <div className={cn("h-full w-full grid bg-white", itemsToShow.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
-                {itemsToShow.map((item: any, i) => (
-                    <div key={item.id} className={cn("relative flex items-center justify-center hover:bg-slate-50", i === 0 && itemsToShow.length === 2 && "border-r")}>
-                        {item.imageUrl && <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-8 mix-blend-multiply" unoptimized />}
-                        <div className="absolute bottom-8 left-8 px-3 py-1 bg-slate-900/5 rounded-full text-[8px] font-black uppercase tracking-widest text-slate-400">{item.name}</div>
-                    </div>
-                ))}
-            </div>
-        );
-    }, [selectedOptionsData]);
-
     const carouselSlides = useMemo(() => {
         const slides: { type: string; url?: string; content?: React.ReactNode }[] = [];
         slides.push({ type: 'boat', url: model.coverImageUrl || '' });
         if (activeVariant?.imageUrl) slides.push({ type: 'variant', url: activeVariant.imageUrl });
         if (buildPreviewSlide) slides.push({ type: 'build', content: buildPreviewSlide });
         if (selectedMotor) { const mUrl = resolveImageUrl(selectedMotor); if (mUrl) slides.push({ type: 'motor', url: mUrl }); }
-        selectedMotorAccessories.forEach((acc: any) => { const url = resolveImageUrl(acc); if (url) slides.push({ type: 'accessory', url }); });
         if (selectedTrailerId && model.trailerConfig?.imageUrl) slides.push({ type: 'trailer', url: model.trailerConfig.imageUrl });
-        selectedDealerFitData.forEach(s => { s.items?.forEach((i: any) => { const url = resolveImageUrl(i.data); if (url) slides.push({ type: 'dealerfit', url }); }); });
         if (model.galleryImageUrls) model.galleryImageUrls.forEach((url: string) => { if (url !== model.coverImageUrl) slides.push({ type: 'gallery', url }); });
         return slides;
-    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedMotorAccessories, selectedTrailerId, selectedDealerFitData]);
-
-    useEffect(() => {
-        if (!api) return;
-        api.reInit();
-    }, [selectedColor, selectedOptionIds, selectedMotor, selectedTrailerId, selectedDealerFitIds, api, carouselSlides, activeVariant, currentStep]);
-
-    useEffect(() => {
-        if (selectedMaterial && currentStep === 1) setTimeout(() => colorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
-    }, [selectedMaterial, currentStep]);
-
-    useEffect(() => {
-        if (selectedColor && currentStep === 1) setTimeout(() => registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
-    }, [selectedColor, currentStep]);
-
-    useEffect(() => {
-        if (scrollAreaRef.current) {
-            const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-            if (viewport) viewport.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    }, [currentStep]);
-
-    const relevantFeatures = useMemo(() => {
-        const features = model.optionalFeatures || [];
-        if (!activeVariant) return features;
-        return features.filter((f: any) => {
-            const name = String(f.name).toUpperCase();
-            if (HARDWARE_BLOCKLIST.some(keyword => name.includes(keyword))) return false;
-            if (f.applicableVariantIds?.length && !f.applicableVariantIds.includes(activeVariant.id)) return false;
-            if (selectedMaterial === 'PVC' && name.includes('HYP')) return false;
-            if (selectedMaterial === 'HYP' && name.includes('PVC')) return false;
-            return true;
-        });
-    }, [model.optionalFeatures, activeVariant, selectedMaterial]);
-
-    const groupedOptions = useMemo(() => {
-        const features = [...relevantFeatures];
-        const availableConsoles = features.filter((f: any) => f.category === 'Consoles');
-        const selectedConsole = availableConsoles.find(f => selectedOptionIds.includes(f.id));
-        const groups = features.reduce((acc: any, opt: any) => {
-            const cat = opt.category || 'General Options';
-            if (cat === 'Seats' && (!selectedConsole || opt.id !== selectedConsole.associatedSeatId)) return acc;
-            if (cat === 'Rigging' && !hasConsoleSelected) return acc;
-            if (!acc[cat]) acc[cat] = [];
-            acc[cat].push(opt);
-            return acc;
-        }, {});
-        return Object.entries(groups).filter(([_, opts]: [string, any]) => opts.length > 0).sort(([a], [b]) => {
-            if (a === 'Consoles') return -1; if (b === 'Consoles') return 1;
-            if (a === 'Seats') return -1; if (b === 'Seats') return 1;
-            if (a === 'Rigging') return -1; if (b === 'Rigging') return 1;
-            return a.localeCompare(b);
-        }) as [string, any][];
-    }, [relevantFeatures, selectedOptionIds, hasConsoleSelected]);
+    }, [activeVariant, model, selectedMotor, selectedTrailerId]);
 
     const toggleOption = (id: string) => {
         const feature = relevantFeatures.find((f: any) => f.id === id);
@@ -456,10 +380,6 @@ export function HighfieldQuoteFlow({
             }
         }
         setSelectedOptionIds(nextSelectedIds);
-        if (!isCurrentlySelected) {
-            const nextCat = groupedOptions[groupedOptions.findIndex(([name]) => name === currentCat) + 1]?.[0];
-            if (nextCat) setTimeout(() => categoryRefs.current[nextCat]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
-        }
     };
 
     const toggleMotorAccessory = (id: string) => {
@@ -479,11 +399,6 @@ export function HighfieldQuoteFlow({
         }
         
         setSelectedMotorAccessoryIds(next);
-        if (!isSelected) {
-            const motorCats = ['Propeller', 'Rigging', 'Other Hardware'];
-            const nextCat = motorCats[motorCats.indexOf(cat) + 1];
-            if (nextCat) setTimeout(() => categoryRefs.current[nextCat]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
-        }
     };
 
     const toggleTrailerOption = (id: string) => {
@@ -496,15 +411,24 @@ export function HighfieldQuoteFlow({
 
     const toggleDealerFitSelection = (id: string) => {
         const isSelected = selectedDealerFitIds.includes(id);
-        const sel = dealerFitSelections?.find(s => s.id === id);
-        if (!sel) return;
         setSelectedDealerFitIds(isSelected ? selectedDealerFitIds.filter(i => i !== id) : [...selectedDealerFitIds, id]);
-        if (!isSelected) {
-            const dealerCats = groupedDealerFit.map(([name]) => name);
-            const nextCat = dealerCats[dealerCats.indexOf(sel.category || 'Other Gear') + 1];
-            if (nextCat) setTimeout(() => categoryRefs.current[nextCat]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
-        }
     };
+
+    const groupedOptions = useMemo(() => {
+        const features = [...relevantFeatures];
+        const groups = features.reduce((acc: any, opt: any) => {
+            const cat = opt.category || 'General Options';
+            if (!acc[cat]) acc[cat] = [];
+            acc[cat].push(opt);
+            return acc;
+        }, {});
+        return Object.entries(groups).filter(([_, opts]: [string, any]) => opts.length > 0).sort(([a], [b]) => {
+            if (a === 'Consoles') return -1; if (b === 'Consoles') return 1;
+            if (a === 'Seats') return -1; if (b === 'Seats') return 1;
+            if (a === 'Rigging') return -1; if (b === 'Rigging') return 1;
+            return a.localeCompare(b);
+        }) as [string, any][];
+    }, [relevantFeatures]);
 
     const groupedMotorAccessories = useMemo(() => {
         if (!selectedMotor) return [];
