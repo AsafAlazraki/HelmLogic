@@ -122,14 +122,9 @@ export function HighfieldQuoteFlow({
     const firestore = useFirestore();
     const router = useRouter();
     const { user } = useUser();
-    const [currentStep, setCurrentStep] = useState(1);
-    const scrollAreaRef = useRef<HTMLDivElement>(null);
-    const materialSectionRef = useRef<HTMLDivElement>(null);
-    const colorSectionRef = useRef<HTMLDivElement>(null);
-    const registrationSectionRef = useRef<HTMLDivElement>(null);
-    const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
     
-    // Selection State
+    // 1. Core State
+    const [currentStep, setCurrentStep] = useState(1);
     const [selectedMaterial, setSelectedMaterial] = useState<'PVC' | 'HYP' | null>(null);
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
     const [isRegoSelected, setIsRegoSelected] = useState(false);
@@ -150,17 +145,21 @@ export function HighfieldQuoteFlow({
     const [newCustomPrice, setNewCustomPrice] = useState('');
     const [newCustomDesc, setNewCustomDesc] = useState('');
 
-    // Modal States
+    // Modal & Carousel State
     const [showFeatures, setShowFeatures] = useState(false);
     const [showSpecs, setShowSpecs] = useState(false);
     const [showDocs, setShowDocs] = useState(false);
-
-    // Carousel State
     const [api, setApi] = useState<CarouselApi>();
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
-    // --- Data Resolvers ---
+    // Refs for Auto-Scroll
+    const scrollAreaRef = useRef<HTMLDivElement>(null);
+    const materialSectionRef = useRef<HTMLDivElement>(null);
+    const colorSectionRef = useRef<HTMLDivElement>(null);
+    const registrationSectionRef = useRef<HTMLDivElement>(null);
+    const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+    // 2. Data Resolvers
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: userProfile } = useDoc<any>(userProfileRef);
     const orgId = userProfile?.organisationId;
@@ -178,8 +177,7 @@ export function HighfieldQuoteFlow({
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
 
-    // --- Derived Memos ---
-
+    // 3. Derived Memos (CRITICAL: Order of initialization)
     const availableMaterials = useMemo(() => {
         if (!variants) return [];
         return Array.from(new Set(variants.map(v => v.material).filter(Boolean)));
@@ -330,8 +328,7 @@ export function HighfieldQuoteFlow({
         return total;
     }, [activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration]);
 
-    // --- Selection Handlers ---
-
+    // 4. Selection Handlers
     const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
         if (selectedMaterial === mat) return;
         const currentVariant = variants?.find(v => v.id === selectedColor);
@@ -453,7 +450,27 @@ export function HighfieldQuoteFlow({
     const nextStep = () => { if (currentStep < STEPS.length) setCurrentStep(currentStep + 1); };
     const prevStep = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
 
-    // --- Motor Sync logic ---
+    // 5. Effects (Carousel Sync & Motor Fetch)
+    useEffect(() => {
+        if (!api) return;
+        if (activeVariant) {
+            const variantIdx = carouselSlides.findIndex(s => s.type === 'variant');
+            if (variantIdx !== -1) api.scrollTo(variantIdx);
+        }
+    }, [activeVariant, api, carouselSlides]);
+
+    useEffect(() => {
+        if (!api || !selectedMotor) return;
+        const motorIdx = carouselSlides.findIndex(s => s.type === 'motor');
+        if (motorIdx !== -1) api.scrollTo(motorIdx);
+    }, [selectedMotor, api, carouselSlides]);
+
+    useEffect(() => {
+        if (!api || !selectedTrailerId) return;
+        const trailerIdx = carouselSlides.findIndex(s => s.type === 'trailer');
+        if (trailerIdx !== -1) api.scrollTo(trailerIdx);
+    }, [selectedTrailerId, api, carouselSlides]);
+
     useEffect(() => {
         const fetchMotors = async () => {
             if (currentStep !== 3) return;
@@ -510,6 +527,7 @@ export function HighfieldQuoteFlow({
             </div>
 
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
+                {/* Left Side: Render Area */}
                 <div className="w-full lg:w-7/12 relative flex flex-col bg-slate-50/50 overflow-hidden">
                     <div className="flex-1 px-8 pt-8 pb-0 flex flex-col">
                         <div className="relative flex-1 w-full bg-white rounded-[2rem] border-2 border-slate-100 shadow-xl overflow-hidden group">
@@ -549,8 +567,9 @@ export function HighfieldQuoteFlow({
                     </div>
                 </div>
 
+                {/* Right Side: Configuration Panel */}
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
-                    <div className="pt-4 px-8 pb-4 shrink-0 bg-transparent min-h-[80px] flex flex-col justify-start">
+                    <div className="pt-8 px-8 pb-4 shrink-0 bg-transparent min-h-[80px] flex flex-col justify-start">
                         <h2 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 leading-tight">{STEPS[currentStep - 1].label.toUpperCase()}<span className="text-primary"> - {range?.name?.toUpperCase()} {model?.name?.toUpperCase()}</span></h2>
                     </div>
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
