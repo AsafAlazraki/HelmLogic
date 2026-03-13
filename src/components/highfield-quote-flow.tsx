@@ -58,6 +58,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
+    DialogFooter,
     DialogClose
 } from "@/components/ui/dialog";
 import {
@@ -150,7 +151,7 @@ export function HighfieldQuoteFlow({
     const [newCustomPrice, setNewCustomPrice] = useState('');
     const [newCustomDesc, setNewCustomDesc] = useState('');
 
-    // Utility States
+    // Modal States
     const [showFeatures, setShowFeatures] = useState(false);
     const [showSpecs, setShowSpecs] = useState(false);
     const [showDocs, setShowDocs] = useState(false);
@@ -173,12 +174,12 @@ export function HighfieldQuoteFlow({
     const dealerFitQuery = useMemoFirebase(() => 
         orgId ? collection(firestore, `organisations/${orgId}/dealerFitSelections`) : null,
     [firestore, orgId]);
-    const { data: dealerFitSelections } = useCollection<any>(dealerFitQuery);
+    const { data: dealerFitSelections, isLoading: dealerFitLoading } = useCollection<any>(dealerFitQuery);
 
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
 
-    // --- Derived Memos (Order is critical for ReferenceError prevention) ---
+    // --- Derived Memos ---
 
     const availableMaterials = useMemo(() => {
         if (!variants) return [];
@@ -189,11 +190,6 @@ export function HighfieldQuoteFlow({
         if (!selectedColor || !variants) return null;
         return variants.find(v => v.id === selectedColor);
     }, [selectedColor, variants]);
-
-    const availableColors = useMemo(() => {
-        if (!variants || !selectedMaterial) return [];
-        return variants.filter(v => v.material === selectedMaterial);
-    }, [variants, selectedMaterial]);
 
     const buildPreviewSlide = useMemo(() => {
         const imagedOptions = model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id) && f.imageUrl && f.imageUrl !== "") || [];
@@ -511,7 +507,7 @@ export function HighfieldQuoteFlow({
 
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
                 <div className="w-full lg:w-7/12 relative flex flex-col bg-slate-50/50 overflow-hidden">
-                    <div className="flex-1 p-4 pb-0 flex flex-col">
+                    <div className="flex-1 px-8 pt-8 pb-0 flex flex-col">
                         <div className="relative flex-1 w-full bg-white rounded-[2rem] border-2 border-slate-100 shadow-xl overflow-hidden group">
                             <Carousel className="w-full h-full" opts={{ loop: true }} setApi={setApi}>
                                 <CarouselContent className="h-full">
@@ -531,7 +527,7 @@ export function HighfieldQuoteFlow({
                             </Carousel>
                         </div>
                     </div>
-                    <div className="p-8 pt-4 shrink-0">
+                    <div className="px-8 pt-4 pb-8 shrink-0">
                         <div className="bg-white border-2 border-white shadow-xl p-6 rounded-[2rem] flex items-center justify-between min-h-[92px]">
                             <div className="flex flex-col items-start px-1 gap-3">
                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] leading-none">Technical Utilities</span>
@@ -550,7 +546,7 @@ export function HighfieldQuoteFlow({
                 </div>
 
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
-                    <div className="pt-4 px-8 pb-4 shrink-0 bg-transparent min-h-[80px] flex flex-col justify-center">
+                    <div className="pt-8 px-8 pb-4 shrink-0 bg-transparent min-h-[80px] flex flex-col justify-start">
                         <h2 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 leading-tight">{STEPS[currentStep - 1].label.toUpperCase()}<span className="text-primary"> - {range?.name?.toUpperCase()} {model?.name?.toUpperCase()}</span></h2>
                     </div>
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
@@ -711,7 +707,7 @@ export function HighfieldQuoteFlow({
                                                     const mUrl = resolveImageUrl(m);
                                                     const isSelected = selectedMotor?.id === m.id;
                                                     return (
-                                                        <button key={m.id} onClick={() => { setSelectedMotor(isSelected ? null : m); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                        <button key={m.id} onClick={() => { setSelectedMotor(isSelected ? null : m); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                             <div className="relative h-24 w-full bg-white overflow-hidden shrink-0">{mUrl && <Image src={mUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
                                                             <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
                                                                 <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{getMotorDisplayName(m)}</p>
