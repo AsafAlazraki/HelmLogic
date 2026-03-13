@@ -417,7 +417,7 @@ export function HighfieldQuoteFlow({
             nextSelectedIds = nextSelectedIds.filter(i => i !== id);
             if (currentCat === 'Consoles') {
                 const riggingItem = relevantFeatures.find(f => f.category === 'Rigging');
-                if (riggingItem) nextSelectedIds = nextSelectedIds.filter(i => riggingItem.id !== i);
+                if (riggingItem) nextSelectedIds = nextSelectedIds.filter(i => i !== riggingItem.id);
                 const seatIds = relevantFeatures.filter(f => f.category === 'Seats').map(f => f.id);
                 nextSelectedIds = nextSelectedIds.filter(i => !seatIds.includes(i));
             }
@@ -473,22 +473,6 @@ export function HighfieldQuoteFlow({
         setSelectedDealerFitIds(isSelected ? selectedDealerFitIds.filter(i => i !== id) : [...selectedDealerFitIds, id]);
     };
 
-    // Auto-Scroll Effects
-    useEffect(() => {
-        if (selectedMaterial && currentStep === 1) setTimeout(() => colorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800);
-    }, [selectedMaterial, currentStep]);
-
-    useEffect(() => {
-        if (selectedColor && currentStep === 1) setTimeout(() => registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800);
-    }, [selectedColor, currentStep]);
-
-    useEffect(() => {
-        if (scrollAreaRef.current) {
-            const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-            if (viewport) viewport.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-    }, [currentStep]);
-
     const relevantFeatures = useMemo(() => {
         const features = model.optionalFeatures || [];
         if (!activeVariant) return features;
@@ -528,17 +512,6 @@ export function HighfieldQuoteFlow({
         }, {});
         return Object.entries(groups).sort(([a], [b]) => (a === 'Propeller' ? -1 : b === 'Propeller' ? 1 : a === 'Rigging' ? -1 : b === 'Rigging' ? 1 : a.localeCompare(b))) as [string, any][];
     }, [selectedMotor]);
-
-    const groupedDealerFit = useMemo(() => {
-        if (!dealerFitSelections) return [];
-        const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
-            const cat = sel.category || 'Other Gear';
-            if (!acc[cat]) acc[cat] = [];
-            acc[cat].push(sel);
-            return acc;
-        }, {});
-        return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b)) as [string, any][];
-    }, [dealerFitSelections]);
 
     const getMotorDisplayName = (m: any) => `${m?.vendorName || 'YAMAHA'} - ${m?.['Model Name'] || m?.ModelName || m?.name || m?.Description || m?.model || 'Unnamed'}`;
 
@@ -876,36 +849,214 @@ export function HighfieldQuoteFlow({
                                                 </div>
                                             )}
                                         </CardContent></Card>
-                                        {selectedOptionsData.length > 0 && <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Package className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Factory Options</CardTitle></div></CardHeader><CardContent className="p-0"><div className="divide-y">{selectedOptionsData.map((opt: any) => (<div key={opt.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors"><div className="flex items-center gap-3"><div className="h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center"><Check className="h-3 w-3 text-emerald-500" /></div><div><p className="text-[10px] font-black uppercase tracking-tight">{opt.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1">{opt.category || 'Standard'}</Badge></div></div><p className="text-[10px] font-bold text-slate-600">${(opt.sellPriceExclGst || 0).toLocaleString()}</p></div>))}</div></CardContent></Card>}
-                                        {selectedMotor && <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Powertrain</CardTitle></div></CardHeader><CardContent className="p-0"><div className="p-4 border-b flex items-center justify-between"><div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{getMotorDisplayName(selectedMotor)}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Performance</p></div><p className="font-black text-primary italic text-sm">${(selectedMotor.sellPriceExclGst || 0).toLocaleString()}</p></div>{selectedMotorAccessories.length > 0 && <div className="divide-y bg-slate-50/50">{selectedMotorAccessories.map((acc: any) => (<div key={acc.id} className="p-4 flex items-center justify-between"><div className="flex items-center gap-3"><div className="h-6 w-6 rounded-lg bg-white border flex items-center justify-center"><Wrench className="h-3 w-3 text-primary/40" /></div><div><p className="text-[10px] font-black uppercase tracking-tight">{acc.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1 border-primary/10 text-primary/60">{acc.category || 'Standard'}</Badge></div></div><p className="text-[10px] font-bold text-slate-600">+${(acc.sellPriceExclGst || 0).toLocaleString()}</p></div>))}</div>}</CardContent></Card>}
-                                        {selectedTrailerId && model.trailerConfig && <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Towing Solution</CardTitle></div></CardHeader><CardContent className="p-4">
-                                            <div className="flex items-center justify-between">
-                                                <div className="space-y-0.5">
-                                                    <p className="font-black text-sm uppercase tracking-tight text-slate-900">{model.trailerConfig.name}</p>
-                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Precision Chassis</p>
-                                                </div>
-                                                <p className="font-black text-primary italic text-sm">${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
-                                            </div>
-                                            {isTrailerRegoSelected && (
-                                                <div className="mt-4 pt-4 border-t border-dashed space-y-2">
-                                                    <div className="flex items-center justify-between text-[10px] font-bold text-slate-600">
-                                                        <span>12 MONTHS TRAILER REGISTRATION</span>
-                                                        <span>${(model.registration?.trailerPrice12Months || 0).toLocaleString()}</span>
+                                        
+                                        {selectedOptionsData.length > 0 && (
+                                            <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
+                                                <CardHeader className="bg-muted/30 border-b p-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <Package className="h-4 w-4 text-primary" />
+                                                        <CardTitle className="text-xs font-black uppercase tracking-widest">Factory Options</CardTitle>
                                                     </div>
-                                                </div>
-                                            )}
-                                            {selectedTrailerOptionsData.length > 0 && (
-                                                <div className="mt-4 pt-4 border-t border-dashed space-y-3">
-                                                    {selectedTrailerOptionsData.map((opt: any) => (
-                                                        <div key={opt.id} className="flex items-center justify-between text-[10px] font-bold text-slate-600">
-                                                            <span>{opt.name.toUpperCase()}</span>
-                                                            <span>+${(opt.sellPriceExclGst || 0).toLocaleString()}</span>
+                                                </CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="divide-y">
+                                                        {selectedOptionsData.map((opt: any) => (
+                                                            <div key={opt.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="group/remove h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                        <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="icon" 
+                                                                            className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive transition-opacity"
+                                                                            onClick={(e) => { e.stopPropagation(); toggleOption(opt.id); }}
+                                                                        >
+                                                                            <X className="h-3 w-3" />
+                                                                        </Button>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black uppercase tracking-tight">{opt.name}</p>
+                                                                        <Badge variant="outline" className="text-[7px] font-black h-3.5 px-1">{opt.category || 'Standard'}</Badge>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-slate-600">${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        )}
+
+                                        {selectedMotor && (
+                                            <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
+                                                <CardHeader className="bg-muted/30 border-b p-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <Activity className="h-4 w-4 text-primary" />
+                                                        <CardTitle className="text-xs font-black uppercase tracking-widest">Powertrain</CardTitle>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="p-4 border-b flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="group/remove h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive transition-opacity"
+                                                                    onClick={(e) => { e.stopPropagation(); setSelectedMotor(null); }}
+                                                                >
+                                                                    <X className="h-3 w-3" />
+                                                                </Button>
+                                                            </div>
+                                                            <div className="space-y-0.5">
+                                                                <p className="font-black text-sm uppercase tracking-tight text-slate-900">{getMotorDisplayName(selectedMotor)}</p>
+                                                                <p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Performance</p>
+                                                            </div>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </CardContent></Card>}
-                                        {selectedDealerFitData.length > 0 && <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Dealer Fitments</CardTitle></div></CardHeader><CardContent className="p-0"><div className="divide-y">{selectedDealerFitData.map((sel: any) => (<div key={sel.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors"><div className="flex items-center gap-3"><div className="h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center"><Check className="h-3 w-3 text-emerald-500" /></div><div><p className="text-[10px] font-black uppercase tracking-tight">{sel.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1">{sel.category || 'Gear'}</Badge></div></div><p className="text-[10px] font-bold text-slate-600">${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0)).toLocaleString()}</p></div>))}</div></CardContent></Card>}
+                                                        <p className="font-black text-primary italic text-sm">${(selectedMotor.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                    </div>
+                                                    {selectedMotorAccessories.length > 0 && (
+                                                        <div className="divide-y bg-slate-50/50">
+                                                            {selectedMotorAccessories.map((acc: any) => (
+                                                                <div key={acc.id} className="p-4 flex items-center justify-between">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="group/remove h-6 w-6 rounded-lg bg-white border flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                            <Wrench className="h-3 w-3 text-primary/40 group-hover/remove:opacity-0 transition-opacity" />
+                                                                            <Button 
+                                                                                variant="ghost" 
+                                                                                size="icon" 
+                                                                                className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive transition-opacity"
+                                                                                onClick={(e) => { e.stopPropagation(); toggleMotorAccessory(acc.id); }}
+                                                                            >
+                                                                                <X className="h-3 w-3" />
+                                                                            </Button>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-black uppercase tracking-tight">{acc.name}</p>
+                                                                            <Badge variant="outline" className="text-[7px] font-black h-3.5 px-1 border-primary/10 text-primary/60">{acc.category || 'Standard'}</Badge>
+                                                                        </div>
+                                                                    </div>
+                                                                    <p className="text-[10px] font-bold text-slate-600">+${(acc.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </CardContent>
+                                            </Card>
+                                        )}
+
+                                        {selectedTrailerId && model.trailerConfig && (
+                                            <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
+                                                <CardHeader className="bg-muted/30 border-b p-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <Truck className="h-4 w-4 text-primary" />
+                                                        <CardTitle className="text-xs font-black uppercase tracking-widest">Towing Solution</CardTitle>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="p-4 border-b flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="group/remove h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive transition-opacity"
+                                                                    onClick={(e) => { e.stopPropagation(); setSelectedTrailerId(null); }}
+                                                                >
+                                                                    <X className="h-3 w-3" />
+                                                                </Button>
+                                                            </div>
+                                                            <div className="space-y-0.5">
+                                                                <p className="font-black text-sm uppercase tracking-tight text-slate-900">{model.trailerConfig.name}</p>
+                                                                <p className="text-[9px] font-bold text-muted-foreground uppercase">Precision Chassis</p>
+                                                            </div>
+                                                        </div>
+                                                        <p className="font-black text-primary italic text-sm">${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                    </div>
+                                                    {isTrailerRegoSelected && (
+                                                        <div className="p-4 border-b flex items-center justify-between bg-slate-50/50">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="group/remove h-6 w-6 rounded-lg bg-white border flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                    <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
+                                                                    <Button 
+                                                                        variant="ghost" 
+                                                                        size="icon" 
+                                                                        className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive transition-opacity"
+                                                                        onClick={(e) => { e.stopPropagation(); setIsTrailerRegoSelected(false); }}
+                                                                    >
+                                                                        <X className="h-3 w-3" />
+                                                                    </Button>
+                                                                </div>
+                                                                <span className="text-[10px] font-bold text-slate-600 uppercase">12 MONTHS TRAILER REGISTRATION</span>
+                                                            </div>
+                                                            <p className="text-[10px] font-bold text-slate-600">${(model.registration?.trailerPrice12Months || 0).toLocaleString()}</p>
+                                                        </div>
+                                                    )}
+                                                    {selectedTrailerOptionsData.length > 0 && (
+                                                        <div className="divide-y bg-slate-50/50">
+                                                            {selectedTrailerOptionsData.map((opt: any) => (
+                                                                <div key={opt.id} className="p-4 flex items-center justify-between">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="group/remove h-6 w-6 rounded-lg bg-white border flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                            <Layers className="h-3 w-3 text-primary/40 group-hover/remove:opacity-0 transition-opacity" />
+                                                                            <Button 
+                                                                                variant="ghost" 
+                                                                                size="icon" 
+                                                                                className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive transition-opacity"
+                                                                                onClick={(e) => { e.stopPropagation(); toggleTrailerOption(opt.id); }}
+                                                                            >
+                                                                                <X className="h-3 w-3" />
+                                                                            </Button>
+                                                                        </div>
+                                                                        <p className="text-[10px] font-black uppercase tracking-tight">{opt.name}</p>
+                                                                    </div>
+                                                                    <p className="text-[10px] font-bold text-slate-600">+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </CardContent>
+                                            </Card>
+                                        )}
+
+                                        {selectedDealerFitData.length > 0 && (
+                                            <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
+                                                <CardHeader className="bg-muted/30 border-b p-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <Wrench className="h-4 w-4 text-primary" />
+                                                        <CardTitle className="text-xs font-black uppercase tracking-widest">Dealer Fitments</CardTitle>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="divide-y">
+                                                        {selectedDealerFitData.map((sel: any) => (
+                                                            <div key={sel.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="group/remove h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                        <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="icon" 
+                                                                            className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive transition-opacity"
+                                                                            onClick={(e) => { e.stopPropagation(); toggleDealerFitSelection(sel.id); }}
+                                                                        >
+                                                                            <X className="h-3 w-3" />
+                                                                        </Button>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black uppercase tracking-tight">{sel.name}</p>
+                                                                        <Badge variant="outline" className="text-[7px] font-black h-3.5 px-1">{sel.category || 'Gear'}</Badge>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-slate-600">${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0)).toLocaleString()}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        )}
                                     </div>
                                 </div>
                             )}
