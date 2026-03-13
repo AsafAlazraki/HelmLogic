@@ -33,7 +33,8 @@ import {
     Activity,
     Trash2,
     Zap,
-    DollarSign
+    DollarSign,
+    ExternalLink
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -115,6 +116,7 @@ export function HighfieldQuoteFlow({
     const materialSectionRef = useRef<HTMLDivElement>(null);
     const colorSectionRef = useRef<HTMLDivElement>(null);
     const registrationSectionRef = useRef<HTMLDivElement>(null);
+    const trailerRegoSectionRef = useRef<HTMLDivElement>(null);
     const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
     
     // Selection State
@@ -123,6 +125,7 @@ export function HighfieldQuoteFlow({
     const [isRegoSelected, setIsRegoSelected] = useState(false);
     const [isStickerSelected, setIsStickerSelected] = useState(false);
     const [isTenderToSelected, setIsTenderToSelected] = useState(false);
+    const [isTrailerRegoSelected, setIsTrailerRegoSelected] = useState(false);
     
     const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
     const [selectedMotor, setSelectedMotor] = useState<any | null>(null);
@@ -134,6 +137,11 @@ export function HighfieldQuoteFlow({
     // Carousel State
     const [api, setApi] = useState<CarouselApi>();
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+    // Modal State
+    const [showFeatures, setShowFeatures] = useState(false);
+    const [showSpecs, setShowSpecs] = useState(false);
+    const [showDocs, setShowDocs] = useState(false);
 
     // Context Data
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -209,6 +217,11 @@ export function HighfieldQuoteFlow({
         if (!newVal) {
             setIsStickerSelected(false);
             setIsTenderToSelected(false);
+        } else {
+            // Trigger auto-glide to fram the rego card
+            setTimeout(() => {
+                registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
         }
     };
 
@@ -217,6 +230,11 @@ export function HighfieldQuoteFlow({
         setIsStickerSelected(newVal);
         if (!newVal) {
             setIsTenderToSelected(false);
+        } else {
+            // Trigger auto-glide to reveal sub-options
+            setTimeout(() => {
+                registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 100);
         }
     };
 
@@ -259,65 +277,6 @@ export function HighfieldQuoteFlow({
             return changed ? nextIds : prevIds;
         });
     }, [selectedColor, variants, model.optionalFeatures]);
-
-    // Motor Logic
-    useEffect(() => {
-        const fetchMotors = async () => {
-            if (currentStep !== 3) return;
-            setMotorsLoading(true);
-            try {
-                const vendorsSnap = await getDocs(collection(firestore, 'data-warehouse'));
-                const allVendors = vendorsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-                const allModuleVendorIds = [...(module.associatedVendorIds || []), module.mainVendorId].filter(Boolean);
-                const motorVendor = allVendors.find(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
-
-                if (motorVendor) {
-                    const dsSnap = await getDocs(collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets'));
-                    const datasets = dsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-                    const targetDS = datasets.find(s => s.name.toLowerCase().includes('outboard') || s.name.toLowerCase().includes('motor')) || datasets[0];
-                    
-                    if (targetDS) {
-                        const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`));
-                        const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-                        
-                        const maxHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 999;
-                        const minHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.minHp || 0;
-                        const requiredSteering = hasConsoleSelected ? 'Forward Control' : 'Tiller';
-
-                        setMotors(allRows.filter(r => {
-                            const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
-                            return hp >= minHp && hp <= maxHp && r.steeringType === requiredSteering;
-                        }).map(m => ({ ...m, vendorName: motorVendor.name })));
-                    }
-                }
-            } catch (e) { console.error(e); } finally { setMotorsLoading(false); }
-        };
-        fetchMotors();
-    }, [currentStep, firestore, module, model, hasConsoleSelected]);
-
-    // Motor Accessory Logic
-    useEffect(() => {
-        if (selectedMotor) {
-            const allStandard = (selectedMotor.masterAccessories || []).filter((a: any) => a.isStandard);
-            const finalStandardIds: string[] = [];
-            const processedCats = new Set<string>();
-
-            allStandard.forEach((a: any) => {
-                const cat = a.category || 'Other';
-                if (cat === 'Propeller' || cat === 'Rigging') {
-                    if (!processedCats.has(cat)) {
-                        finalStandardIds.push(a.id);
-                        processedCats.add(cat);
-                    }
-                } else {
-                    finalStandardIds.push(a.id);
-                }
-            });
-            setSelectedMotorAccessoryIds(finalStandardIds);
-        } else {
-            setSelectedMotorAccessoryIds([]);
-        }
-    }, [selectedMotor]);
 
     const activeVariant = useMemo(() => {
         if (!selectedColor || !variants) return null;
@@ -363,12 +322,15 @@ export function HighfieldQuoteFlow({
         if (selectedTrailerId && model.trailerConfig) {
             total += (model.trailerConfig.sellPriceExclGst || 0);
             selectedTrailerOptionsData.forEach((o: any) => { total += (o.sellPriceExclGst || 0); });
+            if (isTrailerRegoSelected) {
+                total += (model.registration?.trailerPrice12Months || 0);
+            }
         }
         selectedDealerFitData.forEach(s => {
             s.items?.forEach((i: any) => { total += (i.data?.sellPriceExclGst || 0); });
         });
         return total;
-    }, [activeVariant, selectedOptionsData, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, model.registration]);
+    }, [activeVariant, selectedOptionsData, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration]);
 
     const resolveImageUrl = (item: any) => {
         const path = item?.imageUrl || item?.SummaryImage || item?.url || item?.image;
@@ -424,15 +386,6 @@ export function HighfieldQuoteFlow({
     useEffect(() => {
         if (selectedColor && currentStep === 1) setTimeout(() => registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
     }, [selectedColor, currentStep]);
-
-    // Enhanced scrolling for registration reveals
-    useEffect(() => {
-        if (isRegoSelected && currentStep === 1) {
-            setTimeout(() => {
-                registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 400);
-        }
-    }, [isRegoSelected, currentStep]);
 
     useEffect(() => {
         if (scrollAreaRef.current) {
@@ -825,7 +778,7 @@ export function HighfieldQuoteFlow({
                                                     </div>
                                                 </div>
                                             )}
-                                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-24">
+                                            <div ref={trailerRegoSectionRef} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-24">
                                                 <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
                                                     <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Registration</h3>
@@ -915,7 +868,7 @@ export function HighfieldQuoteFlow({
                                                 <p className="font-black text-primary italic text-sm">${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
                                             </div>
                                             {isTrailerRegoSelected && (
-                                                <div className="mt-4 pt-4 border-t border-dashed">
+                                                <div className="mt-4 pt-4 border-t border-dashed space-y-2">
                                                     <div className="flex items-center justify-between text-[10px] font-bold text-slate-600">
                                                         <span>12 MONTHS TRAILER REGISTRATION</span>
                                                         <span>${(model.registration?.trailerPrice12Months || 0).toLocaleString()}</span>
@@ -971,7 +924,7 @@ export function HighfieldQuoteFlow({
                 <DialogContent className="sm:max-w-md rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-6 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Technical Assets</DialogTitle></DialogHeader>
                     <div className="p-6 space-y-3">{model?.documents?.length > 0 ? model.documents.map((doc: any, i: number) => (
-                        <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-xl border-2 hover:border-primary/40 hover:bg-primary/5 group"><div className="flex items-center gap-3"><FileText className="h-4 w-4 text-primary/40 group-hover:text-primary" /><span className="text-[10px] font-black uppercase tracking-tight">{doc.name}</span></div><ExternalLink className="h-3.5 w-3.5 opacity-20 group-hover:opacity-100" /></a>
+                        <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-xl border-2 hover:bg-primary hover:text-white group transition-all"><div className="flex items-center gap-3"><FileText className="h-4 w-4 text-primary/40 group-hover:text-white" /><span className="text-[10px] font-black uppercase tracking-tight">{doc.name}</span></div><ExternalLink className="h-3.5 w-3.5 opacity-20 group-hover:opacity-100" /></a>
                     )) : <div className="py-12 text-center opacity-20 flex flex-col items-center gap-2"><FileText className="h-10 w-10" /><p className="text-[9px] font-black uppercase tracking-widest">No Documents Linked</p></div>}</div>
                 </DialogContent>
             </Dialog>
