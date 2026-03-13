@@ -27,19 +27,13 @@ import {
     Maximize2,
     Info,
     Anchor,
-    CircleDashed,
-    ExternalLink,
-    ChevronDown,
-    Activity,
-    CreditCard,
+    Tag,
     Truck,
     Box,
-    Monitor,
-    Speaker,
+    Activity,
     Trash2,
     Zap,
-    DollarSign,
-    Tag
+    DollarSign
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -71,7 +65,6 @@ import {
     TableHead,
     TableHeader
 } from "@/components/ui/table";
-import { Checkbox } from '@/components/ui/checkbox';
 
 interface Variant {
     id: string;
@@ -122,7 +115,6 @@ export function HighfieldQuoteFlow({
     const materialSectionRef = useRef<HTMLDivElement>(null);
     const colorSectionRef = useRef<HTMLDivElement>(null);
     const registrationSectionRef = useRef<HTMLDivElement>(null);
-    const trailerRegoSectionRef = useRef<HTMLDivElement>(null);
     const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
     
     // Selection State
@@ -137,24 +129,11 @@ export function HighfieldQuoteFlow({
     const [selectedMotorAccessoryIds, setSelectedMotorAccessoryIds] = useState<string[]>([]);
     const [selectedTrailerId, setSelectedTrailerId] = useState<string | null>(null);
     const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>([]);
-    const [isTrailerRegoSelected, setIsTrailerRegoSelected] = useState(false);
     const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>([]);
 
     // Carousel State
     const [api, setApi] = useState<CarouselApi>();
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-
-    // Change detection refs for smart carousel scrolling
-    const prevSelectedColor = useRef(selectedColor);
-    const prevSelectedOptions = useRef(selectedOptionIds);
-    const prevSelectedMotor = useRef(selectedMotor?.id);
-    const prevSelectedTrailer = useRef(selectedTrailerId);
-    const prevSelectedDealerFit = useRef(selectedDealerFitIds);
-
-    // Modal State
-    const [showFeatures, setShowFeatures] = useState(false);
-    const [showSpecs, setShowSpecs] = useState(false);
-    const [showDocs, setShowDocs] = useState(false);
 
     // Context Data
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -224,7 +203,6 @@ export function HighfieldQuoteFlow({
         setSelectedColor(null);
     };
 
-    // Cascading Reset Logic for Registration
     const handleRegoToggle = () => {
         const newVal = !isRegoSelected;
         setIsRegoSelected(newVal);
@@ -385,15 +363,12 @@ export function HighfieldQuoteFlow({
         if (selectedTrailerId && model.trailerConfig) {
             total += (model.trailerConfig.sellPriceExclGst || 0);
             selectedTrailerOptionsData.forEach((o: any) => { total += (o.sellPriceExclGst || 0); });
-            if (isTrailerRegoSelected) {
-                total += (model.registration?.trailerPrice12Months || 0);
-            }
         }
         selectedDealerFitData.forEach(s => {
             s.items?.forEach((i: any) => { total += (i.data?.sellPriceExclGst || 0); });
         });
         return total;
-    }, [activeVariant, selectedOptionsData, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration]);
+    }, [activeVariant, selectedOptionsData, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, model.registration]);
 
     const resolveImageUrl = (item: any) => {
         const path = item?.imageUrl || item?.SummaryImage || item?.url || item?.image;
@@ -440,56 +415,24 @@ export function HighfieldQuoteFlow({
     useEffect(() => {
         if (!api) return;
         api.reInit();
-        const colorChanged = prevSelectedColor.current !== selectedColor;
-        const optionsChanged = JSON.stringify(prevSelectedOptions.current) !== JSON.stringify(selectedOptionIds);
-        const motorChanged = prevSelectedMotor.current !== selectedMotor?.id;
-        const trailerChanged = prevSelectedTrailer.current !== selectedTrailerId;
-        const dealerFitChanged = JSON.stringify(prevSelectedDealerFit.current) !== JSON.stringify(selectedDealerFitIds);
-
-        prevSelectedColor.current = selectedColor;
-        prevSelectedOptions.current = selectedOptionIds;
-        prevSelectedMotor.current = selectedMotor?.id;
-        prevSelectedTrailer.current = selectedTrailerId;
-        prevSelectedDealerFit.current = selectedDealerFitIds;
-
-        if (motorChanged && selectedMotor) {
-            const mUrl = resolveImageUrl(selectedMotor);
-            const idx = carouselSlides.findIndex(s => s.type === 'motor' && s.url === mUrl);
-            if (idx !== -1) { setTimeout(() => api.scrollTo(idx), 500); return; }
-        }
-        if (trailerChanged && selectedTrailerId && model.trailerConfig?.imageUrl) {
-            const idx = carouselSlides.findIndex(s => s.type === 'trailer' && s.url === model.trailerConfig.imageUrl);
-            if (idx !== -1) { setTimeout(() => api.scrollTo(idx), 500); return; }
-        }
-        if (dealerFitChanged && selectedDealerFitIds.length > 0) {
-            const lastId = selectedDealerFitIds[selectedDealerFitIds.length - 1];
-            const imgUrl = resolveImageUrl(selectedDealerFitData.find(s => s.id === lastId)?.items?.[0]?.data);
-            if (imgUrl) {
-                const idx = carouselSlides.findIndex(s => (s.type === 'dealerfit' || s.type === 'accessory') && (s.url?.includes(imgUrl) || s.url === imgUrl));
-                if (idx !== -1) { setTimeout(() => api.scrollTo(idx), 500); return; }
-            }
-        }
-        if (optionsChanged && selectedOptionIds.length > 0) {
-            const buildIdx = carouselSlides.findIndex(s => s.type === 'build');
-            if (buildIdx !== -1) { setTimeout(() => api.scrollTo(buildIdx), 500); return; }
-        }
-        if (colorChanged && activeVariant?.imageUrl) {
-            const variantIdx = carouselSlides.findIndex(s => s.type === 'variant' && s.url === activeVariant.imageUrl);
-            if (variantIdx !== -1) { setTimeout(() => api.scrollTo(variantIdx), 500); return; }
-        }
-    }, [selectedColor, selectedOptionIds, selectedMotor, selectedTrailerId, selectedDealerFitIds, api, carouselSlides, activeVariant, currentStep, selectedDealerFitData, model.trailerConfig]);
+    }, [selectedColor, selectedOptionIds, selectedMotor, selectedTrailerId, selectedDealerFitIds, api, carouselSlides, activeVariant, currentStep]);
 
     useEffect(() => {
         if (selectedMaterial && currentStep === 1) setTimeout(() => colorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
     }, [selectedMaterial, currentStep]);
 
     useEffect(() => {
-        if (selectedColor && currentStep === 1) {
-            setTimeout(() => {
-                registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 800);
-        }
+        if (selectedColor && currentStep === 1) setTimeout(() => registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
     }, [selectedColor, currentStep]);
+
+    // Enhanced scrolling for registration reveals
+    useEffect(() => {
+        if (isRegoSelected && currentStep === 1) {
+            setTimeout(() => {
+                registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 400);
+        }
+    }, [isRegoSelected, currentStep]);
 
     useEffect(() => {
         if (scrollAreaRef.current) {
@@ -677,9 +620,9 @@ export function HighfieldQuoteFlow({
                         </div>
                     </div>
                     <div className="flex items-center justify-start gap-3 mt-4 px-4 shrink-0">
-                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm" onClick={() => setShowFeatures(true)}><ListChecks className="h-3.5 w-3.5 mr-1.5" /> Features</Button>
-                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm" onClick={() => setShowSpecs(true)}><ClipboardList className="h-3.5 w-3.5 mr-1.5" /> Specs</Button>
-                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm" onClick={() => setShowDocs(true)}><FileText className="h-3.5 w-3.5 mr-1.5" /> Docs</Button>
+                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm group" onClick={() => setShowFeatures(true)}><ListChecks className="h-3.5 w-3.5 mr-1.5 group-hover:text-white" /> Features</Button>
+                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-3.5 w-3.5 mr-1.5 group-hover:text-white" /> Specs</Button>
+                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm group" onClick={() => setShowDocs(true)}><FileText className="h-3.5 w-3.5 mr-1.5 group-hover:text-white" /> Docs</Button>
                     </div>
                 </div>
 
@@ -688,7 +631,7 @@ export function HighfieldQuoteFlow({
                         <h2 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">{STEPS[currentStep - 1].label.toUpperCase()}<span className="text-primary"> - {range?.name?.toUpperCase()} {boatSeriesIdentity.toUpperCase()}</span></h2>
                     </div>
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
-                        <div className="px-8 pb-12 space-y-6 mt-4">
+                        <div className="px-8 pb-48 space-y-6 mt-4">
                             {currentStep === 1 && (
                                 <div className="space-y-8 animate-in fade-in duration-1000">
                                     <div ref={materialSectionRef} className="space-y-4 scroll-mt-10">
@@ -882,7 +825,7 @@ export function HighfieldQuoteFlow({
                                                     </div>
                                                 </div>
                                             )}
-                                            <div ref={trailerRegoSectionRef} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-24">
+                                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-24">
                                                 <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
                                                     <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Registration</h3>

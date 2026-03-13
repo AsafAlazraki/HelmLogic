@@ -107,85 +107,6 @@ const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?:
     </div>
 );
 
-function RegistrationCard() {
-  const { control } = useFormContext<ModelFormData>();
-
-  return (
-    <Card className="rounded-xl border-2 shadow-sm text-left overflow-hidden">
-      <CardHeader className="bg-muted/10 border-b py-4">
-        <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-primary" />
-            Registration & Compliance
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-6 space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormField
-                control={control}
-                name="registration.price12Months"
-                render={({ field }) => (
-                    <FormItem className="space-y-3">
-                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">12 Months Boat Rego</FormLabel>
-                        <FormControl>
-                            <div className="relative">
-                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
-                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
-                            </div>
-                        </FormControl>
-                    </FormItem>
-                )}
-            />
-            <FormField
-                control={control}
-                name="registration.stickerPrice"
-                render={({ field }) => (
-                    <FormItem className="space-y-3">
-                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Rego Stickers (Supply & Fit)</FormLabel>
-                        <FormControl>
-                            <div className="relative">
-                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
-                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
-                            </div>
-                        </FormControl>
-                    </FormItem>
-                )}
-            />
-            <FormField
-                control={control}
-                name="registration.tenderToStickerPrice"
-                render={({ field }) => (
-                    <FormItem className="space-y-3">
-                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">"Tender To" Decals (Highfield Only)</FormLabel>
-                        <FormControl>
-                            <div className="relative">
-                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
-                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
-                            </div>
-                        </FormControl>
-                    </FormItem>
-                )}
-            />
-            <FormField
-                control={control}
-                name="registration.trailerPrice12Months"
-                render={({ field }) => (
-                    <FormItem className="space-y-3">
-                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">12 Months Trailer Rego</FormLabel>
-                        <FormControl>
-                            <div className="relative">
-                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
-                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
-                            </div>
-                        </FormControl>
-                    </FormItem>
-                )}
-            />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function SkuCompatibilityDialog({ 
     isOpen, 
     onClose, 
@@ -386,7 +307,7 @@ export function VisualAssetsCard({ model, isModuleView }: { model: any, isModule
                                 </div>
                             </div>
                         ) : (
-                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-slate-100 transition-all">
+                            <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-slate-100 transition-all text-left">
                                 <ImageIcon className="w-8 h-8 mb-2 text-slate-300" />
                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Set Build Render</span>
                                 <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
@@ -398,7 +319,7 @@ export function VisualAssetsCard({ model, isModuleView }: { model: any, isModule
                     </div>
                     <div className="p-6 space-y-2 bg-white border-t text-left">
                         <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Gallery Assets</Label>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-3 gap-2 text-left">
                             {galleryUrls.map((url, index) => (
                                 <div key={index} className="relative aspect-square group rounded-lg overflow-hidden border-2 bg-slate-50 shadow-inner">
                                     <Image src={url} alt={`Gallery ${index}`} fill className="object-cover" unoptimized />
@@ -419,6 +340,85 @@ export function VisualAssetsCard({ model, isModuleView }: { model: any, isModule
             </CollapsibleContent>
         </Collapsible>
     );
+}
+
+function RegistrationCard() {
+  const { control } = useFormContext<ModelFormData>();
+
+  return (
+    <Card className="rounded-xl border-2 shadow-sm text-left overflow-hidden">
+      <CardHeader className="bg-muted/10 border-b py-4 text-left">
+        <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 text-left">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            Registration & Compliance
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-6 space-y-6 text-left">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+            <FormField
+                control={control}
+                name="registration.price12Months"
+                render={({ field }) => (
+                    <FormItem className="space-y-3 text-left">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">12 Months Boat Rego</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={control}
+                name="registration.stickerPrice"
+                render={({ field }) => (
+                    <FormItem className="space-y-3 text-left">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Rego Stickers (Supply & Fit)</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={control}
+                name="registration.tenderToStickerPrice"
+                render={({ field }) => (
+                    <FormItem className="space-y-3 text-left">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">"Tender To" Decals (Highfield Only)</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={control}
+                name="registration.trailerPrice12Months"
+                render={({ field }) => (
+                    <FormItem className="space-y-3 text-left">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">12 Months Trailer Rego</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }: { model: any, vendorId: string, rangeId: string, isModuleView?: boolean }) {
