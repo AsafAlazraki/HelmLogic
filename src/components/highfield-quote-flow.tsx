@@ -12,7 +12,6 @@ import {
     ChevronLeft, 
     Ship, 
     CheckCircle2, 
-    PlusCircle, 
     Package, 
     X, 
     Wrench,
@@ -185,6 +184,11 @@ export function HighfieldQuoteFlow({
         if (!variants) return [];
         return Array.from(new Set(variants.map(v => v.material).filter(Boolean)));
     }, [variants]);
+
+    const availableColors = useMemo(() => {
+        if (!variants || !selectedMaterial) return [];
+        return variants.filter(v => v.material === selectedMaterial);
+    }, [variants, selectedMaterial]);
 
     const activeVariant = useMemo(() => {
         if (!selectedColor || !variants) return null;
@@ -532,9 +536,9 @@ export function HighfieldQuoteFlow({
                             <div className="flex flex-col items-start px-1 gap-3">
                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] leading-none">Technical Utilities</span>
                                 <div className="flex items-center gap-2">
-                                    <Button variant="ghost" size="sm" className="h-11 px-5 font-black uppercase text-[10px] tracking-widest text-slate-950 bg-slate-100/80 hover:bg-primary/10 hover:text-primary rounded-xl transition-all border-none shadow-none group" onClick={() => setShowFeatures(true)}><ListChecks className="h-4 w-4 mr-2 text-primary" /> Features</Button>
-                                    <Button variant="ghost" size="sm" className="h-11 px-5 font-black uppercase text-[10px] tracking-widest text-slate-950 bg-slate-100/80 hover:bg-primary/10 hover:text-primary rounded-xl transition-all border-none shadow-none group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-4 w-4 mr-2 text-primary" /> Specs</Button>
-                                    <Button variant="ghost" size="sm" className="h-11 px-5 font-black uppercase text-[10px] tracking-widest text-slate-950 bg-slate-100/80 hover:bg-primary/10 hover:text-primary rounded-xl transition-all border-none shadow-none group" onClick={() => setShowDocs(true)}><FileText className="h-4 w-4 mr-2 text-primary" /> Docs</Button>
+                                    <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowFeatures(true)}><ListChecks className="h-3.5 w-3.5 mr-2 text-primary" /> Features</Button>
+                                    <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-3.5 w-3.5 mr-2 text-primary" /> Specs</Button>
+                                    <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowDocs(true)}><FileText className="h-3.5 w-3.5 mr-2 text-primary" /> Docs</Button>
                                 </div>
                             </div>
                             <div className="flex flex-col items-end px-1 gap-1">
@@ -546,7 +550,7 @@ export function HighfieldQuoteFlow({
                 </div>
 
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
-                    <div className="pt-8 px-8 pb-4 shrink-0 bg-transparent min-h-[80px] flex flex-col justify-start">
+                    <div className="pt-4 px-8 pb-4 shrink-0 bg-transparent min-h-[80px] flex flex-col justify-start">
                         <h2 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 leading-tight">{STEPS[currentStep - 1].label.toUpperCase()}<span className="text-primary"> - {range?.name?.toUpperCase()} {model?.name?.toUpperCase()}</span></h2>
                     </div>
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
