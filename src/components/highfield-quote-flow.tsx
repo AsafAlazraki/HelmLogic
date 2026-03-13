@@ -207,7 +207,7 @@ export function HighfieldQuoteFlow({
         } else {
             setTimeout(() => {
                 registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 100);
+            }, 500);
         }
     };
 
@@ -219,7 +219,7 @@ export function HighfieldQuoteFlow({
         } else {
             setTimeout(() => {
                 registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 100);
+            }, 500);
         }
     };
 
@@ -271,7 +271,6 @@ export function HighfieldQuoteFlow({
                             const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
                             const hpMatch = hp >= minHp && hp <= maxHp;
                             if (!hpMatch) return false;
-                            // Ensure motor is visible if it has no steering type, or matching steering type
                             return !r.steeringType || r.steeringType === requiredSteering;
                         }).map(m => ({ ...m, vendorName: motorVendor.name })));
                     }
@@ -382,13 +381,11 @@ export function HighfieldQuoteFlow({
         const optionsChanged = JSON.stringify(prevSelectedOptions.current) !== JSON.stringify(selectedOptionIds);
         const motorChanged = prevSelectedMotor.current !== selectedMotor?.id;
         const trailerChanged = prevSelectedTrailer.current !== selectedTrailerId;
-        const dealerFitChanged = JSON.stringify(prevSelectedDealerFit.current) !== JSON.stringify(selectedDealerFitIds);
 
         prevSelectedColor.current = selectedColor;
         prevSelectedOptions.current = selectedOptionIds;
         prevSelectedMotor.current = selectedMotor?.id;
         prevSelectedTrailer.current = selectedTrailerId;
-        prevSelectedDealerFit.current = selectedDealerFitIds;
 
         if (motorChanged && selectedMotor) {
             const mUrl = resolveImageUrl(selectedMotor);
@@ -407,7 +404,7 @@ export function HighfieldQuoteFlow({
             const variantIdx = carouselSlides.findIndex(s => s.type === 'variant' && s.url === activeVariant.imageUrl);
             if (variantIdx !== -1) { setTimeout(() => api.scrollTo(variantIdx), 500); return; }
         }
-    }, [selectedColor, selectedOptionIds, selectedMotor, selectedTrailerId, selectedDealerFitIds, api, carouselSlides, activeVariant, currentStep, selectedDealerFitData, model.trailerConfig]);
+    }, [selectedColor, selectedOptionIds, selectedMotor, selectedTrailerId, api, carouselSlides, activeVariant, currentStep]);
 
     const toggleOption = (id: string) => {
         const feature = relevantFeatures.find((f: any) => f.id === id);
@@ -478,11 +475,11 @@ export function HighfieldQuoteFlow({
 
     // Auto-Scroll Effects
     useEffect(() => {
-        if (selectedMaterial && currentStep === 1) setTimeout(() => colorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
+        if (selectedMaterial && currentStep === 1) setTimeout(() => colorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800);
     }, [selectedMaterial, currentStep]);
 
     useEffect(() => {
-        if (selectedColor && currentStep === 1) setTimeout(() => registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
+        if (selectedColor && currentStep === 1) setTimeout(() => registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800);
     }, [selectedColor, currentStep]);
 
     useEffect(() => {
@@ -543,8 +540,6 @@ export function HighfieldQuoteFlow({
         return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b)) as [string, any][];
     }, [dealerFitSelections]);
 
-    const getMotorDisplayName = (m: any) => `${m?.vendorName || 'YAMAHA'} - ${m?.['Model Name'] || m?.ModelName || m?.name || m?.Description || m?.model || 'Unnamed'}`;
-
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
             <div className="sticky top-0 z-[100] px-12 h-20 border-b bg-card/90 backdrop-blur-xl shrink-0 flex items-center shadow-sm">
@@ -581,16 +576,16 @@ export function HighfieldQuoteFlow({
                             <CarouselNext className="right-6 h-10 w-10 bg-white/90 border-2 border-slate-200 shadow-xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
                         </Carousel>
                     </div>
-                    <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-xl p-6 rounded-[2rem] mt-4 shrink-0">
+                    <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-xl p-6 rounded-[2rem] mt-4 shrink-0 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm group" onClick={() => setShowFeatures(true)}><ListChecks className="h-3.5 w-3.5 mr-1.5 group-hover:text-white" /> Features</Button>
+                            <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-3.5 w-3.5 mr-1.5 group-hover:text-white" /> Specs</Button>
+                            <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm group" onClick={() => setShowDocs(true)}><FileText className="h-3.5 w-3.5 mr-1.5 group-hover:text-white" /> Docs</Button>
+                        </div>
                         <div className="flex flex-col items-end px-1">
                             <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Package Pricing (Excl. GST)</span>
                             <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{totalPrice.toLocaleString()}</span></div>
                         </div>
-                    </div>
-                    <div className="flex items-center justify-start gap-3 mt-4 px-4 shrink-0">
-                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm group" onClick={() => setShowFeatures(true)}><ListChecks className="h-3.5 w-3.5 mr-1.5 group-hover:text-white" /> Features</Button>
-                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-3.5 w-3.5 mr-1.5 group-hover:text-white" /> Specs</Button>
-                        <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm group" onClick={() => setShowDocs(true)}><FileText className="h-3.5 w-3.5 mr-1.5 group-hover:text-white" /> Docs</Button>
                     </div>
                 </div>
 
@@ -712,7 +707,7 @@ export function HighfieldQuoteFlow({
                                                     const displayName = getMotorDisplayName(m);
                                                     const isSelected = selectedMotor?.id === m.id;
                                                     return (
-                                                        <button key={m.id} onClick={() => { setSelectedMotor(isSelected ? null : m); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                        <button key={m.id} onClick={() => { setSelectedMotor(isSelected ? null : m); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                             <div className="relative h-24 w-full bg-white overflow-hidden shrink-0">{mUrl && <Image src={mUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
                                                             <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
                                                                 <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{displayName}</p>
