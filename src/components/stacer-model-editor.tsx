@@ -182,7 +182,7 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
                         <div className="grid grid-cols-3 gap-3">
                             {galleryUrls.map((url, index) => (
                                 <div key={index} className="relative aspect-square group rounded-lg overflow-hidden border bg-muted">
-                                    <Image src={url} alt={`Gallery ${index}`} fill className="object-cover" unoptimized />
+                                    <Image src={url} alt={`Gallery ${index}`} fill className="object-cover" sizes="(max-width: 768px) 33vw, 15vw" />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                         <Button type="button" variant="destructive" size="icon" className="h-8 w-8 rounded-full" onClick={() => removeGalleryImage(index)}><Trash2 className="h-4 w-4" /></Button>
                                     </div>

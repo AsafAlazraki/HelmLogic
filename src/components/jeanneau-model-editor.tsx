@@ -8,7 +8,7 @@ import { useStorage } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 
 import { Card, CardContent, CardTitle, CardHeader } from '@/components/ui/card';
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@/components/ui/form';
+import { FormField, FormItem, FormControl, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2, Trash2, ChevronDown, X, Image as ImageIcon, Plus, ShieldCheck, DollarSign } from 'lucide-react';
@@ -137,8 +137,6 @@ function RegistrationCard() {
 }
 
 export function JeanneauModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
-    const { control } = useFormContext<ModelFormData>();
-    
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden text-left">
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">

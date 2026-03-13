@@ -507,3 +507,82 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
         </div>
     );
 }
+
+function RegistrationCard() {
+  const { control } = useFormContext<ModelFormData>();
+
+  return (
+    <Card className="rounded-xl border-2 shadow-sm text-left overflow-hidden">
+      <CardHeader className="bg-muted/10 border-b py-4">
+        <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            Registration & Compliance
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FormField
+                control={control}
+                name="registration.price12Months"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">12 Months Boat Rego</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={control}
+                name="registration.stickerPrice"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Rego Stickers (Supply & Fit)</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={control}
+                name="registration.tenderToStickerPrice"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">"Tender To" Decals</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={control}
+                name="registration.trailerPrice12Months"
+                render={({ field }) => (
+                    <FormItem className="space-y-3">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">12 Months Trailer Rego</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary opacity-40" />
+                                <Input type="number" step="0.01" {...field} value={field.value ?? ''} className="h-11 pl-9 font-bold border-2" />
+                            </div>
+                        </FormControl>
+                    </FormItem>
+                )}
+            />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

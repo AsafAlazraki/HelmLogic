@@ -484,7 +484,11 @@ export function HighfieldQuoteFlow({
     }, [selectedMaterial, currentStep]);
 
     useEffect(() => {
-        if (selectedColor && currentStep === 1) setTimeout(() => registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
+        if (selectedColor && currentStep === 1) {
+            setTimeout(() => {
+                registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 800);
+        }
     }, [selectedColor, currentStep]);
 
     useEffect(() => {
@@ -538,7 +542,7 @@ export function HighfieldQuoteFlow({
             nextSelectedIds = nextSelectedIds.filter(i => i !== id);
             if (currentCat === 'Consoles') {
                 const riggingItem = relevantFeatures.find(f => f.category === 'Rigging');
-                if (riggingItem) nextSelectedIds = nextSelectedIds.filter(i => i !== riggingItem.id);
+                if (riggingItem) nextSelectedIds = nextSelectedIds.filter(i => riggingItem.id);
                 const seatIds = relevantFeatures.filter(f => f.category === 'Seats').map(f => f.id);
                 nextSelectedIds = nextSelectedIds.filter(i => !seatIds.includes(i));
             }
@@ -717,7 +721,7 @@ export function HighfieldQuoteFlow({
                                         </div>
                                     )}
                                     {selectedColor && (
-                                        <div ref={registrationSectionRef} className="mt-12 space-y-6 animate-in slide-in-from-bottom-4 duration-1000 scroll-mt-10">
+                                        <div ref={registrationSectionRef} className="mt-12 space-y-6 animate-in slide-in-from-bottom-4 duration-1000 scroll-mt-24">
                                             <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
                                                 <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Registration & Compliance</h3>
@@ -878,7 +882,7 @@ export function HighfieldQuoteFlow({
                                                     </div>
                                                 </div>
                                             )}
-                                            <div ref={trailerRegoSectionRef} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
+                                            <div ref={trailerRegoSectionRef} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-24">
                                                 <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
                                                     <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Registration</h3>
