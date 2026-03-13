@@ -177,7 +177,46 @@ export function HighfieldQuoteFlow({
         return selectedOptionIds.some(id => consoleOptions.some(f => f.id === id));
     }, [selectedOptionIds, model.optionalFeatures]);
 
-    // Intelligent Selection Reconciliation
+    // Build Preview Slide for Multi-item Preview
+    const buildPreviewSlide = useMemo(() => {
+        const imagedOptions = model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id) && f.imageUrl && f.imageUrl !== "") || [];
+        const consoleOpt = imagedOptions.find((f: any) => f.category === 'Consoles');
+        const seatOpt = imagedOptions.find((f: any) => f.category === 'Seats');
+        const itemsToShow = [consoleOpt, seatOpt].filter(Boolean);
+        if (itemsToShow.length === 0) return null;
+        return (
+            <div className={cn("h-full w-full grid bg-white", itemsToShow.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
+                {itemsToShow.map((item: any, i) => (
+                    <div key={item.id} className={cn("relative flex items-center justify-center hover:bg-slate-50", i === 0 && itemsToShow.length === 2 && "border-r")}>
+                        {item.imageUrl && <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-8 mix-blend-multiply" unoptimized />}
+                        <div className="absolute bottom-8 left-8 px-3 py-1 bg-slate-900/5 rounded-full text-[8px] font-black uppercase tracking-widest text-slate-400">{item.name}</div>
+                    </div>
+                ))}
+            </div>
+        );
+    }, [selectedOptionIds, model.optionalFeatures]);
+
+    const resolveImageUrl = (item: any) => {
+        const path = item?.imageUrl || item?.SummaryImage || item?.url || item?.image;
+        if (!path || typeof path !== 'string') return null;
+        if (path.startsWith('http') || path.startsWith('data:image')) return path;
+        if (path.includes('images/products') || path.includes('images/accessories')) {
+            return `https://www.yamaha-motor.com.au${path.startsWith('/') ? '' : '/'}${path.trim().replace(/\\/g, '/')}`;
+        }
+        return path.trim().replace(/\\/g, '/');
+    };
+
+    const carouselSlides = useMemo(() => {
+        const slides: { type: string; url?: string; content?: React.ReactNode }[] = [];
+        slides.push({ type: 'boat', url: model.coverImageUrl || '' });
+        if (activeVariant?.imageUrl) slides.push({ type: 'variant', url: activeVariant.imageUrl });
+        if (buildPreviewSlide) slides.push({ type: 'build', content: buildPreviewSlide });
+        if (selectedMotor) { const mUrl = resolveImageUrl(selectedMotor); if (mUrl) slides.push({ type: 'motor', url: mUrl }); }
+        if (selectedTrailerId && model.trailerConfig?.imageUrl) slides.push({ type: 'trailer', url: model.trailerConfig.imageUrl });
+        if (model.galleryImageUrls) model.galleryImageUrls.forEach((url: string) => { if (url !== model.coverImageUrl) slides.push({ type: 'gallery', url }); });
+        return slides;
+    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId]);
+
     const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
         if (selectedMaterial === mat) return;
         const currentVariant = variants?.find(v => v.id === selectedColor);
@@ -306,45 +345,6 @@ export function HighfieldQuoteFlow({
         });
         return total;
     }, [activeVariant, selectedOptionsData, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration]);
-
-    const resolveImageUrl = (item: any) => {
-        const path = item?.imageUrl || item?.SummaryImage || item?.url || item?.image;
-        if (!path || typeof path !== 'string') return null;
-        if (path.startsWith('http') || path.startsWith('data:image')) return path;
-        if (path.includes('images/products') || path.includes('images/accessories')) {
-            return `https://www.yamaha-motor.com.au${path.startsWith('/') ? '' : '/'}${path.trim().replace(/\\/g, '/')}`;
-        }
-        return path.trim().replace(/\\/g, '/');
-    };
-
-    const buildPreviewSlide = useMemo(() => {
-        const imagedOptions = selectedOptionsData.filter(f => f.imageUrl && f.imageUrl !== "");
-        const consoleOpt = imagedOptions.find((f: any) => f.category === 'Consoles');
-        const seatOpt = imagedOptions.find((f: any) => f.category === 'Seats');
-        const itemsToShow = [consoleOpt, seatOpt].filter(Boolean);
-        if (itemsToShow.length === 0) return null;
-        return (
-            <div className={cn("h-full w-full grid bg-white", itemsToShow.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
-                {itemsToShow.map((item: any, i) => (
-                    <div key={item.id} className={cn("relative flex items-center justify-center hover:bg-slate-50", i === 0 && itemsToShow.length === 2 && "border-r")}>
-                        {item.imageUrl && <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-8 mix-blend-multiply" unoptimized />}
-                        <div className="absolute bottom-8 left-8 px-3 py-1 bg-slate-900/5 rounded-full text-[8px] font-black uppercase tracking-widest text-slate-400">{item.name}</div>
-                    </div>
-                ))}
-            </div>
-        );
-    }, [selectedOptionsData]);
-
-    const carouselSlides = useMemo(() => {
-        const slides: { type: string; url?: string; content?: React.ReactNode }[] = [];
-        slides.push({ type: 'boat', url: model.coverImageUrl || '' });
-        if (activeVariant?.imageUrl) slides.push({ type: 'variant', url: activeVariant.imageUrl });
-        if (buildPreviewSlide) slides.push({ type: 'build', content: buildPreviewSlide });
-        if (selectedMotor) { const mUrl = resolveImageUrl(selectedMotor); if (mUrl) slides.push({ type: 'motor', url: mUrl }); }
-        if (selectedTrailerId && model.trailerConfig?.imageUrl) slides.push({ type: 'trailer', url: model.trailerConfig.imageUrl });
-        if (model.galleryImageUrls) model.galleryImageUrls.forEach((url: string) => { if (url !== model.coverImageUrl) slides.push({ type: 'gallery', url }); });
-        return slides;
-    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId]);
 
     const toggleOption = (id: string) => {
         const feature = relevantFeatures.find((f: any) => f.id === id);
@@ -513,7 +513,7 @@ export function HighfieldQuoteFlow({
                 </div>
 
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
-                    <div className="pt-8 px-8 pb-4 shrink-0 border-b bg-white/50 backdrop-blur-sm min-h-[80px] flex flex-col justify-center">
+                    <div className="pt-4 px-8 pb-4 shrink-0 border-b bg-transparent min-h-[80px] flex flex-col justify-center">
                         <h2 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 leading-tight">{STEPS[currentStep - 1].label.toUpperCase()}<span className="text-primary"> - {range?.name?.toUpperCase()} {boatSeriesIdentity.toUpperCase()}</span></h2>
                     </div>
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
@@ -920,7 +920,7 @@ export function HighfieldQuoteFlow({
                             )}
                         </div>
                     </ScrollArea>
-                    <div className="p-8 pt-4 bg-slate-50/80 backdrop-blur-xl border-t shrink-0 flex gap-3">
+                    <div className="p-8 pt-4 bg-slate-50/80 backdrop-blur-xl shrink-0 flex gap-3">
                         {currentStep > 1 && <Button variant="outline" className="h-12 w-20 rounded-xl border-2 border-slate-200 hover:bg-slate-100 shadow-sm" onClick={prevStep}><ChevronLeft className="h-5 w-5" /></Button>}
                         <Button size="lg" className="flex-1 h-12 rounded-xl font-black uppercase text-xs shadow-xl bg-primary text-white hover:scale-[1.02] active:scale-95" onClick={nextStep}>{currentStep === STEPS.length ? 'Finalize Project' : `Next Step: ${STEPS[currentStep].label.toUpperCase()}`}</Button>
                     </div>
