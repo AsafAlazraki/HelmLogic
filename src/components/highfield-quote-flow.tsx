@@ -142,6 +142,13 @@ export function HighfieldQuoteFlow({
     const [api, setApi] = useState<CarouselApi>();
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
+    // Change detection refs for smart carousel scrolling
+    const prevSelectedColor = useRef(selectedColor);
+    const prevSelectedOptions = useRef(selectedOptionIds);
+    const prevSelectedMotor = useRef(selectedMotor?.id);
+    const prevSelectedTrailer = useRef(selectedTrailerId);
+    const prevSelectedDealerFit = useRef(selectedDealerFitIds);
+
     // Context Data
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: userProfile } = useDoc<any>(userProfileRef);
@@ -264,6 +271,7 @@ export function HighfieldQuoteFlow({
                             const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
                             const hpMatch = hp >= minHp && hp <= maxHp;
                             if (!hpMatch) return false;
+                            // Ensure motor is visible if it has no steering type, or matching steering type
                             return !r.steeringType || r.steeringType === requiredSteering;
                         }).map(m => ({ ...m, vendorName: motorVendor.name })));
                     }
@@ -366,6 +374,41 @@ export function HighfieldQuoteFlow({
         return slides;
     }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId]);
 
+    // Smart Carousel Auto-Focus
+    useEffect(() => {
+        if (!api) return;
+        api.reInit();
+        const colorChanged = prevSelectedColor.current !== selectedColor;
+        const optionsChanged = JSON.stringify(prevSelectedOptions.current) !== JSON.stringify(selectedOptionIds);
+        const motorChanged = prevSelectedMotor.current !== selectedMotor?.id;
+        const trailerChanged = prevSelectedTrailer.current !== selectedTrailerId;
+        const dealerFitChanged = JSON.stringify(prevSelectedDealerFit.current) !== JSON.stringify(selectedDealerFitIds);
+
+        prevSelectedColor.current = selectedColor;
+        prevSelectedOptions.current = selectedOptionIds;
+        prevSelectedMotor.current = selectedMotor?.id;
+        prevSelectedTrailer.current = selectedTrailerId;
+        prevSelectedDealerFit.current = selectedDealerFitIds;
+
+        if (motorChanged && selectedMotor) {
+            const mUrl = resolveImageUrl(selectedMotor);
+            const idx = carouselSlides.findIndex(s => s.type === 'motor' && s.url === mUrl);
+            if (idx !== -1) { setTimeout(() => api.scrollTo(idx), 500); return; }
+        }
+        if (trailerChanged && selectedTrailerId && model.trailerConfig?.imageUrl) {
+            const idx = carouselSlides.findIndex(s => s.type === 'trailer' && s.url === model.trailerConfig.imageUrl);
+            if (idx !== -1) { setTimeout(() => api.scrollTo(idx), 500); return; }
+        }
+        if (optionsChanged && selectedOptionIds.length > 0) {
+            const buildIdx = carouselSlides.findIndex(s => s.type === 'build');
+            if (buildIdx !== -1) { setTimeout(() => api.scrollTo(buildIdx), 500); return; }
+        }
+        if (colorChanged && activeVariant?.imageUrl) {
+            const variantIdx = carouselSlides.findIndex(s => s.type === 'variant' && s.url === activeVariant.imageUrl);
+            if (variantIdx !== -1) { setTimeout(() => api.scrollTo(variantIdx), 500); return; }
+        }
+    }, [selectedColor, selectedOptionIds, selectedMotor, selectedTrailerId, selectedDealerFitIds, api, carouselSlides, activeVariant, currentStep, selectedDealerFitData, model.trailerConfig]);
+
     const toggleOption = (id: string) => {
         const feature = relevantFeatures.find((f: any) => f.id === id);
         if (!feature) return;
@@ -397,7 +440,7 @@ export function HighfieldQuoteFlow({
         setSelectedOptionIds(nextSelectedIds);
         if (!isCurrentlySelected) {
             const nextCat = groupedOptions[groupedOptions.findIndex(([name]) => name === currentCat) + 1]?.[0];
-            if (nextCat) setTimeout(() => categoryRefs.current[nextCat]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800);
+            if (nextCat) setTimeout(() => categoryRefs.current[nextCat]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
         }
     };
 
@@ -435,11 +478,11 @@ export function HighfieldQuoteFlow({
 
     // Auto-Scroll Effects
     useEffect(() => {
-        if (selectedMaterial && currentStep === 1) setTimeout(() => colorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800);
+        if (selectedMaterial && currentStep === 1) setTimeout(() => colorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
     }, [selectedMaterial, currentStep]);
 
     useEffect(() => {
-        if (selectedColor && currentStep === 1) setTimeout(() => registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800);
+        if (selectedColor && currentStep === 1) setTimeout(() => registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 1200);
     }, [selectedColor, currentStep]);
 
     useEffect(() => {
@@ -539,7 +582,7 @@ export function HighfieldQuoteFlow({
                         </Carousel>
                     </div>
                     <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-xl p-6 rounded-[2rem] mt-4 shrink-0">
-                        <div className="flex flex-col items-start px-1">
+                        <div className="flex flex-col items-end px-1">
                             <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Package Pricing (Excl. GST)</span>
                             <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{totalPrice.toLocaleString()}</span></div>
                         </div>
