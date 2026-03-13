@@ -159,7 +159,7 @@ export function HighfieldQuoteFlow({
     const [api, setApi] = useState<CarouselApi>();
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
-    // --- Resolved Memos & Initialization Sequence ---
+    // --- Data Resolvers ---
 
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: userProfile } = useDoc<any>(userProfileRef);
@@ -168,17 +168,18 @@ export function HighfieldQuoteFlow({
     const variantsQuery = useMemoFirebase(() => 
         query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')),
     [firestore, vendor.id, rangeId, model.id]);
-    const { data: variants, isLoading: variantsLoading } = useCollection<Variant>(variantsQuery);
+    const { data: variants } = useCollection<Variant>(variantsQuery);
 
     const dealerFitQuery = useMemoFirebase(() => 
         orgId ? collection(firestore, `organisations/${orgId}/dealerFitSelections`) : null,
     [firestore, orgId]);
-    const { data: dealerFitSelections, isLoading: dealerFitLoading } = useCollection<any>(dealerFitQuery);
+    const { data: dealerFitSelections } = useCollection<any>(dealerFitQuery);
 
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
 
-    // Pre-requisites for carouselSlides
+    // --- Derived Memos (Order is critical for ReferenceError prevention) ---
+
     const availableMaterials = useMemo(() => {
         if (!variants) return [];
         return Array.from(new Set(variants.map(v => v.material).filter(Boolean)));
@@ -188,6 +189,11 @@ export function HighfieldQuoteFlow({
         if (!selectedColor || !variants) return null;
         return variants.find(v => v.id === selectedColor);
     }, [selectedColor, variants]);
+
+    const availableColors = useMemo(() => {
+        if (!variants || !selectedMaterial) return [];
+        return variants.filter(v => v.material === selectedMaterial);
+    }, [variants, selectedMaterial]);
 
     const buildPreviewSlide = useMemo(() => {
         const imagedOptions = model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id) && f.imageUrl && f.imageUrl !== "") || [];
@@ -230,6 +236,99 @@ export function HighfieldQuoteFlow({
         if (model.galleryImageUrls) model.galleryImageUrls.forEach((url: string) => { if (url !== model.coverImageUrl) slides.push({ type: 'gallery', url }); });
         return slides;
     }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId]);
+
+    const selectedOptionsData = useMemo(() => {
+        return model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id)) || [];
+    }, [selectedOptionIds, model.optionalFeatures]);
+
+    const relevantFeatures = useMemo(() => {
+        const features = model.optionalFeatures || [];
+        if (!activeVariant) return features;
+        return features.filter((f: any) => {
+            const name = String(f.name).toUpperCase();
+            if (HARDWARE_BLOCKLIST.some(keyword => name.includes(keyword))) return false;
+            if (f.applicableVariantIds?.length && !f.applicableVariantIds.includes(activeVariant.id)) return false;
+            if (selectedMaterial === 'PVC' && name.includes('HYP')) return false;
+            if (selectedMaterial === 'HYP' && name.includes('PVC')) return false;
+            return true;
+        });
+    }, [model.optionalFeatures, activeVariant, selectedMaterial]);
+
+    const groupedOptions = useMemo(() => {
+        const groups = relevantFeatures.reduce((acc: any, opt: any) => {
+            const cat = opt.category || 'General Options';
+            if (!acc[cat]) acc[cat] = [];
+            acc[cat].push(opt);
+            return acc;
+        }, {});
+        return Object.entries(groups).filter(([_, opts]: [string, any]) => opts.length > 0).sort(([a], [b]) => {
+            if (a === 'Consoles') return -1; if (b === 'Consoles') return 1;
+            if (a === 'Seats') return -1; if (b === 'Seats') return 1;
+            if (a === 'Rigging') return -1; if (b === 'Rigging') return 1;
+            return a.localeCompare(b);
+        }) as [string, any][];
+    }, [relevantFeatures]);
+
+    const selectedMotorAccessories = useMemo(() => {
+        if (!selectedMotor) return [];
+        return (selectedMotor.masterAccessories || []).filter((a: any) => selectedMotorAccessoryIds.includes(a.id));
+    }, [selectedMotor, selectedMotorAccessoryIds]);
+
+    const groupedMotorAccessories = useMemo(() => {
+        if (!selectedMotor) return [];
+        const groups = (selectedMotor.masterAccessories || []).reduce((acc: any, opt: any) => {
+            const cat = opt.category || 'Other Hardware';
+            if (!acc[cat]) acc[cat] = [];
+            acc[cat].push(opt);
+            return acc;
+        }, {});
+        return Object.entries(groups).sort(([a], [b]) => (a === 'Propeller' ? -1 : b === 'Propeller' ? 1 : a === 'Rigging' ? -1 : b === 'Rigging' ? 1 : a.localeCompare(b))) as [string, any][];
+    }, [selectedMotor]);
+
+    const selectedTrailerOptionsData = useMemo(() => {
+        return model.trailerConfig?.options?.filter((o: any) => selectedTrailerOptionIds.includes(o.id)) || [];
+    }, [selectedTrailerOptionIds, model.trailerConfig]);
+
+    const selectedDealerFitData = useMemo(() => {
+        return dealerFitSelections?.filter(s => selectedDealerFitIds.includes(s.id)) || [];
+    }, [selectedDealerFitIds, dealerFitSelections]);
+
+    const groupedDealerFit = useMemo(() => {
+        if (!dealerFitSelections) return [];
+        const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
+            const cat = sel.category || 'Gear';
+            if (!acc[cat]) acc[cat] = [];
+            acc[cat].push(sel);
+            return acc;
+        }, {});
+        return Object.entries(groups) as [string, any][];
+    }, [dealerFitSelections]);
+
+    const totalPrice = useMemo(() => {
+        let total = activeVariant?.sellPriceExclGst || 0;
+        selectedOptionsData.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
+        customOptions.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
+        if (isRegoSelected) {
+            total += (model.registration?.price12Months || 0);
+            if (isStickerSelected) {
+                total += (model.registration?.stickerPrice || 0);
+                if (isTenderToSelected) total += (model.registration?.tenderToStickerPrice || 0);
+            }
+        }
+        if (selectedMotor) {
+            total += (selectedMotor.sellPriceExclGst || 0);
+            selectedMotorAccessories.forEach((a: any) => { total += (a.sellPriceExclGst || 0); });
+        }
+        if (selectedTrailerId && model.trailerConfig) {
+            total += (model.trailerConfig.sellPriceExclGst || 0);
+            selectedTrailerOptionsData.forEach((o: any) => { total += (o.sellPriceExclGst || 0); });
+            if (isTrailerRegoSelected) total += (model.registration?.trailerPrice12Months || 0);
+        }
+        selectedDealerFitData.forEach(s => {
+            s.items?.forEach((i: any) => { total += (i.data?.sellPriceExclGst || 0); });
+        });
+        return total;
+    }, [activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration]);
 
     // --- Selection Handlers ---
 
@@ -275,112 +374,6 @@ export function HighfieldQuoteFlow({
         }
     };
 
-    const handleAddCustomOption = () => {
-        if (!newCustomName.trim() || !newCustomPrice) return;
-        const newOpt: CustomOption = {
-            id: `custom-${Date.now()}`,
-            name: newCustomName.trim(),
-            sellPriceExclGst: parseFloat(newCustomPrice) || 0,
-            description: newCustomDesc.trim() || undefined
-        };
-        setCustomOptions(prev => [...prev, newOpt]);
-        setNewCustomName('');
-        setNewCustomPrice('');
-        setNewCustomDesc('');
-    };
-
-    const handleRemoveCustomOption = (id: string) => {
-        setCustomOptions(prev => prev.filter(o => o.id !== id));
-    };
-
-    const nextStep = () => { if (currentStep < STEPS.length) setCurrentStep(currentStep + 1); };
-    const prevStep = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
-
-    // Motor Search Logic
-    useEffect(() => {
-        const fetchMotors = async () => {
-            if (currentStep !== 3) return;
-            setMotorsLoading(true);
-            try {
-                const vendorsSnap = await getDocs(collection(firestore, 'data-warehouse'));
-                const allVendors = vendorsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-                const allModuleVendorIds = [...(module.associatedVendorIds || []), module.mainVendorId].filter(Boolean);
-                const motorVendor = allVendors.find(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
-
-                if (motorVendor) {
-                    const dsSnap = await getDocs(collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets'));
-                    const datasets = dsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-                    const targetDS = datasets.find(s => s.name.toLowerCase().includes('outboard') || s.name.toLowerCase().includes('motor')) || datasets[0];
-                    
-                    if (targetDS) {
-                        const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`));
-                        const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-                        
-                        const maxHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 999;
-                        const minHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.minHp || 0;
-                        const hasConsole = model.optionalFeatures?.filter((f: any) => f.category === 'Consoles').some((f: any) => selectedOptionIds.includes(f.id));
-
-                        setMotors(allRows.filter(r => {
-                            const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
-                            const hpMatch = hp >= minHp && hp <= maxHp;
-                            if (!hpMatch) return false;
-                            
-                            if (hasConsole) {
-                                return !r.steeringType || r.steeringType === 'Forward Control';
-                            } else {
-                                return !r.steeringType || r.steeringType === 'Tiller';
-                            }
-                        }).map(m => ({ ...m, vendorName: motorVendor.name })));
-                    }
-                }
-            } catch (e) { console.error(e); } finally { setMotorsLoading(false); }
-        };
-        fetchMotors();
-    }, [currentStep, firestore, module, model, selectedOptionIds]);
-
-    const selectedOptionsData = useMemo(() => {
-        return model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id)) || [];
-    }, [selectedOptionIds, model.optionalFeatures]);
-
-    const selectedMotorAccessories = useMemo(() => {
-        if (!selectedMotor) return [];
-        return (selectedMotor.masterAccessories || []).filter((a: any) => selectedMotorAccessoryIds.includes(a.id));
-    }, [selectedMotor, selectedMotorAccessoryIds]);
-
-    const selectedTrailerOptionsData = useMemo(() => {
-        return model.trailerConfig?.options?.filter((o: any) => selectedTrailerOptionIds.includes(o.id)) || [];
-    }, [selectedTrailerOptionIds, model.trailerConfig]);
-
-    const selectedDealerFitData = useMemo(() => {
-        return dealerFitSelections?.filter(s => selectedDealerFitIds.includes(s.id)) || [];
-    }, [selectedDealerFitIds, dealerFitSelections]);
-
-    const totalPrice = useMemo(() => {
-        let total = activeVariant?.sellPriceExclGst || 0;
-        selectedOptionsData.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
-        customOptions.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
-        if (isRegoSelected) {
-            total += (model.registration?.price12Months || 0);
-            if (isStickerSelected) {
-                total += (model.registration?.stickerPrice || 0);
-                if (isTenderToSelected) total += (model.registration?.tenderToStickerPrice || 0);
-            }
-        }
-        if (selectedMotor) {
-            total += (selectedMotor.sellPriceExclGst || 0);
-            selectedMotorAccessories.forEach((a: any) => { total += (a.sellPriceExclGst || 0); });
-        }
-        if (selectedTrailerId && model.trailerConfig) {
-            total += (model.trailerConfig.sellPriceExclGst || 0);
-            selectedTrailerOptionsData.forEach((o: any) => { total += (o.sellPriceExclGst || 0); });
-            if (isTrailerRegoSelected) total += (model.registration?.trailerPrice12Months || 0);
-        }
-        selectedDealerFitData.forEach(s => {
-            s.items?.forEach((i: any) => { total += (i.data?.sellPriceExclGst || 0); });
-        });
-        return total;
-    }, [activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration]);
-
     const toggleOption = (id: string) => {
         const feature = relevantFeatures.find((f: any) => f.id === id);
         if (!feature) return;
@@ -415,6 +408,24 @@ export function HighfieldQuoteFlow({
         }
     };
 
+    const handleAddCustomOption = () => {
+        if (!newCustomName.trim() || !newCustomPrice) return;
+        const newOpt: CustomOption = {
+            id: `custom-${Date.now()}`,
+            name: newCustomName.trim(),
+            sellPriceExclGst: parseFloat(newCustomPrice) || 0,
+            description: newCustomDesc.trim() || undefined
+        };
+        setCustomOptions(prev => [...prev, newOpt]);
+        setNewCustomName('');
+        setNewCustomPrice('');
+        setNewCustomDesc('');
+    };
+
+    const handleRemoveCustomOption = (id: string) => {
+        setCustomOptions(prev => prev.filter(o => o.id !== id));
+    };
+
     const toggleMotorAccessory = (id: string) => {
         const accessory = selectedMotor?.masterAccessories?.find((a: any) => a.id === id);
         if (!accessory) return;
@@ -439,55 +450,46 @@ export function HighfieldQuoteFlow({
         setSelectedDealerFitIds(isSelected ? selectedDealerFitIds.filter(i => i !== id) : [...selectedDealerFitIds, id]);
     };
 
-    const relevantFeatures = useMemo(() => {
-        const features = model.optionalFeatures || [];
-        if (!activeVariant) return features;
-        return features.filter((f: any) => {
-            const name = String(f.name).toUpperCase();
-            if (HARDWARE_BLOCKLIST.some(keyword => name.includes(keyword))) return false;
-            if (f.applicableVariantIds?.length && !f.applicableVariantIds.includes(activeVariant.id)) return false;
-            if (selectedMaterial === 'PVC' && name.includes('HYP')) return false;
-            if (selectedMaterial === 'HYP' && name.includes('PVC')) return false;
-            return true;
-        });
-    }, [model.optionalFeatures, activeVariant, selectedMaterial]);
+    const nextStep = () => { if (currentStep < STEPS.length) setCurrentStep(currentStep + 1); };
+    const prevStep = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
 
-    const groupedOptions = useMemo(() => {
-        const groups = relevantFeatures.reduce((acc: any, opt: any) => {
-            const cat = opt.category || 'General Options';
-            if (!acc[cat]) acc[cat] = [];
-            acc[cat].push(opt);
-            return acc;
-        }, {});
-        return Object.entries(groups).filter(([_, opts]: [string, any]) => opts.length > 0).sort(([a], [b]) => {
-            if (a === 'Consoles') return -1; if (b === 'Consoles') return 1;
-            if (a === 'Seats') return -1; if (b === 'Seats') return 1;
-            if (a === 'Rigging') return -1; if (b === 'Rigging') return 1;
-            return a.localeCompare(b);
-        }) as [string, any][];
-    }, [relevantFeatures]);
+    // --- Motor Sync logic ---
+    useEffect(() => {
+        const fetchMotors = async () => {
+            if (currentStep !== 3) return;
+            setMotorsLoading(true);
+            try {
+                const vendorsSnap = await getDocs(collection(firestore, 'data-warehouse'));
+                const allVendors = vendorsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+                const allModuleVendorIds = [...(module.associatedVendorIds || []), module.mainVendorId].filter(Boolean);
+                const motorVendor = allVendors.find(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
 
-    const groupedMotorAccessories = useMemo(() => {
-        if (!selectedMotor) return [];
-        const groups = (selectedMotor.masterAccessories || []).reduce((acc: any, opt: any) => {
-            const cat = opt.category || 'Other Hardware';
-            if (!acc[cat]) acc[cat] = [];
-            acc[cat].push(opt);
-            return acc;
-        }, {});
-        return Object.entries(groups).sort(([a], [b]) => (a === 'Propeller' ? -1 : b === 'Propeller' ? 1 : a === 'Rigging' ? -1 : b === 'Rigging' ? 1 : a.localeCompare(b))) as [string, any][];
-    }, [selectedMotor]);
+                if (motorVendor) {
+                    const dsSnap = await getDocs(collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets'));
+                    const datasets = dsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+                    const targetDS = datasets.find(s => s.name.toLowerCase().includes('outboard') || s.name.toLowerCase().includes('motor')) || datasets[0];
+                    
+                    if (targetDS) {
+                        const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`));
+                        const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+                        
+                        const maxHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 999;
+                        const minHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.minHp || 0;
+                        const hasConsole = model.optionalFeatures?.filter((f: any) => f.category === 'Consoles').some((f: any) => selectedOptionIds.includes(f.id));
 
-    const groupedDealerFit = useMemo(() => {
-        if (!dealerFitSelections) return [];
-        const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
-            const cat = sel.category || 'Gear';
-            if (!acc[cat]) acc[cat] = [];
-            acc[cat].push(sel);
-            return acc;
-        }, {});
-        return Object.entries(groups) as [string, any][];
-    }, [dealerFitSelections]);
+                        setMotors(allRows.filter(r => {
+                            const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
+                            const hpMatch = hp >= minHp && hp <= maxHp;
+                            if (!hpMatch) return false;
+                            if (hasConsole) return !r.steeringType || r.steeringType === 'Forward Control';
+                            return !r.steeringType || r.steeringType === 'Tiller';
+                        }).map(m => ({ ...m, vendorName: motorVendor.name })));
+                    }
+                }
+            } catch (e) { console.error(e); } finally { setMotorsLoading(false); }
+        };
+        fetchMotors();
+    }, [currentStep, firestore, module, model, selectedOptionIds]);
 
     const getMotorDisplayName = (m: any) => `${m?.vendorName || 'YAMAHA'} - ${m?.['Model Name'] || m?.ModelName || m?.name || m?.Description || m?.model || 'Unnamed'}`;
 
@@ -548,7 +550,7 @@ export function HighfieldQuoteFlow({
                 </div>
 
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
-                    <div className="pt-4 px-8 pb-4 shrink-0 border-b bg-transparent min-h-[80px] flex flex-col justify-center">
+                    <div className="pt-4 px-8 pb-4 shrink-0 bg-transparent min-h-[80px] flex flex-col justify-center">
                         <h2 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 leading-tight">{STEPS[currentStep - 1].label.toUpperCase()}<span className="text-primary"> - {range?.name?.toUpperCase()} {model?.name?.toUpperCase()}</span></h2>
                     </div>
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
@@ -645,7 +647,6 @@ export function HighfieldQuoteFlow({
                                         </div>
                                     ))}
 
-                                    {/* Custom Options Form */}
                                     <div className="space-y-6 scroll-mt-10">
                                         <div className="flex items-center gap-3 bg-slate-900 px-6 py-3 rounded-2xl shadow-xl w-full">
                                             <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
