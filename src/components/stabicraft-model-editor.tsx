@@ -123,7 +123,7 @@ function RegistrationCard() {
 export function StabicraftModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden text-left">
-            <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start text-left">
                 <div className="lg:col-span-4 space-y-8">
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
                     <RegistrationCard />
@@ -144,10 +144,10 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
     const { append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
 
     return (
-        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm" defaultOpen>
+        <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
             <CollapsibleCardHeader title={isModuleView ? "Visual Config" : "Main Cover Image & Gallery"} count={galleryUrls.length + (coverImageUrl ? 1 : 0)} />
             <CollapsibleContent>
-                <div className="space-y-0">
+                <div className="space-y-0 text-left">
                     <div className="relative aspect-[16/10] w-full bg-secondary group">
                         {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
                         {coverImageUrl ? (
@@ -173,7 +173,7 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
                         )}
                     </div>
                     
-                    <div className="p-6 space-y-3 bg-card border-t">
+                    <div className="p-6 space-y-3 bg-card border-t text-left">
                         <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Image Gallery</Label>
                         <div className="grid grid-cols-3 gap-3">
                             {galleryUrls.map((url, index) => (
