@@ -177,7 +177,7 @@ export function HighfieldQuoteFlow({
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
 
-    // 3. Derived Memos (CRITICAL: Order of initialization)
+    // 3. Derived Memos (CRITICAL: Order of initialization to prevent ReferenceErrors)
     const availableMaterials = useMemo(() => {
         if (!variants) return [];
         return Array.from(new Set(variants.map(v => v.material).filter(Boolean)));
@@ -609,7 +609,7 @@ export function HighfieldQuoteFlow({
                                         <div ref={registrationSectionRef} className="mt-12 space-y-6 animate-in slide-in-from-bottom-4 duration-1000 scroll-mt-24">
                                             <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
                                                 <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Registration & Compliance</h3>
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Registration</h3>
                                             </div>
                                             <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white space-y-6">
                                                 <div className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", isRegoSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={handleRegoToggle}>
