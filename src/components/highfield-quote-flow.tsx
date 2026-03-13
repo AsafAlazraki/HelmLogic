@@ -160,24 +160,13 @@ export function HighfieldQuoteFlow({
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
 
-    const boatSeriesIdentity = model?.name || 'Boat';
+    // --- Resolved Memos & Initialization Sequence ---
 
-    const availableMaterials = useMemo(() => {
-        if (!variants) return [];
-        return Array.from(new Set(variants.map(v => v.material).filter(Boolean) as string[]));
-    }, [variants]);
+    const activeVariant = useMemo(() => {
+        if (!selectedColor || !variants) return null;
+        return variants.find(v => v.id === selectedColor);
+    }, [selectedColor, variants]);
 
-    const availableColors = useMemo(() => {
-        if (!variants || !selectedMaterial) return [];
-        return variants.filter(v => v.material === selectedMaterial);
-    }, [variants, selectedMaterial]);
-
-    const hasConsoleSelected = useMemo(() => {
-        const consoleOptions = model.optionalFeatures?.filter((f: any) => f.category === 'Consoles') || [];
-        return selectedOptionIds.some(id => consoleOptions.some(f => f.id === id));
-    }, [selectedOptionIds, model.optionalFeatures]);
-
-    // Build Preview Slide for Multi-item Preview
     const buildPreviewSlide = useMemo(() => {
         const imagedOptions = model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id) && f.imageUrl && f.imageUrl !== "") || [];
         const consoleOpt = imagedOptions.find((f: any) => f.category === 'Consoles');
@@ -211,11 +200,16 @@ export function HighfieldQuoteFlow({
         slides.push({ type: 'boat', url: model.coverImageUrl || '' });
         if (activeVariant?.imageUrl) slides.push({ type: 'variant', url: activeVariant.imageUrl });
         if (buildPreviewSlide) slides.push({ type: 'build', content: buildPreviewSlide });
-        if (selectedMotor) { const mUrl = resolveImageUrl(selectedMotor); if (mUrl) slides.push({ type: 'motor', url: mUrl }); }
+        if (selectedMotor) { 
+            const mUrl = resolveImageUrl(selectedMotor); 
+            if (mUrl) slides.push({ type: 'motor', url: mUrl }); 
+        }
         if (selectedTrailerId && model.trailerConfig?.imageUrl) slides.push({ type: 'trailer', url: model.trailerConfig.imageUrl });
         if (model.galleryImageUrls) model.galleryImageUrls.forEach((url: string) => { if (url !== model.coverImageUrl) slides.push({ type: 'gallery', url }); });
         return slides;
     }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId]);
+
+    // --- Selection Handlers ---
 
     const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
         if (selectedMaterial === mat) return;
@@ -262,7 +256,7 @@ export function HighfieldQuoteFlow({
     const nextStep = () => { if (currentStep < STEPS.length) setCurrentStep(currentStep + 1); };
     const prevStep = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
 
-    // Motor Logic
+    // Motor Search Logic
     useEffect(() => {
         const fetchMotors = async () => {
             if (currentStep !== 3) return;
@@ -284,25 +278,25 @@ export function HighfieldQuoteFlow({
                         
                         const maxHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 999;
                         const minHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.minHp || 0;
-                        const requiredSteering = hasConsoleSelected ? 'Forward Control' : 'Tiller';
+                        const hasConsole = model.optionalFeatures?.filter((f: any) => f.category === 'Consoles').some((f: any) => selectedOptionIds.includes(f.id));
 
                         setMotors(allRows.filter(r => {
                             const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
                             const hpMatch = hp >= minHp && hp <= maxHp;
                             if (!hpMatch) return false;
-                            return !r.steeringType || r.steeringType === requiredSteering;
+                            
+                            if (hasConsole) {
+                                return !r.steeringType || r.steeringType === 'Forward Control';
+                            } else {
+                                return !r.steeringType || r.steeringType === 'Tiller';
+                            }
                         }).map(m => ({ ...m, vendorName: motorVendor.name })));
                     }
                 }
             } catch (e) { console.error(e); } finally { setMotorsLoading(false); }
         };
         fetchMotors();
-    }, [currentStep, firestore, module, model, hasConsoleSelected]);
-
-    const activeVariant = useMemo(() => {
-        if (!selectedColor || !variants) return null;
-        return variants.find(v => v.id === selectedColor);
-    }, [selectedColor, variants]);
+    }, [currentStep, firestore, module, model, selectedOptionIds]);
 
     const selectedOptionsData = useMemo(() => {
         return model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id)) || [];
@@ -514,7 +508,7 @@ export function HighfieldQuoteFlow({
 
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
                     <div className="pt-4 px-8 pb-4 shrink-0 border-b bg-transparent min-h-[80px] flex flex-col justify-center">
-                        <h2 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 leading-tight">{STEPS[currentStep - 1].label.toUpperCase()}<span className="text-primary"> - {range?.name?.toUpperCase()} {boatSeriesIdentity.toUpperCase()}</span></h2>
+                        <h2 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 leading-tight">{STEPS[currentStep - 1].label.toUpperCase()}<span className="text-primary"> - {range?.name?.toUpperCase()} {model?.name?.toUpperCase()}</span></h2>
                     </div>
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
                         <div className="px-8 pb-48 space-y-6 mt-4">
@@ -747,7 +741,7 @@ export function HighfieldQuoteFlow({
                                         <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Ship className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Base Vessel</CardTitle></div></CardHeader><CardContent className="p-4">
                                             <div className="flex items-center justify-between">
                                                 <div className="space-y-0.5">
-                                                    <p className="font-black text-sm uppercase tracking-tight text-slate-900">{range?.name} {boatSeriesIdentity}</p>
+                                                    <p className="font-black text-sm uppercase tracking-tight text-slate-900">{range?.name} {model?.name}</p>
                                                     <p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMaterial} • {activeVariant?.name || 'Standard Color'}</p>
                                                 </div>
                                                 <p className="font-black text-primary italic text-sm">${(activeVariant?.sellPriceExclGst || 0).toLocaleString()}</p>
