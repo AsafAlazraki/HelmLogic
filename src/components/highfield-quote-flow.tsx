@@ -116,7 +116,6 @@ export function HighfieldQuoteFlow({
     const materialSectionRef = useRef<HTMLDivElement>(null);
     const colorSectionRef = useRef<HTMLDivElement>(null);
     const registrationSectionRef = useRef<HTMLDivElement>(null);
-    const trailerRegoSectionRef = useRef<HTMLDivElement>(null);
     const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
     
     // Selection State
@@ -134,14 +133,14 @@ export function HighfieldQuoteFlow({
     const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>([]);
     const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>([]);
 
-    // Carousel State
-    const [api, setApi] = useState<CarouselApi>();
-    const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
-
-    // Modal State
+    // Utility States
     const [showFeatures, setShowFeatures] = useState(false);
     const [showSpecs, setShowSpecs] = useState(false);
     const [showDocs, setShowDocs] = useState(false);
+
+    // Carousel State
+    const [api, setApi] = useState<CarouselApi>();
+    const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
     // Context Data
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -191,26 +190,7 @@ export function HighfieldQuoteFlow({
         }
     };
 
-    // Intelligent Selection Reconciliation
-    const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
-        if (selectedMaterial === mat) return;
-        
-        const currentVariant = variants?.find(v => v.id === selectedColor);
-        const prevColorName = currentVariant?.colorName;
-        
-        setSelectedMaterial(mat);
-        
-        if (variants && prevColorName) {
-            const matchingVariant = variants.find(v => v.material === mat && v.colorName === prevColorName);
-            if (matchingVariant) {
-                setSelectedColor(matchingVariant.id);
-                return;
-            }
-        }
-        
-        setSelectedColor(null);
-    };
-
+    // Cascading Reset Logic
     const handleRegoToggle = () => {
         const newVal = !isRegoSelected;
         setIsRegoSelected(newVal);
@@ -234,6 +214,26 @@ export function HighfieldQuoteFlow({
                 registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             }, 100);
         }
+    };
+
+    // Intelligent Selection Reconciliation
+    const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
+        if (selectedMaterial === mat) return;
+        
+        const currentVariant = variants?.find(v => v.id === selectedColor);
+        const prevColorName = currentVariant?.colorName;
+        
+        setSelectedMaterial(mat);
+        
+        if (variants && prevColorName) {
+            const matchingVariant = variants.find(v => v.material === mat && v.colorName === prevColorName);
+            if (matchingVariant) {
+                setSelectedColor(matchingVariant.id);
+                return;
+            }
+        }
+        
+        setSelectedColor(null);
     };
 
     // Motor Logic with Lenient Filtering
@@ -265,9 +265,6 @@ export function HighfieldQuoteFlow({
                             const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
                             const hpMatch = hp >= minHp && hp <= maxHp;
                             if (!hpMatch) return false;
-
-                            // Lenient steering filter: show matches OR items where steering isn't defined yet
-                            // This prevents an empty screen if data isn't fully mapped
                             return !r.steeringType || r.steeringType === requiredSteering;
                         }).map(m => ({ ...m, vendorName: motorVendor.name })));
                     }
@@ -340,6 +337,25 @@ export function HighfieldQuoteFlow({
         return path.trim().replace(/\\/g, '/');
     };
 
+    const buildPreviewSlide = useMemo(() => {
+        const imagedOptions = selectedOptionsData.filter(f => f.imageUrl && f.imageUrl !== "");
+        const consoleOpt = imagedOptions.find((f: any) => f.category === 'Consoles');
+        const seatOpt = imagedOptions.find((f: any) => f.category === 'Seats');
+        const itemsToShow = [consoleOpt, seatOpt].filter(Boolean);
+        if (itemsToShow.length === 0) return null;
+
+        return (
+            <div className={cn("h-full w-full grid bg-white", itemsToShow.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
+                {itemsToShow.map((item: any, i) => (
+                    <div key={item.id} className={cn("relative flex items-center justify-center hover:bg-slate-50", i === 0 && itemsToShow.length === 2 && "border-r")}>
+                        {item.imageUrl && <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-8 mix-blend-multiply" unoptimized />}
+                        <div className="absolute bottom-8 left-8 px-3 py-1 bg-slate-900/5 rounded-full text-[8px] font-black uppercase tracking-widest text-slate-400">{item.name}</div>
+                    </div>
+                ))}
+            </div>
+        );
+    }, [selectedOptionsData]);
+
     const carouselSlides = useMemo(() => {
         const slides: { type: string; url?: string; content?: React.ReactNode }[] = [];
         slides.push({ type: 'boat', url: model.coverImageUrl || '' });
@@ -349,7 +365,7 @@ export function HighfieldQuoteFlow({
         if (selectedTrailerId && model.trailerConfig?.imageUrl) slides.push({ type: 'trailer', url: model.trailerConfig.imageUrl });
         if (model.galleryImageUrls) model.galleryImageUrls.forEach((url: string) => { if (url !== model.coverImageUrl) slides.push({ type: 'gallery', url }); });
         return slides;
-    }, [activeVariant, model, selectedMotor, selectedTrailerId]);
+    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId]);
 
     const toggleOption = (id: string) => {
         const feature = relevantFeatures.find((f: any) => f.id === id);
@@ -362,7 +378,7 @@ export function HighfieldQuoteFlow({
             nextSelectedIds = nextSelectedIds.filter(i => i !== id);
             if (currentCat === 'Consoles') {
                 const riggingItem = relevantFeatures.find(f => f.category === 'Rigging');
-                if (riggingItem) nextSelectedIds = nextSelectedIds.filter(i => i !== riggingItem.id);
+                if (riggingItem) nextSelectedIds = nextSelectedIds.filter(i => riggingItem.id !== i);
                 const seatIds = relevantFeatures.filter(f => f.category === 'Seats').map(f => f.id);
                 nextSelectedIds = nextSelectedIds.filter(i => !seatIds.includes(i));
             }
@@ -413,6 +429,19 @@ export function HighfieldQuoteFlow({
         const isSelected = selectedDealerFitIds.includes(id);
         setSelectedDealerFitIds(isSelected ? selectedDealerFitIds.filter(i => i !== id) : [...selectedDealerFitIds, id]);
     };
+
+    const relevantFeatures = useMemo(() => {
+        const features = model.optionalFeatures || [];
+        if (!activeVariant) return features;
+        return features.filter((f: any) => {
+            const name = String(f.name).toUpperCase();
+            if (HARDWARE_BLOCKLIST.some(keyword => name.includes(keyword))) return false;
+            if (f.applicableVariantIds?.length && !f.applicableVariantIds.includes(activeVariant.id)) return false;
+            if (selectedMaterial === 'PVC' && name.includes('HYP')) return false;
+            if (selectedMaterial === 'HYP' && name.includes('PVC')) return false;
+            return true;
+        });
+    }, [model.optionalFeatures, activeVariant, selectedMaterial]);
 
     const groupedOptions = useMemo(() => {
         const features = [...relevantFeatures];
@@ -702,7 +731,7 @@ export function HighfieldQuoteFlow({
                                                     </div>
                                                 </div>
                                             )}
-                                            <div ref={trailerRegoSectionRef} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-24">
+                                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-24">
                                                 <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
                                                     <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Registration</h3>
@@ -848,7 +877,7 @@ export function HighfieldQuoteFlow({
                 <DialogContent className="sm:max-w-md rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-6 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Technical Assets</DialogTitle></DialogHeader>
                     <div className="p-6 space-y-3">{model?.documents?.length > 0 ? model.documents.map((doc: any, i: number) => (
-                        <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-xl border-2 hover:bg-primary hover:text-white group transition-all"><div className="flex items-center gap-3"><FileText className="h-4 w-4 text-primary/40 group-hover:text-white" /><span className="text-[10px] font-black uppercase tracking-tight">{doc.name}</span></div><ExternalLink className="h-3.5 w-3.5 opacity-20 group-hover:opacity-100" /></a>
+                        <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-xl border-2 hover:border-primary/40 hover:bg-primary/5 group"><div className="flex items-center gap-3"><FileText className="h-4 w-4 text-primary/40 group-hover:text-primary" /><span className="text-[10px] font-black uppercase tracking-tight">{doc.name}</span></div><ExternalLink className="h-3.5 w-3.5 opacity-20 group-hover:opacity-100" /></a>
                     )) : <div className="py-12 text-center opacity-20 flex flex-col items-center gap-2"><FileText className="h-10 w-10" /><p className="text-[9px] font-black uppercase tracking-widest">No Documents Linked</p></div>}</div>
                 </DialogContent>
             </Dialog>
