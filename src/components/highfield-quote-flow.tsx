@@ -162,6 +162,16 @@ export function HighfieldQuoteFlow({
 
     // --- Resolved Memos & Initialization Sequence ---
 
+    const availableMaterials = useMemo(() => {
+        if (!variants) return [];
+        return Array.from(new Set(variants.map(v => v.material).filter(Boolean)));
+    }, [variants]);
+
+    const availableColors = useMemo(() => {
+        if (!variants || !selectedMaterial) return [];
+        return variants.filter(v => v.material === selectedMaterial);
+    }, [variants, selectedMaterial]);
+
     const activeVariant = useMemo(() => {
         if (!selectedColor || !variants) return null;
         return variants.find(v => v.id === selectedColor);
