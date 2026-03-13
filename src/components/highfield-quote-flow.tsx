@@ -540,6 +540,8 @@ export function HighfieldQuoteFlow({
         return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b)) as [string, any][];
     }, [dealerFitSelections]);
 
+    const getMotorDisplayName = (m: any) => `${m?.vendorName || 'YAMAHA'} - ${m?.['Model Name'] || m?.ModelName || m?.name || m?.Description || m?.model || 'Unnamed'}`;
+
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
             <div className="sticky top-0 z-[100] px-12 h-20 border-b bg-card/90 backdrop-blur-xl shrink-0 flex items-center shadow-sm">
@@ -577,13 +579,16 @@ export function HighfieldQuoteFlow({
                         </Carousel>
                     </div>
                     <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-xl p-6 rounded-[2rem] mt-4 shrink-0 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm group" onClick={() => setShowFeatures(true)}><ListChecks className="h-3.5 w-3.5 mr-1.5 group-hover:text-white" /> Features</Button>
-                            <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-3.5 w-3.5 mr-1.5 group-hover:text-white" /> Specs</Button>
-                            <Button variant="ghost" size="sm" className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-slate-400 hover:text-white hover:bg-primary rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm group" onClick={() => setShowDocs(true)}><FileText className="h-3.5 w-3.5 mr-1.5 group-hover:text-white" /> Docs</Button>
+                        <div className="flex flex-col items-start px-1 gap-1">
+                            <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Technical Utilities</span>
+                            <div className="flex items-center gap-3">
+                                <Button variant="ghost" size="sm" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-950 hover:text-white hover:bg-primary rounded-xl border-2 border-slate-100 hover:border-primary transition-all shadow-sm group" onClick={() => setShowFeatures(true)}><ListChecks className="h-4 w-4 mr-2" /> Features</Button>
+                                <Button variant="ghost" size="sm" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-950 hover:text-white hover:bg-primary rounded-xl border-2 border-slate-100 hover:border-primary transition-all shadow-sm group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-4 w-4 mr-2" /> Specs</Button>
+                                <Button variant="ghost" size="sm" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-950 hover:text-white hover:bg-primary rounded-xl border-2 border-slate-100 hover:border-primary transition-all shadow-sm group" onClick={() => setShowDocs(true)}><FileText className="h-4 w-4 mr-2" /> Docs</Button>
+                            </div>
                         </div>
-                        <div className="flex flex-col items-end px-1">
-                            <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Package Pricing (Excl. GST)</span>
+                        <div className="flex flex-col items-end px-1 gap-1">
+                            <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Package Pricing (Excl. GST)</span>
                             <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{totalPrice.toLocaleString()}</span></div>
                         </div>
                     </div>
