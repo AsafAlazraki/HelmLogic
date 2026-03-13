@@ -190,7 +190,7 @@ export function HighfieldQuoteFlow({
         }
     };
 
-    // Cascading Reset Logic
+    // Registration Reset Logic
     const handleRegoToggle = () => {
         const newVal = !isRegoSelected;
         setIsRegoSelected(newVal);
@@ -236,7 +236,7 @@ export function HighfieldQuoteFlow({
         setSelectedColor(null);
     };
 
-    // Motor Logic with Lenient Filtering
+    // Motor Logic
     useEffect(() => {
         const fetchMotors = async () => {
             if (currentStep !== 3) return;
@@ -256,9 +256,8 @@ export function HighfieldQuoteFlow({
                         const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`));
                         const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
                         
-                        const motorConfig = model.specifications?.motorConfigurations?.[0]?.engines?.[0];
-                        const maxHp = motorConfig?.maxHp || 999;
-                        const minHp = motorConfig?.minHp || 0;
+                        const maxHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 999;
+                        const minHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.minHp || 0;
                         const requiredSteering = hasConsoleSelected ? 'Forward Control' : 'Tiller';
 
                         setMotors(allRows.filter(r => {
@@ -396,6 +395,10 @@ export function HighfieldQuoteFlow({
             }
         }
         setSelectedOptionIds(nextSelectedIds);
+        if (!isCurrentlySelected) {
+            const nextCat = groupedOptions[groupedOptions.findIndex(([name]) => name === currentCat) + 1]?.[0];
+            if (nextCat) setTimeout(() => categoryRefs.current[nextCat]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800);
+        }
     };
 
     const toggleMotorAccessory = (id: string) => {
@@ -429,6 +432,22 @@ export function HighfieldQuoteFlow({
         const isSelected = selectedDealerFitIds.includes(id);
         setSelectedDealerFitIds(isSelected ? selectedDealerFitIds.filter(i => i !== id) : [...selectedDealerFitIds, id]);
     };
+
+    // Auto-Scroll Effects
+    useEffect(() => {
+        if (selectedMaterial && currentStep === 1) setTimeout(() => colorSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800);
+    }, [selectedMaterial, currentStep]);
+
+    useEffect(() => {
+        if (selectedColor && currentStep === 1) setTimeout(() => registrationSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 800);
+    }, [selectedColor, currentStep]);
+
+    useEffect(() => {
+        if (scrollAreaRef.current) {
+            const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+            if (viewport) viewport.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, [currentStep]);
 
     const relevantFeatures = useMemo(() => {
         const features = model.optionalFeatures || [];

@@ -152,7 +152,7 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
                         {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
                         {coverImageUrl ? (
                             <div className="h-full w-full flex items-center justify-center relative">
-                                <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-4" unoptimized />
+                                <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-4" sizes="(max-width: 1024px) 100vw, 50vw" />
                                 <Button type="button" variant="destructive" size="icon" className="absolute top-3 right-3 h-8 w-8 shadow-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => setValue('coverImageUrl', null)}><X className="h-4 w-4" /></Button>
                             </div>
                         ) : (
