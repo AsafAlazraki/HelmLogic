@@ -34,7 +34,9 @@ import {
     Trash2,
     Zap,
     DollarSign,
-    ExternalLink
+    ExternalLink,
+    Plus,
+    FilePlus2
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -66,6 +68,8 @@ import {
     TableHead,
     TableHeader
 } from "@/components/ui/table";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface Variant {
     id: string;
@@ -77,6 +81,13 @@ interface Variant {
     cost?: number;
     sellPriceExclGst?: number;
     imageUrl?: string;
+}
+
+interface CustomOption {
+    id: string;
+    name: string;
+    sellPriceExclGst: number;
+    description?: string;
 }
 
 interface Step {
@@ -127,11 +138,17 @@ export function HighfieldQuoteFlow({
     const [isTrailerRegoSelected, setIsTrailerRegoSelected] = useState(false);
     
     const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
+    const [customOptions, setCustomOptions] = useState<CustomOption[]>([]);
     const [selectedMotor, setSelectedMotor] = useState<any | null>(null);
     const [selectedMotorAccessoryIds, setSelectedMotorAccessoryIds] = useState<string[]>([]);
     const [selectedTrailerId, setSelectedTrailerId] = useState<string | null>(null);
     const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>([]);
     const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>([]);
+
+    // Custom Option Form State
+    const [newCustomName, setNewCustomName] = useState('');
+    const [newCustomPrice, setNewCustomPrice] = useState('');
+    const [newCustomDesc, setNewCustomDesc] = useState('');
 
     // Utility States
     const [showFeatures, setShowFeatures] = useState(false);
@@ -142,7 +159,8 @@ export function HighfieldQuoteFlow({
     const [api, setApi] = useState<CarouselApi>();
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
-    // Context Data
+    // --- Resolved Memos & Initialization Sequence ---
+
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: userProfile } = useDoc<any>(userProfileRef);
     const orgId = userProfile?.organisationId;
@@ -160,17 +178,11 @@ export function HighfieldQuoteFlow({
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
 
-    // --- Resolved Memos & Initialization Sequence ---
-
+    // Pre-requisites for carouselSlides
     const availableMaterials = useMemo(() => {
         if (!variants) return [];
         return Array.from(new Set(variants.map(v => v.material).filter(Boolean)));
     }, [variants]);
-
-    const availableColors = useMemo(() => {
-        if (!variants || !selectedMaterial) return [];
-        return variants.filter(v => v.material === selectedMaterial);
-    }, [variants, selectedMaterial]);
 
     const activeVariant = useMemo(() => {
         if (!selectedColor || !variants) return null;
@@ -263,6 +275,24 @@ export function HighfieldQuoteFlow({
         }
     };
 
+    const handleAddCustomOption = () => {
+        if (!newCustomName.trim() || !newCustomPrice) return;
+        const newOpt: CustomOption = {
+            id: `custom-${Date.now()}`,
+            name: newCustomName.trim(),
+            sellPriceExclGst: parseFloat(newCustomPrice) || 0,
+            description: newCustomDesc.trim() || undefined
+        };
+        setCustomOptions(prev => [...prev, newOpt]);
+        setNewCustomName('');
+        setNewCustomPrice('');
+        setNewCustomDesc('');
+    };
+
+    const handleRemoveCustomOption = (id: string) => {
+        setCustomOptions(prev => prev.filter(o => o.id !== id));
+    };
+
     const nextStep = () => { if (currentStep < STEPS.length) setCurrentStep(currentStep + 1); };
     const prevStep = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
 
@@ -328,6 +358,7 @@ export function HighfieldQuoteFlow({
     const totalPrice = useMemo(() => {
         let total = activeVariant?.sellPriceExclGst || 0;
         selectedOptionsData.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
+        customOptions.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
         if (isRegoSelected) {
             total += (model.registration?.price12Months || 0);
             if (isStickerSelected) {
@@ -348,7 +379,7 @@ export function HighfieldQuoteFlow({
             s.items?.forEach((i: any) => { total += (i.data?.sellPriceExclGst || 0); });
         });
         return total;
-    }, [activeVariant, selectedOptionsData, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration]);
+    }, [activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration]);
 
     const toggleOption = (id: string) => {
         const feature = relevantFeatures.find((f: any) => f.id === id);
@@ -503,9 +534,9 @@ export function HighfieldQuoteFlow({
                             <div className="flex flex-col items-start px-1 gap-3">
                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] leading-none">Technical Utilities</span>
                                 <div className="flex items-center gap-2">
-                                    <Button variant="ghost" size="sm" className="h-11 px-5 font-black uppercase text-[10px] tracking-widest text-slate-950 bg-slate-100/80 hover:bg-primary hover:text-white rounded-xl transition-all border-none shadow-none group" onClick={() => setShowFeatures(true)}><ListChecks className="h-4 w-4 mr-2 text-primary group-hover:text-white" /> Features</Button>
-                                    <Button variant="ghost" size="sm" className="h-11 px-5 font-black uppercase text-[10px] tracking-widest text-slate-950 bg-slate-100/80 hover:bg-primary hover:text-white rounded-xl transition-all border-none shadow-none group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-4 w-4 mr-2 text-primary group-hover:text-white" /> Specs</Button>
-                                    <Button variant="ghost" size="sm" className="h-11 px-5 font-black uppercase text-[10px] tracking-widest text-slate-950 bg-slate-100/80 hover:bg-primary hover:text-white rounded-xl transition-all border-none shadow-none group" onClick={() => setShowDocs(true)}><FileText className="h-4 w-4 mr-2 text-primary group-hover:text-white" /> Docs</Button>
+                                    <Button variant="ghost" size="sm" className="h-11 px-5 font-black uppercase text-[10px] tracking-widest text-slate-950 bg-slate-100/80 hover:bg-primary/10 hover:text-primary rounded-xl transition-all border-none shadow-none group" onClick={() => setShowFeatures(true)}><ListChecks className="h-4 w-4 mr-2 text-primary" /> Features</Button>
+                                    <Button variant="ghost" size="sm" className="h-11 px-5 font-black uppercase text-[10px] tracking-widest text-slate-950 bg-slate-100/80 hover:bg-primary/10 hover:text-primary rounded-xl transition-all border-none shadow-none group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-4 w-4 mr-2 text-primary" /> Specs</Button>
+                                    <Button variant="ghost" size="sm" className="h-11 px-5 font-black uppercase text-[10px] tracking-widest text-slate-950 bg-slate-100/80 hover:bg-primary/10 hover:text-primary rounded-xl transition-all border-none shadow-none group" onClick={() => setShowDocs(true)}><FileText className="h-4 w-4 mr-2 text-primary" /> Docs</Button>
                                 </div>
                             </div>
                             <div className="flex flex-col items-end px-1 gap-1">
@@ -613,6 +644,57 @@ export function HighfieldQuoteFlow({
                                             </div>
                                         </div>
                                     ))}
+
+                                    {/* Custom Options Form */}
+                                    <div className="space-y-6 scroll-mt-10">
+                                        <div className="flex items-center gap-3 bg-slate-900 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                            <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Custom Tactical Additions</h3>
+                                        </div>
+                                        <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white space-y-6">
+                                            <div className="grid gap-4">
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Addition Label</Label>
+                                                    <Input placeholder="e.g. Custom Hull Wrap" value={newCustomName} onChange={e => setNewCustomName(e.target.value)} className="h-11 font-bold border-2 rounded-xl" />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Sell Price (Excl.)</Label>
+                                                        <div className="relative">
+                                                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                                                            <Input type="number" placeholder="0.00" value={newCustomPrice} onChange={e => setNewCustomPrice(e.target.value)} className="h-11 pl-9 font-black border-2 rounded-xl" />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col justify-end">
+                                                        <Button onClick={handleAddCustomOption} disabled={!newCustomName.trim() || !newCustomPrice} className="h-11 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg bg-primary">
+                                                            <Plus className="h-4 w-4 mr-2" /> Add to Build
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Description (Optional)</Label>
+                                                    <Input placeholder="Technical notes or specific requirements..." value={newCustomDesc} onChange={e => setNewCustomDesc(e.target.value)} className="h-11 font-bold border-2 rounded-xl" />
+                                                </div>
+                                            </div>
+
+                                            {customOptions.length > 0 && (
+                                                <div className="pt-6 border-t space-y-3">
+                                                    {customOptions.map(opt => (
+                                                        <div key={opt.id} className="flex items-center justify-between p-4 rounded-2xl border-2 bg-slate-50 group/custom">
+                                                            <div className="min-w-0">
+                                                                <p className="font-black text-xs uppercase tracking-tight text-slate-900">{opt.name}</p>
+                                                                {opt.description && <p className="text-[9px] font-bold text-muted-foreground uppercase mt-0.5 truncate">{opt.description}</p>}
+                                                            </div>
+                                                            <div className="flex items-center gap-4">
+                                                                <p className="font-black text-xs text-primary">${opt.sellPriceExclGst.toLocaleString()}</p>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-full" onClick={() => handleRemoveCustomOption(opt.id)}><Trash2 className="h-4 w-4" /></Button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </Card>
+                                    </div>
                                 </div>
                             )}
                             {currentStep === 3 && (
@@ -796,9 +878,9 @@ export function HighfieldQuoteFlow({
                                             )}
                                         </CardContent></Card>
                                         
-                                        {selectedOptionsData.length > 0 && (
+                                        {(selectedOptionsData.length > 0 || customOptions.length > 0) && (
                                             <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
-                                                <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Package className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Factory Options</CardTitle></div></CardHeader>
+                                                <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Package className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Factory & Custom Options</CardTitle></div></CardHeader>
                                                 <CardContent className="p-0">
                                                     <div className="divide-y">
                                                         {selectedOptionsData.map((opt: any) => (
@@ -809,6 +891,18 @@ export function HighfieldQuoteFlow({
                                                                         <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => toggleOption(opt.id)}><X className="h-3 w-3" /></Button>
                                                                     </div>
                                                                     <div><p className="text-[10px] font-black uppercase tracking-tight">{opt.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1">{opt.category || 'Standard'}</Badge></div>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-slate-600">${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            </div>
+                                                        ))}
+                                                        {customOptions.map((opt) => (
+                                                            <div key={opt.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="group/remove h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                        <FilePlus2 className="h-3 w-3 text-primary group-hover/remove:opacity-0 transition-opacity" />
+                                                                        <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => handleRemoveCustomOption(opt.id)}><X className="h-3 w-3" /></Button>
+                                                                    </div>
+                                                                    <div><p className="text-[10px] font-black uppercase tracking-tight">{opt.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1 border-primary/20 text-primary bg-primary/5">Custom Addition</Badge></div>
                                                                 </div>
                                                                 <p className="text-[10px] font-bold text-slate-600">${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                             </div>
