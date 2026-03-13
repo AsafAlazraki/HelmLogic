@@ -559,44 +559,48 @@ export function HighfieldQuoteFlow({
             </div>
 
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
-                <div className="w-full lg:w-7/12 relative flex flex-col p-4 bg-slate-50/50 overflow-hidden">
-                    <div className="relative flex-1 w-full bg-white rounded-[2rem] border-2 border-slate-100 shadow-xl overflow-hidden group">
-                        <Carousel className="w-full h-full" opts={{ loop: true }} setApi={setApi}>
-                            <CarouselContent className="h-full">
-                                {carouselSlides.map((slide, idx) => (
-                                    <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
-                                        {slide.type === 'build' ? slide.content : (
-                                            <>
-                                                {slide.url && <Image src={slide.url} alt="Build Preview" fill className={cn("transition-all", (slide.type === 'boat' || slide.type === 'variant' || slide.type === 'gallery') ? "object-cover" : "object-contain p-12")} unoptimized />}
-                                                <Button variant="ghost" size="icon" className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20 focus:ring-0 focus:outline-none" onClick={() => setLightboxUrl(slide.url || null)}><Maximize2 className="h-5 w-5" /></Button>
-                                            </>
-                                        )}
-                                    </CarouselItem>
-                                ))}
-                            </CarouselContent>
-                            <CarouselPrevious className="left-6 h-10 w-10 bg-white/90 border-2 border-slate-200 shadow-xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
-                            <CarouselNext className="right-6 h-10 w-10 bg-white/90 border-2 border-slate-200 shadow-xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
-                        </Carousel>
-                    </div>
-                    <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-xl p-6 rounded-[2rem] mt-4 shrink-0 flex items-center justify-between">
-                        <div className="flex flex-col items-start px-1 gap-1">
-                            <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Technical Utilities</span>
-                            <div className="flex items-center gap-3">
-                                <Button variant="ghost" size="sm" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-950 hover:text-white hover:bg-primary rounded-xl border-2 border-slate-100 hover:border-primary transition-all shadow-sm group" onClick={() => setShowFeatures(true)}><ListChecks className="h-4 w-4 mr-2" /> Features</Button>
-                                <Button variant="ghost" size="sm" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-950 hover:text-white hover:bg-primary rounded-xl border-2 border-slate-100 hover:border-primary transition-all shadow-sm group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-4 w-4 mr-2" /> Specs</Button>
-                                <Button variant="ghost" size="sm" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-950 hover:text-white hover:bg-primary rounded-xl border-2 border-slate-100 hover:border-primary transition-all shadow-sm group" onClick={() => setShowDocs(true)}><FileText className="h-4 w-4 mr-2" /> Docs</Button>
-                            </div>
+                <div className="w-full lg:w-7/12 relative flex flex-col bg-slate-50/50 overflow-hidden">
+                    <div className="flex-1 p-4 pb-0 flex flex-col">
+                        <div className="relative flex-1 w-full bg-white rounded-[2rem] border-2 border-slate-100 shadow-xl overflow-hidden group">
+                            <Carousel className="w-full h-full" opts={{ loop: true }} setApi={setApi}>
+                                <CarouselContent className="h-full">
+                                    {carouselSlides.map((slide, idx) => (
+                                        <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
+                                            {slide.type === 'build' ? slide.content : (
+                                                <>
+                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill className={cn("transition-all", (slide.type === 'boat' || slide.type === 'variant' || slide.type === 'gallery') ? "object-cover" : "object-contain p-12")} unoptimized />}
+                                                    <Button variant="ghost" size="icon" className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20 focus:ring-0 focus:outline-none" onClick={() => setLightboxUrl(slide.url || null)}><Maximize2 className="h-5 w-5" /></Button>
+                                                </>
+                                            )}
+                                        </CarouselItem>
+                                    ))}
+                                </CarouselContent>
+                                <CarouselPrevious className="left-6 h-10 w-10 bg-white/90 border-2 border-slate-200 shadow-xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
+                                <CarouselNext className="right-6 h-10 w-10 bg-white/90 border-2 border-slate-200 shadow-xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
+                            </Carousel>
                         </div>
-                        <div className="flex flex-col items-end px-1 gap-1">
-                            <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Package Pricing (Excl. GST)</span>
-                            <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{totalPrice.toLocaleString()}</span></div>
+                    </div>
+                    <div className="p-8 pt-4 shrink-0">
+                        <div className="bg-white/95 backdrop-blur-xl border-2 border-white shadow-xl p-6 rounded-[2rem] flex items-center justify-between">
+                            <div className="flex flex-col items-start px-1 gap-1">
+                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Technical Utilities</span>
+                                <div className="flex items-center gap-3">
+                                    <Button variant="ghost" size="sm" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-950 hover:text-white hover:bg-primary rounded-xl border-2 border-slate-100 hover:border-primary transition-all shadow-sm group" onClick={() => setShowFeatures(true)}><ListChecks className="h-4 w-4 mr-2" /> Features</Button>
+                                    <Button variant="ghost" size="sm" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-950 hover:text-white hover:bg-primary rounded-xl border-2 border-slate-100 hover:border-primary transition-all shadow-sm group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-4 w-4 mr-2" /> Specs</Button>
+                                    <Button variant="ghost" size="sm" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest text-slate-950 hover:text-white hover:bg-primary rounded-xl border-2 border-slate-100 hover:border-primary transition-all shadow-sm group" onClick={() => setShowDocs(true)}><FileText className="h-4 w-4 mr-2" /> Docs</Button>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-end px-1 gap-1">
+                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Package Pricing (Excl. GST)</span>
+                                <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{totalPrice.toLocaleString()}</span></div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
-                    <div className="pt-4 px-8 pb-3 shrink-0 border-b bg-white/50 backdrop-blur-sm">
-                        <h2 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">{STEPS[currentStep - 1].label.toUpperCase()}<span className="text-primary"> - {range?.name?.toUpperCase()} {boatSeriesIdentity.toUpperCase()}</span></h2>
+                    <div className="pt-6 px-8 pb-4 shrink-0 border-b bg-white/50 backdrop-blur-sm min-h-[80px] flex flex-col justify-center">
+                        <h2 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 leading-tight">{STEPS[currentStep - 1].label.toUpperCase()}<span className="text-primary"> - {range?.name?.toUpperCase()} {boatSeriesIdentity.toUpperCase()}</span></h2>
                     </div>
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
                         <div className="px-8 pb-48 space-y-6 mt-4">
@@ -712,7 +716,7 @@ export function HighfieldQuoteFlow({
                                                     const displayName = getMotorDisplayName(m);
                                                     const isSelected = selectedMotor?.id === m.id;
                                                     return (
-                                                        <button key={m.id} onClick={() => { setSelectedMotor(isSelected ? null : m); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                        <button key={m.id} onClick={() => { setSelectedMotor(isSelected ? null : m); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                             <div className="relative h-24 w-full bg-white overflow-hidden shrink-0">{mUrl && <Image src={mUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
                                                             <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
                                                                 <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{displayName}</p>
