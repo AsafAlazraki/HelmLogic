@@ -47,8 +47,8 @@ export default function PricingManagerPage() {
     const orgRef = useMemoFirebase(() => organisationId ? doc(firestore, 'organisations', organisationId) : null, [firestore, organisationId]);
     const { data: organisation, loading: orgLoading } = useDoc<Organisation>(orgRef);
 
-    const subscribedBrandIds = organisation?.dataWarehouseSubscriptions || [];
-    
+    const subscribedBrandIds = useMemo(() => organisation?.dataWarehouseSubscriptions || [], [organisation?.dataWarehouseSubscriptions]);
+
     const vendorsQuery = useMemoFirebase(() => {
         if (subscribedBrandIds.length === 0) return null;
         return query(collection(firestore, 'data-warehouse'), where('__name__', 'in', subscribedBrandIds));

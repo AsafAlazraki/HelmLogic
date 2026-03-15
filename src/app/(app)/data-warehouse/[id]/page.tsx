@@ -173,7 +173,6 @@ function MasterDataSetEditorDialog({
             toast({ title: 'Record Deleted' });
             onSave();
             setIsOpen(false);
-            window.location.reload();
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Delete Failed', description: error.message });
         } finally {

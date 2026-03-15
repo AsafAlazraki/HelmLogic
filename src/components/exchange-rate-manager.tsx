@@ -113,7 +113,7 @@ export function ExchangeRateManager({
     const { data: organisation, loading: orgLoading } = useDoc<Organisation>(orgRef);
 
     // 3. Fetch Subscribed Vendors
-    const subscribedBrandIds = organisation?.dataWarehouseSubscriptions || [];
+    const subscribedBrandIds = useMemo(() => organisation?.dataWarehouseSubscriptions || [], [organisation?.dataWarehouseSubscriptions]);
     const vendorsQuery = useMemoFirebase(() => {
         if (subscribedBrandIds.length === 0) return null;
         return query(collection(firestore, 'data-warehouse'), where('__name__', 'in', subscribedBrandIds));
