@@ -79,11 +79,12 @@ export function ModulePricingDashboard({
         const fetchModels = async () => {
             if (!ranges || ranges.length === 0) return;
             setModelsLoading(true);
-            const models: Model[] = [];
             try {
-                for (const range of ranges) {
-                    const q = query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order'));
-                    const snap = await getDocs(q);
+                const snapshots = await Promise.all(ranges.map(range =>
+                    getDocs(query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')))
+                ));
+                const models: Model[] = [];
+                for (const snap of snapshots) {
                     snap.forEach((doc: any) => {
                         models.push({ id: doc.id, ...doc.data() } as Model);
                     });

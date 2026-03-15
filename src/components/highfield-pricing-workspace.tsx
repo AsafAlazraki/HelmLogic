@@ -576,15 +576,21 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             if (!ranges || ranges.length === 0) return;
             setLoadingModels(true);
             try {
+                const rangeResults = await Promise.all(ranges.map(async (range) => {
+                    const mSnap = await getDocs(query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')));
+                    const models = mSnap.docs.map(mDoc => ({ id: mDoc.id, ...mDoc.data() } as Model));
+                    const variantEntries = await Promise.all(mSnap.docs.map(async (mDoc) => {
+                        const vSnap = await getDocs(query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models/${mDoc.id}/variants`), orderBy('order')));
+                        return [mDoc.id, vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Variant))] as const;
+                    }));
+                    return { models, variantEntries };
+                }));
                 const models: Model[] = [];
                 const variantMap: Record<string, Variant[]> = {};
-                for (const range of ranges) {
-                    const mSnap = await getDocs(query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')));
-                    for (const mDoc of mSnap.docs) {
-                        const mData = { id: mDoc.id, ...mDoc.data() } as Model;
-                        models.push(mData);
-                        const vSnap = await getDocs(query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models/${mDoc.id}/variants`), orderBy('order')));
-                        variantMap[mDoc.id] = vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Variant));
+                for (const result of rangeResults) {
+                    models.push(...result.models);
+                    for (const [modelId, variants] of result.variantEntries) {
+                        variantMap[modelId] = variants;
                     }
                 }
                 setAllModels(models);

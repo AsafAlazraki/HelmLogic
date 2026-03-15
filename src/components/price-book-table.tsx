@@ -123,6 +123,11 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
     [firestore, organisation.id]);
     const { data: productPrices } = useCollection<ProductPrice>(productPricesQuery);
 
+    const pricesByProductId = useMemo(() => {
+        if (!productPrices) return new Map<string, ProductPrice>();
+        return new Map(productPrices.map(p => [p.productId, p]));
+    }, [productPrices]);
+
     // Ensure Sub Dealer Price Level exists if needed
     useEffect(() => {
         if (organisation.subDealersEnabled && levelDefinitions && levelDefinitions.length > 0) {
@@ -172,7 +177,7 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
 
     const updateProductCost = async (productId: string, brandId: string, cost: string) => {
         const num = parseFloat(cost);
-        const existingPrice = productPrices?.find(p => p.productId === productId);
+        const existingPrice = pricesByProductId.get(productId);
         const docRef = existingPrice 
             ? doc(firestore, `organisations/${organisation.id}/productPrices`, existingPrice.id)
             : doc(collection(firestore, `organisations/${organisation.id}/productPrices`));
@@ -194,7 +199,7 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
 
     const updateProductMargin = async (productId: string, brandId: string, margin: string) => {
         const num = parseFloat(margin);
-        const existingPrice = productPrices?.find(p => p.productId === productId);
+        const existingPrice = pricesByProductId.get(productId);
         if (!existingPrice) return;
 
         const docRef = doc(firestore, `organisations/${organisation.id}/productPrices`, existingPrice.id);
@@ -286,7 +291,7 @@ export function PriceBookTable({ organisation }: { organisation: any }) {
                             </TableHeader>
                             <TableBody>
                                 {filteredProducts.length > 0 ? filteredProducts.map(product => {
-                                    const price = productPrices?.find(p => p.productId === product.id);
+                                    const price = pricesByProductId.get(product.id);
                                     const cost = price?.supplierCost || 0;
                                     const margin = price?.baseMarginPercentage || 0;
                                     const basePrice = margin < 100 ? cost / (1 - (margin / 100)) : cost;
