@@ -31,7 +31,6 @@ import {
     Phone,
     Building,
     MapPin,
-    FileText,
     Anchor,
     DollarSign,
 } from 'lucide-react';
