@@ -44,6 +44,7 @@ import { ModuleVendorAccessDialog } from '@/components/module-vendor-access-dial
 import { SUPPORTED_CURRENCIES } from '@/lib/currency-utils';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { useUser } from '@/firebase/auth/use-user';
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {

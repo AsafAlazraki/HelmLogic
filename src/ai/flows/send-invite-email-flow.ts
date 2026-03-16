@@ -48,7 +48,7 @@ The user's email is: {{{email}}}
 The organisation is: {{{organisationName}}}
 The user's role will be: {{{roleName}}}
 
-The email should be welcoming and clearly state the purpose of the invitation. It must include a call-to-action link to sign up. The link should be: \`http://localhost:9002/signup?org_id={{{organisationId}}}&role_id={{{roleId}}}&email={{{email}}}\`. 
+The email should be welcoming and clearly state the purpose of the invitation. It must include a call-to-action link to sign up. The link should be: \`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002'}/signup?org_id={{{organisationId}}}&role_id={{{roleId}}}&email={{{email}}}\`.
 Respond with the subject, body, and the inviteUrl explicitly.
 `,
 });

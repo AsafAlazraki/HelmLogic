@@ -27,6 +27,7 @@ import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import AdminGuard from '@/components/admin-guard';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { createSlug } from '@/lib/utils';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -44,12 +45,6 @@ const formSchema = z.object({
   website: z.string().optional(),
   notes: z.string().optional(),
 });
-
-const createSlug = (name: string) =>
-  name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w-]+/g, '');
 
 export default function AddVendorPage() {
     const router = useRouter();

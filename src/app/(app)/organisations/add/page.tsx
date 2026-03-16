@@ -30,6 +30,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
+import { createSlug } from '@/lib/utils';
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
@@ -57,12 +58,6 @@ const formSchema = z.object({
   secondaryLogo: z.any().optional(),
   subDealersEnabled: z.boolean().optional(),
 });
-
-const createSlug = (name: string) =>
-  name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w-]+/g, '');
 
 
 export default function AddOrganisationPage() {

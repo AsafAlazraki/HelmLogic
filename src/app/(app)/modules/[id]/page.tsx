@@ -12,22 +12,23 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useMemoFirebase, useStorage } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { 
-    collection, 
-    query, 
-    where, 
-    orderBy, 
-    doc, 
-    setDoc, 
+import {
+    collection,
+    query,
+    where,
+    orderBy,
+    limit,
+    doc,
+    setDoc,
     updateDoc,
-    serverTimestamp, 
-    writeBatch, 
+    serverTimestamp,
+    writeBatch,
 } from 'firebase/firestore';
-import { 
-    Loader2, 
-    ChevronRight, 
+import {
+    Loader2,
+    ChevronRight,
     ChevronLeft,
-    FileText, 
+    FileText,
     PlusCircle,
     Navigation,
     Anchor,
@@ -41,6 +42,8 @@ import {
     FileSpreadsheet,
     GripVertical,
     Pencil,
+    DollarSign,
+    User,
     ImageIcon,
     Upload,
     Save,
@@ -297,9 +300,19 @@ export default function ModuleDetailsPage() {
     const organisationsQuery = useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]);
     const { data: allOrganisations } = useCollection<Organisation>(organisationsQuery);
 
-    const currentMemberOrg = useMemo(() => 
+    const currentMemberOrg = useMemo(() =>
         userProfile?.organisationId ? allOrganisations?.find((o: any) => o.id === userProfile.organisationId) : null,
     [userProfile?.organisationId, allOrganisations]);
+
+    // Recent proposals for the dashboard
+    const recentQuotesQuery = useMemoFirebase(() =>
+        user ? query(
+            collection(firestore, `users/${user.uid}/quotes`),
+            orderBy('createdAt', 'desc'),
+            limit(8)
+        ) : null,
+    [firestore, user]);
+    const { data: recentQuotes } = useCollection<any>(recentQuotesQuery);
 
     const userPermissions = useMemo(() => {
         const roleId = userProfile?.organisationRole;
@@ -496,14 +509,61 @@ export default function ModuleDetailsPage() {
                                                 Generate New Quote
                                             </Button>
                                         </CardHeader>
-                                        <CardContent className="flex-1 p-10 flex flex-col items-center justify-center text-center gap-8">
-                                            <div className="h-32 w-32 bg-slate-50 rounded-[2.5rem] flex items-center justify-center border-2 border-dashed border-slate-200">
-                                                <FileText className="h-12 w-12 text-slate-200" />
-                                            </div>
-                                            <div className="space-y-4">
-                                                <p className="font-black uppercase tracking-[0.3em] text-sm text-slate-400">Proposal Queue Empty</p>
-                                                <Button variant="outline" onClick={() => setIsQuoteInitializationOpen(true)} className="font-black uppercase text-[10px] tracking-widest rounded-xl border-2">Select a boat to start</Button>
-                                            </div>
+                                        <CardContent className="flex-1 p-0 overflow-hidden">
+                                            {(!recentQuotes || recentQuotes.length === 0) ? (
+                                                <div className="flex flex-col items-center justify-center h-full p-10 text-center gap-8">
+                                                    <div className="h-32 w-32 bg-slate-50 rounded-[2.5rem] flex items-center justify-center border-2 border-dashed border-slate-200">
+                                                        <FileText className="h-12 w-12 text-slate-200" />
+                                                    </div>
+                                                    <div className="space-y-4">
+                                                        <p className="font-black uppercase tracking-[0.3em] text-sm text-slate-400">Proposal Queue Empty</p>
+                                                        <Button variant="outline" onClick={() => setIsQuoteInitializationOpen(true)} className="font-black uppercase text-[10px] tracking-widest rounded-xl border-2">Select a boat to start</Button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <ScrollArea className="h-full">
+                                                    <div className="p-6 space-y-3">
+                                                        {recentQuotes.map((q: any) => (
+                                                            <div
+                                                                key={q.id}
+                                                                onClick={() => router.push(`/modules/${moduleData.id}/proposals/${q.id}`)}
+                                                                className="group flex items-center gap-5 p-5 rounded-2xl border-2 bg-white hover:border-primary/40 hover:shadow-md cursor-pointer transition-all"
+                                                            >
+                                                                {q.coverImageUrl ? (
+                                                                    <div className="relative h-14 w-20 rounded-xl overflow-hidden border bg-slate-50 shrink-0">
+                                                                        <img src={q.coverImageUrl} alt={q.modelName} className="absolute inset-0 h-full w-full object-contain p-2 mix-blend-multiply" />
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="h-14 w-14 bg-primary/5 rounded-xl flex items-center justify-center shrink-0 border-2 border-primary/10">
+                                                                        <Anchor className="h-6 w-6 text-primary/30" />
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                        <span className="font-black text-[12px] uppercase tracking-tight text-slate-900 truncate">{q.modelName}</span>
+                                                                        {q.variant?.colorName && (
+                                                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest shrink-0">{q.variant.colorName}</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <Badge variant="outline" className="font-mono text-[8px] font-bold h-4 px-1.5 border-primary/20 text-primary">{q.quoteNumber}</Badge>
+                                                                        {q.customer?.name ? (
+                                                                            <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1"><User className="h-2.5 w-2.5" />{q.customer.name}</span>
+                                                                        ) : (
+                                                                            <Badge variant="secondary" className="text-[8px] font-black h-4 px-1.5">Stock</Badge>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-right shrink-0">
+                                                                    <p className="font-black text-sm text-slate-900">${(q.totalPriceExclGst || 0).toLocaleString()}</p>
+                                                                    <p className="text-[8px] font-bold text-slate-400 mt-0.5">excl. GST</p>
+                                                                </div>
+                                                                <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-primary transition-colors shrink-0" />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </ScrollArea>
+                                            )}
                                         </CardContent>
                                     </Card>
                                 </div>

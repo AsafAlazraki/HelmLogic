@@ -28,6 +28,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
+import { createSlug } from '@/lib/utils';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 
@@ -58,12 +59,6 @@ const formSchema = z.object({
   secondaryLogo: z.any().optional(),
   subDealersEnabled: z.boolean().optional(),
 });
-
-const createSlug = (name: string) =>
-  name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w-]+/g, '');
 
 
 export default function AddSubDealerPage() {

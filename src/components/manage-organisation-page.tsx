@@ -13,7 +13,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, where, doc, updateDoc, serverTimestamp, setDoc, orderBy } from 'firebase/firestore';
-import { initializeApp, getApps } from 'firebase/app';
+import { initializeApp, getApps, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { firebaseConfig } from '@/firebase/config';
 
@@ -430,6 +430,9 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
             console.error("Enrollment failed:", error);
             toast({ variant: "destructive", title: "Enrollment Failed", description: error.message });
         } finally {
+            if (tempApp) {
+                await deleteApp(tempApp).catch(console.error);
+            }
             setIsAddingUser(false);
         }
     };

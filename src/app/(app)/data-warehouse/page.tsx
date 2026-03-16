@@ -151,7 +151,6 @@ export default function DataWarehousePage() {
                 title: 'Vendor Deleted',
                 description: `${vendorToDelete.name} has been successfully deleted.`,
             });
-            window.location.reload();
         } catch (error: any) {
             toast({
                 variant: 'destructive',
