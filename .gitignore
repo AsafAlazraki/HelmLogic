@@ -42,4 +42,5 @@ next-env.d.ts
 
 # firebase
 firebase-debug.log
-firestore-debug.log.playwright-mcp/
+firestore-debug.log
+.playwright-mcp/
