@@ -193,8 +193,8 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
             // Motor
             motor: selectedMotor ? {
                 id: selectedMotor.id,
-                name: selectedMotor.name,
-                model: selectedMotor.model || selectedMotor.name,
+                name: selectedMotor['Model Name'] || selectedMotor.name || selectedMotor.model || null,
+                model: selectedMotor.model || selectedMotor['Model Name'] || selectedMotor.name,
                 brand: selectedMotor.brand || null,
                 sellPriceExclGst: selectedMotor.sellPriceExclGst || 0,
                 imageUrl: selectedMotor.imageUrl || selectedMotor.SummaryImage || null,
