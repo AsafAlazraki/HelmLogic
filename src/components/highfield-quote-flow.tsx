@@ -60,6 +60,7 @@ import {
     DialogFooter,
     DialogClose
 } from "@/components/ui/dialog";
+import { FinalizeQuoteDialog } from '@/components/finalize-quote-dialog';
 import {
     Table,
     TableBody,
@@ -149,6 +150,7 @@ export function HighfieldQuoteFlow({
     const [showFeatures, setShowFeatures] = useState(false);
     const [showSpecs, setShowSpecs] = useState(false);
     const [showDocs, setShowDocs] = useState(false);
+    const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
     const [api, setApi] = useState<CarouselApi>();
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
@@ -1040,7 +1042,7 @@ export function HighfieldQuoteFlow({
                     </ScrollArea>
                     <div className="p-8 pt-4 bg-slate-50/80 backdrop-blur-xl shrink-0 flex gap-3">
                         {currentStep > 1 && <Button variant="outline" className="h-12 w-20 rounded-xl border-2 border-slate-200 hover:bg-slate-100 shadow-sm" onClick={prevStep}><ChevronLeft className="h-5 w-5" /></Button>}
-                        <Button size="lg" className="flex-1 h-12 rounded-xl font-black uppercase text-xs shadow-xl bg-primary text-white hover:scale-[1.02] active:scale-95" onClick={nextStep}>{currentStep === STEPS.length ? 'Finalize Project' : `Next Step: ${STEPS[currentStep].label.toUpperCase()}`}</Button>
+                        <Button size="lg" className="flex-1 h-12 rounded-xl font-black uppercase text-xs shadow-xl bg-primary text-white hover:scale-[1.02] active:scale-95" onClick={currentStep === STEPS.length ? () => setShowFinalizeDialog(true) : nextStep}>{currentStep === STEPS.length ? 'Finalize Project' : `Next Step: ${STEPS[currentStep].label.toUpperCase()}`}</Button>
                     </div>
                 </div>
             </div>
@@ -1074,6 +1076,33 @@ export function HighfieldQuoteFlow({
                     )) : <div className="py-12 text-center opacity-20 flex flex-col items-center gap-2"><FileText className="h-10 w-10" /><p className="text-[9px] font-black uppercase tracking-widest">No Documents Linked</p></div>}</div>
                 </DialogContent>
             </Dialog>
+
+            <FinalizeQuoteDialog
+                isOpen={showFinalizeDialog}
+                onOpenChange={setShowFinalizeDialog}
+                quoteData={{
+                    model,
+                    vendor,
+                    range,
+                    module,
+                    rangeId,
+                    activeVariant,
+                    selectedOptionsData,
+                    customOptions,
+                    selectedMotor,
+                    selectedMotorAccessories,
+                    selectedTrailerOptionsData,
+                    selectedDealerFitData,
+                    totalPrice,
+                    isRegoSelected,
+                    isStickerSelected,
+                    isTenderToSelected,
+                    isTrailerRegoSelected,
+                    selectedTrailerId,
+                }}
+                organisationId={orgId || null}
+                userProfile={userProfile}
+            />
         </div>
     );
 }
