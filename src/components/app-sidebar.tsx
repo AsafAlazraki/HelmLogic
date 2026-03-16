@@ -55,15 +55,29 @@ export function AppSidebar() {
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
   const { data: userProfile, loading: profileLoading } = useDoc<{ appRole?: string; organisationId?: string; organisationRole?: string }>(userProfileRef);
   
-  const organisationsQuery = useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]);
-  const { data: organisations, loading: orgsLoading } = useCollection<any>(organisationsQuery);
+  const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
 
-  const organisation = useMemo(() => 
-    userProfile?.organisationId ? organisations?.find((o: any) => o.id === userProfile.organisationId) : null,
+  // Admins: list all organisations (needed for role-switcher feature)
+  const allOrgsQuery = useMemoFirebase(
+    () => (user && isAdmin) ? collection(firestore, 'organisations') : null,
+    [firestore, user, isAdmin]
+  );
+  const { data: allOrganisations, loading: allOrgsLoading } = useCollection<any>(allOrgsQuery);
+
+  // Non-admins: fetch just their specific org by document ID (get, not list)
+  const orgDocRef = useMemoFirebase(
+    () => (user && !isAdmin && userProfile?.organisationId) ? doc(firestore, 'organisations', userProfile.organisationId) : null,
+    [firestore, user, isAdmin, userProfile?.organisationId]
+  );
+  const { data: orgDoc, loading: orgDocLoading } = useDoc<any>(orgDocRef);
+
+  const organisations = isAdmin ? allOrganisations : (orgDoc ? [orgDoc] : null);
+
+  const organisation = useMemo(() =>
+    userProfile?.organisationId ? organisations?.find((o: any) => o.id === userProfile.organisationId) ?? null : null,
   [userProfile, organisations]);
 
-  const isLoading = userLoading || profileLoading || orgsLoading;
-  const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
+  const isLoading = userLoading || profileLoading || (isAdmin ? allOrgsLoading : orgDocLoading);
 
   useEffect(() => {
     if (isMobile) {
