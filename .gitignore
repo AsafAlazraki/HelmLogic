@@ -45,3 +45,4 @@ firebase-debug.log
 firestore-debug.log
 .playwright-mcp/
 proxy-server.mjs
+.env.local
