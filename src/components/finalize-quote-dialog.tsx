@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useUser } from '@/firebase/auth/use-user';
+import { useDoc } from '@/firebase/firestore/use-doc';
 import { doc, setDoc, serverTimestamp, collection as firestoreCollection } from 'firebase/firestore';
 import {
     Dialog,
@@ -31,7 +32,6 @@ import {
     Phone,
     Building,
     MapPin,
-    FileText,
     Anchor,
     DollarSign,
 } from 'lucide-react';
@@ -71,6 +71,12 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     const router = useRouter();
     const { toast } = useToast();
 
+    const orgRef = useMemoFirebase(() =>
+        organisationId ? doc(firestore, 'organisations', organisationId) : null,
+    [firestore, organisationId]);
+    const { data: organisation } = useDoc<any>(orgRef);
+    const orgCode = (organisation?.shortCode || 'HL').toUpperCase();
+
     const [mode, setMode] = useState<FinalizeMode>('customer');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -91,14 +97,12 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     };
 
     const generateQuoteNumber = () => {
-        const orgCode = userProfile?.organisationShortCode || 'HL';
         const ts = Date.now().toString(36).toUpperCase().slice(-5);
         const rand = Math.random().toString(36).substring(2, 5).toUpperCase();
         return `${orgCode}-Q${ts}${rand}`;
     };
 
     const generateStockNumber = () => {
-        const orgCode = userProfile?.organisationShortCode || 'HL';
         const ts = Date.now().toString(36).toUpperCase().slice(-5);
         const rand = Math.random().toString(36).substring(2, 5).toUpperCase();
         return `${orgCode}-S${ts}${rand}`;
@@ -402,7 +406,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                                         </p>
                                     </div>
                                     <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest">
-                                        {userProfile?.organisationName || 'Your Organisation'}
+                                        {organisation?.name || 'Your Organisation'}
                                     </Badge>
                                 </div>
                             </div>
