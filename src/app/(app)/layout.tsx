@@ -35,7 +35,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   }
 
   // Module and Blueprint pages manage their own precision scrolling
-  const isImmersivePage = pathname?.includes('/modules/') || pathname?.includes('/blueprint/');
+  const isImmersivePage = (pathname?.includes('/modules/') && pathname?.includes('/quote/')) || pathname?.includes('/blueprint/');
   
   return (
       <SidebarProvider defaultOpen={false}>
