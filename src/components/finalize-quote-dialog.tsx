@@ -114,37 +114,38 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
         return {
             // Quote metadata
             quoteNumber: generateQuoteNumber(),
-            status: mode === 'customer' ? 'proposal' : 'stock',
+            status: (mode === 'customer' ? 'proposal' : 'stock') as string,
             createdAt: serverTimestamp(),
-            createdByUid: user?.uid,
+            createdByUid: user?.uid || null,
             createdByName: userProfile?.displayName || user?.displayName || 'Unknown',
-            organisationId: organisationId,
+            organisationId: organisationId || null,
 
             // Customer (if applicable)
             ...(mode === 'customer' ? {
                 customer: {
-                    name: customerName,
-                    email: customerEmail,
-                    phone: customerPhone,
-                    company: customerCompany,
-                    address: customerAddress,
+                    name: customerName || '',
+                    email: customerEmail || '',
+                    phone: customerPhone || '',
+                    company: customerCompany || '',
+                    address: customerAddress || '',
                 },
             } : {}),
 
             // Module + Vendor context
-            moduleId: module?.id,
-            moduleName: module?.name,
-            vendorId: vendor?.id,
-            vendorName: vendor?.name,
+            moduleId: module?.id || null,
+            moduleName: module?.name || null,
+            moduleSlug: module?.slug || null,
+            vendorId: vendor?.id || null,
+            vendorName: vendor?.name || null,
             vendorLogoUrl: vendor?.logoUrl || null,
             vendorCurrency: vendor?.currency || null,
-            rangeId: rangeId,
+            rangeId: rangeId || null,
             rangeName: range?.name || null,
             rangeImageUrl: range?.imageUrl || null,
 
             // Model
-            modelId: model?.id,
-            modelName: model?.name,
+            modelId: model?.id || null,
+            modelName: model?.name || null,
             modelCode: model?.modelCode || null,
             coverImageUrl: model?.coverImageUrl || null,
             specifications: model?.specifications || null,
@@ -152,54 +153,54 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
 
             // Variant (boat base)
             variant: activeVariant ? {
-                id: activeVariant.id,
-                name: activeVariant.name,
-                sku: activeVariant.sku,
-                colorName: activeVariant.colorName,
-                colorCode: activeVariant.colorCode,
-                material: activeVariant.material,
-                cost: activeVariant.cost,
-                sellPriceExclGst: activeVariant.sellPriceExclGst,
-                imageUrl: activeVariant.imageUrl,
+                id: activeVariant.id || null,
+                name: activeVariant.name || 'Standard',
+                sku: activeVariant.sku || null,
+                colorName: activeVariant.colorName || null,
+                colorCode: activeVariant.colorCode || null,
+                material: activeVariant.material || null,
+                cost: activeVariant.cost || 0,
+                sellPriceExclGst: activeVariant.sellPriceExclGst || 0,
+                imageUrl: activeVariant.imageUrl || null,
             } : null,
 
             // Factory Options
-            selectedOptions: selectedOptionsData.map(opt => ({
-                id: opt.id,
-                name: opt.name,
+            selectedOptions: (selectedOptionsData || []).map(opt => ({
+                id: opt.id || null,
+                name: opt.name || 'Unnamed Option',
                 category: opt.category || null,
                 sellPriceExclGst: opt.sellPriceExclGst || 0,
                 imageUrl: opt.imageUrl || null,
             })),
-            customOptions: customOptions.map(opt => ({
-                id: opt.id,
-                name: opt.name,
+            customOptions: (customOptions || []).map(opt => ({
+                id: opt.id || null,
+                name: opt.name || 'Custom Option',
                 sellPriceExclGst: opt.sellPriceExclGst || 0,
                 description: opt.description || null,
             })),
 
             // Registration
             registration: {
-                boatRego: isRegoSelected,
+                boatRego: isRegoSelected || false,
                 boatRegoPrice: isRegoSelected ? (model?.registration?.price12Months || 0) : 0,
-                sticker: isStickerSelected,
+                sticker: isStickerSelected || false,
                 stickerPrice: isStickerSelected ? (model?.registration?.stickerPrice || 0) : 0,
-                tenderTo: isTenderToSelected,
+                tenderTo: isTenderToSelected || false,
                 tenderToPrice: isTenderToSelected ? (model?.registration?.tenderToStickerPrice || 0) : 0,
-                trailerRego: isTrailerRegoSelected,
+                trailerRego: isTrailerRegoSelected || false,
                 trailerRegoPrice: isTrailerRegoSelected ? (model?.registration?.trailerPrice12Months || 0) : 0,
             },
 
             // Motor
             motor: selectedMotor ? {
-                id: selectedMotor.id,
+                id: selectedMotor.id || null,
                 name: selectedMotor['Model Name'] || selectedMotor.name || selectedMotor.model || 'Unknown Motor',
                 model: selectedMotor.model || selectedMotor['Model Name'] || selectedMotor.name || 'Standard Model',
                 brand: selectedMotor.brand || 'Yamaha',
                 sellPriceExclGst: selectedMotor.sellPriceExclGst || 0,
                 imageUrl: selectedMotor.imageUrl || selectedMotor.SummaryImage || null,
-                accessories: selectedMotorAccessories.map((a: any) => ({
-                    id: a.id,
+                accessories: (selectedMotorAccessories || []).map((a: any) => ({
+                    id: a.id || null,
                     name: a.name || 'Unnamed Accessory',
                     category: a.category || null,
                     sellPriceExclGst: a.sellPriceExclGst || 0,
@@ -207,31 +208,31 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
             } : null,
 
             // Trailer
-            trailer: selectedTrailerId && quoteData.model.trailerConfig ? {
+            trailer: (selectedTrailerId && model?.trailerConfig) ? {
                 id: selectedTrailerId,
-                name: quoteData.model.trailerConfig.name || 'Trailer Package',
-                sellPriceExclGst: quoteData.model.trailerConfig.sellPriceExclGst || 0,
-                imageUrl: quoteData.model.trailerConfig.imageUrl || null,
-                options: selectedTrailerOptionsData.map((o: any) => ({
-                    id: o.id,
-                    name: o.name,
+                name: model.trailerConfig.name || 'Trailer Package',
+                sellPriceExclGst: model.trailerConfig.sellPriceExclGst || 0,
+                imageUrl: model.trailerConfig.imageUrl || null,
+                options: (selectedTrailerOptionsData || []).map((o: any) => ({
+                    id: o.id || null,
+                    name: o.name || 'Trailer Option',
                     sellPriceExclGst: o.sellPriceExclGst || 0,
                 })),
             } : null,
 
             // Dealer Fit
-            dealerFit: selectedDealerFitData.map((sel: any) => ({
-                id: sel.id,
-                name: sel.name,
+            dealerFit: (selectedDealerFitData || []).map((sel: any) => ({
+                id: sel.id || null,
+                name: sel.name || 'Dealer Fit',
                 category: sel.category || null,
-                items: sel.items?.map((i: any) => ({
-                    name: i.data?.name || i.name,
+                items: (sel.items || []).map((i: any) => ({
+                    name: i.data?.name || i.name || 'Item',
                     sellPriceExclGst: i.data?.sellPriceExclGst || 0,
-                })) || [],
+                })),
             })),
 
             // Pricing
-            totalPriceExclGst: totalPrice,
+            totalPriceExclGst: totalPrice || 0,
         };
     };
 
