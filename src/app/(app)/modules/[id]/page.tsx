@@ -464,7 +464,7 @@ export default function ModuleDetailsPage() {
                         <ScrollArea className="h-full">
                             <div className="p-8 min-h-[calc(100vh-224px)] flex flex-col">
                                 <div className="grid grid-cols-12 gap-8 flex-1">
-                                    <div className="col-span-4 flex flex-col gap-8 h-full">
+                                    <div className="col-span-5 flex flex-col gap-8 h-full">
                                         <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
                                             <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
                                                 <div className="flex items-center gap-3 shrink-0">
@@ -492,7 +492,7 @@ export default function ModuleDetailsPage() {
                                         </Card>
                                     </div>
 
-                                    <Card className="col-span-8 flex flex-col border-2 rounded-[3rem] shadow-2xl bg-white overflow-hidden">
+                                    <Card className="col-span-7 flex flex-col border-2 rounded-[3rem] shadow-2xl bg-white overflow-hidden">
                                         <CardHeader className="p-10 border-b bg-slate-50/30 flex flex-row items-center justify-between shrink-0">
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
@@ -522,43 +522,81 @@ export default function ModuleDetailsPage() {
                                                 </div>
                                             ) : (
                                                 <ScrollArea className="h-full">
-                                                    <div className="p-6 space-y-3">
+                                                    <div className="p-6 space-y-4">
                                                         {recentQuotes.map((q: any) => (
                                                             <div
                                                                 key={q.id}
                                                                 onClick={() => router.push(`/modules/${moduleData.id}/proposals/${q.id}`)}
-                                                                className="group flex items-center gap-5 p-5 rounded-2xl border-2 bg-white hover:border-primary/40 hover:shadow-md cursor-pointer transition-all"
+                                                                className="group flex items-start gap-6 p-6 rounded-[2rem] border-2 bg-white hover:border-primary/40 hover:shadow-xl cursor-pointer transition-all relative overflow-hidden"
                                                             >
+                                                                <div className="absolute right-0 top-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:bg-primary/10 transition-colors" />
+                                                                
                                                                 {q.coverImageUrl ? (
-                                                                    <div className="relative h-14 w-20 rounded-xl overflow-hidden border bg-slate-50 shrink-0">
-                                                                        <img src={q.coverImageUrl} alt={q.modelName} className="absolute inset-0 h-full w-full object-contain p-2 mix-blend-multiply" />
+                                                                    <div className="relative h-20 w-32 rounded-2xl overflow-hidden border-2 bg-slate-50 shrink-0 shadow-sm">
+                                                                        <img src={q.coverImageUrl} alt={q.modelName} className="absolute inset-0 h-full w-full object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-110" />
                                                                     </div>
                                                                 ) : (
-                                                                    <div className="h-14 w-14 bg-primary/5 rounded-xl flex items-center justify-center shrink-0 border-2 border-primary/10">
-                                                                        <Anchor className="h-6 w-6 text-primary/30" />
+                                                                    <div className="h-20 w-32 bg-primary/5 rounded-2xl flex items-center justify-center shrink-0 border-2 border-primary/10">
+                                                                        <Anchor className="h-8 w-8 text-primary/30" />
                                                                     </div>
                                                                 )}
-                                                                <div className="flex-1 min-w-0">
-                                                                    <div className="flex items-center gap-2 mb-1">
-                                                                        <span className="font-black text-[12px] uppercase tracking-tight text-slate-900 truncate">{q.modelName}</span>
-                                                                        {q.variant?.colorName && (
-                                                                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest shrink-0">{q.variant.colorName}</span>
-                                                                        )}
+                                                                
+                                                                <div className="flex-1 min-w-0 space-y-3">
+                                                                    <div className="space-y-1">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-[9px] font-black uppercase tracking-widest text-primary">{q.vendorName || 'Vessel'}</span>
+                                                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">•</span>
+                                                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{q.rangeName || 'Series'}</span>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <h4 className="font-black text-lg uppercase tracking-tight text-slate-900 truncate">
+                                                                                {q.modelName}
+                                                                            </h4>
+                                                                            <span className="text-[10px] font-bold text-slate-400 uppercase italic">{q.modelCode}</span>
+                                                                        </div>
                                                                     </div>
-                                                                    <div className="flex items-center gap-3">
-                                                                        <Badge variant="outline" className="font-mono text-[8px] font-bold h-4 px-1.5 border-primary/20 text-primary">{q.quoteNumber}</Badge>
+
+                                                                    <div className="flex flex-wrap items-center gap-4">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <Badge variant="outline" className="font-mono text-[9px] font-bold h-5 px-2 border-primary/20 text-primary bg-primary/5">
+                                                                                {q.quoteNumber}
+                                                                            </Badge>
+                                                                        </div>
+                                                                        
                                                                         {q.customer?.name ? (
-                                                                            <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1"><User className="h-2.5 w-2.5" />{q.customer.name}</span>
+                                                                            <div 
+                                                                                className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-50 border group/link hover:bg-primary/5 hover:border-primary/20 transition-all"
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    // Link to placeholder CRM
+                                                                                    // router.push(`/contacts/${q.customer.id}`); 
+                                                                                }}
+                                                                            >
+                                                                                <User className="h-3 w-3 text-slate-400 group-hover/link:text-primary transition-colors" />
+                                                                                <span className="text-[10px] font-black uppercase tracking-tight text-slate-600 group-hover/link:text-primary transition-colors">
+                                                                                    {q.customer.name}
+                                                                                </span>
+                                                                                <ChevronRight className="h-3 w-3 text-slate-300 group-hover/link:text-primary transition-all group-hover/link:translate-x-0.5" />
+                                                                            </div>
                                                                         ) : (
-                                                                            <Badge variant="secondary" className="text-[8px] font-black h-4 px-1.5">Stock</Badge>
+                                                                            <Badge variant="secondary" className="text-[9px] font-black h-5 px-2 uppercase tracking-widest">Stock Unit</Badge>
                                                                         )}
                                                                     </div>
                                                                 </div>
-                                                                <div className="text-right shrink-0">
-                                                                    <p className="font-black text-sm text-slate-900">${(q.totalPriceExclGst || 0).toLocaleString()}</p>
-                                                                    <p className="text-[8px] font-bold text-slate-400 mt-0.5">excl. GST</p>
+
+                                                                <div className="text-right shrink-0 flex flex-col justify-between h-20">
+                                                                    <div className="space-y-0.5">
+                                                                        <p className="text-2xl font-black text-slate-900 italic tracking-tighter">
+                                                                            ${(q.totalPriceExclGst || 0).toLocaleString()}
+                                                                        </p>
+                                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">excl. GST</p>
+                                                                    </div>
+                                                                    <div className="flex justify-end">
+                                                                        <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-primary transition-all">
+                                                                            <ArrowRight className="h-5 w-5" />
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                                <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-primary transition-colors shrink-0" />
                                                             </div>
                                                         ))}
                                                     </div>
