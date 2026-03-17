@@ -449,28 +449,31 @@ export function HighfieldQuoteFlow({
         setSelectedDealerFitIds(isSelected ? selectedDealerFitIds.filter(i => i !== id) : [...selectedDealerFitIds, id]);
     };
 
-    const nextStep = () => { if (currentStep < STEPS.length) setCurrentStep(currentStep + 1); };
-    const prevStep = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
+    const scrollToTop = () => {
+        const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+        if (viewport) viewport.scrollTop = 0;
+    };
+
+    const nextStep = () => { if (currentStep < STEPS.length) { setCurrentStep(currentStep + 1); scrollToTop(); } };
+    const prevStep = () => { if (currentStep > 1) { setCurrentStep(currentStep - 1); scrollToTop(); } };
 
     // 5. Effects (Carousel Sync & Motor Fetch)
     useEffect(() => {
-        if (!api) return;
-        if (activeVariant) {
-            const variantIdx = carouselSlides.findIndex(s => s.type === 'variant');
-            if (variantIdx !== -1) api.scrollTo(variantIdx);
-        }
+        if (!api || !activeVariant) return;
+        const variantIdx = carouselSlides.findIndex(s => s.type === 'variant');
+        if (variantIdx !== -1) setTimeout(() => api.scrollTo(variantIdx), 100);
     }, [activeVariant, api, carouselSlides]);
 
     useEffect(() => {
         if (!api || !selectedMotor) return;
         const motorIdx = carouselSlides.findIndex(s => s.type === 'motor');
-        if (motorIdx !== -1) api.scrollTo(motorIdx);
+        if (motorIdx !== -1) setTimeout(() => api.scrollTo(motorIdx), 100);
     }, [selectedMotor, api, carouselSlides]);
 
     useEffect(() => {
         if (!api || !selectedTrailerId) return;
         const trailerIdx = carouselSlides.findIndex(s => s.type === 'trailer');
-        if (trailerIdx !== -1) api.scrollTo(trailerIdx);
+        if (trailerIdx !== -1) setTimeout(() => api.scrollTo(trailerIdx), 100);
     }, [selectedTrailerId, api, carouselSlides]);
 
     useEffect(() => {
@@ -492,16 +495,16 @@ export function HighfieldQuoteFlow({
                         const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`));
                         const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
                         
-                        const maxHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 999;
-                        const minHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.minHp || 0;
+                        const motorConfig = model.specifications?.motorConfigurations?.[0]?.engines?.[0];
+                        const maxHp: number | undefined = motorConfig?.maxHp;
+                        const minHp: number = motorConfig?.minHp ?? 0;
                         const hasConsole = model.optionalFeatures?.filter((f: any) => f.category === 'Consoles').some((f: any) => selectedOptionIds.includes(f.id));
 
                         setMotors(allRows.filter(r => {
                             const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
-                            const hpMatch = hp >= minHp && hp <= maxHp;
-                            if (!hpMatch) return false;
-                            if (hasConsole) return !r.steeringType || r.steeringType === 'Forward Control';
-                            return !r.steeringType || r.steeringType === 'Tiller';
+                            if (maxHp !== undefined && (hp < minHp || hp > maxHp)) return false;
+                            if (hasConsole) return r.steeringType === 'Forward Control';
+                            return r.steeringType === 'Tiller';
                         }).map(m => ({ ...m, vendorName: motorVendor.name })));
                     }
                 }
@@ -849,8 +852,36 @@ export function HighfieldQuoteFlow({
                                 </div>
                             )}
                             {currentStep === 6 && (
-                                <div className="space-y-8 animate-in fade-in duration-1000 mt-4">
-                                    <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full"><div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /><h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Project Build Summary</h3></div>
+                                <div className="space-y-6 animate-in fade-in duration-1000 mt-4">
+                                    {/* Hero Build Summary Card */}
+                                    <div className="relative rounded-[2rem] overflow-hidden shadow-2xl min-h-[210px] bg-slate-950">
+                                        {(activeVariant?.imageUrl || model.coverImageUrl) && <Image src={activeVariant?.imageUrl || model.coverImageUrl} alt={model.name} fill className="object-cover opacity-20" unoptimized />}
+                                        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-950/90 to-primary/10" />
+                                        <div className="relative z-10 p-8 min-h-[210px] flex flex-col justify-between">
+                                            <div className="flex items-start justify-between">
+                                                <div>
+                                                    <p className="text-[8px] font-black uppercase tracking-[0.35em] text-primary/80 mb-2">{vendor?.name} • {range?.name}</p>
+                                                    <h2 className="text-4xl font-black uppercase tracking-tighter text-white leading-none">{model?.name}</h2>
+                                                </div>
+                                                <div className="h-10 w-10 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
+                                                    <Ship className="h-5 w-5 text-primary" />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-end justify-between mt-6">
+                                                <div>
+                                                    <p className="text-[8px] font-black uppercase tracking-widest text-white/30 mb-1">Configuration</p>
+                                                    <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">{selectedMaterial} • {activeVariant?.colorName || activeVariant?.name || 'Standard'}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[8px] font-black uppercase tracking-widest text-white/30 mb-1">Total Package (Excl. GST)</p>
+                                                    <div className="flex items-baseline gap-0.5">
+                                                        <span className="text-primary text-2xl font-black leading-none">$</span>
+                                                        <span className="text-5xl font-black text-white tracking-tighter leading-none">{totalPrice.toLocaleString()}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div className="space-y-4">
                                         <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Ship className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Base Vessel</CardTitle></div></CardHeader><CardContent className="p-4">
                                             <div className="flex items-center justify-between">
