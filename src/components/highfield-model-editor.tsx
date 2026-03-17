@@ -26,6 +26,8 @@ import { Badge } from './ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { ChevronRight } from 'lucide-react';
 
 const specSchema = z.object({
     id: z.string(),
@@ -51,6 +53,7 @@ const optionalFeatureSchema = z.object({
     color: z.string().optional().nullable(),
     imageUrl: z.string().nullable().optional(),
     applicableVariantIds: z.array(z.string()).default([]),
+    associatedSkus: z.array(z.string()).default([]),
     associatedSeatId: z.string().optional().nullable(),
     isStandard: z.boolean().default(false),
     cost: z.coerce.number().nullable().optional(),
@@ -475,7 +478,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                         disabled={!newCategoryName.trim()} 
                                         onClick={() => {
                                             if(newCategoryName.trim()) { 
-                                                appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: newCategoryName, imageUrl: null, code: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false }); 
+                                                appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: newCategoryName, imageUrl: null, code: '', applicableVariantIds: [], associatedSkus: [], associatedSeatId: null, isStandard: false }); 
                                                 setNewCategoryName(''); 
                                             }
                                         }}
@@ -493,7 +496,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                                     <span className="font-black text-[9px] uppercase tracking-[0.15em] text-slate-900 italic">{cat}</span>
                                                     <Badge className="bg-primary/10 text-primary border-none font-black text-[7px] h-4 px-1.5">{items.length}</Badge>
                                                 </div>
-                                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat === 'General Options' ? null : cat, imageUrl: null, code: '', applicableVariantIds: [], associatedSeatId: null, isStandard: false })}><Plus className="h-3 w-3" /></Button>
+                                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat === 'General Options' ? null : cat, imageUrl: null, code: '', applicableVariantIds: [], associatedSkus: [], associatedSeatId: null, isStandard: false })}><Plus className="h-3 w-3" /></Button>
                                             </div>
                                             <CollapsibleContent><div className="grid gap-2 animate-in slide-in-from-top-1 duration-200 text-left">{items.map(item => (<OptionalFeatureItem key={item.field.id} index={item.idx} remove={removeOptionalFeature} categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'General Options' && n !== 'Consoles' && n !== 'Seats')} variants={variants} allFeatures={watchedOptionalFeatures} />))}</div></CollapsibleContent>
                                         </Collapsible>

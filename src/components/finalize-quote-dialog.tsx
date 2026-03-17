@@ -193,14 +193,14 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
             // Motor
             motor: selectedMotor ? {
                 id: selectedMotor.id,
-                name: selectedMotor['Model Name'] || selectedMotor.name || selectedMotor.model || null,
-                model: selectedMotor.model || selectedMotor['Model Name'] || selectedMotor.name,
-                brand: selectedMotor.brand || null,
+                name: selectedMotor['Model Name'] || selectedMotor.name || selectedMotor.model || 'Unknown Motor',
+                model: selectedMotor.model || selectedMotor['Model Name'] || selectedMotor.name || 'Standard Model',
+                brand: selectedMotor.brand || 'Yamaha',
                 sellPriceExclGst: selectedMotor.sellPriceExclGst || 0,
                 imageUrl: selectedMotor.imageUrl || selectedMotor.SummaryImage || null,
                 accessories: selectedMotorAccessories.map((a: any) => ({
                     id: a.id,
-                    name: a.name,
+                    name: a.name || 'Unnamed Accessory',
                     category: a.category || null,
                     sellPriceExclGst: a.sellPriceExclGst || 0,
                 })),
@@ -254,7 +254,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 toast({ title: 'Proposal Created', description: `Quote ${payload.quoteNumber} has been saved.` });
                 onOpenChange(false);
                 resetForm();
-                router.push(`/modules/${quoteData.module?.id}/proposals/${quoteRef.id}`);
+                router.push(`/modules/${quoteData.module?.slug || quoteData.module?.id}/proposals/${quoteRef.id}`);
             } else {
                 // Save as stock in inventory collection
                 const stockNumber = generateStockNumber();
@@ -268,7 +268,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 toast({ title: 'Stock Item Created', description: `${stockNumber} added to inventory.` });
                 onOpenChange(false);
                 resetForm();
-                router.push(`/modules/${quoteData.module?.id}`);
+                router.push(`/modules/${quoteData.module?.slug || quoteData.module?.id}`);
             }
         } catch (error: any) {
             console.error('Failed to finalize:', error);
