@@ -464,12 +464,12 @@ export default function ModuleDetailsPage() {
                         <ScrollArea className="h-full">
                             <div className="p-8 min-h-[calc(100vh-224px)] flex flex-col">
                                 <div className="grid grid-cols-12 gap-8 flex-1">
-                                    <div className="col-span-5 flex flex-col gap-8 h-full">
+                                    <div className="col-span-7 flex flex-col gap-8 h-full">
                                         <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
                                             <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
                                                 <div className="flex items-center gap-3 shrink-0">
                                                     <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
-                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock</h3>
+                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock Units</h3>
                                                 </div>
                                                 <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
                                             </CardHeader>
@@ -482,7 +482,7 @@ export default function ModuleDetailsPage() {
                                             <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
                                                 <div className="flex items-center gap-3 shrink-0">
                                                     <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
-                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
+                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Corporate On Order</h3>
                                                 </div>
                                                 <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
                                             </CardHeader>
@@ -492,7 +492,7 @@ export default function ModuleDetailsPage() {
                                         </Card>
                                     </div>
 
-                                    <Card className="col-span-7 flex flex-col border-2 rounded-[3rem] shadow-2xl bg-white overflow-hidden">
+                                    <Card className="col-span-5 flex flex-col border-2 rounded-[3.5rem] shadow-2xl bg-white overflow-hidden">
                                         <CardHeader className="p-10 border-b bg-slate-50/30 flex flex-row items-center justify-between shrink-0">
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
