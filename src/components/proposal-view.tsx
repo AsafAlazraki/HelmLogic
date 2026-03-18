@@ -27,6 +27,8 @@ import {
     Loader2,
     Truck,
     ClipboardList,
+    ListChecks,
+    Ruler,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -422,6 +424,34 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                                     <span className="font-black text-xs tabular-nums text-slate-700">{formatCurrency(item.sellPriceExclGst || 0)}</span>
                                                 </div>
                                             ))
+                                        ))}
+                                    </div>
+                                </SectionCard>
+                            )}
+
+                            {/* Technical Specifications */}
+                            {quote.specifications?.otherSpecs?.length > 0 && (
+                                <SectionCard icon={Ruler} label="Technical Specifications">
+                                    <div className="divide-y">
+                                        {quote.specifications.otherSpecs.map((spec: any, i: number) => (
+                                            <div key={i} className="flex items-center justify-between px-6 py-3">
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{spec.label}</span>
+                                                <span className="font-black text-sm text-slate-900">{spec.value}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </SectionCard>
+                            )}
+
+                            {/* Standard Features */}
+                            {quote.standardFeatures?.length > 0 && (
+                                <SectionCard icon={ListChecks} label="Standard Features">
+                                    <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {quote.standardFeatures.map((feat: string, i: number) => (
+                                            <div key={i} className="flex items-start gap-2.5">
+                                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                                <span className="text-[11px] font-bold text-slate-600 leading-tight">{feat}</span>
+                                            </div>
                                         ))}
                                     </div>
                                 </SectionCard>
