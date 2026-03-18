@@ -744,7 +744,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [expandedRanges, setExpandedRanges] = useState<string[]>([]);
     const [activeView, setActiveView] = useState<'boats' | 'options'>('boats');
 
-    const rangesQuery = useMemoFirebase(() => query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')), [firestore, vendor.id]);
+    const rangesQuery = useMemoFirebase(() => collection(firestore, `data-warehouse/${vendor.id}/ranges`), [firestore, vendor.id]);
     const { data: ranges } = useCollection<Range>(rangesQuery);
 
     const orgRef = useMemoFirebase(() => doc(firestore, 'organisations', organisationId), [firestore, organisationId]);
@@ -766,10 +766,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             setLoadingModels(true);
             try {
                 const rangeResults = await Promise.all(ranges.map(async (range) => {
-                    const mSnap = await getDocs(query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')));
+                    const mSnap = await getDocs(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`));
                     const models = mSnap.docs.map(mDoc => ({ id: mDoc.id, ...mDoc.data() } as Model));
                     const variantEntries = await Promise.all(mSnap.docs.map(async (mDoc) => {
-                        const vSnap = await getDocs(query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models/${mDoc.id}/variants`), orderBy('order')));
+                        const vSnap = await getDocs(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models/${mDoc.id}/variants`));
                         return [mDoc.id, vSnap.docs.map(d => ({ id: d.id, ...d.data() } as Variant))] as const;
                     }));
                     return { models, variantEntries };

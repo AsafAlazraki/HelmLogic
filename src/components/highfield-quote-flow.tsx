@@ -166,8 +166,8 @@ export function HighfieldQuoteFlow({
     const { data: userProfile } = useDoc<any>(userProfileRef);
     const orgId = userProfile?.organisationId;
 
-    const variantsQuery = useMemoFirebase(() => 
-        query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')),
+    const variantsQuery = useMemoFirebase(() =>
+        collection(firestore, `data-warehouse/${vendor.id}/ranges/${rangeId}/models/${model.id}/variants`),
     [firestore, vendor.id, rangeId, model.id]);
     const { data: variants } = useCollection<Variant>(variantsQuery);
 

@@ -81,7 +81,7 @@ function RangesGrid({ vendor, onRangeSelect }: { vendor: Vendor; onRangeSelect: 
     const firestore = useFirestore();
     const rangesQuery = useMemoFirebase(() => {
         if (!vendor?.id) return null;
-        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order'));
+        return collection(firestore, `data-warehouse/${vendor.id}/ranges`);
     }, [firestore, vendor.id]);
 
     const { data: ranges, loading: rangesLoading } = useCollection<Range>(rangesQuery);

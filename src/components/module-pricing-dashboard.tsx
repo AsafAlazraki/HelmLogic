@@ -66,8 +66,8 @@ export function ModulePricingDashboard({
     const [isSaving, setIsSaving] = useState(false);
     const [localMargins, setLocalMargins] = useState<Record<string, number>>({});
 
-    const rangesQuery = useMemoFirebase(() => 
-        query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')), 
+    const rangesQuery = useMemoFirebase(() =>
+        collection(firestore, `data-warehouse/${vendor.id}/ranges`),
     [firestore, vendor.id]);
     
     const { data: ranges, loading: rangesLoading } = useCollection<Range>(rangesQuery);
@@ -81,7 +81,7 @@ export function ModulePricingDashboard({
             setModelsLoading(true);
             try {
                 const snapshots = await Promise.all(ranges.map(range =>
-                    getDocs(query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')))
+                    getDocs(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`))
                 ));
                 const models: Model[] = [];
                 for (const snap of snapshots) {

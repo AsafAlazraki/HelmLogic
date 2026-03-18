@@ -34,8 +34,8 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
     return <HelmLogicLoading />;
   }
 
-  // Module and Blueprint pages manage their own precision scrolling
-  const isImmersivePage = (pathname?.includes('/modules/') && pathname?.includes('/quote/')) || pathname?.includes('/blueprint/');
+  // Module and Blueprint pages manage their own full-bleed layout
+  const isImmersivePage = pathname?.includes('/modules/') || pathname?.includes('/blueprint/');
   
   return (
       <SidebarProvider defaultOpen={false}>
