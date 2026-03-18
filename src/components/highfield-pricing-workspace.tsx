@@ -5,9 +5,9 @@ import { useDoc } from "@/firebase/firestore/use-doc";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useFirestore, useMemoFirebase } from "@/firebase/provider";
 import { doc, collection, query, where, getDocs, updateDoc, serverTimestamp, orderBy } from "firebase/firestore";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, Zap, Maximize2, Minimize2, ArrowRightLeft, Percent, Save, Ship, ChevronDown, CheckCircle2, Star, History, Clock, Link2, MessageSquare, ClipboardList, ShieldCheck, Calculator, Truck } from "lucide-react";
+import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, Zap, Maximize2, Minimize2, ArrowRightLeft, Percent, Save, Ship, ChevronDown, CheckCircle2, Star, History, Clock, Link2, MessageSquare, ClipboardList, ShieldCheck, Calculator, Truck, Upload, Download, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -93,8 +93,8 @@ function EditableCell({ value, onChange, placeholder, align = 'center' }: any) {
     );
 }
 
-function PricingRow({ 
-    id, name, sku, cost, strategy, onUpdateValue, indent, isOption, vendor, organisation, exchangeRate, rowIndex, activeView 
+function PricingRow({
+    id, name, sku, cost, strategy, onUpdateValue, indent, isOption, vendor, organisation, exchangeRate, rowIndex, activeView, rangeDefaultMargin
 }: any) {
     const itemValues = strategy?.itemValues?.[id] || {};
     const orgCurrency = organisation?.tradingCurrency || 'AUD';
@@ -133,7 +133,9 @@ function PricingRow({
 
     // Baseline Summation
     const totalStrategicLandedEx = baseCostAudEx + (activeView === 'boats' ? (seaFreightSell + roadFreightSell + preDelSell) : 0) + (isOption ? 0 : handlingSell);
-    const marginPercent = parseFloat(itemValues['strat_package_margin_percent'] || '0');
+    // Use item-level margin first, then range default margin, then 0
+    const itemMargin = itemValues['strat_package_margin_percent'];
+    const marginPercent = parseFloat(itemMargin !== undefined && itemMargin !== '' ? itemMargin : (rangeDefaultMargin || '0'));
     const totalPackageSell = getSellPrice(totalStrategicLandedEx, marginPercent);
     const totalPackageGP = totalPackageSell - totalStrategicLandedEx;
 
@@ -242,8 +244,10 @@ function PricingRow({
     );
 }
 
-function PricingTable({ 
-    filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate 
+const OPTION_CATEGORY_ORDER = ['Consoles', 'Seats', 'Rigging', 'Electronics', 'Covers', 'Tops', 'EVA Teak', 'Hardware', 'Accessories'];
+
+function PricingTable({
+    filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate, rangeMargins, onUpdateRangeMargin, searchTerm
 }: any) {
     const isOptions = activeView === 'options';
     const shortCode = (organisation?.shortCode || 'NSM').toUpperCase();
@@ -347,18 +351,51 @@ function PricingTable({
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredRanges.map((range: any) => (
+                        {filteredRanges.map((range: any) => {
+                            const rangeDefaultMargin = rangeMargins?.[range.id] || '';
+                            return (
                             <React.Fragment key={range.id}>
-                                <TableRow className="bg-slate-100 border-b-2 border-slate-300 cursor-pointer hover:bg-slate-200" onClick={() => toggleRange(range.id)}>
-                                    <TableCell className="sticky left-0 z-[80] bg-slate-100 py-4 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
+                                <TableRow className="bg-slate-100 border-b-2 border-slate-300">
+                                    <TableCell className="sticky left-0 z-[80] bg-slate-100 py-3 px-8 font-black uppercase text-[11px] tracking-[0.1em] text-slate-950 border-r-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] cursor-pointer" onClick={() => toggleRange(range.id)}>
                                         <div className="flex items-center gap-4 relative z-10">
                                             <ChevronRight className={cn("h-4 w-4 text-primary transition-transform", expandedRanges.includes(range.id) && "rotate-90")} />
                                             <span>{range.name} RANGE</span>
                                         </div>
                                     </TableCell>
-                                    <TableCell colSpan={isOptions ? 21 : 55} className="border-b-2 border-slate-300 bg-slate-100 p-0" />
+                                    {/* Range default margin — shown in the margin column position */}
+                                    <TableCell colSpan={isOptions ? 19 : 53} className="border-b-2 border-slate-300 bg-slate-100 p-0" />
+                                    <TableCell className="border-b-2 border-slate-300 bg-amber-50 p-0 w-[80px]" title="Range default margin %">
+                                        <div className="flex items-center gap-1 px-2 h-full min-h-[40px]">
+                                            <span className="text-[8px] font-black text-amber-600 uppercase">RNG%</span>
+                                            <input
+                                                className="w-full bg-transparent border-none text-[11px] text-center outline-none text-amber-700 font-black"
+                                                value={rangeDefaultMargin}
+                                                placeholder="-"
+                                                onClick={e => e.stopPropagation()}
+                                                onChange={e => onUpdateRangeMargin(range.id, e.target.value)}
+                                            />
+                                        </div>
+                                    </TableCell>
+                                    <TableCell colSpan={1} className="border-b-2 border-slate-300 bg-slate-100 p-0" />
                                 </TableRow>
-                                {expandedRanges.includes(range.id) && allModels.filter((m: any) => m.rangeId === range.id).map((model: any) => (
+                                {expandedRanges.includes(range.id) && allModels.filter((m: any) => m.rangeId === range.id).map((model: any) => {
+                                    // For options view: sort by category, filter by search
+                                    const rawFeatures = model.optionalFeatures || [];
+                                    const filteredFeatures = isOptions && searchTerm
+                                        ? rawFeatures.filter((f: any) =>
+                                            f.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                            f.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                            f.code?.toLowerCase().includes(searchTerm.toLowerCase()))
+                                        : rawFeatures;
+                                    const sortedFeatures = isOptions ? [...filteredFeatures].sort((a: any, b: any) => {
+                                        const ci = (x: any) => { const i = OPTION_CATEGORY_ORDER.indexOf(x.category); return i === -1 ? 99 : i; };
+                                        return ci(a) - ci(b) || (a.name || '').localeCompare(b.name || '');
+                                    }) : [];
+
+                                    const items = activeView === 'boats' ? (allVariants[model.id] || []) : sortedFeatures;
+                                    if (items.length === 0 && isOptions && searchTerm) return null;
+
+                                    return (
                                     <React.Fragment key={model.id}>
                                         <TableRow className="bg-slate-50">
                                             <TableCell className="sticky left-0 z-[80] bg-slate-50 py-3.5 px-10 border-r-2 border-b-2 border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
@@ -366,27 +403,67 @@ function PricingTable({
                                             </TableCell>
                                             <TableCell colSpan={isOptions ? 21 : 55} className="border-b-2 border-slate-300 bg-slate-50" />
                                         </TableRow>
-                                        {(activeView === 'boats' ? (allVariants[model.id] || []) : (model.optionalFeatures || [])).map((item: any, idx: number) => (
-                                            <PricingRow 
-                                                key={item.id} 
-                                                id={item.id} 
-                                                name={item.name} 
-                                                sku={item.sku || item.code} 
-                                                cost={item.cost} 
-                                                strategy={strategy} 
-                                                onUpdateValue={onUpdateValue} 
-                                                vendor={vendor} 
-                                                organisation={organisation} 
-                                                exchangeRate={activeExchangeRate} 
-                                                rowIndex={idx} 
-                                                activeView={activeView} 
-                                                indent 
+                                        {isOptions ? (() => {
+                                            // Render with category sub-headers
+                                            let lastCat = '';
+                                            return items.flatMap((item: any, idx: number) => {
+                                                const rows = [];
+                                                if (item.category !== lastCat) {
+                                                    lastCat = item.category;
+                                                    rows.push(
+                                                        <TableRow key={`cat-${model.id}-${item.category}-${idx}`} className="h-[28px]">
+                                                            <TableCell className="sticky left-0 z-[80] bg-indigo-50 pl-20 py-1 text-[8px] font-black uppercase tracking-[0.2em] text-indigo-600 border-r-2 border-b border-indigo-100 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)]">
+                                                                {item.category || 'Other'}
+                                                            </TableCell>
+                                                            <TableCell colSpan={21} className="border-b border-indigo-100 bg-indigo-50" />
+                                                        </TableRow>
+                                                    );
+                                                }
+                                                rows.push(
+                                                    <PricingRow
+                                                        key={item.id}
+                                                        id={item.id}
+                                                        name={item.name}
+                                                        sku={item.sku || item.code}
+                                                        cost={item.cost}
+                                                        strategy={strategy}
+                                                        onUpdateValue={onUpdateValue}
+                                                        vendor={vendor}
+                                                        organisation={organisation}
+                                                        exchangeRate={activeExchangeRate}
+                                                        rowIndex={idx}
+                                                        activeView={activeView}
+                                                        rangeDefaultMargin={rangeDefaultMargin}
+                                                        isOption
+                                                        indent
+                                                    />
+                                                );
+                                                return rows;
+                                            });
+                                        })() : items.map((item: any, idx: number) => (
+                                            <PricingRow
+                                                key={item.id}
+                                                id={item.id}
+                                                name={item.name}
+                                                sku={item.sku || item.code}
+                                                cost={item.cost}
+                                                strategy={strategy}
+                                                onUpdateValue={onUpdateValue}
+                                                vendor={vendor}
+                                                organisation={organisation}
+                                                exchangeRate={activeExchangeRate}
+                                                rowIndex={idx}
+                                                activeView={activeView}
+                                                rangeDefaultMargin={rangeDefaultMargin}
+                                                indent
                                             />
                                         ))}
                                     </React.Fragment>
-                                ))}
+                                    );
+                                })}
                             </React.Fragment>
-                        ))}
+                            );
+                        })}
                     </TableBody>
                 </Table>
             </div>
@@ -394,25 +471,32 @@ function PricingTable({
     );
 }
 
-function MatrixContent({ 
-    isFocus, 
-    activeView, 
-    setActiveView, 
-    setIsFocusMode, 
-    setIsGlobalUpdateOpen, 
-    vendor, 
-    organisation, 
-    filteredRanges, 
-    expandedRanges, 
-    toggleRange, 
-    allModels, 
-    allVariants, 
-    strategy, 
-    onUpdateValue, 
-    activeExchangeRate 
+function MatrixContent({
+    isFocus,
+    activeView,
+    setActiveView,
+    setIsFocusMode,
+    setIsGlobalUpdateOpen,
+    setIsPublishOpen,
+    onExportCsv,
+    vendor,
+    organisation,
+    filteredRanges,
+    expandedRanges,
+    toggleRange,
+    allModels,
+    allVariants,
+    strategy,
+    onUpdateValue,
+    activeExchangeRate,
+    rangeMargins,
+    onUpdateRangeMargin,
+    searchTerm,
+    setSearchTerm,
+    isPublishing,
 }: any) {
     const commonProps = {
-        filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate
+        filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate, rangeMargins, onUpdateRangeMargin, searchTerm
     };
 
     return (
@@ -434,6 +518,18 @@ function MatrixContent({
                     </div>
                 </div>
 
+                <div className="flex items-center gap-4 flex-1 max-w-xs ml-8">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                        <Input
+                            placeholder="Search models, SKUs, options..."
+                            value={searchTerm || ''}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            className="pl-9 h-9 text-[11px] font-bold border-2 border-slate-200 rounded-xl bg-slate-50"
+                        />
+                    </div>
+                </div>
+
                 <div className="flex items-center gap-6">
                     <Tabs value={activeView} onValueChange={(v: any) => setActiveView(v)}>
                         <TabsList className="bg-slate-100 p-1 h-10 border-2 border-slate-300 rounded-xl">
@@ -443,10 +539,33 @@ function MatrixContent({
                     </Tabs>
 
                     <div className="flex items-center gap-3 border-l-2 border-slate-200 pl-6 h-10">
-                        <Button 
+                        <Button
                             type="button"
-                            variant="default" 
-                            size="sm" 
+                            variant="outline"
+                            size="sm"
+                            className="h-10 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-50"
+                            onClick={onExportCsv}
+                            title="Export to CSV"
+                        >
+                            <Download className="h-4 w-4 mr-1.5" />
+                            Export
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="default"
+                            size="sm"
+                            className="h-10 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 border-none shadow-lg"
+                            onClick={() => setIsPublishOpen(true)}
+                            disabled={isPublishing}
+                            title="Publish prices to catalog"
+                        >
+                            {isPublishing ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Upload className="h-4 w-4 mr-1.5" />}
+                            Publish Prices
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="default"
+                            size="sm"
                             className="h-10 px-6 font-black uppercase tracking-widest text-[9px] rounded-xl shadow-lg bg-primary text-white hover:bg-primary/90 transition-all border-none"
                             onClick={() => setIsGlobalUpdateOpen(true)}
                         >
@@ -454,7 +573,7 @@ function MatrixContent({
                             Global Update
                         </Button>
                         {!isFocus ? (
-                            <Button 
+                            <Button
                                 onClick={() => setIsFocusMode(true)}
                                 className="h-10 px-6 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-primary/20 bg-primary text-white hover:scale-105 transition-all"
                             >
@@ -462,11 +581,11 @@ function MatrixContent({
                                 FOCUS MODE
                             </Button>
                         ) : (
-                            <Button 
-                                type="button" 
-                                onClick={() => setIsFocusMode(false)} 
-                                variant="outline" 
-                                size="sm" 
+                            <Button
+                                type="button"
+                                onClick={() => setIsFocusMode(false)}
+                                variant="outline"
+                                size="sm"
                                 className="h-10 px-4 font-black uppercase tracking-widest text-[10px] rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-100 text-slate-900"
                             >
                                 <Minimize2 className="h-4 w-4 mr-1.5" />
@@ -543,14 +662,84 @@ function GlobalUpdateDialog({ isOpen, onOpenChange, onApply, activeView }: { isO
     );
 }
 
+// --- PUBLISH PRICES DIALOG ---
+
+const PRICE_LEVELS = [
+    { key: 'hull_cash', label: 'Cash Price' },
+    { key: 'hull_trade', label: 'Trade Price' },
+    { key: 'hull_subdealer', label: 'Sub-Dealer Price' },
+    { key: 'hull_subdealer_excl', label: 'Sub-Dealer Excl Price' },
+    { key: 'hull_aus_sailing', label: 'AUS Sailing Price' },
+];
+
+function PublishPricesDialog({ isOpen, onOpenChange, onConfirm, isPublishing, strategy, allModels, allVariants }: any) {
+    const [selectedLevel, setSelectedLevel] = useState('hull_cash');
+
+    const countPricesSet = useMemo(() => {
+        if (!strategy?.itemValues) return 0;
+        const key = `${selectedLevel}_price`;
+        let count = 0;
+        for (const model of (allModels || [])) {
+            for (const v of (allVariants?.[model.id] || [])) {
+                if (parseFloat(strategy.itemValues[v.id]?.[key] || '0') > 0) count++;
+            }
+            for (const f of (model.optionalFeatures || [])) {
+                if (parseFloat(strategy.itemValues[f.id]?.[key] || '0') > 0) count++;
+            }
+        }
+        return count;
+    }, [strategy, selectedLevel, allModels, allVariants]);
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md rounded-[2.5rem] border-4 shadow-2xl p-0 overflow-hidden">
+                <DialogHeader className="p-8 border-b bg-emerald-50">
+                    <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-emerald-700">Publish Prices</DialogTitle>
+                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mt-1">Write selected price level to catalog sell prices</DialogDescription>
+                </DialogHeader>
+                <div className="p-8 space-y-6">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Price Level to Publish</Label>
+                        <Select value={selectedLevel} onValueChange={setSelectedLevel}>
+                            <SelectTrigger className="h-12 font-black text-xs border-2 rounded-xl bg-background">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-2">
+                                {PRICE_LEVELS.map(l => <SelectItem key={l.key} value={l.key} className="text-[10px] font-bold uppercase py-2.5">{l.label}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="p-4 bg-emerald-50 rounded-xl border-2 border-emerald-200">
+                        <p className="text-[11px] font-black text-emerald-700">{countPricesSet} items with prices set will be published to the catalog.</p>
+                        <p className="text-[9px] text-emerald-600 mt-1">This updates <code className="bg-emerald-100 px-1 rounded">sellPriceExclGst</code> on each variant and factory option. Quotes will immediately reflect the new prices.</p>
+                    </div>
+                </div>
+                <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
+                    <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px] border-2">Cancel</Button></DialogClose>
+                    <Button
+                        onClick={() => onConfirm(selectedLevel)}
+                        disabled={isPublishing || countPricesSet === 0}
+                        className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-emerald-600 text-white hover:bg-emerald-700"
+                    >
+                        {isPublishing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                        Publish {countPricesSet} Prices
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 // --- MAIN WORKSPACE ---
 
 export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: any, organisationId: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
-    
+
     const [isFocusMode, setIsFocusMode] = useState(false);
     const [isGlobalUpdateOpen, setIsGlobalUpdateOpen] = useState(false);
+    const [isPublishOpen, setIsPublishOpen] = useState(false);
+    const [isPublishing, setIsPublishing] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedRanges, setExpandedRanges] = useState<string[]>([]);
     const [activeView, setActiveView] = useState<'boats' | 'options'>('boats');
@@ -649,18 +838,122 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     };
 
     const toggleRange = (id: string) => setExpandedRanges(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-    
+
     const filteredRanges = useMemo(() => {
         if (!ranges) return [];
         if (!searchTerm) return ranges;
         const lower = searchTerm.toLowerCase();
-        return ranges.filter(range => range.name.toLowerCase().includes(lower) || allModels.filter(m => m.rangeId === range.id).some(m => m.name.toLowerCase().includes(lower)));
+        return ranges.filter(range =>
+            range.name.toLowerCase().includes(lower) ||
+            allModels.filter(m => m.rangeId === range.id).some(m =>
+                m.name.toLowerCase().includes(lower) ||
+                (m.optionalFeatures || []).some((f: any) =>
+                    f.name?.toLowerCase().includes(lower) ||
+                    f.code?.toLowerCase().includes(lower)
+                )
+            )
+        );
     }, [ranges, searchTerm, allModels]);
+
+    // Per-range margin: stored in strategy.rangeMargins
+    const rangeMargins: Record<string, string> = strategy?.rangeMargins || {};
+
+    const onUpdateRangeMargin = useCallback(async (rangeId: string, value: string) => {
+        if (!strategyRef) return;
+        const current = strategy?.rangeMargins || {};
+        await updateDoc(strategyRef, {
+            rangeMargins: { ...current, [rangeId]: value },
+            lastUpdateAt: serverTimestamp(),
+        });
+    }, [strategyRef, strategy]);
+
+    // Publish prices: write hull_cash_price (or selected level) → sellPriceExclGst on each variant/feature
+    const handlePublishPrices = useCallback(async (priceLevel: string) => {
+        if (!strategy || !vendor.id || !ranges) return;
+        setIsPublishing(true);
+        const priceKey = `${priceLevel}_price`;
+        const updates: Array<() => Promise<void>> = [];
+
+        for (const model of allModels) {
+            // Variants
+            for (const variant of (allVariants[model.id] || [])) {
+                const price = parseFloat(strategy.itemValues?.[variant.id]?.[priceKey] || '0');
+                if (price > 0) {
+                    const vRef = doc(firestore, `data-warehouse/${vendor.id}/ranges/${model.rangeId}/models/${model.id}/variants/${variant.id}`);
+                    updates.push(() => updateDoc(vRef, { sellPriceExclGst: price }));
+                }
+            }
+            // Optional features (rewrite the array on the model doc)
+            const features: any[] = model.optionalFeatures || [];
+            let featuresDirty = false;
+            const updatedFeatures = features.map((f: any) => {
+                const price = parseFloat(strategy.itemValues?.[f.id]?.[priceKey] || '0');
+                if (price > 0 && price !== f.sellPriceExclGst) {
+                    featuresDirty = true;
+                    return { ...f, sellPriceExclGst: price };
+                }
+                return f;
+            });
+            if (featuresDirty) {
+                const mRef = doc(firestore, `data-warehouse/${vendor.id}/ranges/${model.rangeId}/models/${model.id}`);
+                updates.push(() => updateDoc(mRef, { optionalFeatures: updatedFeatures }));
+            }
+        }
+
+        try {
+            // Run in parallel batches of 20
+            for (let i = 0; i < updates.length; i += 20) {
+                await Promise.all(updates.slice(i, i + 20).map(fn => fn()));
+            }
+            toast({ title: "Prices Published", description: `${updates.length} catalog items updated with new sell prices.` });
+        } catch (e) {
+            toast({ title: "Publish Failed", description: String(e), variant: "destructive" });
+        } finally {
+            setIsPublishing(false);
+            setIsPublishOpen(false);
+        }
+    }, [strategy, vendor.id, ranges, allModels, allVariants, firestore, toast]);
+
+    // Export to CSV
+    const exportToCsv = useCallback(() => {
+        if (!allModels.length) return;
+        const rows: string[][] = [['Range', 'Model', 'Type', 'SKU/Code', 'Name', 'Material', 'Color', 'Category', 'Cost USD', 'Sell Price AUD (Strategy)']];
+        const gstRate = (organisation?.gstPercentage || 10) / 100;
+
+        for (const model of allModels) {
+            const range = (ranges || []).find((r: any) => r.id === model.rangeId);
+            // Variants
+            for (const v of (allVariants[model.id] || [])) {
+                const iv = strategy?.itemValues?.[v.id] || {};
+                const costUsd = parseFloat(iv['base_cost_override'] || v.cost || '0');
+                const sellEx = parseFloat(iv['hull_cash_price'] || '0');
+                rows.push([range?.name || '', model.name, 'Hull SKU', v.sku || '', v.name || '', v.material || '', v.colorCode || '', '', costUsd.toFixed(2), sellEx > 0 ? sellEx.toFixed(2) : '']);
+            }
+            // Optional features
+            for (const f of (model.optionalFeatures || [])) {
+                const iv = strategy?.itemValues?.[f.id] || {};
+                const costUsd = parseFloat(iv['base_cost_override'] || f.cost || '0');
+                const sellEx = parseFloat(iv['hull_cash_price'] || '0');
+                rows.push([range?.name || '', model.name, 'Option', f.code || '', f.name || '', '', '', f.category || '', costUsd.toFixed(2), sellEx > 0 ? sellEx.toFixed(2) : '']);
+            }
+        }
+
+        const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `highfield-pricing-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }, [allModels, allVariants, ranges, strategy, organisation]);
 
     if (loadingModels || strategyLoading || orgLoading) return <div className="flex-1 flex items-center justify-center h-96"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
 
     const commonProps = {
-        filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate, setActiveView, setIsFocusMode, setIsGlobalUpdateOpen
+        filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate,
+        setActiveView, setIsFocusMode, setIsGlobalUpdateOpen, setIsPublishOpen, onExportCsv: exportToCsv,
+        rangeMargins, onUpdateRangeMargin, searchTerm, setSearchTerm, isPublishing,
     };
 
     return (
@@ -679,11 +972,21 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 </DialogContent>
             </Dialog>
 
-            <GlobalUpdateDialog 
-                isOpen={isGlobalUpdateOpen} 
-                onOpenChange={setIsGlobalUpdateOpen} 
-                onApply={handleGlobalUpdate} 
+            <GlobalUpdateDialog
+                isOpen={isGlobalUpdateOpen}
+                onOpenChange={setIsGlobalUpdateOpen}
+                onApply={handleGlobalUpdate}
                 activeView={activeView}
+            />
+
+            <PublishPricesDialog
+                isOpen={isPublishOpen}
+                onOpenChange={setIsPublishOpen}
+                onConfirm={handlePublishPrices}
+                isPublishing={isPublishing}
+                strategy={strategy}
+                allModels={allModels}
+                allVariants={allVariants}
             />
         </div>
     );
