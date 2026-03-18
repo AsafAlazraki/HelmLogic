@@ -156,6 +156,63 @@ export function ProposalPrint({ quote, organisation, financials }: ProposalPrint
                     </div>
                 </div>
 
+                {/* Factory Options — grouped by category */}
+                {(quote.selectedOptions?.length > 0 || quote.customOptions?.length > 0) && (() => {
+                    const allOptions = [...(quote.selectedOptions || []), ...(quote.customOptions || [])];
+                    const groups = allOptions.reduce((acc: Record<string, any[]>, opt: any) => {
+                        const cat = opt.category || 'General Options';
+                        if (!acc[cat]) acc[cat] = [];
+                        acc[cat].push(opt);
+                        return acc;
+                    }, {});
+                    const groupEntries = Object.entries(groups);
+                    return (
+                        <div>
+                            <h3 style={{ fontSize: '8px', letterSpacing: '0.3em' }} className="font-black uppercase text-primary mb-3">Factory Options</h3>
+                            <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                                {groupEntries.map(([cat, opts], gi) => (
+                                    <div key={cat}>
+                                        <div style={{
+                                            backgroundColor: '#f8fafc',
+                                            padding: '6px 12px',
+                                            borderTop: gi > 0 ? '1px solid #e2e8f0' : undefined,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                        }}>
+                                            <span style={{ fontSize: '7px', letterSpacing: '0.25em', fontWeight: 900 }} className="uppercase text-primary">{cat}</span>
+                                            <span style={{ fontSize: '7px', fontWeight: 900 }} className="text-slate-400">{opts.length}</span>
+                                        </div>
+                                        {opts.map((opt: any, i: number) => (
+                                            <div key={opt.id || i} style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                padding: '5px 12px',
+                                                borderTop: '1px solid #f1f5f9',
+                                            }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                                    {opt.imageUrl ? (
+                                                        <div style={{ position: 'relative', height: '24px', width: '24px', flexShrink: 0 }}>
+                                                            <Image src={opt.imageUrl} alt="" fill className="object-contain mix-blend-multiply" unoptimized />
+                                                        </div>
+                                                    ) : (
+                                                        <CheckCircle2 style={{ width: '10px', height: '10px', color: '#10b981', flexShrink: 0 }} />
+                                                    )}
+                                                    <span style={{ fontSize: '8px', letterSpacing: '0.05em', fontWeight: 900 }} className="uppercase text-slate-800 truncate">{opt.name}</span>
+                                                </div>
+                                                <span style={{ fontSize: '8px', fontWeight: 900, flexShrink: 0, paddingLeft: '12px' }} className="tabular-nums text-slate-700">
+                                                    {opt.sellPriceExclGst ? formatCurrency(opt.sellPriceExclGst) : <span style={{ color: '#94a3b8' }}>Incl.</span>}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })()}
+
                 {/* Propulsion */}
                 {quote.motor && (
                     <div className="bg-slate-50 rounded-2xl border-2 border-slate-200 p-6">

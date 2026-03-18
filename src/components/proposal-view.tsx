@@ -27,6 +27,8 @@ import {
     Loader2,
     Truck,
     ClipboardList,
+    ListChecks,
+    Ruler,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -348,25 +350,50 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                 </div>
                             </SectionCard>
 
-                            {/* Factory Options */}
-                            {(quote.selectedOptions?.length > 0 || quote.customOptions?.length > 0) && (
-                                <SectionCard icon={Layers} label="Selected Factory Options">
-                                    <div className="divide-y">
-                                        {[...(quote.selectedOptions || []), ...(quote.customOptions || [])].map((opt: any, i: number) => (
-                                            <div key={opt.id || i} className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50/50 transition-colors">
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <CheckCircle2 className="h-3.5 w-3.5 text-primary/40 shrink-0" />
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-black uppercase tracking-tight text-slate-950 truncate">{opt.name}</p>
-                                                        {opt.category && <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">{opt.category}</p>}
+                            {/* Factory Options — grouped by category */}
+                            {(quote.selectedOptions?.length > 0 || quote.customOptions?.length > 0) && (() => {
+                                const allOptions = [...(quote.selectedOptions || []), ...(quote.customOptions || [])];
+                                const groups = allOptions.reduce((acc: Record<string, any[]>, opt: any) => {
+                                    const cat = opt.category || 'General Options';
+                                    if (!acc[cat]) acc[cat] = [];
+                                    acc[cat].push(opt);
+                                    return acc;
+                                }, {});
+                                const groupEntries = Object.entries(groups);
+                                return (
+                                    <SectionCard icon={Layers} label="Factory Options">
+                                        <div>
+                                            {groupEntries.map(([cat, opts], gi) => (
+                                                <div key={cat}>
+                                                    {/* Category header */}
+                                                    <div className={cn(
+                                                        "px-6 py-2.5 bg-slate-50/70 flex items-center gap-2",
+                                                        gi > 0 ? "border-t" : ""
+                                                    )}>
+                                                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-primary">{cat}</span>
+                                                        <span className="text-[8px] font-black text-slate-400">{opts.length}</span>
                                                     </div>
+                                                    {/* Items in this category */}
+                                                    {opts.map((opt: any, i: number) => (
+                                                        <div key={opt.id || i} className="flex items-center justify-between px-6 py-3.5 border-t border-slate-50 hover:bg-slate-50/40 transition-colors">
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                {opt.imageUrl
+                                                                    ? <div className="h-9 w-9 relative bg-white rounded-lg border shrink-0 overflow-hidden"><Image src={opt.imageUrl} alt="" fill className="object-contain p-1 mix-blend-multiply" unoptimized /></div>
+                                                                    : <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                                                                }
+                                                                <p className="text-sm font-black uppercase tracking-tight text-slate-900 truncate">{opt.name}</p>
+                                                            </div>
+                                                            <span className="font-black text-xs text-slate-700 tabular-nums shrink-0 pl-4">
+                                                                {opt.sellPriceExclGst ? formatCurrency(opt.sellPriceExclGst) : <span className="text-slate-300">Incl.</span>}
+                                                            </span>
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                                <span className="font-black text-xs text-slate-700 tabular-nums shrink-0 pl-4">{formatCurrency(opt.sellPriceExclGst || 0)}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </SectionCard>
-                            )}
+                                            ))}
+                                        </div>
+                                    </SectionCard>
+                                );
+                            })()}
 
                             {/* Motor */}
                             {quote.motor && (
@@ -422,6 +449,34 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                                     <span className="font-black text-xs tabular-nums text-slate-700">{formatCurrency(item.sellPriceExclGst || 0)}</span>
                                                 </div>
                                             ))
+                                        ))}
+                                    </div>
+                                </SectionCard>
+                            )}
+
+                            {/* Technical Specifications */}
+                            {quote.specifications?.otherSpecs?.length > 0 && (
+                                <SectionCard icon={Ruler} label="Technical Specifications">
+                                    <div className="divide-y">
+                                        {quote.specifications.otherSpecs.map((spec: any, i: number) => (
+                                            <div key={i} className="flex items-center justify-between px-6 py-3">
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{spec.label}</span>
+                                                <span className="font-black text-sm text-slate-900">{spec.value}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </SectionCard>
+                            )}
+
+                            {/* Standard Features */}
+                            {quote.standardFeatures?.length > 0 && (
+                                <SectionCard icon={ListChecks} label="Standard Features">
+                                    <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {quote.standardFeatures.map((feat: string, i: number) => (
+                                            <div key={i} className="flex items-start gap-2.5">
+                                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                                <span className="text-[11px] font-bold text-slate-600 leading-tight">{feat}</span>
+                                            </div>
                                         ))}
                                     </div>
                                 </SectionCard>
