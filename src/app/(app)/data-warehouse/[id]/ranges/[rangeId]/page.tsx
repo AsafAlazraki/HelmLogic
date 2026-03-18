@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Image from 'next/image';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, doc, deleteDoc, addDoc, writeBatch, updateDoc, getDoc, serverTimestamp, orderBy, setDoc } from 'firebase/firestore';
+import { collection, query, where, doc, deleteDoc, addDoc, writeBatch, updateDoc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Sailboat, Trash2, PlusCircle, ArrowUp, ArrowDown, Pencil, ChevronDown, ImageIcon, CheckCircle2, X, Plus, Settings2, MoreHorizontal, Search, ShieldCheck } from 'lucide-react';
@@ -97,7 +97,7 @@ function HighfieldVariantList({
     const firestore = useFirestore();
     const { toast } = useToast();
     const variantsQuery = useMemoFirebase(() => 
-        query(collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${groupId}/variants`), orderBy('order')),
+        collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${groupId}/variants`),
     [firestore, vendorId, rangeId, groupId]);
     
     const { data: variants, loading } = useCollection<Variant>(variantsQuery);
@@ -407,7 +407,7 @@ export default function RangeDetailsPage() {
     const range = useMemo(() => rangesBySlug?.[0] || { id: rangeSlugOrId } as Range, [rangesBySlug, rangeSlugOrId]);
 
     const groupsQuery = useMemoFirebase(() => 
-        vendor?.id && range?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order')) : null,
+        vendor?.id && range?.id ? collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`) : null,
     [firestore, vendor, range]);
     const { data: modelGroups, loading: groupsLoading } = useCollection<ModelGroup>(groupsQuery);
 

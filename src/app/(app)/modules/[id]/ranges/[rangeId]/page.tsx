@@ -122,7 +122,7 @@ function ModelsGrid({ range, vendor, onModelSelect }: { range: Range; vendor: Ve
     const firestore = useFirestore();
     const modelsQuery = useMemoFirebase(() => {
         if (!vendor?.id || !range?.id) return null;
-        return query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`), orderBy('order'));
+        return collection(firestore, `data-warehouse/${vendor.id}/ranges/${range.id}/models`);
     }, [firestore, vendor.id, range.id]);
     
     const { data: models, loading: modelsLoading } = useCollection<Model>(modelsQuery);
@@ -345,7 +345,7 @@ export default function ModuleDetailsPage() {
         const modelDocPath = `/data-warehouse/${mainVendor.id}/ranges/${selectedRange.id}/models/${selectedModel.id}`;
 
         switch (mainVendor.slug) {
-            case 'highfield': return <HighfieldModelEditor model={selectedModel} isModuleView={true} />;
+            case 'highfield': return <HighfieldModelEditor model={selectedModel} vendorId={mainVendor.id} rangeId={selectedRange.id} isModuleView={true} />;
             case 'jeanneau': return <JeanneauModelEditor model={selectedModel} isModuleView={true} />;
             case 'stacer': return <StacerModelEditor model={selectedModel} isModuleView={true} />;
             case 'stabicraft': return <StabicraftModelEditor model={selectedModel} isModuleView={true} />;
@@ -373,7 +373,13 @@ export default function ModuleDetailsPage() {
                 <TabsContent value="configuration">
                    <Card>
                          <CardHeader>
-                            <CardTitle>Module Configuration</CardTitle>
+                            <CardTitle>
+                                {selectedModel && selectedRange
+                                    ? <span>{selectedRange.name} <span className="text-muted-foreground font-normal">›</span> {selectedModel.name}</span>
+                                    : selectedRange
+                                    ? selectedRange.name
+                                    : 'Module Configuration'}
+                            </CardTitle>
                             {mainVendor && <ModuleBreadcrumbs module={moduleData} range={selectedRange} model={selectedModel} onBreadcrumbClick={handleBreadcrumbClick} />}
                         </CardHeader>
                         <CardContent>
