@@ -81,12 +81,23 @@ users/{userId}/quotes/{quoteId}
 ```
 
 ### Highfield Boat Structure
-- **Vendor**: Highfield Boats (slug: `highfield`, vendorType: `Boat Brand`, currency: `USD`)
+- **Vendor ID**: `LafOLpLb6QIFE856TiD4` (slug: `highfield`, vendorType: `Boat Brand`, currency: `USD`)
+- **Range IDs** (under vendor `LafOLpLb6QIFE856TiD4`):
+  - Classic: `qo7IePnRzJxjrYyLWhTn` | Roll-Up: `EqcKQ51svI1I2Q5poFdl` | Ultra-Light: `QsGZuVwutEr5yyMkp97j`
+  - Sport: `nQ2LE50z9Tbf2uss0Ote` | Adventure: `sEzdrM2fZsrOKA3ACrJp` | Patrol: `vfXxDuMpChteKncb7LnG` | Coaster: `coaster`
+- **Module ID**: `M1Yf3R9igpJDxJnOVr6f` (Highfield Boats module, linked to vendor `LafOLpLb6QIFE856TiD4`)
+- **Northside Marine org**: `AcFZVEFA5UDJG2hyetWT`
 - **Range** = model series/code prefix (e.g., `CL` = Classic, `SP` = Sport, `RU` = Roll-Up, `AL` = Adventure, `PA` = Patrol)
 - **Model** = specific boat (e.g., `CL260`) — holds specs, optional features, trailer config, registration costs
 - **Variant** = SKU (e.g., CL260-GREY-HYP) — one per material × color combo, each has `sellPriceExclGst`
 - Optional features with `applicableVariantIds` restrict which SKUs can use a given feature
 - Motor compatibility driven by `specifications.motorConfigurations[0].engines[0].minHp/maxHp` + `steeringType`
+- Model documents do NOT have an `order` field — do NOT use `orderBy('order')` on model/variant queries; use `collection()` without ordering instead
+
+### Seed Scripts
+- `scripts/seed-highfield.py` — original script (writes to wrong vendor path `data-warehouse/highfield`, do not use)
+- `scripts/reseed-correct-vendor.py` — correct script targeting vendor `LafOLpLb6QIFE856TiD4`
+- Data files: `/tmp/highfield_structured.json`, `/tmp/highfield_equipment_map.json`
 
 ### Pricing Rules
 - All prices stored as `sellPriceExclGst` (exclusive of GST)
@@ -97,3 +108,9 @@ users/{userId}/quotes/{quoteId}
 ### Key Branch
 - Development branch: `claude/app-overview-wKiZ1`
 - Always push to this branch
+
+### Known Lessons
+- **Verify data is actually visible before telling user it's there** — always query Firestore to confirm docs exist at the correct path
+- **`orderBy('field')` in Firestore silently excludes docs without that field** — seeded docs often don't have `order`; use unordered collection queries
+- **Vendor ID matters**: app reads from `data-warehouse/LafOLpLb6QIFE856TiD4`, not `data-warehouse/highfield`
+- **Module page passes vendorId + rangeId to model editors** — always pass both props to `HighfieldModelEditor` (and others)

@@ -6,7 +6,7 @@ import { z } from 'zod';
 import Image from 'next/image';
 import { useStorage, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, query, where, getDocs, writeBatch, doc, orderBy, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -251,7 +251,7 @@ function OptionalFeatureItem({ index, remove, categories, variants, allFeatures 
 
 export function VariantsSection({ model, vendorId, rangeId }: { model: any, vendorId: string, rangeId: string }) {
     const firestore = useFirestore();
-    const variantsQuery = useMemoFirebase(() => query(collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')), [firestore, vendorId, rangeId, model.id]);
+    const variantsQuery = useMemoFirebase(() => vendorId && rangeId ? collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`) : null, [firestore, vendorId, rangeId, model.id]);
     const { data: variants, isLoading: variantsLoading } = useCollection<any>(variantsQuery);
 
     if (variantsLoading) return <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -428,7 +428,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
     const [newCategoryName, setNewCategoryName] = useState('');
     const firestore = useFirestore();
 
-    const variantsQuery = useMemoFirebase(() => query(collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`), orderBy('order')), [firestore, vendorId, rangeId, model.id]);
+    const variantsQuery = useMemoFirebase(() => vendorId && rangeId ? collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`) : null, [firestore, vendorId, rangeId, model.id]);
     const { data: variants = [] } = useCollection<any>(variantsQuery);
 
     const categorizedFeatures = useMemo(() => {
