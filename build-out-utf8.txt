@@ -1,0 +1,87 @@
+﻿   Γû▓ Next.js 15.5.9
+
+   Creating an optimized production build ...
+ Γ£ô Compiled successfully in 19.4s
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+node.exe : [Error: 
+Failed to collect 
+configuration for 
+/route-optimization] {
+At C:\Users\AsafA\HelmL
+ogic\node_modules\.bin\
+next.ps1:24 char:5
++     & "node$exe"  "$b
+asedir/../next/dist/bin
+/next" $args
++     ~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: ([Error: Faile   
+ d ...optimization]    
+ {:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+  [cause]: TypeError: 
+Cannot read properties 
+of undefined (reading 
+'prototype')
+      at 75459 (C:\User
+s\AsafA\HelmLogic\.next
+\server\app\(app)\route
+-optimization\page.js:7
+5:41029)
+      at c (C:\Users\As
+afA\HelmLogic\.next\ser
+ver\webpack-runtime.js:
+1:143)
+      at 43667 (C:\User
+s\AsafA\HelmLogic\.next
+\server\app\(app)\route
+-optimization\page.js:3
+4:121772)
+      at c (C:\Users\As
+afA\HelmLogic\.next\ser
+ver\webpack-runtime.js:
+1:143)
+      at 43481 (C:\User
+s\AsafA\HelmLogic\.next
+\server\app\(app)\route
+-optimization\page.js:3
+4:112881)
+      at c (C:\Users\As
+afA\HelmLogic\.next\ser
+ver\webpack-runtime.js:
+1:143)
+      at 69929 (C:\User
+s\AsafA\HelmLogic\.next
+\server\app\(app)\route
+-optimization\page.js:7
+3:125721)
+      at c (C:\Users\As
+afA\HelmLogic\.next\ser
+ver\webpack-runtime.js:
+1:143)
+      at 23607 (C:\User
+s\AsafA\HelmLogic\.next
+\server\app\(app)\route
+-optimization\page.js:1
+9:26665)
+      at c (C:\Users\As
+afA\HelmLogic\.next\ser
+ver\webpack-runtime.js:
+1:143)
+}
+
+> Build error occurred
+[Error: Failed to 
+collect page data for 
+/route-optimization] {
+  type: 'Error'
+}

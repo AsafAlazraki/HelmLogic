@@ -248,6 +248,7 @@ export function HighfieldQuoteFlow({
             const name = String(f.name).toUpperCase();
             if (HARDWARE_BLOCKLIST.some(keyword => name.includes(keyword))) return false;
             if (f.applicableVariantIds?.length && !f.applicableVariantIds.includes(activeVariant.id)) return false;
+            if (f.associatedSkus?.length && activeVariant.sku && !f.associatedSkus.includes(activeVariant.sku)) return false;
             if (selectedMaterial === 'PVC' && name.includes('HYP')) return false;
             if (selectedMaterial === 'HYP' && name.includes('PVC')) return false;
             return true;
@@ -449,34 +450,60 @@ export function HighfieldQuoteFlow({
         setSelectedDealerFitIds(isSelected ? selectedDealerFitIds.filter(i => i !== id) : [...selectedDealerFitIds, id]);
     };
 
-    const scrollToTop = () => {
-        const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
-        if (viewport) viewport.scrollTop = 0;
+    const scrollPanelToTop = () => {
+        setTimeout(() => {
+            const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+            if (viewport) viewport.scrollTop = 0;
+        }, 50);
     };
-
-    const nextStep = () => { if (currentStep < STEPS.length) { setCurrentStep(currentStep + 1); scrollToTop(); } };
-    const prevStep = () => { if (currentStep > 1) { setCurrentStep(currentStep - 1); scrollToTop(); } };
+    const nextStep = () => { if (currentStep < STEPS.length) { setCurrentStep(currentStep + 1); scrollPanelToTop(); } };
+    const prevStep = () => { if (currentStep > 1) { setCurrentStep(currentStep - 1); scrollPanelToTop(); } };
 
     // 5. Effects (Carousel Sync & Motor Fetch)
     useEffect(() => {
         if (!api || !activeVariant) return;
-        const variantIdx = carouselSlides.findIndex(s => s.type === 'variant');
-        if (variantIdx !== -1) setTimeout(() => api.scrollTo(variantIdx), 100);
+        const scroll = () => {
+            const variantIdx = carouselSlides.findIndex(s => s.type === 'variant');
+            if (variantIdx !== -1) api.scrollTo(variantIdx);
+        };
+        const timer = setTimeout(scroll, 150);
+        api.on('reInit', scroll);
+        return () => { clearTimeout(timer); api.off('reInit', scroll); };
     }, [activeVariant, api, carouselSlides]);
 
     useEffect(() => {
         if (!api || !selectedMotor) return;
-        const motorIdx = carouselSlides.findIndex(s => s.type === 'motor');
-        if (motorIdx !== -1) setTimeout(() => api.scrollTo(motorIdx), 100);
+        const scroll = () => {
+            const motorIdx = carouselSlides.findIndex(s => s.type === 'motor');
+            if (motorIdx !== -1) api.scrollTo(motorIdx);
+        };
+        const timer = setTimeout(scroll, 150);
+        api.on('reInit', scroll);
+        return () => { clearTimeout(timer); api.off('reInit', scroll); };
     }, [selectedMotor, api, carouselSlides]);
 
     useEffect(() => {
         if (!api || !selectedTrailerId) return;
-        const trailerIdx = carouselSlides.findIndex(s => s.type === 'trailer');
-        if (trailerIdx !== -1) setTimeout(() => api.scrollTo(trailerIdx), 100);
+        const scroll = () => {
+            const trailerIdx = carouselSlides.findIndex(s => s.type === 'trailer');
+            if (trailerIdx !== -1) api.scrollTo(trailerIdx);
+        };
+        const timer = setTimeout(scroll, 150);
+        api.on('reInit', scroll);
+        return () => { clearTimeout(timer); api.off('reInit', scroll); };
     }, [selectedTrailerId, api, carouselSlides]);
 
     useEffect(() => {
+        const parseHpRating = (rating?: any): { count: number, hp: number } | null => {
+            if (!rating) return null;
+            const str = String(rating).toLowerCase().trim();
+            const twinMatch = str.match(/^(\d+)\s*x\s*(\d+)/);
+            if (twinMatch) return { count: parseInt(twinMatch[1]), hp: parseInt(twinMatch[2]) };
+            const singleMatch = str.match(/^(\d+)/);
+            if (singleMatch) return { count: 1, hp: parseInt(singleMatch[1]) };
+            return null;
+        };
+
         const fetchMotors = async () => {
             if (currentStep !== 3) return;
             setMotorsLoading(true);
@@ -495,17 +522,42 @@ export function HighfieldQuoteFlow({
                         const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`));
                         const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
                         
-                        const motorConfig = model.specifications?.motorConfigurations?.[0]?.engines?.[0];
-                        const maxHp: number | undefined = motorConfig?.maxHp;
-                        const minHp: number = motorConfig?.minHp ?? 0;
+                        const motorConfigs = model.specifications?.motorConfigurations || [];
+                        if (motorConfigs.length === 0) { setMotors([]); setMotorsLoading(false); return; }
+
+                        const config = motorConfigs[0];
+                        const spec = config.engines?.[0];
+                        const minHp = Number(spec?.minHp || 0);
+                        const maxHp = Number(spec?.maxHp || 0);
+                        const configType = config.type || 'Single';
+                        const engineCountMap: Record<string, number> = { 'Single': 1, 'Twin': 2, 'Triple': 3, 'Quad': 4 };
+                        const targetEngineCount = engineCountMap[configType] || 1;
+
+                        const overrides = model.motorOverrides?.[configType] || { hiddenIds: [], manualIds: [] };
                         const hasConsole = model.optionalFeatures?.filter((f: any) => f.category === 'Consoles').some((f: any) => selectedOptionIds.includes(f.id));
 
-                        setMotors(allRows.filter(r => {
-                            const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
-                            if (maxHp !== undefined && (hp < minHp || hp > maxHp)) return false;
-                            if (hasConsole) return r.steeringType === 'Forward Control';
-                            return r.steeringType === 'Tiller';
-                        }).map(m => ({ ...m, vendorName: motorVendor.name })));
+                        const manualMotors = allRows.filter(r => overrides.manualIds?.includes(r.id));
+                        
+                        const filtered = allRows.filter(r => {
+                            if (overrides.hiddenIds?.includes(r.id)) return false;
+                            const parsed = parseHpRating(r['HP Rating']);
+                            if (!parsed) return false;
+                            
+                            if (parsed.count !== targetEngineCount) {
+                                return false;
+                            }
+                            
+                            if (maxHp > 0) {
+                                if (parsed.hp < minHp || parsed.hp > maxHp) return false;
+                            } else {
+                                if (parsed.hp < minHp) return false;
+                            }
+                            
+                            return true;
+                        });
+
+                        const allPossible = [...new Map([...filtered, ...manualMotors].map(m => [m.id, m])).values()];
+                        setMotors(allPossible.map(m => ({ ...m, vendorName: motorVendor.name })));
                     }
                 }
             } catch (e) { console.error(e); } finally { setMotorsLoading(false); }
@@ -513,7 +565,15 @@ export function HighfieldQuoteFlow({
         fetchMotors();
     }, [currentStep, firestore, module, model, selectedOptionIds]);
 
-    const getMotorDisplayName = (m: any) => `${m?.vendorName || 'YAMAHA'} - ${m?.['Model Name'] || m?.ModelName || m?.name || m?.Description || m?.model || 'Unnamed'}`;
+    const getMotorDisplayName = (m: any) => {
+        const vendor = (m?.vendorName || 'YAMAHA').toUpperCase();
+        let name = m?.['Model Name'] || m?.ModelName || m?.name || m?.Description || m?.model || 'Unnamed';
+        if (name.toUpperCase().startsWith(vendor)) {
+            name = name.substring(vendor.length).trim();
+            if (name.startsWith('-')) name = name.substring(1).trim();
+        }
+        return `${vendor} - ${name}`;
+    };
 
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
@@ -730,16 +790,34 @@ export function HighfieldQuoteFlow({
                                             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Motor Selection</h3>
                                         </div>
                                         {motorsLoading ? <div className="flex flex-col items-center py-16 gap-3"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Scanning Factory Datasets...</p></div> : (
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                                 {motors.map(m => {
                                                     const mUrl = resolveImageUrl(m);
                                                     const isSelected = selectedMotor?.id === m.id;
+                                                    const displayName = getMotorDisplayName(m);
                                                     return (
-                                                        <button key={m.id} onClick={() => { setSelectedMotor(isSelected ? null : m); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                            <div className="relative h-24 w-full bg-white overflow-hidden shrink-0">{mUrl && <Image src={mUrl} alt="Motor" fill className="object-contain p-1 mix-blend-multiply" unoptimized />}</div>
-                                                            <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
-                                                                <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{getMotorDisplayName(m)}</p>
-                                                                <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-primary")}>{m['HP Rating']} HP • ${(m.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                        <button key={m.id} onClick={() => { setSelectedMotor(isSelected ? null : m); }} className={cn("group relative flex flex-col border-4 rounded-[2rem] overflow-hidden transition-all bg-white shadow-2xl h-full", isSelected ? "border-primary ring-8 ring-primary/10" : "border-transparent hover:border-primary/20")}>
+                                                            <div className="relative aspect-video w-full bg-slate-50 border-b flex items-center justify-center">
+                                                                {mUrl ? (
+                                                                    <Image src={mUrl} alt="Motor" fill className="object-contain p-6 mix-blend-multiply transition-transform group-hover:scale-110" unoptimized />
+                                                                ) : (
+                                                                    <Ship className="h-12 w-12 text-slate-200" />
+                                                                )}
+                                                                <div className="absolute top-4 right-4 group-hover:scale-110 transition-transform">
+                                                                    <div className={cn("h-8 w-8 rounded-full flex items-center justify-center shadow-lg", isSelected ? "bg-primary text-white" : "bg-white text-slate-300 border")}>
+                                                                        <Check className={cn("h-4 w-4", isSelected ? "opacity-100" : "opacity-0")} />
+                                                                    </div>
+                                                                </div>
+                                                                <Badge className="absolute bottom-4 left-4 bg-primary text-white font-black text-[10px] uppercase px-3 py-1 rounded-full shadow-lg">
+                                                                    {m['HP Rating']} HP PERFORMANCE
+                                                                </Badge>
+                                                            </div>
+                                                            <div className="p-6 flex flex-col items-start text-left gap-2 flex-grow bg-white">
+                                                                <p className={cn("text-sm font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{displayName}</p>
+                                                                <div className="flex items-center gap-2 mt-auto">
+                                                                    <p className="font-black text-primary italic text-xl">${(m.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Excl. GST</span>
+                                                                </div>
                                                             </div>
                                                         </button>
                                                     );
@@ -852,36 +930,8 @@ export function HighfieldQuoteFlow({
                                 </div>
                             )}
                             {currentStep === 6 && (
-                                <div className="space-y-6 animate-in fade-in duration-1000 mt-4">
-                                    {/* Hero Build Summary Card */}
-                                    <div className="relative rounded-[2rem] overflow-hidden shadow-2xl min-h-[210px] bg-slate-950">
-                                        {(activeVariant?.imageUrl || model.coverImageUrl) && <Image src={activeVariant?.imageUrl || model.coverImageUrl} alt={model.name} fill className="object-cover opacity-20" unoptimized />}
-                                        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-950/90 to-primary/10" />
-                                        <div className="relative z-10 p-8 min-h-[210px] flex flex-col justify-between">
-                                            <div className="flex items-start justify-between">
-                                                <div>
-                                                    <p className="text-[8px] font-black uppercase tracking-[0.35em] text-primary/80 mb-2">{vendor?.name} • {range?.name}</p>
-                                                    <h2 className="text-4xl font-black uppercase tracking-tighter text-white leading-none">{model?.name}</h2>
-                                                </div>
-                                                <div className="h-10 w-10 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
-                                                    <Ship className="h-5 w-5 text-primary" />
-                                                </div>
-                                            </div>
-                                            <div className="flex items-end justify-between mt-6">
-                                                <div>
-                                                    <p className="text-[8px] font-black uppercase tracking-widest text-white/30 mb-1">Configuration</p>
-                                                    <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">{selectedMaterial} • {activeVariant?.colorName || activeVariant?.name || 'Standard'}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-[8px] font-black uppercase tracking-widest text-white/30 mb-1">Total Package (Excl. GST)</p>
-                                                    <div className="flex items-baseline gap-0.5">
-                                                        <span className="text-primary text-2xl font-black leading-none">$</span>
-                                                        <span className="text-5xl font-black text-white tracking-tighter leading-none">{totalPrice.toLocaleString()}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div className="space-y-8 animate-in fade-in duration-1000 mt-4">
+                                    <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full"><div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /><h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Project Build Summary</h3></div>
                                     <div className="space-y-4">
                                         <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Ship className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Base Vessel</CardTitle></div></CardHeader><CardContent className="p-4">
                                             <div className="flex items-center justify-between">

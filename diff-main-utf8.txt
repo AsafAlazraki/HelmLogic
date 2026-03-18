@@ -1,0 +1,138 @@
+﻿diff --git a/src/components/highfield-quote-flow.tsx b/src/components/highfield-quote-flow.tsx
+index d46e21d..6216611 100644
+--- a/src/components/highfield-quote-flow.tsx
++++ b/src/components/highfield-quote-flow.tsx
+@@ -449,31 +449,60 @@ export function HighfieldQuoteFlow({
+         setSelectedDealerFitIds(isSelected ? selectedDealerFitIds.filter(i => i !== id) : [...selectedDealerFitIds, id]);
+     };
+ 
+-    const nextStep = () => { if (currentStep < STEPS.length) setCurrentStep(currentStep + 1); };
+-    const prevStep = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
++    const scrollPanelToTop = () => {
++        setTimeout(() => {
++            const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
++            if (viewport) viewport.scrollTop = 0;
++        }, 50);
++    };
++    const nextStep = () => { if (currentStep < STEPS.length) { setCurrentStep(currentStep + 1); scrollPanelToTop(); } };
++    const prevStep = () => { if (currentStep > 1) { setCurrentStep(currentStep - 1); scrollPanelToTop(); } };
+ 
+     // 5. Effects (Carousel Sync & Motor Fetch)
+     useEffect(() => {
+-        if (!api) return;
+-        if (activeVariant) {
++        if (!api || !activeVariant) return;
++        const scroll = () => {
+             const variantIdx = carouselSlides.findIndex(s => s.type === 'variant');
+             if (variantIdx !== -1) api.scrollTo(variantIdx);
+-        }
++        };
++        const timer = setTimeout(scroll, 150);
++        api.on('reInit', scroll);
++        return () => { clearTimeout(timer); api.off('reInit', scroll); };
+     }, [activeVariant, api, carouselSlides]);
+ 
+     useEffect(() => {
+         if (!api || !selectedMotor) return;
+-        const motorIdx = carouselSlides.findIndex(s => s.type === 'motor');
+-        if (motorIdx !== -1) api.scrollTo(motorIdx);
++        const scroll = () => {
++            const motorIdx = carouselSlides.findIndex(s => s.type === 'motor');
++            if (motorIdx !== -1) api.scrollTo(motorIdx);
++        };
++        const timer = setTimeout(scroll, 150);
++        api.on('reInit', scroll);
++        return () => { clearTimeout(timer); api.off('reInit', scroll); };
+     }, [selectedMotor, api, carouselSlides]);
+ 
+     useEffect(() => {
+         if (!api || !selectedTrailerId) return;
+-        const trailerIdx = carouselSlides.findIndex(s => s.type === 'trailer');
+-        if (trailerIdx !== -1) api.scrollTo(trailerIdx);
++        const scroll = () => {
++            const trailerIdx = carouselSlides.findIndex(s => s.type === 'trailer');
++            if (trailerIdx !== -1) api.scrollTo(trailerIdx);
++        };
++        const timer = setTimeout(scroll, 150);
++        api.on('reInit', scroll);
++        return () => { clearTimeout(timer); api.off('reInit', scroll); };
+     }, [selectedTrailerId, api, carouselSlides]);
+ 
+     useEffect(() => {
++        const parseHpRating = (rating?: any): { count: number, hp: number } | null => {
++            if (!rating) return null;
++            const str = String(rating).toLowerCase().trim();
++            const twinMatch = str.match(/^(\d+)\s*x\s*(\d+)/);
++            if (twinMatch) return { count: parseInt(twinMatch[1]), hp: parseInt(twinMatch[2]) };
++            const singleMatch = str.match(/^(\d+)/);
++            if (singleMatch) return { count: 1, hp: parseInt(singleMatch[1]) };
++            return null;
++        };
++
+         const fetchMotors = async () => {
+             if (currentStep !== 3) return;
+             setMotorsLoading(true);
+@@ -492,17 +521,54 @@ export function HighfieldQuoteFlow({
+                         const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`));
+                         const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+                         
+-                        const maxHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 999;
+-                        const minHp = model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.minHp || 0;
++                        const motorConfigs = model.specifications?.motorConfigurations || [];
++                        if (motorConfigs.length === 0) { setMotors([]); setMotorsLoading(false); return; }
++
++                        const config = motorConfigs[0];
++                        const spec = config.engines?.[0];
++                        const minHp = Number(spec?.minHp || 0);
++                        const maxHp = Number(spec?.maxHp || 0);
++                        const configType = config.type || 'Single';
++                        const engineCountMap: Record<string, number> = { 'Single': 1, 'Twin': 2, 'Triple': 3, 'Quad': 4 };
++                        const targetEngineCount = engineCountMap[configType] || 1;
++
++                        const overrides = model.motorOverrides?.[configType] || { hiddenIds: [], manualIds: [] };
+                         const hasConsole = model.optionalFeatures?.filter((f: any) => f.category === 'Consoles').some((f: any) => selectedOptionIds.includes(f.id));
+ 
+-                        setMotors(allRows.filter(r => {
+-                            const hp = parseInt(r['HP Rating'] || r.hp || '0') || 0;
+-                            const hpMatch = hp >= minHp && hp <= maxHp;
+-                            if (!hpMatch) return false;
+-                            if (hasConsole) return !r.steeringType || r.steeringType === 'Forward Control';
+-                            return !r.steeringType || r.steeringType === 'Tiller';
+-                        }).map(m => ({ ...m, vendorName: motorVendor.name })));
++                        const filtered = allRows.filter(r => {
++                            if (overrides.hiddenIds?.includes(r.id)) return false;
++                            const parsed = parseHpRating(r['HP Rating']);
++                            if (!parsed) return false;
++                            if (parsed.count !== targetEngineCount) {
++                                console.log('Dropped target engine mismatch', r['HP Rating'], parsed.count, targetEngineCount);
++                                return false;
++                            }
++                            if (maxHp > 0) { 
++                                if (parsed.hp < minHp || parsed.hp > maxHp) {
++                                    console.log('Dropped max/min mismatch', parsed.hp, minHp, maxHp);
++                                    return false; 
++                                }
++                            }
++                            else { 
++                                if (parsed.hp < minHp) {
++                                    console.log('Dropped minHp mismatch', parsed.hp, minHp);
++                                    return false; 
++                                }
++                            }
++                            if (hasConsole && r.steeringType && r.steeringType !== 'Forward Control') {
++                                console.log('Dropped steering type FC', r.steeringType);
++                                return false;
++                            }
++                            if (!hasConsole && r.steeringType && r.steeringType !== 'Tiller') {
++                                console.log('Dropped steering type Tiller', r.steeringType);
++                                return false;
++                            }
++                            return true;
++                        });
++
++                        const manualMotors = allRows.filter(r => overrides.manualIds?.includes(r.id));
++                        const allPossible = [...new Map([...filtered, ...manualMotors].map(m => [m.id, m])).values()];
++                        setMotors(allPossible.map(m => ({ ...m, vendorName: motorVendor.name })));
+                     }
+                 }
+             } catch (e) { console.error(e); } finally { setMotorsLoading(false); }

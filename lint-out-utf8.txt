@@ -1,0 +1,163 @@
+﻿
+> nextn@0.1.0 lint
+> next lint
+
+node.exe : `next 
+lint` is deprecated 
+and will be removed 
+in Next.js 16.
+At line:1 char:1
++ & "C:\Program Files\
+nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (`next lint   
+ ` is ... in Next.    
+js 16.:String) []    
+, RemoteException
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+For new projects, use 
+create-next-app to 
+choose your preferred 
+linter.
+For existing 
+projects, migrate to 
+the ESLint CLI:
+npx 
+@next/codemod@canary n
+ext-lint-to-eslint-cli
+ .
+
+ ΓÜá Installing 
+TypeScript as it was 
+not found while 
+loading 
+"next.config.ts".
+
+Installing devDependencies (npm):
+- typescript
+
+
+added 142 packages, and audited 1027 packages in 16s
+
+107 packages are looking for funding
+  run `npm fund` for details
+
+39 vulnerabilities (24 low, 5 moderate, 9 high, 1 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues possible (including breaking changes), run:
+  npm audit fix --force
+
+Some issues need review, and may require choosing
+a different dependency.
+
+Run `npm audit` for details.
+
+node:internal/modules/
+cjs/loader:1475
+  const err = new 
+Error(message);
+              ^
+
+Error: Cannot find 
+module 'typescript'
+Require stack:
+- C:\Users\AsafA\HelmL
+ogic\node_modules\next
+\dist\build\next-confi
+g-ts\transpile-config.
+js
+- C:\Users\AsafA\HelmL
+ogic\node_modules\next
+\dist\server\config.js
+- C:\Users\AsafA\HelmL
+ogic\node_modules\next
+\dist\cli\next-test.js
+- C:\Users\AsafA\HelmL
+ogic\node_modules\next
+\dist\bin\next
+    at 
+Module.<anonymous> (no
+de:internal/modules/cj
+s/loader:1475:15)
+    at C:\Users\AsafA\
+HelmLogic\node_modules
+\next\dist\server\requ
+ire-hook.js:57:36
+    at 
+wrapResolveFilename (n
+ode:internal/modules/c
+js/loader:1048:27)
+    at resolveForCJSWi
+thHooks (node:internal
+/modules/cjs/loader:10
+93:12)
+    at 
+require.resolve (node:
+internal/modules/helpe
+rs:209:31)
+    at getTsConfig (C:
+\Users\AsafA\HelmLogic
+\node_modules\next\dis
+t\build\next-config-ts
+\transpile-config.js:6
+2:32)
+    at 
+transpileConfig (C:\Us
+ers\AsafA\HelmLogic\no
+de_modules\next\dist\b
+uild\next-config-ts\tr
+anspile-config.js:85:3
+9)
+    at process.process
+TicksAndRejections (no
+de:internal/process/ta
+sk_queues:104:5)
+    at async 
+loadConfig (C:\Users\A
+safA\HelmLogic\node_mo
+dules\next\dist\server
+\config.js:1088:36)
+    at async 
+Module.nextLint (C:\Us
+ers\AsafA\HelmLogic\no
+de_modules\next\dist\c
+li\next-lint.js:56:24)
+ {
+  code: 
+'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\AsafA\
+\HelmLogic\\node_modul
+es\\next\\dist\\build\
+\next-config-ts\\trans
+pile-config.js',
+    'C:\\Users\\AsafA\
+\HelmLogic\\node_modul
+es\\next\\dist\\server
+\\config.js',
+    'C:\\Users\\AsafA\
+\HelmLogic\\node_modul
+es\\next\\dist\\cli\\n
+ext-test.js',
+    'C:\\Users\\AsafA\
+\HelmLogic\\node_modul
+es\\next\\dist\\bin\\n
+ext'
+  ]
+}
+
+Node.js v25.8.1
