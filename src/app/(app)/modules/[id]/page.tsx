@@ -177,13 +177,13 @@ function QuoteInitializationDialog({
     const firestore = useFirestore();
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
 
-    const rangesQuery = useMemoFirebase(() => 
-        vendor?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')) : null, 
+    const rangesQuery = useMemoFirebase(() =>
+        vendor?.id ? collection(firestore, `data-warehouse/${vendor.id}/ranges`) : null,
     [firestore, vendor?.id]);
     const { data: ranges, isLoading: rangesLoading } = useCollection<Range>(rangesQuery);
 
-    const modelsQuery = useMemoFirebase(() => 
-        vendor?.id && selectedRange?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${selectedRange.id}/models`), orderBy('order')) : null, 
+    const modelsQuery = useMemoFirebase(() =>
+        vendor?.id && selectedRange?.id ? collection(firestore, `data-warehouse/${vendor.id}/ranges/${selectedRange.id}/models`) : null,
     [firestore, vendor?.id, selectedRange?.id]);
     const { data: models, isLoading: modelsLoading } = useCollection<Model>(modelsQuery);
 
@@ -701,7 +701,7 @@ export default function ModuleDetailsPage() {
 function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }: { vendor: Vendor; onRangeSelect: (range: Range) => void, canEdit: boolean, selectedRangeId?: string | null, onEdit: (item: any) => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const rangesQuery = useMemoFirebase(() => vendor?.id ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges`), orderBy('order')) : null, [firestore, vendor?.id]);
+    const rangesQuery = useMemoFirebase(() => vendor?.id ? collection(firestore, `data-warehouse/${vendor.id}/ranges`) : null, [firestore, vendor?.id]);
     const { data: ranges, isLoading: rangesLoading } = useCollection<Range>(rangesQuery);
 
     const sensors = useSensors(
@@ -759,7 +759,7 @@ function ModelsGrid({
     selectedModelId?: string | null
 }) {
     const firestore = useFirestore();
-    const modelsQuery = useMemoFirebase(() => vendor?.id && rangeId ? query(collection(firestore, `data-warehouse/${vendor.id}/ranges/${rangeId}/models`), orderBy('order')) : null, [firestore, vendor?.id, rangeId]);
+    const modelsQuery = useMemoFirebase(() => vendor?.id && rangeId ? collection(firestore, `data-warehouse/${vendor.id}/ranges/${rangeId}/models`) : null, [firestore, vendor?.id, rangeId]);
     const { data: models, isLoading: modelsLoading } = useCollection<Model>(modelsQuery);
 
     if (modelsLoading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
