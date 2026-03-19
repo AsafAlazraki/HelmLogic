@@ -7,7 +7,7 @@ import { z } from 'zod';
 import Image from 'next/image';
 import { useStorage, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, setDoc, updateDoc, deleteField } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -284,9 +284,15 @@ function VariantRow({ v, vendorId, rangeId, modelId }: { v: any; vendorId: strin
         }
     };
 
+    const handleImageRemove = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        await updateDoc(doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${modelId}/variants`, v.id), { imageUrl: deleteField() });
+    };
+
     return (
         <div className="flex items-center justify-between p-3 rounded-xl border bg-slate-50 hover:border-primary/20 transition-all group/v text-left">
             <div className="flex items-center gap-3 min-w-0 text-left">
+                <div className="relative shrink-0">
                 <label className="relative h-10 w-10 rounded-lg bg-white border shadow-inner flex items-center justify-center overflow-hidden shrink-0 cursor-pointer group/img hover:border-primary/40 transition-colors">
                     {uploading
                         ? <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -301,6 +307,12 @@ function VariantRow({ v, vendorId, rangeId, modelId }: { v: any; vendorId: strin
                         </div>
                     )}
                 </label>
+                {v.imageUrl && !uploading && (
+                    <button onClick={handleImageRemove} className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover/v:opacity-100 transition-opacity z-10 hover:scale-110">
+                        <X className="h-2.5 w-2.5" />
+                    </button>
+                )}
+                </div>
                 <div className="min-w-0 text-left">
                     <p className="font-black text-[10px] uppercase tracking-tight truncate">{abbreviateVariantName(v.name)}</p>
                     <p className="text-[8px] font-mono font-bold text-primary uppercase mt-0.5">{v.sku || 'NO SKU'}</p>

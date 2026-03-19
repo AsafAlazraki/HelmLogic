@@ -602,7 +602,7 @@ export function HighfieldQuoteFlow({
                                         <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
                                             {slide.type === 'build' ? slide.content : (
                                                 <>
-                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill className={cn("transition-all", (slide.type === 'boat' || slide.type === 'variant' || slide.type === 'gallery') ? "object-cover" : "object-contain p-12")} unoptimized />}
+                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill className={cn("transition-all", (slide.type === 'boat' || slide.type === 'variant' || slide.type === 'gallery') ? "object-cover" : "object-contain p-12")} unoptimized priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
                                                     <Button variant="ghost" size="icon" className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20" onClick={() => setLightboxUrl(slide.url || null)}><Maximize2 className="h-5 w-5" /></Button>
                                                 </>
                                             )}
