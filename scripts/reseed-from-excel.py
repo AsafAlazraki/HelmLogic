@@ -141,6 +141,39 @@ SPECS = {
     "PA700ST":  {"lengthMm": 7000, "beamMm": 2640, "tubeOdMm": 680, "deadrise": 22, "weightKg": 750, "maxLoadKg": 2000, "persons": 12, "maxHp": 400, "minHp": 175, "airChambers": 3, "isoCategory": "B", "shaftType": "Long"},
     "PA760ST":  {"lengthMm": 7600, "beamMm": 2760, "tubeOdMm": 710, "deadrise": 22, "weightKg": 880, "maxLoadKg": 2300, "persons": 14, "maxHp": 500, "minHp": 200, "airChambers": 3, "isoCategory": "B", "shaftType": "Long"},
     "PA860ST":  {"lengthMm": 8600, "beamMm": 2900, "tubeOdMm": 750, "deadrise": 22, "weightKg": 1100, "maxLoadKg": 2800, "persons": 14, "maxHp": 600, "minHp": 250, "airChambers": 3, "isoCategory": "B", "shaftType": "Long"},
+    # ── Roll-Up ───────────────────────────────────────────────────────────────
+    "RU200AL":       {"lengthMm": 1990, "beamMm": 1390, "tubeOdMm": 360, "deadrise": None, "weightKg": 28, "maxLoadKg": 160, "persons": 2, "maxHp": 3.5, "minHp": None, "airChambers": 3, "isoCategory": None, "shaftType": "Short"},
+    "RU200KAM":      {"lengthMm": 1990, "beamMm": 1390, "tubeOdMm": 360, "deadrise": None, "weightKg": 28, "maxLoadKg": 160, "persons": 2, "maxHp": 3.5, "minHp": None, "airChambers": 3, "isoCategory": None, "shaftType": "Short"},
+    "RU230AL":       {"lengthMm": 2300, "beamMm": 1390, "tubeOdMm": None, "deadrise": None, "weightKg": 31, "maxLoadKg": 160, "persons": 2, "maxHp": 4, "minHp": None, "airChambers": 3, "isoCategory": None, "shaftType": "Short"},
+    "RU230KAM":      {"lengthMm": 2300, "beamMm": 1390, "tubeOdMm": None, "deadrise": None, "weightKg": 31, "maxLoadKg": 160, "persons": 2, "maxHp": 4, "minHp": None, "airChambers": 3, "isoCategory": None, "shaftType": "Short"},
+    "RU250AL":       {"lengthMm": 2520, "beamMm": 1580, "tubeOdMm": None, "deadrise": None, "weightKg": 37, "maxLoadKg": 240, "persons": 2, "maxHp": 6, "minHp": None, "airChambers": 3, "isoCategory": None, "shaftType": "Short"},
+    "RU250KAM":      {"lengthMm": 2520, "beamMm": 1580, "tubeOdMm": None, "deadrise": None, "weightKg": 37, "maxLoadKg": 240, "persons": 2, "maxHp": 6, "minHp": None, "airChambers": 3, "isoCategory": None, "shaftType": "Short"},
+    "RU250 Easy Go": {"lengthMm": 2500, "beamMm": 1560, "tubeOdMm": 420, "deadrise": None, "weightKg": 30, "maxLoadKg": 240, "persons": 3, "maxHp": 6, "minHp": None, "airChambers": 3, "isoCategory": None, "shaftType": "Short"},
+    "RU280AL":       {"lengthMm": 2800, "beamMm": 1610, "tubeOdMm": 430, "deadrise": None, "weightKg": 42, "maxLoadKg": 320, "persons": 4, "maxHp": 10, "minHp": None, "airChambers": 3, "isoCategory": None, "shaftType": "Short"},
+    "RU280KAM":      {"lengthMm": 2800, "beamMm": 1610, "tubeOdMm": 430, "deadrise": None, "weightKg": 42, "maxLoadKg": 320, "persons": 4, "maxHp": 10, "minHp": None, "airChambers": 3, "isoCategory": None, "shaftType": "Short"},
+    "RU300 Easy Go": {"lengthMm": 3000, "beamMm": 1560, "tubeOdMm": 420, "deadrise": None, "weightKg": 36, "maxLoadKg": 320, "persons": 4, "maxHp": 15, "minHp": None, "airChambers": 3, "isoCategory": None, "shaftType": "Short"},
+    "RU320AL":       {"lengthMm": 3200, "beamMm": 1610, "tubeOdMm": 430, "deadrise": None, "weightKg": 48, "maxLoadKg": 358, "persons": 5, "maxHp": 15, "minHp": None, "airChambers": 3, "isoCategory": None, "shaftType": "Short"},
+    "RU320KAM":      {"lengthMm": 3200, "beamMm": 1610, "tubeOdMm": 430, "deadrise": None, "weightKg": 48, "maxLoadKg": 358, "persons": 5, "maxHp": 15, "minHp": None, "airChambers": 3, "isoCategory": None, "shaftType": "Short"},
+    # ── Ultra-Light ───────────────────────────────────────────────────────────
+    "UL220":   {"lengthMm": 2200, "beamMm": 1520, "tubeOdMm": 380, "deadrise": 10.5, "weightKg": 30, "maxLoadKg": 240, "persons": 3, "maxHp": 5,  "minHp": None, "airChambers": 3, "isoCategory": "C", "shaftType": "Short"},
+    "UL240":   {"lengthMm": 2400, "beamMm": 1540, "tubeOdMm": 380, "deadrise": 10.5, "weightKg": 33, "maxLoadKg": 240, "persons": 3, "maxHp": 6,  "minHp": None, "airChambers": 3, "isoCategory": "C", "shaftType": "Short"},
+    "UL240LT": {"lengthMm": 2400, "beamMm": 1540, "tubeOdMm": 380, "deadrise": 10.5, "weightKg": 33, "maxLoadKg": 240, "persons": 3, "maxHp": 6,  "minHp": None, "airChambers": 3, "isoCategory": "C", "shaftType": "Long"},
+    "UL260":   {"lengthMm": 2600, "beamMm": 1540, "tubeOdMm": 380, "deadrise": 10.5, "weightKg": 35, "maxLoadKg": 278, "persons": 4, "maxHp": 8,  "minHp": None, "airChambers": 3, "isoCategory": "C", "shaftType": "Short"},
+    "UL260LT": {"lengthMm": 2600, "beamMm": 1540, "tubeOdMm": 380, "deadrise": 10.5, "weightKg": 35, "maxLoadKg": 278, "persons": 4, "maxHp": 8,  "minHp": None, "airChambers": 3, "isoCategory": "C", "shaftType": "Long"},
+    "UL290":   {"lengthMm": 2900, "beamMm": 1540, "tubeOdMm": 380, "deadrise": 15.0, "weightKg": 39, "maxLoadKg": 320, "persons": 4, "maxHp": 15, "minHp": None, "airChambers": 3, "isoCategory": "C", "shaftType": "Short"},
+    "UL290LT": {"lengthMm": 2900, "beamMm": 1540, "tubeOdMm": 380, "deadrise": 15.0, "weightKg": 39, "maxLoadKg": 320, "persons": 4, "maxHp": 15, "minHp": None, "airChambers": 3, "isoCategory": "C", "shaftType": "Long"},
+    "UL310":   {"lengthMm": 3130, "beamMm": 1720, "tubeOdMm": 440, "deadrise": 15.0, "weightKg": 50, "maxLoadKg": 400, "persons": 5, "maxHp": 15, "minHp": None, "airChambers": 3, "isoCategory": "C", "shaftType": "Short"},
+    "UL340":   {"lengthMm": 3370, "beamMm": 1720, "tubeOdMm": 440, "deadrise": 15.0, "weightKg": 53, "maxLoadKg": 438, "persons": 6, "maxHp": 20, "minHp": None, "airChambers": 3, "isoCategory": "C", "shaftType": "Short"},
+    # ── Sport (missing) ───────────────────────────────────────────────────────
+    "SP760ST":           {"lengthMm": 7770, "beamMm": 2950, "tubeOdMm": 580, "deadrise": 26, "weightKg": 1108, "maxLoadKg": 1280, "persons": 16, "maxHp": 300, "minHp": None, "airChambers": 6, "isoCategory": "C", "shaftType": "Long"},
+    "SP760WL(Windlass)": {"lengthMm": 7770, "beamMm": 2950, "tubeOdMm": 580, "deadrise": 26, "weightKg": 1108, "maxLoadKg": 1280, "persons": 16, "maxHp": 300, "minHp": None, "airChambers": 6, "isoCategory": "C", "shaftType": "Long"},
+    "SP700WL(Windlass)": {"lengthMm": 7000, "beamMm": 2600, "tubeOdMm": 680, "deadrise": 22, "weightKg": 650,  "maxLoadKg": 1800, "persons": 10, "maxHp": 350, "minHp": 150,  "airChambers": 3, "isoCategory": "B", "shaftType": "Long"},
+    # ── Adventure ─────────────────────────────────────────────────────────────
+    "ADV7": {"lengthMm": 6980, "beamMm": 2680, "tubeOdMm": 320, "deadrise": 20, "weightKg": 1300, "maxLoadKg": 640, "persons": 8, "maxHp": 300, "minHp": None, "airChambers": 6, "isoCategory": "C", "shaftType": "Long"},
+    # ── Coaster ───────────────────────────────────────────────────────────────
+    "Coaster 540 open": {"lengthMm": 5450, "beamMm": 2510, "tubeOdMm": 520, "deadrise": 24, "weightKg": 488, "maxLoadKg": 960,  "persons": 12, "maxHp": 115, "minHp": None, "airChambers": 6, "isoCategory": "C", "shaftType": "Long"},
+    "Coaster 540 ST":   {"lengthMm": 5450, "beamMm": 2510, "tubeOdMm": 520, "deadrise": 24, "weightKg": 488, "maxLoadKg": 960,  "persons": 12, "maxHp": 115, "minHp": None, "airChambers": 6, "isoCategory": "C", "shaftType": "Long"},
+    "Coaster 600 ST":   {"lengthMm": 6150, "beamMm": 2510, "tubeOdMm": 540, "deadrise": 26, "weightKg": 762, "maxLoadKg": 1200, "persons": 15, "maxHp": 150, "minHp": None, "airChambers": 6, "isoCategory": "C", "shaftType": "Long"},
 }
 # Mirror EW specs from ST for Patrol open/EW variants
 for suffix_from, suffix_to in [("ST", "EW"), ("ST", " open")]:
@@ -156,24 +189,23 @@ def build_specifications(model_code: str) -> dict:
     s = SPECS.get(model_code)
     if not s:
         return {"motorConfigurations": [], "otherSpecs": []}
-    other_specs = [
-        {"key": "Overall Length",  "value": f"{s['lengthMm']} mm"},
-        {"key": "Overall Beam",    "value": f"{s['beamMm']} mm"},
-        {"key": "Tube Diameter",   "value": f"{s['tubeOdMm']} mm"},
-        {"key": "Deadrise",        "value": f"{s['deadrise']}°"},
-        {"key": "Dry Weight",      "value": f"{s['weightKg']} kg"},
-        {"key": "Max Load",        "value": f"{s['maxLoadKg']} kg"},
-        {"key": "Persons",         "value": str(s["persons"])},
-        {"key": "Air Chambers",    "value": str(s["airChambers"])},
-        {"key": "ISO Category",    "value": s.get("isoCategory", "")},
+    raw_specs = [
+        ("Overall Length",  f"{s['lengthMm']} mm"         if s.get("lengthMm")  else None),
+        ("Overall Beam",    f"{s['beamMm']} mm"           if s.get("beamMm")    else None),
+        ("Internal Length", f"{s['internalLengthMm']} mm" if s.get("internalLengthMm") else None),
+        ("Internal Width",  f"{s['internalWidthMm']} mm"  if s.get("internalWidthMm")  else None),
+        ("Tube Diameter",   f"{s['tubeOdMm']} mm"         if s.get("tubeOdMm")  else None),
+        ("Deadrise",        f"{s['deadrise']}°"           if s.get("deadrise")  else None),
+        ("Dry Weight",      f"{s['weightKg']} kg"         if s.get("weightKg")  else None),
+        ("Max Load",        f"{s['maxLoadKg']} kg"        if s.get("maxLoadKg") else None),
+        ("Persons",         str(s["persons"])              if s.get("persons")   else None),
+        ("Air Chambers",    str(s["airChambers"])          if s.get("airChambers") else None),
+        ("ISO Category",    s["isoCategory"]               if s.get("isoCategory") else None),
     ]
-    if s.get("internalLengthMm"):
-        other_specs.insert(2, {"key": "Internal Length", "value": f"{s['internalLengthMm']} mm"})
-    if s.get("internalWidthMm"):
-        other_specs.insert(3, {"key": "Internal Width", "value": f"{s['internalWidthMm']} mm"})
+    other_specs = [{"key": k, "value": v} for k, v in raw_specs if v is not None]
     motor_config = {
         "id": "motor-0",
-        "engines": [{"id": "engine-0", "minHp": s.get("minHp", 0), "maxHp": s.get("maxHp", 0)}],
+        "engines": [{"id": "engine-0", "minHp": s.get("minHp") or 0, "maxHp": s.get("maxHp") or 0}],
         "shaftType": s.get("shaftType", "Short"),
         "maxEngines": 1,
     }
