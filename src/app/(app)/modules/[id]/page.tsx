@@ -65,6 +65,7 @@ import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { HelmLogicLoading } from "@/components/helmlogic-loading";
+import { HighfieldPricingWorkspace } from '@/components/highfield-pricing-workspace';
 
 import {
   DndContext,
@@ -676,6 +677,28 @@ export default function ModuleDetailsPage() {
                             </div>
                         </ScrollArea>
                     </TabsContent>
+
+                    <TabsContent value="stock" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                        <ScrollArea className="h-full">
+                            <div className="p-8 space-y-8">
+                                <div>
+                                    <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">Stock Units</h2>
+                                    <StockList organisation={currentMemberOrg as any} subDealers={[]} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">On Order</h2>
+                                    <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
+                                </div>
+                            </div>
+                        </ScrollArea>
+                    </TabsContent>
+
+                    {(isAdmin || !!userPermissions.can_access_pricing_manager) && mainVendor && currentMemberOrg?.id && (
+                        <TabsContent value="pricing" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
+                            <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
+                        </TabsContent>
+                    )}
+
                 </Tabs>
             </main>
 
@@ -709,13 +732,22 @@ function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }:
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
+    const sortedRanges = useMemo(() =>
+        [...(ranges || [])].sort((a, b) => {
+            if (a.order === undefined && b.order === undefined) return 0;
+            if (a.order === undefined) return 1;
+            if (b.order === undefined) return -1;
+            return a.order - b.order;
+        }),
+    [ranges]);
+
     const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
-        if (!ranges || !over || active.id === over.id) return;
+        if (!sortedRanges.length || !over || active.id === over.id) return;
 
-        const oldIndex = ranges.findIndex(r => r.id === active.id);
-        const newIndex = ranges.findIndex(r => r.id === over.id);
-        const newItems = arrayMove(ranges, oldIndex, newIndex);
+        const oldIndex = sortedRanges.findIndex(r => r.id === active.id);
+        const newIndex = sortedRanges.findIndex(r => r.id === over.id);
+        const newItems = arrayMove(sortedRanges, oldIndex, newIndex);
 
         const batch = writeBatch(firestore);
         newItems.forEach((item, idx) => {
@@ -726,15 +758,15 @@ function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }:
     };
 
     if (rangesLoading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
-    
+
     return (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={ranges?.map(r => r.id) || []} strategy={rectSortingStrategy}>
+            <SortableContext items={sortedRanges.map(r => r.id)} strategy={rectSortingStrategy}>
                 <div className="grid grid-cols-5 gap-6 py-4 px-1">
-                    {ranges?.map(range => (
-                        <SortableRangeCard 
-                            key={range.id} 
-                            range={range} 
+                    {sortedRanges.map(range => (
+                        <SortableRangeCard
+                            key={range.id}
+                            range={range}
                             isSelected={selectedRangeId === range.id}
                             onClick={() => onRangeSelect(range)}
                             onEdit={onEdit}
