@@ -45,22 +45,25 @@ STANDARD_FEATURES = [
 ]
 
 OTHER_SPECS = [
-    {"id": "s-ol",  "label": "Overall Length",   "value": "3800mm / 12'6\""},
-    {"id": "s-ob",  "label": "Overall Beam",      "value": "1700mm / 5'7\""},
-    {"id": "s-il",  "label": "Internal Length",   "value": "2240mm / 7'4\""},
-    {"id": "s-td",  "label": "Tube Diameter",     "value": "505mm / 17\""},
-    {"id": "s-bld", "label": "Bow Locker Depth",  "value": "680mm / 2'2\""},
-    {"id": "s-tw",  "label": "Transom Width",     "value": "1089mm / 3'6\""},
-    {"id": "s-kh",  "label": "Keel Height",       "value": "560mm / 1'10\""},
-    {"id": "s-dr",  "label": "Deadrise",          "value": "15°"},
-    {"id": "s-dw",  "label": "Dry Weight",        "value": "119 kg / 262 lbs"},
-    {"id": "s-mp",  "label": "Max Payload",       "value": "637 kg / 1404 lbs"},
-    {"id": "s-pc",  "label": "Persons Capacity",  "value": "7"},
-    {"id": "s-mhp", "label": "Max Power",         "value": "30 HP / 22.38 kW"},
-    {"id": "s-rhp", "label": "Recommended Power", "value": "25 HP long shaft"},
-    {"id": "s-ac",  "label": "Air Chambers",      "value": "3"},
-    {"id": "s-sh",  "label": "Shaft Type",        "value": "Short shaft 440mm / 17\""},
-    {"id": "s-hull","label": "Hull Material",     "value": "5-series marine grade aluminium alloy"},
+    {"id": "s-ol",  "label": "Overall Length",        "value": "3800mm / 12'6\""},
+    {"id": "s-ob",  "label": "Overall Beam",           "value": "1700mm / 5'7\""},
+    {"id": "s-il",  "label": "Internal Length",        "value": "2870mm / 9'5\""},
+    {"id": "s-iw",  "label": "Internal Width",         "value": "790mm / 2'7\""},
+    {"id": "s-bh",  "label": "Bow Height",             "value": "810mm / 2'7\""},
+    {"id": "s-sh2", "label": "Stern Height",           "value": "505mm / 1'7\""},
+    {"id": "s-td",  "label": "Tube Diameter",          "value": "440mm / 17\""},
+    {"id": "s-bld", "label": "Bow Locker Depth",       "value": "680mm / 2'2\""},
+    {"id": "s-tw",  "label": "Transom Width",          "value": "1089mm / 3'6\""},
+    {"id": "s-kh",  "label": "Keel Height",            "value": "560mm / 1'10\""},
+    {"id": "s-dr",  "label": "Deadrise",               "value": "15°"},
+    {"id": "s-dw",  "label": "Dry Weight",             "value": "119 kg / 262 lbs"},
+    {"id": "s-mp",  "label": "Max Payload",            "value": "637 kg / 1404 lbs"},
+    {"id": "s-pc",  "label": "Persons Capacity",       "value": "7"},
+    {"id": "s-mhp", "label": "Max Power",              "value": "30 HP / 22.38 kW"},
+    {"id": "s-ac",  "label": "Air Chambers",           "value": "3"},
+    {"id": "s-tp",  "label": "Tube Pressure",          "value": "3.63 PSI / 0.25 BAR"},
+    {"id": "s-cat", "label": "ISO Design Category",    "value": "C"},
+    {"id": "s-hull","label": "Hull Material",          "value": "5-series marine grade aluminium alloy"},
 ]
 
 MOTOR_CONFIGURATIONS = [
@@ -155,7 +158,7 @@ def main():
     if ok:
         print(f"✓ Updated {model_path}")
         print(f"  standardFeatures: {len(STANDARD_FEATURES)} items")
-        print(f"  otherSpecs: {len(OTHER_SPECS)} items")
+        print(f"  otherSpecs: {len(OTHER_SPECS)} items (corrected: 440mm tube, 2870mm internal)")
         print(f"  motorConfigurations: {len(MOTOR_CONFIGURATIONS)} configuration(s)")
     else:
         print(f"✗ Failed to update {model_path}")
