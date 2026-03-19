@@ -352,7 +352,11 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
 
                             {/* Factory Options — grouped by category */}
                             {(quote.selectedOptions?.length > 0 || quote.customOptions?.length > 0) && (() => {
-                                const allOptions = [...(quote.selectedOptions || []), ...(quote.customOptions || [])];
+                                // Exclude isStandard options — they're pre-selected baselines shown in Standard Features
+                                const allOptions = [
+                                    ...(quote.selectedOptions || []).filter((o: any) => !o.isStandard),
+                                    ...(quote.customOptions || []),
+                                ];
                                 const groups = allOptions.reduce((acc: Record<string, any[]>, opt: any) => {
                                     const cat = opt.category || 'General Options';
                                     if (!acc[cat]) acc[cat] = [];

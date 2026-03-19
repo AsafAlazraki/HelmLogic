@@ -7,7 +7,7 @@ import { z } from 'zod';
 import Image from 'next/image';
 import { useStorage, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -254,6 +254,65 @@ function OptionalFeatureItem({ index, remove, categories, variants, allFeatures 
     );
 }
 
+function abbreviateColorToken(color: string): string {
+    return color.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase();
+}
+
+function abbreviateVariantName(name: string): string {
+    const sepIdx = name.indexOf(' - ');
+    if (sepIdx === -1) return name;
+    const modelPart = name.slice(0, sepIdx);
+    const colorPart = name.slice(sepIdx + 3);
+    const abbrev = colorPart.split(' / ').map(c => abbreviateColorToken(c)).join('/');
+    return `${modelPart} — ${abbrev}`;
+}
+
+function VariantRow({ v, vendorId, rangeId, modelId }: { v: any; vendorId: string; rangeId: string; modelId: string }) {
+    const firestore = useFirestore();
+    const storage = useStorage();
+    const [uploading, setUploading] = useState(false);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !storage) return;
+        setUploading(true);
+        try {
+            const url = await uploadFileToStorage(storage, file, `variants/${v.id}/render-${Date.now()}`);
+            await updateDoc(doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${modelId}/variants`, v.id), { imageUrl: url });
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    return (
+        <div className="flex items-center justify-between p-3 rounded-xl border bg-slate-50 hover:border-primary/20 transition-all group/v text-left">
+            <div className="flex items-center gap-3 min-w-0 text-left">
+                <label className="relative h-10 w-10 rounded-lg bg-white border shadow-inner flex items-center justify-center overflow-hidden shrink-0 cursor-pointer group/img hover:border-primary/40 transition-colors">
+                    {uploading
+                        ? <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        : v.imageUrl
+                            ? <Image src={v.imageUrl} alt={v.name} fill className="object-contain p-1" unoptimized />
+                            : <Ship className="h-5 w-5 text-slate-200 group-hover/img:text-primary/30 transition-colors" />
+                    }
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
+                    {v.imageUrl && !uploading && (
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                            <Upload className="h-3 w-3 text-white" />
+                        </div>
+                    )}
+                </label>
+                <div className="min-w-0 text-left">
+                    <p className="font-black text-[10px] uppercase tracking-tight truncate">{abbreviateVariantName(v.name)}</p>
+                    <p className="text-[8px] font-mono font-bold text-primary uppercase mt-0.5">{v.sku || 'NO SKU'}</p>
+                </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+                <Badge variant="outline" className="font-black text-[7px] uppercase tracking-widest h-4 px-1.5">{v.material}</Badge>
+            </div>
+        </div>
+    );
+}
+
 export function VariantsSection({ model, vendorId, rangeId }: { model: any, vendorId: string, rangeId: string }) {
     const firestore = useFirestore();
     const variantsQuery = useMemoFirebase(() => vendorId && rangeId ? collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${model.id}/variants`) : null, [firestore, vendorId, rangeId, model.id]);
@@ -269,15 +328,7 @@ export function VariantsSection({ model, vendorId, rangeId }: { model: any, vend
                     {variants && variants.length > 0 ? (
                         <div className="grid gap-2 text-left">
                             {variants.map((v) => (
-                                <div key={v.id} className="flex items-center justify-between p-3 rounded-xl border bg-slate-50 hover:border-primary/20 transition-all group/v text-left">
-                                    <div className="flex items-center gap-3 min-w-0 text-left">
-                                        <div className="h-10 w-10 relative rounded-lg bg-white border shadow-inner flex items-center justify-center overflow-hidden shrink-0">
-                                            {v.imageUrl ? <Image src={v.imageUrl} alt={v.name} fill className="object-contain p-1" unoptimized /> : <Ship className="h-5 w-5 text-slate-200" />}
-                                        </div>
-                                        <div className="min-w-0 text-left"><p className="font-black text-[10px] uppercase tracking-tight truncate">{v.name}</p><p className="text-[8px] font-mono font-bold text-primary uppercase mt-0.5">{v.sku || 'NO SKU'}</p></div>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0"><Badge variant="outline" className="font-black text-[7px] uppercase tracking-widest h-4 px-1.5">{v.material}</Badge></div>
-                                </div>
+                                <VariantRow key={v.id} v={v} vendorId={vendorId} rangeId={rangeId} modelId={model.id} />
                             ))}
                         </div>
                     ) : (<div className="py-8 text-center flex flex-col items-center gap-2 opacity-20 border-2 border-dashed rounded-2xl"><Ship className="h-8 w-8" /><p className="text-[9px] font-black uppercase tracking-widest">No variants defined.</p></div>)}

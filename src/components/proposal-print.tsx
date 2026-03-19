@@ -18,7 +18,7 @@ export function ProposalPrint({ quote, organisation, financials }: ProposalPrint
     const lineItems: { label: string; sub?: string; amount: number }[] = [];
     if (f.boatBasePrice > 0) lineItems.push({ label: `${quote.modelName} — Base Vessel`, sub: [quote.variant?.material, quote.variant?.colorName].filter(Boolean).join(' · '), amount: f.boatBasePrice });
     if (quote.selectedOptions?.length > 0) {
-        quote.selectedOptions.forEach((opt: any) => {
+        quote.selectedOptions.filter((opt: any) => !opt.isStandard).forEach((opt: any) => {
             lineItems.push({ label: opt.name, sub: opt.category, amount: opt.sellPriceExclGst || 0 });
         });
     }
@@ -158,7 +158,10 @@ export function ProposalPrint({ quote, organisation, financials }: ProposalPrint
 
                 {/* Factory Options — grouped by category */}
                 {(quote.selectedOptions?.length > 0 || quote.customOptions?.length > 0) && (() => {
-                    const allOptions = [...(quote.selectedOptions || []), ...(quote.customOptions || [])];
+                    const allOptions = [
+                        ...(quote.selectedOptions || []).filter((o: any) => !o.isStandard),
+                        ...(quote.customOptions || []),
+                    ];
                     const groups = allOptions.reduce((acc: Record<string, any[]>, opt: any) => {
                         const cat = opt.category || 'General Options';
                         if (!acc[cat]) acc[cat] = [];
