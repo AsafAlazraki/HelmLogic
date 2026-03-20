@@ -300,16 +300,33 @@ export function ProposalPrint({ quote, organisation, financials }: ProposalPrint
                                 <p style={{ fontSize: '14px', fontWeight: 900, fontStyle: 'italic', fontVariantNumeric: 'tabular-nums', color: DARK, margin: 0 }}>{formatCurrency(f.motorTotal)}</p>
                             </div>
                         </div>
-                        {quote.motor.accessories?.length > 0 && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #e2e8f0' }}>
-                                {quote.motor.accessories.map((acc: any, i: number) => (
-                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: PRIMARY, flexShrink: 0 }} />
-                                        <span style={{ fontSize: '7px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>{acc.name}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                        {(quote.motor.accessories?.length > 0) && (() => {
+                            const groups: Record<string, any[]> = {};
+                            quote.motor.accessories.forEach((acc: any) => {
+                                const cat = acc.category || 'Accessories';
+                                if (!groups[cat]) groups[cat] = [];
+                                groups[cat].push(acc);
+                            });
+                            return (
+                                <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #e2e8f0' }}>
+                                    {Object.entries(groups).map(([cat, items]) => (
+                                        <div key={cat} style={{ marginBottom: '6px' }}>
+                                            <p style={{ fontSize: '6px', fontWeight: 900, letterSpacing: '0.25em', textTransform: 'uppercase', color: PRIMARY, margin: '0 0 4px' }}>{cat}</p>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
+                                                {(items as any[]).map((acc: any, i: number) => (
+                                                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: PRIMARY, flexShrink: 0 }} />
+                                                        <span style={{ fontSize: '7px', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
+                                                            {acc.name}{acc.sellPriceExclGst ? ` — ${formatCurrency(acc.sellPriceExclGst)}` : ''}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
                     </div>
                 )}
 

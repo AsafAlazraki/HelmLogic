@@ -579,7 +579,14 @@ export function HighfieldQuoteFlow({
             const diff = Math.abs(hp - maxHp);
             return !acc || diff < acc.diff ? { motor: m, diff } : acc;
         }, null);
-        if (best) setSelectedMotor(best.motor);
+        if (best) {
+            setSelectedMotor(best.motor);
+            // Auto-select standard accessories (propeller, rigging included with motor)
+            const standardIds = (best.motor.masterAccessories || [])
+                .filter((a: any) => a.isStandard)
+                .map((a: any) => a.id);
+            if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds);
+        }
     }, [motors]);
 
     const getMotorDisplayName = (m: any) => {

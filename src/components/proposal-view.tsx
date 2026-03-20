@@ -426,7 +426,8 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                             {/* Motor */}
                             {quote.motor && (
                                 <SectionCard icon={Zap} label="Power & Propulsion">
-                                    <div className="p-6">
+                                    <div className="p-6 space-y-4">
+                                        {/* Motor header */}
                                         <div className="flex items-center gap-5">
                                             {quote.motor.imageUrl && (
                                                 <div className="h-20 w-20 relative bg-slate-50 rounded-2xl border-2 p-2 shrink-0">
@@ -434,21 +435,45 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                                 </div>
                                             )}
                                             <div className="flex-1 min-w-0">
-                                                <p className="font-black text-lg text-slate-950 uppercase italic tracking-tighter leading-tight truncate">{quote.motor.name}</p>
-                                                <p className="text-[9px] font-black uppercase text-primary tracking-widest">{quote.motor.brand}</p>
+                                                <p className="font-black text-lg text-slate-950 uppercase italic tracking-tighter leading-tight">{quote.motor.name}</p>
+                                                <p className="text-[9px] font-black uppercase text-primary tracking-widest mt-0.5">{quote.motor.brand}</p>
+                                                {quote.motor.model && quote.motor.model !== quote.motor.name && (
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">{quote.motor.model}</p>
+                                                )}
                                             </div>
                                             <span className="font-black text-lg tabular-nums shrink-0">{formatCurrency(quote.motor.sellPriceExclGst || 0)}</span>
                                         </div>
-                                        {quote.motor.accessories?.length > 0 && (
-                                            <div className="mt-4 pt-4 border-t grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                                {quote.motor.accessories.map((acc: any, i: number) => (
-                                                    <div key={i} className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-xl">
-                                                        <span className="text-[10px] font-black uppercase tracking-wide text-slate-600">{acc.name}</span>
-                                                        <span className="text-[10px] font-black text-slate-700 tabular-nums">{formatCurrency(acc.sellPriceExclGst || 0)}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
+
+                                        {/* Accessories — grouped by category */}
+                                        {(() => {
+                                            const accessories = quote.motor.accessories || [];
+                                            if (accessories.length === 0) return null;
+                                            const groups = accessories.reduce((acc: Record<string, any[]>, a: any) => {
+                                                const cat = a.category || 'Accessories';
+                                                if (!acc[cat]) acc[cat] = [];
+                                                acc[cat].push(a);
+                                                return acc;
+                                            }, {});
+                                            return (
+                                                <div className="pt-3 border-t space-y-3">
+                                                    {Object.entries(groups).map(([cat, items]) => (
+                                                        <div key={cat}>
+                                                            <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1.5">{cat}</p>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                {(items as any[]).map((acc: any, i: number) => (
+                                                                    <div key={i} className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-xl">
+                                                                        <span className="text-[10px] font-black uppercase tracking-wide text-slate-700">{acc.name}</span>
+                                                                        <span className="text-[10px] font-black text-slate-500 tabular-nums">
+                                                                            {acc.sellPriceExclGst ? formatCurrency(acc.sellPriceExclGst) : <span className="text-slate-300">Incl.</span>}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 </SectionCard>
                             )}
