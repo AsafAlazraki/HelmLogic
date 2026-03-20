@@ -29,6 +29,7 @@ import {
     ClipboardList,
     ListChecks,
     Ruler,
+    FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -350,9 +351,36 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                 </div>
                             </SectionCard>
 
+                            {/* Technical Specifications — leads with substance */}
+                            {quote.specifications?.otherSpecs?.length > 0 && (
+                                <SectionCard icon={Ruler} label="Technical Specifications">
+                                    <div className="divide-y">
+                                        {quote.specifications.otherSpecs.map((spec: any, i: number) => (
+                                            <div key={i} className={cn("flex items-center justify-between px-6 py-3", i % 2 === 0 ? "" : "bg-slate-50/40")}>
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{spec.label}</span>
+                                                <span className="font-black text-sm text-slate-900">{spec.value}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </SectionCard>
+                            )}
+
+                            {/* Standard Features */}
+                            {quote.standardFeatures?.length > 0 && (
+                                <SectionCard icon={ListChecks} label="Standard Features">
+                                    <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {quote.standardFeatures.map((feat: string, i: number) => (
+                                            <div key={i} className="flex items-start gap-2.5">
+                                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                                <span className="text-[11px] font-bold text-slate-600 leading-tight">{feat}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </SectionCard>
+                            )}
+
                             {/* Factory Options — grouped by category */}
                             {(quote.selectedOptions?.length > 0 || quote.customOptions?.length > 0) && (() => {
-                                // Exclude isStandard options — they're pre-selected baselines shown in Standard Features
                                 const allOptions = [
                                     ...(quote.selectedOptions || []).filter((o: any) => !o.isStandard),
                                     ...(quote.customOptions || []),
@@ -364,20 +392,16 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     return acc;
                                 }, {});
                                 const groupEntries = Object.entries(groups);
+                                if (groupEntries.length === 0) return null;
                                 return (
                                     <SectionCard icon={Layers} label="Factory Options">
                                         <div>
                                             {groupEntries.map(([cat, opts], gi) => (
                                                 <div key={cat}>
-                                                    {/* Category header */}
-                                                    <div className={cn(
-                                                        "px-6 py-2.5 bg-slate-50/70 flex items-center gap-2",
-                                                        gi > 0 ? "border-t" : ""
-                                                    )}>
+                                                    <div className={cn("px-6 py-2.5 bg-slate-50/70 flex items-center gap-2", gi > 0 ? "border-t" : "")}>
                                                         <span className="text-[9px] font-black uppercase tracking-[0.3em] text-primary">{cat}</span>
                                                         <span className="text-[8px] font-black text-slate-400">{opts.length}</span>
                                                     </div>
-                                                    {/* Items in this category */}
                                                     {opts.map((opt: any, i: number) => (
                                                         <div key={opt.id || i} className="flex items-center justify-between px-6 py-3.5 border-t border-slate-50 hover:bg-slate-50/40 transition-colors">
                                                             <div className="flex items-center gap-3 min-w-0">
@@ -432,12 +456,25 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                             {/* Trailer */}
                             {quote.trailer && (
                                 <SectionCard icon={Truck} label="Trailer Package">
-                                    <div className="p-6 flex items-center justify-between">
-                                        <div>
-                                            <p className="font-black text-sm text-slate-950 uppercase italic tracking-tighter">{quote.trailer.name}</p>
-                                            {quote.trailer.description && <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{quote.trailer.description}</p>}
+                                    <div className="p-6 space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="font-black text-sm text-slate-950 uppercase italic tracking-tighter">{quote.trailer.name}</p>
+                                                {quote.trailer.description && <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{quote.trailer.description}</p>}
+                                            </div>
+                                            <span className="font-black text-sm tabular-nums">{formatCurrency(quote.trailer.sellPriceExclGst || 0)}</span>
                                         </div>
-                                        <span className="font-black text-sm tabular-nums">{formatCurrency(quote.trailer.sellPriceExclGst || 0)}</span>
+                                        {quote.trailer.options?.length > 0 && (
+                                            <div className="pt-3 border-t space-y-1.5">
+                                                <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400 mb-2">Trailer Options</p>
+                                                {quote.trailer.options.map((opt: any, i: number) => (
+                                                    <div key={i} className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-xl">
+                                                        <span className="text-[10px] font-black uppercase tracking-wide text-slate-600">{opt.name}</span>
+                                                        <span className="text-[10px] font-black text-slate-700 tabular-nums">{formatCurrency(opt.sellPriceExclGst || 0)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </SectionCard>
                             )}
@@ -458,30 +495,48 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                 </SectionCard>
                             )}
 
-                            {/* Technical Specifications */}
-                            {quote.specifications?.otherSpecs?.length > 0 && (
-                                <SectionCard icon={Ruler} label="Technical Specifications">
+                            {/* Registration */}
+                            {quote.registration && (
+                                quote.registration.boatRego || quote.registration.sticker || quote.registration.tenderTo || quote.registration.trailerRego
+                            ) && (
+                                <SectionCard icon={FileText} label="Registration & Compliance">
                                     <div className="divide-y">
-                                        {quote.specifications.otherSpecs.map((spec: any, i: number) => (
-                                            <div key={i} className="flex items-center justify-between px-6 py-3">
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{spec.label}</span>
-                                                <span className="font-black text-sm text-slate-900">{spec.value}</span>
+                                        {quote.registration.boatRego && (
+                                            <div className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50/40 transition-colors">
+                                                <div>
+                                                    <p className="text-sm font-black uppercase tracking-tight text-slate-900">Boat Registration</p>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">12 Month Registration</p>
+                                                </div>
+                                                <span className="font-black text-sm tabular-nums">{formatCurrency(quote.registration.boatRegoPrice || 0)}</span>
                                             </div>
-                                        ))}
-                                    </div>
-                                </SectionCard>
-                            )}
-
-                            {/* Standard Features */}
-                            {quote.standardFeatures?.length > 0 && (
-                                <SectionCard icon={ListChecks} label="Standard Features">
-                                    <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        {quote.standardFeatures.map((feat: string, i: number) => (
-                                            <div key={i} className="flex items-start gap-2.5">
-                                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                                                <span className="text-[11px] font-bold text-slate-600 leading-tight">{feat}</span>
+                                        )}
+                                        {quote.registration.sticker && (
+                                            <div className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50/40 transition-colors">
+                                                <div>
+                                                    <p className="text-sm font-black uppercase tracking-tight text-slate-900">Boat Sticker</p>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Registration Sticker</p>
+                                                </div>
+                                                <span className="font-black text-sm tabular-nums">{formatCurrency(quote.registration.stickerPrice || 0)}</span>
                                             </div>
-                                        ))}
+                                        )}
+                                        {quote.registration.tenderTo && (
+                                            <div className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50/40 transition-colors">
+                                                <div>
+                                                    <p className="text-sm font-black uppercase tracking-tight text-slate-900">Tender-To Sticker</p>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Vessel Tender Registration</p>
+                                                </div>
+                                                <span className="font-black text-sm tabular-nums">{formatCurrency(quote.registration.tenderToPrice || 0)}</span>
+                                            </div>
+                                        )}
+                                        {quote.registration.trailerRego && (
+                                            <div className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50/40 transition-colors">
+                                                <div>
+                                                    <p className="text-sm font-black uppercase tracking-tight text-slate-900">Trailer Registration</p>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">12 Month Registration</p>
+                                                </div>
+                                                <span className="font-black text-sm tabular-nums">{formatCurrency(quote.registration.trailerRegoPrice || 0)}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </SectionCard>
                             )}
