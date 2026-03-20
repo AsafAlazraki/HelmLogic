@@ -259,7 +259,7 @@ function abbreviateColorToken(color: string): string {
 }
 
 function abbreviateVariantName(name: string): string {
-    const sepIdx = name.indexOf(' - ');
+    const sepIdx = name.indexOf(' — ');
     if (sepIdx === -1) return name;
     const modelPart = name.slice(0, sepIdx);
     const colorPart = name.slice(sepIdx + 3);
@@ -314,7 +314,7 @@ function VariantRow({ v, vendorId, rangeId, modelId }: { v: any; vendorId: strin
                 )}
                 </div>
                 <div className="min-w-0 text-left">
-                    <p className="font-black text-[10px] uppercase tracking-tight truncate">{abbreviateVariantName(v.name)}</p>
+                    <p className="font-black text-[10px] uppercase tracking-tight truncate">{v.displayName || abbreviateVariantName(v.name)}</p>
                     <p className="text-[8px] font-mono font-bold text-primary uppercase mt-0.5">{v.sku || 'NO SKU'}</p>
                 </div>
             </div>

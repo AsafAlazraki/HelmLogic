@@ -565,6 +565,23 @@ export function HighfieldQuoteFlow({
         fetchMotors();
     }, [currentStep, firestore, module, model, selectedOptionIds]);
 
+    // Auto-select the motor closest to maxHp when motors first load
+    useEffect(() => {
+        if (motors.length === 0 || selectedMotor) return;
+        const maxHp = Number(model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 0);
+        const parseHp = (rating?: any): number => {
+            if (!rating) return 0;
+            const m = String(rating).match(/(\d+(?:\.\d+)?)\s*hp/i);
+            return m ? parseFloat(m[1]) : 0;
+        };
+        const best = motors.reduce<{ motor: any; diff: number } | null>((acc, m) => {
+            const hp = parseHp(m['HP Rating']);
+            const diff = Math.abs(hp - maxHp);
+            return !acc || diff < acc.diff ? { motor: m, diff } : acc;
+        }, null);
+        if (best) setSelectedMotor(best.motor);
+    }, [motors]);
+
     const getMotorDisplayName = (m: any) => {
         const vendor = (m?.vendorName || 'YAMAHA').toUpperCase();
         let name = m?.['Model Name'] || m?.ModelName || m?.name || m?.Description || m?.model || 'Unnamed';

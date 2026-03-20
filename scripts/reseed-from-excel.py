@@ -25,7 +25,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Allow importing parse_excel_data from same directory
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from parse_excel_data import load_all
+from parse_excel_data import load_all, COLOR_PARTS
 
 # ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -202,7 +202,7 @@ def build_specifications(model_code: str) -> dict:
         ("Air Chambers",    str(s["airChambers"])          if s.get("airChambers") else None),
         ("ISO Category",    s["isoCategory"]               if s.get("isoCategory") else None),
     ]
-    other_specs = [{"key": k, "value": v} for k, v in raw_specs if v is not None]
+    other_specs = [{"label": k, "value": v} for k, v in raw_specs if v is not None]
     motor_config = {
         "id": "motor-0",
         "engines": [{"id": "engine-0", "minHp": s.get("minHp") or 0, "maxHp": s.get("maxHp") or 0}],
@@ -397,6 +397,16 @@ def main():
                 for f in data["optionalFeatures"]
             ]
 
+            # Compute applicableVariantIds for color-filtered console/seat features
+            for feat in opt_features:
+                color_filter = feat.get("colorFilter")
+                if color_filter:
+                    filter_parts = set(color_filter.split("-"))
+                    feat["applicableVariantIds"] = [
+                        v["sku"] for v in variants
+                        if v.get("colorCode") and filter_parts.issubset(set(v["colorCode"].split("-")))
+                    ]
+
             slug = model_to_slug(model_code)
             display_name = DISPLAY_NAMES.get(model_code, model_code)
             specs = build_specifications(model_code)
@@ -430,11 +440,16 @@ def main():
 
             for v in variants:
                 sku = v["sku"]
+                color_code = v.get("colorCode", "")
+                first_part = color_code.split("-")[0] if color_code else ""
+                color_word = COLOR_PARTS.get(first_part, first_part)
+                variant_display_name = f"{model_code} {color_word}" if color_word else model_code
                 variant_doc = {
                     "sku":               sku,
                     "name":              f"{display_name} — {v['colorName']}" if v.get("colorName") else display_name,
+                    "displayName":       variant_display_name,
                     "material":          v.get("material", ""),
-                    "colorCode":         v.get("colorCode", ""),
+                    "colorCode":         color_code,
                     "colorName":         v.get("colorName", ""),
                     "cost":              v.get("cost"),
                     "sellPriceExclGst":  v.get("sellPriceExclGst"),

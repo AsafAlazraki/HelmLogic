@@ -153,34 +153,73 @@ def build_optional_features(
     def add_section(text: str, forced_category: str | None = None):
         for item in parse_bullet_items(text):
             name = item["name"]
-            if not name or name.lower() in ("no seat", "tb5", ""):
-                # "No seat" is a valid $0 option
-                if name.lower() == "no seat":
-                    feat_id = "feat-noseat"
-                    if feat_id not in seen_names:
-                        seen_names.add(feat_id)
-                        features.append({
-                            "id": feat_id,
-                            "name": "No Seat",
-                            "category": "Seats",
-                            "cost": 0.0,
-                            "sellPriceExclGst": 0.0,
-                            "isStandard": False,
-                            "applicableVariantIds": [],
-                        })
+            if not name:
+                continue
+
+            if name.lower() in ("tb5", ""):
+                continue
+
+            # "No seat" is a valid $0 option
+            if name.lower() == "no seat":
+                feat_id = "feat-noseat"
+                if feat_id not in seen_names:
+                    seen_names.add(feat_id)
+                    features.append({
+                        "id": feat_id,
+                        "name": "No Seat",
+                        "category": "Seats",
+                        "cost": 0.0,
+                        "sellPriceExclGst": 0.0,
+                        "isStandard": False,
+                        "applicableVariantIds": [],
+                    })
                 continue
 
             key = normalize_name(name)
+            price = item["price"]
+
+            # Look up all matching equipment items (may include multiple color variants)
+            hits = equip_by_name.get(key, [])
+            if not hits:
+                for item_norm, item_list in equip_by_name.items():
+                    if key in item_norm or item_norm in key:
+                        hits = item_list
+                        break
+
+            cat = forced_category or (hits[0]["category"] if hits else "Accessories")
+
+            # For Consoles/Seats: expand into one feature per color variant
+            if cat in ("Consoles", "Seats") and hits:
+                colored_hits = [h for h in hits if h.get("color")]
+                if colored_hits:
+                    for h in colored_hits:
+                        color = h["color"]
+                        uid = f"{key}|{color}"
+                        if uid in seen_names:
+                            continue
+                        seen_names.add(uid)
+                        color_label = " / ".join(COLOR_PARTS.get(p, p) for p in color.split("-"))
+                        safe_color = re.sub(r'[^a-z0-9]', '', color.lower())
+                        feat_id = f"feat-{re.sub(r'[^a-z0-9]', '', key)[:20]}-{safe_color}"
+                        features.append({
+                            "id": feat_id,
+                            "name": f"{name} ({color_label})",
+                            "category": cat,
+                            "code": h["sku"],
+                            "colorFilter": color,
+                            "cost": price,
+                            "sellPriceExclGst": price,
+                            "isStandard": False,
+                            "applicableVariantIds": [],
+                        })
+                    continue  # Skip generic single-feature creation below
+
+            # Single feature (non-colored or other categories)
             if key in seen_names:
                 continue
             seen_names.add(key)
 
-            sku, cat = lookup_sku(name, equip_by_name)
-            if forced_category:
-                cat = forced_category
-
-            price = item["price"]
-
+            sku = hits[0]["sku"] if hits else None
             feat_id = f"feat-{re.sub(r'[^a-z0-9]', '', key)[:30]}"
             feat = {
                 "id": feat_id,
@@ -192,7 +231,6 @@ def build_optional_features(
                 "isStandard": False,
                 "applicableVariantIds": [],
             }
-            # Remove None code
             if not sku:
                 feat.pop("code")
             features.append(feat)
@@ -212,8 +250,8 @@ def build_optional_features(
     return features
 
 
-def build_standard_features(std_text: str) -> list[dict]:
-    """Parse Standard Equipment column into standardFeatures list."""
+def build_standard_features(std_text: str) -> list[str]:
+    """Parse Standard Equipment column into a plain list of feature name strings."""
     features = []
     seen = set()
     for item in parse_bullet_items(std_text):
@@ -224,14 +262,7 @@ def build_standard_features(std_text: str) -> list[dict]:
         if key in seen:
             continue
         seen.add(key)
-        feat_id = f"std-{re.sub(r'[^a-z0-9]', '', key)[:30]}"
-        features.append({
-            "id": feat_id,
-            "name": name,
-            "isStandard": True,
-            "cost": 0.0,
-            "sellPriceExclGst": 0.0,
-        })
+        features.append(name)
     return features
 
 
