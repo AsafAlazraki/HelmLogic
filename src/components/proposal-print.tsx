@@ -94,7 +94,7 @@ export function ProposalPrint({ quote, organisation, financials }: ProposalPrint
                 {/* Full-bleed hero image (top 55%) */}
                 {quote.coverImageUrl && (
                     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%', zIndex: 0 }}>
-                        <Image src={quote.coverImageUrl} alt="" fill className="object-cover" unoptimized style={{ objectPosition: 'center 40%' }} />
+                        <Image src={quote.coverImageUrl} alt="" fill className="object-cover" style={{ objectPosition: 'center 40%' }} />
                         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,23,42,0.15) 0%, rgba(255,255,255,0.4) 60%, white 100%)' }} />
                     </div>
                 )}
@@ -103,14 +103,14 @@ export function ProposalPrint({ quote, organisation, financials }: ProposalPrint
                 <div style={{ position: 'relative', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '14mm 16mm 0' }}>
                     {organisation?.primaryLogoUrl ? (
                         <div style={{ position: 'relative', height: '40px', width: '140px' }}>
-                            <Image src={organisation.primaryLogoUrl} alt="" fill className="object-contain object-left" unoptimized />
+                            <Image src={organisation.primaryLogoUrl} alt="" fill className="object-contain object-left" />
                         </div>
                     ) : (
                         <span style={{ fontSize: '14px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.02em' }}>{organisation?.name}</span>
                     )}
                     {quote.vendorLogoUrl && (
                         <div style={{ position: 'relative', height: '28px', width: '90px', opacity: 0.6 }}>
-                            <Image src={quote.vendorLogoUrl} alt="" fill className="object-contain object-right" unoptimized />
+                            <Image src={quote.vendorLogoUrl} alt="" fill className="object-contain object-right" />
                         </div>
                     )}
                 </div>
@@ -264,7 +264,7 @@ export function ProposalPrint({ quote, organisation, financials }: ProposalPrint
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
                                                 {opt.imageUrl ? (
                                                     <div style={{ position: 'relative', height: '20px', width: '20px', flexShrink: 0, borderRadius: '3px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
-                                                        <Image src={opt.imageUrl} alt="" fill className="object-contain" unoptimized style={{ mixBlendMode: 'multiply' }} />
+                                                        <Image src={opt.imageUrl} alt="" fill className="object-contain" style={{ mixBlendMode: 'multiply' }} />
                                                     </div>
                                                 ) : (
                                                     <CheckCircle2 style={{ width: '9px', height: '9px', color: '#10b981', flexShrink: 0 }} />
@@ -294,7 +294,7 @@ export function ProposalPrint({ quote, organisation, financials }: ProposalPrint
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 {quote.motor.imageUrl && (
                                     <div style={{ position: 'relative', height: '48px', width: '48px' }}>
-                                        <Image src={quote.motor.imageUrl} alt="" fill className="object-contain" unoptimized style={{ mixBlendMode: 'multiply' }} />
+                                        <Image src={quote.motor.imageUrl} alt="" fill className="object-contain" style={{ mixBlendMode: 'multiply' }} />
                                     </div>
                                 )}
                                 <p style={{ fontSize: '14px', fontWeight: 900, fontStyle: 'italic', fontVariantNumeric: 'tabular-nums', color: DARK, margin: 0 }}>{formatCurrency(f.motorTotal)}</p>

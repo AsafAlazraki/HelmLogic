@@ -7,7 +7,8 @@ import { useFirestore, useMemoFirebase } from "@/firebase/provider";
 import { doc, collection, query, where, getDocs, updateDoc, serverTimestamp, orderBy } from "firebase/firestore";
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, Zap, Maximize2, Minimize2, ArrowRightLeft, Percent, Save, Ship, ChevronDown, CheckCircle2, Star, History, Clock, Link2, MessageSquare, ClipboardList, ShieldCheck, Calculator, Truck, Upload, Download, Filter } from "lucide-react";
+import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, Zap, Maximize2, Minimize2, ArrowRightLeft, Percent, Save, Ship, ChevronDown, CheckCircle2, Star, History, Clock, Link2, MessageSquare, ClipboardList, ShieldCheck, Calculator, Truck, Upload, Download, Filter, FileSpreadsheet } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -478,7 +479,10 @@ function MatrixContent({
     setIsFocusMode,
     setIsGlobalUpdateOpen,
     setIsPublishOpen,
-    onExportCsv,
+    onExportHulls,
+    onExportOptions,
+    onImportHulls,
+    onImportOptions,
     vendor,
     organisation,
     filteredRanges,
@@ -539,17 +543,41 @@ function MatrixContent({
                     </Tabs>
 
                     <div className="flex items-center gap-3 border-l-2 border-slate-200 pl-6 h-10">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-10 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-50"
-                            onClick={onExportCsv}
-                            title="Export to CSV"
-                        >
-                            <Download className="h-4 w-4 mr-1.5" />
-                            Export
-                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-10 px-4 font-black uppercase tracking-widest text-[9px] rounded-xl border-2 border-slate-300 bg-white hover:bg-slate-50"
+                                >
+                                    <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+                                    Export / Import
+                                    <ChevronDown className="h-3 w-3 ml-1.5 opacity-50" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56 rounded-xl border-2 shadow-xl">
+                                <DropdownMenuLabel className="text-[8px] font-black uppercase tracking-widest text-slate-400">Export</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={onExportHulls} className="font-bold text-[10px] uppercase cursor-pointer rounded-lg">
+                                    <Download className="h-3.5 w-3.5 mr-2 text-primary" />
+                                    Hulls &amp; SKUs
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={onExportOptions} className="font-bold text-[10px] uppercase cursor-pointer rounded-lg">
+                                    <Download className="h-3.5 w-3.5 mr-2 text-primary" />
+                                    Factory Options
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel className="text-[8px] font-black uppercase tracking-widest text-slate-400">Import</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={onImportHulls} className="font-bold text-[10px] uppercase cursor-pointer rounded-lg">
+                                    <Upload className="h-3.5 w-3.5 mr-2 text-emerald-600" />
+                                    Hulls &amp; SKUs
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={onImportOptions} className="font-bold text-[10px] uppercase cursor-pointer rounded-lg">
+                                    <Upload className="h-3.5 w-3.5 mr-2 text-emerald-600" />
+                                    Factory Options
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <Button
                             type="button"
                             variant="default"
@@ -914,45 +942,296 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         }
     }, [strategy, vendor.id, ranges, allModels, allVariants, firestore, toast]);
 
-    // Export to CSV
-    const exportToCsv = useCallback(() => {
-        if (!allModels.length) return;
-        const rows: string[][] = [['Range', 'Model', 'Type', 'SKU/Code', 'Name', 'Material', 'Color', 'Category', 'Cost USD', 'Sell Price AUD (Strategy)']];
+    // Shared calculation helper matching PricingRow logic
+    const calcRow = useCallback((cost: number, iv: Record<string, any>, isOption: boolean) => {
         const gstRate = (organisation?.gstPercentage || 10) / 100;
+        const gstMul = 1 + gstRate;
+        const baseCostAudEx = calculateBaseCostAudEx(iv, cost, activeExchangeRate);
+        const baseCostAudIn = baseCostAudEx * gstMul;
 
-        for (const model of allModels) {
-            const range = (ranges || []).find((r: any) => r.id === model.rangeId);
-            // Variants
-            for (const v of (allVariants[model.id] || [])) {
-                const iv = strategy?.itemValues?.[v.id] || {};
-                const costUsd = parseFloat(iv['base_cost_override'] || v.cost || '0');
-                const sellEx = parseFloat(iv['hull_cash_price'] || '0');
-                rows.push([range?.name || '', model.name, 'Hull SKU', v.sku || '', v.name || '', v.material || '', v.colorCode || '', '', costUsd.toFixed(2), sellEx > 0 ? sellEx.toFixed(2) : '']);
-            }
-            // Optional features
-            for (const f of (model.optionalFeatures || [])) {
-                const iv = strategy?.itemValues?.[f.id] || {};
-                const costUsd = parseFloat(iv['base_cost_override'] || f.cost || '0');
-                const sellEx = parseFloat(iv['hull_cash_price'] || '0');
-                rows.push([range?.name || '', model.name, 'Option', f.code || '', f.name || '', '', '', f.category || '', costUsd.toFixed(2), sellEx > 0 ? sellEx.toFixed(2) : '']);
-            }
-        }
+        const seaFreightUsd = parseFloat(iv['op_sea_freight_cost_usd'] || '0');
+        const seaFreightAudConv = activeExchangeRate > 0 ? seaFreightUsd / activeExchangeRate : seaFreightUsd;
+        const seaFreightCostAud = parseFloat(iv['op_sea_freight_cost_aud'] || seaFreightAudConv.toFixed(2));
+        const seaFreightMargin = parseFloat(iv['op_sea_freight_margin_percent'] || '0');
+        const seaFreightSell = getSellPrice(seaFreightCostAud, seaFreightMargin);
+        const seaFreightGP = seaFreightSell - seaFreightCostAud;
 
-        const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv' });
+        const roadCost = parseFloat(iv['op_road_freight_cost_aud'] || '0');
+        const roadMargin = parseFloat(iv['op_road_freight_margin_percent'] || '0');
+        const roadSell = getSellPrice(roadCost, roadMargin);
+        const roadGP = roadSell - roadCost;
+
+        const handlingCost = parseFloat(iv['op_handling_cost_aud'] || '0');
+        const handlingMargin = parseFloat(iv['op_handling_margin_percent'] || '0');
+        const handlingSell = getSellPrice(handlingCost, handlingMargin);
+        const handlingGP = handlingSell - handlingCost;
+
+        const preDelCost = parseFloat(iv['op_predel_cost_aud'] || '0');
+        const preDelMargin = parseFloat(iv['op_predel_margin_percent'] || '0');
+        const preDelSell = getSellPrice(preDelCost, preDelMargin);
+        const preDelGP = preDelSell - preDelCost;
+
+        const totalLanded = baseCostAudEx + (!isOption ? (seaFreightSell + roadSell + preDelSell) : 0) + (!isOption ? handlingSell : 0);
+        const optionLanded = isOption ? baseCostAudEx + handlingSell : totalLanded;
+        const finalLanded = isOption ? optionLanded : totalLanded;
+        const pkgMargin = parseFloat(iv['strat_package_margin_percent'] || '0');
+        const pkgSell = getSellPrice(finalLanded, pkgMargin);
+        const pkgGP = pkgSell - finalLanded;
+
+        const priceLevel = (key: string) => {
+            const ex = parseFloat(iv[key] || '0');
+            const inc = ex * gstMul;
+            const gp = ex > 0 ? ((ex - finalLanded) / ex) * 100 : 0;
+            return { ex, inc, gp };
+        };
+
+        return {
+            baseCostAudEx, baseCostAudIn,
+            seaFreightUsd, seaFreightAudConv, seaFreightCostAud, seaFreightMargin, seaFreightSell, seaFreightGP,
+            roadCost, roadMargin, roadSell, roadGP,
+            handlingCost, handlingMargin, handlingSell, handlingGP,
+            preDelCost, preDelMargin, preDelSell, preDelGP,
+            finalLanded, pkgMargin, pkgGP,
+            cash: priceLevel('hull_cash_price'),
+            trade: priceLevel('hull_trade_price'),
+            subD: priceLevel('hull_subdealer_price'),
+            subEx: priceLevel('hull_subdealer_excl_price'),
+            aus: priceLevel('hull_aus_sailing_price'),
+            subDSrp: priceLevel('hull_subdealer_srp'),
+            subExSrp: priceLevel('hull_subdealer_excl_srp'),
+            optSell: priceLevel('hull_cash_price'),
+        };
+    }, [organisation, activeExchangeRate]);
+
+    const downloadCsv = (rows: string[][], filename: string) => {
+        const csv = rows.map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `highfield-pricing-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.download = filename;
         a.click();
         URL.revokeObjectURL(url);
-    }, [allModels, allVariants, ranges, strategy, organisation]);
+    };
+
+    const n = (v: number) => isNaN(v) ? '' : v.toFixed(2);
+    const pct = (v: number) => isNaN(v) ? '' : v.toFixed(2) + '%';
+
+    // Export Hulls & SKUs
+    const exportHullsCsv = useCallback(() => {
+        if (!allModels.length) return;
+        const headers = [
+            '__itemId', 'Range', 'Model', 'SKU', 'Name', 'Material', 'Color',
+            // Editable inputs
+            'Base Cost USD', 'Factory Discount USD', 'Duty %',
+            // Calculated
+            'AUD Conv (Base)', 'Disc AUD', 'Landed AUD (Excl GST)', 'Landed AUD (Incl GST)',
+            // Sea Freight
+            'Sea Freight Cost USD', 'Sea Freight AUD Conv', 'Sea Freight Cost AUD', 'Sea Freight Margin %', 'Sea Freight Sell AUD', 'Sea Freight GP',
+            // Road Freight
+            'Road Freight Cost AUD', 'Road Freight Margin %', 'Road Freight Sell AUD', 'Road Freight GP',
+            // Handling
+            'Handling Cost AUD', 'Handling Margin %', 'Handling Sell AUD', 'Handling GP',
+            // Pre-Delivery
+            'Pre-Del Cost AUD', 'Pre-Del Margin %', 'Pre-Del Sell AUD', 'Pre-Del GP',
+            // Baseline + Margin
+            'Final Cost (Excl GST)', 'Hull Margin %', 'Total GP',
+            // Price Levels
+            'Cash Price (Excl)', 'Cash Price (Incl)', 'Cash GP%',
+            'Trade Price (Excl)', 'Trade Price (Incl)', 'Trade GP%',
+            'Sub-D Price (Excl)', 'Sub-D Price (Incl)', 'Sub-D GP%',
+            'Sub-Ex Price (Excl)', 'Sub-Ex Price (Incl)', 'Sub-Ex GP%',
+            'AUS Price (Excl)', 'AUS Price (Incl)', 'AUS GP%',
+            'Sub-D SRP (Excl)', 'Sub-D SRP (Incl)', 'Sub-D SRP GP%',
+            'Sub-Ex SRP (Excl)', 'Sub-Ex SRP (Incl)', 'Sub-Ex SRP GP%',
+        ];
+        const rows: string[][] = [headers];
+        for (const model of allModels) {
+            const range = (ranges || []).find((r: any) => r.id === model.rangeId);
+            for (const v of (allVariants[model.id] || [])) {
+                const iv = strategy?.itemValues?.[v.id] || {};
+                const c = calcRow(v.cost || 0, iv, false);
+                rows.push([
+                    v.id, range?.name || '', model.name, v.sku || '', v.name || '', (v as any).material || '', (v as any).colorCode || '',
+                    iv['base_cost_override'] || n(v.cost || 0), iv['factory_discount_usd'] || '', iv['exchange_duty_percent'] || '',
+                    n(c.baseCostAudEx / (activeExchangeRate || 1) * activeExchangeRate), // AUD conv ≈ baseCostUsd/rate
+                    n(parseFloat(iv['factory_discount_usd'] || '0') / (activeExchangeRate || 1)),
+                    n(c.baseCostAudEx), n(c.baseCostAudIn),
+                    iv['op_sea_freight_cost_usd'] || '', n(c.seaFreightAudConv), iv['op_sea_freight_cost_aud'] || n(c.seaFreightAudConv), iv['op_sea_freight_margin_percent'] || '', n(c.seaFreightSell), n(c.seaFreightGP),
+                    iv['op_road_freight_cost_aud'] || '', iv['op_road_freight_margin_percent'] || '', n(c.roadSell), n(c.roadGP),
+                    iv['op_handling_cost_aud'] || '', iv['op_handling_margin_percent'] || '', n(c.handlingSell), n(c.handlingGP),
+                    iv['op_predel_cost_aud'] || '', iv['op_predel_margin_percent'] || '', n(c.preDelSell), n(c.preDelGP),
+                    n(c.finalLanded), iv['strat_package_margin_percent'] || '', n(c.pkgGP),
+                    n(c.cash.ex), n(c.cash.inc), pct(c.cash.gp),
+                    n(c.trade.ex), n(c.trade.inc), pct(c.trade.gp),
+                    n(c.subD.ex), n(c.subD.inc), pct(c.subD.gp),
+                    n(c.subEx.ex), n(c.subEx.inc), pct(c.subEx.gp),
+                    n(c.aus.ex), n(c.aus.inc), pct(c.aus.gp),
+                    n(c.subDSrp.ex), n(c.subDSrp.inc), pct(c.subDSrp.gp),
+                    n(c.subExSrp.ex), n(c.subExSrp.inc), pct(c.subExSrp.gp),
+                ]);
+            }
+        }
+        downloadCsv(rows, `highfield-hulls-skus-${new Date().toISOString().slice(0, 10)}.csv`);
+    }, [allModels, allVariants, ranges, strategy, organisation, activeExchangeRate, calcRow]);
+
+    // Export Factory Options
+    const exportOptionsCsv = useCallback(() => {
+        if (!allModels.length) return;
+        const headers = [
+            '__itemId', 'Range', 'Model', 'Category', 'Code', 'Name',
+            'Base Cost USD', 'Factory Discount USD', 'Duty %',
+            'AUD Conv (Base)', 'Disc AUD', 'Landed AUD (Excl GST)', 'Landed AUD (Incl GST)',
+            'Handling Cost AUD', 'Handling Margin %', 'Handling Sell AUD', 'Handling GP',
+            'Final Cost (Excl GST)', 'Option Margin %', 'Total GP',
+            'Sell Price (Excl)', 'Sell Price (Incl)', 'Sell GP%',
+        ];
+        const rows: string[][] = [headers];
+        const gstMul = 1 + (organisation?.gstPercentage || 10) / 100;
+        for (const model of allModels) {
+            const range = (ranges || []).find((r: any) => r.id === model.rangeId);
+            for (const f of (model.optionalFeatures || [])) {
+                const iv = strategy?.itemValues?.[f.id] || {};
+                const c = calcRow(f.cost || 0, iv, true);
+                const sellEx = parseFloat(iv['hull_cash_price'] || '0');
+                const sellIn = sellEx * gstMul;
+                const gpPct = sellEx > 0 ? ((sellEx - c.finalLanded) / sellEx) * 100 : 0;
+                rows.push([
+                    f.id, range?.name || '', model.name, f.category || '', f.code || '', f.name || '',
+                    iv['base_cost_override'] || n(f.cost || 0), iv['factory_discount_usd'] || '', iv['exchange_duty_percent'] || '',
+                    n(parseFloat(iv['base_cost_override'] || f.cost || '0') / (activeExchangeRate || 1)),
+                    n(parseFloat(iv['factory_discount_usd'] || '0') / (activeExchangeRate || 1)),
+                    n(c.baseCostAudEx), n(c.baseCostAudIn),
+                    iv['op_handling_cost_aud'] || '', iv['op_handling_margin_percent'] || '', n(c.handlingSell), n(c.handlingGP),
+                    n(c.finalLanded), iv['strat_package_margin_percent'] || '', n(c.pkgGP),
+                    n(sellEx), n(sellIn), pct(gpPct),
+                ]);
+            }
+        }
+        downloadCsv(rows, `highfield-factory-options-${new Date().toISOString().slice(0, 10)}.csv`);
+    }, [allModels, ranges, strategy, organisation, activeExchangeRate, calcRow]);
+
+    // Import helpers - parse CSV and restore editable fields to strategy
+    const HULL_EDITABLE_COLS = [
+        'base_cost_override', 'factory_discount_usd', 'exchange_duty_percent',
+        'op_sea_freight_cost_usd', 'op_sea_freight_cost_aud', 'op_sea_freight_margin_percent',
+        'op_road_freight_cost_aud', 'op_road_freight_margin_percent',
+        'op_handling_cost_aud', 'op_handling_margin_percent',
+        'op_predel_cost_aud', 'op_predel_margin_percent',
+        'strat_package_margin_percent',
+        'hull_cash_price', 'hull_trade_price', 'hull_subdealer_price',
+        'hull_subdealer_excl_price', 'hull_aus_sailing_price',
+        'hull_subdealer_srp', 'hull_subdealer_excl_srp',
+    ];
+    const HULL_CSV_TO_FIELD: Record<string, string> = {
+        'Base Cost USD': 'base_cost_override',
+        'Factory Discount USD': 'factory_discount_usd',
+        'Duty %': 'exchange_duty_percent',
+        'Sea Freight Cost USD': 'op_sea_freight_cost_usd',
+        'Sea Freight Cost AUD': 'op_sea_freight_cost_aud',
+        'Sea Freight Margin %': 'op_sea_freight_margin_percent',
+        'Road Freight Cost AUD': 'op_road_freight_cost_aud',
+        'Road Freight Margin %': 'op_road_freight_margin_percent',
+        'Handling Cost AUD': 'op_handling_cost_aud',
+        'Handling Margin %': 'op_handling_margin_percent',
+        'Pre-Del Cost AUD': 'op_predel_cost_aud',
+        'Pre-Del Margin %': 'op_predel_margin_percent',
+        'Hull Margin %': 'strat_package_margin_percent',
+        'Cash Price (Excl)': 'hull_cash_price',
+        'Trade Price (Excl)': 'hull_trade_price',
+        'Sub-D Price (Excl)': 'hull_subdealer_price',
+        'Sub-Ex Price (Excl)': 'hull_subdealer_excl_price',
+        'AUS Price (Excl)': 'hull_aus_sailing_price',
+        'Sub-D SRP (Excl)': 'hull_subdealer_srp',
+        'Sub-Ex SRP (Excl)': 'hull_subdealer_excl_srp',
+    };
+    const OPT_CSV_TO_FIELD: Record<string, string> = {
+        'Base Cost USD': 'base_cost_override',
+        'Factory Discount USD': 'factory_discount_usd',
+        'Duty %': 'exchange_duty_percent',
+        'Handling Cost AUD': 'op_handling_cost_aud',
+        'Handling Margin %': 'op_handling_margin_percent',
+        'Option Margin %': 'strat_package_margin_percent',
+        'Sell Price (Excl)': 'hull_cash_price',
+    };
+
+    const parseCsv = (text: string): { headers: string[]; rows: string[][] } => {
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        const parseRow = (line: string): string[] => {
+            const result: string[] = [];
+            let inQ = false, cur = '';
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (ch === '"') {
+                    if (inQ && line[i + 1] === '"') { cur += '"'; i++; }
+                    else inQ = !inQ;
+                } else if (ch === ',' && !inQ) {
+                    result.push(cur); cur = '';
+                } else {
+                    cur += ch;
+                }
+            }
+            result.push(cur);
+            return result;
+        };
+        const headers = parseRow(lines[0]);
+        const rows = lines.slice(1).map(parseRow);
+        return { headers, rows };
+    };
+
+    const triggerFileImport = (colMap: Record<string, string>) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.csv';
+        input.onchange = async (e: any) => {
+            const file = e.target.files?.[0];
+            if (!file || !strategyRef) return;
+            const text = await file.text();
+            const { headers, rows } = parseCsv(text);
+            const idIdx = headers.indexOf('__itemId');
+            if (idIdx === -1) {
+                toast({ title: 'Import Failed', description: 'CSV must contain __itemId column. Export first, then reimport.', variant: 'destructive' });
+                return;
+            }
+            const currentValues: Record<string, any> = { ...(strategy?.itemValues || {}) };
+            let updatedCount = 0;
+            for (const row of rows) {
+                const itemId = row[idIdx]?.trim();
+                if (!itemId) continue;
+                const itemPatch: Record<string, any> = {};
+                for (const [csvCol, fieldKey] of Object.entries(colMap)) {
+                    const colIdx = headers.indexOf(csvCol);
+                    if (colIdx === -1) continue;
+                    const val = row[colIdx]?.trim();
+                    if (val !== undefined && val !== '') itemPatch[fieldKey] = val;
+                }
+                if (Object.keys(itemPatch).length > 0) {
+                    currentValues[itemId] = { ...(currentValues[itemId] || {}), ...itemPatch };
+                    updatedCount++;
+                }
+            }
+            await updateDoc(strategyRef, {
+                itemValues: currentValues,
+                lastUpdateAt: serverTimestamp(),
+                lastImportAt: serverTimestamp(),
+                lastImportFile: file.name,
+                lastImportRows: updatedCount,
+            });
+            toast({ title: 'Import Complete', description: `${updatedCount} items updated from ${file.name}.` });
+        };
+        input.click();
+    };
+
+    const importHulls = useCallback(() => triggerFileImport(HULL_CSV_TO_FIELD), [strategy, strategyRef, toast]);
+    const importOptions = useCallback(() => triggerFileImport(OPT_CSV_TO_FIELD), [strategy, strategyRef, toast]);
 
     if (loadingModels || strategyLoading || orgLoading) return <div className="flex-1 flex items-center justify-center h-96"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
 
     const commonProps = {
         filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate,
-        setActiveView, setIsFocusMode, setIsGlobalUpdateOpen, setIsPublishOpen, onExportCsv: exportToCsv,
+        setActiveView, setIsFocusMode, setIsGlobalUpdateOpen, setIsPublishOpen,
+        onExportHulls: exportHullsCsv, onExportOptions: exportOptionsCsv,
+        onImportHulls: importHulls, onImportOptions: importOptions,
         rangeMargins, onUpdateRangeMargin, searchTerm, setSearchTerm, isPublishing,
     };
 
@@ -962,15 +1241,11 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 <MatrixContent {...commonProps} isFocus={false} />
             </Card>
 
-            <Dialog open={isFocusMode} onOpenChange={setIsFocusMode}>
-                <DialogContent className="max-w-[98vw] w-[1600px] h-[95vh] rounded-[2.5rem] p-0 overflow-hidden border-4 border-slate-300 shadow-2xl flex flex-col [&>button]:hidden z-[150] bg-white">
-                    <DialogHeader className="sr-only">
-                        <DialogTitle>Focus Mode - Pricing Audit</DialogTitle>
-                        <DialogDescription>Full screen immersive auditing workspace for Highfield pricing strategies.</DialogDescription>
-                    </DialogHeader>
+            {isFocusMode && (
+                <div className="fixed inset-0 z-[9999] bg-white flex flex-col shadow-2xl">
                     <MatrixContent {...commonProps} isFocus={true} />
-                </DialogContent>
-            </Dialog>
+                </div>
+            )}
 
             <GlobalUpdateDialog
                 isOpen={isGlobalUpdateOpen}

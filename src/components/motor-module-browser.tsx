@@ -138,7 +138,7 @@ export function MotorModuleBrowser({
                                                 alt={String(name)} 
                                                 fill 
                                                 className="object-contain p-4 group-hover:scale-105 transition-transform" 
-                                                unoptimized
+                                               
                                             />
                                         ) : (
                                             <div className="flex h-full w-full items-center justify-center opacity-10"><Ship className="h-12 w-12" /></div>
@@ -171,7 +171,7 @@ export function MotorModuleBrowser({
                             >
                                 <div className="flex items-center gap-4">
                                     <div className="h-14 w-14 relative bg-muted/30 rounded-lg overflow-hidden border">
-                                        {imgUrl ? <Image src={imgUrl} alt="Motor" fill className="object-contain p-1" unoptimized /> : <Ship className="h-6 w-6 m-auto mt-4 opacity-10" />}
+                                        {imgUrl ? <Image src={imgUrl} alt="Motor" fill className="object-contain p-1" /> : <Ship className="h-6 w-6 m-auto mt-4 opacity-10" />}
                                     </div>
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-2">

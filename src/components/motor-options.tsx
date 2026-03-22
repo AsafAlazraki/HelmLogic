@@ -290,7 +290,7 @@ function MotorCard({
                             fill 
                             className="object-contain p-2 group-hover/motor:scale-105 transition-transform" 
                             sizes="300px"
-                            unoptimized
+                           
                         />
                     ) : (
                         <div className="text-muted-foreground/10 text-left">
@@ -636,7 +636,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
                         </div>
                         {motorVendor?.logoUrl && (
                             <div className="bg-white border rounded-lg p-2 shadow-sm text-left">
-                                <Image src={motorVendor.logoUrl} alt={motorVendor.name} width={100} height={32} className="object-contain" unoptimized />
+                                <Image src={motorVendor.logoUrl} alt={motorVendor.name} width={100} height={32} className="object-contain" />
                             </div>
                         )}
                     </div>
