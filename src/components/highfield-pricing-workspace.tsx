@@ -29,6 +29,13 @@ interface Range {
     name: string;
 }
 
+interface Organisation {
+    id: string;
+    gstPercentage?: number;
+    tradingCurrency?: string;
+    shortCode?: string;
+}
+
 interface Model {
     id: string;
     name: string;
