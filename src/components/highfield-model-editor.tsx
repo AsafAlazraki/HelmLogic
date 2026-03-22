@@ -7,7 +7,7 @@ import { z } from 'zod';
 import Image from 'next/image';
 import { useStorage, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc, serverTimestamp, setDoc, updateDoc, deleteField } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -158,7 +158,7 @@ function SkuCompatibilityDialog({
                                 {filteredVariants.map(v => (
                                     <div key={v.id} className={cn("flex items-center gap-4 p-4 rounded-2xl cursor-pointer border-2 transition-all", value.includes(v.id) ? "bg-primary/5 border-primary/20" : "hover:bg-slate-50 border-slate-100")} onClick={() => handleToggle(v.id)}>
                                         <Checkbox checked={value.includes(v.id)} onCheckedChange={() => handleToggle(v.id)} />
-                                        <div className="min-w-0"><p className="text-sm font-black uppercase truncate">{v.name}</p><p className="text-[9px] font-mono text-muted-foreground">{v.sku}</p></div>
+                                        <div className="min-w-0"><p className="text-sm font-black uppercase truncate">{abbreviateDisplayName(v.name)}</p><p className="text-[9px] font-mono text-muted-foreground">{v.sku}</p></div>
                                     </div>
                                 ))}
                             </div>
@@ -167,7 +167,7 @@ function SkuCompatibilityDialog({
                     <div className="w-full md:w-[320px] shrink-0 bg-muted/5 flex flex-col">
                         <div className="p-6 border-b bg-background flex items-center justify-between"><h4 className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Staged</h4><Badge className="font-black h-5 text-[9px] bg-primary">{value.length}</Badge></div>
                         <ScrollArea className="flex-1">
-                            <div className="p-6 space-y-2">{variants.filter(v => value.includes(v.id)).map(v => (<div key={v.id} className="relative bg-white border-2 p-3 rounded-xl shadow-sm"><p className="text-[11px] font-black uppercase truncate pr-6">{v.name}</p><Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => handleToggle(v.id)}><X className="h-3 w-3" /></Button></div>))}</div>
+                            <div className="p-6 space-y-2">{variants.filter(v => value.includes(v.id)).map(v => (<div key={v.id} className="relative bg-white border-2 p-3 rounded-xl shadow-sm"><p className="text-[11px] font-black uppercase truncate pr-6">{abbreviateDisplayName(v.name)}</p><Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => handleToggle(v.id)}><X className="h-3 w-3" /></Button></div>))}</div>
                         </ScrollArea>
                     </div>
                 </div>
@@ -191,6 +191,9 @@ function OptionalFeatureItem({ index, remove, categories, variants, allFeatures 
     const [isCompDialogOpen, setIsCompDialogOpen] = useState(false);
 
     const isConsole = category === 'Consoles';
+    // FCT consoles come with a seat already included, so they don't need a paired dynamic seat.
+    // Only GT consoles (non-FCT) support seat linking.
+    const isGTConsole = isConsole && !name?.toUpperCase().includes('FCT');
     const currentId = allFeatures?.[index]?.id;
     const seatOptions = useMemo(() => allFeatures.filter((f: any) => f.category === 'Seats' && f.id !== currentId), [allFeatures, currentId]);
 
@@ -199,7 +202,7 @@ function OptionalFeatureItem({ index, remove, categories, variants, allFeatures 
             <div className={cn("flex items-center justify-between p-3 border-b text-left", isStandard ? "bg-primary/5" : "bg-muted/10")}>
                 <div className="flex items-center gap-3 min-w-0 pr-10 text-left">
                     <CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 rounded-full border shadow-sm"><ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/item:rotate-180" /></Button></CollapsibleTrigger>
-                    <div className="flex items-center gap-2 min-w-0">{isStandard && <Star className="h-3 w-3 text-primary fill-primary" />}<span className="font-black text-[10px] uppercase truncate">{name || 'Unnamed Option'}</span></div>
+                    <div className="flex items-center gap-2 min-w-0">{isStandard && <Star className="h-3 w-3 text-primary fill-primary" />}<span className="font-black text-[10px] uppercase truncate">{name ? abbreviateDisplayName(name) : 'Unnamed Option'}</span></div>
                 </div>
                 <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/item:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-3.5 w-3.5" /></Button>
             </div>
@@ -238,11 +241,11 @@ function OptionalFeatureItem({ index, remove, categories, variants, allFeatures 
                                     <><Button type="button" variant="outline" className="w-full h-10 justify-between px-4 font-black uppercase text-[9px] bg-white border-2 rounded-lg" onClick={() => setIsCompDialogOpen(true)}><span>{field.value?.length > 0 ? `${field.value.length} SKUs LINKED` : 'DEFINE SKU ACCESS'}</span><ChevronRight className="h-3 w-3 opacity-40" /></Button><SkuCompatibilityDialog isOpen={isCompDialogOpen} onClose={() => setIsCompDialogOpen(false)} variants={variants} value={field.value || []} onChange={field.onChange} featureName={name} /></>
                                 )} />
                             </div>
-                            {isConsole && (
+                            {isGTConsole && (
                                 <div className="space-y-2 text-left">
                                     <FormLabel className="text-[8px] font-black uppercase text-muted-foreground ml-1">Paired Dynamic Seat</FormLabel>
                                     <FormField control={control} name={`optionalFeatures.${index}.associatedSeatId`} render={({ field }) => (
-                                        <Popover><PopoverTrigger asChild><Button variant="outline" className="w-full h-10 justify-between px-4 font-black uppercase text-[9px] bg-white border-2 rounded-lg"><span className="truncate">{field.value ? (seatOptions.find((s: any) => s.id === field.value)?.name || 'SEAT LINKED') : 'NO PAIRED SEAT'}</span><ChevronRight className="h-3 w-3 opacity-40" /></Button></PopoverTrigger><PopoverContent className="w-[300px] p-0 rounded-2xl border-4 shadow-2xl" align="start"><Command className="rounded-xl"><CommandInput placeholder="Search Seats..." className="h-10 font-bold" /><CommandList className="max-h-[250px]"><CommandEmpty className="p-4 text-center text-[9px] font-black uppercase text-slate-400">No matching seats.</CommandEmpty><CommandGroup className="p-1"><CommandItem onSelect={() => field.onChange(null)} className="font-black text-[9px] uppercase py-2 rounded-lg">Clear Linkage</CommandItem>{seatOptions.map((seat: any) => (<CommandItem key={seat.id} onSelect={() => field.onChange(seat.id)} className="font-bold text-[10px] uppercase py-2 px-3 rounded-lg flex items-center justify-between aria-selected:bg-primary aria-selected:text-white"><span className="truncate">{seat.name}</span>{field.value === seat.id && <Check className="h-3 w-3" />}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent></Popover>
+                                        <Popover><PopoverTrigger asChild><Button variant="outline" className="w-full h-10 justify-between px-4 font-black uppercase text-[9px] bg-white border-2 rounded-lg"><span className="truncate">{field.value ? abbreviateDisplayName(seatOptions.find((s: any) => s.id === field.value)?.name || 'SEAT LINKED') : 'NO PAIRED SEAT'}</span><ChevronRight className="h-3 w-3 opacity-40" /></Button></PopoverTrigger><PopoverContent className="w-[300px] p-0 rounded-2xl border-4 shadow-2xl" align="start"><Command className="rounded-xl"><CommandInput placeholder="Search Seats..." className="h-10 font-bold" /><CommandList className="max-h-[250px]"><CommandEmpty className="p-4 text-center text-[9px] font-black uppercase text-slate-400">No matching seats.</CommandEmpty><CommandGroup className="p-1"><CommandItem onSelect={() => field.onChange(null)} className="font-black text-[9px] uppercase py-2 rounded-lg">Clear Linkage</CommandItem>{seatOptions.map((seat: any) => (<CommandItem key={seat.id} onSelect={() => field.onChange(seat.id)} className="font-bold text-[10px] uppercase py-2 px-3 rounded-lg flex items-center justify-between aria-selected:bg-primary aria-selected:text-white"><span className="truncate">{abbreviateDisplayName(seat.name)}</span>{field.value === seat.id && <Check className="h-3 w-3" />}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent></Popover>
                                     )} />
                                 </div>
                             )}
@@ -258,13 +261,31 @@ function abbreviateColorToken(color: string): string {
     return color.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase();
 }
 
+function abbreviateColorSlashes(colorStr: string): string {
+    return colorStr.split('/').map(c => abbreviateColorToken(c)).join('/');
+}
+
 function abbreviateVariantName(name: string): string {
-    const sepIdx = name.indexOf(' - ');
+    const sepIdx = name.indexOf(' — ');
     if (sepIdx === -1) return name;
     const modelPart = name.slice(0, sepIdx);
     const colorPart = name.slice(sepIdx + 3);
-    const abbrev = colorPart.split(' / ').map(c => abbreviateColorToken(c)).join('/');
-    return `${modelPart} — ${abbrev}`;
+    return `${modelPart} — ${abbreviateColorSlashes(colorPart)}`;
+}
+
+function abbreviateDisplayName(name: string): string {
+    // Abbreviate color info in parentheses e.g. "(BLACK / CARBON)" → "(B/C)"
+    // and after " — " separator e.g. "CL380LS — WHITE / WHITE / WOOD DARK" → "CL380LS — W/W/WD"
+    let result = name.replace(/\(([^)]*\/[^)]*)\)/g, (_match, colors: string) => {
+        return `(${abbreviateColorSlashes(colors)})`;
+    });
+    const sepIdx = result.indexOf(' — ');
+    if (sepIdx !== -1) {
+        const modelPart = result.slice(0, sepIdx);
+        const colorPart = result.slice(sepIdx + 3);
+        result = `${modelPart} — ${abbreviateColorSlashes(colorPart)}`;
+    }
+    return result;
 }
 
 function VariantRow({ v, vendorId, rangeId, modelId }: { v: any; vendorId: string; rangeId: string; modelId: string }) {
@@ -284,9 +305,15 @@ function VariantRow({ v, vendorId, rangeId, modelId }: { v: any; vendorId: strin
         }
     };
 
+    const handleImageRemove = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        await updateDoc(doc(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${modelId}/variants`, v.id), { imageUrl: deleteField() });
+    };
+
     return (
         <div className="flex items-center justify-between p-3 rounded-xl border bg-slate-50 hover:border-primary/20 transition-all group/v text-left">
             <div className="flex items-center gap-3 min-w-0 text-left">
+                <div className="relative shrink-0">
                 <label className="relative h-10 w-10 rounded-lg bg-white border shadow-inner flex items-center justify-center overflow-hidden shrink-0 cursor-pointer group/img hover:border-primary/40 transition-colors">
                     {uploading
                         ? <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -301,8 +328,14 @@ function VariantRow({ v, vendorId, rangeId, modelId }: { v: any; vendorId: strin
                         </div>
                     )}
                 </label>
+                {v.imageUrl && !uploading && (
+                    <button onClick={handleImageRemove} className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover/v:opacity-100 transition-opacity z-10 hover:scale-110">
+                        <X className="h-2.5 w-2.5" />
+                    </button>
+                )}
+                </div>
                 <div className="min-w-0 text-left">
-                    <p className="font-black text-[10px] uppercase tracking-tight truncate">{abbreviateVariantName(v.name)}</p>
+                    <p className="font-black text-[10px] uppercase tracking-tight truncate">{abbreviateDisplayName(v.displayName || v.name)}</p>
                     <p className="text-[8px] font-mono font-bold text-primary uppercase mt-0.5">{v.sku || 'NO SKU'}</p>
                 </div>
             </div>
@@ -536,7 +569,7 @@ function StandardFeaturesSection() {
     );
 }
 
-// ── Engineering Data (otherSpecs) ─────────────────────────────────────────────
+// ── General Specifications (otherSpecs) ───────────────────────────────────────
 function SpecsSection() {
     const { control } = useFormContext<ModelFormData>();
     const { fields, append, remove } = useFieldArray({ control, name: "specifications.otherSpecs" });
@@ -556,7 +589,7 @@ function SpecsSection() {
 
     return (
         <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
-            <CollapsibleCardHeader title="Engineering Data" count={fields.length} onAdd={() => append({ id: `spec-${Date.now()}`, label: '', value: '' })} />
+            <CollapsibleCardHeader title="General Specifications" count={fields.length} onAdd={() => append({ id: `spec-${Date.now()}`, label: '', value: '' })} />
             <CollapsibleContent>
                 <CardContent className="space-y-4 pt-6 text-left">
                     <div className="grid gap-2 text-left">

@@ -46,3 +46,4 @@ firestore-debug.log
 .playwright-mcp/
 proxy-server.mjs
 .env.local
+__pycache__/

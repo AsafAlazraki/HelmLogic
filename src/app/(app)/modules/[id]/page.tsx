@@ -493,109 +493,93 @@ export default function ModuleDetailsPage() {
                                         </Card>
                                     </div>
 
-                                    <Card className="col-span-5 flex flex-col border-2 rounded-[3.5rem] shadow-2xl bg-white overflow-hidden">
-                                        <CardHeader className="p-10 border-b bg-slate-50/30 flex flex-row items-center justify-between shrink-0">
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
-                                                    <Anchor className="h-3.5 w-3.5" />
-                                                    <span>Quotation Engine</span>
-                                                </div>
-                                                <h2 className="text-4xl font-black tracking-tight text-slate-950 uppercase italic">Recent Proposals</h2>
+                                    <Card className="col-span-5 flex flex-col border rounded-2xl shadow-sm bg-white overflow-hidden">
+                                        <CardHeader className="px-5 py-4 border-b flex flex-row items-center justify-between shrink-0">
+                                            <div className="flex items-center gap-2.5">
+                                                <h2 className="text-sm font-semibold text-slate-900">Recent Proposals</h2>
+                                                {recentQuotes && recentQuotes.length > 0 && (
+                                                    <Badge variant="secondary" className="text-xs font-medium px-2 h-5">
+                                                        {recentQuotes.length} active
+                                                    </Badge>
+                                                )}
                                             </div>
-                                            <Button 
+                                            <Button
+                                                size="sm"
                                                 onClick={() => setIsQuoteInitializationOpen(true)}
-                                                className="h-14 px-10 rounded-[1.5rem] font-black uppercase tracking-widest text-[10px] shadow-2xl transition-all hover:scale-105 active:scale-95 bg-primary text-white border-none group"
+                                                className="gap-1.5 h-8 text-xs"
                                             >
-                                                <PlusCircle className="mr-3 h-5 w-5 transition-transform group-hover:rotate-90" />
-                                                Generate New Quote
+                                                <PlusCircle className="h-3.5 w-3.5" />
+                                                New Quote
                                             </Button>
                                         </CardHeader>
                                         <CardContent className="flex-1 p-0 overflow-hidden">
                                             {(!recentQuotes || recentQuotes.length === 0) ? (
-                                                <div className="flex flex-col items-center justify-center h-full p-10 text-center gap-8">
-                                                    <div className="h-32 w-32 bg-slate-50 rounded-[2.5rem] flex items-center justify-center border-2 border-dashed border-slate-200">
-                                                        <FileText className="h-12 w-12 text-slate-200" />
+                                                <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-4">
+                                                    <div className="h-16 w-16 bg-slate-50 rounded-2xl flex items-center justify-center border-2 border-dashed border-slate-200">
+                                                        <FileText className="h-7 w-7 text-slate-300" />
                                                     </div>
-                                                    <div className="space-y-4">
-                                                        <p className="font-black uppercase tracking-[0.3em] text-sm text-slate-400">Proposal Queue Empty</p>
-                                                        <Button variant="outline" onClick={() => setIsQuoteInitializationOpen(true)} className="font-black uppercase text-[10px] tracking-widest rounded-xl border-2">Select a boat to start</Button>
+                                                    <div className="space-y-2">
+                                                        <p className="text-sm font-medium text-slate-500">No proposals yet</p>
+                                                        <Button variant="outline" size="sm" onClick={() => setIsQuoteInitializationOpen(true)}>
+                                                            Create your first quote
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <ScrollArea className="h-full">
-                                                    <div className="p-6 space-y-4">
+                                                    <div className="p-4 grid grid-cols-2 gap-3">
                                                         {recentQuotes.map((q: any) => (
                                                             <div
                                                                 key={q.id}
                                                                 onClick={() => router.push(`/modules/${moduleData.id}/proposals/${q.id}`)}
-                                                                className="group flex items-start gap-6 p-6 rounded-[2rem] border-2 bg-white hover:border-primary/40 hover:shadow-xl cursor-pointer transition-all relative overflow-hidden"
+                                                                className="group flex flex-col rounded-xl border bg-white hover:border-primary/40 hover:shadow-md cursor-pointer transition-all overflow-hidden"
                                                             >
-                                                                <div className="absolute right-0 top-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:bg-primary/10 transition-colors" />
-                                                                
-                                                                {q.coverImageUrl ? (
-                                                                    <div className="relative h-20 w-32 rounded-2xl overflow-hidden border-2 bg-slate-50 shrink-0 shadow-sm">
-                                                                        <img src={q.coverImageUrl} alt={q.modelName} className="absolute inset-0 h-full w-full object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-110" />
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="h-20 w-32 bg-primary/5 rounded-2xl flex items-center justify-center shrink-0 border-2 border-primary/10">
-                                                                        <Anchor className="h-8 w-8 text-primary/30" />
-                                                                    </div>
-                                                                )}
-                                                                
-                                                                <div className="flex-1 min-w-0 space-y-3">
-                                                                    <div className="space-y-1">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <span className="text-[9px] font-black uppercase tracking-widest text-primary">{q.vendorName || 'Vessel'}</span>
-                                                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">•</span>
-                                                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{q.rangeName || 'Series'}</span>
+                                                                {/* Image */}
+                                                                <div className="relative h-28 bg-slate-50 border-b overflow-hidden shrink-0">
+                                                                    {q.coverImageUrl ? (
+                                                                        <img src={q.coverImageUrl} alt={q.modelName} className="absolute inset-0 h-full w-full object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />
+                                                                    ) : (
+                                                                        <div className="flex items-center justify-center h-full">
+                                                                            <Anchor className="h-8 w-8 text-slate-200" />
                                                                         </div>
-                                                                        <div className="flex items-center gap-2">
-                                                                            <h4 className="font-black text-lg uppercase tracking-tight text-slate-900 truncate">
-                                                                                {q.modelName}
-                                                                            </h4>
-                                                                            <span className="text-[10px] font-bold text-slate-400 uppercase italic">{q.modelCode}</span>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="flex flex-wrap items-center gap-4">
-                                                                        <div className="flex items-center gap-2">
-                                                                            <Badge variant="outline" className="font-mono text-[9px] font-bold h-5 px-2 border-primary/20 text-primary bg-primary/5">
-                                                                                {q.quoteNumber}
-                                                                            </Badge>
-                                                                        </div>
-                                                                        
-                                                                        {q.customer?.name ? (
-                                                                            <div 
-                                                                                className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-50 border group/link hover:bg-primary/5 hover:border-primary/20 transition-all"
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    // Link to placeholder CRM
-                                                                                    // router.push(`/contacts/${q.customer.id}`); 
-                                                                                }}
-                                                                            >
-                                                                                <User className="h-3 w-3 text-slate-400 group-hover/link:text-primary transition-colors" />
-                                                                                <span className="text-[10px] font-black uppercase tracking-tight text-slate-600 group-hover/link:text-primary transition-colors">
-                                                                                    {q.customer.name}
-                                                                                </span>
-                                                                                <ChevronRight className="h-3 w-3 text-slate-300 group-hover/link:text-primary transition-all group-hover/link:translate-x-0.5" />
-                                                                            </div>
-                                                                        ) : (
-                                                                            <Badge variant="secondary" className="text-[9px] font-black h-5 px-2 uppercase tracking-widest">Stock Unit</Badge>
-                                                                        )}
-                                                                    </div>
+                                                                    )}
                                                                 </div>
 
-                                                                <div className="text-right shrink-0 flex flex-col justify-between h-20">
-                                                                    <div className="space-y-0.5">
-                                                                        <p className="text-2xl font-black text-slate-900 italic tracking-tighter">
-                                                                            ${(q.totalPriceExclGst || 0).toLocaleString()}
-                                                                        </p>
-                                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">excl. GST</p>
-                                                                    </div>
-                                                                    <div className="flex justify-end">
-                                                                        <div className="h-10 w-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:bg-primary transition-all">
-                                                                            <ArrowRight className="h-5 w-5" />
+                                                                {/* Content */}
+                                                                <div className="p-3 flex flex-col gap-2 flex-1">
+                                                                    <div>
+                                                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                                                            <span className="text-[9px] font-bold uppercase tracking-widest text-primary">{q.vendorName || 'Vessel'}</span>
+                                                                            <span className="text-[9px] text-slate-300">·</span>
+                                                                            <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">{q.rangeName || 'Series'}</span>
                                                                         </div>
+                                                                        <h4 className="font-semibold text-sm text-slate-900 truncate">
+                                                                            {q.modelName} <span className="text-[10px] font-normal text-slate-400">{q.modelCode}</span>
+                                                                        </h4>
+                                                                    </div>
+
+                                                                    <div className="flex items-end justify-between">
+                                                                        <div>
+                                                                            <p className="text-base font-bold text-slate-900">${(q.totalPriceExclGst || 0).toLocaleString()}</p>
+                                                                            <p className="text-[9px] text-slate-400 uppercase tracking-widest">excl. GST</p>
+                                                                        </div>
+                                                                        <div className="h-7 w-7 rounded-lg bg-slate-900 text-white flex items-center justify-center group-hover:bg-primary transition-colors shrink-0">
+                                                                            <ArrowRight className="h-3.5 w-3.5" />
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="flex items-center gap-2 pt-2 border-t">
+                                                                        <Badge variant="outline" className="font-mono text-[9px] h-5 px-1.5 border-primary/20 text-primary bg-primary/5 shrink-0">
+                                                                            {q.quoteNumber}
+                                                                        </Badge>
+                                                                        {q.customer?.name ? (
+                                                                            <div className="flex items-center gap-1 min-w-0">
+                                                                                <User className="h-3 w-3 text-slate-400 shrink-0" />
+                                                                                <span className="text-[10px] font-medium text-slate-600 truncate">{q.customer.name}</span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span className="text-[10px] text-slate-400 italic">Stock unit</span>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             </div>

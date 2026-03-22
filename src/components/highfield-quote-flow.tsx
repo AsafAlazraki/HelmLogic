@@ -565,6 +565,30 @@ export function HighfieldQuoteFlow({
         fetchMotors();
     }, [currentStep, firestore, module, model, selectedOptionIds]);
 
+    // Auto-select the motor closest to maxHp when motors first load
+    useEffect(() => {
+        if (motors.length === 0 || selectedMotor) return;
+        const maxHp = Number(model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 0);
+        const parseHp = (rating?: any): number => {
+            if (!rating) return 0;
+            const m = String(rating).match(/(\d+(?:\.\d+)?)\s*hp/i);
+            return m ? parseFloat(m[1]) : 0;
+        };
+        const best = motors.reduce<{ motor: any; diff: number } | null>((acc, m) => {
+            const hp = parseHp(m['HP Rating']);
+            const diff = Math.abs(hp - maxHp);
+            return !acc || diff < acc.diff ? { motor: m, diff } : acc;
+        }, null);
+        if (best) {
+            setSelectedMotor(best.motor);
+            // Auto-select standard accessories (propeller, rigging included with motor)
+            const standardIds = (best.motor.masterAccessories || [])
+                .filter((a: any) => a.isStandard)
+                .map((a: any) => a.id);
+            if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds);
+        }
+    }, [motors]);
+
     const getMotorDisplayName = (m: any) => {
         const vendor = (m?.vendorName || 'YAMAHA').toUpperCase();
         let name = m?.['Model Name'] || m?.ModelName || m?.name || m?.Description || m?.model || 'Unnamed';
@@ -602,7 +626,7 @@ export function HighfieldQuoteFlow({
                                         <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
                                             {slide.type === 'build' ? slide.content : (
                                                 <>
-                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill className={cn("transition-all", (slide.type === 'boat' || slide.type === 'variant' || slide.type === 'gallery') ? "object-cover" : "object-contain p-12")} unoptimized />}
+                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill className={cn("transition-all", (slide.type === 'boat' || slide.type === 'variant' || slide.type === 'gallery') ? "object-cover" : "object-contain p-12")} unoptimized priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
                                                     <Button variant="ghost" size="icon" className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20" onClick={() => setLightboxUrl(slide.url || null)}><Maximize2 className="h-5 w-5" /></Button>
                                                 </>
                                             )}
