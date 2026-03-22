@@ -191,6 +191,9 @@ function OptionalFeatureItem({ index, remove, categories, variants, allFeatures 
     const [isCompDialogOpen, setIsCompDialogOpen] = useState(false);
 
     const isConsole = category === 'Consoles';
+    // FCT consoles come with a seat already included, so they don't need a paired dynamic seat.
+    // Only GT consoles (non-FCT) support seat linking.
+    const isGTConsole = isConsole && !name?.toUpperCase().includes('FCT');
     const currentId = allFeatures?.[index]?.id;
     const seatOptions = useMemo(() => allFeatures.filter((f: any) => f.category === 'Seats' && f.id !== currentId), [allFeatures, currentId]);
 
@@ -238,7 +241,7 @@ function OptionalFeatureItem({ index, remove, categories, variants, allFeatures 
                                     <><Button type="button" variant="outline" className="w-full h-10 justify-between px-4 font-black uppercase text-[9px] bg-white border-2 rounded-lg" onClick={() => setIsCompDialogOpen(true)}><span>{field.value?.length > 0 ? `${field.value.length} SKUs LINKED` : 'DEFINE SKU ACCESS'}</span><ChevronRight className="h-3 w-3 opacity-40" /></Button><SkuCompatibilityDialog isOpen={isCompDialogOpen} onClose={() => setIsCompDialogOpen(false)} variants={variants} value={field.value || []} onChange={field.onChange} featureName={name} /></>
                                 )} />
                             </div>
-                            {isConsole && (
+                            {isGTConsole && (
                                 <div className="space-y-2 text-left">
                                     <FormLabel className="text-[8px] font-black uppercase text-muted-foreground ml-1">Paired Dynamic Seat</FormLabel>
                                     <FormField control={control} name={`optionalFeatures.${index}.associatedSeatId`} render={({ field }) => (
