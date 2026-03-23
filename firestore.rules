@@ -28,26 +28,32 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid)) ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.appRole == 'HelmLogic Admin'
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.appRole == 'HelmLogic Admin')
       );
     }
 
     // --- COLLECTION RULES ---
 
+    // HelmLogic Admins get full access to the entire database
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
-      
+      allow read, write: if isOwner(userId) || isAdmin();
+
       match /notifications/{notifId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) || isAdmin();
       }
       match /quotes/{quoteId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) || isAdmin();
         match /service_items/{itemId} {
-          allow read, write: if isOwner(userId);
+          allow read, write: if isOwner(userId) || isAdmin();
         }
       }
       match /routes/{routeId} {
-        allow read, write: if isOwner(userId);
+        allow read, write: if isOwner(userId) || isAdmin();
       }
     }
 
