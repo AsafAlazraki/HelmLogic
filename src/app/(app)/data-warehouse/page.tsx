@@ -88,6 +88,7 @@ const vendorTypes = [
     'Electronics Brand',
     'Electronics Supplier',
     'Parts Wholesaler',
+    'Master Price File',
     'Other'
 ];
 
@@ -106,6 +107,8 @@ const getVendorTypeIcon = (vendorType?: string) => {
             return <Plug {...iconProps} />;
         case 'Parts Wholesaler':
             return <Boxes {...iconProps} />;
+        case 'Master Price File':
+            return <Briefcase {...iconProps} />;
         case 'Other':
             return <MoreHorizontal {...iconProps} />;
         default:
