@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, createElement } from 'react';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useUser } from '@/firebase/auth/use-user';
 import { useDoc } from '@/firebase/firestore/use-doc';
@@ -112,6 +112,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     const [isAuditOpen, setIsAuditOpen] = useState(false);
     const [localDiscount, setLocalDiscount] = useState<number>(0);
     const [isSaving, setIsSaving] = useState(false);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
     const userQuotesRef = useMemoFirebase(() => user ? collection(firestore, `users/${user.uid}/quotes`) : null, [firestore, user]);
 
@@ -220,6 +221,33 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         }
     }
 
+    const handleDownloadPdf = async () => {
+        if (!quote || !financials) return;
+        setIsGeneratingPdf(true);
+        try {
+            const [{ pdf }, { ProposalPDFDocument }] = await Promise.all([
+                import('@react-pdf/renderer'),
+                import('./proposal-pdf'),
+            ]);
+            const blob = await pdf(
+                createElement(ProposalPDFDocument, { quote, organisation, financials }) as any
+            ).toBlob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Quote-${quote.quoteNumber}-${quote.modelName ?? 'Proposal'}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('PDF generation failed:', err);
+            toast({ title: 'PDF generation failed', description: 'Please try again.', variant: 'destructive' });
+        } finally {
+            setIsGeneratingPdf(false);
+        }
+    };
+
     if (isLoadingQuote) return <HelmLogicLoading label="Loading Proposal" />;
     if (!quote) return <div className="p-20 text-center font-black uppercase text-slate-300">Proposal not found.</div>;
     const f = financials!;
@@ -269,10 +297,14 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     variant="outline"
                                     size="sm"
                                     className="h-8 rounded-xl border-2 font-black uppercase text-[9px] gap-1.5 hover:bg-primary hover:text-white transition-colors"
-                                    onClick={() => window.print()}
+                                    onClick={handleDownloadPdf}
+                                    disabled={isGeneratingPdf}
                                 >
-                                    <Printer className="h-3.5 w-3.5" />
-                                    <span className="hidden sm:inline">Print PDF</span>
+                                    {isGeneratingPdf
+                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        : <Printer className="h-3.5 w-3.5" />
+                                    }
+                                    <span className="hidden sm:inline">{isGeneratingPdf ? 'Generating…' : 'Download PDF'}</span>
                                 </Button>
                             </div>
                         </div>
