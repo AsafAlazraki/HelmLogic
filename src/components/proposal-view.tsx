@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, createElement } from 'react';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useUser } from '@/firebase/auth/use-user';
 import { useDoc } from '@/firebase/firestore/use-doc';
@@ -46,6 +46,18 @@ interface ProposalViewProps {
     quoteId?: string;
     quoteNumber?: string;
     hideNav?: boolean;
+}
+
+function formatOptionDisplayLabel(name: string): { base: string; color: string | null } {
+    const normalized = name.replace(/\s*&\s*/g, ' & ').replace(/\s+/g, ' ').trim();
+    const parenMatch = normalized.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    if (!parenMatch) return { base: normalized, color: null };
+    const base = parenMatch[1].trim();
+    const firstColor = parenMatch[2].split('/')[0].trim();
+    const color = firstColor
+        ? firstColor.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+        : null;
+    return { base, color };
 }
 
 export function formatCurrency(amount: number) {
@@ -100,6 +112,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     const [isAuditOpen, setIsAuditOpen] = useState(false);
     const [localDiscount, setLocalDiscount] = useState<number>(0);
     const [isSaving, setIsSaving] = useState(false);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
     const userQuotesRef = useMemoFirebase(() => user ? collection(firestore, `users/${user.uid}/quotes`) : null, [firestore, user]);
 
@@ -208,6 +221,33 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         }
     }
 
+    const handleDownloadPdf = async () => {
+        if (!quote || !financials) return;
+        setIsGeneratingPdf(true);
+        try {
+            const [{ pdf }, { ProposalPDFDocument }] = await Promise.all([
+                import('@react-pdf/renderer'),
+                import('./proposal-pdf'),
+            ]);
+            const blob = await pdf(
+                createElement(ProposalPDFDocument, { quote, organisation, financials }) as any
+            ).toBlob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Quote-${quote.quoteNumber}-${quote.modelName ?? 'Proposal'}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('PDF generation failed:', err);
+            toast({ title: 'PDF generation failed', description: 'Please try again.', variant: 'destructive' });
+        } finally {
+            setIsGeneratingPdf(false);
+        }
+    };
+
     if (isLoadingQuote) return <HelmLogicLoading label="Loading Proposal" />;
     if (!quote) return <div className="p-20 text-center font-black uppercase text-slate-300">Proposal not found.</div>;
     const f = financials!;
@@ -257,10 +297,14 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     variant="outline"
                                     size="sm"
                                     className="h-8 rounded-xl border-2 font-black uppercase text-[9px] gap-1.5 hover:bg-primary hover:text-white transition-colors"
-                                    onClick={() => window.print()}
+                                    onClick={handleDownloadPdf}
+                                    disabled={isGeneratingPdf}
                                 >
-                                    <Printer className="h-3.5 w-3.5" />
-                                    <span className="hidden sm:inline">Print PDF</span>
+                                    {isGeneratingPdf
+                                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        : <Printer className="h-3.5 w-3.5" />
+                                    }
+                                    <span className="hidden sm:inline">{isGeneratingPdf ? 'Generating…' : 'Download PDF'}</span>
                                 </Button>
                             </div>
                         </div>
@@ -307,7 +351,9 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                             )}
                                             <div className="px-3 py-1.5 bg-slate-100 rounded-full">
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-700">
-                                                    {quote.variant.material} &bull; {quote.variant.colorName}
+                                                    {quote.variant.name && quote.variant.name !== 'Standard'
+                                                        ? quote.variant.name
+                                                        : `${quote.variant.material} \u2022 ${quote.variant.colorName}`}
                                                 </span>
                                             </div>
                                         </div>
@@ -409,7 +455,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                                                     ? <div className="h-9 w-9 relative bg-white rounded-lg border shrink-0 overflow-hidden"><Image src={opt.imageUrl} alt="" fill className="object-contain p-1 mix-blend-multiply" /></div>
                                                                     : <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                                                                 }
-                                                                <p className="text-sm font-black uppercase tracking-tight text-slate-900 truncate">{opt.name}</p>
+                                                                {(() => { const { base, color } = formatOptionDisplayLabel(opt.name); return <p className="text-sm font-black uppercase tracking-tight text-slate-900 truncate">{base}{color && <span className="text-primary ml-1">({color})</span>}</p>; })()}
                                                             </div>
                                                             <span className="font-black text-xs text-slate-700 tabular-nums shrink-0 pl-4">
                                                                 {opt.sellPriceExclGst ? formatCurrency(opt.sellPriceExclGst) : <span className="text-slate-300">Incl.</span>}

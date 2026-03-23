@@ -202,7 +202,7 @@ function OptionalFeatureItem({ index, remove, categories, variants, allFeatures 
             <div className={cn("flex items-center justify-between p-3 border-b text-left", isStandard ? "bg-primary/5" : "bg-muted/10")}>
                 <div className="flex items-center gap-3 min-w-0 pr-10 text-left">
                     <CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7 rounded-full border shadow-sm"><ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]/item:rotate-180" /></Button></CollapsibleTrigger>
-                    <div className="flex items-center gap-2 min-w-0">{isStandard && <Star className="h-3 w-3 text-primary fill-primary" />}<span className="font-black text-[10px] uppercase truncate">{name ? abbreviateDisplayName(name) : 'Unnamed Option'}</span></div>
+                    <div className="flex items-center gap-2 min-w-0">{isStandard && <Star className="h-3 w-3 text-primary fill-primary" />}{name ? (() => { const { base, color } = formatOptionDisplayLabel(name); return <><span className="font-black text-[10px] uppercase truncate">{base}</span>{color && <span className="font-black text-[10px] uppercase text-primary shrink-0">({color})</span>}</>; })() : <span className="font-black text-[10px] uppercase">Unnamed Option</span>}</div>
                 </div>
                 <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/item:opacity-100 transition-opacity" onClick={() => remove(index)}><Trash2 className="h-3.5 w-3.5" /></Button>
             </div>
@@ -271,6 +271,19 @@ function abbreviateVariantName(name: string): string {
     const modelPart = name.slice(0, sepIdx);
     const colorPart = name.slice(sepIdx + 3);
     return `${modelPart} — ${abbreviateColorSlashes(colorPart)}`;
+}
+
+/** Normalize & spacing and extract first color from parenthetical for option display */
+function formatOptionDisplayLabel(name: string): { base: string; color: string | null } {
+    const normalized = name.replace(/\s*&\s*/g, ' & ').replace(/\s+/g, ' ').trim();
+    const parenMatch = normalized.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    if (!parenMatch) return { base: normalized, color: null };
+    const base = parenMatch[1].trim();
+    const firstColor = parenMatch[2].split('/')[0].trim();
+    const color = firstColor
+        ? firstColor.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+        : null;
+    return { base, color };
 }
 
 function abbreviateDisplayName(name: string): string {

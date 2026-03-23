@@ -51,6 +51,16 @@ const nextConfig: NextConfig = {
       // This is a known issue with how the library uses dynamic requires.
       exprContextCritical: false,
     };
+    // @react-pdf/renderer depends on canvas which is a node module — tell
+    // webpack to ignore it in the browser bundle (PDF is generated client-side).
+    config.resolve = {
+      ...config.resolve,
+      fallback: {
+        ...config.resolve?.fallback,
+        canvas: false,
+        fs: false,
+      },
+    };
     return config;
   },
 };
