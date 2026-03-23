@@ -30,6 +30,7 @@ import {
     ChevronLeft,
     FileText,
     PlusCircle,
+    Search,
     Navigation,
     Anchor,
     Ship,
@@ -164,24 +165,39 @@ function getEffectiveModel(master: any, override: any) {
     return merged;
 }
 
-function QuoteInitializationDialog({ 
-    isOpen, 
-    onOpenChange, 
-    vendor, 
-    onModelSelect 
-}: { 
-    isOpen: boolean, 
-    onOpenChange: (open: boolean) => void, 
+// Highfield catalog order: Roll-Up → Ultra-Light → Classic → Sport → Patrol → Adventure → Coaster
+const RANGE_CATALOG_ORDER: Record<string, number> = {
+    'roll-up': 1, 'ultra-light': 2, 'classic': 3,
+    'sport': 4, 'patrol': 5, 'adventure': 6, 'coaster': 7,
+};
+
+function QuoteInitializationDialog({
+    isOpen,
+    onOpenChange,
+    vendor,
+    onModelSelect
+}: {
+    isOpen: boolean,
+    onOpenChange: (open: boolean) => void,
     vendor: Vendor | null,
     onModelSelect: (model: Model, range: Range) => void
 }) {
     const firestore = useFirestore();
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
+    const [modelSearch, setModelSearch] = useState('');
 
     const rangesQuery = useMemoFirebase(() =>
         vendor?.id ? collection(firestore, `data-warehouse/${vendor.id}/ranges`) : null,
     [firestore, vendor?.id]);
-    const { data: ranges, isLoading: rangesLoading } = useCollection<Range>(rangesQuery);
+    const { data: rawRanges, isLoading: rangesLoading } = useCollection<Range>(rangesQuery);
+
+    const ranges = useMemo(() =>
+        [...(rawRanges ?? [])].sort((a, b) => {
+            const aOrder = RANGE_CATALOG_ORDER[a.slug ?? a.name.toLowerCase()] ?? (a.order ?? 99);
+            const bOrder = RANGE_CATALOG_ORDER[b.slug ?? b.name.toLowerCase()] ?? (b.order ?? 99);
+            return aOrder - bOrder;
+        }),
+    [rawRanges]);
 
     const modelsQuery = useMemoFirebase(() =>
         vendor?.id && selectedRange?.id ? collection(firestore, `data-warehouse/${vendor.id}/ranges/${selectedRange.id}/models`) : null,
@@ -191,8 +207,13 @@ function QuoteInitializationDialog({
     useEffect(() => {
         if (!isOpen) {
             setSelectedRange(null);
+            setModelSearch('');
         }
     }, [isOpen]);
+
+    useEffect(() => {
+        setModelSearch('');
+    }, [selectedRange]);
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -209,7 +230,7 @@ function QuoteInitializationDialog({
                     )}
                 </DialogHeader>
                 
-                <div className="p-12 min-h-[600px]">
+                <div className="p-12">
                     {!selectedRange ? (
                         <div className="space-y-10">
                             <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 border-l-4 border-primary pl-4">1. Select Product Range</h3>
@@ -239,23 +260,41 @@ function QuoteInitializationDialog({
                             )}
                         </div>
                     ) : (
-                        <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
-                            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 border-l-4 border-primary pl-4">2. Choose Boat Series: {selectedRange.name}</h3>
+                        <div className="flex flex-col gap-6 animate-in slide-in-from-right-4 duration-500 h-full">
+                            <div className="flex items-center gap-4">
+                                <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 border-l-4 border-primary pl-4 shrink-0">2. Choose Boat Series: {selectedRange.name}</h3>
+                                <div className="relative flex-1 max-w-xs ml-auto">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                    <Input
+                                        placeholder="Search models..."
+                                        value={modelSearch}
+                                        onChange={e => setModelSearch(e.target.value)}
+                                        className="pl-9 h-9 text-xs rounded-xl border-2 font-medium"
+                                    />
+                                </div>
+                            </div>
                             {modelsLoading ? (
                                 <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
                             ) : (
-                                <div className="grid grid-cols-5 gap-6">
-                                    {models?.map(model => (
-                                        <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => onModelSelect(model, selectedRange)}>
-                                            <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
-                                                {model.coverImageUrl && <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover group-hover:scale-105 transition-transform" />}
-                                            </div>
-                                            <div className="p-4 bg-white text-center flex flex-col gap-1.5 flex-1 justify-center">
-                                                <span className="font-black uppercase text-[11px] tracking-tight text-primary">{model.name}</span>
-                                                <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">{model.modelCode}</span>
-                                            </div>
-                                        </Card>
-                                    ))}
+                                <div className="overflow-y-auto max-h-[480px] pr-1">
+                                    <div className="grid grid-cols-5 gap-6">
+                                        {(models ?? [])
+                                            .filter(m => !modelSearch || m.name.toLowerCase().includes(modelSearch.toLowerCase()) || m.modelCode?.toLowerCase().includes(modelSearch.toLowerCase()))
+                                            .map(model => (
+                                            <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => onModelSelect(model, selectedRange)}>
+                                                <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
+                                                    {model.coverImageUrl && <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover group-hover:scale-105 transition-transform" />}
+                                                </div>
+                                                <div className="p-4 bg-white text-center flex flex-col gap-1.5 flex-1 justify-center">
+                                                    <span className="font-black uppercase text-[11px] tracking-tight text-primary">{model.name}</span>
+                                                    <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest">{model.modelCode}</span>
+                                                </div>
+                                            </Card>
+                                        ))}
+                                        {(models ?? []).filter(m => !modelSearch || m.name.toLowerCase().includes(modelSearch.toLowerCase()) || m.modelCode?.toLowerCase().includes(modelSearch.toLowerCase())).length === 0 && (
+                                            <div className="col-span-5 py-16 text-center text-slate-400 text-sm font-medium">No models match &ldquo;{modelSearch}&rdquo;</div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>
