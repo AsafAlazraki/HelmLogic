@@ -44,6 +44,7 @@ import { JeanneauDataStructure } from '@/components/jeanneau-data-structure';
 import { StacerDataStructure } from '@/components/stacer-data-structure';
 import { StabicraftDataStructure } from '@/components/stabicraft-data-structure';
 import { SurteesDataStructure } from '@/components/surtees-data-structure';
+import { MasterPriceFileDataStructure } from '@/components/master-price-file-data-structure';
 import { SamAllenUploader } from '@/components/sam-allen-uploader';
 import { SamAllenDataViewer } from '@/components/sam-allen-data-viewer';
 import { proxyFetch } from '@/actions/proxy-fetch';
@@ -1467,8 +1468,9 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
         const isBulkSupplier = (vendor?.vendorType === 'Electronics Supplier' || vendor?.vendorType === 'Parts Wholesaler');
         const isYamaha = vendor?.slug === 'yamaha';
         const isHighfield = vendor?.slug === 'highfield';
-        const isMultiTableVendor = vendor?.dataSource === 'Document Upload';
-        const defaultTab = isBoatBrand ? "product-ranges" : (isBulkSupplier || isYamaha || isMultiTableVendor) ? "master-data" : "details";
+        const isMasterPriceFile = vendor?.vendorType === 'Master Price File' || vendor?.slug === 'master-price-file';
+        const isMultiTableVendor = vendor?.dataSource === 'Document Upload' && !isMasterPriceFile;
+        const defaultTab = isMasterPriceFile ? "motor-library" : isBoatBrand ? "product-ranges" : (isBulkSupplier || isYamaha || isMultiTableVendor) ? "master-data" : "details";
         
         return (
             <AdminGuard>
@@ -1483,6 +1485,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                             </div>
                         </div>
                         <TabsList className="max-w-full overflow-x-auto flex justify-start shrink-0">
+                            {isMasterPriceFile && <TabsTrigger value="motor-library" className="font-bold">Motor Library</TabsTrigger>}
                             {isBoatBrand && <TabsTrigger value="product-ranges" className="font-bold">Product Ranges</TabsTrigger>}
                             {isHighfield && <TabsTrigger value="poc" className="font-bold">POC</TabsTrigger>}
                             {(isBulkSupplier || isYamaha || isMultiTableVendor) && <TabsTrigger value="master-data" className="font-bold">Master Data Set</TabsTrigger>}
@@ -1490,6 +1493,12 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                             <TabsTrigger value="details" className="font-bold">Details</TabsTrigger>
                         </TabsList>
                         
+                        {isMasterPriceFile && (
+                            <TabsContent value="motor-library" className="min-w-0 max-w-full overflow-hidden">
+                                <MasterPriceFileDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />
+                            </TabsContent>
+                        )}
+
                         {isBoatBrand && (
                             <TabsContent value="product-ranges" className="min-w-0 max-w-full overflow-hidden">
                                 {vendor.slug === 'highfield' && <HighfieldDataStructure vendorId={vendor.id} vendorSlugOrId={slugOrId} />}
@@ -1558,7 +1567,7 @@ function MasterDataSetViewer({ vendor }: { vendor: VendorFormData }) {
                                                 <CardContent className="space-y-6">
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Vendor Name</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
-                                                    <FormField control={form.control} name="vendorType" render={({ field }) => ( <FormItem><FormLabel>Vendor Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a vendor type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Boat Brand">Boat Brand</SelectItem><SelectItem value="Motor Brand">Motor Brand</SelectItem><SelectItem value="Trailer Brand">Trailer Brand</SelectItem><SelectItem value="Electronics Brand">Electronics Brand</SelectItem><SelectItem value="Electronics Supplier">Electronics Supplier</SelectItem><SelectItem value="Parts Wholesaler">Parts Wholesaler</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                                                    <FormField control={form.control} name="vendorType" render={({ field }) => ( <FormItem><FormLabel>Vendor Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a vendor type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Boat Brand">Boat Brand</SelectItem><SelectItem value="Motor Brand">Motor Brand</SelectItem><SelectItem value="Trailer Brand">Trailer Brand</SelectItem><SelectItem value="Electronics Brand">Electronics Brand</SelectItem><SelectItem value="Electronics Supplier">Electronics Supplier</SelectItem><SelectItem value="Parts Wholesaler">Parts Wholesaler</SelectItem><SelectItem value="Master Price File">Master Price File</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                                                     </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                         <FormField control={form.control} name="primaryContact" render={({ field }) => ( <FormItem><FormLabel>Primary Contact</FormLabel><FormControl><Input {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem> )} />
