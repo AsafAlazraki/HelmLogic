@@ -1,0 +1,16 @@
+														
+														
+														
+		406MHz GNSS EPIRB - Manual Activation	406MHz GNSS EPIRB - Manual Activation	406MHz GNSS EPIRB - Manual Activation	406MHz GNSS EPIRB - Manual Activation	406MHz GNSS EPIRB - Manual Activation	406MHz GNSS EPIRB - Manual Activation							
+		406MHz GNSS EPIRB - Manual Activation	406MHz GNSS EPIRB - Manual Activation	406MHz GNSS EPIRB - Manual Activation	406MHz GNSS EPIRB - Manual Activation	406MHz GNSS EPIRB - Manual Activation	406MHz GNSS EPIRB - Manual Activation							
+		NSM OP Code	Supplier	Sup. Code	Min	Max	SOH							Anchor
+		GME EPIRB - 406MHz GNSS (Manual Ativation)	0.1	335.79699999999997	18.748454545454535	390	EPIRB Installation							
+														
+		Cost	Landed	MU	GP	SELL Price	SELL Price							
+		335.79699999999997	362.81518181818177	-0.275864721507344	-100.08790909090908	289	289							
+						289	289							
+		Service Operation	Service Operation	Service Operation	Service Operation		TTF (Hrs)							
+		0	0	0	0	0	2							
+		Cost	Parts	MU	GP	DFO Sell (Parts+Lab)	DFO Sell (Parts+Lab)							
+		0	362.81518181818177	-1	-362.81518181818177	0	0							
+						0	0							
