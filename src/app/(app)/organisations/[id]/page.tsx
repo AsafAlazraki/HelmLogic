@@ -45,6 +45,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useUser } from '@/firebase/auth/use-user';
+import ManageOrganisationPage from '@/components/manage-organisation-page';
 
 const hexColorValidation = z.string().refine(val => !val || /^#[0-9A-F]{6}$/i.test(val), {
     message: "Must be a valid hex color code (e.g., #RRGGBB)",
@@ -329,101 +330,15 @@ export default function OrganisationDetailsPage() {
 
     return (
         <AdminGuard>
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="flex items-start justify-between">
-                        <div>
-                            <h1 className="text-2xl font-semibold">Edit {organisation?.name}</h1>
-                            <BreadcrumbNav parts={breadcrumbParts} />
-                        </div>
-                        <div className="flex items-center justify-end gap-2">
-                            <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                <Save className="mr-2 h-4 w-4" /> Save Changes
-                            </Button>
-                        </div>
+            <div className="space-y-4">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h1 className="text-2xl font-semibold">Edit {organisation?.name}</h1>
+                        <BreadcrumbNav parts={breadcrumbParts} />
                     </div>
-
-                    <Tabs defaultValue="details" className="space-y-4">
-                        <TabsList className={cn("grid w-full", watchedSubDealersEnabled ? 'grid-cols-6' : 'grid-cols-5')}>
-                            <TabsTrigger value="details">Details</TabsTrigger>
-                            <TabsTrigger value="access">Access</TabsTrigger>
-                            <TabsTrigger value="margins">Margins</TabsTrigger>
-                            <TabsTrigger value="templates">Templates</TabsTrigger>
-                            {watchedSubDealersEnabled && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
-                        </TabsList>
-                        
-                        <TabsContent value="templates">
-                            <Card className="border-2 rounded-[2.5rem] overflow-hidden shadow-sm">
-                                <CardHeader className="p-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
-                                            <Waves className="h-3.5 w-3.5" />
-                                            <span>Template Assets</span>
-                                        </div>
-                                        <CardTitle className="text-2xl font-black uppercase tracking-tight italic">Company Templates</CardTitle>
-                                        <CardDescription className="text-xs uppercase font-black text-muted-foreground tracking-widest">Universal document architecture for {organisation?.name}.</CardDescription>
-                                    </div>
-                                    <Button 
-                                        type="button" 
-                                        className="h-12 px-8 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl"
-                                        onClick={() => setIsCreateTemplateOpen(true)}
-                                    >
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Initialize New Template
-                                    </Button>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    {templates && templates.length > 0 ? (
-                                        <div className="divide-y border-b">
-                                            {templates.map(t => (
-                                                <Link 
-                                                    key={t.id} 
-                                                    href={`/modules/${t.moduleId}/templates/${t.id}`}
-                                                    className="flex items-center justify-between px-8 py-6 hover:bg-slate-50 transition-colors group"
-                                                >
-                                                    <div className="flex items-center gap-6">
-                                                        <div className="h-12 w-12 rounded-2xl bg-white border-2 flex items-center justify-center text-primary shadow-sm group-hover:scale-110 transition-transform">
-                                                            <FileSpreadsheet className="h-6 w-6" />
-                                                        </div>
-                                                        <div>
-                                                            <div className="flex items-center gap-2">
-                                                                <Badge variant="outline" className="h-4 text-[7px] font-black uppercase tracking-widest border-primary/20 text-primary">{t.type}</Badge>
-                                                                <p className="font-black uppercase text-sm text-slate-900">{t.name}</p>
-                                                            </div>
-                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Linked to Module: {allModules?.find((m:any) => m.id === t.moduleId)?.name || t.moduleId}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-4">
-                                                        <Button variant="ghost" size="sm" className="h-8 text-[10px] font-black uppercase tracking-widest text-primary opacity-0 group-hover:opacity-100 transition-opacity">Launch Designer</Button>
-                                                        <ChevronRight className="h-5 w-5 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-                                                    </div>
-                                                </Link>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="py-20 text-center flex flex-col items-center justify-center gap-4 text-muted-foreground opacity-20">
-                                            <FileSpreadsheet className="h-16 w-16" />
-                                            <p className="font-black uppercase tracking-[0.2em] text-sm">No Document Templates Synchronized</p>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-                        
-                        {/* Other tabs content... */}
-                    </Tabs>
-                </form>
-            </Form>
-
-            {organisation && (
-                <CreateTemplateDialog 
-                    isOpen={isCreateTemplateOpen} 
-                    onOpenChange={setIsCreateTemplateOpen} 
-                    orgId={organisation.id} 
-                    allModules={allModules || []} 
-                />
-            )}
+                </div>
+                {organisation?.id && <ManageOrganisationPage orgId={organisation.id} />}
+            </div>
         </AdminGuard>
     );
 }

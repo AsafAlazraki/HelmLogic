@@ -272,7 +272,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                     <div className="relative rounded-[2rem] md:rounded-[3rem] overflow-hidden border-2 bg-white shadow-xl">
                         {quote.coverImageUrl && (
                             <div className="absolute inset-0 z-0">
-                                <Image src={quote.coverImageUrl} alt="" fill className="object-cover opacity-15" unoptimized />
+                                <Image src={quote.coverImageUrl} alt="" fill className="object-cover opacity-15" />
                                 <div className="absolute inset-0 bg-gradient-to-r from-white via-white/70 to-white/10" />
                             </div>
                         )}
@@ -283,7 +283,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     {/* Logo */}
                                     {organisation?.primaryLogoUrl ? (
                                         <div className="relative h-10 w-32">
-                                            <Image src={organisation.primaryLogoUrl} alt="" fill className="object-contain object-left" unoptimized />
+                                            <Image src={organisation.primaryLogoUrl} alt="" fill className="object-contain object-left" />
                                         </div>
                                     ) : (
                                         <div className="flex items-center gap-2">
@@ -325,7 +325,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                             <div className="flex flex-col items-stretch justify-between p-6 md:p-10 bg-slate-50/40 border-t-2 lg:border-t-0 lg:border-l-2 border-slate-100 gap-4">
                                 {(quote.variant?.imageUrl || quote.coverImageUrl) && (
                                     <div className="relative w-full h-48 md:h-56 rounded-2xl overflow-hidden border-2 bg-white shadow-lg">
-                                        <Image src={quote.variant?.imageUrl || quote.coverImageUrl} alt="" fill className="object-contain p-4 mix-blend-multiply" unoptimized />
+                                        <Image src={quote.variant?.imageUrl || quote.coverImageUrl} alt="" fill className="object-contain p-4 mix-blend-multiply" />
                                     </div>
                                 )}
                                 <div className="bg-slate-900 rounded-2xl p-5 md:p-6 text-white text-right shadow-xl">
@@ -406,7 +406,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                                         <div key={opt.id || i} className="flex items-center justify-between px-6 py-3.5 border-t border-slate-50 hover:bg-slate-50/40 transition-colors">
                                                             <div className="flex items-center gap-3 min-w-0">
                                                                 {opt.imageUrl
-                                                                    ? <div className="h-9 w-9 relative bg-white rounded-lg border shrink-0 overflow-hidden"><Image src={opt.imageUrl} alt="" fill className="object-contain p-1 mix-blend-multiply" unoptimized /></div>
+                                                                    ? <div className="h-9 w-9 relative bg-white rounded-lg border shrink-0 overflow-hidden"><Image src={opt.imageUrl} alt="" fill className="object-contain p-1 mix-blend-multiply" /></div>
                                                                     : <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                                                                 }
                                                                 <p className="text-sm font-black uppercase tracking-tight text-slate-900 truncate">{opt.name}</p>
@@ -431,7 +431,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                         <div className="flex items-center gap-5">
                                             {quote.motor.imageUrl && (
                                                 <div className="h-20 w-20 relative bg-slate-50 rounded-2xl border-2 p-2 shrink-0">
-                                                    <Image src={quote.motor.imageUrl} alt="" fill className="object-contain mix-blend-multiply" unoptimized />
+                                                    <Image src={quote.motor.imageUrl} alt="" fill className="object-contain mix-blend-multiply" />
                                                 </div>
                                             )}
                                             <div className="flex-1 min-w-0">

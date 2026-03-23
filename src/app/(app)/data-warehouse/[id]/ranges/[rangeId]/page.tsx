@@ -145,7 +145,7 @@ function HighfieldVariantList({
                 <Card key={variant.id} className="group relative overflow-hidden bg-white border-muted shadow-none hover:border-primary/40 transition-all flex flex-col">
                     <div className="relative aspect-[16/10] w-full bg-white border-b overflow-hidden shrink-0 p-4">
                         {variant.imageUrl ? (
-                            <Image src={variant.imageUrl} alt={variant.sku || 'Variant'} fill className="object-contain" sizes="(max-width: 768px) 50vw, 25vw" unoptimized />
+                            <Image src={variant.imageUrl} alt={variant.sku || 'Variant'} fill className="object-contain" sizes="(max-width: 768px) 50vw, 25vw" />
                         ) : (
                             <div className="flex h-full w-full items-center justify-center">
                                 <Sailboat className="h-8 w-8 text-muted-foreground/20" />
@@ -268,7 +268,7 @@ function HighfieldGroupedView({
                         <div className="flex flex-col md:flex-row md:items-center p-3 gap-4 bg-muted/10 relative">
                             <div className="relative h-16 w-28 bg-white rounded border overflow-hidden shrink-0 p-2">
                                 {group.coverImageUrl ? (
-                                    <Image src={group.coverImageUrl} alt={group.name} fill className="object-contain" sizes="128px" unoptimized />
+                                    <Image src={group.coverImageUrl} alt={group.name} fill className="object-contain" sizes="128px" />
                                 ) : (
                                     <div className="flex h-full w-full items-center justify-center">
                                         <ImageIcon className="h-6 w-6 text-muted-foreground/20" />
@@ -642,7 +642,7 @@ export default function RangeDetailsPage() {
                             <div className="relative h-32 w-48 bg-white rounded-lg border-2 border-dashed overflow-hidden group p-4">
                                 {groupImagePreview ? (
                                     <>
-                                        <Image src={groupImagePreview} alt="Preview" fill className="object-contain" unoptimized />
+                                        <Image src={groupImagePreview} alt="Preview" fill className="object-contain" />
                                         <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setGroupImage(null); setGroupImagePreview(null); }}><X className="h-3 w-3" /></Button>
                                     </>
                                 ) : (
@@ -689,7 +689,7 @@ export default function RangeDetailsPage() {
                             <div className="relative h-36 w-60 bg-white rounded border-2 border-dashed overflow-hidden group p-4">
                                 {varImagePreview ? (
                                     <>
-                                        <Image src={varImagePreview} alt="Variant" fill className="object-contain" unoptimized />
+                                        <Image src={varImagePreview} alt="Variant" fill className="object-contain" />
                                         <Button variant="destructive" size="icon" className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setVarImage(null); setVarImagePreview(null); }}><X className="h-3 w-3" /></Button>
                                     </>
                                 ) : (

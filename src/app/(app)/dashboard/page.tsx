@@ -80,7 +80,7 @@ function SortableModuleCard({ module, userPermissions }: { module: Module, userP
                         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         {module.logoUrl ? (
                             <div className="relative h-full w-full">
-                                <Image src={module.logoUrl} alt={`${module.name} logo`} fill className="object-contain p-2" unoptimized />
+                                <Image src={module.logoUrl} alt={`${module.name} logo`} fill className="object-contain p-2" />
                             </div>
                         ) : (
                             <Blocks className="h-12 w-12 text-muted-foreground opacity-20"/>
@@ -218,7 +218,7 @@ function EmployeeDashboard({ organisationId, userProfile }: { organisationId: st
                                         alt={`${organisation.name} logo`} 
                                         fill 
                                         className="object-contain p-2" 
-                                        unoptimized
+                                       
                                     />
                                 </div>
                             ) : (

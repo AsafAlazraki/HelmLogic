@@ -113,7 +113,7 @@ export function MotorConfigurationDetails({ motor, module, vendorId, dataSetId }
                     <div className="grid md:grid-cols-3 gap-0">
                         <div className="relative aspect-video md:aspect-auto bg-white border-r-2 flex items-center justify-center p-8">
                             {imgUrl ? (
-                                <Image src={imgUrl} alt="Motor" fill className="object-contain p-6" unoptimized />
+                                <Image src={imgUrl} alt="Motor" fill className="object-contain p-6" />
                             ) : (
                                 <Ship className="h-24 w-24 opacity-10" />
                             )}

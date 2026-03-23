@@ -226,7 +226,7 @@ function QuoteInitializationDialog({
                                                         alt={range.name} 
                                                         fill 
                                                         className="object-contain p-4 group-hover:scale-105 transition-transform" 
-                                                        unoptimized 
+                                                        
                                                     />
                                                 )}
                                             </div>
@@ -248,7 +248,7 @@ function QuoteInitializationDialog({
                                     {models?.map(model => (
                                         <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => onModelSelect(model, selectedRange)}>
                                             <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
-                                                {model.coverImageUrl && <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover group-hover:scale-105 transition-transform" unoptimized />}
+                                                {model.coverImageUrl && <Image src={model.coverImageUrl} alt={model.name} fill className="object-cover group-hover:scale-105 transition-transform" />}
                                             </div>
                                             <div className="p-4 bg-white text-center flex flex-col gap-1.5 flex-1 justify-center">
                                                 <span className="font-black uppercase text-[11px] tracking-tight text-primary">{model.name}</span>
@@ -850,7 +850,7 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
                             alt={range.name} 
                             fill 
                             className="object-contain p-6 group-hover:scale-105 transition-transform duration-500" 
-                            unoptimized 
+                            
                         />
                     ) : (
                         <div className="flex items-center justify-center h-full">
@@ -890,7 +890,7 @@ function ModelCard({ model, isSelected, onClick }: any) {
                         alt={model.name} 
                         fill 
                         className="object-cover group-hover:scale-105 transition-transform duration-500" 
-                        unoptimized 
+                        
                     />
                 ) : (
                     <div className="flex items-center justify-center h-full">
@@ -943,7 +943,7 @@ function EditItemDialog({ isOpen, onOpenChange, item, onSave }: any) {
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Primary Render</Label>
                         <div className="relative aspect-video rounded-xl border-2 border-dashed bg-muted/20 overflow-hidden group">
                             {preview ? (
-                                <Image src={preview} alt="Preview" fill className="object-contain p-4" unoptimized />
+                                <Image src={preview} alt="Preview" fill className="object-contain p-4" />
                             ) : (
                                 <div className="h-full w-full flex flex-col items-center justify-center text-muted-foreground">
                                     <ImageIcon className="h-8 w-8 mb-2 opacity-20" />

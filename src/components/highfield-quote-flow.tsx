@@ -205,7 +205,7 @@ export function HighfieldQuoteFlow({
             <div className={cn("h-full w-full grid bg-white", itemsToShow.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
                 {itemsToShow.map((item: any, i) => (
                     <div key={item.id} className={cn("relative flex items-center justify-center hover:bg-slate-50", i === 0 && itemsToShow.length === 2 && "border-r")}>
-                        {item.imageUrl && <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-8 mix-blend-multiply" unoptimized />}
+                        {item.imageUrl && <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-8 mix-blend-multiply" />}
                         <div className="absolute bottom-8 left-8 px-3 py-1 bg-slate-900/5 rounded-full text-[8px] font-black uppercase tracking-widest text-slate-400">{item.name}</div>
                     </div>
                 ))}
@@ -626,7 +626,7 @@ export function HighfieldQuoteFlow({
                                         <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
                                             {slide.type === 'build' ? slide.content : (
                                                 <>
-                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill className={cn("transition-all", (slide.type === 'boat' || slide.type === 'variant' || slide.type === 'gallery') ? "object-cover" : "object-contain p-12")} unoptimized priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
+                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill className={cn("transition-all", (slide.type === 'boat' || slide.type === 'variant' || slide.type === 'gallery') ? "object-cover" : "object-contain p-12")} priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
                                                     <Button variant="ghost" size="icon" className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20" onClick={() => setLightboxUrl(slide.url || null)}><Maximize2 className="h-5 w-5" /></Button>
                                                 </>
                                             )}
@@ -687,7 +687,7 @@ export function HighfieldQuoteFlow({
                                             <div className="grid grid-cols-2 gap-4">
                                                 {availableColors.map((color) => (
                                                     <button key={color.id} onClick={() => handleColorChange(color.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent p-1", selectedColor === color.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
-                                                        <div className="relative aspect-video w-full bg-white">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-1" unoptimized />}</div>
+                                                        <div className="relative aspect-video w-full bg-white">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-1" />}</div>
                                                         <div className={cn("p-2 text-center border-t transition-colors", selectedColor === color.id ? "bg-blue-50/50 border-primary/10" : "bg-white border-slate-50")}><p className={cn("text-[9px] font-black uppercase tracking-widest", selectedColor === color.id ? "text-primary" : "text-slate-600")}>{color.name}</p></div>
                                                     </button>
                                                 ))}
@@ -744,7 +744,7 @@ export function HighfieldQuoteFlow({
                                             <div className="grid grid-cols-2 gap-4">
                                                 {opts.map((opt: any) => (
                                                     <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                        <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !opt.imageUrl && "hidden")}>{opt.imageUrl && <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}</div>
+                                                        <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !opt.imageUrl && "hidden")}>{opt.imageUrl && <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
                                                         <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow">
                                                             <p className={cn("text-[10px] font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
                                                             <p className={cn("text-[9px] font-black", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400")}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
@@ -823,7 +823,7 @@ export function HighfieldQuoteFlow({
                                                         <button key={m.id} onClick={() => { setSelectedMotor(isSelected ? null : m); }} className={cn("group relative flex flex-col border-4 rounded-[2rem] overflow-hidden transition-all bg-white shadow-2xl h-full", isSelected ? "border-primary ring-8 ring-primary/10" : "border-transparent hover:border-primary/20")}>
                                                             <div className="relative aspect-video w-full bg-slate-50 border-b flex items-center justify-center">
                                                                 {mUrl ? (
-                                                                    <Image src={mUrl} alt="Motor" fill className="object-contain p-6 mix-blend-multiply transition-transform group-hover:scale-110" unoptimized />
+                                                                    <Image src={mUrl} alt="Motor" fill className="object-contain p-6 mix-blend-multiply transition-transform group-hover:scale-110" />
                                                                 ) : (
                                                                     <Ship className="h-12 w-12 text-slate-200" />
                                                                 )}
@@ -858,7 +858,7 @@ export function HighfieldQuoteFlow({
                                             <div className="grid grid-cols-2 gap-4">
                                                 {opts.map((opt: any) => (
                                                     <button key={opt.id} onClick={() => toggleMotorAccessory(opt.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-md border-transparent h-full p-1 group", selectedMotorAccessoryIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-sm ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                        <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(opt) && "hidden")}>{resolveImageUrl(opt) && <Image src={resolveImageUrl(opt)!} alt={opt.name} fill className="object-contain p-2 mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}</div>
+                                                        <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(opt) && "hidden")}>{resolveImageUrl(opt) && <Image src={resolveImageUrl(opt)!} alt={opt.name} fill className="object-contain p-2 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
                                                         <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow">
                                                             {opt.isStandard && <Badge className="mb-1.5 bg-emerald-500 text-white border-none font-black text-[6px] uppercase h-3.5 px-1">STANDARD</Badge>}
                                                             <p className={cn("text-[10px] font-black uppercase tracking-widest leading-tight", selectedMotorAccessoryIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
@@ -881,7 +881,7 @@ export function HighfieldQuoteFlow({
                                         {model.trailerConfig ? (
                                             <div className="grid grid-cols-2 gap-4">
                                                 <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); if (!isSelected) setSelectedTrailerOptionIds((model.trailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                    <div className={cn("relative aspect-video w-full bg-white shrink-0", !model.trailerConfig.imageUrl && "hidden")}>{model.trailerConfig.imageUrl && <Image src={model.trailerConfig.imageUrl} alt="Trailer" fill className="object-contain mix-blend-multiply p-4" unoptimized />}</div>
+                                                    <div className={cn("relative aspect-video w-full bg-white shrink-0", !model.trailerConfig.imageUrl && "hidden")}>{model.trailerConfig.imageUrl && <Image src={model.trailerConfig.imageUrl} alt="Trailer" fill className="object-contain mix-blend-multiply p-4" />}</div>
                                                     <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
                                                         <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", selectedTrailerId === 'primary-trailer' ? "text-primary" : "text-slate-900")}>{model.trailerConfig.name}</p>
                                                         <p className={cn("text-[9px] font-black uppercase tracking-widest", selectedTrailerId === 'primary-trailer' ? "text-primary/70" : "text-slate-400")}>${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
@@ -940,7 +940,7 @@ export function HighfieldQuoteFlow({
                                                 <div className="grid grid-cols-2 gap-4">
                                                     {opts.map((sel: any) => (
                                                         <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", selectedDealerFitIds.includes(sel.id) ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                            <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" unoptimized />}</div>
+                                                            <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
                                                             <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
                                                                 <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", selectedDealerFitIds.includes(sel.id) ? "text-primary" : "text-slate-900")}>{sel.name}</p>
                                                                 <p className={cn("text-[8px] font-black uppercase tracking-widest", selectedDealerFitIds.includes(sel.id) ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0)).toLocaleString()}</p>
@@ -1155,7 +1155,7 @@ export function HighfieldQuoteFlow({
             <Dialog open={!!lightboxUrl} onOpenChange={(open) => !open && setLightboxUrl(null)}>
                 <DialogContent className="max-w-[95vw] h-[90vh] p-0 overflow-hidden bg-black/95 border-none shadow-none rounded-none [&>button]:text-white [&>button]:h-12 [&>button]:w-12 [&>button]:bg-transparent [&>button]:right-6 [&>button]:top-6 [&>button]:focus:ring-0 [&>button]:focus:outline-none">
                     <DialogHeader className="sr-only"><DialogTitle>Immersive Inspection</DialogTitle></DialogHeader>
-                    <div className="relative w-full h-full flex items-center justify-center">{lightboxUrl && <Image src={lightboxUrl} alt="Inspection" fill className="object-contain p-4" unoptimized />}</div>
+                    <div className="relative w-full h-full flex items-center justify-center">{lightboxUrl && <Image src={lightboxUrl} alt="Inspection" fill className="object-contain p-4" />}</div>
                 </DialogContent>
             </Dialog>
 

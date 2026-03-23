@@ -39,7 +39,7 @@ export function HelmLogicLoading({
                                 alt={organisation.name} 
                                 fill 
                                 className="object-contain p-2 brightness-0 invert" 
-                                unoptimized
+                               
                             />
                         </div>
                     ) : (

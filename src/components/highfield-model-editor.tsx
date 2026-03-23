@@ -213,7 +213,7 @@ function OptionalFeatureItem({ index, remove, categories, variants, allFeatures 
                             <FormField control={control} name={`optionalFeatures.${index}.imageUrl`} render={({ field }) => (
                                 <div className="relative aspect-square w-full rounded-xl border-2 border-dashed bg-white group/feat-img shadow-inner overflow-hidden">
                                     {isUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}
-                                    {imageUrl ? (<><Image src={imageUrl} alt="Feature" fill className="object-contain p-2" unoptimized /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover/feat-img:opacity-100 transition-opacity flex items-center justify-center"><Button type="button" variant="destructive" size="icon" className="h-6 w-6 rounded-md" onClick={() => field.onChange(null)}><X className="h-3 w-3" /></Button></div></>) : (
+                                    {imageUrl ? (<><Image src={imageUrl} alt="Feature" fill className="object-contain p-2" /><div className="absolute inset-0 bg-black/40 opacity-0 group-hover/feat-img:opacity-100 transition-opacity flex items-center justify-center"><Button type="button" variant="destructive" size="icon" className="h-6 w-6 rounded-md" onClick={() => field.onChange(null)}><X className="h-3 w-3" /></Button></div></>) : (
                                         <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-slate-50 transition-colors"><Upload className="w-4 h-4 text-slate-300 mb-1" /><span className="text-[8px] text-slate-400 uppercase font-black tracking-widest">Render</span><FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
                                             const file = e.target.files?.[0];
                                             if (file && storage) { setIsUploading(true); try { const url = await uploadFileToStorage(storage, file, `features/${Date.now()}-${file.name}`); field.onChange(url); } finally { setIsUploading(false); } }
@@ -318,7 +318,7 @@ function VariantRow({ v, vendorId, rangeId, modelId }: { v: any; vendorId: strin
                     {uploading
                         ? <Loader2 className="h-4 w-4 animate-spin text-primary" />
                         : v.imageUrl
-                            ? <Image src={v.imageUrl} alt={v.name} fill className="object-contain p-1" unoptimized />
+                            ? <Image src={v.imageUrl} alt={v.name} fill className="object-contain p-1" />
                             : <Ship className="h-5 w-5 text-slate-200 group-hover/img:text-primary/30 transition-colors" />
                     }
                     <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
@@ -390,7 +390,7 @@ export function VisualAssetsCard({ model, isModuleView }: { model: any, isModule
                         {isCoverUploading && <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
                         {coverImageUrl ? (
                             <div className="h-full w-full flex items-center justify-center relative text-left">
-                                <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-6" unoptimized />
+                                <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-6" />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                     <Button type="button" variant="destructive" size="icon" className="font-black uppercase text-[9px] h-7 px-3" onClick={() => setValue('coverImageUrl', null)}>Remove Render</Button>
                                 </div>
@@ -411,7 +411,7 @@ export function VisualAssetsCard({ model, isModuleView }: { model: any, isModule
                         <div className="grid grid-cols-3 gap-2 text-left">
                             {galleryUrls.map((url, index) => (
                                 <div key={index} className="relative aspect-square group rounded-lg overflow-hidden border-2 bg-slate-50 shadow-inner">
-                                    <Image src={url} alt={`Gallery ${index}`} fill className="object-cover" unoptimized />
+                                    <Image src={url} alt={`Gallery ${index}`} fill className="object-cover" />
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><Button type="button" variant="destructive" size="icon" className="h-6 w-6 rounded-full" onClick={() => removeGalleryImage(index)}><Trash2 className="h-3 w-3" /></Button></div>
                                 </div>
                             ))}
