@@ -48,6 +48,18 @@ interface ProposalViewProps {
     hideNav?: boolean;
 }
 
+function formatOptionDisplayLabel(name: string): { base: string; color: string | null } {
+    const normalized = name.replace(/\s*&\s*/g, ' & ').replace(/\s+/g, ' ').trim();
+    const parenMatch = normalized.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    if (!parenMatch) return { base: normalized, color: null };
+    const base = parenMatch[1].trim();
+    const firstColor = parenMatch[2].split('/')[0].trim();
+    const color = firstColor
+        ? firstColor.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+        : null;
+    return { base, color };
+}
+
 export function formatCurrency(amount: number) {
     return new Intl.NumberFormat('en-AU', {
         style: 'currency',
@@ -307,7 +319,9 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                             )}
                                             <div className="px-3 py-1.5 bg-slate-100 rounded-full">
                                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-700">
-                                                    {quote.variant.material} &bull; {quote.variant.colorName}
+                                                    {quote.variant.name && quote.variant.name !== 'Standard'
+                                                        ? quote.variant.name
+                                                        : `${quote.variant.material} \u2022 ${quote.variant.colorName}`}
                                                 </span>
                                             </div>
                                         </div>
@@ -409,7 +423,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                                                     ? <div className="h-9 w-9 relative bg-white rounded-lg border shrink-0 overflow-hidden"><Image src={opt.imageUrl} alt="" fill className="object-contain p-1 mix-blend-multiply" /></div>
                                                                     : <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
                                                                 }
-                                                                <p className="text-sm font-black uppercase tracking-tight text-slate-900 truncate">{opt.name}</p>
+                                                                {(() => { const { base, color } = formatOptionDisplayLabel(opt.name); return <p className="text-sm font-black uppercase tracking-tight text-slate-900 truncate">{base}{color && <span className="text-primary ml-1">({color})</span>}</p>; })()}
                                                             </div>
                                                             <span className="font-black text-xs text-slate-700 tabular-nums shrink-0 pl-4">
                                                                 {opt.sellPriceExclGst ? formatCurrency(opt.sellPriceExclGst) : <span className="text-slate-300">Incl.</span>}

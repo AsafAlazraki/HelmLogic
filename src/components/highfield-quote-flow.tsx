@@ -72,6 +72,19 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+/** Normalize & spacing and extract first color from parenthetical for option display */
+function formatOptionDisplayLabel(name: string): { base: string; color: string | null } {
+    const normalized = name.replace(/\s*&\s*/g, ' & ').replace(/\s+/g, ' ').trim();
+    const parenMatch = normalized.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    if (!parenMatch) return { base: normalized, color: null };
+    const base = parenMatch[1].trim();
+    const firstColor = parenMatch[2].split('/')[0].trim();
+    const color = firstColor
+        ? firstColor.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
+        : null;
+    return { base, color };
+}
+
 interface Variant {
     id: string;
     sku: string | null;
@@ -746,7 +759,7 @@ export function HighfieldQuoteFlow({
                                                     <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                         <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !opt.imageUrl && "hidden")}>{opt.imageUrl && <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
                                                         <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                            <p className={cn("text-[10px] font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
+                                                            {(() => { const { base, color } = formatOptionDisplayLabel(opt.name); return (<><p className={cn("text-[10px] font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{base}</p>{color && <p className={cn("text-[9px] font-black uppercase tracking-widest", selectedOptionIds.includes(opt.id) ? "text-primary/70" : "text-slate-400")}>{color}</p>}</>); })()}
                                                             <p className={cn("text-[9px] font-black", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400")}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                         </div>
                                                     </button>
@@ -1017,7 +1030,7 @@ export function HighfieldQuoteFlow({
                                                                         <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
                                                                         <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => toggleOption(opt.id)}><X className="h-3 w-3" /></Button>
                                                                     </div>
-                                                                    <div><p className="text-[10px] font-black uppercase tracking-tight">{opt.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1">{opt.category || 'Standard'}</Badge></div>
+                                                                    <div>{(() => { const { base, color } = formatOptionDisplayLabel(opt.name); return (<><p className="text-[10px] font-black uppercase tracking-tight">{base}{color && <span className="text-primary ml-1">({color})</span>}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1">{opt.category || 'Standard'}</Badge></>); })()}</div>
                                                                 </div>
                                                                 <p className="text-[10px] font-bold text-slate-600">${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                             </div>
