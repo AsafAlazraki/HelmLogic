@@ -164,14 +164,20 @@ function getEffectiveModel(master: any, override: any) {
     return merged;
 }
 
-function QuoteInitializationDialog({ 
-    isOpen, 
-    onOpenChange, 
-    vendor, 
-    onModelSelect 
-}: { 
-    isOpen: boolean, 
-    onOpenChange: (open: boolean) => void, 
+// Highfield catalog order: Roll-Up → Ultra-Light → Classic → Sport → Patrol → Adventure → Coaster
+const RANGE_CATALOG_ORDER: Record<string, number> = {
+    'roll-up': 1, 'ultra-light': 2, 'classic': 3,
+    'sport': 4, 'patrol': 5, 'adventure': 6, 'coaster': 7,
+};
+
+function QuoteInitializationDialog({
+    isOpen,
+    onOpenChange,
+    vendor,
+    onModelSelect
+}: {
+    isOpen: boolean,
+    onOpenChange: (open: boolean) => void,
     vendor: Vendor | null,
     onModelSelect: (model: Model, range: Range) => void
 }) {
@@ -181,7 +187,15 @@ function QuoteInitializationDialog({
     const rangesQuery = useMemoFirebase(() =>
         vendor?.id ? collection(firestore, `data-warehouse/${vendor.id}/ranges`) : null,
     [firestore, vendor?.id]);
-    const { data: ranges, isLoading: rangesLoading } = useCollection<Range>(rangesQuery);
+    const { data: rawRanges, isLoading: rangesLoading } = useCollection<Range>(rangesQuery);
+
+    const ranges = useMemo(() =>
+        [...(rawRanges ?? [])].sort((a, b) => {
+            const aOrder = RANGE_CATALOG_ORDER[a.slug ?? a.name.toLowerCase()] ?? (a.order ?? 99);
+            const bOrder = RANGE_CATALOG_ORDER[b.slug ?? b.name.toLowerCase()] ?? (b.order ?? 99);
+            return aOrder - bOrder;
+        }),
+    [rawRanges]);
 
     const modelsQuery = useMemoFirebase(() =>
         vendor?.id && selectedRange?.id ? collection(firestore, `data-warehouse/${vendor.id}/ranges/${selectedRange.id}/models`) : null,
