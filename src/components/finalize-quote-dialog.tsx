@@ -192,10 +192,16 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
             },
 
             // Motor
-            motor: selectedMotor ? {
+            motor: selectedMotor ? (() => {
+                // Normalize field-name lookup to handle any casing/spacing in the source data
+                const allKeys = Object.keys(selectedMotor);
+                const norm = (s: string) => String(s || '').toLowerCase().replace(/[\s_-]/g, '');
+                const nameKey = allKeys.find(k => ['modelname', 'model', 'description', 'name'].includes(norm(k)));
+                const motorName = (nameKey ? selectedMotor[nameKey] : null) || 'Unknown Motor';
+                return {
                 id: selectedMotor.id || null,
-                name: selectedMotor['Model Name'] || selectedMotor.name || selectedMotor.model || 'Unknown Motor',
-                model: selectedMotor.model || selectedMotor['Model Name'] || selectedMotor.name || 'Standard Model',
+                name: motorName,
+                model: motorName,
                 brand: selectedMotor.brand || 'Yamaha',
                 sellPriceExclGst: selectedMotor.sellPriceExclGst || 0,
                 imageUrl: selectedMotor.imageUrl || selectedMotor.SummaryImage || null,
@@ -205,7 +211,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     category: a.category || null,
                     sellPriceExclGst: a.sellPriceExclGst || 0,
                 })),
-            } : null,
+                }; })() : null,
 
             // Trailer
             trailer: (selectedTrailerId && model?.trailerConfig) ? {
@@ -226,7 +232,8 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 name: sel.name || 'Dealer Fit',
                 category: sel.category || null,
                 items: (sel.items || []).map((i: any) => ({
-                    name: i.data?.name || i.name || 'Item',
+                    // Firestore warehouse items may use 'name', 'Name', or 'Description' as the display field
+                    name: i.data?.name || i.data?.Name || i.data?.Description || i.data?.description || i.name || 'Item',
                     sellPriceExclGst: i.data?.sellPriceExclGst || 0,
                 })),
             })),

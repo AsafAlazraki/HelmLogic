@@ -90,8 +90,8 @@ function MetaItem({ label, value }: { label: string; value: string }) {
     );
 }
 
-function PricingRow({ label, value, bold, accent }: { label: string; value: number; bold?: boolean; accent?: boolean }) {
-    if (value === 0) return null;
+function PricingRow({ label, value, bold, accent, showIfZero }: { label: string; value: number; bold?: boolean; accent?: boolean; showIfZero?: boolean }) {
+    if (value === 0 && !showIfZero) return null;
     return (
         <div className={cn(
             "flex items-center justify-between py-2.5 px-3 rounded-xl transition-colors",
@@ -631,9 +631,9 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     <h3 className="text-[9px] font-black uppercase tracking-[0.35em] text-white">Investment Summary</h3>
                                 </div>
                                 <div className="p-4 space-y-1">
-                                    <PricingRow label="Vessel Base" value={f.boatBasePrice} bold />
+                                    <PricingRow label="Vessel Base" value={f.boatBasePrice} bold showIfZero />
                                     <PricingRow label="Options" value={f.optionsTotal} />
-                                    <PricingRow label="Power Pack" value={f.motorTotal} />
+                                    <PricingRow label="Power Pack" value={f.motorTotal} showIfZero />
                                     <PricingRow label="Trailer" value={f.trailerTotal} />
                                     <PricingRow label="Dealer Fit" value={f.dealerFitTotal} />
                                     <PricingRow label="Registration" value={f.regoTotal} />
