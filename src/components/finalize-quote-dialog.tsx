@@ -251,7 +251,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
             if (mode === 'customer') {
                 // Save quote under user's quotes subcollection
                 const quoteRef = doc(firestoreCollection(firestore, `users/${user.uid}/quotes`));
-                await setDoc(quoteRef, payload);
+                await setDoc(quoteRef, { ...payload, id: quoteRef.id });
                 toast({ title: 'Proposal Created', description: `Quote ${payload.quoteNumber} has been saved.` });
                 onOpenChange(false);
                 resetForm();
