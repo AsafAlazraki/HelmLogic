@@ -28,6 +28,7 @@ import {
     Truck,
     ClipboardList,
     ListChecks,
+    Copy,
     Ruler,
     FileText,
 } from 'lucide-react';
@@ -302,6 +303,18 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                 >
                                     <Calculator className="h-3.5 w-3.5 text-primary" />
                                     <span className="hidden sm:inline">Audit</span>
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 rounded-xl font-black uppercase text-[9px] gap-1.5 hover:bg-slate-100"
+                                    onClick={() => router.push(
+                                        `/modules/${quote.moduleSlug}/quote/${quote.modelId}` +
+                                        `?range=${quote.rangeId}&vendor=${quote.vendorId}&duplicate=${quote.id}`
+                                    )}
+                                >
+                                    <Copy className="h-3.5 w-3.5 text-primary" />
+                                    <span className="hidden sm:inline">Duplicate</span>
                                 </Button>
                                 <Button
                                     variant="outline"
