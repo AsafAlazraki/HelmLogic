@@ -2,9 +2,8 @@
 
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, collectionGroup, query, where } from 'firebase/firestore';
+import { doc, collection, query, where } from 'firebase/firestore';
 import { useMemo, Suspense } from 'react';
 import { HighfieldQuoteFlow } from '@/components/highfield-quote-flow';
 import { Button } from '@/components/ui/button';
@@ -118,13 +117,10 @@ function QuoteFlowContent() {
     }, [orgId, userProfile]);
 
     // 7. Duplicate-quote fetch (optional — only when ?duplicate param present)
-    const duplicateQuery = useMemoFirebase(() =>
-        duplicateQuoteId
-            ? query(collectionGroup(firestore, 'quotes'), where('id', '==', duplicateQuoteId))
-            : null,
-    [firestore, duplicateQuoteId]);
-    const { data: duplicateResults, isLoading: duplicateLoading } = useCollection<any>(duplicateQuery);
-    const oldQuote = duplicateResults?.[0] ?? null;
+    const duplicateRef = useMemoFirebase(() =>
+        (duplicateQuoteId && user) ? doc(firestore, `users/${user.uid}/quotes`, duplicateQuoteId) : null,
+    [firestore, duplicateQuoteId, user?.uid]);
+    const { data: oldQuote, loading: duplicateLoading } = useDoc<any>(duplicateRef);
 
     const initialState = useMemo(() => {
         if (!duplicateQuoteId || !oldQuote) return undefined;
