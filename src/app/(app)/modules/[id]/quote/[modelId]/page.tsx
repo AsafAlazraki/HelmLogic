@@ -4,7 +4,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { doc, collection, collectionGroup, query, where } from 'firebase/firestore';
 import { useMemo, Suspense } from 'react';
 import { HighfieldQuoteFlow } from '@/components/highfield-quote-flow';
 import { Button } from '@/components/ui/button';
@@ -61,6 +61,7 @@ function QuoteFlowContent() {
     const modelId = params?.modelId as string | undefined;
     const rangeId = searchParams.get('range');
     const vendorId = searchParams.get('vendor');
+    const duplicateQuoteId = searchParams.get('duplicate');
 
     // 1. Resolve User Context for Organisation Overrides
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -116,7 +117,36 @@ function QuoteFlowContent() {
         return { name: 'Organisation', primaryLogoUrl: userProfile?.organisationLogoUrl || null };
     }, [orgId, userProfile]);
 
-    const loading = moduleLoading || modelDetailsLoading || vendorLoading || rangeLoading || profileLoading || overrideLoading;
+    // 7. Duplicate-quote fetch (optional — only when ?duplicate param present)
+    const duplicateQuery = useMemoFirebase(() =>
+        duplicateQuoteId
+            ? query(collectionGroup(firestore, 'quotes'), where('id', '==', duplicateQuoteId))
+            : null,
+    [firestore, duplicateQuoteId]);
+    const { data: duplicateResults, isLoading: duplicateLoading } = useCollection<any>(duplicateQuery);
+    const oldQuote = duplicateResults?.[0] ?? null;
+
+    const initialState = useMemo(() => {
+        if (!duplicateQuoteId || !oldQuote) return undefined;
+        return {
+            material: (oldQuote.variant?.material ?? null) as 'PVC' | 'HYP' | null,
+            colorVariantId: oldQuote.variant?.id ?? null,
+            selectedOptionIds: (oldQuote.selectedOptions ?? []).map((o: any) => o.id),
+            customOptions: oldQuote.customOptions ?? [],
+            motorId: oldQuote.motor?.id ?? null,
+            selectedMotorObj: oldQuote.motor ?? null,
+            selectedMotorAccessoryIds: (oldQuote.motor?.accessories ?? []).map((a: any) => a.id),
+            selectedTrailerId: oldQuote.trailer?.id ?? null,
+            selectedTrailerOptionIds: (oldQuote.trailer?.options ?? []).map((o: any) => o.id),
+            selectedDealerFitIds: (oldQuote.dealerFit ?? []).map((df: any) => df.id).filter(Boolean),
+            isRegoSelected: oldQuote.registration?.boatRego ?? false,
+            isStickerSelected: oldQuote.registration?.sticker ?? false,
+            isTenderToSelected: oldQuote.registration?.tenderTo ?? false,
+            isTrailerRegoSelected: oldQuote.registration?.trailerRego ?? false,
+        };
+    }, [duplicateQuoteId, oldQuote]);
+
+    const loading = moduleLoading || modelDetailsLoading || vendorLoading || rangeLoading || profileLoading || overrideLoading || (!!duplicateQuoteId && duplicateLoading);
 
     if (loading) {
         return (
@@ -144,12 +174,13 @@ function QuoteFlowContent() {
     // Highfield Specific Flow
     if (vendor.slug === 'highfield') {
         return (
-            <HighfieldQuoteFlow 
+            <HighfieldQuoteFlow
                 module={moduleData}
                 model={effectiveModel}
                 vendor={vendor}
                 range={range}
                 rangeId={rangeId!}
+                initialState={initialState}
             />
         );
     }

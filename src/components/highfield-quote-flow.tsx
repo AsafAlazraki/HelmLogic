@@ -124,39 +124,58 @@ const STEPS: Step[] = [
 
 const HARDWARE_BLOCKLIST = ['MOTOR', 'ENGINE', 'FUEL', 'TRAILER', 'OUTBOARD', 'RAM SUPPORT', 'PROP'];
 
-export function HighfieldQuoteFlow({ 
-    module, 
-    model, 
+interface DuplicateInitialState {
+    material: 'PVC' | 'HYP' | null;
+    colorVariantId: string | null;
+    selectedOptionIds: string[];
+    customOptions: CustomOption[];
+    motorId: string | null;
+    selectedMotorObj: any | null;
+    selectedMotorAccessoryIds: string[];
+    selectedTrailerId: string | null;
+    selectedTrailerOptionIds: string[];
+    selectedDealerFitIds: string[];
+    isRegoSelected: boolean;
+    isStickerSelected: boolean;
+    isTenderToSelected: boolean;
+    isTrailerRegoSelected: boolean;
+}
+
+export function HighfieldQuoteFlow({
+    module,
+    model,
     vendor,
     range,
-    rangeId 
-}: { 
-    module: any, 
-    model: any, 
+    rangeId,
+    initialState,
+}: {
+    module: any,
+    model: any,
     vendor: any,
     range?: any,
-    rangeId: string 
+    rangeId: string,
+    initialState?: DuplicateInitialState,
 }) {
     const firestore = useFirestore();
     const router = useRouter();
     const { user } = useUser();
     
-    // 1. Core State
-    const [currentStep, setCurrentStep] = useState(1);
-    const [selectedMaterial, setSelectedMaterial] = useState<'PVC' | 'HYP' | null>(null);
-    const [selectedColor, setSelectedColor] = useState<string | null>(null);
-    const [isRegoSelected, setIsRegoSelected] = useState(false);
-    const [isStickerSelected, setIsStickerSelected] = useState(false);
-    const [isTenderToSelected, setIsTenderToSelected] = useState(false);
-    const [isTrailerRegoSelected, setIsTrailerRegoSelected] = useState(false);
-    
-    const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
-    const [customOptions, setCustomOptions] = useState<CustomOption[]>([]);
-    const [selectedMotor, setSelectedMotor] = useState<any | null>(null);
-    const [selectedMotorAccessoryIds, setSelectedMotorAccessoryIds] = useState<string[]>([]);
-    const [selectedTrailerId, setSelectedTrailerId] = useState<string | null>(null);
-    const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>([]);
-    const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>([]);
+    // 1. Core State — seeded from initialState when duplicating an existing quote
+    const [currentStep, setCurrentStep] = useState(initialState ? 6 : 1);
+    const [selectedMaterial, setSelectedMaterial] = useState<'PVC' | 'HYP' | null>(initialState?.material ?? null);
+    const [selectedColor, setSelectedColor] = useState<string | null>(initialState?.colorVariantId ?? null);
+    const [isRegoSelected, setIsRegoSelected] = useState(initialState?.isRegoSelected ?? false);
+    const [isStickerSelected, setIsStickerSelected] = useState(initialState?.isStickerSelected ?? false);
+    const [isTenderToSelected, setIsTenderToSelected] = useState(initialState?.isTenderToSelected ?? false);
+    const [isTrailerRegoSelected, setIsTrailerRegoSelected] = useState(initialState?.isTrailerRegoSelected ?? false);
+
+    const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>(initialState?.selectedOptionIds ?? []);
+    const [customOptions, setCustomOptions] = useState<CustomOption[]>(initialState?.customOptions ?? []);
+    const [selectedMotor, setSelectedMotor] = useState<any | null>(initialState?.selectedMotorObj ?? null);
+    const [selectedMotorAccessoryIds, setSelectedMotorAccessoryIds] = useState<string[]>(initialState?.selectedMotorAccessoryIds ?? []);
+    const [selectedTrailerId, setSelectedTrailerId] = useState<string | null>(initialState?.selectedTrailerId ?? null);
+    const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>(initialState?.selectedTrailerOptionIds ?? []);
+    const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>(initialState?.selectedDealerFitIds ?? []);
 
     // Custom Option Form State
     const [newCustomName, setNewCustomName] = useState('');
@@ -546,7 +565,7 @@ export function HighfieldQuoteFlow({
         };
 
         const fetchMotors = async () => {
-            if (currentStep !== 3) return;
+            if (currentStep < 3) return;
             setMotorsLoading(true);
             try {
                 const vendorsSnap = await getDocs(collection(firestore, 'data-warehouse'));
@@ -629,6 +648,13 @@ export function HighfieldQuoteFlow({
             if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds);
         }
     }, [motors]);
+
+    // When duplicating: once fresh motors load, swap in the matching motor with current price
+    useEffect(() => {
+        if (!initialState?.motorId || motors.length === 0) return;
+        const fresh = motors.find(m => m.id === initialState.motorId);
+        if (fresh) setSelectedMotor(fresh);
+    }, [motors]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const getMotorDisplayName = (m: any) => {
         const vendor = (m?.vendorName || 'YAMAHA').toUpperCase();
