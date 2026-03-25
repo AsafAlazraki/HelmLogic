@@ -5,7 +5,7 @@ import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useUser } from '@/firebase/auth/use-user';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { doc, collection, collectionGroup, query, where, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, query, where, updateDoc, serverTimestamp } from 'firebase/firestore';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -123,12 +123,6 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     [firestore, user?.uid, quoteId]);
     const { data: ownQuote, loading: ownQuoteLoading } = useDoc<any>(ownQuoteRef);
 
-    // Fallback: org-wide lookup via stored 'id' field (works for quotes created after the org-visibility fix)
-    const orgQuoteQuery = useMemoFirebase(() =>
-        (user && quoteId) ? query(collectionGroup(firestore, 'quotes'), where('id', '==', quoteId)) : null,
-    [firestore, user?.uid, quoteId]);
-    const { data: orgQuoteList, loading: orgQuoteLoading } = useCollection<any>(orgQuoteQuery);
-
     // quoteNumber path (for /proposals/[quoteNumber] — public share link)
     const quoteNumberQuery = useMemoFirebase(() => {
         if (!user || !userQuotesRef || quoteId || !quoteNumber) return null;
@@ -136,8 +130,8 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     }, [userQuotesRef, quoteId, quoteNumber, user?.uid]);
     const { data: quoteList, loading: quoteListLoading } = useCollection<any>(quoteNumberQuery);
 
-    const quote = ownQuote || orgQuoteList?.[0] || quoteList?.[0];
-    const isLoadingQuote = !quote && (ownQuoteLoading || orgQuoteLoading || quoteListLoading);
+    const quote = ownQuote || quoteList?.[0];
+    const isLoadingQuote = !quote && (ownQuoteLoading || quoteListLoading);
 
     const orgRef = useMemoFirebase(() => quote?.organisationId ? doc(firestore, 'organisations', quote.organisationId) : null, [firestore, quote?.organisationId]);
     const { data: organisation } = useDoc<any>(orgRef);
