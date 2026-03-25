@@ -356,10 +356,8 @@ export function HighfieldQuoteFlow({
         customOptions.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
         if (isRegoSelected) {
             total += (model.registration?.price12Months || 0);
-            if (isStickerSelected) {
-                total += (model.registration?.stickerPrice || 0);
-                if (isTenderToSelected) total += (model.registration?.tenderToStickerPrice || 0);
-            }
+            if (isStickerSelected) total += (model.registration?.stickerPrice || 0);
+            if (isTenderToSelected) total += (model.registration?.tenderToStickerPrice || 0);
         }
         if (selectedMotor) {
             total += (selectedMotor.sellPriceExclGst || 0);
@@ -785,23 +783,23 @@ export function HighfieldQuoteFlow({
                                                     <p className={cn("font-black text-xs", isRegoSelected ? "text-primary" : "text-slate-400")}>${(model.registration?.price12Months || 0).toLocaleString()}</p>
                                                 </div>
                                                 {isRegoSelected && (
-                                                    <div className="grid grid-cols-1 gap-3 pt-2 animate-in slide-in-from-top-2 duration-500">
-                                                        <div className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", isStickerSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={handleStickerToggle}>
-                                                            <div className="flex items-center gap-4">
-                                                                <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center border-2", isStickerSelected ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-200 text-slate-300")}><Tag className="h-4 w-4" /></div>
-                                                                <div><p className={cn("text-[10px] font-black uppercase tracking-widest", isStickerSelected ? "text-primary" : "text-slate-600")}>Registration Stickers</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Custom Cut (Supply & Fit)</p></div>
+                                                    <div className="grid grid-cols-2 gap-3 pt-2 animate-in slide-in-from-top-2 duration-500">
+                                                        {/* Registration Stickers */}
+                                                        <div className={cn("flex flex-col gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer", isStickerSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={handleStickerToggle}>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center border-2 shrink-0", isStickerSelected ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-200 text-slate-300")}><Tag className="h-4 w-4" /></div>
+                                                                <div><p className={cn("text-[10px] font-black uppercase tracking-widest", isStickerSelected ? "text-primary" : "text-slate-600")}>Rego Stickers</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Custom Cut · Supply & Fit</p></div>
                                                             </div>
-                                                            <p className={cn("font-black text-xs", isStickerSelected ? "text-primary" : "text-slate-400")}>+${(model.registration?.stickerPrice || 0).toLocaleString()}</p>
+                                                            <p className={cn("font-black text-xs pl-11", isStickerSelected ? "text-primary" : "text-slate-400")}>+${(model.registration?.stickerPrice || 0).toLocaleString()}</p>
                                                         </div>
-                                                        {isStickerSelected && vendor.slug === 'highfield' && (
-                                                            <div className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", isTenderToSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={() => setIsTenderToSelected(!isTenderToSelected)}>
-                                                                <div className="flex items-center gap-4">
-                                                                    <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center border-2", isTenderToSelected ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-200 text-slate-300")}><Anchor className="h-4 w-4" /></div>
-                                                                    <div><p className={cn("text-[10px] font-black uppercase tracking-widest", isTenderToSelected ? "text-primary" : "text-slate-600")}>"Tender To" Decal</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Specific Yacht Association</p></div>
-                                                                </div>
-                                                                <p className={cn("font-black text-xs", isTenderToSelected ? "text-primary" : "text-slate-400")}>+${(model.registration?.tenderToStickerPrice || 0).toLocaleString()}</p>
+                                                        {/* Tender To Decal */}
+                                                        <div className={cn("flex flex-col gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer", isTenderToSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={() => setIsTenderToSelected(!isTenderToSelected)}>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center border-2 shrink-0", isTenderToSelected ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-200 text-slate-300")}><Anchor className="h-4 w-4" /></div>
+                                                                <div><p className={cn("text-[10px] font-black uppercase tracking-widest", isTenderToSelected ? "text-primary" : "text-slate-600")}>"Tender To" Decal</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Yacht Association</p></div>
                                                             </div>
-                                                        )}
+                                                            <p className={cn("font-black text-xs pl-11", isTenderToSelected ? "text-primary" : "text-slate-400")}>+${(model.registration?.tenderToStickerPrice || 0).toLocaleString()}</p>
+                                                        </div>
                                                     </div>
                                                 )}
                                             </Card>
