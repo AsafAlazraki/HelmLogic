@@ -493,17 +493,26 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                 </View>
 
                 {/* Terms */}
-                <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 5, padding: '10 12', marginBottom: 28 }}>
-                    <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1.5, color: SLATE, marginBottom: 6 }}>Terms & Conditions</Text>
-                    {[
+                {(() => {
+                    const DEFAULT_TERMS = [
                         '1. This proposal is valid for 30 days from the date of issue.',
                         '2. Prices are subject to change without notice after the validity period.',
                         '3. A non-refundable deposit may be required to secure this package.',
                         '4. Final delivery dates will be confirmed upon order acceptance.',
-                    ].map((t, i) => (
-                        <Text key={i} style={{ fontSize: 7, color: MUTED, lineHeight: 1.55, marginBottom: i < 3 ? 2 : 0 }}>{t}</Text>
-                    ))}
-                </View>
+                    ];
+                    const customTerms = organisation?.termsAndConditions
+                        ? (organisation.termsAndConditions as string).split('\n').filter((l: string) => l.trim())
+                        : null;
+                    const terms = customTerms && customTerms.length > 0 ? customTerms : DEFAULT_TERMS;
+                    return (
+                        <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 5, padding: '10 12', marginBottom: 28 }}>
+                            <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1.5, color: SLATE, marginBottom: 6 }}>Terms &amp; Conditions</Text>
+                            {terms.map((t: string, i: number) => (
+                                <Text key={i} style={{ fontSize: 7, color: MUTED, lineHeight: 1.55, marginBottom: i < terms.length - 1 ? 2 : 0 }}>{t}</Text>
+                            ))}
+                        </View>
+                    );
+                })()}
 
                 {/* Signature blocks */}
                 <View style={{ flexDirection: 'row', gap: 40, marginBottom: 24 }}>

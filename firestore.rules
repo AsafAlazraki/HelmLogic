@@ -119,5 +119,12 @@ service cloud.firestore {
     match /vessel_models/{vesselModelId} {
       allow read: if isSignedIn();
     }
+
+    // Org members can read any quote belonging to their organisation (collection group query support)
+    match /{path=**}/quotes/{quoteId} {
+      allow read: if isSignedIn() &&
+        resource.data.organisationId != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == resource.data.organisationId;
+    }
   }
 }

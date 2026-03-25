@@ -5,7 +5,7 @@ import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useUser } from '@/firebase/auth/use-user';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { doc, collection, query, where, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, collectionGroup, query, where, updateDoc, serverTimestamp } from 'firebase/firestore';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -90,8 +90,8 @@ function MetaItem({ label, value }: { label: string; value: string }) {
     );
 }
 
-function PricingRow({ label, value, bold, accent }: { label: string; value: number; bold?: boolean; accent?: boolean }) {
-    if (value === 0) return null;
+function PricingRow({ label, value, bold, accent, showIfZero }: { label: string; value: number; bold?: boolean; accent?: boolean; showIfZero?: boolean }) {
+    if (value === 0 && !showIfZero) return null;
     return (
         <div className={cn(
             "flex items-center justify-between py-2.5 px-3 rounded-xl transition-colors",
@@ -116,18 +116,27 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
 
     const userQuotesRef = useMemoFirebase(() => user ? collection(firestore, `users/${user.uid}/quotes`) : null, [firestore, user]);
 
-    const quoteQuery = useMemoFirebase(() => {
-        if (!user || !userQuotesRef) return null;
-        if (quoteId) return doc(firestore, `users/${user.uid}/quotes`, quoteId);
-        if (quoteNumber) return query(userQuotesRef, where('quoteNumber', '==', quoteNumber));
-        return null;
-    }, [userQuotesRef, quoteId, quoteNumber, firestore, user?.uid]);
+    // Primary: own quotes path (works for all existing quotes where current user is owner)
+    const ownQuoteRef = useMemoFirebase(() =>
+        (user && quoteId) ? doc(firestore, `users/${user.uid}/quotes`, quoteId) : null,
+    [firestore, user?.uid, quoteId]);
+    const { data: ownQuote, loading: ownQuoteLoading } = useDoc<any>(ownQuoteRef);
 
-    const { data: quoteDoc, loading: quoteLoading } = useDoc<any>(quoteId ? (quoteQuery as any) : null);
-    const { data: quoteList, loading: quoteListLoading } = useCollection<any>(!quoteId && quoteNumber ? (quoteQuery as any) : null);
+    // Fallback: org-wide lookup via stored 'id' field (works for quotes created after the org-visibility fix)
+    const orgQuoteQuery = useMemoFirebase(() =>
+        (user && quoteId) ? query(collectionGroup(firestore, 'quotes'), where('id', '==', quoteId)) : null,
+    [firestore, user?.uid, quoteId]);
+    const { data: orgQuoteList, loading: orgQuoteLoading } = useCollection<any>(orgQuoteQuery);
 
-    const quote = quoteId ? quoteDoc : quoteList?.[0];
-    const isLoadingQuote = quoteLoading || quoteListLoading;
+    // quoteNumber path (for /proposals/[quoteNumber] — public share link)
+    const quoteNumberQuery = useMemoFirebase(() => {
+        if (!user || !userQuotesRef || quoteId || !quoteNumber) return null;
+        return query(userQuotesRef, where('quoteNumber', '==', quoteNumber));
+    }, [userQuotesRef, quoteId, quoteNumber, user?.uid]);
+    const { data: quoteList, loading: quoteListLoading } = useCollection<any>(quoteNumberQuery);
+
+    const quote = ownQuote || orgQuoteList?.[0] || quoteList?.[0];
+    const isLoadingQuote = !quote && (ownQuoteLoading || orgQuoteLoading || quoteListLoading);
 
     const orgRef = useMemoFirebase(() => quote?.organisationId ? doc(firestore, 'organisations', quote.organisationId) : null, [firestore, quote?.organisationId]);
     const { data: organisation } = useDoc<any>(orgRef);
@@ -211,7 +220,8 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         if (!user || !quote) return;
         setIsSaving(true);
         try {
-            const ref = doc(firestore, `users/${user.uid}/quotes`, quote.id);
+            const ownerUid = quote.createdByUid || user.uid;
+            const ref = doc(firestore, `users/${ownerUid}/quotes`, quote.id);
             await updateDoc(ref, { discountExclGst: newDiscount, lastUpdateAt: serverTimestamp() });
             toast({ title: "Discount Saved", description: "The proposal has been updated successfully." });
         } catch {
@@ -621,9 +631,9 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     <h3 className="text-[9px] font-black uppercase tracking-[0.35em] text-white">Investment Summary</h3>
                                 </div>
                                 <div className="p-4 space-y-1">
-                                    <PricingRow label="Vessel Base" value={f.boatBasePrice} bold />
+                                    <PricingRow label="Vessel Base" value={f.boatBasePrice} bold showIfZero />
                                     <PricingRow label="Options" value={f.optionsTotal} />
-                                    <PricingRow label="Power Pack" value={f.motorTotal} />
+                                    <PricingRow label="Power Pack" value={f.motorTotal} showIfZero />
                                     <PricingRow label="Trailer" value={f.trailerTotal} />
                                     <PricingRow label="Dealer Fit" value={f.dealerFitTotal} />
                                     <PricingRow label="Registration" value={f.regoTotal} />

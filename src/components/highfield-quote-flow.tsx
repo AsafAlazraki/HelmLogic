@@ -7,13 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { 
-    Loader2, 
-    ChevronRight, 
-    ChevronLeft, 
-    Ship, 
-    CheckCircle2, 
-    Package, 
-    X, 
+    Loader2,
+    ChevronRight,
+    ChevronLeft,
+    Ship,
+    CheckCircle2,
+    Package,
+    X,
     Wrench,
     ListChecks,
     ClipboardList,
@@ -35,7 +35,9 @@ import {
     DollarSign,
     ExternalLink,
     Plus,
-    FilePlus2
+    FilePlus2,
+    AlertTriangle,
+    CopyCheck
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -72,9 +74,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-/** Normalize & spacing and extract first color from parenthetical for option display */
+/** Normalize spacing, strip internal model-code suffixes, and extract first color from parenthetical */
 function formatOptionDisplayLabel(name: string): { base: string; color: string | null } {
-    const normalized = name.replace(/\s*&\s*/g, ' & ').replace(/\s+/g, ' ').trim();
+    // Remove internal model-code suffixes like "FOR SUS750", "FOR SP560", "FOR AL310 etc."
+    const stripped = name.replace(/\s+FOR\s+[A-Z]{2,3}\d{3,}/gi, '').trim();
+    const normalized = stripped.replace(/\s*&\s*/g, ' & ').replace(/\s+/g, ' ').trim();
     const parenMatch = normalized.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
     if (!parenMatch) return { base: normalized, color: null };
     const base = parenMatch[1].trim();
@@ -307,6 +311,15 @@ export function HighfieldQuoteFlow({
         return dealerFitSelections?.filter(s => selectedDealerFitIds.includes(s.id)) || [];
     }, [selectedDealerFitIds, dealerFitSelections]);
 
+    // Collect all rowIds from currently-selected dealer fit to detect cross-category duplicates
+    const selectedDealerRowIds = useMemo(() => {
+        const ids = new Set<string>();
+        selectedDealerFitData.forEach(s => {
+            s.items?.forEach((i: any) => { if (i.rowId) ids.add(i.rowId); });
+        });
+        return ids;
+    }, [selectedDealerFitData]);
+
     const groupedDealerFit = useMemo(() => {
         if (!dealerFitSelections) return [];
         const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
@@ -469,8 +482,23 @@ export function HighfieldQuoteFlow({
             if (viewport) viewport.scrollTop = 0;
         }, 50);
     };
-    const nextStep = () => { if (currentStep < STEPS.length) { setCurrentStep(currentStep + 1); scrollPanelToTop(); } };
-    const prevStep = () => { if (currentStep > 1) { setCurrentStep(currentStep - 1); scrollPanelToTop(); } };
+    const hasTrailer = !!model.trailerConfig;
+    const nextStep = () => {
+        if (currentStep < STEPS.length) {
+            // Skip trailer step (4) if this model has no trailer configured
+            const next = currentStep === 3 && !hasTrailer ? 5 : currentStep + 1;
+            setCurrentStep(next);
+            scrollPanelToTop();
+        }
+    };
+    const prevStep = () => {
+        if (currentStep > 1) {
+            // Skip trailer step (4) going backwards too
+            const prev = currentStep === 5 && !hasTrailer ? 3 : currentStep - 1;
+            setCurrentStep(prev);
+            scrollPanelToTop();
+        }
+    };
 
     // 5. Effects (Carousel Sync & Motor Fetch)
     useEffect(() => {
@@ -604,7 +632,16 @@ export function HighfieldQuoteFlow({
 
     const getMotorDisplayName = (m: any) => {
         const vendor = (m?.vendorName || 'YAMAHA').toUpperCase();
-        let name = m?.['Model Name'] || m?.ModelName || m?.name || m?.Description || m?.model || 'Unnamed';
+        // Normalize-and-match approach: handles any field name casing/spacing variation
+        const allKeys = Object.keys(m || {});
+        const normalize = (s: string) => String(s || '').toLowerCase().replace(/[\s_-]/g, '');
+        const nameKey = allKeys.find(k => ['modelname', 'model', 'description', 'name'].includes(normalize(k)));
+        let name = (nameKey ? m[nameKey] : null) || 'Unnamed';
+        if (!name || name === 'Unnamed') {
+            // Last-resort: try any key that looks like it holds a model string
+            const fallbackKey = allKeys.find(k => normalize(k).includes('model') || normalize(k).includes('name'));
+            name = (fallbackKey ? m[fallbackKey] : null) || 'Unnamed';
+        }
         if (name.toUpperCase().startsWith(vendor)) {
             name = name.substring(vendor.length).trim();
             if (name.startsWith('-')) name = name.substring(1).trim();
@@ -826,6 +863,12 @@ export function HighfieldQuoteFlow({
                                             <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Motor Selection</h3>
                                         </div>
+                                        {!motorsLoading && motors.length > 0 && motors.every(m => !m.sellPriceExclGst) && (
+                                            <div className="flex items-start gap-3 px-5 py-4 bg-amber-50 border-2 border-amber-200 rounded-2xl text-amber-800">
+                                                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                                                <p className="text-[10px] font-black uppercase tracking-wide leading-relaxed">Pricing not yet configured for this module — motors will show $0. Contact your admin to set up a pricing strategy.</p>
+                                            </div>
+                                        )}
                                         {motorsLoading ? <div className="flex flex-col items-center py-16 gap-3"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Scanning Factory Datasets...</p></div> : (
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                                 {motors.map(m => {
@@ -951,15 +994,21 @@ export function HighfieldQuoteFlow({
                                                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    {opts.map((sel: any) => (
-                                                        <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", selectedDealerFitIds.includes(sel.id) ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                    {opts.map((sel: any) => {
+                                                        const isSelected = selectedDealerFitIds.includes(sel.id);
+                                                        // Detect if items in this (unselected) selection are already included via another category
+                                                        const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
+                                                        return (
+                                                        <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1 relative", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-primary/20")}>
+                                                            {hasOverlap && <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5"><CopyCheck className="h-3 w-3 text-amber-600" /><span className="text-[7px] font-black uppercase tracking-wide text-amber-700">Already Included</span></div>}
                                                             <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
                                                             <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                                <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", selectedDealerFitIds.includes(sel.id) ? "text-primary" : "text-slate-900")}>{sel.name}</p>
-                                                                <p className={cn("text-[8px] font-black uppercase tracking-widest", selectedDealerFitIds.includes(sel.id) ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0)).toLocaleString()}</p>
+                                                                <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{sel.name}</p>
+                                                                <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0)).toLocaleString()}</p>
                                                             </div>
                                                         </button>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         ))

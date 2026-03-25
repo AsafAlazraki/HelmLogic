@@ -14,6 +14,7 @@ import { useFirestore, useMemoFirebase, useStorage } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
 import {
     collection,
+    collectionGroup,
     query,
     where,
     orderBy,
@@ -344,14 +345,17 @@ export default function ModuleDetailsPage() {
         userProfile?.organisationId ? allOrganisations?.find((o: any) => o.id === userProfile.organisationId) : null,
     [userProfile?.organisationId, allOrganisations]);
 
-    // Recent proposals for the dashboard
-    const recentQuotesQuery = useMemoFirebase(() =>
-        user ? query(
-            collection(firestore, `users/${user.uid}/quotes`),
+    // Recent proposals for the dashboard — org-wide via collection group
+    const recentQuotesQuery = useMemoFirebase(() => {
+        const orgId = userProfile?.organisationId;
+        if (!user || !orgId) return null;
+        return query(
+            collectionGroup(firestore, 'quotes'),
+            where('organisationId', '==', orgId),
             orderBy('createdAt', 'desc'),
             limit(8)
-        ) : null,
-    [firestore, user]);
+        );
+    }, [firestore, user, userProfile?.organisationId]);
     const { data: recentQuotes } = useCollection<any>(recentQuotesQuery);
 
     const userPermissions = useMemo(() => {

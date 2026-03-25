@@ -1,9 +1,9 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { useUser } from '@/firebase/auth/use-user';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collectionGroup, doc, query, where, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Loader2, FileText, ChevronRight, Plus, Ship, Calendar, Anchor } from 'lucide-react';
 import Link from 'next/link';
@@ -31,14 +31,18 @@ export default function ProposalsPage() {
     const firestore = useFirestore();
     const { user } = useUser();
 
+    const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
+    const { data: userProfile } = useDoc<any>(userProfileRef);
+
     const quotesQuery = useMemoFirebase(() => {
-        if (!user?.uid) return null;
+        const orgId = userProfile?.organisationId;
+        if (!user?.uid || !orgId) return null;
         return query(
-            collection(firestore, `users/${user.uid}/quotes`),
-            where('module.slug', '==', id),
+            collectionGroup(firestore, 'quotes'),
+            where('organisationId', '==', orgId),
             orderBy('createdAt', 'desc')
         );
-    }, [firestore, user?.uid, id]);
+    }, [firestore, user?.uid, userProfile?.organisationId]);
 
     const { data: quotes, isLoading } = useCollection<any>(quotesQuery);
 
