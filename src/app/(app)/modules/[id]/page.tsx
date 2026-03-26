@@ -309,6 +309,8 @@ export default function ModuleDetailsPage() {
     const router = useRouter();
     const params = useParams();
     const slugOrId = params.id as string;
+    const orgSlug = (params as any).orgSlug as string | undefined;
+    const navPrefix = orgSlug ? `/${orgSlug}` : '';
     const { toast } = useToast();
     const firestore = useFirestore();
     const storage = useStorage();
@@ -397,7 +399,7 @@ export default function ModuleDetailsPage() {
         setSelectedRangeId(range.id);
         setIsQuoteInitializationOpen(false);
         setIsTransitioning(true);
-        router.push(`/modules/${moduleData.id}/quote/${model.id}?range=${range.id}&vendor=${mainVendor?.id}`);
+        router.push(`${navPrefix}/modules/${moduleData.id}/quote/${model.id}?range=${range.id}&vendor=${mainVendor?.id}`);
     };
 
     const handleBackToCatalog = () => {
@@ -474,7 +476,7 @@ export default function ModuleDetailsPage() {
                         <Button 
                             variant="ghost" 
                             className="h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 group shadow-xl flex items-center"
-                            onClick={() => router.push('/dashboard')}
+                            onClick={() => router.push(orgSlug ? `/${orgSlug}/dashboard` : '/dashboard')}
                         >
                             <X className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
                             <span>Back to Hub</span>
@@ -571,7 +573,7 @@ export default function ModuleDetailsPage() {
                                                         {recentQuotes.map((q: any) => (
                                                             <div
                                                                 key={q.id}
-                                                                onClick={() => router.push(`/modules/${moduleData.id}/proposals/${q.id}`)}
+                                                                onClick={() => router.push(`${navPrefix}/modules/${moduleData.id}/proposals/${q.id}`)}
                                                                 className="group flex flex-col rounded-xl border bg-white hover:border-primary/40 hover:shadow-md cursor-pointer transition-all overflow-hidden"
                                                             >
                                                                 {/* Image */}

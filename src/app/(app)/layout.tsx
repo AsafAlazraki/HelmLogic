@@ -37,7 +37,8 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   // Module and Blueprint pages manage their own full-bleed layout
   // but proposals/quotes need their own scroll so exclude them
   const isImmersivePage = (pathname?.includes('/modules/') || pathname?.includes('/blueprint/'))
-    && !pathname?.includes('/proposals/');
+    && !pathname?.includes('/proposals/')
+    && !pathname?.includes('/quote/');
   
   return (
       <SidebarProvider defaultOpen={false}>

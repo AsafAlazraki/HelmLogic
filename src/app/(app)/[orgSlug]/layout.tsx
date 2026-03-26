@@ -1,15 +1,17 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@/firebase/auth/use-user';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { doc } from 'firebase/firestore';
 import { HelmLogicLoading } from '@/components/helmlogic-loading';
 
-export default function DashboardRedirect() {
+export default function OrgSlugLayout({ children }: { children: React.ReactNode }) {
+    const { orgSlug } = useParams<{ orgSlug: string }>();
     const router = useRouter();
+    const pathname = usePathname();
     const firestore = useFirestore();
     const { user, loading: userLoading } = useUser();
 
@@ -26,19 +28,21 @@ export default function DashboardRedirect() {
     const { data: org, loading: orgLoading } = useDoc<any>(orgRef);
 
     const isLoading = userLoading || profileLoading || orgLoading;
-    const isAdmin = userProfile?.appRole === 'HelmLogic Admin';
 
     useEffect(() => {
         if (isLoading) return;
-        if (isAdmin) {
-            router.replace('/admin');
-            return;
-        }
-        const slug = org?.slug || userProfile?.organisationId;
-        if (slug) {
-            router.replace(`/${slug}/dashboard`);
-        }
-    }, [isLoading, isAdmin, org, userProfile, router]);
 
-    return <HelmLogicLoading label="Redirecting..." />;
+        const correctSlug = org?.slug || userProfile?.organisationId;
+        if (!correctSlug) return;
+
+        // Redirect to correct org slug if URL has the wrong one
+        if (orgSlug !== correctSlug) {
+            const corrected = pathname.replace(`/${orgSlug}/`, `/${correctSlug}/`);
+            router.replace(corrected);
+        }
+    }, [isLoading, org, userProfile, orgSlug, pathname, router]);
+
+    if (isLoading) return <HelmLogicLoading />;
+
+    return <>{children}</>;
 }

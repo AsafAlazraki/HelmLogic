@@ -28,6 +28,8 @@ function StatusBadge({ status }: { status: string }) {
 export default function ProposalsPage() {
     const params = useParams();
     const id = params.id as string;
+    const orgSlug = (params as any).orgSlug as string | undefined;
+    const navPrefix = orgSlug ? `/${orgSlug}` : '';
     const firestore = useFirestore();
     const { user } = useUser();
 
@@ -64,7 +66,7 @@ export default function ProposalsPage() {
                     </p>
                 </div>
                 <Button asChild className="h-12 px-6 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg hover:scale-[1.02] active:scale-100 transition-transform bg-primary text-white shrink-0">
-                    <Link href={`/modules/${id}`}>
+                    <Link href={`${navPrefix}/modules/${id}`}>
                         <Plus className="h-4 w-4 mr-2" />
                         New Quote
                     </Link>
@@ -91,7 +93,7 @@ export default function ProposalsPage() {
                         return (
                             <Link
                                 key={quote.id}
-                                href={`/modules/${id}/proposals/${quote.id}`}
+                                href={`${navPrefix}/modules/${id}/proposals/${quote.id}`}
                                 className="group block bg-white rounded-[2rem] border-2 border-slate-100 hover:border-primary/30 shadow-sm hover:shadow-xl transition-all duration-200 overflow-hidden"
                             >
                                 {/* Card image strip */}
@@ -159,7 +161,7 @@ export default function ProposalsPage() {
                         </p>
                     </div>
                     <Button asChild className="h-11 px-6 rounded-2xl font-black uppercase tracking-widest text-[10px] bg-primary text-white mt-2">
-                        <Link href={`/modules/${id}`}>
+                        <Link href={`${navPrefix}/modules/${id}`}>
                             <Plus className="h-4 w-4 mr-2" />
                             Start a Build
                         </Link>
