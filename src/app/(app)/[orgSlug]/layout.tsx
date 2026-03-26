@@ -6,7 +6,6 @@ import { useUser } from '@/firebase/auth/use-user';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { doc } from 'firebase/firestore';
-import { HelmLogicLoading } from '@/components/helmlogic-loading';
 
 export default function OrgSlugLayout({ children }: { children: React.ReactNode }) {
     const { orgSlug } = useParams<{ orgSlug: string }>();
@@ -25,24 +24,18 @@ export default function OrgSlugLayout({ children }: { children: React.ReactNode 
         () => userProfile?.organisationId ? doc(firestore, 'organisations', userProfile.organisationId) : null,
         [firestore, userProfile?.organisationId]
     );
-    const { data: org, loading: orgLoading } = useDoc<any>(orgRef);
+    const { data: org } = useDoc<any>(orgRef);
 
-    const isLoading = userLoading || profileLoading || orgLoading;
+    const isLoading = userLoading || profileLoading;
 
     useEffect(() => {
-        if (isLoading) return;
+        if (isLoading || !org) return;
+        const correctSlug = org.slug || userProfile?.organisationId;
+        if (!correctSlug || orgSlug === correctSlug) return;
+        // Silently correct the slug in the URL if it's wrong
+        router.replace(pathname.replace(`/${orgSlug}/`, `/${correctSlug}/`));
+    }, [isLoading, org, userProfile?.organisationId, orgSlug, pathname, router]);
 
-        const correctSlug = org?.slug || userProfile?.organisationId;
-        if (!correctSlug) return;
-
-        // Redirect to correct org slug if URL has the wrong one
-        if (orgSlug !== correctSlug) {
-            const corrected = pathname.replace(`/${orgSlug}/`, `/${correctSlug}/`);
-            router.replace(corrected);
-        }
-    }, [isLoading, org, userProfile, orgSlug, pathname, router]);
-
-    if (isLoading) return <HelmLogicLoading />;
-
+    // Never block render — children show immediately, slug validation is a background correction
     return <>{children}</>;
 }
