@@ -67,6 +67,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { HelmLogicLoading } from "@/components/helmlogic-loading";
 import { HighfieldPricingWorkspace } from '@/components/highfield-pricing-workspace';
+import { PriceListManager } from '@/components/price-list-manager';
+import { PriceListViewer } from '@/components/price-list-viewer';
 
 import {
   DndContext,
@@ -346,6 +348,9 @@ export default function ModuleDetailsPage() {
         userProfile?.organisationId ? allOrganisations?.find((o: any) => o.id === userProfile.organisationId) : null,
     [userProfile?.organisationId, allOrganisations]);
 
+    // Sub-dealer detection: org has a parent → user belongs to a sub-dealer
+    const isSubDealer = !!currentMemberOrg?.parentOrganisationId;
+
     // Recent proposals for the dashboard — user-scoped
     const recentQuotesQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -437,6 +442,47 @@ export default function ModuleDetailsPage() {
 
     if (loading) return <HelmLogicLoading label="Synchronizing Module" />;
     if (!moduleData) return <div className="p-12 text-center font-bold">Module Context Lost.</div>;
+
+    // Sub-dealer users see a stripped view — only their assigned price lists
+    if (isSubDealer && currentMemberOrg) {
+        return (
+            <div className="flex flex-col h-screen overflow-hidden bg-background">
+                <div className="relative shrink-0 overflow-hidden bg-primary px-12 text-primary-foreground z-20 h-44 border-b-2 border-white/10">
+                    <div className="absolute inset-0 z-0 bg-primary/95">
+                        <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
+                        <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-indigo-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
+                    </div>
+                    <div className="relative z-10 flex flex-col h-full justify-center">
+                        <div className="flex items-center justify-between w-full gap-12">
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-white/50 leading-none">
+                                    <Navigation className="h-2.5 w-2.5" />
+                                    <span>PRICE LISTS</span>
+                                </div>
+                                <h1 className="text-3xl sm:text-5xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl">
+                                    {moduleData.name}
+                                </h1>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                className="h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 group shadow-xl flex items-center"
+                                onClick={() => router.push(orgSlug ? `/${orgSlug}/dashboard` : '/dashboard')}
+                            >
+                                <X className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
+                                <span>Back to Hub</span>
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+                <main className="flex-1 min-h-0 overflow-hidden">
+                    <PriceListViewer
+                        parentOrganisationId={currentMemberOrg.parentOrganisationId}
+                        subDealerOrgId={currentMemberOrg.id}
+                    />
+                </main>
+            </div>
+        );
+    }
 
     const navTabs = [
         { id: 'dashboard', label: 'Dashboard' },
@@ -721,7 +767,20 @@ export default function ModuleDetailsPage() {
 
                     {(isAdmin || !!userPermissions.can_access_pricing_manager) && mainVendor && currentMemberOrg?.id && (
                         <TabsContent value="pricing" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
-                            <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
+                            <Tabs defaultValue="matrix" className="flex flex-col h-full">
+                                <div className="shrink-0 px-6 pt-4 border-b bg-white">
+                                    <TabsList className="h-9 bg-slate-100 rounded-xl p-1 w-auto">
+                                        <TabsTrigger value="matrix" className="rounded-lg text-[10px] font-black uppercase tracking-widest px-4">Pricing Matrix</TabsTrigger>
+                                        <TabsTrigger value="pricelists" className="rounded-lg text-[10px] font-black uppercase tracking-widest px-4">Price Lists</TabsTrigger>
+                                    </TabsList>
+                                </div>
+                                <TabsContent value="matrix" className="m-0 flex-1 overflow-hidden">
+                                    <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
+                                </TabsContent>
+                                <TabsContent value="pricelists" className="m-0 flex-1 overflow-hidden">
+                                    <PriceListManager organisationId={currentMemberOrg.id} vendorId={mainVendor.id} />
+                                </TabsContent>
+                            </Tabs>
                         </TabsContent>
                     )}
 
