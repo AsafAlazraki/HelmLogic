@@ -141,16 +141,20 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, padding: 48, flexDirection: 'column' }}>
 
                         {/* ── Top bar: logos ── */}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                             {organisation?.primaryLogoUrl ? (
-                                <Image src={organisation.primaryLogoUrl} style={{ height: 32, maxWidth: 130, objectFit: 'contain' }} />
+                                <View style={{ backgroundColor: 'white', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6 }}>
+                                    <Image src={organisation.primaryLogoUrl} style={{ height: 36, maxWidth: 150, objectFit: 'contain' }} />
+                                </View>
                             ) : (
                                 <Text style={{ fontSize: 13, fontWeight: 'bold', color: 'white', letterSpacing: 1 }}>
                                     {(organisation?.name ?? '').toUpperCase()}
                                 </Text>
                             )}
                             {quote.vendorLogoUrl && (
-                                <Image src={quote.vendorLogoUrl} style={{ height: 22, maxWidth: 80, objectFit: 'contain', opacity: 0.65 }} />
+                                <View style={{ backgroundColor: 'white', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6 }}>
+                                    <Image src={quote.vendorLogoUrl} style={{ height: 36, maxWidth: 150, objectFit: 'contain' }} />
+                                </View>
                             )}
                         </View>
 
