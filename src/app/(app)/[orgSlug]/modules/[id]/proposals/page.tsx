@@ -1,2 +1,2 @@
 'use client';
-export { default } from '../../../modules/[id]/proposals/page';
+export { default } from '../../../../modules/[id]/proposals/page';
