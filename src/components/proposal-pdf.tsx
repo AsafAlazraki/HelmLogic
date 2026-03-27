@@ -124,41 +124,47 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                 PAGE 1 — COVER
             ═══════════════════════════════════════════════════════════ */}
             <Page size="A4" style={S.page}>
-                <View style={{ width: '100%', height: '100%', position: 'relative', backgroundColor: NAVY }}>
+                <View style={{ width: '100%', height: '100%', position: 'relative', backgroundColor: 'white' }}>
 
-                    {/* ── Background boat image ── */}
+                    {/* ── Solid white header band (top 80px) ── */}
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 80, backgroundColor: 'white' }} />
+
+                    {/* ── Background boat image — starts below white band ── */}
                     {quote.coverImageUrl && (
                         <Image
                             src={quote.coverImageUrl}
-                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                            style={{ position: 'absolute', top: 80, left: 0, width: '100%', height: 762, objectFit: 'cover' }}
                         />
                     )}
+                    {/* Dark navy fill below white band when no image */}
+                    {!quote.coverImageUrl && (
+                        <View style={{ position: 'absolute', top: 80, left: 0, right: 0, bottom: 0, backgroundColor: NAVY }} />
+                    )}
+
+                    {/* ── Fade-in from white into image (top of image zone) ── */}
+                    <Svg viewBox="0 0 595 60" style={{ position: 'absolute', top: 80, left: 0, width: '100%', height: 60 }}>
+                        <Defs>
+                            <LinearGradient id="fadeIn" x1="0" y1="0" x2="0" y2="1">
+                                <Stop offset="0%" stopColor="white" stopOpacity="1" />
+                                <Stop offset="100%" stopColor="white" stopOpacity="0" />
+                            </LinearGradient>
+                        </Defs>
+                        <Rect x="0" y="0" width="595" height="60" fill="url(#fadeIn)" />
+                    </Svg>
 
                     {/* ── Bottom dark gradient for text legibility ── */}
                     <Svg viewBox="0 0 595 842" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
                         <Defs>
                             <LinearGradient id="bottomDark" x1="0" y1="0" x2="0" y2="1">
-                                <Stop offset="30%" stopColor={NAVY} stopOpacity="0" />
-                                <Stop offset="100%" stopColor={NAVY} stopOpacity="0.92" />
+                                <Stop offset="35%" stopColor={NAVY} stopOpacity="0" />
+                                <Stop offset="100%" stopColor={NAVY} stopOpacity="0.94" />
                             </LinearGradient>
                         </Defs>
-                        <Rect x="0" y="0" width="595" height="842" fill="url(#bottomDark)" />
+                        <Rect x="0" y="80" width="595" height="762" fill="url(#bottomDark)" />
                     </Svg>
 
-                    {/* ── Top white gradient header ── */}
-                    <Svg viewBox="0 0 595 200" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 200 }}>
-                        <Defs>
-                            <LinearGradient id="topWhite" x1="0" y1="0" x2="0" y2="1">
-                                <Stop offset="0%" stopColor="white" stopOpacity="1" />
-                                <Stop offset="75%" stopColor="white" stopOpacity="0.15" />
-                                <Stop offset="100%" stopColor="white" stopOpacity="0" />
-                            </LinearGradient>
-                        </Defs>
-                        <Rect x="0" y="0" width="595" height="200" fill="url(#topWhite)" />
-                    </Svg>
-
-                    {/* ── Logo bar — sits in the white gradient zone ── */}
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 48, paddingTop: 36, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    {/* ── Logo bar — sits in the solid white band ── */}
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 48, paddingTop: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 80 }}>
                         {/* Org logo */}
                         {organisation?.primaryLogoUrl ? (
                             <Image src={organisation.primaryLogoUrl} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
