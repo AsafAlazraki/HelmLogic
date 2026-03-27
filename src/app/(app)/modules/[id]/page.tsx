@@ -765,22 +765,28 @@ export default function ModuleDetailsPage() {
                         </ScrollArea>
                     </TabsContent>
 
-                    {(isAdmin || !!userPermissions.can_access_pricing_manager) && mainVendor && currentMemberOrg?.id && (
+                    {(isAdmin || !!userPermissions.can_access_pricing_manager) && mainVendor && (
                         <TabsContent value="pricing" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
-                            <Tabs defaultValue="matrix" className="flex flex-col h-full">
-                                <div className="shrink-0 px-6 pt-4 border-b bg-white">
-                                    <TabsList className="h-9 bg-slate-100 rounded-xl p-1 w-auto">
-                                        <TabsTrigger value="matrix" className="rounded-lg text-[10px] font-black uppercase tracking-widest px-4">Pricing Matrix</TabsTrigger>
-                                        <TabsTrigger value="pricelists" className="rounded-lg text-[10px] font-black uppercase tracking-widest px-4">Price Lists</TabsTrigger>
-                                    </TabsList>
+                            {!currentMemberOrg?.id ? (
+                                <div className="flex-1 flex items-center justify-center">
+                                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                 </div>
-                                <TabsContent value="matrix" className="m-0 flex-1 overflow-hidden">
-                                    <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
-                                </TabsContent>
-                                <TabsContent value="pricelists" className="m-0 flex-1 overflow-hidden">
-                                    <PriceListManager organisationId={currentMemberOrg.id} vendorId={mainVendor.id} />
-                                </TabsContent>
-                            </Tabs>
+                            ) : (
+                                <Tabs defaultValue="matrix" className="flex flex-col h-full">
+                                    <div className="shrink-0 px-6 pt-4 border-b bg-white">
+                                        <TabsList className="h-9 bg-slate-100 rounded-xl p-1 w-auto">
+                                            <TabsTrigger value="matrix" className="rounded-lg text-[10px] font-black uppercase tracking-widest px-4">Pricing Matrix</TabsTrigger>
+                                            <TabsTrigger value="pricelists" className="rounded-lg text-[10px] font-black uppercase tracking-widest px-4">Price Lists</TabsTrigger>
+                                        </TabsList>
+                                    </div>
+                                    <TabsContent value="matrix" className="m-0 flex-1 overflow-hidden">
+                                        <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
+                                    </TabsContent>
+                                    <TabsContent value="pricelists" className="m-0 flex-1 overflow-hidden">
+                                        <PriceListManager organisationId={currentMemberOrg.id} vendorId={mainVendor.id} />
+                                    </TabsContent>
+                                </Tabs>
+                            )}
                         </TabsContent>
                     )}
 
