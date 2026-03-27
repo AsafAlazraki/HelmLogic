@@ -774,8 +774,11 @@ export default function ModuleDetailsPage() {
                                 </div>
                             ) : (
                                 <div className="flex flex-col h-full">
-                                    <div className="shrink-0 px-6 pt-4 border-b bg-white">
-                                        <div className="h-9 bg-slate-100 rounded-xl p-1 w-auto inline-flex gap-1">
+                                    <div className="flex items-center gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300">
+                                        <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
+                                            <DollarSign className="h-5 w-5" />
+                                        </div>
+                                        <div className="h-9 bg-slate-100 rounded-xl p-1 inline-flex gap-1">
                                             <button
                                                 onClick={() => setPricingSubTab('matrix')}
                                                 className={cn('rounded-lg text-[10px] font-black uppercase tracking-widest px-4 h-7 transition-colors', pricingSubTab === 'matrix' ? 'bg-white shadow-sm text-slate-950' : 'text-slate-500 hover:text-slate-700')}
