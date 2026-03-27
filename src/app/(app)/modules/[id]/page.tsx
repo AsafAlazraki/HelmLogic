@@ -766,9 +766,9 @@ export default function ModuleDetailsPage() {
                         </ScrollArea>
                     </TabsContent>
 
-                    {(isAdmin || !!userPermissions.can_access_pricing_manager) && mainVendor && (
+                    {(isAdmin || !!userPermissions.can_access_pricing_manager) && (
                         <TabsContent value="pricing" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
-                            {!currentMemberOrg?.id ? (
+                            {(!mainVendor || !currentMemberOrg?.id) ? (
                                 <div className="flex-1 flex items-center justify-center">
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                 </div>
