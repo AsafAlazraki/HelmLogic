@@ -1,6 +1,6 @@
 'use client';
 
-import { Document, Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, View, Text, Image, StyleSheet, Svg, Defs, LinearGradient, Stop, Rect } from '@react-pdf/renderer';
 
 /* ─── Palette ──────────────────────────────────────────────────────────── */
 const BRAND  = '#0066cc';
@@ -126,7 +126,7 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
             <Page size="A4" style={S.page}>
                 <View style={{ width: '100%', height: '100%', position: 'relative', backgroundColor: NAVY }}>
 
-                    {/* Background boat image */}
+                    {/* ── Background boat image ── */}
                     {quote.coverImageUrl && (
                         <Image
                             src={quote.coverImageUrl}
@@ -134,110 +134,123 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                         />
                     )}
 
-                    {/* Dark overlay */}
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(12, 18, 38, 0.78)' }} />
+                    {/* ── Bottom dark gradient for text legibility ── */}
+                    <Svg viewBox="0 0 595 842" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+                        <Defs>
+                            <LinearGradient id="bottomDark" x1="0" y1="0" x2="0" y2="1">
+                                <Stop offset="30%" stopColor={NAVY} stopOpacity="0" />
+                                <Stop offset="100%" stopColor={NAVY} stopOpacity="0.92" />
+                            </LinearGradient>
+                        </Defs>
+                        <Rect x="0" y="0" width="595" height="842" fill="url(#bottomDark)" />
+                    </Svg>
 
-                    {/* Content layer */}
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, padding: 48, flexDirection: 'column' }}>
+                    {/* ── Top white gradient header ── */}
+                    <Svg viewBox="0 0 595 200" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 200 }}>
+                        <Defs>
+                            <LinearGradient id="topWhite" x1="0" y1="0" x2="0" y2="1">
+                                <Stop offset="0%" stopColor="white" stopOpacity="1" />
+                                <Stop offset="75%" stopColor="white" stopOpacity="0.15" />
+                                <Stop offset="100%" stopColor="white" stopOpacity="0" />
+                            </LinearGradient>
+                        </Defs>
+                        <Rect x="0" y="0" width="595" height="200" fill="url(#topWhite)" />
+                    </Svg>
 
-                        {/* ── Top bar: logos ── */}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                            {organisation?.primaryLogoUrl ? (
-                                <View style={{ backgroundColor: 'white', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6 }}>
-                                    <Image src={organisation.primaryLogoUrl} style={{ height: 36, maxWidth: 150, objectFit: 'contain' }} />
-                                </View>
-                            ) : (
-                                <Text style={{ fontSize: 13, fontWeight: 'bold', color: 'white', letterSpacing: 1 }}>
-                                    {(organisation?.name ?? '').toUpperCase()}
-                                </Text>
+                    {/* ── Logo bar — sits in the white gradient zone ── */}
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 48, paddingTop: 36, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        {/* Org logo */}
+                        {organisation?.primaryLogoUrl ? (
+                            <Image src={organisation.primaryLogoUrl} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
+                        ) : (
+                            <Text style={{ fontSize: 13, fontWeight: 'bold', color: NAVY, letterSpacing: 1 }}>
+                                {(organisation?.name ?? '').toUpperCase()}
+                            </Text>
+                        )}
+
+                        {/* Right-side logos: vendor + motor brand */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
+                            {quote.motor?.brandLogoUrl && (
+                                <Image src={quote.motor.brandLogoUrl} style={{ height: 28, maxWidth: 90, objectFit: 'contain' }} />
                             )}
                             {quote.vendorLogoUrl && (
-                                <View style={{ backgroundColor: 'white', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6 }}>
-                                    <Image src={quote.vendorLogoUrl} style={{ height: 36, maxWidth: 150, objectFit: 'contain' }} />
-                                </View>
+                                <Image src={quote.vendorLogoUrl} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
                             )}
                         </View>
+                    </View>
 
-                        {/* ── Spacer ── */}
-                        <View style={{ flexGrow: 1 }} />
+                    {/* ── Bottom hero block ── */}
+                    <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 48, paddingBottom: 52, flexDirection: 'column' }}>
+                        {/* Badge */}
+                        <View style={{ backgroundColor: BRAND, borderRadius: 3, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 18 }}>
+                            <Text style={{ fontSize: 7, fontWeight: 'bold', color: 'white', letterSpacing: 2.5, textTransform: 'uppercase' }}>
+                                Official Proposal
+                            </Text>
+                        </View>
 
-                        {/* ── Bottom hero block ── */}
-                        <View>
-                            {/* Badge */}
-                            <View style={{ backgroundColor: BRAND, borderRadius: 3, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 18 }}>
-                                <Text style={{ fontSize: 7, fontWeight: 'bold', color: 'white', letterSpacing: 2.5, textTransform: 'uppercase' }}>
-                                    Official Proposal
+                        {/* Range */}
+                        <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#60a5fa', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 4 }}>
+                            {quote.rangeName} Series
+                        </Text>
+
+                        {/* Model name */}
+                        <Text style={{ fontSize: 62, fontWeight: 'bold', fontStyle: 'italic', color: 'white', letterSpacing: -2, lineHeight: 0.92, marginBottom: 6 }}>
+                            {quote.modelName}
+                        </Text>
+                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: 'rgba(255,255,255,0.45)', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 22 }}>
+                            {quote.modelCode}
+                        </Text>
+
+                        {/* Accent rule */}
+                        <View style={{ width: 48, height: 3, backgroundColor: BRAND, marginBottom: 26 }} />
+
+                        {/* Two-col: client + price */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                            <View>
+                                <Text style={{ fontSize: 6.5, fontWeight: 'bold', color: 'rgba(255,255,255,0.4)', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 6 }}>
+                                    Prepared For
                                 </Text>
+                                <Text style={{ fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 2, lineHeight: 1.1 }}>
+                                    {quote.customer?.name}
+                                </Text>
+                                {quote.customer?.company && (
+                                    <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', marginBottom: 14 }}>
+                                        {quote.customer.company}
+                                    </Text>
+                                )}
+                                <View style={{ flexDirection: 'row', marginTop: quote.customer?.company ? 0 : 14 }}>
+                                    <View style={{ marginRight: 22 }}>
+                                        <Text style={{ fontSize: 6, fontWeight: 'bold', color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Quote No.</Text>
+                                        <Text style={{ fontSize: 9, fontWeight: 'bold', color: 'white' }}>{quote.quoteNumber}</Text>
+                                    </View>
+                                    <View style={{ marginRight: 22 }}>
+                                        <Text style={{ fontSize: 6, fontWeight: 'bold', color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Issued</Text>
+                                        <Text style={{ fontSize: 9, fontWeight: 'bold', color: 'white' }}>{fmt(createdAt)}</Text>
+                                    </View>
+                                    <View>
+                                        <Text style={{ fontSize: 6, fontWeight: 'bold', color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Valid Until</Text>
+                                        <Text style={{ fontSize: 9, fontWeight: 'bold', color: 'white' }}>{fmt(validUntil)}</Text>
+                                    </View>
+                                </View>
+                                {variantLabel && (
+                                    <View style={{ marginTop: 14, alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
+                                        <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: 'rgba(255,255,255,0.65)', letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                                            {variantLabel}
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
 
-                            {/* Range */}
-                            <Text style={{ fontSize: 8, fontWeight: 'bold', color: BRAND, letterSpacing: 3, textTransform: 'uppercase', marginBottom: 4 }}>
-                                {quote.rangeName} Series
-                            </Text>
-
-                            {/* Model name — big impact */}
-                            <Text style={{ fontSize: 62, fontWeight: 'bold', fontStyle: 'italic', color: 'white', letterSpacing: -2, lineHeight: 0.92, marginBottom: 6 }}>
-                                {quote.modelName}
-                            </Text>
-                            <Text style={{ fontSize: 10, fontWeight: 'bold', color: 'rgba(255,255,255,0.4)', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 26 }}>
-                                {quote.modelCode}
-                            </Text>
-
-                            {/* Accent rule */}
-                            <View style={{ width: 48, height: 3, backgroundColor: BRAND, marginBottom: 28 }} />
-
-                            {/* Two-col: client + price */}
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                                {/* Client */}
-                                <View>
-                                    <Text style={{ fontSize: 6.5, fontWeight: 'bold', color: 'rgba(255,255,255,0.38)', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 6 }}>
-                                        Prepared For
-                                    </Text>
-                                    <Text style={{ fontSize: 24, fontWeight: 'bold', color: 'white', marginBottom: 2, lineHeight: 1.1 }}>
-                                        {quote.customer?.name}
-                                    </Text>
-                                    {quote.customer?.company && (
-                                        <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.55)', marginBottom: 14 }}>
-                                            {quote.customer.company}
-                                        </Text>
-                                    )}
-                                    {/* Meta row */}
-                                    <View style={{ flexDirection: 'row', marginTop: quote.customer?.company ? 0 : 14 }}>
-                                        <View style={{ marginRight: 22 }}>
-                                            <Text style={{ fontSize: 6, fontWeight: 'bold', color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Quote No.</Text>
-                                            <Text style={{ fontSize: 9, fontWeight: 'bold', color: 'white' }}>{quote.quoteNumber}</Text>
-                                        </View>
-                                        <View style={{ marginRight: 22 }}>
-                                            <Text style={{ fontSize: 6, fontWeight: 'bold', color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Issued</Text>
-                                            <Text style={{ fontSize: 9, fontWeight: 'bold', color: 'white' }}>{fmt(createdAt)}</Text>
-                                        </View>
-                                        <View>
-                                            <Text style={{ fontSize: 6, fontWeight: 'bold', color: 'rgba(255,255,255,0.35)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Valid Until</Text>
-                                            <Text style={{ fontSize: 9, fontWeight: 'bold', color: 'white' }}>{fmt(validUntil)}</Text>
-                                        </View>
-                                    </View>
-                                    {/* Variant badge */}
-                                    {variantLabel && (
-                                        <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
-                                            <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: 'rgba(255,255,255,0.65)', letterSpacing: 0.8, textTransform: 'uppercase' }}>
-                                                {variantLabel}
-                                            </Text>
-                                        </View>
-                                    )}
-                                </View>
-
-                                {/* Price */}
-                                <View style={{ alignItems: 'flex-end' }}>
-                                    <Text style={{ fontSize: 6.5, fontWeight: 'bold', color: 'rgba(255,255,255,0.38)', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 5 }}>
-                                        Total Investment
-                                    </Text>
-                                    <Text style={{ fontSize: 44, fontWeight: 'bold', fontStyle: 'italic', color: 'white', letterSpacing: -2, lineHeight: 1 }}>
-                                        {currency(f.totalInclGst)}
-                                    </Text>
-                                    <Text style={{ fontSize: 7, fontWeight: 'bold', color: 'rgba(255,255,255,0.38)', letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 5 }}>
-                                        Inclusive of GST
-                                    </Text>
-                                </View>
+                            <View style={{ alignItems: 'flex-end' }}>
+                                <Text style={{ fontSize: 6.5, fontWeight: 'bold', color: 'rgba(255,255,255,0.4)', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 5 }}>
+                                    Total Investment
+                                </Text>
+                                <Text style={{ fontSize: 44, fontWeight: 'bold', fontStyle: 'italic', color: 'white', letterSpacing: -2, lineHeight: 1 }}>
+                                    {currency(f.totalInclGst)}
+                                </Text>
+                                <Text style={{ fontSize: 7, fontWeight: 'bold', color: 'rgba(255,255,255,0.4)', letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 5 }}>
+                                    Inclusive of GST
+                                </Text>
                             </View>
                         </View>
                     </View>

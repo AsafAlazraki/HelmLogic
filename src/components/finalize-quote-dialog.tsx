@@ -203,6 +203,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 name: motorName,
                 model: motorName,
                 brand: selectedMotor.brand || 'Yamaha',
+                brandLogoUrl: selectedMotor.vendorLogoUrl || null,
                 sellPriceExclGst: selectedMotor.sellPriceExclGst || 0,
                 imageUrl: selectedMotor.imageUrl || selectedMotor.SummaryImage || null,
                 accessories: (selectedMotorAccessories || []).map((a: any) => ({
