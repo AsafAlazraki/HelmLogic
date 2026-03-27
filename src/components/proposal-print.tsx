@@ -91,16 +91,18 @@ export function ProposalPrint({ quote, organisation, financials }: ProposalPrint
             ═══════════════════════════════════════════════════════════ */}
             <div style={{ ...PAGE, height: '297mm', position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-                {/* Full-bleed hero image — starts below the logo bar */}
+                {/* Full-bleed hero image (top 55%) */}
                 {quote.coverImageUrl && (
-                    <div style={{ position: 'absolute', top: '80px', left: 0, right: 0, bottom: '45%', zIndex: 0 }}>
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%', zIndex: 0 }}>
                         <Image src={quote.coverImageUrl} alt="" fill className="object-cover" style={{ objectPosition: 'center 40%' }} />
-                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%', background: 'linear-gradient(to bottom, transparent, white)' }} />
                     </div>
                 )}
 
-                {/* Logo bar — solid white, vertically centred, consistent bottom fade */}
-                <div style={{ position: 'relative', zIndex: 10, background: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14mm 16mm 14mm' }}>
+                {/* White overlay — solid at top for logos, consistent left-to-right fade into the image */}
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%', zIndex: 1, background: 'linear-gradient(to bottom, white 30%, rgba(255,255,255,0.6) 55%, transparent 80%)' }} />
+
+                {/* Logo bar — floats above overlay, vertically centred */}
+                <div style={{ position: 'relative', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10mm 16mm 10mm' }}>
                     {organisation?.primaryLogoUrl ? (
                         <div style={{ position: 'relative', height: '40px', width: '140px' }}>
                             <Image src={organisation.primaryLogoUrl} alt="" fill className="object-contain object-left" />
@@ -114,8 +116,6 @@ export function ProposalPrint({ quote, organisation, financials }: ProposalPrint
                         </div>
                     )}
                 </div>
-                {/* Consistent white → transparent fade across the full width */}
-                <div style={{ position: 'relative', zIndex: 10, height: '24px', background: 'linear-gradient(to bottom, white, transparent)' }} />
 
                 {/* Content block — pushed to bottom */}
                 <div style={{ position: 'relative', zIndex: 10, marginTop: 'auto', padding: '0 16mm 14mm' }}>
