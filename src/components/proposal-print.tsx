@@ -91,16 +91,16 @@ export function ProposalPrint({ quote, organisation, financials }: ProposalPrint
             ═══════════════════════════════════════════════════════════ */}
             <div style={{ ...PAGE, height: '297mm', position: 'relative', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-                {/* Full-bleed hero image (top 55%) */}
+                {/* Full-bleed hero image — starts below the logo bar */}
                 {quote.coverImageUrl && (
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%', zIndex: 0 }}>
+                    <div style={{ position: 'absolute', top: '80px', left: 0, right: 0, bottom: '45%', zIndex: 0 }}>
                         <Image src={quote.coverImageUrl} alt="" fill className="object-cover" style={{ objectPosition: 'center 40%' }} />
-                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,23,42,0.15) 0%, rgba(255,255,255,0.4) 60%, white 100%)' }} />
+                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '40%', background: 'linear-gradient(to bottom, transparent, white)' }} />
                     </div>
                 )}
 
-                {/* Logo bar */}
-                <div style={{ position: 'relative', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '14mm 16mm 0' }}>
+                {/* Logo bar — solid white, vertically centred, consistent bottom fade */}
+                <div style={{ position: 'relative', zIndex: 10, background: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14mm 16mm 14mm' }}>
                     {organisation?.primaryLogoUrl ? (
                         <div style={{ position: 'relative', height: '40px', width: '140px' }}>
                             <Image src={organisation.primaryLogoUrl} alt="" fill className="object-contain object-left" />
@@ -114,6 +114,8 @@ export function ProposalPrint({ quote, organisation, financials }: ProposalPrint
                         </div>
                     )}
                 </div>
+                {/* Consistent white → transparent fade across the full width */}
+                <div style={{ position: 'relative', zIndex: 10, height: '24px', background: 'linear-gradient(to bottom, white, transparent)' }} />
 
                 {/* Content block — pushed to bottom */}
                 <div style={{ position: 'relative', zIndex: 10, marginTop: 'auto', padding: '0 16mm 14mm' }}>
