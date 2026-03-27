@@ -318,6 +318,7 @@ export default function ModuleDetailsPage() {
     const storage = useStorage();
 
     const [activeTab, setActiveTab] = useState('dashboard');
+    const [pricingSubTab, setPricingSubTab] = useState<'matrix' | 'pricelists'>('matrix');
     const [view, setView] = useState<'ranges' | 'models' | 'bmt'>('ranges');
     const [selectedRangeId, setSelectedRangeId] = useState<string | null>(null);
     const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
@@ -772,20 +773,28 @@ export default function ModuleDetailsPage() {
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                                 </div>
                             ) : (
-                                <Tabs defaultValue="matrix" className="flex flex-col h-full">
+                                <div className="flex flex-col h-full">
                                     <div className="shrink-0 px-6 pt-4 border-b bg-white">
-                                        <TabsList className="h-9 bg-slate-100 rounded-xl p-1 w-auto">
-                                            <TabsTrigger value="matrix" className="rounded-lg text-[10px] font-black uppercase tracking-widest px-4">Pricing Matrix</TabsTrigger>
-                                            <TabsTrigger value="pricelists" className="rounded-lg text-[10px] font-black uppercase tracking-widest px-4">Price Lists</TabsTrigger>
-                                        </TabsList>
+                                        <div className="h-9 bg-slate-100 rounded-xl p-1 w-auto inline-flex gap-1">
+                                            <button
+                                                onClick={() => setPricingSubTab('matrix')}
+                                                className={cn('rounded-lg text-[10px] font-black uppercase tracking-widest px-4 h-7 transition-colors', pricingSubTab === 'matrix' ? 'bg-white shadow-sm text-slate-950' : 'text-slate-500 hover:text-slate-700')}
+                                            >Pricing Matrix</button>
+                                            <button
+                                                onClick={() => setPricingSubTab('pricelists')}
+                                                className={cn('rounded-lg text-[10px] font-black uppercase tracking-widest px-4 h-7 transition-colors', pricingSubTab === 'pricelists' ? 'bg-white shadow-sm text-slate-950' : 'text-slate-500 hover:text-slate-700')}
+                                            >Price Lists</button>
+                                        </div>
                                     </div>
-                                    <TabsContent value="matrix" className="m-0 flex-1 overflow-hidden">
-                                        <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
-                                    </TabsContent>
-                                    <TabsContent value="pricelists" className="m-0 flex-1 overflow-hidden">
-                                        <PriceListManager organisationId={currentMemberOrg.id} vendorId={mainVendor.id} />
-                                    </TabsContent>
-                                </Tabs>
+                                    <div className="flex-1 overflow-hidden">
+                                        {pricingSubTab === 'matrix' && (
+                                            <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
+                                        )}
+                                        {pricingSubTab === 'pricelists' && (
+                                            <PriceListManager organisationId={currentMemberOrg.id} vendorId={mainVendor.id} />
+                                        )}
+                                    </div>
+                                </div>
                             )}
                         </TabsContent>
                     )}
