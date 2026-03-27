@@ -549,8 +549,8 @@ export default function ModuleDetailsPage() {
             </div>
 
             <main className="flex-1 overflow-hidden relative">
-                <Tabs value={activeTab} className="h-full">
-                    <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                <div className="h-full">
+                    {activeTab === 'dashboard' && <div className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <ScrollArea className="h-full">
                             <div className="p-8 min-h-[calc(100vh-224px)] flex flex-col">
                                 <div className="grid grid-cols-12 gap-8 flex-1">
@@ -681,9 +681,9 @@ export default function ModuleDetailsPage() {
                                 </div>
                             </div>
                         </ScrollArea>
-                    </TabsContent>
+                    </div>}
 
-                    <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
+                    {activeTab === 'bmt' && <div className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
                         {/* Tactical Workspace Header */}
                         <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 relative z-[150]">
                             <div className="flex items-center gap-4">
@@ -749,9 +749,9 @@ export default function ModuleDetailsPage() {
                                 </div>
                             </div>
                         </ScrollArea>
-                    </TabsContent>
+                    </div>}
 
-                    <TabsContent value="stock" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                    {activeTab === 'stock' && <div className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <ScrollArea className="h-full">
                             <div className="p-8 space-y-8">
                                 <div>
@@ -764,10 +764,10 @@ export default function ModuleDetailsPage() {
                                 </div>
                             </div>
                         </ScrollArea>
-                    </TabsContent>
+                    </div>}
 
-                    {(isAdmin || !!userPermissions.can_access_pricing_manager) && (
-                        <TabsContent value="pricing" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
+                    {activeTab === 'pricing' && (isAdmin || !!userPermissions.can_access_pricing_manager) && (
+                        <div className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
                             {(!mainVendor || !currentMemberOrg?.id) ? (
                                 <div className="flex-1 flex items-center justify-center">
                                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -796,10 +796,10 @@ export default function ModuleDetailsPage() {
                                     </div>
                                 </div>
                             )}
-                        </TabsContent>
+                        </div>
                     )}
 
-                </Tabs>
+                </div>
             </main>
 
             {moduleData && (
