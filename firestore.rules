@@ -58,7 +58,13 @@ service cloud.firestore {
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == resource.data.organisationId);
       // Allow any signed-in user to create a new user profile (needed for org-level enrollment flow).
       allow create: if isSignedIn();
-      allow update, delete: if isOwner(userId) || isAdmin();
+      // Allow update by the owner, a HelmLogic Admin, or any member of the same organisation
+      // (so Managing Directors can edit team member profiles and roles).
+      allow update: if isOwner(userId) || isAdmin() ||
+        (isSignedIn() &&
+         resource.data.organisationId != null &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == resource.data.organisationId);
+      allow delete: if isOwner(userId) || isAdmin();
 
       match /notifications/{notifId} {
         allow read, write: if isOwner(userId) || isAdmin();
