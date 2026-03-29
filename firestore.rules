@@ -33,6 +33,17 @@ service cloud.firestore {
       );
     }
 
+    /**
+     * Organisation Member Check
+     * Returns true if the signed-in user belongs to the given organisation.
+     * Used to allow org-level admins (e.g. Managing Director) to manage their own org.
+     */
+    function isOrgMember(orgId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == orgId;
+    }
+
     // --- COLLECTION RULES ---
 
     // HelmLogic Admins get full access to the entire database
@@ -45,7 +56,9 @@ service cloud.firestore {
         (isSignedIn() &&
          resource.data.organisationId != null &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == resource.data.organisationId);
-      allow write: if isOwner(userId) || isAdmin();
+      // Allow any signed-in user to create a new user profile (needed for org-level enrollment flow).
+      allow create: if isSignedIn();
+      allow update, delete: if isOwner(userId) || isAdmin();
 
       match /notifications/{notifId} {
         allow read, write: if isOwner(userId) || isAdmin();
@@ -73,7 +86,9 @@ service cloud.firestore {
 
     match /organisations/{orgId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      // Allow HelmLogic Admins or members of the organisation to update their own org
+      // (e.g. Managing Director editing permissions table, company details, etc.)
+      allow write: if isAdmin() || isOrgMember(orgId);
 
       match /templates/{templateId} {
         allow read, write: if isSignedIn();
