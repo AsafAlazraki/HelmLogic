@@ -308,6 +308,7 @@ function GroupedPriceListTable({ pl, vendorId, onRowClick }: { pl: PriceList; ve
                                 <thead>
                                     <tr className="bg-slate-50 border-b border-slate-200/60">
                                         <th className="text-left px-5 py-2.5 text-[8px] font-black uppercase tracking-widest text-slate-400 w-16" />
+                                        <th className="text-left px-5 py-2.5 text-[8px] font-black uppercase tracking-widest text-slate-400">SKU</th>
                                         <th className="text-left px-5 py-2.5 text-[8px] font-black uppercase tracking-widest text-slate-400">Material</th>
                                         <th className="text-left px-5 py-2.5 text-[8px] font-black uppercase tracking-widest text-slate-400">Colour</th>
                                         {(pl.columns || []).map(col => (
@@ -339,6 +340,9 @@ function GroupedPriceListTable({ pl, vendorId, onRowClick }: { pl: PriceList; ve
                                                         <Ship className="h-4 w-4 text-slate-300" />
                                                     </div>
                                                 )}
+                                            </td>
+                                            <td className="px-5 py-3">
+                                                <span className="text-[10px] font-mono text-slate-400">{row.variantId}</span>
                                             </td>
                                             <td className="px-5 py-3">
                                                 <span className="inline-flex items-center h-6 px-2.5 rounded-md bg-slate-100 border border-slate-200/60 text-[10px] font-black text-slate-700 uppercase tracking-wider">{row.material}</span>
