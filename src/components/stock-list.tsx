@@ -111,6 +111,7 @@ export function StockList({
     locations = [],
     readOnly = false,
     hideHeader = false,
+    visibleColumns,
 }: {
     organisation: Organisation | null;
     subDealers: Organisation[];
@@ -121,6 +122,7 @@ export function StockList({
     locations?: string[];
     readOnly?: boolean;
     hideHeader?: boolean;
+    visibleColumns?: string[];
 }) {
     const firestore = useFirestore();
     const [sortKey, setSortKey] = useState<SortKey>('dateIntoStock');
@@ -174,6 +176,15 @@ export function StockList({
         });
         return sorted;
     }, [inventory, sortKey, sortDir]);
+
+    const displayColumns = useMemo(() => {
+        if (!visibleColumns || visibleColumns.length === 0) return COLUMNS;
+        return COLUMNS.filter(col => visibleColumns.includes(col.key));
+    }, [visibleColumns]);
+
+    const visibleColumnKeys = useMemo(() => {
+        return new Set(displayColumns.map(col => col.key));
+    }, [displayColumns]);
 
     const handleSort = useCallback((key: SortKey) => {
         if (sortKey === key) {
@@ -270,7 +281,7 @@ export function StockList({
                         <table className="w-full border-collapse text-xs">
                             <thead className="bg-slate-50 sticky top-0 z-10">
                                 <tr>
-                                    {COLUMNS.map(col => (
+                                    {displayColumns.map(col => (
                                         <th
                                             key={col.key}
                                             className={`text-[9px] font-black uppercase tracking-widest text-slate-400 px-3 py-2.5 text-left whitespace-nowrap cursor-pointer select-none hover:text-slate-600 transition-colors ${col.className ?? ''}`}
@@ -297,62 +308,86 @@ export function StockList({
                                     return (
                                         <tr key={item.id} className="group border-b border-slate-100 hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => setDetailItem(item)}>
                                             {/* Date into Stock / ETA */}
-                                            <td className="px-3 py-2 whitespace-nowrap">{formatDate(item.dateIntoStock)}</td>
+                                            {visibleColumnKeys.has('dateIntoStock') && (
+                                                <td className="px-3 py-2 whitespace-nowrap">{formatDate(item.dateIntoStock)}</td>
+                                            )}
 
                                             {/* Days in Stock */}
-                                            <td className={`px-3 py-2 text-right whitespace-nowrap ${days !== null && days > 365 ? 'font-bold' : ''}`}>
-                                                {days !== null ? days : '—'}
-                                            </td>
+                                            {visibleColumnKeys.has('daysInStock') && (
+                                                <td className={`px-3 py-2 text-right whitespace-nowrap ${days !== null && days > 365 ? 'font-bold' : ''}`}>
+                                                    {days !== null ? days : '—'}
+                                                </td>
+                                            )}
 
                                             {/* Status */}
-                                            <td className="px-3 py-2 whitespace-nowrap">
-                                                {item.status === 'In Stock' ? (
-                                                    <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] px-2 py-0">In Stock</Badge>
-                                                ) : item.status === 'On Order' ? (
-                                                    <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0">On Order</Badge>
-                                                ) : (
-                                                    <span>{item.status ?? '—'}</span>
-                                                )}
-                                            </td>
+                                            {visibleColumnKeys.has('status') && (
+                                                <td className="px-3 py-2 whitespace-nowrap">
+                                                    {item.status === 'In Stock' ? (
+                                                        <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] px-2 py-0">In Stock</Badge>
+                                                    ) : item.status === 'On Order' ? (
+                                                        <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0">On Order</Badge>
+                                                    ) : (
+                                                        <span>{item.status ?? '—'}</span>
+                                                    )}
+                                                </td>
+                                            )}
 
                                             {/* Location */}
-                                            <td className="px-3 py-2 whitespace-nowrap">{item.location || '—'}</td>
+                                            {visibleColumnKeys.has('location') && (
+                                                <td className="px-3 py-2 whitespace-nowrap">{item.location || '—'}</td>
+                                            )}
 
                                             {/* Sold By */}
-                                            <td className="px-3 py-2 whitespace-nowrap">{item.soldBy || '—'}</td>
+                                            {visibleColumnKeys.has('soldBy') && (
+                                                <td className="px-3 py-2 whitespace-nowrap">{item.soldBy || '—'}</td>
+                                            )}
 
                                             {/* Stock Number */}
-                                            <td className="px-3 py-2 whitespace-nowrap font-mono text-[10px]">{item.stockNumber || '—'}</td>
+                                            {visibleColumnKeys.has('stockNumber') && (
+                                                <td className="px-3 py-2 whitespace-nowrap font-mono text-[10px]">{item.stockNumber || '—'}</td>
+                                            )}
 
                                             {/* Label */}
-                                            <td className="px-3 py-2 whitespace-nowrap">{item.label || '—'}</td>
+                                            {visibleColumnKeys.has('label') && (
+                                                <td className="px-3 py-2 whitespace-nowrap">{item.label || '—'}</td>
+                                            )}
 
                                             {/* Model */}
-                                            <td className="px-3 py-2 whitespace-nowrap">{item.model || '—'}</td>
+                                            {visibleColumnKeys.has('model') && (
+                                                <td className="px-3 py-2 whitespace-nowrap">{item.model || '—'}</td>
+                                            )}
 
                                             {/* Colour */}
-                                            <td className="px-3 py-2 whitespace-nowrap">{item.colour || '—'}</td>
+                                            {visibleColumnKeys.has('colour') && (
+                                                <td className="px-3 py-2 whitespace-nowrap">{item.colour || '—'}</td>
+                                            )}
 
                                             {/* Serial Number */}
-                                            <td className="px-3 py-2 whitespace-nowrap font-mono text-[10px]">{item.serialNumber || '—'}</td>
+                                            {visibleColumnKeys.has('serialNumber') && (
+                                                <td className="px-3 py-2 whitespace-nowrap font-mono text-[10px]">{item.serialNumber || '—'}</td>
+                                            )}
 
                                             {/* Material */}
-                                            <td className="px-3 py-2 whitespace-nowrap">
-                                                {item.material === 'PVC' ? (
-                                                    <Badge className="bg-red-500 text-white border-transparent text-[10px] px-2 py-0">PVC</Badge>
-                                                ) : item.material === 'HYP' ? (
-                                                    <Badge className="bg-slate-200 text-slate-600 border-transparent text-[10px] px-2 py-0">HYP</Badge>
-                                                ) : (
-                                                    <span>{item.material || '—'}</span>
-                                                )}
-                                            </td>
+                                            {visibleColumnKeys.has('material') && (
+                                                <td className="px-3 py-2 whitespace-nowrap">
+                                                    {item.material === 'PVC' ? (
+                                                        <Badge className="bg-red-500 text-white border-transparent text-[10px] px-2 py-0">PVC</Badge>
+                                                    ) : item.material === 'HYP' ? (
+                                                        <Badge className="bg-slate-200 text-slate-600 border-transparent text-[10px] px-2 py-0">HYP</Badge>
+                                                    ) : (
+                                                        <span>{item.material || '—'}</span>
+                                                    )}
+                                                </td>
+                                            )}
 
                                             {/* Notes */}
-                                            <td className="px-3 py-2">
-                                                <span className="block max-w-[200px] truncate" title={item.notes || ''}>
-                                                    {item.notes || '—'}
-                                                </span>
-                                            </td>
+                                            {visibleColumnKeys.has('notes') && (
+                                                <td className="px-3 py-2">
+                                                    <span className="block max-w-[200px] truncate" title={item.notes || ''}>
+                                                        {item.notes || '—'}
+                                                    </span>
+                                                </td>
+                                            )}
 
                                             {/* Actions */}
                                             <td className="px-3 py-2 text-right whitespace-nowrap">
