@@ -44,6 +44,19 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == orgId;
     }
 
+    /**
+     * Parent Organisation Member Check
+     * Returns true if the target org is a sub-dealer of the caller's organisation.
+     * Allows parent org users to manage their sub-dealer organisations.
+     */
+    function isParentOrgMember(orgId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/organisations/$(orgId)) &&
+        get(/databases/$(database)/documents/organisations/$(orgId)).data.parentOrganisationId != null &&
+        get(/databases/$(database)/documents/organisations/$(orgId)).data.parentOrganisationId ==
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId;
+    }
+
     // --- COLLECTION RULES ---
 
     // HelmLogic Admins get full access to the entire database
@@ -105,9 +118,8 @@ service cloud.firestore {
 
     match /organisations/{orgId} {
       allow read: if isSignedIn();
-      // Allow HelmLogic Admins or members of the organisation to update their own org
-      // (e.g. Managing Director editing permissions table, company details, etc.)
-      allow write: if isAdmin() || isOrgMember(orgId);
+      // Allow HelmLogic Admins, org members, or parent org members (managing sub-dealers)
+      allow write: if isAdmin() || isOrgMember(orgId) || isParentOrgMember(orgId);
 
       match /templates/{templateId} {
         allow read, write: if isSignedIn();
