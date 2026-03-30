@@ -69,6 +69,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { HelmLogicLoading } from "@/components/helmlogic-loading";
 import { HighfieldPricingWorkspace } from '@/components/highfield-pricing-workspace';
+import { PriceListViewer } from '@/components/price-list-viewer';
 import { StockLocationManager } from '@/components/stock-location-manager';
 
 import {
@@ -487,13 +488,110 @@ export default function ModuleDetailsPage() {
     if (loading) return <HelmLogicLoading label="Synchronizing Module" />;
     if (!moduleData) return <div className="p-12 text-center font-bold">Module Context Lost.</div>;
 
-    // For sub-dealers: only show stock tab if module allows it
-    const showStockToSubDealer = !isSubDealer || moduleData?.stockVisibleToSubDealers === true;
+    // Sub-dealer tabbed experience — same visual style as parent orgs
+    if (isSubDealer && currentMemberOrg) {
+        const subDealerTabs = [
+            { id: 'stock', label: 'Stock Management', visible: moduleData?.stockVisibleToSubDealers === true },
+            { id: 'pricing', label: 'Price List' },
+        ].filter(t => t.visible !== false);
+
+        return (
+            <div className="flex flex-col h-screen overflow-hidden bg-background">
+                {/* Header — same style as parent org */}
+                <div className="relative shrink-0 overflow-hidden bg-primary px-12 text-primary-foreground z-20 h-44 border-b-2 border-white/10">
+                    <div className="absolute inset-0 z-0 bg-primary/95">
+                        <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
+                        <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-indigo-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
+                    </div>
+                    <div className="relative z-10 flex flex-col h-full justify-center">
+                        <div className="flex items-center justify-between w-full gap-12">
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-white/50 leading-none">
+                                    <Navigation className="h-2.5 w-2.5" />
+                                    <span>MODULE</span>
+                                </div>
+                                <h1 className="text-3xl sm:text-5xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl">
+                                    {moduleData.name}
+                                </h1>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                className="h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 group shadow-xl flex items-center"
+                                onClick={() => router.push(orgSlug ? `/${orgSlug}/dashboard` : '/dashboard')}
+                            >
+                                <X className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
+                                <span>Back to Hub</span>
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Tab bar — same style as parent org */}
+                <div className="bg-white border-b shrink-0 z-10 px-10">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        <TabsList className={cn("grid w-full h-12 bg-transparent p-0 gap-4", `grid-cols-${subDealerTabs.length}`)}>
+                            {subDealerTabs.map((t) => (
+                                <TabsTrigger
+                                    key={t.id}
+                                    value={t.id}
+                                    className="rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-[0.2em] h-full transition-all duration-300 text-slate-500 data-[state=active]:text-slate-950 hover:text-slate-700"
+                                >
+                                    {t.label}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </Tabs>
+                </div>
+
+                {/* Tab content */}
+                <main className="flex-1 min-h-0 overflow-hidden">
+                    <Tabs value={activeTab} className="h-full">
+                        <TabsContent value="stock" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                            <ScrollArea className="h-full">
+                                <div className="p-8 space-y-8">
+                                    <div>
+                                        <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">Your Stock</h2>
+                                        <StockList
+                                            organisation={currentMemberOrg as any}
+                                            subDealers={[]}
+                                            parentOrg={parentOrgData ?? null}
+                                            moduleId={moduleData.id}
+                                            filterOrgId={currentMemberOrg.id}
+                                            isAdmin={false}
+                                            locations={moduleData?.stockLocations || []}
+                                            readOnly={true}
+                                        />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">On Order</h2>
+                                        <VesselOnOrderList
+                                            organisation={currentMemberOrg as any}
+                                            parentOrg={parentOrgData ?? null}
+                                            moduleId={moduleData.id}
+                                            isAdmin={false}
+                                        />
+                                    </div>
+                                </div>
+                            </ScrollArea>
+                        </TabsContent>
+
+                        <TabsContent value="pricing" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                            <PriceListViewer
+                                parentOrganisationId={currentMemberOrg.parentOrganisationId}
+                                subDealerOrgId={currentMemberOrg.id}
+                                vendorId={moduleData.mainVendorId}
+                            />
+                        </TabsContent>
+                    </Tabs>
+                </main>
+            </div>
+        );
+    }
 
     const navTabs = [
         { id: 'dashboard', label: 'Dashboard' },
         { id: 'bmt', label: 'Catalog' },
-        { id: 'stock', label: 'Stock Management', visible: showStockToSubDealer },
+        { id: 'stock', label: 'Stock Management' },
         { id: 'pricing', label: 'Pricing', visible: (isAdmin || !!userPermissions.can_access_pricing_manager) },
         { id: 'settings', label: 'Settings' }
     ].filter(t => t.visible !== false);
