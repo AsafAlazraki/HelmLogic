@@ -10,7 +10,9 @@ import { StockLocationMap } from '@/components/stock-location-map';
 import { StockAssignmentView } from '@/components/stock-assignment-view';
 import { StockExport } from '@/components/stock-export';
 import { StockImport } from '@/components/stock-import';
-import { Box, Plus, MapPin, Users, Package, Search } from 'lucide-react';
+import { DeliveredDeals } from '@/components/delivered-deals';
+import { DeliveredDealsExport } from '@/components/delivered-deals-export';
+import { Box, Plus, MapPin, Users, Package, Search, Truck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -47,7 +49,7 @@ export function StockManagementWorkspace({
     vendorName,
 }: StockManagementWorkspaceProps) {
     const firestore = useFirestore();
-    const [view, setView] = useState<'table' | 'map' | 'assignments'>('table');
+    const [view, setView] = useState<'table' | 'delivered' | 'map' | 'assignments'>('table');
     const [formOpen, setFormOpen] = useState(false);
 
     // Filter state
@@ -86,6 +88,7 @@ export function StockManagementWorkspace({
 
     const views = [
         { key: 'table' as const, label: 'Table View', icon: Package },
+        { key: 'delivered' as const, label: 'Delivered Deals', icon: Truck },
         { key: 'map' as const, label: 'Map View', icon: MapPin },
         { key: 'assignments' as const, label: 'Assignments', icon: Users },
     ];
@@ -223,6 +226,17 @@ export function StockManagementWorkspace({
                             locations={locations}
                             readOnly={readOnly}
                             hideHeader={true}
+                        />
+                    </div>
+                )}
+
+                {view === 'delivered' && (
+                    <div className="px-8 py-4">
+                        <DeliveredDeals
+                            organisation={organisation}
+                            moduleId={moduleId}
+                            isAdmin={isAdmin}
+                            readOnly={readOnly}
                         />
                     </div>
                 )}
