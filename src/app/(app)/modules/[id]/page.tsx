@@ -49,7 +49,9 @@ import {
     Upload,
     Save,
     Building,
-    Layout
+    Layout,
+    Box,
+    Settings
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -373,6 +375,37 @@ export default function ModuleDetailsPage() {
     [firestore, user]);
     const { data: recentQuotes } = useCollection<any>(recentQuotesQuery);
 
+    // Dashboard stock counts
+    const dashboardInventoryQuery = useMemoFirebase(() => {
+        if (!currentMemberOrg?.id || !moduleData?.id) return null;
+        const orgId = isSubDealer ? currentMemberOrg.id : currentMemberOrg.id;
+        return query(
+            collection(firestore, 'inventory'),
+            where('moduleId', '==', moduleData.id),
+            where('organisationId', '==', orgId)
+        );
+    }, [firestore, currentMemberOrg?.id, moduleData?.id, isSubDealer]);
+    const { data: dashboardInventory } = useCollection<any>(dashboardInventoryQuery);
+
+    const dashboardVesselsQuery = useMemoFirebase(() => {
+        if (!currentMemberOrg?.id || !moduleData?.id) return null;
+        const targetOrgId = isSubDealer ? (parentOrgData?.id || currentMemberOrg.id) : currentMemberOrg.id;
+        return query(
+            collection(firestore, 'vessels'),
+            where('organisationId', '==', targetOrgId),
+            where('status', '==', 'On Order')
+        );
+    }, [firestore, currentMemberOrg?.id, parentOrgData?.id, moduleData?.id, isSubDealer]);
+    const { data: dashboardVessels } = useCollection<any>(dashboardVesselsQuery);
+
+    const dashboardStockCounts = useMemo(() => {
+        const inv = dashboardInventory || [];
+        const inStock = inv.filter((i: any) => i.status === 'In Stock').length;
+        const onOrder = (dashboardVessels || []).length;
+        const locationSet = new Set(inv.map((i: any) => i.location).filter(Boolean));
+        return { inStock, onOrder, locations: locationSet.size, total: inv.length };
+    }, [dashboardInventory, dashboardVessels]);
+
     const userPermissions = useMemo(() => {
         const roleId = userProfile?.organisationRole;
         if (!roleId || !currentMemberOrg?.permissions?.[roleId]) return {};
@@ -523,17 +556,61 @@ export default function ModuleDetailsPage() {
             <main className="flex-1 overflow-hidden relative">
                 <Tabs value={activeTab} className="h-full">
                     <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
-                        <div className="h-full p-6 md:p-8">
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 h-full">
-                                {/* Left — Stock & Logistics Overview */}
-                                <div className="lg:col-span-7 flex flex-col gap-6 md:gap-8 min-h-0">
-                                    <Card className="flex-1 flex flex-col border-2 rounded-2xl shadow-sm bg-white overflow-hidden min-h-0">
+                        <div className="h-full p-6 md:p-8 overflow-y-auto">
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
+                                {/* Left — Stock & Logistics Summary */}
+                                <div className="lg:col-span-7 flex flex-col gap-6 min-h-0">
+                                    {/* Summary Stats Row */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                        <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                            <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.inStock}</span>
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-green-600">In Stock</span>
+                                        </Card>
+                                        <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                            <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.onOrder}</span>
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-blue-600">On Order</span>
+                                        </Card>
+                                        <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                            <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.locations}</span>
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Locations</span>
+                                        </Card>
+                                        <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                            <span className="text-2xl font-black text-slate-900">{recentQuotes?.length || 0}</span>
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-purple-600">Proposals</span>
+                                        </Card>
+                                    </div>
+
+                                    {/* Quick Actions */}
+                                    {!isSubDealer && (
+                                        <div className="flex flex-wrap gap-3">
+                                            <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setActiveTab('stock')}>
+                                                <Box className="h-4 w-4" />
+                                                Manage Stock
+                                            </Button>
+                                            <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setIsQuoteInitializationOpen(true)}>
+                                                <PlusCircle className="h-4 w-4" />
+                                                New Quote
+                                            </Button>
+                                            <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setActiveTab('settings')}>
+                                                <Settings className="h-4 w-4" />
+                                                Settings
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    {/* Recent Stock — compact preview */}
+                                    <Card className="flex-1 flex flex-col border-2 rounded-2xl shadow-sm bg-white overflow-hidden min-h-[200px] max-h-[400px]">
                                         <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
                                             <div className="flex items-center gap-3 shrink-0">
                                                 <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
                                                 <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock Units</h3>
+                                                {dashboardStockCounts.total > 0 && (
+                                                    <Badge variant="secondary" className="text-[9px] font-black h-5 px-2">{dashboardStockCounts.total}</Badge>
+                                                )}
                                             </div>
-                                            <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
+                                            <Button variant="ghost" size="sm" onClick={() => setActiveTab('stock')} className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white rounded-xl transition-colors h-7 px-3 gap-1">
+                                                View All <ArrowRight className="h-3 w-3" />
+                                            </Button>
                                         </CardHeader>
                                         <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
                                             <ScrollArea className="h-full">
@@ -542,13 +619,19 @@ export default function ModuleDetailsPage() {
                                         </CardContent>
                                     </Card>
 
-                                    <Card className="shrink-0 flex flex-col border-2 rounded-2xl shadow-sm bg-white overflow-hidden max-h-[280px]">
+                                    {/* On Order — compact */}
+                                    <Card className="shrink-0 flex flex-col border-2 rounded-2xl shadow-sm bg-white overflow-hidden max-h-[240px]">
                                         <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
                                             <div className="flex items-center gap-3 shrink-0">
                                                 <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
                                                 <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
+                                                {dashboardStockCounts.onOrder > 0 && (
+                                                    <Badge variant="secondary" className="text-[9px] font-black h-5 px-2">{dashboardStockCounts.onOrder}</Badge>
+                                                )}
                                             </div>
-                                            <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
+                                            <Button variant="ghost" size="sm" onClick={() => setActiveTab('stock')} className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white rounded-xl transition-colors h-7 px-3 gap-1">
+                                                View All <ArrowRight className="h-3 w-3" />
+                                            </Button>
                                         </CardHeader>
                                         <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
                                             <ScrollArea className="h-full">
