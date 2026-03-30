@@ -1,0 +1,19 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Agent",
+      "Bash(npm run typecheck)",
+      "Bash(npm run lint)",
+      "Bash(npm run build)",
+      "Bash(git *)"
+    ]
+  }
+}
