@@ -12,6 +12,7 @@ import {
   limit,
   Timestamp,
 } from 'firebase/firestore';
+import { scrumMasterChat } from '@/ai/flows/scrum-master-flow';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -233,15 +234,45 @@ export function AgentTeamDashboard() {
     const text = messageText.trim();
     if (!text || sending) return;
     setSending(true);
+    setMessageText('');
     try {
+      // 1. Write user message to Firestore
       await addDoc(messagesColRef, {
         sender: 'user',
         text,
         timestamp: serverTimestamp(),
       });
-      setMessageText('');
+
+      // 2. Build conversation history for the AI
+      const history = (messagesData || []).map((msg) => ({
+        role: msg.sender === 'user' ? 'user' as const : 'model' as const,
+        content: [{ text: msg.text }],
+      }));
+
+      // 3. Call the Scrum Master AI flow
+      const result = await scrumMasterChat({
+        message: text,
+        history,
+      });
+
+      // 4. Write AI response back to Firestore (shows up in real-time)
+      await addDoc(messagesColRef, {
+        sender: 'scrum-master',
+        text: result.text,
+        timestamp: serverTimestamp(),
+      });
     } catch (err) {
       console.error('Failed to send message:', err);
+      // Write error message so user sees feedback
+      try {
+        await addDoc(messagesColRef, {
+          sender: 'scrum-master',
+          text: "Sorry, I'm having trouble responding right now. Please try again.",
+          timestamp: serverTimestamp(),
+        });
+      } catch {
+        // Silently fail on error message write
+      }
     } finally {
       setSending(false);
     }
@@ -457,6 +488,20 @@ export function AgentTeamDashboard() {
                     </div>
                   );
                 })
+              )}
+              {sending && (
+                <div className="flex gap-2 mr-auto max-w-[80%]">
+                  <div className="w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 text-sm bg-card animate-pulse">
+                    📋
+                  </div>
+                  <div className="rounded-2xl border-2 px-3 py-2 bg-card border-border">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                </div>
               )}
               <div ref={messagesEndRef} />
             </div>
