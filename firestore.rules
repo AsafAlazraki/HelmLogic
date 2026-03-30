@@ -100,7 +100,7 @@ service cloud.firestore {
 
     match /modules/{moduleId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
     }
 
     match /organisations/{orgId} {
