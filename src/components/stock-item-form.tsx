@@ -212,7 +212,7 @@ export function StockItemForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="rounded-3xl border-4 shadow-2xl p-0 overflow-hidden max-w-2xl">
+      <DialogContent className="rounded-3xl border-4 shadow-2xl p-0 overflow-hidden max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader className="p-8 bg-muted/5 border-b">
           <DialogTitle className="text-2xl font-black uppercase tracking-tight">
             {isEditMode ? 'Edit Stock Item' : 'Add Stock Item'}
