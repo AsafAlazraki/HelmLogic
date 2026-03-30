@@ -224,7 +224,7 @@ export function StockImport({ moduleId, organisationId, onComplete }: StockImpor
             </Button>
 
             <Dialog open={open} onOpenChange={handleOpenChange}>
-                <DialogContent className="rounded-3xl border-4 shadow-2xl p-0 overflow-hidden max-w-3xl">
+                <DialogContent className="rounded-3xl border-4 shadow-2xl p-0 overflow-hidden max-w-3xl max-h-[85vh] flex flex-col">
                     <DialogHeader className="p-8 bg-muted/5 border-b">
                         <DialogTitle className="text-2xl font-black uppercase tracking-tight">
                             Import Stock Items
@@ -237,7 +237,7 @@ export function StockImport({ moduleId, organisationId, onComplete }: StockImpor
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="p-8">
+                    <div className="p-8 flex-1 overflow-y-auto">
                         {/* Step 1: File Selection */}
                         {step === 'select' && (
                             <div
@@ -338,7 +338,7 @@ export function StockImport({ moduleId, organisationId, onComplete }: StockImpor
                         )}
                     </div>
 
-                    <DialogFooter className="p-8 border-t bg-muted/5">
+                    <DialogFooter className="p-8 border-t bg-muted/5 shrink-0">
                         {step === 'select' && (
                             <DialogClose asChild>
                                 <Button
