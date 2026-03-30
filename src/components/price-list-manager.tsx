@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import {
     Plus, Trash2, Pencil, ChevronRight, ChevronDown, TableIcon,
-    PlusCircle, X, Check, Ship, Package,
+    PlusCircle, X, Check, Ship, Package, Filter,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -304,6 +304,9 @@ function PriceListEditor({
     const [isAddingColumn, setIsAddingColumn] = useState(false);
     const [editingCell, setEditingCell] = useState<{ rowIdx: number; colId: string } | null>(null);
     const [cellDraft, setCellDraft] = useState('');
+    const [filterRange, setFilterRange] = useState<string | 'all'>('all');
+    const [filterModel, setFilterModel] = useState<string | 'all'>('all');
+    const [filterMaterial, setFilterMaterial] = useState<string | 'all'>('all');
 
     // Local editable state
     const [name, setName] = useState(priceList.name);
@@ -396,6 +399,45 @@ function PriceListEditor({
 
     const existingVariantIds = useMemo(() => new Set(rows.map(r => r.variantId)), [rows]);
 
+    // Filter & group helpers
+    const availableRanges = useMemo(() => [...new Set(rows.map(r => r.rangeName))].sort(), [rows]);
+    const availableModels = useMemo(() => {
+        const filtered = filterRange === 'all' ? rows : rows.filter(r => r.rangeName === filterRange);
+        return [...new Set(filtered.map(r => r.modelName))].sort();
+    }, [rows, filterRange]);
+    const availableMaterials = useMemo(() => [...new Set(rows.map(r => r.material))].sort(), [rows]);
+
+    const filteredRows = useMemo(() => {
+        return rows.filter(r => {
+            if (filterRange !== 'all' && r.rangeName !== filterRange) return false;
+            if (filterModel !== 'all' && r.modelName !== filterModel) return false;
+            if (filterMaterial !== 'all' && r.material !== filterMaterial) return false;
+            return true;
+        });
+    }, [rows, filterRange, filterModel, filterMaterial]);
+
+    // Group filtered rows by range → model
+    const groupedRows = useMemo(() => {
+        const groups: { rangeName: string; models: { modelName: string; rows: { row: Row; originalIdx: number }[] }[] }[] = [];
+        const rangeMap = new Map<string, Map<string, { row: Row; originalIdx: number }[]>>();
+
+        filteredRows.forEach(r => {
+            const originalIdx = rows.indexOf(r);
+            if (!rangeMap.has(r.rangeName)) rangeMap.set(r.rangeName, new Map());
+            const modelMap = rangeMap.get(r.rangeName)!;
+            if (!modelMap.has(r.modelName)) modelMap.set(r.modelName, []);
+            modelMap.get(r.modelName)!.push({ row: r, originalIdx });
+        });
+
+        rangeMap.forEach((modelMap, rangeName) => {
+            const models: { modelName: string; rows: { row: Row; originalIdx: number }[] }[] = [];
+            modelMap.forEach((rows, modelName) => models.push({ modelName, rows }));
+            groups.push({ rangeName, models });
+        });
+
+        return groups;
+    }, [filteredRows, rows]);
+
     // Sub-dealer price list columns — auto-added when toggled on
     const SUB_DEALER_COLUMNS: Column[] = [
         { id: 'sd_price_incl_gst', header: 'Sub Dealer Price (Incl GST)' },
@@ -481,7 +523,7 @@ function PriceListEditor({
 
             <div className="flex flex-1 min-h-0 overflow-hidden">
                 {/* Main Table Area */}
-                <div className="flex-1 overflow-auto p-6">
+                <div className="flex-1 overflow-auto p-6 space-y-4">
                     {rows.length === 0 ? (
                         <div className="h-64 flex flex-col items-center justify-center border-2 border-dashed rounded-3xl text-slate-300 gap-3">
                             <Ship className="h-12 w-12" />
@@ -496,108 +538,139 @@ function PriceListEditor({
                             </Button>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto rounded-2xl border-2 border-slate-100">
-                            <table className="w-full text-sm border-collapse">
-                                <thead>
-                                    <tr className="bg-slate-50 border-b-2 border-slate-100">
-                                        <th className="text-left px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500 w-16">Image</th>
-                                        <th className="text-left px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Model</th>
-                                        <th className="text-left px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Range</th>
-                                        <th className="text-left px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Material</th>
-                                        <th className="text-left px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500">Colour</th>
-                                        {columns.map(col => (
-                                            <th key={col.id} className="text-left px-4 py-3 text-[9px] font-black uppercase tracking-widest text-slate-500 min-w-[120px]">
-                                                <div className="flex items-center gap-2 group">
-                                                    {col.header}
-                                                    <button
-                                                        onClick={() => deleteColumn(col.id)}
-                                                        className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-opacity"
-                                                    >
-                                                        <X className="h-3 w-3" />
-                                                    </button>
-                                                </div>
-                                            </th>
-                                        ))}
-                                        {isAddingColumn && (
-                                            <th className="px-4 py-2 min-w-[160px]">
-                                                <div className="flex items-center gap-1">
-                                                    <Input
-                                                        autoFocus
-                                                        placeholder="Column header..."
-                                                        value={newColumnHeader}
-                                                        onChange={e => setNewColumnHeader(e.target.value)}
-                                                        onKeyDown={e => { if (e.key === 'Enter') addColumn(); if (e.key === 'Escape') setIsAddingColumn(false); }}
-                                                        className="h-7 text-xs rounded-lg border-primary"
-                                                    />
-                                                    <button onClick={addColumn} className="text-primary hover:text-primary/80"><Check className="h-4 w-4" /></button>
-                                                    <button onClick={() => setIsAddingColumn(false)} className="text-slate-400"><X className="h-4 w-4" /></button>
-                                                </div>
-                                            </th>
-                                        )}
-                                        <th className="w-10" />
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {rows.map((row, rowIdx) => (
-                                        <tr key={row.variantId} className="border-b border-slate-50 hover:bg-slate-50/50 group/row">
-                                            <td className="px-4 py-2">
-                                                {row.imageUrl ? (
-                                                    <div className="relative h-10 w-14 rounded-lg overflow-hidden bg-slate-100">
-                                                        <Image src={row.imageUrl} alt="" fill className="object-contain p-1" />
-                                                    </div>
-                                                ) : (
-                                                    <div className="h-10 w-14 rounded-lg bg-slate-100 flex items-center justify-center">
-                                                        <Ship className="h-4 w-4 text-slate-300" />
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-2 font-black text-xs text-slate-800">{row.modelName}</td>
-                                            <td className="px-4 py-2 text-xs text-slate-500 font-bold">{row.rangeName}</td>
-                                            <td className="px-4 py-2 text-xs text-slate-500">{row.material}</td>
-                                            <td className="px-4 py-2 text-xs text-slate-500">{row.colorName}</td>
-                                            {columns.map(col => {
-                                                const isEditing = editingCell?.rowIdx === rowIdx && editingCell?.colId === col.id;
-                                                return (
-                                                    <td key={col.id} className="px-2 py-2 min-w-[120px]">
-                                                        {isEditing ? (
-                                                            <Input
-                                                                autoFocus
-                                                                value={cellDraft}
-                                                                onChange={e => setCellDraft(e.target.value)}
-                                                                onBlur={commitCell}
-                                                                onKeyDown={e => { if (e.key === 'Enter') commitCell(); if (e.key === 'Escape') setEditingCell(null); }}
-                                                                className="h-7 text-xs rounded-lg border-primary px-2"
-                                                            />
-                                                        ) : (
-                                                            <button
-                                                                onClick={() => startEditCell(rowIdx, col.id)}
-                                                                className={cn(
-                                                                    'w-full text-left px-2 py-1 rounded-lg text-xs transition-colors min-h-[28px]',
-                                                                    row.cells[col.id]
-                                                                        ? 'text-slate-800 font-bold hover:bg-primary/5'
-                                                                        : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'
-                                                                )}
-                                                            >
-                                                                {row.cells[col.id] || '—'}
-                                                            </button>
-                                                        )}
-                                                    </td>
-                                                );
-                                            })}
-                                            {isAddingColumn && <td />}
-                                            <td className="px-2">
-                                                <button
-                                                    onClick={() => deleteRow(row.variantId)}
-                                                    className="opacity-0 group-hover/row:opacity-100 text-slate-300 hover:text-red-400 transition-opacity"
-                                                >
-                                                    <Trash2 className="h-3.5 w-3.5" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        <>
+                        {/* Filter bar */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <Filter className="h-3.5 w-3.5 text-slate-400" />
+                            <select
+                                value={filterRange}
+                                onChange={e => { setFilterRange(e.target.value); setFilterModel('all'); }}
+                                className="h-7 px-2 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-700 uppercase tracking-wider"
+                            >
+                                <option value="all">All Ranges</option>
+                                {availableRanges.map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                            <select
+                                value={filterModel}
+                                onChange={e => setFilterModel(e.target.value)}
+                                className="h-7 px-2 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-700 uppercase tracking-wider"
+                            >
+                                <option value="all">All Models</option>
+                                {availableModels.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                            <select
+                                value={filterMaterial}
+                                onChange={e => setFilterMaterial(e.target.value)}
+                                className="h-7 px-2 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-700 uppercase tracking-wider"
+                            >
+                                <option value="all">All Materials</option>
+                                {availableMaterials.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                            <span className="text-[9px] font-bold text-slate-400 ml-1">
+                                {filteredRows.length} of {rows.length} SKUs
+                            </span>
                         </div>
+
+                        {/* Grouped table */}
+                        {groupedRows.map(rangeGroup => (
+                            <div key={rangeGroup.rangeName} className="space-y-2">
+                                {/* Range header */}
+                                <div className="flex items-center gap-2 pt-2">
+                                    <div className="h-6 px-3 rounded-lg bg-primary/10 flex items-center">
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-primary">{rangeGroup.rangeName}</span>
+                                    </div>
+                                    <div className="flex-1 h-px bg-slate-100" />
+                                </div>
+
+                                {rangeGroup.models.map(modelGroup => (
+                                    <div key={modelGroup.modelName} className="overflow-x-auto rounded-xl border border-slate-100">
+                                        {/* Model sub-header */}
+                                        <div className="bg-slate-50/80 px-4 py-2 border-b border-slate-100 flex items-center gap-2">
+                                            <Ship className="h-3 w-3 text-slate-400" />
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">{modelGroup.modelName}</span>
+                                            <span className="text-[9px] text-slate-400 font-bold">({modelGroup.rows.length} SKU{modelGroup.rows.length !== 1 ? 's' : ''})</span>
+                                        </div>
+                                        <table className="w-full text-sm border-collapse">
+                                            <thead>
+                                                <tr className="bg-slate-50/50 border-b border-slate-100">
+                                                    <th className="text-left px-4 py-2 text-[8px] font-black uppercase tracking-widest text-slate-400 w-16" />
+                                                    <th className="text-left px-4 py-2 text-[8px] font-black uppercase tracking-widest text-slate-400">Material</th>
+                                                    <th className="text-left px-4 py-2 text-[8px] font-black uppercase tracking-widest text-slate-400">Colour</th>
+                                                    {columns.map(col => (
+                                                        <th key={col.id} className="text-left px-4 py-2 text-[8px] font-black uppercase tracking-widest text-slate-400 min-w-[120px]">
+                                                            <div className="flex items-center gap-2 group">
+                                                                {col.header}
+                                                                <button onClick={() => deleteColumn(col.id)} className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-400 transition-opacity">
+                                                                    <X className="h-3 w-3" />
+                                                                </button>
+                                                            </div>
+                                                        </th>
+                                                    ))}
+                                                    {isAddingColumn && (
+                                                        <th className="px-4 py-2 min-w-[160px]">
+                                                            <div className="flex items-center gap-1">
+                                                                <Input autoFocus placeholder="Column header..." value={newColumnHeader} onChange={e => setNewColumnHeader(e.target.value)}
+                                                                    onKeyDown={e => { if (e.key === 'Enter') addColumn(); if (e.key === 'Escape') setIsAddingColumn(false); }}
+                                                                    className="h-6 text-xs rounded-lg border-primary" />
+                                                                <button onClick={addColumn} className="text-primary hover:text-primary/80"><Check className="h-3.5 w-3.5" /></button>
+                                                                <button onClick={() => setIsAddingColumn(false)} className="text-slate-400"><X className="h-3.5 w-3.5" /></button>
+                                                            </div>
+                                                        </th>
+                                                    )}
+                                                    <th className="w-10" />
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {modelGroup.rows.map(({ row, originalIdx }) => (
+                                                    <tr key={row.variantId} className="border-b border-slate-50 hover:bg-slate-50/50 group/row">
+                                                        <td className="px-4 py-2">
+                                                            {row.imageUrl ? (
+                                                                <div className="relative h-10 w-14 rounded-lg overflow-hidden bg-slate-100">
+                                                                    <Image src={row.imageUrl} alt="" fill className="object-contain p-1" />
+                                                                </div>
+                                                            ) : (
+                                                                <div className="h-10 w-14 rounded-lg bg-slate-100 flex items-center justify-center">
+                                                                    <Ship className="h-4 w-4 text-slate-300" />
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-2 text-xs text-slate-600 font-bold">{row.material}</td>
+                                                        <td className="px-4 py-2 text-xs text-slate-500">{row.colorName}</td>
+                                                        {columns.map(col => {
+                                                            const isEditing = editingCell?.rowIdx === originalIdx && editingCell?.colId === col.id;
+                                                            return (
+                                                                <td key={col.id} className="px-2 py-2 min-w-[120px]">
+                                                                    {isEditing ? (
+                                                                        <Input autoFocus value={cellDraft} onChange={e => setCellDraft(e.target.value)}
+                                                                            onBlur={commitCell}
+                                                                            onKeyDown={e => { if (e.key === 'Enter') commitCell(); if (e.key === 'Escape') setEditingCell(null); }}
+                                                                            className="h-7 text-xs rounded-lg border-primary px-2" />
+                                                                    ) : (
+                                                                        <button onClick={() => startEditCell(originalIdx, col.id)}
+                                                                            className={cn('w-full text-left px-2 py-1 rounded-lg text-xs transition-colors min-h-[28px]',
+                                                                                row.cells[col.id] ? 'text-slate-800 font-bold hover:bg-primary/5' : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500')}>
+                                                                            {row.cells[col.id] || '—'}
+                                                                        </button>
+                                                                    )}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                        {isAddingColumn && <td />}
+                                                        <td className="px-2">
+                                                            <button onClick={() => deleteRow(row.variantId)}
+                                                                className="opacity-0 group-hover/row:opacity-100 text-slate-300 hover:text-red-400 transition-opacity">
+                                                                <Trash2 className="h-3.5 w-3.5" />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                        </>
                     )}
                 </div>
 
