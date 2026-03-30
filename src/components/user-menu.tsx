@@ -16,7 +16,7 @@ import { signOut } from "firebase/auth";
 import { useUser } from "@/firebase/auth/use-user";
 import { useRouter } from "next/navigation";
 
-export function UserMenu() {
+export function UserMenu({ minimal }: { minimal?: boolean }) {
   const auth = useAuth();
   const { user } = useUser();
   const router = useRouter();
@@ -25,7 +25,7 @@ export function UserMenu() {
     await signOut(auth);
     router.push('/login');
   };
-  
+
   const getFallback = () => {
     if (!user) return "U";
     if (user.displayName) return user.displayName.charAt(0).toUpperCase();
@@ -47,9 +47,13 @@ export function UserMenu() {
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>{user?.email || 'My Account'}</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => router.push('/settings')}>Settings</DropdownMenuItem>
-        <DropdownMenuItem>Support</DropdownMenuItem>
-        <DropdownMenuSeparator />
+        {!minimal && (
+          <>
+            <DropdownMenuItem onClick={() => router.push('/settings')}>Settings</DropdownMenuItem>
+            <DropdownMenuItem>Support</DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
         <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
