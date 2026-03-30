@@ -86,6 +86,38 @@ function BoatPickerDialog({
     const selectedModel = models?.find((m: any) => m.id === selectedModelId);
     const selectedRange = ranges?.find((r: any) => r.id === selectedRangeId);
 
+    // Select All: add all non-existing variants for the current model
+    const selectableVariants = useMemo(() =>
+        (variants || []).filter((v: any) => !existingVariantIds.has(v.id)),
+    [variants, existingVariantIds]);
+
+    const allSelectableSelected = selectableVariants.length > 0 &&
+        selectableVariants.every((v: any) => pendingRows.some(r => r.variantId === v.id));
+
+    const toggleSelectAll = () => {
+        if (allSelectableSelected) {
+            // Deselect all variants for this model
+            const variantIds = new Set(selectableVariants.map((v: any) => v.id));
+            setPendingRows(prev => prev.filter(r => !variantIds.has(r.variantId)));
+        } else {
+            // Add all selectable variants not already pending
+            const alreadyPending = new Set(pendingRows.map(r => r.variantId));
+            const toAdd = selectableVariants
+                .filter((v: any) => !alreadyPending.has(v.id))
+                .map((v: any) => ({
+                    variantId: v.id,
+                    modelId: selectedModelId!,
+                    modelName: selectedModel?.name || '',
+                    rangeId: selectedRangeId!,
+                    rangeName: selectedRange?.name || '',
+                    material: v.material || '',
+                    colorName: v.colorName || '',
+                    imageUrl: v.imageUrl || selectedModel?.coverImageUrl || '',
+                }));
+            setPendingRows(prev => [...prev, ...toAdd]);
+        }
+    };
+
     const toggleVariant = (variant: any) => {
         const already = pendingRows.find(r => r.variantId === variant.id);
         if (already) {
@@ -158,7 +190,23 @@ function BoatPickerDialog({
 
                     {/* Variants */}
                     <div className="flex-1 overflow-y-auto p-4">
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">SKUs — select to add</p>
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">SKUs — select to add</p>
+                            {selectedModelId && selectableVariants.length > 0 && (
+                                <button
+                                    onClick={toggleSelectAll}
+                                    className={cn(
+                                        'flex items-center gap-1.5 px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors',
+                                        allSelectableSelected
+                                            ? 'bg-primary/10 text-primary'
+                                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                    )}
+                                >
+                                    {allSelectableSelected ? <Check className="h-3 w-3" /> : <PlusCircle className="h-3 w-3" />}
+                                    {allSelectableSelected ? 'Deselect All' : 'Select All'}
+                                </button>
+                            )}
+                        </div>
                         {selectedModelId ? (
                             <div className="grid grid-cols-2 gap-3">
                                 {(variants || []).map((v: any) => {
@@ -348,6 +396,44 @@ function PriceListEditor({
 
     const existingVariantIds = useMemo(() => new Set(rows.map(r => r.variantId)), [rows]);
 
+    // Sub-dealer price list columns — auto-added when toggled on
+    const SUB_DEALER_COLUMNS: Column[] = [
+        { id: 'sd_price_incl_gst', header: 'Sub Dealer Price (Incl GST)' },
+        { id: 'sd_gross_profit', header: 'Gross Profit' },
+        { id: 'sd_sell_incl_gst', header: 'Sell Incl GST' },
+    ];
+    const SD_COL_IDS = new Set(SUB_DEALER_COLUMNS.map(c => c.id));
+    const isSubDealerPriceList = columns.some(c => SD_COL_IDS.has(c.id));
+
+    const toggleSubDealerPriceList = () => {
+        if (isSubDealerPriceList) {
+            // Remove sub-dealer columns and their cell data
+            const nextCols = columns.filter(c => !SD_COL_IDS.has(c.id));
+            const nextRows = rows.map(r => {
+                const cells = { ...r.cells };
+                SUB_DEALER_COLUMNS.forEach(c => delete cells[c.id]);
+                return { ...r, cells };
+            });
+            setColumns(nextCols);
+            setRows(nextRows);
+            save({ columns: nextCols, rows: nextRows });
+        } else {
+            // Add sub-dealer columns (skip any that already exist)
+            const existingIds = new Set(columns.map(c => c.id));
+            const toAdd = SUB_DEALER_COLUMNS.filter(c => !existingIds.has(c.id));
+            const nextCols = [...columns, ...toAdd];
+            // Initialize empty cells for new columns on existing rows
+            const nextRows = rows.map(r => {
+                const cells = { ...r.cells };
+                toAdd.forEach(c => { if (!(c.id in cells)) cells[c.id] = ''; });
+                return { ...r, cells };
+            });
+            setColumns(nextCols);
+            setRows(nextRows);
+            save({ columns: nextCols, rows: nextRows });
+        }
+    };
+
     return (
         <div className="flex flex-col h-full overflow-hidden">
             {/* Editor Header */}
@@ -516,7 +602,36 @@ function PriceListEditor({
                 </div>
 
                 {/* Right sidebar: sub-dealer assignment */}
-                <div className="w-64 shrink-0 border-l bg-slate-50/50 overflow-y-auto p-5 space-y-4">
+                <div className="w-64 shrink-0 border-l bg-slate-50/50 overflow-y-auto p-5 space-y-5">
+                    {/* Sub-dealer price list toggle */}
+                    <div>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Price List Type</p>
+                        <button
+                            onClick={toggleSubDealerPriceList}
+                            className={cn(
+                                'w-full text-left flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-xs font-bold',
+                                isSubDealerPriceList
+                                    ? 'border-primary bg-primary/5 text-primary'
+                                    : 'border-slate-200 bg-white text-slate-600 hover:border-primary/30'
+                            )}
+                        >
+                            <div className={cn(
+                                'h-4 w-4 rounded border-2 flex items-center justify-center shrink-0',
+                                isSubDealerPriceList ? 'border-primary bg-primary' : 'border-slate-300'
+                            )}>
+                                {isSubDealerPriceList && <Check className="h-2.5 w-2.5 text-white" />}
+                            </div>
+                            Sub-Dealers Price List
+                        </button>
+                        {isSubDealerPriceList && (
+                            <p className="text-[9px] text-slate-400 mt-2 px-1 leading-relaxed">
+                                Adds pricing columns for sub-dealer distribution. Fill in each row to set dealer pricing.
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="h-px bg-slate-200" />
+
                     <div>
                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Visible To Sub-Dealers</p>
                         {subDealers.length === 0 ? (

@@ -489,6 +489,7 @@ export default function ModuleDetailsPage() {
                     <PriceListViewer
                         parentOrganisationId={currentMemberOrg.parentOrganisationId}
                         subDealerOrgId={currentMemberOrg.id}
+                        vendorId={moduleData.mainVendorId}
                     />
                 </main>
             </div>
