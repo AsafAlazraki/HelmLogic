@@ -1,0 +1,692 @@
+																					
+																					
+			BBB/FRANK MARINE SST HARDWARE PRICE LIST 																		
+		Effective January 1st 2025	Effective January 1st 2025	Effective January 1st 2025	Effective January 1st 2025																
+																					
+		Code	PRODUCT DESCRIPTION	BBB Price	Qty 																
+		15001	Stainless steel 316 Stainless 316 Flush Mount Mooring Whip Base 25mm (1")	14.22																	
+		15014	Stainless steel 316 Frames 60°with thread hole 25mm (1" ) 	15.49																	
+		16003	Stainless steel Swivel Hinge with cross bolt	13.8																	
+		16009	Stainless steel 316 Split Side Mount with screw 25mm (1")	19.62																	
+		16036	Stainless steel 316 Clothes Hook 25x41mm	1.65																	
+		16050	Stainless steel 316 4-Way Corner Fitting 22mm (7/8")     	14.71																	
+		16057	Stainless steel 316 4-Way Corner Fitting 25mm (1")  	17.62																	
+		17101	Stainless steel 316 Stanchion with 12mm thread for rail 25mm                                                            	13.08																	
+		20004	Stainless steel 316 Forged Dee Shackles 4mm  	0.77																	
+		20005	Stainless steel 316 Forged Dee Shackles 5mm 	0.88																	
+		20006	Stainless steel 316 Forged Dee Shackles 6mm 	1.09																	
+		20008	Stainless steel 316 Forged Dee Shackles 8mm	1.18																	
+		20010	Stainless steel 316 Forged Dee Shackles 10mm	2.57																	
+		20012	Stainless steel 316 Forged Dee Shackles 12mm	4.47																	
+		20014	Stainless steel 316 Forged Dee Shackles 14mm	9.09																	
+		20016	Stainless steel 316 Forged Dee Shackles 16mm	10.88																	
+		20018	Stainless steel 316 Forged Dee Shackles 18mm	15.82																	
+		20020	Stainless steel 316 Forged Dee Shackles 20mm	21.42																	
+		20022	Stainless steel 316 Forged Dee Shackles 22mm	28.34																	
+		20025	Stainless steel 316 Forged Dee Shackles 25mm	41.97																	
+		20104	Stainless steel 316 Forged Bow Shackles 4mm	0.81																	
+		20105	Stainless steel 316 Forged Bow Shackles 5mm	0.91																	
+		20106	Stainless steel 316 Forged Bow Shackles 6mm	1.11																	
+		20108	Stainless steel 316 Forged Bow Shackles 8mm	1.28																	
+		20110	Stainless steel 316 Forged Bow Shackles 10mm	2.88																	
+		20112	Stainless steel 316 Forged Bow Shackles 12mm	4.81																	
+		20114	Stainless steel 316 Forged Bow Shackles 14mm	9.09																	
+		20116	Stainless steel 316 Forged Bow Shackles 16mm	11.04																	
+		20118	Stainless steel 316 Forged Bow Shackles 18mm	16.48																	
+		20120	Stainless steel 316 Forged Bow Shackles 20mm	22.21																	
+		20122	Stainless steel 316 Forged Bow Shackles 22mm	29.66																	
+		20125	Stainless steel 316 Forged Bow Shackles 25mm	42.83																	
+		21004	Stainless steel 316 Forged Long Dee Shackles 4mm	0.89																	
+		21005	Stainless steel 316 Forged Long Dee Shackles 5mm	1.08																	
+		21006	Stainless steel 316 Forged Long Dee Shackles 6mm	1.38																	
+		21008	Stainless steel 316 Forged Long Dee Shackles 8mm	2.26																	
+		21010	Stainless steel 316 Forged Long Dee Shackles 10mm	3.75																	
+		21012	Stainless steel 316 Forged Long Dee Shackles 12mm	6.56																	
+		21304	Stainless steel 316 Forged Long Dee Shackles with captive bolt 4mm	0.95																	
+		21305	Stainless steel 316 Forged Long Dee Shackles with captive bolt 5mm	1.17																	
+		21306	Stainless steel 316 Forged Long Dee Shackles with captive bolt 6mm	1.52																	
+		21308	Stainless steel 316 Forged Long Dee Shackles with captive bolt 8mm	2.5																	
+		21310	Stainless steel 316 Forged Long Dee Shackles with captive bolt 10mm	4.25																	
+		21312	Stainless steel 316 Forged Long Dee Shackles with captive bolt 12mm	7.05																	
+		22004	Stainless steel 316 Forged Twisted Shackles 4mm	1.05																	
+		22005	Stainless steel 316 Forged Twisted Shackles 5mm	1.11																	
+		22006	Stainless steel 316 Forged Twisted Shackles 6mm	1.43																	
+		22008	Stainless steel 316 Forged Twisted Shackles 8mm	2.4																	
+		22010	Stainless steel 316 Forged Twisted Shackles 10mm	4.15																	
+		22012	Stainless steel 316 Forged Twisted Shackles 12mm 	7.26																	
+		23004	Stainless steel 316 Forged Dee Shackles with captive bolt 4mm	0.8																	
+		23005	Stainless steel 316 Forged Dee Shackles with captive bolt 5mm	0.95																	
+		23006	Stainless steel 316 Forged Dee Shackles with captive bolt 6mm	1.17																	
+		23008	Stainless steel 316 Forged Dee Shackles with captive bolt 8mm	1.83																	
+		23010	Stainless steel 316 Forged Dee Shackles with captive bolt 10mm	2.88																	
+		23012	Stainless steel 316 Forged Dee Shackles with captive bolt 12mm	4.86																	
+		27006	Stainless steel 316 Dee Shackles with hexagonal socket sink pin 6mm  	1.55																	
+		27008	Stainless steel 316 Dee Shackles with hexagonal socket sink pin 8mm 	1.97																	
+		27012	Stainless steel 316 Dee Shackles with hexagonal socket sink pin 12mm 	4.98																	
+		30002	Stainless steel 316 Slimline Cleat 100mm (4”)        	6.11																	
+		30003	Stainless steel 316 Slimline Cleat 125mm (5”)        	7.21																	
+		30004	Stainless steel 316 Slimline Cleat 150mm (6”)         	7.42																	
+		30005	Stainless steel 316 Slimline Cleat 200mm (8”)         	15																	
+		30006	Stainless steel 316 Slimline Cleat 250mm (10”)         	18.35																	
+		30007	Stainless steel 316 Slimline Cleat 300mm (12”)        	42.6																	
+		30016	Stainless steel 316 Center Stanchion 22mm (7/8") 	8.2																	
+		30017	Stainless steel 316 Stanchion Sleeve w/eye 22mm (7/8")     	6.7																	
+		30018	Stainless steel 316 Stanchion Sleeve w/eye 25mm (1")      	7.02																	
+		30020	Stainless steel 316 3-Way Corner Fitting 22mm (7/8")     	8.89																	
+		30021	Stainless steel 316 3-Way Corner Fitting 25mm (1")  	11.58																	
+		30022	Stainless steel 316 Stanchion Cap 22mm (7/8") 	5.7																	
+		30023	Stainless steel 316 Stanchion Cap 25mm (1") 	7.82																	
+		30025	Stainless steel 316 Center 60° Stanchion 22mm (7/8") 	3.42																	
+		30026	Stainless steel 316 Center 60° Stanchion 25mm (1") 	5.54																	
+		30027	Stainless steel 316 After 60° Stanchion 22mm (7/8") 	3.42																	
+		30028	Stainless steel 316 After 60° Stanchion 25mm (1") 	5.54																	
+		30031	Stainless steel 316 End 120° Stanchion 22mm (7/8")  	3.42																	
+		30032	Stainless steel 316 End 120° Stanchion 25mm (1")  	5.54																	
+		30033	Stainless steel 316 Rail End (End – In) 22mm  	8.84																	
+		30035	Stainless steel 316 Rectangular Base 90° 22mm (7/8")  	10.86																	
+		30036	Stainless steel 316 Rectangular Base 90° 25mm (1")  	12.36																	
+		30038	Stainless steel 316 Round Base 90° 22mm (7/8") 	10.3																	
+		30039	Stainless steel 316 Round Base 90° 25mm (1")  	10.85																	
+		30043	Stainless steel 316 Round Base 30° 22mm (7/8")  	10.3																	
+		30044	Stainless steel 316 Round Base 30° 25mm (1") 	12.36																	
+		30045	Stainless steel 316 Round Base 45° 22mm (7/8")  	10.3																	
+		30046	Stainless steel 316 Round Base 45° 25mm (1")  	12.36																	
+		30047	Stainless steel 316 Round Base 60° 22mm (7/8") 	10.3																	
+		30048	Stainless steel 316 Round Base 60° 25mm (1") 	12.36																	
+		30051	Stainless steel 316 Rectangular Base 45° 22mm (7/8")  	10.86																	
+		30052	Stainless steel 316 Rectangular Base 45° 25mm (1")  	12.36																	
+		30053	Stainless steel 316 Rectangular Base 60°  22mm (7/8")  	10.86																	
+		30054	Stainless steel 316 Rectangular Base 60°  25mm (1")  	12.36																	
+		30055	Stainless steel 316 Left Tee 60° 22mm (7/8") 	11.33																	
+		30056	Stainless steel 316 Left Tee 60° 25mm (1")  	11.88																	
+		30057	Stainless steel 316 Universal Tee 60° 22mm (7/8") 	10.86																	
+		30058	Stainless steel 316 Universal Tee 60° 25mm (1") 	10.86																	
+		30059	Stainless steel 316 Tee 90° 22mm (7/8") 	10.3																	
+		30060	Stainless steel 316 Tee 90° 25mm (1") 	11.88																	
+		30061	Stainless steel 316 Right Tee 60° 22mm (7/8")  	11.33																	
+		30062	Stainless steel 316 Right Tee 60° 25mm (1") 	11.88																	
+		30063	Stainless steel 316 Elbow 90° 22mm (7/8") 	9.02																	
+		30064	Stainless steel 316 Elbow 90° 25mm (1")  	9.79																	
+		30065	Stainless steel 316 Bow Forms 110° 22mm (7/8") 	14.82																	
+		30066	Stainless steel 316 Bow Forms 125° 22mm (7/8")  	14.82																	
+		30067	Stainless steel 316 Bow Forms 140° 22mm (7/8") 	14.82																	
+		30074	Stainless steel 316 Top Cap with set-screw 22mm (7/8") 	4.5																	
+		30075	Stainless steel 316 Top Cap with set-screw 25mm (1")     	4.78																	
+		30076	Stainless steel 316 Top Cap with set-screw 32mm (1-1/4")  	6.8																	
+		30080	Stainless steel 316 Jaw Slide 19mm (3/4")	4.95																	
+		30081	Stainless steel 316 Jaw Slide with bolt  22mm (7/8") 	5.26																	
+		30082	Stainless steel 316 Jaw Slide with bolt  25mm (1")   	4.18																	
+		30083	Stainless steel 316 Jaw Slide with bolt  32mm (1-1/4") 	6.95																	
+		30086	Stainless steel 316 Deck Hinge 90° with screw  	4.5																	
+		30087	Stainless steel 316 Deck Hinge 90° without screw  	4.36																	
+		30088	Stainless steel 316 Deck Hinge Angle Base with screw      	4.5																	
+		30089	Stainless steel 316 Deck Hinge Angle Base without screw      	4.36																	
+		30090	Stainless steel 316 Deck Hinge Concave Base with screw  	4.5																	
+		30091	Stainless steel 316 Deck Hinge Concave Base without screw  	4.36																	
+		30093	Stainless steel 316 Heavy Duty Deck Hinge Plate        	8.48																	
+		30094	Stainless steel 316 Extra Heavy Deck Hinge	6.74																	
+		30098	Stainless steel 316 Deck Hinge Side Mounted         	4.99																	
+		30099	Stainless steel 316 Hatch Hinge Standard 76x64mm (3”x2-1/2”)   	12.3																	
+		30102	Stainless steel 316 Hose Deck Fills with key 'Diesel' 1-1/2"    	21.78																	
+		30103	Stainless steel 316 Hose Deck Fills with key 'Water' 1-1/2"    	21.78																	
+		30104	Stainless steel 316 Hose Deck Fills with key 'Waste' 1-1/2"    	21.78																	
+		30105	Stainless steel 316 Door Hinge 38x76mm (1-1/2” x 3”)          	3.58																	
+		30106	Stainless steel 316 Door Hinge 38x102mm (1-1/2”x4”)         	6.77																	
+		30108	Stainless steel 316 Butt Hinge 38x38mm (1-1/2” x 1-1/2”)      	3.35																	
+		30109	Stainless steel 316 Butt Hinge 50x50mm (2” x  2”)          	5.47																	
+		30110	Stainless steel 316 Strap Hinge 100x25mm (4” x 1”)           	3.48																	
+		30111	Stainless steel 316 Strap Hinge 150x30mm (6” x 1-1/8”)          	4.39																	
+		30112	Stainless steel 316 Door Hinge 38x56mm (1-1/2” x 2-1/4”)    	3.48																	
+		30113	Stainless steel 316 Door Hinge 38x76mm (1-1/2” x 3”)          	5.52																	
+		30202	Stainless steel 316 Hose Deck Fills with key 'Diesel'  2"    	27.15																	
+		30203	Stainless steel 316 Hose Deck Fills with key 'Water'  2"    	27.15																	
+		30204	Stainless steel 316 Hose Deck Fills with key 'Waste'  2"    	27.15																	
+		30303	Stainless steel 316 Hose Deck Fills   'Water'  1-1/2"   (38mm)	24.55																	
+		30402	Stainless steel 316 Hose Deck Fills    'Diesel'  2" (50mm)    	29.82																	
+		30404	Stainless steel 316 Hose Deck Fills    'Waste'   2" (51mm)	29.82																	
+		31002	Stainless steel 316 Low Silhouette Cleat 100mm (4")	6.6																	
+		31003	Stainless steel 316 Low Silhouette Cleat 125mm (5")	8.16																	
+		31004	Stainless steel 316 Low Silhouette Cleat 150mm (6")	8.48																	
+		31005	Stainless steel 316 Low Silhouette Cleat 200mm (8")	14.51																	
+		31006	Stainless steel 316 Low Silhouette Cleat 250mm (10")	31.45																	
+		31104	Stainless steel 316 Hollow Cleat 150mm (6”)  	17.42																	
+		31105	Stainless steel 316 Hollow Cleat 200mm (8”)  	26.14																	
+		31106	Stainless steel 316 Hollow Cleat 250mm (10”)  	39.6																	
+		31204	Stainless steel 316 “Camel” Bollard 150mm (6”)         	10.43																	
+		31205	Stainless steel 316 “Camel” Bollard 200mm (8”)         	20.04																	
+		31206	Stainless steel 316 “Camel” Bollard 250mm (10”)         	36.59																	
+		32105	Stainless steel 316 Staples stamped 3/16" (5mm)   	0.29																	
+		32106	Stainless steel 316 Staples stamped 1/4"  (6mm) 	0.52																	
+		32111	Stainless steel 316 Staples Wire Stamped 6mm	0.39																	
+		32203	Stainless steel 316 Wire Eye Straps with stamped 3mmx36x15mm	0.25																	
+		32204	Stainless steel 316 Wire Eye Straps with stamped 4mm x48x18mm	0.25																	
+		32205	Stainless steel 316 Wire Eye Straps with stamped 5mmx52x18mm 	0.21																	
+		32206	Stainless steel 316 Wire Eye Straps with stamped 6mmx61x22mm	0.31																	
+		32208	Stainless steel 316 Wire Eye Straps with stamped 8mm	1.01																	
+		33101	Stainless steel 316 Through Hull Outlets 3/8"  	6.26																	
+		33102	Stainless steel 316 Through Hull Outlets 1/2"  	9.59																	
+		33103	Stainless steel 316 Through Hull Outlets 3/4"  	14.82																	
+		33104	Stainless steel 316 Through Hull Outlets 1"  	20.04																	
+		33105	Stainless steel 316 Through Hull Outlets 1-1/4"  	26.14																	
+		33106	Stainless steel 316 Through Hull Outlets 1-1/2"  	32.38																	
+		33113	Stainless steel 316 Long Through Hull Outlets 3/4"x100mm	27.72																	
+		33114	Stainless steel 316 Long Through Hull Outlets 1"x100mm	35.64																	
+		33124	Stainless Steel 316 Short Through Hull Outlets 1" x 60mm	20.04																	
+		33201	Stainless steel 316 Intake Strainers 3/8"  	16.2																	
+		33202	Stainless steel 316 Intake Strainers 1/2"  	19.16																	
+		33203	Stainless steel 316 Intake Strainers 3/4"  	23.96																	
+		33204	Stainless steel 316 Intake Strainers 1"  	24.58																	
+		33205	Stainless steel 316 Intake Strainers 1-1/4" 	31.8																	
+		33206	Stainless steel 316 Intake Strainers 1-1/2" 	35.4																	
+		33207	Stainless steel 316 Intake Strainers  2" 	55.44																	
+		33501	Stainless steel 316 Through Hull Outlets with hose connection 3/8"  	9.59																	
+		33502	Stainless steel 316 Through Hull Outlets with hose connection 1/2" 	10.2																	
+		33503	Stainless steel 316 Through Hull Outlets with hose connection 3/4"  	11.26																	
+		33504	Stainless steel 316 Through Hull Outlets with hose connection 1"  	15.1																	
+		33505	Stainless steel 316 Through Hull Outlets with hose connection 1-1/4"  	18.82																	
+		33506	Stainless steel 316 Through Hull Outlets with hose connection 1-1/2"  	26.14																	
+		33507	Stainless steel 316 Through Hull Outlets with hose connection  2"  	45.14																	
+		33603	Stainless steel 316 Through Hull Outlets with hose connection 3/4"  	13.8																	
+		33604	Stainless steel 316 Through Hull Outlets with hose connection 1"  	15.1																	
+		33605	Stainless steel 316 Through Hull Outlets with hose connection 1-1/4"  	26.38																	
+		33855	Stainless steel 316 Cabin Hook 125mm (5")	8.75																	
+		34004	Stainless steel 316 Heavy Duty Solid Base Cleat 150mm (6”)  	18.05																	
+		34005	Stainless steel 316 Heavy Duty Solid Base Cleat 200mm (8”)   	27.01																	
+		34006	Stainless steel 316 Heavy Duty Solid Base Cleat 250mm (10”)  	45.23																	
+		35009	Stainless steel 316 Deck Plate 4" 	32.8																	
+		35010	Stainless steel 316 Deck Plate 5" 	39.5																	
+		35011	Stainless steel 316 Deck Plate 6" 	58.5																	
+		35015	Stainless steel 316 End Handrail Supports 25mm 	9.16																	
+		35016	Stainless steel 316 Center Handrail Supports 22mm (7/8")	7.13																	
+		35017	Stainless steel 316 Center 90° Stanchion 25mm (1") 	9.28																	
+		35018	Stainless Stee Hawse Pipe 5-1/2"X2-1/2"	16.56																	
+		35027	Stainless steel 316 End 60° Stanchion 22mm (7/8") 	7.14																	
+		35030	Stainless steel 316 Flush Lift Ring 1-7/8"x1-1/2"	5.56																	
+		35031	Stainless steel 316 Flush Lift Ring 2-1/2"x1-3/4"	7.19																	
+		35032	Stainless steel 316 Flush Lift Ring 3"x2-1/4"	9.1																	
+		35033	Stainless steel 316 Folding Step 4-3/8"(108x44mm) 	27.42																	
+		35037	Stainless steel 316 Antenna Rail Mount 81x70mm 	26.14																	
+		35038	AISI 316 Antenna Ratchet Mount 64x92mm 	31.5																	
+		35039	AISI 316 Heavy Duty Antenna Ratchet Mount  6"  	39.5																	
+		35042	Stainless Steel 316 Light Pole Base	10.3																	
+		35043	Stainless Steel 316 Adjustable Light Pole (or Flag Pole) Base 19mm	15.05																	
+		35050	Stainless steel 316 Double Safety Spring Hook 10x100mm 	11.55																	
+		35081	Stainless steel 316 Hinged Jaw Slide with bolt and screw  22mm (7/8")  	8.64																	
+		35082	Stainless steel 316 Hinged Jaw Slide with bolt and screw  25mm (1")  	7.65																	
+		35083	Stainless steel 316 Hinged Jaw Slide with bolt and screw  32mm (1-1/4")    	9.25																	
+		35084	Stainless steel 316 Hinged Jaw Slide with bolt and screw  38mm (1-1/2")  	23.5																	
+		35085	Stainless steel 316 Hinged Jaw Slide with bolt and screw  50mm (2")	29.5																	
+		35086	Stainless steel 316 Deck Hinge for tube 40mm 	11.76																	
+		35095	Stainless steel 316 Adjustable Deck Hinge with bolt                              	10.43																	
+		35096	Stainless steel 316 Windshield Side Mount with bolt 90° 58x28mm            	11.82																	
+		35097	Stainless steel 316 Windshield Side Mount with bolt 75° 58x32mm            	11.82																	
+		35098	Stainless steel 316 Rail Stanchion with 14mm thread for rail 25mm                                                             	9.91																	
+		35112	Stainless steel 316 Shower Drain in stepped tube 19mm  	8.14																	
+		36002	Stainless steel 316 Low Flat Cleat 100mm (4")	6.58																	
+		36003	Stainless steel 316 Low Flat Cleat 125mm (5")	7.93																	
+		36004	Stainless steel 316 Low Flat Cleat 150mm (6")	11.33																	
+		36005	Stainless steel 316 Low Flat Cleat 200mm (8")	17.4																	
+		36086	Stainless steel 316 Deck Hinge for tube 50mm 	11.94																	
+		36504	Stainless Steel 316 Folding Pad Eyes 6mm 	6.58																	
+		36505	Stainless Steel 316 Folding Pad Eyes 8mm 	9.31																	
+		36506	Stainless Steel 316 Folding Pad Eyes 10mm 	12.65																	
+		37005	Stainless steel 316 Heavy Duty Cleat 200mm (8”)         	33.98																	
+		38005	Stainless steel 316 Pipe Cleat 200mm (8”)            	18.26																	
+		38074	Stainless steel 316 Top Cap with two set-screws 22mm (7/8")            	8.88																	
+		38075	Stainless steel 316 Top Cap with two set-screws 25mm (1")           	8.99																	
+		38076	Stainless steel 316 Top Cap with two set-screws 32mm (1-1/4")           	11.02																	
+		38081	Stainless steel 316 Jaw Slide with two set-screws and bolt 22mm (7/8")       	9.74																	
+		38082	Stainless steel 316 Jaw Slide with two set-screws and bolt 25mm (1")       	10.63																	
+		38083	Stainless steel 316 Jaw Slide with two set-screws and bolt 32mm (1-1/4")       	12.47																	
+		38086	Stainless steel 316 Heavy Duty Deck Hinge 90°	9.9																	
+		38222	Stainless steel 316 Frame Tube Hinge(Joint) with locking Pin 22mm(7/8”)	15.1																	
+		38225	Stainless steel 316 Frame Tube Hinge(Joint) with locking Pin 25mm(1”)	14.85																	
+		38281	Stainless steel 316 Slide Side Mount with two set-screws  22mm (7/8")  	18.6																	
+		38282	Stainless steel 316 Slide Side Mount with two set-screws  25mm (1")   	22.2																	
+		38283	Stainless steel 316 Slide Side Mount with two set-screws  32mm (1-1/4")   	23.82																	
+		39003	Stainless steel 316 Pull Up Cleat 4-1/2"    	22.5																	
+		39004	Stainless steel 316 Pull Up Cleat 6"    	47.5																	
+		39104	Stainless steel 316 Heavy Duty Open Base Stud Mount Cleats without thread bars 150mm	6.42																	
+		46502	Stainless steel 316 Swage Eye Terminal 3/32" (2.4mm)	1.24																	
+		46503	Stainless steel 316 Swage Eye Terminal 1/8"   (3.2mm)	0.76																	
+		46504	Stainless steel 316 Swage Eye Terminal 5/32" (4mm)	1.64																	
+		46505	Stainless steel 316 Swage Eye Terminal 3/16" (4.8mm)	2.44																	
+		46506	Stainless steel 316 Swage Eye Terminal 1/4"   (6.4mm)	4.82																	
+		46508	Stainless steel 316 Swage Eye Terminal 8mm	7.33																	
+		46605	Stainless steel 316 Swage Stud Terminal with nut Metric Thread 5mm x 1/8"	0.64																	
+		46610	Stainless steel 316 Swage Stud Terminal with nut Metric Thread 10mm x 1/4"	4.54																	
+		46802	Stainless steel 316 Swage Fork Terminal 3/32" (2.4mm)	1.09																	
+		46803	Stainless steel 316 Swage Fork Terminal 1/8"   (3.2mm)	0.79																	
+		46804	Stainless steel 316 Swage Fork Terminal 5/32" (4.0mm)	2.17																	
+		46805	Stainless steel 316 Swage Fork Terminal 3/16" (4.8mm)	3.45																	
+		46806	Stainless steel 316 Swage Fork Terminal 1/4"   (6.4mm)	6.01																	
+		55015	Stainless steel 304 Block Single Sheave Swivel eye 15mm   	2.28																	
+		55020	Stainless steel 304 Block Single Sheave Swivel eye 20mm   	2.75																	
+		55025	Stainless steel 304 Block Single Sheave Swivel eye 25mm   	4.66																	
+		55032	Stainless steel 304 Block Single Sheave Swivel eye 32mm   	6.19																	
+		55050	Stainless steel 304 Block Single Sheave Swivel eye 50mm   	8.98																	
+		55125	Stainless steel 304 Block Double Sheave Swivel eye 25mm   	8.27																	
+		55132	Stainless steel 304 Block Double Sheave Swivel eye 32mm   	10.19																	
+		55150	Stainless steel 304 Block Double Sheave Swivel eye 50mm   	16.92																	
+		60003	Stainless steel 304 Thimbles 3mm	0.13																	
+		60004	Stainless steel 304 Thimbles 4mm	0.22																	
+		60005	Stainless steel 304 Thimbles 5mm	0.13																	
+		60006	Stainless steel 304 Thimble 6mm	0.31																	
+		60008	Stainless steel 304 Thimble 8mm	0.5																	
+		60010	Stainless steel 304 Thimble 10mm	0.55																	
+		60012	Stainless steel 304 Thimble 12mm	0.79																	
+		60014	Stainless steel 304 Thimble 14mm	1.46																	
+		60016	Stainless steel 304 Thimble 16mm	2																	
+		60018	Stainless Steel 304 Thimble 18mm	3.03																	
+		60020	Stainless Steel 304 Thimble 20mm	3.73																	
+		60040	Stainless steel 304 Thimbles 40mm	64.56																	
+		60606	Stainless steel 316 Heavy Duty Casted Thimbles 6mm  	1.21																	
+		60608	Stainless steel 316 Heavy Duty Casted Thimbles 8mm  	1.58																	
+		60610	Stainless steel 316 Heavy Duty Casted Thimbles 10mm   	3.01																	
+		60612	Stainless steel 316 Heavy Duty Casted Thimbles 12mm    	4.83																	
+		60701	Stainless steel 304 Thimble 1mm	0.11																	
+		60702	Stainless steel 304 Thimble 2mm	0.14																	
+		60703	Stainless steel 316 Thimble 3mm	0.23																	
+		60704	Stainless steel 316 Thimble 4mm	0.25																	
+		60705	Stainless steel 316 Thimble 5mm	0.34																	
+		60706	Stainless steel 316 Thimble 6mm	0.52																	
+		65101	Stainless steel 316 Round Ring 10x100mm   	4.36																	
+		65108	Stainless steel 316 Round Ring 10x80mm   	3.94																	
+		65121	Stainless steel 316 Round Ring 12x120mm   	7.17																	
+		65320	Stainless steel 316 Round Ring 3x20mm   	0.37																	
+		65330	Stainless steel 316 Round Ring 3x30mm   	0.39																	
+		65420	Stainless steel 316 Round Ring 4x20mm   	0.41																	
+		65425	Stainless steel 316 Round Ring 4x25mm   	0.43																	
+		65430	Stainless steel 316 Round Ring 4x30mm	0.48																	
+		65435	Stainless steel 316 Round Ring 4x35mm   	0.52																	
+		65525	Stainless steel 316 Round Ring 5x25mm   	0.61																	
+		65530	Stainless steel 316 Round Ring 5x30mm   	0.64																	
+		65540	Stainless steel 316 Round Ring 5x40mm   	0.74																	
+		65630	Stainless steel 316 Round Ring 6x30mm   	0.77																	
+		65635	Stainless steel 316 Round Ring 6x35mm   	1.13																	
+		65650	Stainless steel 316 Round Ring 6x50mm   	1.22																	
+		65740	Stainless steel 316 Round Ring 7x40mm   	1.22																	
+		65840	Stainless steel 316 Round Ring 8x40mm   	1.24																	
+		65850	Stainless steel 316 Round Ring 8x50mm   	1.84																	
+		65875	Stainless steel 316 Round Ring 8x75mm   	2.07																	
+		66320	Stainless steel 316 D Ring 3x20mm   	0.24																	
+		66330	Stainless steel 316 D Ring 3x30mm   	0.29																	
+		66420	Stainless steel 316 D Ring 4x20mm   	0.36																	
+		66425	Stainless steel 316 D Ring 4x25mm   	0.37																	
+		66435	Stainless steel 316 D Ring 4x35mm   	0.41																	
+		66525	Stainless steel 316 D Ring 5x25mm   	0.37																	
+		66530	Stainless steel 316 D Ring 5x30mm   	0.48																	
+		66535	Stainless steel 316 D Ring 5x35mm   	0.5																	
+		66540	Stainless steel 316 D Ring 5x40mm   	0.51																	
+		66550	Stainless steel 316 D Ring 5x50mm   	0.62																	
+		66635	Stainless steel 316 D Ring 6x35mm   	0.62																	
+		66640	Stainless steel 316 D Ring 6x40mm   	0.63																	
+		66650	Stainless steel 316 D Ring 6x50mm   	0.76																	
+		66750	Stainless steel 316 D Ring 7x50mm   	1																	
+		66850	Stainless steel 316 D Ring 8x50mm   	1.46																	
+		67650	Stainless steel 316 Triangle Ring 6x50mm   	0.65																	
+		67750	Stainless steel 316 Triangle Ring 7x50mm   	1.03																	
+		67850	Stainless steel 316 Triangle Ring 8x50mm   	1.28																	
+		69105	Stainless steel 304 Eye Plates 35x5mm 	1.13																	
+		69106	Stainless steel 304 Eye Plates 40x6mm 	1.33																	
+		69108	Stainless steel 304 Eye Plates 50x8mm 	2.02																	
+		69110	Stainless steel 316 Eye Plates 60x10mm 	2.1																	
+		69205	Stainless steel 316 Pad Eye with stamped and welded 3/16"	1.05																	
+		69206	Stainless steel 316 Pad Eye with stamped and welded 1/4"	1.28																	
+		69208	Stainless steel 316 Pad Eye with stamped and welded 5/16"	1.8																	
+		69210	Stainless steel 316 Pad Eye with stamped and welded 3/8"	4.66																	
+		69211	Stainless steel 316 Pad Eye Oblong Base 3"	2.46																	
+		69212	Stainless steel 316 Pad Eye Oblong Base 3-1/2"	4.03																	
+		69213	Stainless steel 316 Pad Eye Onlong Base 4"	5.83																	
+		69214	Stainless steel 316 Pad Eye Diamond Base 3-1/8"	3.6																	
+		69215	Stainless steel 316 Pad Eye Diamond Base 3-1/2" 	5.13																	
+		69216	Stainless steel 316 Pad Eye Diamond Base  4"	5.83																	
+		69305	Stainless Steel Pad Eye Round Base 5x33mm	1.17																	
+		69306	Stainless Steel Pad Eye Round Base 6x40mm	1.34																	
+		69308	Stainless Steel Pad Eye Round Base 8x50mm	1.61																	
+		69405	Stainless Steel Pad Eye Diamond Base 5x37x60mm	1.31																	
+		69406	Stainless Steel Pad Eye Diamond Base 6x40x64mm	1.61																	
+		70008	Stainless steel 316 Wire Rope Clips DIN741 8mm    	1																	
+		70013	Stainless steel 316 Wire Rope Clips DIN741 13mm      	3.06																	
+		70602	Stainless steel 316 Wire Rope Grip  2mm      	0.65																	
+		70603	Stainless steel 316 Wire Rope Grip   3mm      	0.65																	
+		70604	Stainless steel 316 Wire Rope Grip   4mm      	0.87																	
+		70605	Stainless steel 316 Wire Rope Grip   5mm      	1																	
+		70606	Stainless steel 316 Wire Rope Grip   6mm      	1.32																	
+		70608	Stainless steel 316 Wire Rope Grip   8mm      	1.98																	
+		70610	Stainless steel 316 Wire Rope Grip  10mm      	3.3																	
+		70612	Stainless steel 316 Wire Rope Grip   12mm      	4.76																	
+		70613	Stainless steel 316 Wire Rope Grip   13mm      	4.92																	
+		72003	Stainless steel 316 U-Bolt with nuts and washers 5x80mm      	1.49																	
+		72004	Stainless steel 316 U-Bolt with nuts and washers 6x80mm   	1.9																	
+		72007	Stainless steel 316 U-Bolt with nuts and washers 8x80mm   	2.39																	
+		72008	Stainless steel 316 U-Bolt with nuts and washers 8x100mm   	2.51																	
+		72009	Stainless steel 316 U-Bolt with nuts and washers 10x90mm	5.01																	
+		72010	Stainless steel 316 U-Bolt with nuts and washers 10x130mm   	6.01																	
+		72011	Stainless steel 316 U-Bolt with nuts and washers 12x150mm   	11.25																	
+		72303	Stainless steel 316 U-Bolt with nuts and washers 5x80mm      	1.88																	
+		72304	Stainless steel 316 U-Bolt with nuts and washers 6x80mm   	2.2																	
+		72306	Stainless steel 316 U-Bolt with nuts and washers 8x60mm	3.48																	
+		72307	Stainless steel 316 U-Bolt with nuts and washers 8x80mm   	3.77																	
+		72308	Stainless steel 316 U-Bolt with nuts and washers 8x100mm   	3.94																	
+		72311	Stainless steel 316 U-Bolt with nuts and washers 12x150mm   	8.62																	
+		72816	Stainless steel 316 U-Bolt with nuts and washers 10x140mm   	5.71																	
+		72822	Stainless steel 316 U-Bolt with nuts and washers 12x135mm   	6.7																	
+		72840	Stainless steel 316 U-Bolt with nuts and washers 12x165mm   	8.76																	
+		76105	Stainless steel 316 Swivels eye/eye 5mm	1.73																	
+		76106	Stainless steel 316 Swivels eye/eye 6mm	1.88																	
+		76108	Stainless steel 316 Swivels eye/eye 8mm	3.49																	
+		76110	Stainless steel 316 Swivels eye/eye 10mm	6.51																	
+		76112	Stainless steel 316 Swivels eye/eye 12mm	11.72																	
+		76113	Stainless steel 316 Swivels eye/eye 13mm	18.3																	
+		76116	Stainless steel 316 Swivels eye/eye 16mm	28.56																	
+		76119	Stainless steel 316 Swivels eye/eye 19mm	51.25																	
+		76205	Stainless steel 316 Swivels eye/jaw 5mm	1.76																	
+		76206	Stainless steel 316 Swivels eye/jaw 6mm	2.38																	
+		76208	Stainless steel 316 Swivels eye/jaw 8mm	4.47																	
+		76210	Stainless steel 316 Swivels eye/jaw 10mm	7.55																	
+		76212	Stainless steel 316 Swivels eye/jaw 12mm	12.23																	
+		76213	Stainless steel 316 Swivels eye/jaw 13mm	19.77																	
+		76216	Stainless steel 316 Swivels eye/jaw 16mm	26.36																	
+		76219	Stainless steel 316 Swivels eye/jaw 19mm	56.38																	
+		76305	Stainless steel 316 Swivels jaw/jaw 5mm	2.77																	
+		76306	Stainless steel 316 Swivels jaw/jaw 6mm	3.16																	
+		76308	Stainless steel 316 Swivels jaw/jaw 8mm	5.09																	
+		76310	Stainless steel 316 Swivels jaw/jaw 10mm	8.47																	
+		76312	Stainless steel 316 Swivels jaw/jaw 12mm	12.53																	
+		76313	Stainless steel 316 Swivels jaw/jaw 13mm	21.97																	
+		76316	Stainless steel 316 Swivels jaw/jaw 16mm	29.28																	
+		76319	Stainless steel 316 Swivels jaw/jaw 19mm	57.84																	
+		77101	Stainless steel 316 Eye Bolt 10mmx100mm	3.84																	
+		77107	Stainless steel 316 Eye Bolt 10mm (Thread 10mm,Thread Length 120mm,Overal Length 170mm)   	5.13																	
+		77120	Stainless steel 316 Eye Bolt 12mmx120mm	6.46																	
+		77122	Stainless steel 316 Eye Bolt 12mm (Thread 12mm,Thread Length 140mm,Overal Length 200mm)   	8.24																	
+		77211	Stainless steel 316 welded Eye Bolts 6mm (Thread 6mm,Thread Length 45mm,Overal Length 70mm)   	0.85																	
+		77212	Stainless steel 316 welded Eye Bolts 6mm (Thread 6mm,Thread Length 65mm,Overal Length 90mm)   	0.91																	
+		77213	Stainless steel 316 welded Eye Bolts 8mm (Thread 8mm,Thread Length 85mm,Overal Length 120mm)    	1.67																	
+		77214	Stainless steel 316 welded Eye Bolts 10mm (Thread 10mm,Thread Length110mm,Overal Length150mm)     	2.07																	
+		77215	Stainless steel 316 welded Eye Bolts 12mm (Thread 12mm,Thread Length 85mm,Overal Length 140mm)     	3.94																	
+		77216	Stainless steel 316 welded Eye Bolts 12mm (Thread 12mm,Thread Length125mm,Overal Length 175mm)     	4.2																	
+		77611	Stainless steel 316 Eye Bolt 6mm (Thread 6mm,Thread Length 80mm,Overal Length 110mm)   	1.57																	
+		77660	Stainless steel 316 Eye Bolt 6mm (Thread 6mm,Thread Length 60mm,Overal Length 88mm)   	1.61																	
+		77810	Stainless steel 316 Eye Bolt 8mm X100mm	1.72																	
+		77814	Stainless steel 316 Eye Bolt 8mm (Thread 8mm,Thread Length 100mm,Overal Length 140mm)   	2.24																	
+		77880	Stainless steel 316 Eye Bolt 8mm (Thread 8mm,Thread Length 80mm,Overal Length 118mm)   	1.83																	
+		78006	Stainless steel 316 Eye Bolt DIN580 6mm   	0.87																	
+		78008	Stainless steel 316 Eye Bolt DIN580 8mm   	1.76																	
+		78010	Stainless steel 316 Eye Bolt DIN580 10mm   	3.01																	
+		78012	Stainless steel 316 Eye Bolt DIN580 12mm   	5.2																	
+		78016	Stainless steel 316 Eye Bolt DIN580 16mm   	8.06																	
+		79006	Stainless steel 316 Eye Nut DIN582 6mm   	0.52																	
+		79008	Stainless steel 316 Eye Nut DIN582 8mm   	1.22																	
+		79010	Stainless steel 316 Eye Nut DIN582 10mm   	1.24																	
+		79012	Stainless steel 316 Eye Nut DIN582 12mm   	2.2																	
+		79016	Stainless steel 316 Eye Nut DIN582 16mm   	6.63																	
+		79105	Stainless steel 316 Eye Nut 5mm   	0.55																	
+		79106	Stainless steel 316 Eye Nut 6mm   	0.65																	
+		79108	Stainless steel 316 Eye Nut 8mm   	0.77																	
+		79110	Stainless steel 316 Eye Nut 10mm   	1.54																	
+		79112	Stainless steel 316 Eye Nut 12mm   	2.64																	
+		80705	Stainless steel 316 Closed Body Rigging Turnbuckles with welded jaws 5mm   	1.92																	
+		80706	Stainless steel 316 Closed Body Rigging Turnbuckles with welded jaws 6mm   	2.39																	
+		80708	Stainless steel 316 Closed Body Rigging Turnbuckles with welded jaws 8mm   	4.04																	
+		80710	Stainless steel 316 Closed Body Rigging Turnbuckles with welded jaws 10mm   	6.76																	
+		80712	Stainless steel 316 Closed Body Rigging Turnbuckles with welded jaws 12mm   	10.72																	
+		81605	Stainless steel 316 Turnbuckles with two lock nuts eye/eye 5mm   	1.45																	
+		81606	Stainless steel 316 Turnbuckles with two lock nuts eye/eye 6mm   	3.34																	
+		81608	Stainless steel 316 Turnbuckles with two lock nuts eye/eye 8mm   	4.95																	
+		81610	Stainless steel 316 Turnbuckles with two lock nuts eye/eye 10mm   	6																	
+		81612	Stainless steel 316 Turnbuckles with two lock nuts eye/eye 12mm   	8.66																	
+		81705	Stainless steel 316 Turnbuckles with two lock nuts eye/hook 5mm   	1.45																	
+		81706	Stainless steel 316 Turnbuckles with two lock nuts eye/hook 6mm   	3.34																	
+		81708	Stainless steel 316 Turnbuckles with two lock nuts eye/hook 8mm   	4.95																	
+		81710	Stainless steel 316 Turnbuckles with two lock nuts eye/hook 10mm   	6																	
+		81712	Stainless steel 316 Turnbuckles with two lock nuts eye/hook 12mm   	8.66																	
+		81805	Stainless steel 316 Turnbuckles with two lock nuts hook/hook 5mm   	1.45																	
+		81806	Stainless steel 316 Turnbuckles with two lock nuts hook/hook 6mm   	3.34																	
+		81808	Stainless steel 316 Turnbuckles with two lock nuts hook/hook 8mm   	4.95																	
+		81810	Stainless steel 316 Turnbuckles with two lock nuts hook/hook 10mm   	6																	
+		81812	Stainless steel 316 Turnbuckles with two lock nuts hook/hook 12mm   	8.66																	
+		82005	Stainless steel 316 Snap Hook 50x5mm	0.83																	
+		82006	Stainless steel 316 Snap Hook 60x6mm	1.03																	
+		82007	Stainless steel 316 Snap Hook 70x7mm	1.67																	
+		82008	Stainless steel 316 Snap Hook 80x8mm	1.82																	
+		82009	Stainless steel 316 Snap Hook 90x9mm	3.47																	
+		82010	Stainless steel 316 Snap Hook 100x10mm	3.53																	
+		82011	Stainless steel 316 Snap Hook 120x11mm	4.82																	
+		82012	Stainless steel 316 Snap Hook 140x12mm	7.24																	
+		82105	Stainless steel 316 Snap Hook with round thimble eye 50x5mm 	1.06																	
+		82106	Stainless steel 316 Snap Hook with round thimble eye 60x6mm 	1.28																	
+		82107	Stainless steel 316 Snap Hook with round thimble eye 70x7mm 	1.79																	
+		82108	Stainless steel 316 Snap Hook with round thimble eye 80x8mm 	2.1																	
+		82110	Stainless steel 316 Snap Hook with round thimble eye 100x10mm 	4.07																	
+		82111	Stainless steel 316 Snap Hook with round thimble eye 120x11mm 	5.45																	
+		82112	Stainless steel 316 Snap Hook with round thimble eye 140x12mm 	7.87																	
+		82406	Stainless steel 316 Asymetric Snap Hook with thimble eye 60x6mm	2.37																	
+		82506	Stainless steel 316 Asymetric Snap Hook with screw & thimble eye 60x6mm	2.88																	
+		82606	AISI 316 Snap Hook with threaded bush of safety stop and round thimble eye 60x6mm 	1.61																	
+		82608	AISI 316 Snap Hook with threaded bush of safety stop and round thimble eye 80x8mm 	2.9																	
+		82610	AISI 316 Snap Hook with threaded bush of safety stop and round thimble eye 100x10mm 	5.46																	
+		82700	Stainless steel 316 Fixed Eye Snap #0 3/8"	2.31																	
+		82701	Stainless steel 316 Fixed Eye Snap #1 5/8"	2.77																	
+		82702	Stainless steel 316 Fixed Eye Snap #2 3/4"	3.45																	
+		82703	Stainless steel 316 Fixed Eye Snap #3 7/8"	5.01																	
+		82704	Stainless steel 316 Swivel Eye Snap 3/8"	2.46																	
+		82705	Stainless steel 316 Swivel Eye Snap 5/8"	3.04																	
+		82706	Stainless steel 316 Swivel Eye Snap 3/4"	4.11																	
+		82707	Stainless steel 316 Swivel Eye Snap 7/8"	5.27																	
+		82803	Stainless steel 316 "S" Hooks 3mm(1/8")	0.36																	
+		82804	Stainless steel 316 "S" Hooks 4mm(5/32")    	0.37																	
+		82805	Stainless steel 316 "S" Hooks 5mm(3/16")	0.39																	
+		82806	Stainless steel 316 "S" Hooks 6mm(1/4")	0.51																	
+		82808	Stainless steel 316 "S" Hooks 8mm(5/16")	1.06																	
+		82812	Stainless steel 316 Fixed Snap Shackles 12x52mm   	2.74																	
+		82816	Stainless steel 316 Fixed Snap Shackles 16x66mm   	4.33																	
+		82822	Stainless steel 316 Fixed Snap Shackles 22x96mm   	8.86																	
+		82906	Stainless steel 316 Long Arm Type ‘S’ Hook 6mm 	0.79																	
+		82908	Stainless steel 316 Long Arm Type ‘S’ Hook 8mm	1.06																	
+		82910	Stainless steel 316 Long Arm Type ‘S’ Hook 10mm 	4.13																	
+		82912	Stainless steel 316 Swivel Snap Shackles 12x70mm   	3.96																	
+		82916	Stainless steel 316 Swivel Snap Shackles 16x87mm   	6.52																	
+		82922	Stainless steel 316 Swivel Snap Shackles 22x128mm   	12.65																	
+		82962	Stainless steel 316 Rigging Toggle 6mm	1.87																	
+		83925	Stainless Steel 316 Cam Buckles 25mm	1.72																	
+		85006	Stainless steel 316 Spring Hooks 6x60mm 	1.31																	
+		85008	Stainless steel 316 Spring Hooks 8x80mm 	2.42																	
+		85010	Stainless steel 316 Spring Hooks 10x100mm 	3.77																	
+		85012	Stainless steel 316 Spring Hooks 12x120mm	4.66																	
+		85016	Stainless steel 316 Spring Hooks 16x160mm	10.23																	
+		86001	Stainless steel 316 Spring Gate Snap 50mm	0.87																	
+		86002	Stainless steel 316 Spring Gate Snap 70mm	2.39																	
+		86003	Stainless steel 316 Spring Gate Snap 100mm	5.49																	
+		87005	Stainless steel 316 Quick Links 5mm   	0.91																	
+		87006	Stainless steel 316 Quick Links 6mm   	1.18																	
+		87008	Stainless steel 316 Quick Links 8mm   	1.88																	
+		89601	Stainless steel 316 Double Snap Hooks 90mm	4.1																	
+		89900	Stainless steel 316 Swivel Eye Bolt Snaps 64mm	3.33																	
+		89901	Stainless steel 316 Swivel Eye Bolt Snaps 90mm	3.85																	
+		90001	Hot Dipped Galvanized Folding Grapnel Anchor 1.5kg   	12.96																	
+		90002	Hot Dipped Galvanized Folding Grapnel Anchor 2.5kg   	21.75																	
+		90003	Hot Dipped Galvanized Folding Grapnel Anchor 3.2kg   	26.9																	
+		90004	Hot Dipped Galvanized Folding Grapnel Anchor 4kg   	36.81																	
+		90006	Hot Dipped Galvanized Folding Grapnel Anchor 6kg   	38.5																	
+		90008	Hot Dipped Galvanized Folding Grapnel Anchor 8kg   	45.44																	
+		90010	Hot Dipped Galvanized Folding Grapnel Anchor 10kg   	46.29																	
+		90012	Hot Dipped Galvanized Folding Grapnel Anchor 12kg   	59.29																	
+		90015	Hot Dipped Galvanized Folding Grapnel Anchor 15kg   	72																	
+		91002	Stainless steel 316 Claw Anchor (Self Align Anchor) 2kg (4.4LB)  	39.8																	
+		91005	Stainless steel 316 Claw Anchor (Self Align Anchor) 5kg (11LB)  	99																	
+		91007	Stainless steel 316 Claw Anchor (Self Align Anchor) 7.5kg(16.5LB)   	148.5																	
+		91010	Stainless steel 316 Claw Anchor (Self Align Anchor) 10kg (22LB) 	198																	
+		91013	Stainless steel 316 Claw Anchor (Self Align Anchor) 13kg (28LB)  	268																	
+		91015	Stainless steel 316 Claw Anchor (Self Align Anchor) 15kg (33LB) 	297																	
+		91020	Stainless steel 316 Claw Anchor (Self Align Anchor) 20kg (44LB) 	396																	
+		91030	Stainless steel 316 Claw Anchor (Self Align Anchor) 30kg (66LB)	697																	
+		91040	Stainless steel 316 Claw Anchor (Self Align Anchor) 40kg (88LB)	929																	
+		91102	Hot Dipped Galvanized Claw Anchor (Self Align Anchor)  2kg (4.4LB)   	12.87																	
+		91105	Hot Dipped Galvanized Claw Anchor (Self Align Anchor)  5kg (11LB)  	32.17																	
+		91107	Hot Dipped Galvanized Claw Anchor (Self Align Anchor)  7.5kg(16.5LB)   	42.89																	
+		91110	Hot Dipped Galvanized Claw Anchor (Self Align Anchor)  10kg (22LB)   	57.19																	
+		91113	Hot Dipped Galvanized Claw Anchor (Self Align Anchor)  13kg (28LB)  	75.06																	
+		91115	Hot Dipped Galvanized Claw Anchor (Self Align Anchor)  15kg (33LB) 	85.79																	
+		91120	Hot Dipped Galvanized Claw Anchor (Self Align Anchor)  20kg (44LB) 	121																	
+		91130	Hot Dipped Galvanized Claw Anchor (Self Align Anchor)  30kg (66LB)	187.55																	
+		91150	Hot Dipped Galvanized Claw Anchor (Self Align Anchor)  50kg (110LB) 	327.8																	
+		93005	Stainless Steel 316 Plough Anchors 10LB 	121																	
+		93007	Stainless Steel 316 Plough Anchors 15LB 	173.8																	
+		93009	Stainless Steel 316 Plough Anchors  20LB	218.9																	
+		93012	Stainless Steel 316 Plough Anchors  27LB	295.9																	
+		93015	Stainless Steel 316 Plough Anchors  35LB	371.8																	
+		93105	Hot Dipped Galvanized Plough Anchors  10LB	31.63																	
+		93107	Hot Dipped Galvanized Plough Anchors  15LB	40.15																	
+		93109	Hot Dipped Galvanized Plough Anchors  20LB	54.95																	
+		93112	Hot Dipped Galvanized Plough Anchors  27LB	72.05																	
+		93115	Hot Dipped Galvanized Plough Anchors  35LB	94.38																	
+		93122	Hot Dipped Galvanized Plough Anchors  45LB	115.5																	
+		93127	Hot Dipped Galvanized Plough Anchors  60LB	156.2																	
+		93135	Hot Dipped Galvanized Plough Anchors  80LB	218.9																	
+		96006	Stainless steel 316 Fixed Shank Plow Anchors 6kg	141.26																	
+		96008	Stainless steel 316 Fixed Shank Plow Anchors 8kg	185.87																	
+		96010	Stainless steel 316 Fixed Shank Plow Anchors 10kg	232.34																	
+		96016	Stainless steel 316 Fixed Shank Plow Anchors 16kg	371.74																	
+		96020	Stainless steel 316 Fixed Shank Plow Anchors 20kg	464.68																	
+		99002	Stainless steel 316 Adapter for tube 7/8” sliding or fixed in tube 1”	15																	
+		99005	Stainless steel 316 Hinge Top Mount 40x70mm	6.95																	
+		99006	Stainless steel 316 Flush Hinge with four thread stud 40x70mm	10.26																	
+		99007	Stainless steel 316 Hinge Top Mount 40x125mm	9.18																	
+		99010	Stainless steel 316 Split Bollard without pin 84x122x62mm	26.58																	
+		99011	Stainless steel 316 Split Bollard with spring loaded captive pin 84x122x62mm	27.42																	
+		99013	Stainless steel 316 Gunwale Rail End Corner Cap	22.2																	
+		99018	Stainless steel 316 Double Wire Rod Holder 6mm	3.98																	
+		99025	Stainless steel 316 Anchor Swivel 3-way 6-8mm	19.97																	
+		99028	Stainless steel 316 Flush Catch without lock	16.5																	
+		99029	Stainless steel 316 Rocket Launcher Base 2 Bolt            	10.26																	
+		99030	Stainless steel 316 Rocket Launcher Base 4 Bolt        	13.98																	
+		99033	Stainless steel Mounting Plate 40x3mm	3.98																	
+		99034	Stainless steel Mounting Plate 50x3mm	3.98																	
+		99038	Stainless steel 316 Slimline Straight Rod Holder 90 degree	6.98																	
+		99039	Stainless steel 316 Slimline Angled Rod Holder  15 degree	6.98																	
+		99040	Stainless steel 316 Slimline Angled Rod Holder  30 degree	6.98																	
+		99051	Stainless steel 316 Gunwale Rail End Cap right	15																	
+		99052	Stainless steel 316 Gunwale Rail End Cap left	15																	
+		99071	Stainless steel 316 Tube Latch 25mm	19.81																	
+		99082	Stainless steel 316 Rope Cleat  4-1/2"  (114mm)	0.92																	
+		99090	Stainless Steel 316  Lag Eye Scew 6x40mm	0.76																	
+		99091	Stainless Steel 316  Lag Eye Scew 6x60mm	0.79																	
+		99095	Stainless steel 316 Screw Eye 4x40mm	0.25																	
+		99098	Stainless steel 316 Solid Bollard 90x90x60mm	42.6																	
+		99099	Stainless steel 316 Solid Bollard 115x115x75mm	67.18																	
+		99103	Stainless steel 316 Gunwale Rail End Cap inside dia.38mm x15mm	9.3																	
+		99108	Stainless steel 316 Rope Cleat  3-1/2"  (88mm)	0.87																	
+		99109	Stainless steel 316 Folding Cleat 6" (155mm)    	16.5																	
+		99110	Nickel Plated Copper Wire Rope Ferrule for 3mm or 3.2mm Wire  	0.4																	
+		99117	Stainless steel 316 Adjustable Single Rail Mount Rod Holder with rotates 360° both horizontal and vertical   25mm (1")	9.9																	
+		99118	Stainless steel 316 Folding Cleat 8" (200mm)    	58.2																	
+		99119	Stainless steel 316 Heavy Duty Stanchion base with angled to 5°    25mm (1")  	34.06																	
+		99120	Stainless Steel 316 Holder Base with depth 100mm fitting up to 38mm tube	9.98																	
+		99131	Stainless steel 316 Single Rod Holder	10.5																	
+		99132	Stainless steel 316 Tube Rod Holder 	19.85																	
+		99136	Stainless steel 316 Adjustable Single Rail Mount Rod Holder with rotates 360° both horizontal and vertical   32mm (1-1/4")	15																	
+		99138	Stainless steel 316 Adjustable Single Tube Rail Mount Rod Holder with rotates 360° both horizontal and vertical   25mm (1")	29.5																	
+		99139	Stainless steel 316 Adjustable Single Tube Rail Mount Rod Holder with rotates 360° both horizontal and vertical   32mm (1-1/4")	32.5																	
+		99166	Stainless steel 316 Swivel Ball Jaw Slide Socket 25mm/1" 	15.42																	
+		99167	Stainless steel 316 Swivel Ball Deck Hinge 25mm/1" 	16.64																	
+		99238	Stainless steel 316 Single Tube Adjustable Deck Mount Rod Holder rotates 360° horizontal and  270° vertical  	33.5																	
+		99251	Stainless Steel 316 Adjustable Rail Mount Drink Holder 25mm	23.5																	
+		99252	Stainless Steel 316 Rail Mount Drink Holder 25mm	12.5																	
+		99255	Stainless Steel Quick Release Pin with lanyard 6mm (1/4")	2.98																	
+		99256	Stainless steel 316 Swivel Double Snap Hooks 90mm	5.48																	
+		99261	Stainless steel 316 Cast Eye Plate 6x35m 	1.28																	
+		99262	Stainless steel 316 Cast Eye Plate 8x40m  	1.8																	
+		99263	Stainless steel 316 Cast Diamond Pad Eye 38mm	1.71																	
+		99268	Stainless steel 316 D Ring Thimble 6x50mm	1.45																	
+		99269	Stainless steel 316 D Ring Thimble 8x50mm	2.61																	
+		99270	Stainless steel 316 Adjustable Single Rail Mount Rod Holder with rotates 360° both horizontal and vertical   22mm (7/8")	18.5																	
+		99276	Stainless 316 4-Way Ratched Mount Antenna Base with hole &clamp lock	20.35																	
+		99278	Stainless Steel 316 Rail Mount Drink Holder 32mm	15																	
+		99279	Stainless steel 316 Adjustable Single Tube Rail Mount Rod Holder with rotates 360° both horizontal and vertical   22mm (7/8")	18.5																	
+		99280	Stainless steel 316 Deck Hinge with four holes 78mmx40mm	7.86																	
+		99285	Stainless steel 316 Flush Dual Pivot Hinge 70mm X 41mm	7.86																	
+		99286	Stainless steel 316 Butt Hinge with 2.5mm thickness 38x38mm	4.52																	
+		99287	Stainless steel 316 Door Hinge with 2.5mm thickness 38x56mm 	4.52																	
+		99288	Stainless steel 316 Offset Hinge with 2.5mm thickness 1-1/2"x2-3/4"	6.77																	
+		99289	Stainless steel 316 Strap Hinge with 2.5mm thickness 100x25mm 	5.52																	
+		99290	Stainless steel 316 Heavy Duty Adjustable Rod Holder Extension 42mm	68.5																	
+		99296	Stainless steel 316 Flush Hinge with three thread stud 38x60mm	11.88																	
+		99311	Stainless steel 316 Deck Hinge with six holes 78mmx40mm	7.86																	
+		99317	Stainless steel 316 Flush Hinge with five thread stud 38x60mm   	12.6																	
+		99319	Stainless steel 316 Anchor Swivel 3-way 10mm	37.32																	
+		99320	Stainless steel 316 Slide Buckle 50mm x 32mm	0.86																	
+		99321	Stainless steel 316 5-way Adjustable Corner Rod Holder 	85.65																	
+		99327	Aluminium Alloy Clamp Clip Adjustable Sliding Rod Holder	8.62																	
+		99505	Stainless steel 316 Door Hinge with 2.5mm thickness 38x76mm	3.58																	
+		99605	Stainless steel 316 Vertical Surface Mounting Drink Holder 90mm	12.65																	
+		99606	Stainless steel 316 Vertical Surface Mounting Drink Holder 80mm	15																	
+		99607	Stainless steel 316 Adjustable Single Rail Mount Rod Holder  with rotates 360° both horizontal and vertical for Angle Rails 25mm (1")	19.5																	
+		99608	Stainless steel 316 Folding Cleat 4-1/2" (115mm)  	9.9																	
+		99612	Stainless steel 316 Anchor Swivel 3-way  6mm	18.35																	
+		99618	Stainless steel 316 Rail Mount Rod Holder 25mm(1")	4.98																	
+		99810	Stainless Steel 316 Side Mount 3-Way Rod Holder	16.85																	
+		651050	Stainless steel 316 Round Ring 10x50mm   	4.38																	
+		651260	Stainless steel 316 Round Ring 12x60mm   	5.13																	
+		30016-1	Stainless steel 316 Center Stanchion 25mm (1") 	8.45																	
+		30060-3	Stainless steel 316 Tee 90° 32mm (1-1/4") 	29.3																	
+		30074-1	Stainless steel 316 Top Cap with set-screw 19mm (3/4")	4.5																	
+		30074-2	Stainless steel 316 Top Cap with set-screw 20mm        	4.98																	
+		30074C	Stainless steel 316 Top Cap with rivet hole 22mm (7/8") 	5.21																	
+		30081-1	Stainless steel 316 Jaw Slide with bolt  20mm       	4.95																	
+		30082A	Stainless steel 316 Jaw Slide with removable pin  25mm (1")   	9.79																	
+		30085C	Stainless Steel 316 Inside Eye Ends for tube 19mm (3/4")	4.01																	
+		30085F	Stainless Steel 316 Inside Eye Ends for tube 22mm (7/8")	4.45																	
+		30086A	Stainless steel 316 Deck Hinge 90° with removable pin 	6.38																	
+		30088A	Stainless steel 316 Deck Hinge Angle Base with removable pin  	6.38																	
+		30090A	Stainless steel 316 Deck Hinge Concave Base with removable pin  	6.38																	
+		30101F	Stainless steel 316 Hose Deck Fills with key 'Fuel' 1-1/2"    	21.78																	
+		30107L	Stainless steel 316 Take Apart Motor Box Hinge 1-1/2”x 3-1/2” 	9.59																	
+		30107R	Stainless steel 316 Take Apart Motor Box Hinge 1-1/2”x 3-1/2” 	9.59																	
+		30201F	Stainless steel 316 Hose Deck Fills with key 'Fuel'  2"    	27.15																	
+		38076-1	Stainless steel 316 Top Cap with two set-screws 30mm      	11.02																	
+		46605L	Stainless steel 316 Swage Stud Terminal with nut Metric Left Thread 5mm x 1/8"	0.64																	
+		46606-1	Stainless steel 316 Swage Stud Terminal with nut Metric Thread 6mm x 3/32"	1.2																	
+		46606-2	Stainless steel 316 Swage Stud Terminal with nut Metric Thread 6mm x 1/8"	1.28																	
+		46606-2L	Stainless steel 316 Swage Stud Terminal with nut Metric Left Thread 6mm x 1/8"	1.28																	
+		46606-3	Stainless steel 316 Swage Stud Terminal with nut Metric Thread 6mm x 5/32"	1.61																	
+		46608-1	Stainless steel 316 Swage Stud Terminal with nut Metric Thread 8mm x 5/32"	1.86																	
+		46608-2	Stainless steel 316 Swage Stud Terminal with nut Metric Thread 8mm x 3/16"	2.2																	
+		69105R	Stainless steel 316 Eye Plates with ring 35x5mm 	1.41																	
+		69106R	Stainless steel 316 Eye Plates with ring 40x6mm 	1.8																	
+		69108R	Stainless steel 316 Eye Plates with ring 50x8mm 	3.33																	
+		69110R	Stainless steel 316 Eye Plates with ring 60x10mm 	3.97																	
+		80805-1	Stainless steel 316 Closed Body Rigging Turnbuckles jaw/swage terminal 5mm x 3/32"	1.97																	
+		80805-2	Stainless steel 316 Closed Body Rigging Turnbuckles jaw/swage terminal 5mm x 1/8""	1.75																	
+		80806-1	Stainless steel 316 Closed Body Rigging Turnbuckles jaw/swage terminal 6mm x 1/8"	2.61																	
+		80806-2	Stainless steel 316 Closed Body Rigging Turnbuckles jaw/swage terminal 6mm x 5/32"	2.96																	
+		80808-1	Stainless steel 316 Closed Body Rigging Turnbuckles jaw/swage terminal 8mm x 5/32"	3.89																	
+		80808-2	Stainless steel 316 Closed Body Rigging Turnbuckles jaw/swage terminal 8mm x 3/16"	4.18																	
+		81005EE	Stainless Steel 316 Casted Turnbuckles without nut eye/eye 5mm   	1.61																	
+		81005EH	Stainless Steel 316 Casted Turnbuckles without nut eye/hook 5mm   	1.61																	
+		81006EE	Stainless Steel 316 Casted Turnbuckles without nut eye/eye 6mm   	2.31																	
+		81008EE	Stainless Steel 316 Casted Turnbuckles without nut eye/eye 8mm   	3.07																	
+		81008EH	Stainless Steel 316 Casted Turnbuckles without nut eye/hook 8mm   	3.07																	
+		81008HH	Stainless Steel 316 Casted Turnbuckles without nut hook/hook 8mm   	3.07																	
+		81010EE	Stainless Steel 316 Casted Turnbuckles without nut eye/eye 10mm   	5.35																	
+		81010EH	Stainless Steel 316 Casted Turnbuckles without nut eye/hook 10mm   	5.35																	
+		81010HH	Stainless Steel 316 Casted Turnbuckles without nut hook/hook 10mm   	5.35																	
+		81012EE	Stainless Steel 316 Casted Turnbuckles without nut eye/eye 12mm   	8.43																	
+		81012EH	Stainless Steel 316 Casted Turnbuckles without nut eye/hook 12mm   	8.43																	
+		81012HH	Stainless Steel 316 Casted Turnbuckles without nut hook/hook 12mm   	8.43																	
+		81016EH	Stainless Steel 316 Casted Turnbuckles without nut eye/hook 16mm   	19.33																	
+		81016HH	Stainless Steel 316 Casted Turnbuckles without nut hook/hook 16mm   	19.33																	
+		90001-1	Hot Dipped Galvanized Folding Grapnel Anchor 0.7kg   	8.73																	
+		99007B	Stainless steel 316 Hinge Top Mount 40x78mm	7.9																	
+		99080P	Stainless steel 316 3-way Rod Holder - port	20.35																	
+		99080S	Stainless steel 316 3-way Rod Holder - starboard	20.35																	
+		99111P	Stainless steel 316 3-way Adjustable Rod Holder with rotates 360° horizontal and  180° vertica -port	65.5																	
+		99111S	Stainless steel 316 3-way Adjustable Rod Holder with rotates 360° horizontal&180°vertical-starboard	65.5																	
+		99112P	SS 316 3-way Adjustable Rail Mount Rod Holder with rotates 360° both horizontal and vertical - port	82.62																	
+		99112S	SS 316 3-way Adjustable Rail Mount Rod Holder with rotates 360° both horizontal and vertical - starboard	82.62																	
+																					
+		Remark:																			
+		1.Please kindly notes that all the above prices take effect on January 1, 2025 and are valid up to December 30, 2025 in Australian dollars,  plus GST and subject to our final confirmation. 	1.Please kindly notes that all the above prices take effect on January 1, 2025 and are valid up to December 30, 2025 in Australian dollars,  plus GST and subject to our final confirmation. 	1.Please kindly notes that all the above prices take effect on January 1, 2025 and are valid up to December 30, 2025 in Australian dollars,  plus GST and subject to our final confirmation. 	1.Please kindly notes that all the above prices take effect on January 1, 2025 and are valid up to December 30, 2025 in Australian dollars,  plus GST and subject to our final confirmation. 																
+		2. Not all items in this price list are always available. The prices,quantity and shipment date of the goods are subject to our final confirmation.	2. Not all items in this price list are always available. The prices,quantity and shipment date of the goods are subject to our final confirmation.	2. Not all items in this price list are always available. The prices,quantity and shipment date of the goods are subject to our final confirmation.	2. Not all items in this price list are always available. The prices,quantity and shipment date of the goods are subject to our final confirmation.																
+		3. Small Order Surcharge:  Orders under $200.00 (excl GST) will have a $20.00 handling fee applied.	3. Small Order Surcharge:  Orders under $200.00 (excl GST) will have a $20.00 handling fee applied.	3. Small Order Surcharge:  Orders under $200.00 (excl GST) will have a $20.00 handling fee applied.	3. Small Order Surcharge:  Orders under $200.00 (excl GST) will have a $20.00 handling fee applied.																

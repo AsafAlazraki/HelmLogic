@@ -1,0 +1,621 @@
+															
+			GME MARINE PRICE LIST	MB053											
+			GME MARINE PRICE LIST	Mounting Bracket - Suit MT600 / MT600G	Mounting Bracket - Suit MT600 / MT600G	Mounting Bracket - Suit MT600 / MT600G	Mounting Bracket - Suit MT600 / MT600G								
+			GME MARINE PRICE LIST	Nett			SELL								
+			Effective: 15 March 2025	28.68			0								
+															
+		PART NUMBER	Emergency Position Indicating Radio Beacon (EPIRB)	Net Price Ex GST	MU	GP	SRP Inc GST	Barcode							
+		MT605GAUS	406MHz GNSS EPIRB - Manual Activation	305.27	0.42943504557813195	131.09363636363634	480	9319493315876							
+		MT401FFSVC	Float free housing service kit	125.0330687830688	0.44688995215310984	55.87602212602211	199	9319493157735							
+		MB053	Mounting Bracket - Suit MT600 / MT600G	28.68	0.42639786991251416	12.229090909090907	45	9319493252386							
+		MB057	Mounting Bracket - Suit MT603G	28.68	0.42639786991251416	12.229090909090907	45	9319493278508							
+															
+			Personal Locator Beacon (PLB)	Net Price Ex GST			SRP Inc GST	Barcode							
+		MT610GAUS	406MHz GPS PLB AUS	304.2028536585366	0.2820392554166157	85.79714634146336	429	9319493279376							
+		CC610	Premium Carry Case suit MT610G	16.71428571428571	0.6317016317016317	10.558441558441558	30	9319493313162							
+															
+			VHF Marine Radios	Net Price Ex GST			SRP Inc GST	Barcode							
+		GX700W	VHF Marine Radio - White	183.9622222222222	0.4083919293926179	75.12868686868686	285	9319493225304							
+		GX700B	VHF Marine Radio - Black	183.9622222222222	0.4083919293926179	75.12868686868686	285	9319493225298							
+		GX750W	Black Box VHF Marine Radio - White	257.53056	0.40848244467480954	105.19671272727271	399	9319493225328							
+		GX750B	Black Box VHF Marine Radio - Black	257.53056	0.40848244467480954	105.19671272727271	399	9319493262057							
+															
+			Handheld VHF Marine Radios	Net Price Ex GST			SRP Inc GST	Barcode							
+		GX610	2.5W VHF Handheld Radio	102.63	0.49699272762704505	51.00636363636363	169	9319493315357							
+		GX625	5/1 Watt VHF Handheld Marine Radio	135.5502512562814	0.40840086344173543	55.35883965280951	210	9319493272353							
+		GX625W	5/1 Watt VHF Handheld Marine Radio - Wash	135.5502512562814	0.40840086344173543	55.35883965280951	210	9319493313230							
+		GX865	5/1 Watt VHF Handheld Marine Radio - Float & Flash	209.7717391304348	0.40845733881642454	85.68280632411063	325	9319493316255							
+		GX875	5/1 Watt DSC VHF Handheld Marine Radio - Float & Flash	289.80909090909086	0.4084507042253522	118.37272727272727	449	9319493316262							
+															
+			Extension Speakers	Net Price Ex GST			SRP Inc GST	Barcode							
+		SPK04	4 Ohm Extension Speaker Box with Lead & Plug - Black	24.14709090909091	1.2212350066637048	29.489272727272724	59	9319493004596							
+		SPK07	8 Ohm Dust / Water Resistant Extension Speaker with Lead & Plug - Black	22.0968	1.221629787612192	26.994109090909085	54	9319493082280							
+		SPK08	8 Ohm Extension Speaker with Lead & Plug - Black	24.13636363636364	1.2222222222222217	29.499999999999993	59	9319493083652							
+		SPK09	4 Ohm Extension Speaker with Lead & Plug - Black	24.13636363636364	1.2222222222222217	29.499999999999993	59	9319493090155							
+		SPK45	8 Ohm Extension Speaker with Lead & Plug - White	20.04	0.5877336236617674	11.778181818181817	35	9319493107990							
+		SPK45B	8 Ohm Extension Speaker with Lead & Plug - Black	15.956571428571431	1.221940071102082	19.497974025974024	39	9319493111089							
+															
+			Entertainment	Net Price Ex GST			SRP Inc GST	Barcode							
+		GR300BTW	AM/FM IP67 Marine Stereo with Bluetooth - White	166.22953667953672	0.47113118059697207	78.31591786591781	269	9319493225243							
+		GR300BTB	AM/FM IP67 Marine Stereo with Bluetooth - Black	166.22953667953672	0.47113118059697207	78.31591786591781	269	9319493225236							
+		GR300BTWEP2	AM/FM IP67 Marine Stereo Entertainment Pack (GR300BTW & S320 Box Speakers) - White	180.94655172413795	0.5022015022015021	90.87163009404387	299	9319493256827							
+		GR350BTW	AM/FM IP54 Compact Marine Stereo with Bluetooth - White	177.29357142857145	0.4870046415787738	86.34279220779217	290	9319493225267							
+		GR350BTB	AM/FM IP54 Compact Marine Stereo with Bluetooth - Black	182.79578571428573	0.48700464157877393	89.02239610389609	299	9319493225250							
+		GS320B	3 Inch Marine Box Speakers pair Black	58.72445652173913	0.470658759211599	27.63917984189723	95	9319493315173							
+		GS320W	3 Inch Marine Box Speakers pair White	58.72445652173913	0.470658759211599	27.63917984189723	95	9319493315159							
+		GS420B	4 Inch Marine Box Speakers pair Black	60.13543689320389	0.5873260490992308	35.319108561341565	105	9319493315197							
+		GS420W	4 Inch Marine Box Speakers pair White	60.13543689320389	0.5873260490992308	35.319108561341565	105	9319493315180							
+		GS520B	5 inch Marine Panel Speaker pair Black	58.72634408602151	0.4706114897452519	27.637292277614847	95	9319493315210							
+		GS520W	5 inch Marine Panel Speaker pair White	58.72634408602151	0.4706114897452519	27.637292277614847	95	9319493315203							
+		GS620B	6 inch Marine Panel Speaker pair Black	85.07007462686568	0.48540643602221445	41.293561736770684	139	9319493315234							
+		GS620W	6 inch Marine Panel Speaker pair White	85.07007462686568	0.48540643602221445	41.293561736770684	139	9319493315227							
+		S52BG	GS520B Speaker Grill Replacement Pair Black	19.655172413793103	0.38755980861244005	7.617554858934167	30	9319493315258							
+		S52WG	GS520B Speaker Grill Replacement Pair White	19.655172413793103	0.38755980861244005	7.617554858934167	30	9319493315241							
+		S62BG	GS620B Speaker Grill Replacement Pair Black	19.655172413793103	0.38755980861244005	7.617554858934167	30	9319493315272							
+		S62WG	GS620B Speaker Grill Replacement Pair White	19.655172413793103	0.38755980861244005	7.617554858934167	30	9319493315265							
+															
+			AIS (Automatic Identification System)	Net Price Ex GST			SRP Inc GST	Barcode							
+		AISR120	AIS Receiver (Class B)	289.27738095238095	0.35132961181448163	101.63170995670993	430	9319493217743							
+		AIST120	AIS Transceiver (Class B)	699.4836000000001	0.6245750956328869	436.8800363636361	1250	9319493217767							
+		AISS120	AIS Antenna Splitter	315.51193333333333	0.3513391771245303	110.85170303030299	469	9319493217750							
+		MO520	MO520 AIS MOB	303.7894736842106	0.25685125685125665	78.02870813397124	420	9319493313520							
+															
+			Marine Telephone Intercom	Net Price Ex GST			SRP Inc GST	Barcode							
+		TH10	12V Telephone Intercom 	77.31720000000001	0.5873217437681745	45.410072727272706	135	9319493003674							
+															
+			Marine Antenna Bases	Net Price Ex GST			SRP Inc GST	Barcode							
+		ABL012	Rectangular Double Swivel Antenna Base with lead - Suit AW36xx whips - White	46.36764705882353	0.4704610327826311	21.814171122994644	75	9319493188951							
+		ABL012B	Rectangular Double Swivel Antenna Base with lead - Suit AW36xx whips - Black	46.36764705882353	0.4704610327826311	21.814171122994644	75	9319493264839							
+		ABL013	Rectangular Single Swivel Antenna Base with lead - Suit AW36xx whips - White	40.17456140350877	0.4708538693778546	18.916347687400318	65	9319493201445							
+		ABL013B	Rectangular Single Swivel Antenna Base with lead - Suit AW36xx whips - Black	40.17456140350877	0.4708538693778546	18.916347687400318	65	9319493264846							
+		ABL014	Round Double Swivel Antenna Base with lead - Suit AW36xx whips - White	46.36764705882353	0.4704610327826311	21.814171122994644	75	9319493204811							
+		ABL014B	Round Double Swivel Antenna Base with lead - Suit AW36xx whips - Black	46.36764705882353	0.4704610327826311	21.814171122994644	75	9319493264853							
+		ABL015	Round Single Swivel Antenna Base with lead - Suit AW36xx whips - White	40.17672413793104	0.4707746925320144	18.914184952978047	65	9319493204675							
+		ABL015B	Round Single Swivel Antenna Base with lead - Suit AW36xx whips - Black	40.17672413793104	0.4707746925320144	18.914184952978047	65	9319493264860							
+															
+			VHF Marine Antennas	Net Price Ex GST			SRP Inc GST	Barcode							
+		AE312V	450mm VHF Ground Dependent Antenna, Base, Cable & Plug - White	42.332499999999996	0.26702565726955974	11.303863636363637	59	9319493177726							
+		AE346V	1800mm VHF Antenna, Base, Cable & Plug - White	85.9261739130435	0.47060704101075423	40.43746245059286	139	9319493159975							
+		AW364V	1200mm VHF Detachable Antenna Whip - White	37.14870967741936	0.688545127730268	25.578563049853358	69	9319493199506							
+		AW364VB	1200mm VHF Detachable Antenna Whip - Black	33.38	0.8791873195707823	29.347272727272717	69	9319493264938							
+		AW366V	1800mm VHF Detachable Antenna Whip - White	42.656417910447765	0.47052368201571454	20.070854816824955	69	9319493188821							
+		AW366VB	1800mm VHF Detachable Antenna Whip - Black	42.656417910447765	0.47052368201571454	20.070854816824955	69	9319493264907							
+		AW368V	2400mm VHF Detachable Antenna Whip - White	52.275000000000006	0.4781966001478194	24.99772727272726	85	9319493188869							
+		AW368VB	2400mm VHF Detachable Antenna Whip - Black	52.275000000000006	0.4781966001478194	24.99772727272726	85	9319493264877							
+															
+			27MHz Marine Antennas	Net Price Ex GST			SRP Inc GST	Barcode							
+		AE312H	600mm 27MHz Ground Dependent Antenna, Base, Cable & Plug - White	44.345486111111114	0.8245169464681658	36.56360479797979	89	9319493177719							
+		AE346H	1800mm 27MHz Antenna, Base, Cable & Plug - White	95.87964285714283	0.8299457551794005	79.57490259740261	193	9319493159937							
+		AW364H	1200mm 27MHz Detachable Antenna Whip - White	43.27076923076923	0.4706547807593102	20.3655944055944	70	9319493202404							
+		AW364HB	1200mm 27MHz Detachable Antenna Whip - Black	44.08638888888889	0.6290329879180051	27.731792929292922	79	9319493264952							
+		AW366H	1800mm 27MHz Detachable Antenna Whip - White	48.83253333333333	0.47070358459487016	22.985648484848483	79	9319493188838							
+		AW366HB	1800mm 27MHz Detachable Antenna Whip - Black	48.83253333333333	0.47070358459487016	22.985648484848483	79	9319493264921							
+		AW368H	2400mm 27MHz Detachable Antenna Whip - White	64.90714285714287	0.4706323719199252	30.54740259740258	105	9319493188876							
+		AW368HB	2400mm 27MHz Detachable Antenna Whip - Black	64.90714285714287	0.4706323719199252	30.54740259740258	105	9319493264891							
+															
+			AM / FM / TV Antennas 	Net Price Ex GST			SRP Inc GST	Barcode							
+		AE3000	280mm Diameter Omni directional TV Antenna	194.73196721311476	0.4705527832019476	91.63166915052156	315	9319493214780							
+		AE312B	600mm AM/FM Ground Dependent Antenna, Base, Cable & Plug - White	46.36363636363636	0.4705882352941176	21.818181818181813	75	9319493177702							
+		AE346B	1800mm AM/FM Antenna, Base, Cable & Plug - White	85.9261739130435	0.47060704101075423	40.43746245059286	139	9319493159951							
+		AW364B	1200mm AM/FM Detachable Antenna Whip - White	36.48345454545455	0.47015583651867077	17.152909090909084	59	9319493199445							
+		AW364BB	1200mm AM/FM Detachable Antenna Whip - Black	36.48345454545455	0.47015583651867077	17.152909090909084	59	9319493264945							
+		AW366B	1800mm AM/FM Detachable Antenna Whip - White	42.656417910447765	0.47052368201571454	20.070854816824955	69	9319493188845							
+		AW366BB	1800mm AM/FM Detachable Antenna Whip - Black	42.656417910447765	0.47052368201571454	20.070854816824955	69	9319493264914							
+		AW368B	2400mm AM/FM Detachable Antenna Whip - White	48.83636363636363	0.47058823529411775	22.981818181818184	79	9319493188852							
+		AW368BB	2400mm AM/FM Detachable Antenna Whip - Black	48.83636363636363	0.47058823529411775	22.981818181818184	79	9319493264884							
+															
+			Cellular Antennas	Net Price Ex GST			SRP Inc GST	Barcode							
+		AT4715BA	Multi-band Cellular Antenna - SMA connector	171.0933524355301	0.960652127504185	164.36119301901533	369	9319493293013							
+															
+			Marine Radio Accessories	Net Price Ex GST			SRP Inc GST	Barcode							
+		BCV008	12V DC Cigarette Lighter Charger - Suit GX850	20.899999999999995	0.6528925619834712	13.645454545454545	38	9319493245227							
+		BCV009	12V DC Cigarette Lighter Charger - Suit GX800	20.899999999999995	0.6528925619834712	13.645454545454545	38	9319493245234							
+		CA007	Gimbal Knob - Suit GR200W / GR300BTW / GX300W / GX600D / GX400W / GX700W - White	6.611538461538462	1.0625099159130569	7.024825174825173	15	9319493135818							
+		CA008	Gimbal Knob - Suit GR200B / GR300BTB / GX300B / GX600DB / GX400B / GX700B - Black	6.611538461538462	1.0625099159130569	7.024825174825173	15	9319493149457							
+		CVR035B	Cabin cover to suit GR350BT	10.557894736842107	0.7221064080485812	7.623923444976073	20	9319493312660							
+		PIK3000	AE3000 DC INJECTOR C/W FUSE	13.661052631578947	0.39746984407178576	5.429856459330143	21	9319493217637							
+		AE4027	Flexible Antenna - Suit GX625	17.755517241379312	0.5872147118384322	10.426300940438868	31	9319493317443							
+		LE106	500mm Microphone Extension Cable - Suit GX750	20.845714285714283	0.6571969696969696	13.699740259740256	38	9319493315746							
+		LE029	12V DC Power Lead - Suit GX600(D) / GX700W/B	17.766206896551726	0.5862597090033911	10.415611285266454	31	9319493206228							
+		BP025	1200mAH Li-ion Battery Pack GX625	41.95000000000001	0.40860331563549634	17.140909090909076	65	9319493272704							
+		LE028	12V DC Power Lead - Suit GX300 / GX400	17.909333333333333	0.6243434945043045	11.181575757575757	32	9319493206235							
+		LE102	5M Microphone Extension cable - Suit MK012 for GX400 / GX700	19.764705882352942	0.6098484848484848	12.053475935828875	35	9319493254748							
+		LE103	8M Microphone Extension cable - Suit MK012 for GX400 / GX700	19.764705882352942	0.6098484848484848	12.053475935828875	35	9319493254755							
+		LE107	6M Microphone Extension cable - Suit MK013 for GX750	20.363636363636367	0.5624999999999997	11.45454545454545	35	9319493262651							
+		LE123	AIST120 Power & Data Cable	86.85	0.3084209975401685	26.78636363636363	125	9319493317337							
+		MB016	Mounting Bracket - Suit GR200 / GX300 / GX600 - White	13.167499999999999	0.5879317189360858	7.741590909090908	23	9319493133265							
+		MB026	Mounting Bracket - Suit GR200 / GX300 / GX600 - Black	12.597894736842107	0.5875668449197858	7.4021052631578925	22	9319493149433							
+		MB204	Microphone Bracket - White	8.661333333333333	0.6793551276309896	5.884121212121212	16	9319493080019							
+		MB205	Plastic Microphone Bracket - Suit MC400 series	6.9558333333333335	1.2218107757822623	8.498712121212119	17	9319493080026							
+		MB210W	Microphone Cradle to suit GX750W	8.757333333333333	0.6609456317129885	5.788121212121212	16	9319493314831							
+		MB210B	Microphone Cradle to suit GX750B	7.872000000000002	0.8477457501847742	6.673454545454543	16	9319493262606							
+		MC516W	Microphone - Suit GX600D - White	53.26953488372092	0.587125825859078	31.27591966173361	93	9319493224567							
+		MC616B	Microphone - Suit GX400B / GX700B - Black	51.551162790697674	0.5871258258590779	30.26701902748414	90	9319493252645							
+		MC616W	Microphone - Suit GX400W / GX700W - White	51.551162790697674	0.5871258258590779	30.26701902748414	90	9319493252638							
+		MC750B	LCD Controller Mic to suit GX750B	97.3675	0.5872386016427917	57.177954545454526	170	9319493262620							
+		MC750W	LCD Controller Mic to suit GX750W	97.3675	0.5872386016427917	57.177954545454526	170	9319493262637							
+		MK008B	Flush Mount Bracket - Suit GX400 / GX700 - Black	24.3165	0.6075878144843659	14.774409090909085	43	9319493223812							
+		MK008W	Flush Mount Bracket - Suit GX400 / GX700 - White	24.3165	0.6075878144843659	14.774409090909085	43	9319493223829							
+		MK011B	Large Flush Mount Bracket - Suit GX400 / GX700 - Black	24.3165	0.6075878144843659	14.774409090909085	43	9319493230384							
+		MK011W	Large Flush Mount Bracket - Suit GX400 / GX700 - White	24.3165	0.6075878144843659	14.774409090909085	43	9319493230377							
+		MK012B	Flush Mount Microphone socket - Suit GX400 / GX700 - Black	24.3165	0.6075878144843659	14.774409090909085	43	9319493254779							
+		MK012W	Flush Mount Microphone socket - Suit GX400 / GX700 - White	24.3165	0.6075878144843659	14.774409090909085	43	9319493254762							
+		MK600	Rear Flush Mount Kit - Suit GR200 / GR300BT / GX300 / GX400 / GX600 / GX700	15.476399999999998	0.5859925141153334	9.069054545454545	27	9319493146913							
+		PSK20P	Plug Pack - Suit GX850 (Proprietary Connector)	36.382372881355934	0.5991760177806688	21.799445300462246	64	9319493240079							
+		PSK20U	Plug Pack - Suit GX800 (Micro USB Connector)	36.382372881355934	0.5991760177806688	21.799445300462246	64	9319493240062							
+		SPL002	Band Splitter - VHF / 27 MHz & AM/FM 	36.6535593220339	0.5873442922865828	21.52825885978428	64	9319493210881							
+		SPL003	Band Splitter - AM/FM & DAB+ 	32.65132075471698	0.5870164091507966	19.166861063464836	57	9319493235938							
+															
+			Marine Aerial Extension Cables, Bases and Whips	Net Price Ex GST			SRP Inc GST	Barcode							
+		LE05B	AM/FM Antenna Lead with 6mm U-shaped Connector (5M)	18.89516129032258	0.5877080665813059	11.104838709677416	33	9319493189644							
+		LE05FME	Coaxial Extension - FME Connector (5M)	25.77272727272727	0.5873015873015874	15.136363636363637	45	9319493130943							
+		LE05PL	Coaxial Extension - PL259 Connector (5M)	23.316279069767447	0.7545291333442137	17.59281183932346	45	9319493084635							
+		CA60	Thumbscrew - Suit AE60 / AE60B / AE30	5.470833333333332	1.1602160216021604	6.347348484848484	13	9319493022910							
+		CA346	Thumbscrew - Suit AE346x	6.015	1.2670596236681024	7.621363636363635	15	9319493148399							
+															
+			240V AC to 13.8V DC Regulated Power Supplies	Net Price Ex GST			SRP Inc GST	Barcode							
+		PSA123	Regulated Power Supply (4 Amp Peak)	78.34451851851853	0.6129224960871693	48.01911784511783	139	9319493003551							
+		PSA126	Regulated Power Supply (7 Amp Peak)	129.0727272727273	0.6129032258064512	79.10909090909087	229	9319493003391							
+		PSA1210	Regulated Power Supply (11 Amp Peak)	185.44111111111113	0.6128619338982614	113.64979797979794	329	9319493003346							
+		PSM1215	Switch Mode Power Supply (15 Amp Peak)	183.4665	0.6128780508108613	112.44259090909088	325.5	9319493150071							
+															
+			24V DC to 13.8V DC Voltage Converters	Net Price Ex GST			SRP Inc GST	Barcode							
+		VC2S	24/12V DC Voltage Converter	30.990000000000002	0.6134236850596964	19.00999999999999	55	9319493277945							
+		VC4S	4 Amp Switch Mode DC Voltage Converter	55.79431578947367	0.613067545080993	34.205684210526314	99	9319493142304							
+		VC7S	7 Amp Switch Mode DC Voltage Converter	67.07460869565217	0.612857984348265	41.107209486166	119	9319493142311							
+		VC10S	10 Amp Switch Mode DC Voltage Converter	83.98462068965517	0.6128494043580301	51.469924764890266	149	9319493142328							
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
+															
