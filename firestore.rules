@@ -151,6 +151,10 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    match /delivered-deals/{dealId} {
+      allow read, write: if isSignedIn();
+    }
+
     // Legacy support for clients collection
     match /clients/{clientId} {
       allow read: if isSignedIn();
