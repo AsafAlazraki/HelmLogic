@@ -110,6 +110,7 @@ export function StockList({
     isAdmin = false,
     locations = [],
     readOnly = false,
+    hideHeader = false,
 }: {
     organisation: Organisation | null;
     subDealers: Organisation[];
@@ -119,6 +120,7 @@ export function StockList({
     isAdmin?: boolean;
     locations?: string[];
     readOnly?: boolean;
+    hideHeader?: boolean;
 }) {
     const firestore = useFirestore();
     const [sortKey, setSortKey] = useState<SortKey>('dateIntoStock');
@@ -239,22 +241,24 @@ export function StockList({
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-black uppercase tracking-widest">Stock Control</h3>
-                    <Badge variant="secondary" className="text-[10px] font-black">{inventory?.length ?? 0}</Badge>
+            {!hideHeader && (
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-black uppercase tracking-widest">Stock Control</h3>
+                        <Badge variant="secondary" className="text-[10px] font-black">{inventory?.length ?? 0}</Badge>
+                    </div>
+                    {!readOnly && (
+                        <Button
+                            className="rounded-xl text-xs font-black uppercase tracking-widest"
+                            size="sm"
+                            onClick={() => { setFormOpen(true); setEditItem(null); }}
+                        >
+                            <Plus className="h-3.5 w-3.5 mr-1.5" />
+                            Add Stock Item
+                        </Button>
+                    )}
                 </div>
-                {!readOnly && (
-                    <Button
-                        className="rounded-xl text-xs font-black uppercase tracking-widest"
-                        size="sm"
-                        onClick={() => { setFormOpen(true); setEditItem(null); }}
-                    >
-                        <Plus className="h-3.5 w-3.5 mr-1.5" />
-                        Add Stock Item
-                    </Button>
-                )}
-            </div>
+            )}
             {(!inventory || inventory.length === 0) ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-4">
                     <Box className="h-8 w-8 text-muted-foreground/20" />

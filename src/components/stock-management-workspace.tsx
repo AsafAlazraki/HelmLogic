@@ -204,16 +204,19 @@ export function StockManagementWorkspace({
             {/* Content Area */}
             <div className="flex-1 min-h-0 overflow-y-auto">
                 {view === 'table' && (
-                    <StockList
-                        organisation={organisation}
-                        subDealers={subDealers}
-                        parentOrg={parentOrg}
-                        moduleId={moduleId}
-                        filterOrgId={filterOrgId}
-                        isAdmin={isAdmin}
-                        locations={locations}
-                        readOnly={readOnly}
-                    />
+                    <div className="px-8 py-4">
+                        <StockList
+                            organisation={organisation}
+                            subDealers={subDealers}
+                            parentOrg={parentOrg}
+                            moduleId={moduleId}
+                            filterOrgId={filterOrgId}
+                            isAdmin={isAdmin}
+                            locations={locations}
+                            readOnly={readOnly}
+                            hideHeader={true}
+                        />
+                    </div>
                 )}
 
                 {view === 'map' && (
