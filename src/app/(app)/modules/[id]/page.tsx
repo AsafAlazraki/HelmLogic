@@ -770,7 +770,7 @@ export default function ModuleDetailsPage() {
     const navTabs = [
         { id: 'dashboard', label: 'Dashboard' },
         { id: 'bmt', label: 'Catalog' },
-        { id: 'stock', label: 'Stock Management' },
+        { id: 'stock', label: 'Stock Management', visible: (isAdmin || !!userPermissions.can_view_stock || !!userPermissions.can_manage_stock) },
         { id: 'pricing', label: 'Pricing', visible: (isAdmin || !!userPermissions.can_access_pricing_manager) },
         { id: 'settings', label: 'Settings' }
     ].filter(t => t.visible !== false);
@@ -857,10 +857,12 @@ export default function ModuleDetailsPage() {
 
                                     {/* Quick Actions */}
                                     <div className="flex flex-wrap gap-3">
-                                        <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setActiveTab('stock')}>
-                                            <Box className="h-4 w-4" />
-                                            Manage Stock
-                                        </Button>
+                                        {(isAdmin || !!userPermissions.can_view_stock || !!userPermissions.can_manage_stock) && (
+                                            <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setActiveTab('stock')}>
+                                                <Box className="h-4 w-4" />
+                                                Manage Stock
+                                            </Button>
+                                        )}
                                         <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setIsQuoteInitializationOpen(true)}>
                                             <PlusCircle className="h-4 w-4" />
                                             New Quote
@@ -1067,7 +1069,7 @@ export default function ModuleDetailsPage() {
 
                     <TabsContent value="stock" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden data-[state=inactive]:hidden">
                         <div className="h-full p-8 overflow-y-auto">
-                            <StockList organisation={currentMemberOrg as any} subDealers={subDealersList || []} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} locations={moduleData?.stockLocations || []} readOnly={false} />
+                            <StockList organisation={currentMemberOrg as any} subDealers={subDealersList || []} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} locations={moduleData?.stockLocations || []} readOnly={!isAdmin && !userPermissions.can_manage_stock} />
                         </div>
                     </TabsContent>
 
