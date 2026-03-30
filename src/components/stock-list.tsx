@@ -5,9 +5,10 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowRightLeft, Trash2, Box, CheckCircle2, ChevronUp, ChevronDown, Plus, Pencil } from 'lucide-react';
+import { Loader2, ArrowRightLeft, Trash2, Box, CheckCircle2, ChevronUp, ChevronDown, Plus, Pencil, Truck } from 'lucide-react';
 import { StockItemDetail } from '@/components/stock-item-detail';
 import { StockItemForm } from '@/components/stock-item-form';
+import { MoveToDelivered } from '@/components/move-to-delivered';
 import {
     Select,
     SelectContent,
@@ -130,6 +131,7 @@ export function StockList({
     const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
     const [formOpen, setFormOpen] = useState(false);
     const [editItem, setEditItem] = useState<InventoryItem | null>(null);
+    const [deliverItem, setDeliverItem] = useState<InventoryItem | null>(null);
 
     const targetOrgIds = useMemo(() => {
         if (!organisation?.id) return [];
@@ -398,6 +400,11 @@ export function StockList({
                                                         </Button>
                                                     )}
                                                     {!readOnly && (
+                                                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-orange-600 hover:bg-orange-50" onClick={(e) => { e.stopPropagation(); setDeliverItem(item); }} title="Move to Delivered">
+                                                            <Truck className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    )}
+                                                    {!readOnly && (
                                                         <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md" onClick={(e) => { e.stopPropagation(); setSelectedItem(item); }} title="Reassign">
                                                             <ArrowRightLeft className="h-3 w-3" />
                                                         </Button>
@@ -464,6 +471,12 @@ export function StockList({
                 organisationId={organisation?.id || ''}
                 locations={locations}
                 onSaved={() => { setFormOpen(false); setEditItem(null); }}
+            />
+            <MoveToDelivered
+                item={deliverItem}
+                open={!!deliverItem}
+                onOpenChange={(open) => { if (!open) setDeliverItem(null); }}
+                onComplete={() => setDeliverItem(null)}
             />
         </div>
     );
