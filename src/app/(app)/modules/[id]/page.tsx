@@ -74,6 +74,7 @@ import { PriceListManager } from '@/components/price-list-manager';
 import { OrganisationModuleConfig } from '@/components/organisation-module-config';
 import { StockLocationManager } from '@/components/stock-location-manager';
 import { StockManagementWorkspace } from '@/components/stock-management-workspace';
+import { DeliveredDeals } from '@/components/delivered-deals';
 
 import {
   DndContext,
@@ -725,35 +726,19 @@ export default function ModuleDetailsPage() {
                             </div>
                         </TabsContent>
 
-                        {/* Stock Management */}
+                        {/* Stock Management — same workspace as parent org but read-only */}
                         <TabsContent value="stock" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
-                            <ScrollArea className="h-full">
-                                <div className="p-8 space-y-8">
-                                    <div>
-                                        <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">Your Stock</h2>
-                                        <StockList
-                                            organisation={currentMemberOrg as any}
-                                            subDealers={[]}
-                                            parentOrg={parentOrgData ?? null}
-                                            moduleId={moduleData.id}
-                                            filterOrgId={currentMemberOrg.id}
-                                            isAdmin={false}
-                                            locations={moduleData?.stockLocations || []}
-                                            readOnly={true}
-                                            visibleColumns={moduleData?.subDealerVisibleColumns}
-                                        />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">On Order</h2>
-                                        <VesselOnOrderList
-                                            organisation={currentMemberOrg as any}
-                                            parentOrg={parentOrgData ?? null}
-                                            moduleId={moduleData.id}
-                                            isAdmin={false}
-                                        />
-                                    </div>
-                                </div>
-                            </ScrollArea>
+                            <StockManagementWorkspace
+                                organisation={currentMemberOrg as any}
+                                subDealers={[]}
+                                parentOrg={parentOrgData ?? null}
+                                moduleId={moduleData.id}
+                                filterOrgId={currentMemberOrg.id}
+                                isAdmin={false}
+                                locations={moduleData?.stockLocations || []}
+                                readOnly={true}
+                                vendorName={moduleData.name}
+                            />
                         </TabsContent>
 
                         {/* Price List */}
@@ -880,24 +865,60 @@ export default function ModuleDetailsPage() {
                                         </Button>
                                     </div>
 
-                                    {/* Stock quick-access card — links to Stock Management tab */}
-                                    <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden cursor-pointer hover:border-primary/40 hover:shadow-md transition-all" onClick={() => setActiveTab('stock')}>
-                                        <CardHeader className="py-4 px-6 flex flex-row items-center justify-between">
+                                    {/* Stock Preview */}
+                                    <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden">
+                                        <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
                                             <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary border-2 border-primary/20">
-                                                    <Box className="h-5 w-5" />
-                                                </div>
-                                                <div>
-                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900">Stock Management</h3>
-                                                    <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mt-0.5">
-                                                        {dashboardStockCounts.total} items — {dashboardStockCounts.inStock} in stock, {dashboardStockCounts.onOrder} on order
-                                                    </p>
-                                                </div>
+                                                <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Stock</Badge>
+                                                <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900">Stock Management</h3>
+                                                {dashboardStockCounts.total > 0 && (
+                                                    <Badge variant="secondary" className="text-[9px] font-black h-5 px-2">{dashboardStockCounts.total}</Badge>
+                                                )}
                                             </div>
-                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                                <ArrowRight className="h-4 w-4" />
-                                            </div>
+                                            <Button variant="ghost" size="sm" onClick={() => setActiveTab('stock')} className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white rounded-xl transition-colors h-7 px-3 gap-1">
+                                                View All <ArrowRight className="h-3 w-3" />
+                                            </Button>
                                         </CardHeader>
+                                        <CardContent className="p-0 max-h-[250px] overflow-hidden">
+                                            <ScrollArea className="h-full">
+                                                <StockList
+                                                    organisation={currentMemberOrg as any}
+                                                    subDealers={subDealersList || []}
+                                                    parentOrg={null}
+                                                    moduleId={moduleData.id}
+                                                    filterOrgId="local"
+                                                    isAdmin={isAdmin}
+                                                    locations={moduleData?.stockLocations || []}
+                                                    readOnly={true}
+                                                    hideHeader={true}
+                                                />
+                                            </ScrollArea>
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* Delivered Deals Preview */}
+                                    <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden">
+                                        <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
+                                            <div className="flex items-center gap-3">
+                                                <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-orange-500/20 text-orange-600 bg-orange-50/50 px-2">Deals</Badge>
+                                                <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900">Delivered Deals</h3>
+                                            </div>
+                                            <Button variant="ghost" size="sm" onClick={() => setActiveTab('stock')} className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white rounded-xl transition-colors h-7 px-3 gap-1">
+                                                View All <ArrowRight className="h-3 w-3" />
+                                            </Button>
+                                        </CardHeader>
+                                        <CardContent className="p-0 max-h-[200px] overflow-hidden">
+                                            <ScrollArea className="h-full">
+                                                <DeliveredDeals
+                                                    organisation={currentMemberOrg as any}
+                                                    moduleId={moduleData.id}
+                                                    isAdmin={isAdmin}
+                                                    readOnly={true}
+                                                    hideHeader={true}
+                                                    compact={true}
+                                                />
+                                            </ScrollArea>
+                                        </CardContent>
                                     </Card>
                                 </div>
 
