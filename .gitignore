@@ -47,3 +47,6 @@ firestore-debug.log
 proxy-server.mjs
 .env.local
 __pycache__/
+
+# Claude Code worktrees
+.claude/worktrees/

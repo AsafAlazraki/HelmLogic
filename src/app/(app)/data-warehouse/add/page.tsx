@@ -185,6 +185,7 @@ export default function AddVendorPage() {
                                                         <SelectItem value="Electronics Brand">Electronics Brand</SelectItem>
                                                         <SelectItem value="Electronics Supplier">Electronics Supplier</SelectItem>
                                                         <SelectItem value="Parts Wholesaler">Parts Wholesaler</SelectItem>
+                                                        <SelectItem value="Master Price File">Master Price File</SelectItem>
                                                         <SelectItem value="Other">Other</SelectItem>
                                                     </SelectContent>
                                                     </Select>
