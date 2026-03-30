@@ -289,29 +289,29 @@ function GroupedPriceListTable({ pl, vendorId, onRowClick }: { pl: PriceList; ve
 
             {/* Grouped tables */}
             {groupedRows.map(rangeGroup => (
-                <div key={rangeGroup.rangeName} className="space-y-2">
-                    <div className="flex items-center gap-2 pt-1">
-                        <div className="h-6 px-3 rounded-lg bg-primary/10 flex items-center">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-primary">{rangeGroup.rangeName}</span>
+                <div key={rangeGroup.rangeName} className="space-y-3">
+                    <div className="flex items-center gap-3 pt-3">
+                        <div className="h-7 px-4 rounded-full bg-primary text-white flex items-center shadow-sm">
+                            <span className="text-[9px] font-black uppercase tracking-widest">{rangeGroup.rangeName}</span>
                         </div>
-                        <div className="flex-1 h-px bg-slate-100" />
+                        <div className="flex-1 h-px bg-slate-200" />
                     </div>
 
                     {rangeGroup.models.map(modelGroup => (
-                        <div key={modelGroup.modelName} className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow-sm">
-                            <div className="bg-slate-50/80 px-5 py-2.5 border-b border-slate-100 flex items-center gap-2">
-                                <Ship className="h-3 w-3 text-slate-400" />
-                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">{modelGroup.modelName}</span>
-                                <span className="text-[9px] text-slate-400 font-bold">({modelGroup.rows.length} SKU{modelGroup.rows.length !== 1 ? 's' : ''})</span>
+                        <div key={modelGroup.modelName} className="overflow-x-auto rounded-2xl border-2 border-slate-200/80 bg-white shadow-sm">
+                            <div className="bg-gradient-to-r from-slate-100 to-slate-50 px-5 py-3 border-b-2 border-slate-200/60 flex items-center gap-2.5">
+                                <Ship className="h-3.5 w-3.5 text-primary/60" />
+                                <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">{modelGroup.modelName}</span>
+                                <span className="text-[9px] text-slate-400 font-bold bg-white px-2 py-0.5 rounded-full border border-slate-200">{modelGroup.rows.length} SKU{modelGroup.rows.length !== 1 ? 's' : ''}</span>
                             </div>
                             <table className="w-full text-sm border-collapse">
                                 <thead>
-                                    <tr className="bg-slate-50/50 border-b border-slate-100">
-                                        <th className="text-left px-5 py-2 text-[8px] font-black uppercase tracking-widest text-slate-400 w-16" />
-                                        <th className="text-left px-5 py-2 text-[8px] font-black uppercase tracking-widest text-slate-400">Material</th>
-                                        <th className="text-left px-5 py-2 text-[8px] font-black uppercase tracking-widest text-slate-400">Colour</th>
+                                    <tr className="bg-slate-50 border-b border-slate-200/60">
+                                        <th className="text-left px-5 py-2.5 text-[8px] font-black uppercase tracking-widest text-slate-400 w-16" />
+                                        <th className="text-left px-5 py-2.5 text-[8px] font-black uppercase tracking-widest text-slate-400">Material</th>
+                                        <th className="text-left px-5 py-2.5 text-[8px] font-black uppercase tracking-widest text-slate-400">Colour</th>
                                         {(pl.columns || []).map(col => (
-                                            <th key={col.id} className="text-right px-5 py-2 text-[8px] font-black uppercase tracking-widest text-slate-400 min-w-[140px]">
+                                            <th key={col.id} className="text-right px-5 py-2.5 text-[8px] font-black uppercase tracking-widest text-slate-400 min-w-[140px]">
                                                 {col.header}
                                             </th>
                                         ))}
@@ -324,27 +324,34 @@ function GroupedPriceListTable({ pl, vendorId, onRowClick }: { pl: PriceList; ve
                                             key={row.variantId}
                                             onClick={() => vendorId ? onRowClick(row) : undefined}
                                             className={cn(
-                                                'border-b border-slate-50 transition-all',
-                                                vendorId ? 'cursor-pointer hover:bg-primary/[0.02] group' : '',
-                                                idx % 2 === 1 ? 'bg-slate-50/30' : ''
+                                                'border-b border-slate-100 transition-colors',
+                                                vendorId ? 'cursor-pointer hover:bg-primary/[0.03] group' : '',
+                                                idx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'
                                             )}
                                         >
                                             <td className="px-5 py-3">
                                                 {row.imageUrl ? (
-                                                    <div className="relative h-11 w-16 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 group-hover:border-primary/20 transition-colors">
-                                                        <Image src={row.imageUrl} alt="" fill className="object-contain p-1" />
+                                                    <div className="relative h-11 w-16 rounded-xl overflow-hidden bg-slate-50 border border-slate-200 shadow-sm group-hover:border-primary/30 transition-colors">
+                                                        <Image src={row.imageUrl} alt="" fill className="object-contain p-1.5" />
                                                     </div>
                                                 ) : (
-                                                    <div className="h-11 w-16 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+                                                    <div className="h-11 w-16 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center">
                                                         <Ship className="h-4 w-4 text-slate-300" />
                                                     </div>
                                                 )}
                                             </td>
-                                            <td className="px-5 py-3 text-xs text-slate-600 font-bold">{row.material}</td>
-                                            <td className="px-5 py-3 text-xs text-slate-500 font-mono uppercase" title={row.colorName}>{row.colorCode || row.colorName}</td>
+                                            <td className="px-5 py-3">
+                                                <span className="inline-flex items-center h-6 px-2.5 rounded-md bg-slate-100 border border-slate-200/60 text-[10px] font-black text-slate-700 uppercase tracking-wider">{row.material}</span>
+                                            </td>
+                                            <td className="px-5 py-3">
+                                                <span className="text-xs font-mono font-bold text-primary/80 uppercase" title={row.colorName}>{row.colorCode || row.colorName}</span>
+                                            </td>
                                             {(pl.columns || []).map(col => (
                                                 <td key={col.id} className="px-5 py-3 text-right">
-                                                    <span className={cn('text-xs tabular-nums', row.cells?.[col.id] ? 'font-black text-slate-800' : 'text-slate-300')}>
+                                                    <span className={cn(
+                                                        'text-xs tabular-nums',
+                                                        row.cells?.[col.id] ? 'font-black text-slate-900' : 'text-slate-300'
+                                                    )}>
                                                         {row.cells?.[col.id] || '—'}
                                                     </span>
                                                 </td>
