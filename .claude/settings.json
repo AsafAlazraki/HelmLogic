@@ -5,9 +5,15 @@
   "permissions": {
     "allow": [
       "Read",
+      "Write",
+      "Edit",
       "Glob",
       "Grep",
-      "Agent"
+      "Agent",
+      "Bash(npm run typecheck)",
+      "Bash(npm run lint)",
+      "Bash(npm run build)",
+      "Bash(git *)"
     ]
   }
 }
