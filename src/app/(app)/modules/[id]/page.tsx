@@ -67,6 +67,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { HelmLogicLoading } from "@/components/helmlogic-loading";
 import { HighfieldPricingWorkspace } from '@/components/highfield-pricing-workspace';
+import { StockLocationManager } from '@/components/stock-location-manager';
 
 import {
   DndContext,
@@ -110,6 +111,7 @@ interface Organisation {
     enabledModuleSubscriptions?: string[];
     permissions?: Record<string, Record<string, boolean>>;
     subDealersEnabled?: boolean;
+    parentOrganisationId?: string;
     phoneNumber?: string;
     address?: string;
     roles?: any[];
@@ -344,6 +346,23 @@ export default function ModuleDetailsPage() {
         userProfile?.organisationId ? allOrganisations?.find((o: any) => o.id === userProfile.organisationId) : null,
     [userProfile?.organisationId, allOrganisations]);
 
+    // Sub-dealer support
+    const isSubDealer = !!currentMemberOrg?.parentOrganisationId;
+
+    const subDealersQuery = useMemoFirebase(() =>
+        currentMemberOrg?.id && !isSubDealer
+            ? query(collection(firestore, 'organisations'), where('parentOrganisationId', '==', currentMemberOrg.id))
+            : null,
+    [firestore, currentMemberOrg?.id, isSubDealer]);
+    const { data: subDealersList } = useCollection<Organisation>(subDealersQuery);
+
+    const parentOrgRef = useMemoFirebase(() =>
+        isSubDealer && currentMemberOrg?.parentOrganisationId
+            ? doc(firestore, 'organisations', currentMemberOrg.parentOrganisationId)
+            : null,
+    [firestore, isSubDealer, currentMemberOrg?.parentOrganisationId]);
+    const { data: parentOrgData } = useDoc<Organisation>(parentOrgRef);
+
     // Recent proposals for the dashboard
     const recentQuotesQuery = useMemoFirebase(() =>
         user ? query(
@@ -435,10 +454,13 @@ export default function ModuleDetailsPage() {
     if (loading) return <HelmLogicLoading label="Synchronizing Module" />;
     if (!moduleData) return <div className="p-12 text-center font-bold">Module Context Lost.</div>;
 
+    // For sub-dealers: only show stock tab if module allows it
+    const showStockToSubDealer = !isSubDealer || moduleData?.stockVisibleToSubDealers === true;
+
     const navTabs = [
         { id: 'dashboard', label: 'Dashboard' },
         { id: 'bmt', label: 'Catalog' },
-        { id: 'stock', label: 'Stock Management' },
+        { id: 'stock', label: 'Stock Management', visible: showStockToSubDealer },
         { id: 'pricing', label: 'Pricing', visible: (isAdmin || !!userPermissions.can_access_pricing_manager) },
         { id: 'settings', label: 'Settings' }
     ].filter(t => t.visible !== false);
@@ -514,7 +536,7 @@ export default function ModuleDetailsPage() {
                                                 <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
                                             </CardHeader>
                                             <CardContent className="flex-1 min-h-0 p-0">
-                                                <StockList organisation={currentMemberOrg as any} subDealers={[]} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
+                                                <StockList organisation={currentMemberOrg as any} subDealers={subDealersList || []} parentOrg={isSubDealer ? parentOrgData ?? null : null} moduleId={moduleData.id} filterOrgId={isSubDealer ? 'all' : 'local'} isAdmin={isAdmin} />
                                             </CardContent>
                                         </Card>
 
@@ -527,7 +549,7 @@ export default function ModuleDetailsPage() {
                                                 <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
                                             </CardHeader>
                                             <CardContent className="flex-1 min-h-0 p-0">
-                                                <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
+                                                <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={isSubDealer ? parentOrgData ?? null : null} moduleId={moduleData.id} isAdmin={isAdmin} />
                                             </CardContent>
                                         </Card>
                                     </div>
@@ -706,11 +728,11 @@ export default function ModuleDetailsPage() {
                             <div className="p-8 space-y-8">
                                 <div>
                                     <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">Stock Units</h2>
-                                    <StockList organisation={currentMemberOrg as any} subDealers={[]} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
+                                    <StockList organisation={currentMemberOrg as any} subDealers={subDealersList || []} parentOrg={isSubDealer ? parentOrgData ?? null : null} moduleId={moduleData.id} filterOrgId={isSubDealer ? 'all' : 'local'} isAdmin={isAdmin} />
                                 </div>
                                 <div>
                                     <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">On Order</h2>
-                                    <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
+                                    <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={isSubDealer ? parentOrgData ?? null : null} moduleId={moduleData.id} isAdmin={isAdmin} />
                                 </div>
                             </div>
                         </ScrollArea>
@@ -721,6 +743,21 @@ export default function ModuleDetailsPage() {
                             <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
                         </TabsContent>
                     )}
+
+                    <TabsContent value="settings" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                        <ScrollArea className="h-full">
+                            <div className="p-8 space-y-8">
+                                <div>
+                                    <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">Stock Locations</h2>
+                                    <StockLocationManager
+                                        moduleId={moduleData.id}
+                                        locations={moduleData?.stockLocations || []}
+                                        stockVisibleToSubDealers={moduleData?.stockVisibleToSubDealers ?? false}
+                                    />
+                                </div>
+                            </div>
+                        </ScrollArea>
+                    </TabsContent>
 
                 </Tabs>
             </main>
