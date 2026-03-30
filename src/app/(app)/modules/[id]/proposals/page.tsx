@@ -36,24 +36,32 @@ export default function ProposalsPage() {
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
     const { data: userProfile } = useDoc<any>(userProfileRef);
 
-    // Org-wide when user has an org, otherwise user-scoped
-    const quotesQuery = useMemoFirebase(() => {
+    // User-scoped baseline (always works)
+    const userQuotesQuery = useMemoFirebase(() => {
         if (!user?.uid) return null;
-        const orgId = userProfile?.organisationId;
-        if (orgId) {
-            return query(
-                collectionGroup(firestore, 'quotes'),
-                where('organisationId', '==', orgId),
-                orderBy('createdAt', 'desc')
-            );
-        }
         return query(
             collection(firestore, `users/${user.uid}/quotes`),
             orderBy('createdAt', 'desc')
         );
-    }, [firestore, user?.uid, userProfile?.organisationId]);
+    }, [firestore, user?.uid]);
+    const { data: userQuotesList, isLoading: userLoading } = useCollection<any>(userQuotesQuery);
 
-    const { data: quotes, isLoading } = useCollection<any>(quotesQuery);
+    // Org-wide overlay — silent so it won't crash if indexes aren't deployed yet
+    const orgQuotesQuery = useMemoFirebase(() => {
+        if (!user?.uid) return null;
+        const orgId = userProfile?.organisationId;
+        if (!orgId) return null;
+        return query(
+            collectionGroup(firestore, 'quotes'),
+            where('organisationId', '==', orgId),
+            orderBy('createdAt', 'desc')
+        );
+    }, [firestore, user?.uid, userProfile?.organisationId]);
+    const { data: orgQuotesList } = useCollection<any>(orgQuotesQuery, { silent: true });
+
+    // Prefer org-wide when available, fall back to user-scoped
+    const quotes = orgQuotesList || userQuotesList;
+    const isLoading = !quotes && userLoading;
 
     const moduleLabel = id.replace(/-/g, ' ');
 
