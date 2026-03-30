@@ -31,6 +31,7 @@ interface Row {
     rangeName: string;
     material: string;
     colorName: string;
+    colorCode?: string;
     imageUrl?: string;
     cells: Record<string, string>;
 }
@@ -112,6 +113,7 @@ function BoatPickerDialog({
                     rangeName: selectedRange?.name || '',
                     material: v.material || '',
                     colorName: v.colorName || '',
+                    colorCode: v.colorCode || '',
                     imageUrl: v.imageUrl || selectedModel?.coverImageUrl || '',
                 }));
             setPendingRows(prev => [...prev, ...toAdd]);
@@ -131,6 +133,7 @@ function BoatPickerDialog({
                 rangeName: selectedRange?.name || '',
                 material: variant.material || '',
                 colorName: variant.colorName || '',
+                colorCode: variant.colorCode || '',
                 imageUrl: variant.imageUrl || selectedModel?.coverImageUrl || '',
             }]);
         }
@@ -307,6 +310,8 @@ function PriceListEditor({
     const [filterRange, setFilterRange] = useState<string | 'all'>('all');
     const [filterModel, setFilterModel] = useState<string | 'all'>('all');
     const [filterMaterial, setFilterMaterial] = useState<string | 'all'>('all');
+    const [filterColor, setFilterColor] = useState<string | 'all'>('all');
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Local editable state
     const [name, setName] = useState(priceList.name);
@@ -406,15 +411,21 @@ function PriceListEditor({
         return [...new Set(filtered.map(r => r.modelName))].sort();
     }, [rows, filterRange]);
     const availableMaterials = useMemo(() => [...new Set(rows.map(r => r.material))].sort(), [rows]);
+    const availableColors = useMemo(() => [...new Set(rows.map(r => r.colorCode || r.colorName).filter(Boolean))].sort(), [rows]);
 
     const filteredRows = useMemo(() => {
+        const q = searchQuery.toLowerCase().trim();
         return rows.filter(r => {
             if (filterRange !== 'all' && r.rangeName !== filterRange) return false;
             if (filterModel !== 'all' && r.modelName !== filterModel) return false;
             if (filterMaterial !== 'all' && r.material !== filterMaterial) return false;
+            if (filterColor !== 'all' && (r.colorCode || r.colorName) !== filterColor) return false;
+            if (q && !r.modelName.toLowerCase().includes(q) && !r.rangeName.toLowerCase().includes(q)
+                && !r.material.toLowerCase().includes(q) && !(r.colorCode || '').toLowerCase().includes(q)
+                && !r.colorName.toLowerCase().includes(q) && !r.variantId.toLowerCase().includes(q)) return false;
             return true;
         });
-    }, [rows, filterRange, filterModel, filterMaterial]);
+    }, [rows, filterRange, filterModel, filterMaterial, filterColor, searchQuery]);
 
     // Group filtered rows by range → model
     const groupedRows = useMemo(() => {
@@ -542,6 +553,13 @@ function PriceListEditor({
                         {/* Filter bar */}
                         <div className="flex items-center gap-2 flex-wrap">
                             <Filter className="h-3.5 w-3.5 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Search..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                className="h-7 w-40 px-2.5 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                            />
                             <select
                                 value={filterRange}
                                 onChange={e => { setFilterRange(e.target.value); setFilterModel('all'); }}
@@ -565,6 +583,14 @@ function PriceListEditor({
                             >
                                 <option value="all">All Materials</option>
                                 {availableMaterials.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                            <select
+                                value={filterColor}
+                                onChange={e => setFilterColor(e.target.value)}
+                                className="h-7 px-2 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-700 uppercase tracking-wider"
+                            >
+                                <option value="all">All Colours</option>
+                                {availableColors.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                             <span className="text-[9px] font-bold text-slate-400 ml-1">
                                 {filteredRows.length} of {rows.length} SKUs
@@ -635,7 +661,7 @@ function PriceListEditor({
                                                             )}
                                                         </td>
                                                         <td className="px-4 py-2 text-xs text-slate-600 font-bold">{row.material}</td>
-                                                        <td className="px-4 py-2 text-xs text-slate-500">{row.colorName}</td>
+                                                        <td className="px-4 py-2 text-xs text-slate-500 font-mono uppercase" title={row.colorName}>{row.colorCode || row.colorName}</td>
                                                         {columns.map(col => {
                                                             const isEditing = editingCell?.rowIdx === originalIdx && editingCell?.colId === col.id;
                                                             return (
