@@ -70,6 +70,7 @@ import { HelmLogicLoading } from "@/components/helmlogic-loading";
 import { HighfieldPricingWorkspace } from '@/components/highfield-pricing-workspace';
 import { PriceListManager } from '@/components/price-list-manager';
 import { PriceListViewer } from '@/components/price-list-viewer';
+import { OrganisationModuleConfig } from '@/components/organisation-module-config';
 
 import {
   DndContext,
@@ -353,6 +354,25 @@ export default function ModuleDetailsPage() {
     // Sub-dealer detection: org has a parent → user belongs to a sub-dealer
     const isSubDealer = !!currentMemberOrg?.parentOrganisationId;
 
+    // Settings tab data: sub-dealers of the current org, all vendors, dealer fit categories
+    const subDealersQuery = useMemoFirebase(
+        () => currentMemberOrg?.id ? query(collection(firestore, 'organisations'), where('parentOrganisationId', '==', currentMemberOrg.id)) : null,
+        [firestore, currentMemberOrg?.id]
+    );
+    const { data: subDealers } = useCollection<any>(subDealersQuery);
+
+    const allVendorsQuery = useMemoFirebase(
+        () => collection(firestore, 'data-warehouse'),
+        [firestore]
+    );
+    const { data: allVendors } = useCollection<any>(allVendorsQuery);
+
+    const dealerFitCatsQuery = useMemoFirebase(
+        () => collection(firestore, 'dealerFitCategories'),
+        [firestore]
+    );
+    const { data: allDealerFitCategories } = useCollection<any>(dealerFitCatsQuery);
+
     // Recent proposals — user-scoped baseline (always works)
     const userQuotesQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -455,6 +475,32 @@ export default function ModuleDetailsPage() {
 
         await updateDoc(docRef, updateData);
         toast({ title: "Item Updated" });
+    };
+
+    // Settings tab handlers
+    const handleUpdateVendors = async (vendorIds: string[]) => {
+        if (!currentMemberOrg?.id || !moduleData) return;
+        await updateDoc(doc(firestore, 'organisations', currentMemberOrg.id), {
+            [`moduleAssociatedVendorAccess.${moduleData.id}`]: vendorIds,
+        });
+    };
+
+    const handleUpdateCategories = async (categoryIds: string[]) => {
+        if (!currentMemberOrg?.id) return;
+        await updateDoc(doc(firestore, 'organisations', currentMemberOrg.id), {
+            dealerFitCategories: categoryIds,
+        });
+    };
+
+    const handleToggleSubDealerAccess = async (sdId: string, hasAccess: boolean) => {
+        if (!moduleData) return;
+        const sdRef = doc(firestore, 'organisations', sdId);
+        const sd = subDealers?.find((s: any) => s.id === sdId);
+        const currentSubs: string[] = sd?.enabledModuleSubscriptions || [];
+        const next = hasAccess
+            ? [...new Set([...currentSubs, moduleData.id])]
+            : currentSubs.filter((id: string) => id !== moduleData.id);
+        await updateDoc(sdRef, { enabledModuleSubscriptions: next });
     };
 
     const loading = slugLoading || idLoading || mainVendorLoading;
@@ -816,6 +862,22 @@ export default function ModuleDetailsPage() {
                                     </div>
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {activeTab === 'settings' && moduleData && currentMemberOrg && (
+                        <div className="m-0 h-full animate-in fade-in duration-500 overflow-y-auto p-8">
+                            <OrganisationModuleConfig
+                                organisation={currentMemberOrg as any}
+                                subDealers={subDealers || []}
+                                module={moduleData as any}
+                                allVendors={allVendors || []}
+                                allDealerFitCategories={allDealerFitCategories || []}
+                                onBack={() => setActiveTab('dashboard')}
+                                onUpdateVendors={handleUpdateVendors}
+                                onUpdateCategories={handleUpdateCategories}
+                                onToggleSubDealerAccess={handleToggleSubDealerAccess}
+                            />
                         </div>
                     )}
 
