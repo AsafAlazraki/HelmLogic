@@ -8,6 +8,8 @@ import { StockList } from '@/components/stock-list';
 import { StockItemForm } from '@/components/stock-item-form';
 import { StockLocationMap } from '@/components/stock-location-map';
 import { StockAssignmentView } from '@/components/stock-assignment-view';
+import { StockExport } from '@/components/stock-export';
+import { StockImport } from '@/components/stock-import';
 import { Box, Plus, MapPin, Users, Package, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -107,15 +109,21 @@ export function StockManagementWorkspace({
                         )}
                     </div>
                 </div>
-                {!readOnly && (
-                    <Button
-                        onClick={() => setFormOpen(true)}
-                        className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Add Stock Item
-                    </Button>
-                )}
+                <div className="flex items-center gap-2">
+                    <StockExport inventory={inventory || []} fileName={`stock-${vendorName || 'export'}`} />
+                    {!readOnly && (
+                        <>
+                            <StockImport moduleId={moduleId} organisationId={organisation?.id || ''} />
+                            <Button
+                                onClick={() => setFormOpen(true)}
+                                className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Add Stock Item
+                            </Button>
+                        </>
+                    )}
+                </div>
             </div>
 
             {/* Stats Bar */}
