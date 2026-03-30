@@ -5,7 +5,7 @@ import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useUser } from '@/firebase/auth/use-user';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { doc, collection, query, where, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, collectionGroup, query, where, updateDoc, serverTimestamp } from 'firebase/firestore';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -115,6 +115,10 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     const [isSaving, setIsSaving] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
+    // User profile for org-wide lookup
+    const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+    const { data: userProfile } = useDoc<any>(userProfileRef);
+
     const userQuotesRef = useMemoFirebase(() => user ? collection(firestore, `users/${user.uid}/quotes`) : null, [firestore, user]);
 
     // Primary: own quotes path (works for all existing quotes where current user is owner)
@@ -123,6 +127,19 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     [firestore, user?.uid, quoteId]);
     const { data: ownQuote, loading: ownQuoteLoading } = useDoc<any>(ownQuoteRef);
 
+    // Org-wide fallback: fires only when own-quote lookup completed with no result
+    const orgQuoteQuery = useMemoFirebase(() => {
+        if (ownQuote || ownQuoteLoading || !quoteId || !user) return null;
+        const orgId = userProfile?.organisationId;
+        if (!orgId) return null;
+        return query(
+            collectionGroup(firestore, 'quotes'),
+            where('organisationId', '==', orgId),
+            where('id', '==', quoteId)
+        );
+    }, [firestore, quoteId, user, ownQuote, ownQuoteLoading, userProfile?.organisationId]);
+    const { data: orgQuoteList, loading: orgQuoteLoading } = useCollection<any>(orgQuoteQuery);
+
     // quoteNumber path (for /proposals/[quoteNumber] — public share link)
     const quoteNumberQuery = useMemoFirebase(() => {
         if (!user || !userQuotesRef || quoteId || !quoteNumber) return null;
@@ -130,8 +147,8 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     }, [userQuotesRef, quoteId, quoteNumber, user?.uid]);
     const { data: quoteList, loading: quoteListLoading } = useCollection<any>(quoteNumberQuery);
 
-    const quote = ownQuote || quoteList?.[0];
-    const isLoadingQuote = !quote && (ownQuoteLoading || quoteListLoading);
+    const quote = ownQuote || orgQuoteList?.[0] || quoteList?.[0];
+    const isLoadingQuote = !quote && (ownQuoteLoading || orgQuoteLoading || quoteListLoading);
 
     const orgRef = useMemoFirebase(() => quote?.organisationId ? doc(firestore, 'organisations', quote.organisationId) : null, [firestore, quote?.organisationId]);
     const { data: organisation } = useDoc<any>(orgRef);

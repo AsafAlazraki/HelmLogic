@@ -14,6 +14,7 @@ import { useFirestore, useMemoFirebase, useStorage } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
 import {
     collection,
+    collectionGroup,
     query,
     where,
     orderBy,
@@ -352,15 +353,24 @@ export default function ModuleDetailsPage() {
     // Sub-dealer detection: org has a parent → user belongs to a sub-dealer
     const isSubDealer = !!currentMemberOrg?.parentOrganisationId;
 
-    // Recent proposals for the dashboard — user-scoped
+    // Recent proposals for the dashboard — org-wide when user has an org, otherwise user-scoped
     const recentQuotesQuery = useMemoFirebase(() => {
         if (!user) return null;
+        const orgId = userProfile?.organisationId;
+        if (orgId) {
+            return query(
+                collectionGroup(firestore, 'quotes'),
+                where('organisationId', '==', orgId),
+                orderBy('createdAt', 'desc'),
+                limit(8)
+            );
+        }
         return query(
             collection(firestore, `users/${user.uid}/quotes`),
             orderBy('createdAt', 'desc'),
             limit(8)
         );
-    }, [firestore, user]);
+    }, [firestore, user, userProfile?.organisationId]);
     const { data: recentQuotes } = useCollection<any>(recentQuotesQuery);
 
     const userPermissions = useMemo(() => {

@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { useUser } from '@/firebase/auth/use-user';
-import { collection, doc, query, orderBy } from 'firebase/firestore';
+import { collection, collectionGroup, doc, query, where, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Loader2, FileText, ChevronRight, Plus, Ship, Calendar, Anchor } from 'lucide-react';
 import Link from 'next/link';
@@ -36,13 +36,22 @@ export default function ProposalsPage() {
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
     const { data: userProfile } = useDoc<any>(userProfileRef);
 
+    // Org-wide when user has an org, otherwise user-scoped
     const quotesQuery = useMemoFirebase(() => {
         if (!user?.uid) return null;
+        const orgId = userProfile?.organisationId;
+        if (orgId) {
+            return query(
+                collectionGroup(firestore, 'quotes'),
+                where('organisationId', '==', orgId),
+                orderBy('createdAt', 'desc')
+            );
+        }
         return query(
             collection(firestore, `users/${user.uid}/quotes`),
             orderBy('createdAt', 'desc')
         );
-    }, [firestore, user?.uid]);
+    }, [firestore, user?.uid, userProfile?.organisationId]);
 
     const { data: quotes, isLoading } = useCollection<any>(quotesQuery);
 

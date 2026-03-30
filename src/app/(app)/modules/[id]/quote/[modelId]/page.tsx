@@ -4,7 +4,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { doc, collection, collectionGroup, query, where } from 'firebase/firestore';
 import { useMemo, Suspense } from 'react';
 import { HighfieldQuoteFlow } from '@/components/highfield-quote-flow';
 import { Button } from '@/components/ui/button';
@@ -118,10 +118,26 @@ function QuoteFlowContent() {
     }, [orgId, userProfile]);
 
     // 7. Duplicate-quote fetch (optional — only when ?duplicate param present)
+    // Try own quotes first, then fall back to org-wide collection group lookup
     const duplicateRef = useMemoFirebase(() =>
         (duplicateQuoteId && user) ? doc(firestore, `users/${user.uid}/quotes`, duplicateQuoteId) : null,
     [firestore, duplicateQuoteId, user?.uid]);
-    const { data: oldQuote, loading: duplicateLoading } = useDoc<any>(duplicateRef);
+    const { data: ownOldQuote, loading: ownDuplicateLoading } = useDoc<any>(duplicateRef);
+
+    const orgDuplicateQuery = useMemoFirebase(() => {
+        if (ownOldQuote || ownDuplicateLoading || !duplicateQuoteId || !user) return null;
+        const userOrgId = userProfile?.organisationId;
+        if (!userOrgId) return null;
+        return query(
+            collectionGroup(firestore, 'quotes'),
+            where('organisationId', '==', userOrgId),
+            where('id', '==', duplicateQuoteId)
+        );
+    }, [firestore, duplicateQuoteId, user, ownOldQuote, ownDuplicateLoading, userProfile?.organisationId]);
+    const { data: orgDuplicateList, loading: orgDuplicateLoading } = useCollection<any>(orgDuplicateQuery);
+
+    const oldQuote = ownOldQuote || orgDuplicateList?.[0] || null;
+    const duplicateLoading = ownDuplicateLoading || orgDuplicateLoading;
 
     const initialState = useMemo(() => {
         if (!duplicateQuoteId || !oldQuote) return undefined;
