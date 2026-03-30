@@ -523,38 +523,43 @@ export default function ModuleDetailsPage() {
             <main className="flex-1 overflow-hidden relative">
                 <Tabs value={activeTab} className="h-full">
                     <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
-                        <ScrollArea className="h-full">
-                            <div className="p-8 min-h-[calc(100vh-224px)] flex flex-col">
-                                <div className="grid grid-cols-12 gap-8 flex-1">
-                                    <div className="col-span-7 flex flex-col gap-8 h-full">
-                                        <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
-                                            <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
-                                                <div className="flex items-center gap-3 shrink-0">
-                                                    <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
-                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock Units</h3>
-                                                </div>
-                                                <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
-                                            </CardHeader>
-                                            <CardContent className="flex-1 min-h-0 p-0">
+                        <div className="h-full p-6 md:p-8">
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 h-full">
+                                {/* Left — Stock & Logistics Overview */}
+                                <div className="lg:col-span-7 flex flex-col gap-6 md:gap-8 min-h-0">
+                                    <Card className="flex-1 flex flex-col border-2 rounded-2xl shadow-sm bg-white overflow-hidden min-h-0">
+                                        <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
+                                            <div className="flex items-center gap-3 shrink-0">
+                                                <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
+                                                <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock Units</h3>
+                                            </div>
+                                            <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
+                                        </CardHeader>
+                                        <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
+                                            <ScrollArea className="h-full">
                                                 <StockList organisation={currentMemberOrg as any} subDealers={subDealersList || []} parentOrg={isSubDealer ? parentOrgData ?? null : null} moduleId={moduleData.id} filterOrgId={isSubDealer ? currentMemberOrg.id : 'local'} isAdmin={isAdmin} locations={moduleData?.stockLocations || []} readOnly={isSubDealer} />
-                                            </CardContent>
-                                        </Card>
+                                            </ScrollArea>
+                                        </CardContent>
+                                    </Card>
 
-                                        <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
-                                            <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
-                                                <div className="flex items-center gap-3 shrink-0">
-                                                    <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
-                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Corporate On Order</h3>
-                                                </div>
-                                                <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
-                                            </CardHeader>
-                                            <CardContent className="flex-1 min-h-0 p-0">
+                                    <Card className="shrink-0 flex flex-col border-2 rounded-2xl shadow-sm bg-white overflow-hidden max-h-[280px]">
+                                        <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
+                                            <div className="flex items-center gap-3 shrink-0">
+                                                <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
+                                                <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
+                                            </div>
+                                            <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
+                                        </CardHeader>
+                                        <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
+                                            <ScrollArea className="h-full">
                                                 <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={isSubDealer ? parentOrgData ?? null : null} moduleId={moduleData.id} isAdmin={isAdmin} />
-                                            </CardContent>
-                                        </Card>
-                                    </div>
+                                            </ScrollArea>
+                                        </CardContent>
+                                    </Card>
+                                </div>
 
-                                    <Card className="col-span-5 flex flex-col border rounded-2xl shadow-sm bg-white overflow-hidden">
+                                {/* Right — Recent Proposals */}
+                                <Card className="lg:col-span-5 flex flex-col border-2 rounded-2xl shadow-sm bg-white overflow-hidden min-h-0 max-h-[calc(100vh-240px)]">
                                         <CardHeader className="px-5 py-4 border-b flex flex-row items-center justify-between shrink-0">
                                             <div className="flex items-center gap-2.5">
                                                 <h2 className="text-sm font-semibold text-slate-900">Recent Proposals</h2>
@@ -650,9 +655,8 @@ export default function ModuleDetailsPage() {
                                             )}
                                         </CardContent>
                                     </Card>
-                                </div>
                             </div>
-                        </ScrollArea>
+                        </div>
                     </TabsContent>
 
                     <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
