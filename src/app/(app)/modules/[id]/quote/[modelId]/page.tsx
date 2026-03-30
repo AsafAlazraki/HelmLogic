@@ -134,7 +134,7 @@ function QuoteFlowContent() {
             where('id', '==', duplicateQuoteId)
         );
     }, [firestore, duplicateQuoteId, user, ownOldQuote, ownDuplicateLoading, userProfile?.organisationId]);
-    const { data: orgDuplicateList, loading: orgDuplicateLoading } = useCollection<any>(orgDuplicateQuery);
+    const { data: orgDuplicateList, loading: orgDuplicateLoading } = useCollection<any>(orgDuplicateQuery, { silent: true });
 
     const oldQuote = ownOldQuote || orgDuplicateList?.[0] || null;
     const duplicateLoading = ownDuplicateLoading || orgDuplicateLoading;

@@ -138,7 +138,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
             where('id', '==', quoteId)
         );
     }, [firestore, quoteId, user, ownQuote, ownQuoteLoading, userProfile?.organisationId]);
-    const { data: orgQuoteList, loading: orgQuoteLoading } = useCollection<any>(orgQuoteQuery);
+    const { data: orgQuoteList, loading: orgQuoteLoading } = useCollection<any>(orgQuoteQuery, { silent: true });
 
     // quoteNumber path (for /proposals/[quoteNumber] — public share link)
     const quoteNumberQuery = useMemoFirebase(() => {

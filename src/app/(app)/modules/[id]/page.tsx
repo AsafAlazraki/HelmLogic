@@ -353,25 +353,33 @@ export default function ModuleDetailsPage() {
     // Sub-dealer detection: org has a parent → user belongs to a sub-dealer
     const isSubDealer = !!currentMemberOrg?.parentOrganisationId;
 
-    // Recent proposals for the dashboard — org-wide when user has an org, otherwise user-scoped
-    const recentQuotesQuery = useMemoFirebase(() => {
+    // Recent proposals — user-scoped baseline (always works)
+    const userQuotesQuery = useMemoFirebase(() => {
         if (!user) return null;
-        const orgId = userProfile?.organisationId;
-        if (orgId) {
-            return query(
-                collectionGroup(firestore, 'quotes'),
-                where('organisationId', '==', orgId),
-                orderBy('createdAt', 'desc'),
-                limit(8)
-            );
-        }
         return query(
             collection(firestore, `users/${user.uid}/quotes`),
             orderBy('createdAt', 'desc'),
             limit(8)
         );
+    }, [firestore, user]);
+    const { data: userQuotes } = useCollection<any>(userQuotesQuery);
+
+    // Org-wide overlay — silent so it won't crash if indexes aren't deployed yet
+    const orgQuotesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        const orgId = userProfile?.organisationId;
+        if (!orgId) return null;
+        return query(
+            collectionGroup(firestore, 'quotes'),
+            where('organisationId', '==', orgId),
+            orderBy('createdAt', 'desc'),
+            limit(8)
+        );
     }, [firestore, user, userProfile?.organisationId]);
-    const { data: recentQuotes } = useCollection<any>(recentQuotesQuery);
+    const { data: orgQuotes } = useCollection<any>(orgQuotesQuery, { silent: true });
+
+    // Prefer org-wide results when available, fall back to user-scoped
+    const recentQuotes = orgQuotes || userQuotes;
 
     const userPermissions = useMemo(() => {
         const roleId = userProfile?.organisationRole;
