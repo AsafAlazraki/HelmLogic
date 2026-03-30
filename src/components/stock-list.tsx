@@ -5,7 +5,9 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowRightLeft, Trash2, Box, CheckCircle2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Loader2, ArrowRightLeft, Trash2, Box, CheckCircle2, ChevronUp, ChevronDown, Plus, Pencil } from 'lucide-react';
+import { StockItemDetail } from '@/components/stock-item-detail';
+import { StockItemForm } from '@/components/stock-item-form';
 import {
     Select,
     SelectContent,
@@ -45,6 +47,8 @@ interface InventoryItem {
     material: string;
     notes: string;
     dateIntoStock: any; // Firestore Timestamp
+    photoUrls: string[];
+    pdfAttachments: { name: string; url: string; uploadedAt: any }[];
 }
 
 interface Organisation {
@@ -103,7 +107,9 @@ export function StockList({
     parentOrg,
     moduleId,
     filterOrgId,
-    isAdmin = false
+    isAdmin = false,
+    locations = [],
+    readOnly = false,
 }: {
     organisation: Organisation | null;
     subDealers: Organisation[];
@@ -111,10 +117,15 @@ export function StockList({
     moduleId: string;
     filterOrgId: string | 'all' | 'local';
     isAdmin?: boolean;
+    locations?: string[];
+    readOnly?: boolean;
 }) {
     const firestore = useFirestore();
     const [sortKey, setSortKey] = useState<SortKey>('dateIntoStock');
     const [sortDir, setSortDir] = useState<SortDir>('asc');
+    const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
+    const [formOpen, setFormOpen] = useState(false);
+    const [editItem, setEditItem] = useState<InventoryItem | null>(null);
 
     const targetOrgIds = useMemo(() => {
         if (!organisation?.id) return [];
@@ -224,6 +235,22 @@ export function StockList({
 
     return (
         <div className="flex flex-col h-full overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-black uppercase tracking-widest">Stock Control</h3>
+                    <Badge variant="secondary" className="text-[10px] font-black">{inventory?.length ?? 0}</Badge>
+                </div>
+                {!readOnly && (
+                    <Button
+                        className="rounded-xl text-xs font-black uppercase tracking-widest"
+                        size="sm"
+                        onClick={() => { setFormOpen(true); setEditItem(null); }}
+                    >
+                        <Plus className="h-3.5 w-3.5 mr-1.5" />
+                        Add Stock Item
+                    </Button>
+                )}
+            </div>
             {(!inventory || inventory.length === 0) ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-4">
                     <Box className="h-8 w-8 text-muted-foreground/20" />
@@ -260,7 +287,7 @@ export function StockList({
                                 {sortedInventory.map(item => {
                                     const days = daysInStock(item.dateIntoStock);
                                     return (
-                                        <tr key={item.id} className="group border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                                        <tr key={item.id} className="group border-b border-slate-100 hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => setDetailItem(item)}>
                                             {/* Date into Stock / ETA */}
                                             <td className="px-3 py-2 whitespace-nowrap">{formatDate(item.dateIntoStock)}</td>
 
@@ -322,11 +349,18 @@ export function StockList({
                                             {/* Actions */}
                                             <td className="px-3 py-2 text-right whitespace-nowrap">
                                                 <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md" onClick={() => setSelectedItem(item)} title="Reassign">
-                                                        <ArrowRightLeft className="h-3 w-3" />
-                                                    </Button>
-                                                    {isAdmin && (
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-destructive hover:bg-destructive/10" onClick={() => handleDeleteItem(item.id)} title="Delete">
+                                                    {!readOnly && (
+                                                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={(e) => { e.stopPropagation(); setEditItem(item); setFormOpen(true); }} title="Edit">
+                                                            <Pencil className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    )}
+                                                    {!readOnly && (
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md" onClick={(e) => { e.stopPropagation(); setSelectedItem(item); }} title="Reassign">
+                                                            <ArrowRightLeft className="h-3 w-3" />
+                                                        </Button>
+                                                    )}
+                                                    {!readOnly && isAdmin && (
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }} title="Delete">
                                                             <Trash2 className="h-3 w-3" />
                                                         </Button>
                                                     )}
@@ -373,6 +407,21 @@ export function StockList({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <StockItemDetail
+                item={detailItem}
+                onClose={() => setDetailItem(null)}
+                readOnly={readOnly}
+            />
+            <StockItemForm
+                open={formOpen}
+                onOpenChange={setFormOpen}
+                item={editItem}
+                moduleId={moduleId}
+                organisationId={organisation?.id || ''}
+                locations={locations}
+                onSaved={() => { setFormOpen(false); setEditItem(null); }}
+            />
         </div>
     );
 }

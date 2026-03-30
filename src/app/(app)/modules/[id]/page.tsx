@@ -536,7 +536,7 @@ export default function ModuleDetailsPage() {
                                                 <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
                                             </CardHeader>
                                             <CardContent className="flex-1 min-h-0 p-0">
-                                                <StockList organisation={currentMemberOrg as any} subDealers={subDealersList || []} parentOrg={isSubDealer ? parentOrgData ?? null : null} moduleId={moduleData.id} filterOrgId={isSubDealer ? 'all' : 'local'} isAdmin={isAdmin} />
+                                                <StockList organisation={currentMemberOrg as any} subDealers={subDealersList || []} parentOrg={isSubDealer ? parentOrgData ?? null : null} moduleId={moduleData.id} filterOrgId={isSubDealer ? currentMemberOrg.id : 'local'} isAdmin={isAdmin} locations={moduleData?.stockLocations || []} readOnly={isSubDealer} />
                                             </CardContent>
                                         </Card>
 
@@ -728,7 +728,7 @@ export default function ModuleDetailsPage() {
                             <div className="p-8 space-y-8">
                                 <div>
                                     <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">Stock Units</h2>
-                                    <StockList organisation={currentMemberOrg as any} subDealers={subDealersList || []} parentOrg={isSubDealer ? parentOrgData ?? null : null} moduleId={moduleData.id} filterOrgId={isSubDealer ? 'all' : 'local'} isAdmin={isAdmin} />
+                                    <StockList organisation={currentMemberOrg as any} subDealers={subDealersList || []} parentOrg={isSubDealer ? parentOrgData ?? null : null} moduleId={moduleData.id} filterOrgId={isSubDealer ? currentMemberOrg.id : 'local'} isAdmin={isAdmin} locations={moduleData?.stockLocations || []} readOnly={isSubDealer} />
                                 </div>
                                 <div>
                                     <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">On Order</h2>
