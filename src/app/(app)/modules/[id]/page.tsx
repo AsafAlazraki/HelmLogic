@@ -791,7 +791,7 @@ export default function ModuleDetailsPage() {
                     <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <div className="h-full p-6 md:p-8 overflow-y-auto">
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
-                                {/* Left — Stock & Logistics Summary */}
+                                {/* Left — Summary + Quick Access */}
                                 <div className="lg:col-span-7 flex flex-col gap-6 min-h-0">
                                     {/* Summary Stats Row */}
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -814,63 +814,43 @@ export default function ModuleDetailsPage() {
                                     </div>
 
                                     {/* Quick Actions */}
-                                    {!isSubDealer && (
-                                        <div className="flex flex-wrap gap-3">
-                                            <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setActiveTab('stock')}>
-                                                <Box className="h-4 w-4" />
-                                                Manage Stock
-                                            </Button>
-                                            <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setIsQuoteInitializationOpen(true)}>
-                                                <PlusCircle className="h-4 w-4" />
-                                                New Quote
-                                            </Button>
-                                            <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setActiveTab('settings')}>
-                                                <Settings className="h-4 w-4" />
-                                                Settings
-                                            </Button>
-                                        </div>
-                                    )}
+                                    <div className="flex flex-wrap gap-3">
+                                        <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setActiveTab('stock')}>
+                                            <Box className="h-4 w-4" />
+                                            Manage Stock
+                                        </Button>
+                                        <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setIsQuoteInitializationOpen(true)}>
+                                            <PlusCircle className="h-4 w-4" />
+                                            New Quote
+                                        </Button>
+                                        <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setActiveTab('bmt')}>
+                                            <Layout className="h-4 w-4" />
+                                            Catalog
+                                        </Button>
+                                        <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setActiveTab('settings')}>
+                                            <Settings className="h-4 w-4" />
+                                            Settings
+                                        </Button>
+                                    </div>
 
-                                    {/* Recent Stock — compact preview */}
-                                    <Card className="flex-1 flex flex-col border-2 rounded-2xl shadow-sm bg-white overflow-hidden min-h-[200px] max-h-[400px]">
-                                        <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
-                                            <div className="flex items-center gap-3 shrink-0">
-                                                <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
-                                                <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock Units</h3>
-                                                {dashboardStockCounts.total > 0 && (
-                                                    <Badge variant="secondary" className="text-[9px] font-black h-5 px-2">{dashboardStockCounts.total}</Badge>
-                                                )}
+                                    {/* Stock quick-access card — links to Stock Management tab */}
+                                    <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden cursor-pointer hover:border-primary/40 hover:shadow-md transition-all" onClick={() => setActiveTab('stock')}>
+                                        <CardHeader className="py-4 px-6 flex flex-row items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary border-2 border-primary/20">
+                                                    <Box className="h-5 w-5" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900">Stock Management</h3>
+                                                    <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mt-0.5">
+                                                        {dashboardStockCounts.total} items — {dashboardStockCounts.inStock} in stock, {dashboardStockCounts.onOrder} on order
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <Button variant="ghost" size="sm" onClick={() => setActiveTab('stock')} className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white rounded-xl transition-colors h-7 px-3 gap-1">
-                                                View All <ArrowRight className="h-3 w-3" />
-                                            </Button>
-                                        </CardHeader>
-                                        <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
-                                            <ScrollArea className="h-full">
-                                                <StockList organisation={currentMemberOrg as any} subDealers={subDealersList || []} parentOrg={isSubDealer ? parentOrgData ?? null : null} moduleId={moduleData.id} filterOrgId={isSubDealer ? currentMemberOrg.id : 'local'} isAdmin={isAdmin} locations={moduleData?.stockLocations || []} readOnly={isSubDealer} />
-                                            </ScrollArea>
-                                        </CardContent>
-                                    </Card>
-
-                                    {/* On Order — compact */}
-                                    <Card className="shrink-0 flex flex-col border-2 rounded-2xl shadow-sm bg-white overflow-hidden max-h-[240px]">
-                                        <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
-                                            <div className="flex items-center gap-3 shrink-0">
-                                                <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
-                                                <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
-                                                {dashboardStockCounts.onOrder > 0 && (
-                                                    <Badge variant="secondary" className="text-[9px] font-black h-5 px-2">{dashboardStockCounts.onOrder}</Badge>
-                                                )}
+                                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                <ArrowRight className="h-4 w-4" />
                                             </div>
-                                            <Button variant="ghost" size="sm" onClick={() => setActiveTab('stock')} className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white rounded-xl transition-colors h-7 px-3 gap-1">
-                                                View All <ArrowRight className="h-3 w-3" />
-                                            </Button>
                                         </CardHeader>
-                                        <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
-                                            <ScrollArea className="h-full">
-                                                <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={isSubDealer ? parentOrgData ?? null : null} moduleId={moduleData.id} isAdmin={isAdmin} />
-                                            </ScrollArea>
-                                        </CardContent>
                                     </Card>
                                 </div>
 
@@ -1044,25 +1024,20 @@ export default function ModuleDetailsPage() {
                     </TabsContent>
 
                     <TabsContent value="stock" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
-                        <ScrollArea className="h-full">
-                            <div className="p-8 space-y-8">
-                                <div>
-                                    <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">Stock Units</h2>
-                                    <StockList organisation={currentMemberOrg as any} subDealers={subDealersList || []} parentOrg={isSubDealer ? parentOrgData ?? null : null} moduleId={moduleData.id} filterOrgId={isSubDealer ? currentMemberOrg.id : 'local'} isAdmin={isAdmin} locations={moduleData?.stockLocations || []} readOnly={isSubDealer} />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">On Order</h2>
-                                    <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={isSubDealer ? parentOrgData ?? null : null} moduleId={moduleData.id} isAdmin={isAdmin} />
-                                </div>
-                            </div>
-                        </ScrollArea>
+                        <div className="h-full p-8">
+                            <StockList organisation={currentMemberOrg as any} subDealers={subDealersList || []} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} locations={moduleData?.stockLocations || []} readOnly={false} />
+                        </div>
                     </TabsContent>
 
-                    {(isAdmin || !!userPermissions.can_access_pricing_manager) && mainVendor && currentMemberOrg?.id && (
-                        <TabsContent value="pricing" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
+                    <TabsContent value="pricing" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
+                        {(isAdmin || !!userPermissions.can_access_pricing_manager) && mainVendor && currentMemberOrg?.id ? (
                             <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
-                        </TabsContent>
-                    )}
+                        ) : (
+                            <div className="flex-1 flex items-center justify-center">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Access restricted</p>
+                            </div>
+                        )}
+                    </TabsContent>
 
                     <TabsContent value="settings" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <ScrollArea className="h-full">
