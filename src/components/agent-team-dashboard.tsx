@@ -1,23 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect, FormEvent } from 'react';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  orderBy,
-  query,
-  limit,
-  Timestamp,
-} from 'firebase/firestore';
-import { scrumMasterChat } from '@/ai/flows/scrum-master-flow';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,17 +16,7 @@ interface Agent {
   name: string;
   role: AgentRole;
   status: AgentStatus;
-  currentTask: string | null;
-  lastUpdate: Timestamp | null;
   avatar: string;
-  completedTasks: number;
-}
-
-interface ChatMessage {
-  id: string;
-  sender: 'user' | 'scrum-master';
-  text: string;
-  timestamp: Timestamp | null;
 }
 
 interface SprintTask {
@@ -56,7 +30,7 @@ interface SprintTask {
 // Defaults & demo data
 // ---------------------------------------------------------------------------
 
-const DEFAULT_AGENTS: Omit<Agent, 'lastUpdate' | 'completedTasks' | 'currentTask'>[] = [
+const AGENTS: Agent[] = [
   { id: 'scrum-master', name: 'Scrum Master', role: 'scrum-master', avatar: '📋', status: 'idle' },
   { id: 'developer-1', name: 'Developer 1', role: 'developer', avatar: '👨‍💻', status: 'idle' },
   { id: 'developer-2', name: 'Developer 2', role: 'developer', avatar: '👩‍💻', status: 'idle' },
@@ -104,12 +78,6 @@ const TASK_STATUS_BADGE: Record<TaskStatus, string> = {
   done: 'bg-green-500/15 text-green-600 border-green-500/30',
 };
 
-function formatTimestamp(ts: Timestamp | null): string {
-  if (!ts) return '';
-  const d = ts.toDate();
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
@@ -131,14 +99,6 @@ function AgentCard({ agent }: { agent: Agent }) {
           {STATUS_LABEL[agent.status]}
         </span>
       </div>
-      {agent.currentTask && (
-        <p className="text-[9px] text-muted-foreground text-center truncate w-full">
-          {agent.currentTask}
-        </p>
-      )}
-      <p className="text-[9px] uppercase tracking-widest font-black text-slate-400">
-        {agent.completedTasks ?? 0} done
-      </p>
     </Card>
   );
 }
@@ -171,127 +131,16 @@ function TaskCard({ task }: { task: SprintTask }) {
 export { AgentTeamDashboard as default };
 
 export function AgentTeamDashboard() {
-  const firestore = useFirestore();
-  const [messageText, setMessageText] = useState('');
-  const [sending, setSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrumMaster = AGENTS.find((a) => a.role === 'scrum-master')!;
+  const developers = AGENTS.filter((a) => a.role === 'developer');
+  const testLead = AGENTS.find((a) => a.role === 'test-lead')!;
 
-  // --- Firestore refs (memoised) ---
-
-  const agentsRef = useMemoFirebase(
-    () => collection(firestore, 'agent-team'),
-    [firestore],
-  );
-
-  const messagesRef = useMemoFirebase(
-    () => query(
-      collection(firestore, 'agent-team/scrum-master/messages'),
-      orderBy('timestamp', 'asc'),
-      limit(100),
-    ),
-    [firestore],
-  );
-
-  const messagesColRef = useMemoFirebase(
-    () => collection(firestore, 'agent-team/scrum-master/messages'),
-    [firestore],
-  );
-
-  // --- Real-time listeners ---
-
-  const { data: agentsData, loading: agentsLoading } = useCollection<Agent>(agentsRef);
-  const { data: messagesData, loading: messagesLoading } = useCollection<ChatMessage>(messagesRef);
-
-  // Merge live data with defaults so we always show the team
-  const agents: Agent[] = DEFAULT_AGENTS.map((def) => {
-    const live = agentsData?.find((a) => a.id === def.id);
-    return live ?? {
-      ...def,
-      currentTask: null,
-      lastUpdate: null,
-      completedTasks: 0,
-    };
-  });
-
-  const scrumMaster = agents.find((a) => a.role === 'scrum-master')!;
-  const developers = agents.filter((a) => a.role === 'developer');
-  const testLead = agents.find((a) => a.role === 'test-lead')!;
-
-  // Sprint columns
   const todoTasks = DEMO_TASKS.filter((t) => t.status === 'todo');
   const inProgressTasks = DEMO_TASKS.filter((t) => t.status === 'in-progress');
   const doneTasks = DEMO_TASKS.filter((t) => t.status === 'done');
 
-  // Auto-scroll chat
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messagesData]);
-
-  // --- Handlers ---
-
-  async function handleSendMessage(e: FormEvent) {
-    e.preventDefault();
-    const text = messageText.trim();
-    if (!text || sending) return;
-    setSending(true);
-    setMessageText('');
-    try {
-      // 1. Write user message to Firestore
-      await addDoc(messagesColRef, {
-        sender: 'user',
-        text,
-        timestamp: serverTimestamp(),
-      });
-
-      // 2. Build conversation history for the AI
-      const history = (messagesData || []).map((msg) => ({
-        role: msg.sender === 'user' ? 'user' as const : 'model' as const,
-        content: [{ text: msg.text }],
-      }));
-
-      // 3. Call the Scrum Master AI flow
-      const result = await scrumMasterChat({
-        message: text,
-        history,
-      });
-
-      // 4. Write AI response back to Firestore (shows up in real-time)
-      await addDoc(messagesColRef, {
-        sender: 'scrum-master',
-        text: result.text,
-        timestamp: serverTimestamp(),
-      });
-    } catch (err) {
-      console.error('Failed to send message:', err);
-      // Write error message so user sees feedback
-      try {
-        await addDoc(messagesColRef, {
-          sender: 'scrum-master',
-          text: "Sorry, I'm having trouble responding right now. Please try again.",
-          timestamp: serverTimestamp(),
-        });
-      } catch {
-        // Silently fail on error message write
-      }
-    } finally {
-      setSending(false);
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
-
   return (
-    <div className="flex flex-col gap-8 p-6 max-w-6xl mx-auto">
-      {/* Header */}
-      <div>
-        <h1 className="text-lg font-bold tracking-tight">Agent Team Dashboard</h1>
-        <p className="text-[10px] uppercase tracking-widest font-black text-slate-400 mt-1">
-          Live agent status and sprint overview
-        </p>
-      </div>
-
+    <div className="flex flex-col gap-8 max-w-6xl mx-auto">
       {/* ================================================================= */}
       {/* SECTION 1 — Team Overview / Hierarchy */}
       {/* ================================================================= */}
@@ -299,63 +148,54 @@ export function AgentTeamDashboard() {
         <CardHeader className="pb-2">
           <CardTitle className="text-xs font-bold">Team Overview</CardTitle>
           <CardDescription className="text-[9px] uppercase tracking-widest font-black text-slate-400">
-            Agent hierarchy and live status
+            Agent hierarchy and roles
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {agentsLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <span className="text-[10px] uppercase tracking-widest font-black text-slate-400 animate-pulse">
-                Loading agents...
-              </span>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-0">
-              {/* User / Product Owner */}
-              <Card className="rounded-2xl border-2 w-40 flex flex-col items-center p-3 gap-1.5 bg-slate-50 dark:bg-slate-900/40">
-                <span className="text-3xl leading-none">👤</span>
-                <p className="text-xs font-semibold">Product Owner</p>
-                <Badge
-                  variant="outline"
-                  className="text-[9px] uppercase tracking-widest font-black px-1.5 py-0 border bg-purple-500/15 text-purple-600 border-purple-500/30"
-                >
-                  you
-                </Badge>
-              </Card>
+          <div className="flex flex-col items-center gap-0">
+            {/* User / Product Owner */}
+            <Card className="rounded-2xl border-2 w-40 flex flex-col items-center p-3 gap-1.5 bg-slate-50 dark:bg-slate-900/40">
+              <span className="text-3xl leading-none">👤</span>
+              <p className="text-xs font-semibold">Product Owner</p>
+              <Badge
+                variant="outline"
+                className="text-[9px] uppercase tracking-widest font-black px-1.5 py-0 border bg-purple-500/15 text-purple-600 border-purple-500/30"
+              >
+                you
+              </Badge>
+            </Card>
 
-              {/* Connector: PO -> SM */}
-              <div className="w-0.5 h-6 bg-slate-300 dark:bg-slate-600" />
+            {/* Connector: PO -> SM */}
+            <div className="w-0.5 h-6 bg-slate-300 dark:bg-slate-600" />
 
-              {/* Scrum Master */}
-              <AgentCard agent={scrumMaster} />
+            {/* Scrum Master */}
+            <AgentCard agent={scrumMaster} />
 
-              {/* Connector: SM -> Devs (branch) */}
-              <div className="w-0.5 h-6 bg-slate-300 dark:bg-slate-600" />
+            {/* Connector: SM -> Devs (branch) */}
+            <div className="w-0.5 h-6 bg-slate-300 dark:bg-slate-600" />
 
-              {/* Horizontal line spanning devs */}
-              <div className="relative flex items-start justify-center">
-                {/* Horizontal bar */}
-                <div
-                  className="absolute top-0 h-0.5 bg-slate-300 dark:bg-slate-600"
-                  style={{ left: '25%', right: '25%', width: '50%' }}
-                />
-                <div className="flex gap-4">
-                  {developers.map((dev) => (
-                    <div key={dev.id} className="flex flex-col items-center">
-                      <div className="w-0.5 h-6 bg-slate-300 dark:bg-slate-600" />
-                      <AgentCard agent={dev} />
-                    </div>
-                  ))}
-                </div>
+            {/* Developers row */}
+            <div className="relative flex items-start justify-center">
+              <div
+                className="absolute top-0 h-0.5 bg-slate-300 dark:bg-slate-600"
+                style={{ left: '25%', right: '25%', width: '50%' }}
+              />
+              <div className="flex gap-4">
+                {developers.map((dev) => (
+                  <div key={dev.id} className="flex flex-col items-center">
+                    <div className="w-0.5 h-6 bg-slate-300 dark:bg-slate-600" />
+                    <AgentCard agent={dev} />
+                  </div>
+                ))}
               </div>
-
-              {/* Connector: middle dev -> Test Lead */}
-              <div className="w-0.5 h-6 bg-slate-300 dark:bg-slate-600" />
-
-              {/* Test Lead */}
-              <AgentCard agent={testLead} />
             </div>
-          )}
+
+            {/* Connector: middle dev -> Test Lead */}
+            <div className="w-0.5 h-6 bg-slate-300 dark:bg-slate-600" />
+
+            {/* Test Lead */}
+            <AgentCard agent={testLead} />
+          </div>
         </CardContent>
       </Card>
 
@@ -425,105 +265,6 @@ export function AgentTeamDashboard() {
               )}
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* ================================================================= */}
-      {/* SECTION 3 — Chat with Scrum Master */}
-      {/* ================================================================= */}
-      <Card className="rounded-2xl border-2">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xs font-bold">Chat with Scrum Master</CardTitle>
-          <CardDescription className="text-[9px] uppercase tracking-widest font-black text-slate-400">
-            Direct line to your AI scrum master
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
-          {/* Messages area */}
-          <ScrollArea className="h-72 rounded-2xl border-2 bg-slate-50/50 dark:bg-slate-900/30">
-            <div className="p-4 flex flex-col gap-3">
-              {messagesLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <span className="text-[10px] uppercase tracking-widest font-black text-slate-400 animate-pulse">
-                    Loading messages...
-                  </span>
-                </div>
-              ) : !messagesData || messagesData.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-2">
-                  <span className="text-2xl">📋</span>
-                  <span className="text-[10px] uppercase tracking-widest font-black text-slate-400">
-                    No messages yet
-                  </span>
-                  <span className="text-[9px] text-slate-400">
-                    Send a message to start the conversation
-                  </span>
-                </div>
-              ) : (
-                messagesData.map((msg) => {
-                  const isUser = msg.sender === 'user';
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`flex gap-2 max-w-[80%] ${isUser ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
-                    >
-                      {/* Avatar */}
-                      <div className="w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 text-sm bg-card">
-                        {isUser ? '👤' : '📋'}
-                      </div>
-                      {/* Bubble */}
-                      <div
-                        className={`rounded-2xl border-2 px-3 py-2 ${
-                          isUser
-                            ? 'bg-blue-500/10 border-blue-500/20'
-                            : 'bg-card border-border'
-                        }`}
-                      >
-                        <p className="text-xs leading-relaxed">{msg.text}</p>
-                        {msg.timestamp && (
-                          <p className="text-[9px] text-slate-400 mt-1">
-                            {formatTimestamp(msg.timestamp)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-              {sending && (
-                <div className="flex gap-2 mr-auto max-w-[80%]">
-                  <div className="w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 text-sm bg-card animate-pulse">
-                    📋
-                  </div>
-                  <div className="rounded-2xl border-2 px-3 py-2 bg-card border-border">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          </ScrollArea>
-
-          {/* Input area */}
-          <form onSubmit={handleSendMessage} className="flex gap-2">
-            <Input
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              placeholder="Message the Scrum Master..."
-              className="text-xs rounded-xl border-2"
-              disabled={sending}
-            />
-            <Button
-              type="submit"
-              className="rounded-xl text-xs px-4 shrink-0"
-              disabled={sending || !messageText.trim()}
-            >
-              {sending ? 'Sending...' : 'Send'}
-            </Button>
-          </form>
         </CardContent>
       </Card>
     </div>
