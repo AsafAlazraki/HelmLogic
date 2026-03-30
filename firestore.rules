@@ -53,9 +53,16 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin() ||
+        // Same-org members can read each other's profiles
         (isSignedIn() &&
          resource.data.organisationId != null &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == resource.data.organisationId);
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == resource.data.organisationId) ||
+        // Parent org members can read sub-dealer user profiles
+        (isSignedIn() &&
+         resource.data.organisationId != null &&
+         exists(/databases/$(database)/documents/organisations/$(resource.data.organisationId)) &&
+         get(/databases/$(database)/documents/organisations/$(resource.data.organisationId)).data.parentOrganisationId ==
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId);
       // Allow any signed-in user to create a new user profile (needed for org-level enrollment flow).
       allow create: if isSignedIn();
       // Allow update by the owner, a HelmLogic Admin, or any member of the same organisation
@@ -63,7 +70,13 @@ service cloud.firestore {
       allow update: if isOwner(userId) || isAdmin() ||
         (isSignedIn() &&
          resource.data.organisationId != null &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == resource.data.organisationId);
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == resource.data.organisationId) ||
+        // Parent org members can update sub-dealer user profiles
+        (isSignedIn() &&
+         resource.data.organisationId != null &&
+         exists(/databases/$(database)/documents/organisations/$(resource.data.organisationId)) &&
+         get(/databases/$(database)/documents/organisations/$(resource.data.organisationId)).data.parentOrganisationId ==
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId);
       allow delete: if isOwner(userId) || isAdmin();
 
       match /notifications/{notifId} {
