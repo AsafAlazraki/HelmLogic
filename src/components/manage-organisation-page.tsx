@@ -126,6 +126,8 @@ const permissionsConfig = [
     { id: 'can_view_subdealers', label: 'View Sub-Dealers' },
     { id: 'can_access_price_book', label: 'Access Price Book' },
     { id: 'can_access_settings', label: 'Access Settings' },
+    { id: 'can_manage_stock', label: 'Manage Stock' },
+    { id: 'can_view_stock', label: 'View Stock' },
 ];
 
 function ColorFormField({ name, label, description }: { name: "primaryColor" | "accentColor" | "secondaryColor", label: string, description: string }) {
