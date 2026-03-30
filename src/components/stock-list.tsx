@@ -130,7 +130,11 @@ export function StockList({
     const targetOrgIds = useMemo(() => {
         if (!organisation?.id) return [];
         if (filterOrgId === 'local') return [organisation.id];
-        if (filterOrgId === 'all') return [organisation.id, ...subDealers.map(sd => sd.id)];
+        if (filterOrgId === 'all') {
+            // Firestore 'in' queries support max 30 elements
+            const ids = [organisation.id, ...subDealers.map(sd => sd.id)];
+            return ids.slice(0, 30);
+        }
         return [filterOrgId];
     }, [filterOrgId, organisation, subDealers]);
 
