@@ -657,6 +657,7 @@ export default function ModuleDetailsPage() {
                                                             isAdmin={false}
                                                             locations={moduleData?.stockLocations || []}
                                                             readOnly={true}
+                                                            visibleColumns={moduleData?.subDealerVisibleColumns}
                                                         />
                                                     </ScrollArea>
                                                 </CardContent>
@@ -739,6 +740,7 @@ export default function ModuleDetailsPage() {
                                             isAdmin={false}
                                             locations={moduleData?.stockLocations || []}
                                             readOnly={true}
+                                            visibleColumns={moduleData?.subDealerVisibleColumns}
                                         />
                                     </div>
                                     <div>
@@ -1134,6 +1136,7 @@ export default function ModuleDetailsPage() {
                                     moduleId={moduleData.id}
                                     locations={moduleData?.stockLocations || []}
                                     stockVisibleToSubDealers={moduleData?.stockVisibleToSubDealers ?? false}
+                                    subDealerVisibleColumns={moduleData?.subDealerVisibleColumns || []}
                                 />
                             </div>
                         )}

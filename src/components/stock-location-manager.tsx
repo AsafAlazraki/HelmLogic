@@ -11,22 +11,48 @@ import { X, Plus, MapPin, Lock, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
+const ALL_STOCK_COLUMNS = [
+    { id: 'dateIntoStock', label: 'Date into Stock / ETA' },
+    { id: 'daysInStock', label: 'Days in Stock' },
+    { id: 'status', label: 'Status' },
+    { id: 'location', label: 'Location' },
+    { id: 'soldBy', label: 'Sold By' },
+    { id: 'stockNumber', label: 'Stock Number' },
+    { id: 'label', label: 'Label' },
+    { id: 'model', label: 'Model' },
+    { id: 'colour', label: 'Colour' },
+    { id: 'serialNumber', label: 'Serial Number' },
+    { id: 'material', label: 'Material' },
+    { id: 'notes', label: 'Notes' },
+];
+
 interface StockLocationManagerProps {
     moduleId: string;
     locations: string[];
     stockVisibleToSubDealers?: boolean;
+    subDealerVisibleColumns?: string[];
 }
 
-export function StockLocationManager({ moduleId, locations, stockVisibleToSubDealers: initialVisibility = false }: StockLocationManagerProps) {
+export function StockLocationManager({ moduleId, locations, stockVisibleToSubDealers: initialVisibility = false, subDealerVisibleColumns: initialVisibleColumns = [] }: StockLocationManagerProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [newLocation, setNewLocation] = useState('');
     const [stockVisible, setStockVisible] = useState(initialVisibility);
+    const [visibleColumns, setVisibleColumns] = useState<string[]>(
+        initialVisibleColumns.length > 0 ? initialVisibleColumns : ALL_STOCK_COLUMNS.map(c => c.id)
+    );
 
     // Sync with prop when module doc updates externally
     useEffect(() => {
         setStockVisible(initialVisibility);
     }, [initialVisibility]);
+
+    // Sync visible columns with prop
+    useEffect(() => {
+        if (initialVisibleColumns && initialVisibleColumns.length > 0) {
+            setVisibleColumns(initialVisibleColumns);
+        }
+    }, [initialVisibleColumns]);
 
     const moduleRef = useMemoFirebase(
         () => doc(firestore, 'modules', moduleId),
@@ -64,6 +90,20 @@ export function StockLocationManager({ moduleId, locations, stockVisibleToSubDea
         } catch (error) {
             console.error(error);
             toast({ variant: 'destructive', title: 'Failed to update locations' });
+        }
+    };
+
+    const handleToggleColumn = async (colId: string) => {
+        const updated = visibleColumns.includes(colId)
+            ? visibleColumns.filter(c => c !== colId)
+            : [...visibleColumns, colId];
+        setVisibleColumns(updated);
+        try {
+            await updateDoc(moduleRef, { subDealerVisibleColumns: updated });
+            toast({ title: 'Column visibility updated' });
+        } catch (error) {
+            console.error('Failed to update column visibility:', error);
+            toast({ variant: 'destructive', title: 'Failed to update' });
         }
     };
 
@@ -181,6 +221,36 @@ export function StockLocationManager({ moduleId, locations, stockVisibleToSubDea
                     </div>
                 </CardContent>
             </Card>
+
+            {/* Sub-Dealer Visible Columns Card */}
+            {stockVisible && (
+                <Card className="border-2 rounded-2xl">
+                    <CardHeader>
+                        <CardTitle className="text-xs font-bold">Sub-Dealer Visible Columns</CardTitle>
+                        <CardDescription className="text-[9px] uppercase tracking-widest font-black text-slate-400">
+                            Choose which stock columns sub-dealers can see
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {ALL_STOCK_COLUMNS.map(col => {
+                                const isChecked = visibleColumns.includes(col.id);
+                                return (
+                                    <label key={col.id} className="flex items-center gap-2 p-2 rounded-xl hover:bg-slate-50 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={isChecked}
+                                            onChange={() => handleToggleColumn(col.id)}
+                                            className="rounded border-2"
+                                        />
+                                        <span className="text-xs font-semibold">{col.label}</span>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }
