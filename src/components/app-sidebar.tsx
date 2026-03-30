@@ -78,6 +78,7 @@ export function AppSidebar() {
   [userProfile, organisations]);
 
   const orgSlug = organisation?.slug || userProfile?.organisationId || '';
+  const isSubDealer = !!organisation?.parentOrganisationId;
 
   const isLoading = userLoading || profileLoading || (isAdmin ? allOrgsLoading : orgDocLoading);
 
@@ -223,8 +224,8 @@ export function AppSidebar() {
       <SidebarFooter className="p-4 border-t bg-muted/5 group-data-[collapsible=icon]:p-2">
         <SidebarGroup className="p-0 space-y-4">
           <div className="flex items-center justify-between group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-4">
-            <NotificationBell />
-            <UserMenu />
+            {!isSubDealer && <NotificationBell />}
+            <UserMenu minimal={isSubDealer} />
           </div>
           
           {/* Role Switcher Restricted to Admins */}
