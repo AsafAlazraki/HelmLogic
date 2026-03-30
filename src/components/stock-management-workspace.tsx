@@ -6,6 +6,8 @@ import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { StockList } from '@/components/stock-list';
 import { StockItemForm } from '@/components/stock-item-form';
+import { StockLocationMap } from '@/components/stock-location-map';
+import { StockAssignmentView } from '@/components/stock-assignment-view';
 import { Box, Plus, MapPin, Users, Package, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -215,23 +217,22 @@ export function StockManagementWorkspace({
                 )}
 
                 {view === 'map' && (
-                    <div className="flex-1 flex items-center justify-center text-center p-12">
-                        <div className="space-y-3">
-                            <MapPin className="h-12 w-12 text-slate-300 mx-auto" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Map View</p>
-                            <p className="text-xs text-slate-500">Stock locations will be displayed here</p>
-                        </div>
+                    <div className="h-full p-6">
+                        <StockLocationMap
+                            inventory={inventory || []}
+                            locations={locations}
+                        />
                     </div>
                 )}
 
                 {view === 'assignments' && (
-                    <div className="flex-1 flex items-center justify-center text-center p-12">
-                        <div className="space-y-3">
-                            <Users className="h-12 w-12 text-slate-300 mx-auto" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sub-Dealer Assignments</p>
-                            <p className="text-xs text-slate-500">Assign and track stock across sub-dealers</p>
-                        </div>
-                    </div>
+                    <StockAssignmentView
+                        organisation={organisation}
+                        subDealers={subDealers}
+                        moduleId={moduleId}
+                        isAdmin={isAdmin}
+                        readOnly={readOnly}
+                    />
                 )}
             </div>
 

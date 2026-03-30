@@ -73,6 +73,7 @@ import { PriceListViewer } from '@/components/price-list-viewer';
 import { PriceListManager } from '@/components/price-list-manager';
 import { OrganisationModuleConfig } from '@/components/organisation-module-config';
 import { StockLocationManager } from '@/components/stock-location-manager';
+import { StockManagementWorkspace } from '@/components/stock-management-workspace';
 
 import {
   DndContext,
@@ -1068,9 +1069,17 @@ export default function ModuleDetailsPage() {
                     </TabsContent>
 
                     <TabsContent value="stock" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden data-[state=inactive]:hidden">
-                        <div className="h-full p-8 overflow-y-auto">
-                            <StockList organisation={currentMemberOrg as any} subDealers={subDealersList || []} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} locations={moduleData?.stockLocations || []} readOnly={!isAdmin && !userPermissions.can_manage_stock} />
-                        </div>
+                        <StockManagementWorkspace
+                            organisation={currentMemberOrg as any}
+                            subDealers={subDealersList || []}
+                            parentOrg={null}
+                            moduleId={moduleData.id}
+                            filterOrgId="local"
+                            isAdmin={isAdmin}
+                            locations={moduleData?.stockLocations || []}
+                            readOnly={!isAdmin && !userPermissions.can_manage_stock}
+                            vendorName={mainVendor?.name}
+                        />
                     </TabsContent>
 
                     <TabsContent value="pricing" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden flex flex-col data-[state=inactive]:hidden">
