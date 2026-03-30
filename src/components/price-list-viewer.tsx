@@ -5,7 +5,7 @@ import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { collection, doc, query, where } from 'firebase/firestore';
-import { Ship, TableIcon, X, Anchor, Ruler, CheckCircle2, ChevronRight, Waves } from 'lucide-react';
+import { Ship, TableIcon, X, Anchor, Ruler, CheckCircle2, ChevronRight, Waves, Filter } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import {
@@ -194,6 +194,155 @@ function BoatDetailsPanel({
     );
 }
 
+// ─── Grouped Price List Table (per list) ────────────────────────────────────
+
+function GroupedPriceListTable({ pl, vendorId, onRowClick }: { pl: PriceList; vendorId?: string; onRowClick: (row: Row) => void }) {
+    const [filterRange, setFilterRange] = useState<string | 'all'>('all');
+    const [filterModel, setFilterModel] = useState<string | 'all'>('all');
+    const [filterMaterial, setFilterMaterial] = useState<string | 'all'>('all');
+
+    const allRows = pl.rows || [];
+    const availableRanges = useMemo(() => [...new Set(allRows.map(r => r.rangeName))].sort(), [allRows]);
+    const availableModels = useMemo(() => {
+        const filtered = filterRange === 'all' ? allRows : allRows.filter(r => r.rangeName === filterRange);
+        return [...new Set(filtered.map(r => r.modelName))].sort();
+    }, [allRows, filterRange]);
+    const availableMaterials = useMemo(() => [...new Set(allRows.map(r => r.material))].sort(), [allRows]);
+
+    const filteredRows = useMemo(() => allRows.filter(r => {
+        if (filterRange !== 'all' && r.rangeName !== filterRange) return false;
+        if (filterModel !== 'all' && r.modelName !== filterModel) return false;
+        if (filterMaterial !== 'all' && r.material !== filterMaterial) return false;
+        return true;
+    }), [allRows, filterRange, filterModel, filterMaterial]);
+
+    const groupedRows = useMemo(() => {
+        const groups: { rangeName: string; models: { modelName: string; rows: Row[] }[] }[] = [];
+        const rangeMap = new Map<string, Map<string, Row[]>>();
+        filteredRows.forEach(r => {
+            if (!rangeMap.has(r.rangeName)) rangeMap.set(r.rangeName, new Map());
+            const modelMap = rangeMap.get(r.rangeName)!;
+            if (!modelMap.has(r.modelName)) modelMap.set(r.modelName, []);
+            modelMap.get(r.modelName)!.push(r);
+        });
+        rangeMap.forEach((modelMap, rangeName) => {
+            const models: { modelName: string; rows: Row[] }[] = [];
+            modelMap.forEach((rows, modelName) => models.push({ modelName, rows }));
+            groups.push({ rangeName, models });
+        });
+        return groups;
+    }, [filteredRows]);
+
+    if (allRows.length === 0) {
+        return (
+            <div className="h-24 flex items-center justify-center border-2 border-dashed rounded-2xl text-slate-300 bg-slate-50/50">
+                <p className="text-xs font-bold">No boats in this list yet</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            {/* Filter bar */}
+            <div className="flex items-center gap-2 flex-wrap">
+                <Filter className="h-3.5 w-3.5 text-slate-400" />
+                <select value={filterRange} onChange={e => { setFilterRange(e.target.value); setFilterModel('all'); }}
+                    className="h-7 px-2 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-700 uppercase tracking-wider">
+                    <option value="all">All Ranges</option>
+                    {availableRanges.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+                <select value={filterModel} onChange={e => setFilterModel(e.target.value)}
+                    className="h-7 px-2 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-700 uppercase tracking-wider">
+                    <option value="all">All Models</option>
+                    {availableModels.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <select value={filterMaterial} onChange={e => setFilterMaterial(e.target.value)}
+                    className="h-7 px-2 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-700 uppercase tracking-wider">
+                    <option value="all">All Materials</option>
+                    {availableMaterials.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <span className="text-[9px] font-bold text-slate-400 ml-1">{filteredRows.length} of {allRows.length} SKUs</span>
+            </div>
+
+            {/* Grouped tables */}
+            {groupedRows.map(rangeGroup => (
+                <div key={rangeGroup.rangeName} className="space-y-2">
+                    <div className="flex items-center gap-2 pt-1">
+                        <div className="h-6 px-3 rounded-lg bg-primary/10 flex items-center">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-primary">{rangeGroup.rangeName}</span>
+                        </div>
+                        <div className="flex-1 h-px bg-slate-100" />
+                    </div>
+
+                    {rangeGroup.models.map(modelGroup => (
+                        <div key={modelGroup.modelName} className="overflow-x-auto rounded-xl border border-slate-100 bg-white shadow-sm">
+                            <div className="bg-slate-50/80 px-5 py-2.5 border-b border-slate-100 flex items-center gap-2">
+                                <Ship className="h-3 w-3 text-slate-400" />
+                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-600">{modelGroup.modelName}</span>
+                                <span className="text-[9px] text-slate-400 font-bold">({modelGroup.rows.length} SKU{modelGroup.rows.length !== 1 ? 's' : ''})</span>
+                            </div>
+                            <table className="w-full text-sm border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50/50 border-b border-slate-100">
+                                        <th className="text-left px-5 py-2 text-[8px] font-black uppercase tracking-widest text-slate-400 w-16" />
+                                        <th className="text-left px-5 py-2 text-[8px] font-black uppercase tracking-widest text-slate-400">Material</th>
+                                        <th className="text-left px-5 py-2 text-[8px] font-black uppercase tracking-widest text-slate-400">Colour</th>
+                                        {(pl.columns || []).map(col => (
+                                            <th key={col.id} className="text-right px-5 py-2 text-[8px] font-black uppercase tracking-widest text-slate-400 min-w-[140px]">
+                                                {col.header}
+                                            </th>
+                                        ))}
+                                        {vendorId && <th className="w-10" />}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {modelGroup.rows.map((row, idx) => (
+                                        <tr
+                                            key={row.variantId}
+                                            onClick={() => vendorId ? onRowClick(row) : undefined}
+                                            className={cn(
+                                                'border-b border-slate-50 transition-all',
+                                                vendorId ? 'cursor-pointer hover:bg-primary/[0.02] group' : '',
+                                                idx % 2 === 1 ? 'bg-slate-50/30' : ''
+                                            )}
+                                        >
+                                            <td className="px-5 py-3">
+                                                {row.imageUrl ? (
+                                                    <div className="relative h-11 w-16 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 group-hover:border-primary/20 transition-colors">
+                                                        <Image src={row.imageUrl} alt="" fill className="object-contain p-1" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="h-11 w-16 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+                                                        <Ship className="h-4 w-4 text-slate-300" />
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="px-5 py-3 text-xs text-slate-600 font-bold">{row.material}</td>
+                                            <td className="px-5 py-3 text-xs text-slate-500">{row.colorName}</td>
+                                            {(pl.columns || []).map(col => (
+                                                <td key={col.id} className="px-5 py-3 text-right">
+                                                    <span className={cn('text-xs tabular-nums', row.cells?.[col.id] ? 'font-black text-slate-800' : 'text-slate-300')}>
+                                                        {row.cells?.[col.id] || '—'}
+                                                    </span>
+                                                </td>
+                                            ))}
+                                            {vendorId && (
+                                                <td className="px-3 py-3">
+                                                    <ChevronRight className="h-4 w-4 text-slate-200 group-hover:text-primary transition-colors" />
+                                                </td>
+                                            )}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ))}
+                </div>
+            ))}
+        </div>
+    );
+}
+
 // ─── Main Export ─────────────────────────────────────────────────────────────
 
 export function PriceListViewer({
@@ -208,7 +357,6 @@ export function PriceListViewer({
     const firestore = useFirestore();
     const [selectedRow, setSelectedRow] = useState<Row | null>(null);
 
-    // Fetch parent org for branding
     const parentOrgRef = useMemoFirebase(
         () => doc(firestore, 'organisations', parentOrganisationId),
         [firestore, parentOrganisationId]
@@ -248,7 +396,6 @@ export function PriceListViewer({
 
     return (
         <div className="h-full overflow-y-auto">
-            {/* Parent org branding header */}
             {parentOrg && (
                 <div className="bg-white border-b-2 border-slate-100 px-8 py-5">
                     <div className="flex items-center gap-4">
@@ -269,94 +416,17 @@ export function PriceListViewer({
             <div className="p-6 md:p-8 space-y-8">
                 {priceLists.map(pl => (
                     <div key={pl.id} className="space-y-4">
-                        {/* Price list header */}
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h2 className="text-lg font-black uppercase tracking-tight text-slate-900">{pl.name}</h2>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-                                    {pl.rows?.length || 0} model{pl.rows?.length !== 1 ? 's' : ''} · {pl.columns?.length || 0} pricing column{pl.columns?.length !== 1 ? 's' : ''}
-                                </p>
-                            </div>
+                        <div>
+                            <h2 className="text-lg font-black uppercase tracking-tight text-slate-900">{pl.name}</h2>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                {pl.rows?.length || 0} model{pl.rows?.length !== 1 ? 's' : ''} · {pl.columns?.length || 0} pricing column{pl.columns?.length !== 1 ? 's' : ''}
+                            </p>
                         </div>
-
-                        {pl.rows?.length > 0 ? (
-                            <div className="overflow-x-auto rounded-2xl border-2 border-slate-100 bg-white shadow-sm">
-                                <table className="w-full text-sm border-collapse">
-                                    <thead>
-                                        <tr className="bg-gradient-to-r from-slate-50 to-slate-100/50 border-b-2 border-slate-100">
-                                            <th className="text-left px-5 py-4 text-[9px] font-black uppercase tracking-widest text-slate-500 w-16" />
-                                            <th className="text-left px-5 py-4 text-[9px] font-black uppercase tracking-widest text-slate-500">Model</th>
-                                            <th className="text-left px-5 py-4 text-[9px] font-black uppercase tracking-widest text-slate-500">Range</th>
-                                            <th className="text-left px-5 py-4 text-[9px] font-black uppercase tracking-widest text-slate-500">Material</th>
-                                            <th className="text-left px-5 py-4 text-[9px] font-black uppercase tracking-widest text-slate-500">Colour</th>
-                                            {(pl.columns || []).map(col => (
-                                                <th key={col.id} className="text-right px-5 py-4 text-[9px] font-black uppercase tracking-widest text-slate-500 min-w-[140px]">
-                                                    {col.header}
-                                                </th>
-                                            ))}
-                                            <th className="w-10" />
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {pl.rows.map((row, idx) => (
-                                            <tr
-                                                key={row.variantId}
-                                                onClick={() => vendorId ? setSelectedRow(row) : undefined}
-                                                className={cn(
-                                                    'border-b border-slate-50 transition-all',
-                                                    vendorId ? 'cursor-pointer hover:bg-primary/[0.02] group' : '',
-                                                    idx % 2 === 1 ? 'bg-slate-50/30' : ''
-                                                )}
-                                            >
-                                                <td className="px-5 py-3">
-                                                    {row.imageUrl ? (
-                                                        <div className="relative h-11 w-16 rounded-xl overflow-hidden bg-slate-50 border border-slate-100 group-hover:border-primary/20 transition-colors">
-                                                            <Image src={row.imageUrl} alt="" fill className="object-contain p-1" />
-                                                        </div>
-                                                    ) : (
-                                                        <div className="h-11 w-16 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
-                                                            <Ship className="h-4 w-4 text-slate-300" />
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td className="px-5 py-3 font-black text-xs text-slate-800 group-hover:text-primary transition-colors">{row.modelName}</td>
-                                                <td className="px-5 py-3">
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                                                        {row.rangeName}
-                                                    </span>
-                                                </td>
-                                                <td className="px-5 py-3 text-xs text-slate-500 font-bold">{row.material}</td>
-                                                <td className="px-5 py-3 text-xs text-slate-500">{row.colorName}</td>
-                                                {(pl.columns || []).map(col => (
-                                                    <td key={col.id} className="px-5 py-3 text-right">
-                                                        <span className={cn(
-                                                            'text-xs tabular-nums',
-                                                            row.cells?.[col.id] ? 'font-black text-slate-800' : 'text-slate-300'
-                                                        )}>
-                                                            {row.cells?.[col.id] || '—'}
-                                                        </span>
-                                                    </td>
-                                                ))}
-                                                <td className="px-3 py-3">
-                                                    {vendorId && (
-                                                        <ChevronRight className="h-4 w-4 text-slate-200 group-hover:text-primary transition-colors" />
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            <div className="h-24 flex items-center justify-center border-2 border-dashed rounded-2xl text-slate-300 bg-slate-50/50">
-                                <p className="text-xs font-bold">No boats in this list yet</p>
-                            </div>
-                        )}
+                        <GroupedPriceListTable pl={pl} vendorId={vendorId} onRowClick={setSelectedRow} />
                     </div>
                 ))}
             </div>
 
-            {/* Boat details slide-out panel */}
             {vendorId && (
                 <BoatDetailsPanel
                     isOpen={!!selectedRow}
