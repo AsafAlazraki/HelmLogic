@@ -495,6 +495,9 @@ export default function ModuleDetailsPage() {
             { id: 'pricing', label: 'Price List' },
         ].filter(t => t.visible !== false);
 
+        // Ensure activeTab is valid for sub-dealer tabs
+        const validSubDealerTab = subDealerTabs.some(t => t.id === activeTab) ? activeTab : (subDealerTabs[0]?.id || 'pricing');
+
         return (
             <div className="flex flex-col h-screen overflow-hidden bg-background">
                 {/* Header — same style as parent org */}
@@ -528,7 +531,7 @@ export default function ModuleDetailsPage() {
 
                 {/* Tab bar — same style as parent org */}
                 <div className="bg-white border-b shrink-0 z-10 px-10">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <Tabs value={validSubDealerTab} onValueChange={setActiveTab} className="w-full">
                         <TabsList className={cn("grid w-full h-12 bg-transparent p-0 gap-4", `grid-cols-${subDealerTabs.length}`)}>
                             {subDealerTabs.map((t) => (
                                 <TabsTrigger
@@ -545,7 +548,7 @@ export default function ModuleDetailsPage() {
 
                 {/* Tab content */}
                 <main className="flex-1 min-h-0 overflow-hidden">
-                    <Tabs value={activeTab} className="h-full">
+                    <Tabs value={validSubDealerTab} className="h-full">
                         <TabsContent value="stock" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                             <ScrollArea className="h-full">
                                 <div className="p-8 space-y-8">
