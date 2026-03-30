@@ -438,7 +438,7 @@ export default function ModuleDetailsPage() {
     const navTabs = [
         { id: 'dashboard', label: 'Dashboard' },
         { id: 'bmt', label: 'Catalog' },
-        { id: 'stock', label: 'Stock Management' },
+        { id: 'stock', label: 'Stock Management', visible: (isAdmin || !!userPermissions.can_view_stock || !!userPermissions.can_manage_stock) },
         { id: 'pricing', label: 'Pricing', visible: (isAdmin || !!userPermissions.can_access_pricing_manager) },
         { id: 'settings', label: 'Settings' }
     ].filter(t => t.visible !== false);
@@ -505,6 +505,7 @@ export default function ModuleDetailsPage() {
                             <div className="p-8 min-h-[calc(100vh-224px)] flex flex-col">
                                 <div className="grid grid-cols-12 gap-8 flex-1">
                                     <div className="col-span-7 flex flex-col gap-8 h-full">
+                                        {(isAdmin || !!userPermissions.can_view_stock || !!userPermissions.can_manage_stock) && (
                                         <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
                                             <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
                                                 <div className="flex items-center gap-3 shrink-0">
@@ -517,7 +518,9 @@ export default function ModuleDetailsPage() {
                                                 <StockList organisation={currentMemberOrg as any} subDealers={[]} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
                                             </CardContent>
                                         </Card>
+                                        )}
 
+                                        {(isAdmin || !!userPermissions.can_view_stock || !!userPermissions.can_manage_stock) && (
                                         <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
                                             <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
                                                 <div className="flex items-center gap-3 shrink-0">
@@ -530,6 +533,7 @@ export default function ModuleDetailsPage() {
                                                 <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
                                             </CardContent>
                                         </Card>
+                                        )}
                                     </div>
 
                                     <Card className="col-span-5 flex flex-col border rounded-2xl shadow-sm bg-white overflow-hidden">
@@ -706,7 +710,7 @@ export default function ModuleDetailsPage() {
                             <div className="p-8 space-y-8">
                                 <div>
                                     <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">Stock Units</h2>
-                                    <StockList organisation={currentMemberOrg as any} subDealers={[]} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
+                                    <StockList organisation={currentMemberOrg as any} subDealers={[]} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} readOnly={!isAdmin && !userPermissions.can_manage_stock} />
                                 </div>
                                 <div>
                                     <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">On Order</h2>
