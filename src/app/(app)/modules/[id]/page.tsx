@@ -638,24 +638,22 @@ export default function ModuleDetailsPage() {
                 </div>
             </div>
 
-            <div className="bg-white border-b shrink-0 z-10 px-10">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+                <div className="bg-white border-b shrink-0 z-10 px-10">
                     <TabsList className={cn("grid w-full h-12 bg-transparent p-0 gap-4", `grid-cols-${navTabs.length}`)}>
                         {navTabs.map((t) => (
-                            <TabsTrigger 
-                                key={t.id} 
-                                value={t.id} 
+                            <TabsTrigger
+                                key={t.id}
+                                value={t.id}
                                 className="rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-[0.2em] h-full transition-all duration-300 text-slate-500 data-[state=active]:text-slate-950 hover:text-slate-700"
                             >
                                 {t.label}
                             </TabsTrigger>
                         ))}
                     </TabsList>
-                </Tabs>
-            </div>
+                </div>
 
-            <main className="flex-1 overflow-hidden relative">
-                <Tabs value={activeTab} className="h-full">
+                <div className="flex-1 overflow-hidden relative">
                     <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                         <div className="h-full p-6 md:p-8 overflow-y-auto">
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
@@ -947,8 +945,8 @@ export default function ModuleDetailsPage() {
                         </ScrollArea>
                     </TabsContent>
 
-                </Tabs>
-            </main>
+                </div>
+            </Tabs>
 
             {moduleData && (
                 <QuoteInitializationDialog
