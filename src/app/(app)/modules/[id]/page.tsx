@@ -61,7 +61,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn, createSlug } from '@/lib/utils';
-import { StockList } from '@/components/inventory-list';
+import { StockList } from '@/components/stock-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';

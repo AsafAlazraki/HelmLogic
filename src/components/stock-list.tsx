@@ -194,7 +194,8 @@ export function StockList({
                 toast({ title: "Stock Assigned" });
                 setSelectedItem(null);
             })
-            .catch(async () => {
+            .catch(async (error) => {
+                console.error('Failed to assign stock:', error);
                 errorEmitter.emit('permission-error', new FirestorePermissionError({
                     path: itemRef.path,
                     operation: 'update',
@@ -210,7 +211,8 @@ export function StockList({
             .then(() => {
                 toast({ title: "Item deleted." });
             })
-            .catch(async () => {
+            .catch(async (error) => {
+                console.error('Failed to delete stock item:', error);
                 errorEmitter.emit('permission-error', new FirestorePermissionError({
                     path: itemRef.path,
                     operation: 'delete',

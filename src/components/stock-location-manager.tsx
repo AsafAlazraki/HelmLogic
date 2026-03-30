@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -22,6 +22,11 @@ export function StockLocationManager({ moduleId, locations, stockVisibleToSubDea
     const { toast } = useToast();
     const [newLocation, setNewLocation] = useState('');
     const [stockVisible, setStockVisible] = useState(initialVisibility);
+
+    // Sync with prop when module doc updates externally
+    useEffect(() => {
+        setStockVisible(initialVisibility);
+    }, [initialVisibility]);
 
     const moduleRef = useMemoFirebase(
         () => doc(firestore, 'modules', moduleId),
