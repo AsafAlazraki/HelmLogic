@@ -787,8 +787,8 @@ export default function ModuleDetailsPage() {
                     </TabsList>
                 </div>
 
-                <div className="flex-1 overflow-hidden relative">
-                    <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                <div className="flex-1 overflow-hidden relative" style={{ minHeight: 0 }}>
+                    <TabsContent value="dashboard" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden data-[state=inactive]:hidden">
                         <div className="h-full p-6 md:p-8 overflow-y-auto">
                             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
                                 {/* Left — Summary + Quick Access */}
@@ -955,7 +955,7 @@ export default function ModuleDetailsPage() {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
+                    <TabsContent value="bmt" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden flex flex-col data-[state=inactive]:hidden">
                         {/* Tactical Workspace Header */}
                         <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 relative z-[150]">
                             <div className="flex items-center gap-4">
@@ -1023,13 +1023,13 @@ export default function ModuleDetailsPage() {
                         </ScrollArea>
                     </TabsContent>
 
-                    <TabsContent value="stock" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
-                        <div className="h-full p-8">
+                    <TabsContent value="stock" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden data-[state=inactive]:hidden">
+                        <div className="h-full p-8 overflow-y-auto">
                             <StockList organisation={currentMemberOrg as any} subDealers={subDealersList || []} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} locations={moduleData?.stockLocations || []} readOnly={false} />
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="pricing" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
+                    <TabsContent value="pricing" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden flex flex-col data-[state=inactive]:hidden">
                         {(isAdmin || !!userPermissions.can_access_pricing_manager) && mainVendor && currentMemberOrg?.id ? (
                             <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
                         ) : (
@@ -1039,7 +1039,7 @@ export default function ModuleDetailsPage() {
                         )}
                     </TabsContent>
 
-                    <TabsContent value="settings" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                    <TabsContent value="settings" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden data-[state=inactive]:hidden">
                         <ScrollArea className="h-full">
                             <div className="p-8 space-y-8">
                                 <div>
