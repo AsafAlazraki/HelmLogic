@@ -25,6 +25,7 @@ interface Row {
     rangeName: string;
     material: string;
     colorName: string;
+    colorCode?: string;
     imageUrl?: string;
     cells: Record<string, string>;
 }
@@ -200,6 +201,8 @@ function GroupedPriceListTable({ pl, vendorId, onRowClick }: { pl: PriceList; ve
     const [filterRange, setFilterRange] = useState<string | 'all'>('all');
     const [filterModel, setFilterModel] = useState<string | 'all'>('all');
     const [filterMaterial, setFilterMaterial] = useState<string | 'all'>('all');
+    const [filterColor, setFilterColor] = useState<string | 'all'>('all');
+    const [searchQuery, setSearchQuery] = useState('');
 
     const allRows = pl.rows || [];
     const availableRanges = useMemo(() => [...new Set(allRows.map(r => r.rangeName))].sort(), [allRows]);
@@ -208,13 +211,21 @@ function GroupedPriceListTable({ pl, vendorId, onRowClick }: { pl: PriceList; ve
         return [...new Set(filtered.map(r => r.modelName))].sort();
     }, [allRows, filterRange]);
     const availableMaterials = useMemo(() => [...new Set(allRows.map(r => r.material))].sort(), [allRows]);
+    const availableColors = useMemo(() => [...new Set(allRows.map(r => r.colorCode || r.colorName).filter(Boolean))].sort(), [allRows]);
 
-    const filteredRows = useMemo(() => allRows.filter(r => {
-        if (filterRange !== 'all' && r.rangeName !== filterRange) return false;
-        if (filterModel !== 'all' && r.modelName !== filterModel) return false;
-        if (filterMaterial !== 'all' && r.material !== filterMaterial) return false;
-        return true;
-    }), [allRows, filterRange, filterModel, filterMaterial]);
+    const filteredRows = useMemo(() => {
+        const q = searchQuery.toLowerCase().trim();
+        return allRows.filter(r => {
+            if (filterRange !== 'all' && r.rangeName !== filterRange) return false;
+            if (filterModel !== 'all' && r.modelName !== filterModel) return false;
+            if (filterMaterial !== 'all' && r.material !== filterMaterial) return false;
+            if (filterColor !== 'all' && (r.colorCode || r.colorName) !== filterColor) return false;
+            if (q && !r.modelName.toLowerCase().includes(q) && !r.rangeName.toLowerCase().includes(q)
+                && !r.material.toLowerCase().includes(q) && !(r.colorCode || '').toLowerCase().includes(q)
+                && !r.colorName.toLowerCase().includes(q) && !r.variantId.toLowerCase().includes(q)) return false;
+            return true;
+        });
+    }, [allRows, filterRange, filterModel, filterMaterial, filterColor, searchQuery]);
 
     const groupedRows = useMemo(() => {
         const groups: { rangeName: string; models: { modelName: string; rows: Row[] }[] }[] = [];
@@ -246,6 +257,13 @@ function GroupedPriceListTable({ pl, vendorId, onRowClick }: { pl: PriceList; ve
             {/* Filter bar */}
             <div className="flex items-center gap-2 flex-wrap">
                 <Filter className="h-3.5 w-3.5 text-slate-400" />
+                <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="h-7 w-40 px-2.5 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-700 placeholder:text-slate-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                />
                 <select value={filterRange} onChange={e => { setFilterRange(e.target.value); setFilterModel('all'); }}
                     className="h-7 px-2 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-700 uppercase tracking-wider">
                     <option value="all">All Ranges</option>
@@ -260,6 +278,11 @@ function GroupedPriceListTable({ pl, vendorId, onRowClick }: { pl: PriceList; ve
                     className="h-7 px-2 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-700 uppercase tracking-wider">
                     <option value="all">All Materials</option>
                     {availableMaterials.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+                <select value={filterColor} onChange={e => setFilterColor(e.target.value)}
+                    className="h-7 px-2 text-[10px] font-bold rounded-lg border border-slate-200 bg-white text-slate-700 uppercase tracking-wider">
+                    <option value="all">All Colours</option>
+                    {availableColors.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
                 <span className="text-[9px] font-bold text-slate-400 ml-1">{filteredRows.length} of {allRows.length} SKUs</span>
             </div>
@@ -318,7 +341,7 @@ function GroupedPriceListTable({ pl, vendorId, onRowClick }: { pl: PriceList; ve
                                                 )}
                                             </td>
                                             <td className="px-5 py-3 text-xs text-slate-600 font-bold">{row.material}</td>
-                                            <td className="px-5 py-3 text-xs text-slate-500">{row.colorName}</td>
+                                            <td className="px-5 py-3 text-xs text-slate-500 font-mono uppercase" title={row.colorName}>{row.colorCode || row.colorName}</td>
                                             {(pl.columns || []).map(col => (
                                                 <td key={col.id} className="px-5 py-3 text-right">
                                                     <span className={cn('text-xs tabular-nums', row.cells?.[col.id] ? 'font-black text-slate-800' : 'text-slate-300')}>
