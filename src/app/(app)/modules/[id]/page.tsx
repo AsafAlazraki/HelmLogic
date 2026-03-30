@@ -70,6 +70,8 @@ import { Badge } from '@/components/ui/badge';
 import { HelmLogicLoading } from "@/components/helmlogic-loading";
 import { HighfieldPricingWorkspace } from '@/components/highfield-pricing-workspace';
 import { PriceListViewer } from '@/components/price-list-viewer';
+import { PriceListManager } from '@/components/price-list-manager';
+import { OrganisationModuleConfig } from '@/components/organisation-module-config';
 import { StockLocationManager } from '@/components/stock-location-manager';
 
 import {
@@ -319,6 +321,7 @@ export default function ModuleDetailsPage() {
     const storage = useStorage();
 
     const [activeTab, setActiveTab] = useState('dashboard');
+    const [pricingSubTab, setPricingSubTab] = useState<'matrix' | 'pricelists'>('matrix');
     const [view, setView] = useState<'ranges' | 'models' | 'bmt'>('ranges');
     const [selectedRangeId, setSelectedRangeId] = useState<string | null>(null);
     const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
@@ -365,6 +368,19 @@ export default function ModuleDetailsPage() {
             : null,
     [firestore, isSubDealer, currentMemberOrg?.parentOrganisationId]);
     const { data: parentOrgData } = useDoc<Organisation>(parentOrgRef);
+
+    // Settings tab queries
+    const allVendorsQuery = useMemoFirebase(
+        () => collection(firestore, 'data-warehouse'),
+        [firestore]
+    );
+    const { data: allVendors } = useCollection<any>(allVendorsQuery);
+
+    const dealerFitCatsQuery = useMemoFirebase(
+        () => collection(firestore, 'dealerFitCategories'),
+        [firestore]
+    );
+    const { data: allDealerFitCategories } = useCollection<any>(dealerFitCatsQuery);
 
     // Recent proposals for the dashboard
     const recentQuotesQuery = useMemoFirebase(() =>
@@ -481,6 +497,32 @@ export default function ModuleDetailsPage() {
 
         await updateDoc(docRef, updateData);
         toast({ title: "Item Updated" });
+    };
+
+    // Settings tab handlers
+    const handleUpdateVendors = async (vendorIds: string[]) => {
+        if (!currentMemberOrg?.id || !moduleData) return;
+        await updateDoc(doc(firestore, 'organisations', currentMemberOrg.id), {
+            [`moduleAssociatedVendorAccess.${moduleData.id}`]: vendorIds,
+        });
+    };
+
+    const handleUpdateCategories = async (categoryIds: string[]) => {
+        if (!currentMemberOrg?.id) return;
+        await updateDoc(doc(firestore, 'organisations', currentMemberOrg.id), {
+            dealerFitCategories: categoryIds,
+        });
+    };
+
+    const handleToggleSubDealerAccess = async (sdId: string, hasAccess: boolean) => {
+        if (!moduleData) return;
+        const sdRef = doc(firestore, 'organisations', sdId);
+        const sd = subDealersList?.find((s: any) => s.id === sdId);
+        const currentSubs: string[] = sd?.enabledModuleSubscriptions || [];
+        const next = hasAccess
+            ? [...new Set([...currentSubs, moduleData.id])]
+            : currentSubs.filter((id: string) => id !== moduleData.id);
+        await updateDoc(sdRef, { enabledModuleSubscriptions: next });
     };
 
     const loading = slugLoading || idLoading || mainVendorLoading;
@@ -1031,7 +1073,31 @@ export default function ModuleDetailsPage() {
 
                     <TabsContent value="pricing" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden flex flex-col data-[state=inactive]:hidden">
                         {(isAdmin || !!userPermissions.can_access_pricing_manager) && mainVendor && currentMemberOrg?.id ? (
-                            <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
+                            <div className="flex flex-col h-full">
+                                <div className="flex items-center gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300">
+                                    <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
+                                        <DollarSign className="h-5 w-5" />
+                                    </div>
+                                    <div className="h-9 bg-slate-100 rounded-xl p-1 inline-flex gap-1">
+                                        <button
+                                            onClick={() => setPricingSubTab('matrix')}
+                                            className={cn('rounded-lg text-[10px] font-black uppercase tracking-widest px-4 h-7 transition-colors', pricingSubTab === 'matrix' ? 'bg-white shadow-sm text-slate-950' : 'text-slate-500 hover:text-slate-700')}
+                                        >Pricing Matrix</button>
+                                        <button
+                                            onClick={() => setPricingSubTab('pricelists')}
+                                            className={cn('rounded-lg text-[10px] font-black uppercase tracking-widest px-4 h-7 transition-colors', pricingSubTab === 'pricelists' ? 'bg-white shadow-sm text-slate-950' : 'text-slate-500 hover:text-slate-700')}
+                                        >Price Lists</button>
+                                    </div>
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                    {pricingSubTab === 'matrix' && (
+                                        <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
+                                    )}
+                                    {pricingSubTab === 'pricelists' && (
+                                        <PriceListManager organisationId={currentMemberOrg.id} vendorId={mainVendor.id} />
+                                    )}
+                                </div>
+                            </div>
                         ) : (
                             <div className="flex-1 flex items-center justify-center">
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Access restricted</p>
@@ -1040,18 +1106,26 @@ export default function ModuleDetailsPage() {
                     </TabsContent>
 
                     <TabsContent value="settings" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden data-[state=inactive]:hidden">
-                        <ScrollArea className="h-full">
-                            <div className="p-8 space-y-8">
-                                <div>
-                                    <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">Stock Locations</h2>
-                                    <StockLocationManager
-                                        moduleId={moduleData.id}
-                                        locations={moduleData?.stockLocations || []}
-                                        stockVisibleToSubDealers={moduleData?.stockVisibleToSubDealers ?? false}
-                                    />
-                                </div>
+                        {moduleData && currentMemberOrg && (
+                            <div className="h-full overflow-y-auto p-8 space-y-8">
+                                <OrganisationModuleConfig
+                                    organisation={currentMemberOrg as any}
+                                    subDealers={subDealersList || []}
+                                    module={moduleData as any}
+                                    allVendors={allVendors || []}
+                                    allDealerFitCategories={allDealerFitCategories || []}
+                                    onBack={() => setActiveTab('dashboard')}
+                                    onUpdateVendors={handleUpdateVendors}
+                                    onUpdateCategories={handleUpdateCategories}
+                                    onToggleSubDealerAccess={handleToggleSubDealerAccess}
+                                />
+                                <StockLocationManager
+                                    moduleId={moduleData.id}
+                                    locations={moduleData?.stockLocations || []}
+                                    stockVisibleToSubDealers={moduleData?.stockVisibleToSubDealers ?? false}
+                                />
                             </div>
-                        </ScrollArea>
+                        )}
                     </TabsContent>
 
                 </div>
