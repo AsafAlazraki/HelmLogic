@@ -133,6 +133,8 @@ export function StockList({
     const [editItem, setEditItem] = useState<InventoryItem | null>(null);
     const [deliverItem, setDeliverItem] = useState<InventoryItem | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
     const targetOrgIds = useMemo(() => {
         if (!organisation?.id) return [];
@@ -234,6 +236,20 @@ export function StockList({
                 } satisfies SecurityRuleContext));
             })
             .finally(() => setIsAssigning(false));
+    };
+
+    const handleBulkDelete = async () => {
+        try {
+            for (const id of selectedIds) {
+                await deleteDoc(doc(firestore, 'inventory', id));
+            }
+            toast({ title: `${selectedIds.size} item${selectedIds.size !== 1 ? 's' : ''} deleted` });
+            setSelectedIds(new Set());
+            setShowBulkDeleteConfirm(false);
+        } catch (error) {
+            console.error('Bulk delete failed:', error);
+            toast({ variant: 'destructive', title: 'Delete failed' });
+        }
     };
 
     const handleDeleteItem = async (itemId: string) => {
