@@ -4,6 +4,7 @@ import { useMemo, useState, useCallback } from 'react';
 import { collection, query, where, doc, deleteDoc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { DeliveredDealDetail } from '@/components/delivered-deal-detail';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -306,6 +307,7 @@ export function DeliveredDeals({
     const [sortDir, setSortDir] = useState<SortDirection>('desc');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [detailDeal, setDetailDeal] = useState<DeliveredDeal | null>(null);
 
     const toggleSelect = useCallback((id: string) => {
         setSelectedIds(prev => {
@@ -467,6 +469,7 @@ export function DeliveredDeals({
                                             <tr
                                                 key={deal.id}
                                                 className={`text-xs hover:bg-slate-50/50 border-b border-slate-100 cursor-pointer transition-colors ${selectedIds.has(deal.id) ? 'bg-blue-50/50' : ''}`}
+                                                onClick={() => setDetailDeal(deal)}
                                             >
                                                 {!readOnly && (
                                                     <td className="px-3 py-2 w-10" onClick={(e) => e.stopPropagation()}>
@@ -532,6 +535,11 @@ export function DeliveredDeals({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <DeliveredDealDetail
+                deal={detailDeal}
+                onClose={() => setDetailDeal(null)}
+            />
         </div>
     );
 }
