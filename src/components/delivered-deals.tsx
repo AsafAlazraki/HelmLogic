@@ -1,12 +1,23 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { collection, query, where } from 'firebase/firestore';
+import { useMemo, useState, useCallback } from 'react';
+import { collection, query, where, doc, deleteDoc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Check, Minus, ChevronUp, ChevronDown, Truck } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+    DialogClose,
+} from '@/components/ui/dialog';
+import { Check, Minus, ChevronUp, ChevronDown, Truck, Trash2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 interface DeliveredDeal {
     id: string;
@@ -284,6 +295,43 @@ export function DeliveredDeals({
 
     const [sortKey, setSortKey] = useState<keyof DeliveredDeal>('deliveryDate');
     const [sortDir, setSortDir] = useState<SortDirection>('desc');
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+    const toggleSelect = useCallback((id: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) {
+                next.delete(id);
+            } else {
+                next.add(id);
+            }
+            return next;
+        });
+    }, []);
+
+    const toggleSelectAll = useCallback(() => {
+        if (!deals) return;
+        if (selectedIds.size === deals.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(deals.map(d => d.id)));
+        }
+    }, [deals, selectedIds.size]);
+
+    const handleBulkDelete = useCallback(async () => {
+        setShowDeleteConfirm(false);
+        try {
+            for (const id of selectedIds) {
+                await deleteDoc(doc(firestore, 'delivered-deals', id));
+            }
+            toast({ title: 'Deleted', description: `Successfully deleted ${selectedIds.size} delivered deal${selectedIds.size === 1 ? '' : 's'}.` });
+            setSelectedIds(new Set());
+        } catch (err) {
+            console.error('Bulk delete failed:', err);
+            toast({ title: 'Delete Failed', description: 'An error occurred while deleting. Some items may have been deleted.', variant: 'destructive' });
+        }
+    }, [firestore, selectedIds]);
 
     const columns = useMemo(
         () => compact ? ALL_COLUMNS.filter((c) => COMPACT_KEYS.has(c.key)) : ALL_COLUMNS,
@@ -340,6 +388,16 @@ export function DeliveredDeals({
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="bg-slate-50">
+                                        {!readOnly && (
+                                            <th className="px-3 py-2.5 w-10">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!deals && deals.length > 0 && selectedIds.size === deals.length}
+                                                    onChange={toggleSelectAll}
+                                                    className="h-3.5 w-3.5 rounded border-2 border-slate-300 cursor-pointer"
+                                                />
+                                            </th>
+                                        )}
                                         {columns.map((col) => (
                                             <th
                                                 key={col.key}
@@ -361,7 +419,7 @@ export function DeliveredDeals({
                                 <tbody>
                                     {(!deals || deals.length === 0) ? (
                                         <tr>
-                                            <td colSpan={columns.length} className="px-3 py-12 text-center">
+                                            <td colSpan={columns.length + (!readOnly ? 1 : 0)} className="px-3 py-12 text-center">
                                                 <Truck className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
                                                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
                                                     No delivered deals yet
@@ -372,8 +430,18 @@ export function DeliveredDeals({
                                         sortedDeals.map((deal) => (
                                             <tr
                                                 key={deal.id}
-                                                className="text-xs hover:bg-slate-50/50 border-b border-slate-100 cursor-pointer transition-colors"
+                                                className={`text-xs hover:bg-slate-50/50 border-b border-slate-100 cursor-pointer transition-colors ${selectedIds.has(deal.id) ? 'bg-blue-50/50' : ''}`}
                                             >
+                                                {!readOnly && (
+                                                    <td className="px-3 py-2 w-10" onClick={(e) => e.stopPropagation()}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedIds.has(deal.id)}
+                                                            onChange={() => toggleSelect(deal.id)}
+                                                            className="h-3.5 w-3.5 rounded border-2 border-slate-300 cursor-pointer"
+                                                        />
+                                                    </td>
+                                                )}
                                                 {columns.map((col) => (
                                                     <td
                                                         key={col.key}
@@ -390,6 +458,44 @@ export function DeliveredDeals({
                         </div>
                     </div>
                 </div>
+
+            {/* Bulk action bar */}
+            {!readOnly && selectedIds.size > 0 && (
+                <div className="flex items-center justify-between px-4 py-2 bg-red-50 border-t border-2 border-red-200 rounded-b-2xl">
+                    <span className="text-xs font-black uppercase tracking-widest text-red-700">
+                        {selectedIds.size} selected
+                    </span>
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        className="h-8 rounded-xl font-black uppercase text-[10px]"
+                        onClick={() => setShowDeleteConfirm(true)}
+                    >
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                        Delete Selected
+                    </Button>
+                </div>
+            )}
+
+            {/* Delete confirmation dialog */}
+            <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <DialogContent className="rounded-3xl border-4 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black uppercase tracking-tight">Delete Delivered Deals</DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Are you sure you want to delete {selectedIds.size} delivered deal{selectedIds.size === 1 ? '' : 's'}? This cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <DialogClose asChild>
+                            <Button variant="outline" className="rounded-xl">Cancel</Button>
+                        </DialogClose>
+                        <Button variant="destructive" className="rounded-xl font-black uppercase text-[10px]" onClick={handleBulkDelete}>
+                            Delete {selectedIds.size} Deal{selectedIds.size === 1 ? '' : 's'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

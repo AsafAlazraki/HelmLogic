@@ -28,6 +28,8 @@ interface InventoryItem {
   dateIntoStock: any;
   photoUrls: string[];
   pdfAttachments: { name: string; url: string; uploadedAt: any }[];
+  coverImageUrl?: string;   // From matched model
+  variantImageUrl?: string; // From matched variant
 }
 
 interface StockItemDetailProps {
@@ -190,11 +192,7 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
               {/* Photo Gallery */}
               <div className="mt-6">
                 <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-2">Photos</p>
-                {photos.length === 0 && readOnly ? (
-                  <div className="rounded-xl border-2 border-dashed border-slate-200 p-8 text-center text-xs text-slate-400">
-                    No photos yet
-                  </div>
-                ) : (
+                {photos.length > 0 ? (
                   <div className="grid grid-cols-2 gap-2 relative">
                     {uploadingPhotos && (
                       <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 rounded-xl">
@@ -228,11 +226,36 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
                       </button>
                     )}
                   </div>
-                )}
-                {photos.length === 0 && !readOnly && (
+                ) : (item?.coverImageUrl || item?.variantImageUrl) ? (
+                  <div className="space-y-2">
+                    <div className="relative aspect-video rounded-xl border-2 overflow-hidden bg-slate-50">
+                      <img
+                        src={item.variantImageUrl || item.coverImageUrl}
+                        alt={item.model || item.name}
+                        className="w-full h-full object-contain p-2"
+                      />
+                      <Badge variant="outline" className="absolute top-2 left-2 text-[8px] font-black uppercase bg-white/90 border-slate-200">
+                        From Catalog
+                      </Badge>
+                    </div>
+                    {!readOnly && (
+                      <button
+                        onClick={() => photoInputRef.current?.click()}
+                        className="w-full rounded-xl border-2 border-dashed border-slate-300 px-3 py-2 flex items-center justify-center gap-1 text-slate-400 hover:border-slate-400 hover:text-slate-500 transition-colors"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span className="text-[10px] font-semibold">Add Photos</span>
+                      </button>
+                    )}
+                  </div>
+                ) : readOnly ? (
+                  <div className="rounded-xl border-2 border-dashed border-slate-200 p-8 text-center text-xs text-slate-400">
+                    No photos yet
+                  </div>
+                ) : (
                   <button
                     onClick={() => photoInputRef.current?.click()}
-                    className="mt-2 w-full rounded-xl border-2 border-dashed border-slate-300 p-8 flex flex-col items-center justify-center gap-1 text-slate-400 hover:border-slate-400 hover:text-slate-500 transition-colors"
+                    className="w-full rounded-xl border-2 border-dashed border-slate-300 p-8 flex flex-col items-center justify-center gap-1 text-slate-400 hover:border-slate-400 hover:text-slate-500 transition-colors"
                   >
                     <ImageIcon className="h-6 w-6" />
                     <span className="text-[10px] font-semibold">No photos yet — click to add</span>
