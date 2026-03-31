@@ -144,8 +144,14 @@ export function StockList({
             const ids = [organisation.id, ...subDealers.map(sd => sd.id)];
             return ids.slice(0, 30);
         }
+        if (filterOrgId === 'all-with-parent') {
+            // Sub-dealer: show own stock + parent org stock
+            const ids = [organisation.id];
+            if (parentOrg?.id) ids.push(parentOrg.id);
+            return ids;
+        }
         return [filterOrgId];
-    }, [filterOrgId, organisation, subDealers]);
+    }, [filterOrgId, organisation, subDealers, parentOrg]);
 
     const inventoryQuery = useMemoFirebase(() => {
         if (targetOrgIds.length === 0) return null;
@@ -295,11 +301,39 @@ export function StockList({
                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">No Units in Stock</p>
                 </div>
             ) : (
+                <>
+                {selectedIds.size > 0 && !readOnly && (
+                    <div className="flex items-center justify-between px-4 py-2 bg-red-50 border-2 border-red-200 rounded-xl mb-3">
+                        <span className="text-xs font-bold text-red-700">
+                            {selectedIds.size} item{selectedIds.size !== 1 ? 's' : ''} selected
+                        </span>
+                        <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setSelectedIds(new Set())}>Clear</Button>
+                            <Button variant="destructive" size="sm" className="rounded-xl text-[10px] font-black uppercase tracking-widest gap-1" onClick={() => setShowBulkDeleteConfirm(true)}>
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Delete Selected
+                            </Button>
+                        </div>
+                    </div>
+                )}
                 <div className="flex-1 overflow-hidden rounded-2xl border-2 border-slate-100">
                     <ScrollArea className="h-full">
                         <table className="w-full border-collapse text-xs">
                             <thead className="bg-slate-50">
                                 <tr>
+                                    {!readOnly && (
+                                        <th className="px-3 py-2.5 w-10">
+                                            <input
+                                                type="checkbox"
+                                                checked={sortedInventory.length > 0 && selectedIds.size === sortedInventory.length}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) setSelectedIds(new Set(sortedInventory.map(i => i.id)));
+                                                    else setSelectedIds(new Set());
+                                                }}
+                                                className="rounded border-2"
+                                            />
+                                        </th>
+                                    )}
                                     {displayColumns.map(col => (
                                         <th
                                             key={col.key}
@@ -326,6 +360,21 @@ export function StockList({
                                     const days = daysInStock(item.dateIntoStock);
                                     return (
                                         <tr key={item.id} className="group border-b border-slate-100 hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => setDetailItem(item)}>
+                                            {!readOnly && (
+                                                <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedIds.has(item.id)}
+                                                        onChange={() => {
+                                                            const next = new Set(selectedIds);
+                                                            if (next.has(item.id)) next.delete(item.id);
+                                                            else next.add(item.id);
+                                                            setSelectedIds(next);
+                                                        }}
+                                                        className="rounded border-2"
+                                                    />
+                                                </td>
+                                            )}
                                             {/* Date into Stock / ETA */}
                                             {visibleColumnKeys.has('dateIntoStock') && (
                                                 <td className="px-3 py-2 whitespace-nowrap">{formatDate(item.dateIntoStock)}</td>
@@ -440,6 +489,7 @@ export function StockList({
                         </table>
                     </ScrollArea>
                 </div>
+                </>
             )}
 
             <Dialog open={!!selectedItem} onOpenChange={(open) => !open && setSelectedItem(null)}>
@@ -509,6 +559,22 @@ export function StockList({
                         </DialogClose>
                         <Button variant="destructive" className="rounded-xl font-black uppercase text-[10px]" onClick={() => { handleDeleteItem(deleteConfirmId!); setDeleteConfirmId(null); }}>
                             Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+                <DialogContent className="rounded-3xl border-4 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black uppercase tracking-tight">Delete {selectedIds.size} Items</DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Are you sure? This cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <DialogClose asChild><Button variant="outline" className="rounded-xl">Cancel</Button></DialogClose>
+                        <Button variant="destructive" className="rounded-xl font-black uppercase text-[10px]" onClick={handleBulkDelete}>
+                            Delete {selectedIds.size} Item{selectedIds.size !== 1 ? 's' : ''}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -191,8 +191,8 @@ export function StockManagementWorkspace({
                 </div>
             </div>
 
-            {/* Filter Bar (table view only) */}
-            {view === 'stock' && (
+            {/* Filter Bar (stock and onorder views) */}
+            {(view === 'stock' || view === 'onorder') && (
                 <div className="shrink-0 px-8 py-3 flex items-center gap-3 border-b-2 border-slate-200 bg-slate-50/50">
                     <div className="relative flex-1 max-w-xs">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -203,19 +203,21 @@ export function StockManagementWorkspace({
                             className="pl-9 h-9 rounded-xl border-2 text-xs"
                         />
                     </div>
-                    <div className="flex flex-col gap-1">
-                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Status</span>
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[130px] h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All</SelectItem>
-                                <SelectItem value="In Stock">In Stock</SelectItem>
-                                <SelectItem value="On Order">On Order</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {view === 'stock' && (
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Status</span>
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="w-[130px] h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest">
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All</SelectItem>
+                                    <SelectItem value="In Stock">In Stock</SelectItem>
+                                    <SelectItem value="On Order">On Order</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
                     <div className="flex flex-col gap-1">
                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Location</span>
                         <Select value={locationFilter} onValueChange={setLocationFilter}>
@@ -251,6 +253,22 @@ export function StockManagementWorkspace({
             {/* Content Area */}
             <div className="flex-1 min-h-0 overflow-y-auto">
                 {view === 'stock' && (
+                    <div className="px-8 py-4">
+                        <StockList
+                            organisation={organisation}
+                            subDealers={subDealers}
+                            parentOrg={parentOrg}
+                            moduleId={moduleId}
+                            filterOrgId={filterOrgId}
+                            isAdmin={isAdmin}
+                            locations={locations}
+                            readOnly={readOnly}
+                            hideHeader={true}
+                        />
+                    </div>
+                )}
+
+                {view === 'onorder' && (
                     <div className="px-8 py-4">
                         <StockList
                             organisation={organisation}
