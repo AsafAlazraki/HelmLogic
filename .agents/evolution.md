@@ -5,47 +5,68 @@ This file serves as the persistent memory and reasoning log for the HelmLogic de
 ## Project DNA
 - **Framework**: Next.js (App Router)
 - **Database/Backend**: Firebase Firestore & Storage
-- **UI Library**: Radix UI + Vanilla CSS (Premium, custom styling)
+- **UI Library**: Radix UI + Tailwind CSS (shadcn/ui)
+- **Map**: Leaflet + OpenStreetMap (no API key)
 - **Core Entity**: "Data Warehouse" (Vendor-specific hardware, specs, and configurations)
+- **Stock Management**: Full logistics system with inventory, delivered deals, hold requests
 
 ## Architectural Logic & Philosophy
 
 ### 1. Data Integrity (The "Inconsistency Guard" Pattern)
-The Data Warehouse often contains partial rows or missing fields (e.g., missing `motor.model`). 
-**Rule**: Always implement robust fallbacks in `buildQuotePayload` and detail views. Never assume a field like `brand` or `hp` is present.
-**Standard Fallbacks**:
-- Name: `['Model Name'] || name || model || 'Unknown'`
-- Model: `model || ['Model Name'] || 'Standard'`
-- Price: `|| 0`
+The Data Warehouse often contains partial rows or missing fields. Always implement robust fallbacks. Never assume a field exists.
 
 ### 2. Robust Firestore Payloads (Critical)
-Firestore `setDoc()` and `addDoc()` calls will fail if ANY field contains an `undefined` value. 
-**Rule**: Always wrap payload construction in an "undefined-proof" structure.
-- Use `(list || []).map(...)` for arrays.
-- Use `property || null` or `property ?? null` for optional strings/IDs.
-- Use `property || 0` for numbers.
-- Explicitly check parent objects before accessing child properties (e.g., `model?.trailerConfig?.name || null`).
-- Ensure every mapped object in an array (e.g., factory options) has fallbacks for every field.
+Firestore `setDoc()` and `addDoc()` calls fail if ANY field contains `undefined`. Always use `|| null`, `|| ''`, `|| 0` fallbacks.
 
-### 3. Highfield Quoting Flow Logic
-- **SKU-Based Filtering**: Optional features (like consoles) use an `associatedSkus` array. If this array is populated, the feature ONLY appears if the boat's active variant SKU matches one of the entries.
-- **Motor Filtering**: Motors are filtered based on the model's `specifications.motorConfigurations`.
-    - Matches are based on engine count (Single/Twin) and HP range.
-    - Also filters by `steeringType` (Forward Control vs Tiller) based on whether the selected console has an `associatedSeatId` or is a console category.
+### 3. Stock Management Architecture
+- **inventory/{itemId}**: Single collection for both In Stock and On Order items (differentiated by `status` field)
+- **delivered-deals/{dealId}**: Separate collection for completed deals
+- **holdRequests/{requestId}**: Sub-dealer → parent org workflow
+- **customers/{customerId}**: Org-scoped customer records
+- Stock assignment via `organisationId` field changes
+- Sub-dealer visibility via `stockVisibleToSubDealers` + `subDealerVisibleColumns` on module doc
 
-### 4. Routing & UX
-- **Slugs Over IDs**: Use module slugs in URLs (e.g., `/modules/highfield`) instead of Firestore IDs wherever possible for SEO and readability.
-- **Scroll Hijacking**: Always scroll the right-panel viewport to top on step transitions to avoid user confusion.
+### 4. Module Page Architecture
+The module page (`/src/app/(app)/modules/[id]/page.tsx`) is the most complex file (~1200 lines). It has:
+- Sub-dealer early return with its own tabbed view
+- Parent org view with Dashboard, Catalog, Stock Management, Pricing, Settings
+- Stock Management uses `StockManagementWorkspace` with 6 sub-tabs
+- Pricing has sub-tabs: Pricing Matrix + Price Lists
+- Settings has: OrgModuleConfig, StockLocationManager, DealerFitManager, RoleAssignment
 
-## Recent Evolution (Session: March 17, 2026)
-1. **Fix**: Resolved critical crash on quote finalization by adding motor attribute fallbacks.
-2. **Feature**: Implemented `associatedSkus` filtering in `highfield-quote-flow.tsx`.
-3. **UX**: Created `/modules/[id]/proposals/page.tsx` to handle route index access and prevent 404s.
-4. **UI**: Upgraded Motor cards to "Hyper-Premium" cards with improved hierarchy and badges.
-5. **Stability**: Fixed a critical `setDoc()` failure by implementing the "Robust Firestore Payloads" pattern in `buildQuotePayload`, ensuring no `undefined` values are sent to Firestore.
-6. **Context**: Initialized this `evolution.md` file per user request.
+### 5. Radix Tabs Gotcha
+MUST use a SINGLE `<Tabs>` component wrapping both `<TabsList>` and `<TabsContent>`. Two separate `<Tabs>` creates separate contexts causing empty content. Use `absolute inset-0` positioning for tab panels.
+
+### 6. Agent Team Development
+- Spawn developer agents with `isolation: "worktree"` for parallel work
+- Always diff against original before resolving merge conflicts
+- Worktree-based agents can cause merge conflicts — resolve by keeping HEAD and cherry-picking specific changes
+- Check that imported components exist before pushing (placeholder stubs if needed)
+
+## Recent Evolution (Session: March 31, 2026 — v1.0.0 Release)
+
+### Major Features Built:
+1. **Complete Stock Management System** — spreadsheet table, CRUD, photos, PDFs, import/export, map, assignments
+2. **Delivered Deals** — separate table with 25 columns, move-to-delivered workflow, export/import
+3. **Hold Request System** — sub-dealer requests, customer association, Brand Captain notifications, accept/reject
+4. **Sub-Dealer Experience** — separate dashboard, parent stock visibility, own stock management
+5. **Module Settings** — locations, visibility, dealer fit categories, role assignments
+6. **Permissions** — can_manage_stock, can_view_stock added to role permissions table
+7. **Agent Team Infrastructure** — .claude/agents/ definitions, admin visualization page
+
+### Key Lessons Learned:
+- Radix Tabs MUST be single context (not two separate `<Tabs>`)
+- Worktree merges can silently drop code — always verify
+- Firestore rules don't auto-deploy — must paste in console
+- `readOnly` prop gates all CRUD UI — controlled by permissions
+- Import duplicate checking needs multi-field fingerprinting
+- Sub-dealer `filterOrgId="all-with-parent"` shows parent + own stock
 
 ## How to Proceed (For Future Agents)
-- **UI First**: If a component looks basic, it is a fail. Use vibrant colors, glassmorphism, and bold typography.
-- **Log Verification**: Before claiming success, verify the 404s on listing pages are resolved.
-- **Update this file**: Every time you modify logic or add a component, append the "Recent Evolution" and update "Architectural Logic" if patterns change.
+- **Read SESSION_HANDOVER.md** first for complete context
+- **Check CLAUDE.md** for workflow rules
+- **The module page is fragile** — always read fully before editing, never take worktree version blindly
+- **Test with Bill Hull** (billh@nsmarine.com.au) — parent org user at Northside Marine
+- **Test sub-dealers** via organisations with `parentOrganisationId` set
+- **Firestore rules**: always provide full ruleset for user to paste in Firebase Console
+- **Update this file** after significant changes
