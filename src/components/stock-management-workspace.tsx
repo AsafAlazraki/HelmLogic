@@ -55,7 +55,7 @@ export function StockManagementWorkspace({
 
     // Filter state
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState('In Stock');
     const [locationFilter, setLocationFilter] = useState('all');
     const [materialFilter, setMaterialFilter] = useState('all');
 
