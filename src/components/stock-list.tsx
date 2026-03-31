@@ -132,6 +132,7 @@ export function StockList({
     const [formOpen, setFormOpen] = useState(false);
     const [editItem, setEditItem] = useState<InventoryItem | null>(null);
     const [deliverItem, setDeliverItem] = useState<InventoryItem | null>(null);
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
     const targetOrgIds = useMemo(() => {
         if (!organisation?.id) return [];
@@ -281,7 +282,7 @@ export function StockList({
                 <div className="flex-1 overflow-hidden rounded-2xl border-2 border-slate-100">
                     <ScrollArea className="h-full">
                         <table className="w-full border-collapse text-xs">
-                            <thead className="bg-slate-50 sticky top-0 z-10">
+                            <thead className="bg-slate-50">
                                 <tr>
                                     {displayColumns.map(col => (
                                         <th
@@ -410,7 +411,7 @@ export function StockList({
                                                         </Button>
                                                     )}
                                                     {!readOnly && isAdmin && (
-                                                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }} title="Delete">
+                                                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(item.id); }} title="Delete">
                                                             <Trash2 className="h-3 w-3" />
                                                         </Button>
                                                     )}
@@ -478,6 +479,24 @@ export function StockList({
                 onOpenChange={(open) => { if (!open) setDeliverItem(null); }}
                 onComplete={() => setDeliverItem(null)}
             />
+            <Dialog open={!!deleteConfirmId} onOpenChange={(open) => { if (!open) setDeleteConfirmId(null); }}>
+                <DialogContent className="rounded-3xl border-4 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black uppercase tracking-tight">Delete Stock Item</DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Are you sure you want to delete this item? This cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <DialogClose asChild>
+                            <Button variant="outline" className="rounded-xl">Cancel</Button>
+                        </DialogClose>
+                        <Button variant="destructive" className="rounded-xl font-black uppercase text-[10px]" onClick={() => { handleDeleteItem(deleteConfirmId!); setDeleteConfirmId(null); }}>
+                            Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

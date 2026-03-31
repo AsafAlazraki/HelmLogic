@@ -184,15 +184,16 @@ export function StockLocationManager({ moduleId, locations, stockVisibleToSubDea
                 </CardContent>
             </Card>
 
-            {/* Stock Visibility Card */}
-            <Card className="rounded-2xl border-2">
+            {/* Sub-Dealer Stock Sharing Card */}
+            <Card className="border-2 rounded-2xl">
                 <CardHeader>
-                    <CardTitle className="text-xs font-bold">Stock Visibility</CardTitle>
+                    <CardTitle className="text-xs font-bold">Sub-Dealer Stock Sharing</CardTitle>
                     <CardDescription className="text-[9px] uppercase tracking-widest font-black text-slate-400">
-                        When enabled, sub-dealers can view your stock inventory in their module workspace
+                        Control stock visibility and column access for sub-dealers
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                    {/* Toggle */}
                     <div className="grid grid-cols-2 gap-3">
                         <button
                             onClick={() => handleToggleVisibility(false)}
@@ -219,38 +220,31 @@ export function StockLocationManager({ moduleId, locations, stockVisibleToSubDea
                             <span className="text-xs font-bold">Shared with Sub-Dealers</span>
                         </button>
                     </div>
+
+                    {/* Column visibility (shown when shared) */}
+                    {stockVisible && (
+                        <div className="border-t pt-4">
+                            <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-3">Visible Columns</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {ALL_STOCK_COLUMNS.map(col => {
+                                    const isChecked = visibleColumns.includes(col.id);
+                                    return (
+                                        <label key={col.id} className="flex items-center gap-2 p-2 rounded-xl hover:bg-slate-50 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                onChange={() => handleToggleColumn(col.id)}
+                                                className="rounded border-2"
+                                            />
+                                            <span className="text-xs font-semibold">{col.label}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
-
-            {/* Sub-Dealer Visible Columns Card */}
-            {stockVisible && (
-                <Card className="border-2 rounded-2xl">
-                    <CardHeader>
-                        <CardTitle className="text-xs font-bold">Sub-Dealer Visible Columns</CardTitle>
-                        <CardDescription className="text-[9px] uppercase tracking-widest font-black text-slate-400">
-                            Choose which stock columns sub-dealers can see
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {ALL_STOCK_COLUMNS.map(col => {
-                                const isChecked = visibleColumns.includes(col.id);
-                                return (
-                                    <label key={col.id} className="flex items-center gap-2 p-2 rounded-xl hover:bg-slate-50 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={isChecked}
-                                            onChange={() => handleToggleColumn(col.id)}
-                                            className="rounded border-2"
-                                        />
-                                        <span className="text-xs font-semibold">{col.label}</span>
-                                    </label>
-                                );
-                            })}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
         </div>
     );
 }
