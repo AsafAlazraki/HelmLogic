@@ -36,6 +36,8 @@ interface StockManagementWorkspaceProps {
     locations: string[];
     readOnly: boolean;
     vendorName?: string;
+    parentOrgName?: string;
+    isSubDealer?: boolean;
 }
 
 export function StockManagementWorkspace({
@@ -48,6 +50,8 @@ export function StockManagementWorkspace({
     locations,
     readOnly,
     vendorName,
+    parentOrgName,
+    isSubDealer = false,
 }: StockManagementWorkspaceProps) {
     const firestore = useFirestore();
     const [view, setView] = useState<'stock' | 'onorder' | 'delivered' | 'map' | 'assignments'>('stock');
@@ -99,9 +103,9 @@ export function StockManagementWorkspace({
     ];
 
     const allViews = [
-        { key: 'stock' as const, label: 'Stock Boats', icon: Package },
+        { key: 'stock' as const, label: isSubDealer ? `${parentOrgName || 'Supplier'} Stock` : 'Stock Boats', icon: Package },
         { key: 'onorder' as const, label: 'On Order', icon: Ship },
-        { key: 'delivered' as const, label: 'Delivered Deals', icon: Truck },
+        { key: 'delivered' as const, label: 'Delivered Deals', icon: Truck, hideWhenSubDealer: true },
         { key: 'map' as const, label: 'Map View', icon: MapPin, hideWhenReadOnly: true },
         { key: 'assignments' as const, label: 'Assignments', icon: Users, hideWhenReadOnly: true },
     ];
@@ -112,7 +116,11 @@ export function StockManagementWorkspace({
         else if (newView === 'onorder') setStatusFilter('On Order');
         else setStatusFilter('all');
     };
-    const views = readOnly ? allViews.filter(v => !v.hideWhenReadOnly) : allViews;
+    const views = allViews.filter(v => {
+        if (v.hideWhenReadOnly && readOnly) return false;
+        if ((v as any).hideWhenSubDealer && isSubDealer) return false;
+        return true;
+    });
 
     return (
         <div className="flex flex-col h-full">
@@ -124,7 +132,7 @@ export function StockManagementWorkspace({
                     </div>
                     <div className="flex items-center gap-2">
                         <h2 className="text-base font-black uppercase tracking-widest text-slate-950 leading-none">
-                            Stock Management
+                            {isSubDealer ? `${parentOrgName || 'Supplier'} Stock` : 'Stock Management'}
                         </h2>
                         {vendorName && (
                             <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-widest">

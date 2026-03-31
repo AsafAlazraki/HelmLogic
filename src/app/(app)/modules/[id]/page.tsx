@@ -741,6 +741,8 @@ export default function ModuleDetailsPage() {
                                 locations={moduleData?.stockLocations || []}
                                 readOnly={true}
                                 vendorName={moduleData.name}
+                                parentOrgName={parentOrgData?.name}
+                                isSubDealer={true}
                             />
                         </TabsContent>
 
