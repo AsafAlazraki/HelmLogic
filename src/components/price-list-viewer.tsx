@@ -203,6 +203,7 @@ function GroupedPriceListTable({ pl, vendorId, onRowClick }: { pl: PriceList; ve
     const [filterMaterial, setFilterMaterial] = useState<string | 'all'>('all');
     const [filterColor, setFilterColor] = useState<string | 'all'>('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [collapsedRanges, setCollapsedRanges] = useState<Set<string>>(new Set());
 
     const allRows = pl.rows || [];
     const availableRanges = useMemo(() => [...new Set(allRows.map(r => r.rangeName))].sort(), [allRows]);
@@ -288,16 +289,29 @@ function GroupedPriceListTable({ pl, vendorId, onRowClick }: { pl: PriceList; ve
             </div>
 
             {/* Grouped tables */}
-            {groupedRows.map(rangeGroup => (
+            {groupedRows.map(rangeGroup => {
+                const isCollapsed = collapsedRanges.has(rangeGroup.rangeName);
+                const toggleCollapse = () => {
+                    setCollapsedRanges(prev => {
+                        const next = new Set(prev);
+                        if (next.has(rangeGroup.rangeName)) next.delete(rangeGroup.rangeName);
+                        else next.add(rangeGroup.rangeName);
+                        return next;
+                    });
+                };
+                const totalSkus = rangeGroup.models.reduce((sum: number, m: any) => sum + m.rows.length, 0);
+                return (
                 <div key={rangeGroup.rangeName} className="space-y-3">
-                    <div className="flex items-center gap-3 pt-3">
-                        <div className="h-7 px-4 rounded-full bg-primary text-white flex items-center shadow-sm">
+                    <div className="flex items-center gap-3 pt-3 cursor-pointer select-none" onClick={toggleCollapse}>
+                        <div className="h-7 px-4 rounded-full bg-primary text-white flex items-center shadow-sm gap-2">
+                            <ChevronRight className={`h-3 w-3 transition-transform ${isCollapsed ? '' : 'rotate-90'}`} />
                             <span className="text-[9px] font-black uppercase tracking-widest">{rangeGroup.rangeName}</span>
                         </div>
+                        <span className="text-[9px] text-slate-400 font-bold">{rangeGroup.models.length} model{rangeGroup.models.length !== 1 ? 's' : ''} · {totalSkus} SKU{totalSkus !== 1 ? 's' : ''}</span>
                         <div className="flex-1 h-px bg-slate-200" />
                     </div>
 
-                    {rangeGroup.models.map(modelGroup => (
+                    {!isCollapsed && rangeGroup.models.map(modelGroup => (
                         <div key={modelGroup.modelName} className="overflow-x-auto rounded-2xl border-2 border-slate-200/80 bg-white shadow-sm">
                             <div className="bg-gradient-to-r from-slate-100 to-slate-50 px-5 py-3 border-b-2 border-slate-200/60 flex items-center gap-2.5">
                                 <Ship className="h-3.5 w-3.5 text-primary/60" />
@@ -372,7 +386,8 @@ function GroupedPriceListTable({ pl, vendorId, onRowClick }: { pl: PriceList; ve
                         </div>
                     ))}
                 </div>
-            ))}
+            );
+            })}
         </div>
     );
 }
