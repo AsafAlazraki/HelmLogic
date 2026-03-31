@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { collection, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, collectionGroup, addDoc, getDocs, doc, updateDoc, arrayUnion, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import {
     Dialog,
@@ -17,13 +17,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Upload, FileSpreadsheet, Loader2, Check } from 'lucide-react';
+import { Upload, FileSpreadsheet, Loader2, Check, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface StockImportProps {
     moduleId: string;
     organisationId: string;
+    vendorId?: string;
     onComplete?: () => void;
+}
+
+interface CatalogModel {
+    id: string;
+    name: string;
+    modelCode: string;
+    rangeId: string;
 }
 
 interface InventoryItem {
@@ -85,6 +93,27 @@ function parseFile(file: File): Promise<Record<string, string>[]> {
     });
 }
 
+function findBestModelMatch(importedModel: string, catalogModels: CatalogModel[]): CatalogModel | null {
+    if (!importedModel) return null;
+    const normalized = importedModel.toLowerCase().trim();
+
+    // Exact match on modelCode or name
+    const exact = catalogModels.find(m =>
+        m.modelCode.toLowerCase() === normalized ||
+        m.name.toLowerCase() === normalized
+    );
+    if (exact) return exact;
+
+    // Partial match — imported model contains or is contained by catalog model
+    const partial = catalogModels.find(m =>
+        normalized.includes(m.modelCode.toLowerCase()) ||
+        m.modelCode.toLowerCase().includes(normalized) ||
+        normalized.includes(m.name.toLowerCase()) ||
+        m.name.toLowerCase().includes(normalized)
+    );
+    return partial || null;
+}
+
 function mapRow(raw: Record<string, string>): Partial<InventoryItem> {
     const mapped: Record<string, string> = {};
     for (const [key, value] of Object.entries(raw)) {
@@ -97,7 +126,7 @@ function mapRow(raw: Record<string, string>): Partial<InventoryItem> {
     return mapped;
 }
 
-export function StockImport({ moduleId, organisationId, onComplete }: StockImportProps) {
+export function StockImport({ moduleId, organisationId, vendorId, onComplete }: StockImportProps) {
     const firestore = useFirestore();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -108,6 +137,36 @@ export function StockImport({ moduleId, organisationId, onComplete }: StockImpor
     const [mappedRows, setMappedRows] = useState<Partial<InventoryItem>[]>([]);
     const [importing, setImporting] = useState(false);
     const [importedCount, setImportedCount] = useState(0);
+    const [catalogModels, setCatalogModels] = useState<CatalogModel[]>([]);
+    const [modelMatches, setModelMatches] = useState<Map<number, CatalogModel | null>>(new Map());
+    const catalogFetchedRef = useRef(false);
+
+    const fetchCatalogModels = useCallback(async () => {
+        if (catalogFetchedRef.current) return;
+        catalogFetchedRef.current = true;
+        try {
+            const modelsSnap = await getDocs(collectionGroup(firestore, 'models'));
+            const models = modelsSnap.docs.map(d => ({
+                id: d.id,
+                name: d.data().name || '',
+                modelCode: d.data().modelCode || '',
+                rangeId: d.ref.path.split('/')[3] || '',
+            }));
+            setCatalogModels(models);
+            return models;
+        } catch (err) {
+            console.error('Failed to fetch catalog models:', err);
+            return [];
+        }
+    }, [firestore]);
+
+    const matchModels = useCallback((mapped: Partial<InventoryItem>[], models: CatalogModel[]) => {
+        const matches = new Map<number, CatalogModel | null>();
+        mapped.forEach((row, index) => {
+            matches.set(index, findBestModelMatch(row.model || '', models));
+        });
+        setModelMatches(matches);
+    }, []);
 
     const resetState = useCallback(() => {
         setStep('select');
@@ -116,6 +175,7 @@ export function StockImport({ moduleId, organisationId, onComplete }: StockImpor
         setMappedRows([]);
         setImporting(false);
         setImportedCount(0);
+        setModelMatches(new Map());
     }, []);
 
     const handleOpenChange = useCallback((isOpen: boolean) => {
@@ -134,13 +194,21 @@ export function StockImport({ moduleId, organisationId, onComplete }: StockImpor
             }
             setFileName(file.name);
             setRows(parsed);
-            setMappedRows(parsed.map(mapRow));
+            const mapped = parsed.map(mapRow);
+            setMappedRows(mapped);
+
+            // Fetch catalog models and run matching
+            const models = catalogModels.length > 0 ? catalogModels : (await fetchCatalogModels()) || [];
+            if (models.length > 0) {
+                matchModels(mapped, models);
+            }
+
             setStep('preview');
         } catch (err) {
             console.error('Failed to parse file:', err);
             toast({ title: 'Parse Error', description: 'Could not parse the uploaded file.', variant: 'destructive' });
         }
-    }, []);
+    }, [catalogModels, fetchCatalogModels, matchModels]);
 
     const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -163,7 +231,10 @@ export function StockImport({ moduleId, organisationId, onComplete }: StockImpor
         let count = 0;
 
         try {
-            for (const item of mappedRows) {
+            for (let i = 0; i < mappedRows.length; i++) {
+                const item = mappedRows[i];
+                const match = modelMatches.get(i) || null;
+
                 let dateIntoStock = null;
                 if (item.dateIntoStock) {
                     const d = new Date(item.dateIntoStock);
@@ -187,11 +258,27 @@ export function StockImport({ moduleId, organisationId, onComplete }: StockImpor
                     dateIntoStock: dateIntoStock || serverTimestamp(),
                     moduleId,
                     organisationId,
+                    modelId: match?.id || null,
+                    rangeId: match?.rangeId || null,
                     photoUrls: [],
                     pdfAttachments: [],
                     createdAt: serverTimestamp(),
                 });
                 count++;
+            }
+
+            // Auto-populate locations on the module
+            const importedLocations = [...new Set(mappedRows.map(r => r.location).filter(Boolean))] as string[];
+            if (importedLocations.length > 0) {
+                try {
+                    const moduleRef = doc(firestore, 'modules', moduleId);
+                    await updateDoc(moduleRef, {
+                        stockLocations: arrayUnion(...importedLocations),
+                    });
+                } catch (err) {
+                    console.error('Failed to update stock locations:', err);
+                    // Non-critical — don't block import success
+                }
             }
 
             setImportedCount(count);
@@ -204,7 +291,7 @@ export function StockImport({ moduleId, organisationId, onComplete }: StockImpor
             setImporting(false);
             setStep('preview');
         }
-    }, [firestore, mappedRows, moduleId, organisationId, onComplete]);
+    }, [firestore, mappedRows, modelMatches, moduleId, organisationId, onComplete]);
 
     const mappedFieldNames = mappedRows.length > 0
         ? [...new Set(mappedRows.flatMap((r) => Object.keys(r)))]
@@ -289,6 +376,11 @@ export function StockImport({ moduleId, organisationId, onComplete }: StockImpor
                                                             {field}
                                                         </th>
                                                     ))}
+                                                    {modelMatches.size > 0 && (
+                                                        <th className="px-3 py-2 text-left font-bold uppercase tracking-wider text-[10px]">
+                                                            Matched Model
+                                                        </th>
+                                                    )}
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -299,6 +391,21 @@ export function StockImport({ moduleId, organisationId, onComplete }: StockImpor
                                                                 {(row as Record<string, string>)[field] || ''}
                                                             </td>
                                                         ))}
+                                                        {modelMatches.size > 0 && (
+                                                            <td className="px-3 py-2">
+                                                                {modelMatches.get(i) ? (
+                                                                    <span className="inline-flex items-center gap-1 text-green-700">
+                                                                        <Check className="h-3 w-3" />
+                                                                        {modelMatches.get(i)!.name || modelMatches.get(i)!.modelCode}
+                                                                    </span>
+                                                                ) : (
+                                                                    <Badge variant="outline" className="text-yellow-600 border-yellow-300 bg-yellow-50 text-[9px]">
+                                                                        <AlertCircle className="h-3 w-3 mr-1" />
+                                                                        No match
+                                                                    </Badge>
+                                                                )}
+                                                            </td>
+                                                        )}
                                                     </tr>
                                                 ))}
                                             </tbody>

@@ -7,6 +7,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { X, Plus, MapPin, Lock, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -31,9 +32,10 @@ interface StockLocationManagerProps {
     locations: string[];
     stockVisibleToSubDealers?: boolean;
     subDealerVisibleColumns?: string[];
+    subDealers?: { id: string; name: string }[];
 }
 
-export function StockLocationManager({ moduleId, locations, stockVisibleToSubDealers: initialVisibility = false, subDealerVisibleColumns: initialVisibleColumns = [] }: StockLocationManagerProps) {
+export function StockLocationManager({ moduleId, locations, stockVisibleToSubDealers: initialVisibility = false, subDealerVisibleColumns: initialVisibleColumns = [], subDealers }: StockLocationManagerProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [newLocation, setNewLocation] = useState('');
@@ -181,6 +183,24 @@ export function StockLocationManager({ moduleId, locations, stockVisibleToSubDea
                             Add
                         </Button>
                     </div>
+
+                    {/* Auto-populated from sub-dealers */}
+                    {subDealers && subDealers.length > 0 && (
+                        <div className="pt-3 border-t mt-3">
+                            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">Sub-Dealer Locations</p>
+                            {subDealers.map(sd => (
+                                <div key={sd.id} className="flex items-center justify-between p-2 rounded-xl bg-slate-50/50">
+                                    <div className="flex items-center gap-2">
+                                        <MapPin className="h-3.5 w-3.5 text-blue-500" />
+                                        <span className="text-xs font-semibold">{sd.name}</span>
+                                    </div>
+                                    <Badge variant="outline" className="text-[8px] font-black uppercase border-blue-200 text-blue-600 bg-blue-50">
+                                        Sub-Dealer
+                                    </Badge>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
