@@ -113,6 +113,10 @@ export function StockList({
     readOnly = false,
     hideHeader = false,
     visibleColumns,
+    searchFilter = '',
+    statusFilter = '',
+    locationFilter = '',
+    materialFilter = '',
 }: {
     organisation: Organisation | null;
     subDealers: Organisation[];
@@ -124,6 +128,10 @@ export function StockList({
     readOnly?: boolean;
     hideHeader?: boolean;
     visibleColumns?: string[];
+    searchFilter?: string;
+    statusFilter?: string;
+    locationFilter?: string;
+    materialFilter?: string;
 }) {
     const firestore = useFirestore();
     const [sortKey, setSortKey] = useState<SortKey>('dateIntoStock');
@@ -166,7 +174,40 @@ export function StockList({
 
     const sortedInventory = useMemo(() => {
         if (!inventory) return [];
-        const sorted = [...inventory].sort((a, b) => {
+        let filtered = [...inventory];
+
+        // Apply search filter
+        if (searchFilter) {
+            const q = searchFilter.toLowerCase();
+            filtered = filtered.filter(item =>
+                (item.name || '').toLowerCase().includes(q) ||
+                (item.model || '').toLowerCase().includes(q) ||
+                (item.stockNumber || '').toLowerCase().includes(q) ||
+                (item.serialNumber || '').toLowerCase().includes(q) ||
+                (item.colour || '').toLowerCase().includes(q) ||
+                (item.label || '').toLowerCase().includes(q) ||
+                (item.notes || '').toLowerCase().includes(q) ||
+                (item.location || '').toLowerCase().includes(q) ||
+                (item.soldBy || '').toLowerCase().includes(q)
+            );
+        }
+
+        // Apply status filter
+        if (statusFilter && statusFilter !== 'all') {
+            filtered = filtered.filter(item => item.status === statusFilter);
+        }
+
+        // Apply location filter
+        if (locationFilter && locationFilter !== 'all') {
+            filtered = filtered.filter(item => item.location === locationFilter);
+        }
+
+        // Apply material filter
+        if (materialFilter && materialFilter !== 'all') {
+            filtered = filtered.filter(item => item.material === materialFilter);
+        }
+
+        const sorted = filtered.sort((a, b) => {
             let aVal: any;
             let bVal: any;
 
@@ -186,7 +227,7 @@ export function StockList({
             return 0;
         });
         return sorted;
-    }, [inventory, sortKey, sortDir]);
+    }, [inventory, sortKey, sortDir, searchFilter, statusFilter, locationFilter, materialFilter]);
 
     const displayColumns = useMemo(() => {
         if (!visibleColumns || visibleColumns.length === 0) return COLUMNS;
