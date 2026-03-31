@@ -246,24 +246,34 @@ export function DeliveredDealsImport({ moduleId, organisationId, onComplete }: D
         let count = 0;
 
         try {
-            // Fetch existing stock numbers for duplicate checking
+            // Fetch existing items for duplicate checking
             const existingSnap = await getDocs(query(
                 collection(firestore, 'delivered-deals'),
                 where('moduleId', '==', moduleId),
                 where('organisationId', '==', organisationId)
             ));
-            const existingStockNumbers = new Set(
-                existingSnap.docs.map(d => d.data().stockNumber?.toLowerCase?.() || '')
-            );
+            const existingFingerprints = new Set<string>();
+            existingSnap.docs.forEach(d => {
+                const data = d.data();
+                if (data.stockNumber) existingFingerprints.add(`sn:${data.stockNumber.toLowerCase()}`);
+                if (data.serialNumber) existingFingerprints.add(`sr:${data.serialNumber.toLowerCase()}`);
+                const combo = `${(data.model||'').toLowerCase()}|${(data.colour||'').toLowerCase()}|${(data.label||'').toLowerCase()}`;
+                if (data.model) existingFingerprints.add(`mc:${combo}`);
+            });
 
             let skipped = 0;
             for (let i = 0; i < mappedRows.length; i++) {
                 const item = mappedRows[i];
                 const match = modelMatches.get(i) || null;
 
-                // Skip duplicates based on stockNumber
+                // Skip duplicates — check stockNumber, serialNumber, or model+colour+label
                 const sn = (item.stockNumber || '').toLowerCase();
-                if (sn && existingStockNumbers.has(sn)) {
+                const sr = (item.serialNumber || '').toLowerCase();
+                const combo = `${(item.model||'').toLowerCase()}|${(item.colour||'').toLowerCase()}|${(item.label||'').toLowerCase()}`;
+
+                if ((sn && existingFingerprints.has(`sn:${sn}`)) ||
+                    (sr && existingFingerprints.has(`sr:${sr}`)) ||
+                    (item.model && existingFingerprints.has(`mc:${combo}`))) {
                     skipped++;
                     continue;
                 }
