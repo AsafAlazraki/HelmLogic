@@ -279,10 +279,10 @@ export function StockManagementWorkspace({
                 </div>
             )}
 
-            {/* Content Area */}
+            {/* Content Area — only this scrolls */}
             <div className="flex-1 min-h-0 overflow-y-auto">
                 {view === 'stock' && (
-                    <div className="px-8 py-4">
+                    <div className="px-8 pb-4">
                         <StockList
                             organisation={organisation}
                             subDealers={subDealers}
