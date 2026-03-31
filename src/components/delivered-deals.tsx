@@ -279,7 +279,16 @@ export function DeliveredDeals({
     readOnly = false,
     hideHeader = false,
     compact = false,
-}: DeliveredDealsProps) {
+    searchFilter = '',
+    statusFilter = '',
+    locationFilter = '',
+    materialFilter = '',
+}: DeliveredDealsProps & {
+    searchFilter?: string;
+    statusFilter?: string;
+    locationFilter?: string;
+    materialFilter?: string;
+}) {
     const firestore = useFirestore();
 
     const dealsQuery = useMemoFirebase(() => {
@@ -340,14 +349,41 @@ export function DeliveredDeals({
 
     const sortedDeals = useMemo(() => {
         if (!deals) return [];
-        return [...deals].sort((a, b) => {
+        let filtered = [...deals];
+
+        if (searchFilter) {
+            const q = searchFilter.toLowerCase();
+            filtered = filtered.filter(d =>
+                (d.name || '').toLowerCase().includes(q) ||
+                (d.model || '').toLowerCase().includes(q) ||
+                (d.stockNumber || '').toLowerCase().includes(q) ||
+                (d.serialNumber || '').toLowerCase().includes(q) ||
+                (d.colour || '').toLowerCase().includes(q) ||
+                (d.customerNotes || '').toLowerCase().includes(q) ||
+                (d.motor || '').toLowerCase().includes(q) ||
+                (d.poOrDealNumber || '').toLowerCase().includes(q) ||
+                (d.consignmentWith || '').toLowerCase().includes(q) ||
+                (d.soldBy || '').toLowerCase().includes(q)
+            );
+        }
+        if (statusFilter && statusFilter !== 'all') {
+            filtered = filtered.filter(d => d.status === statusFilter);
+        }
+        if (locationFilter && locationFilter !== 'all') {
+            filtered = filtered.filter(d => d.location === locationFilter);
+        }
+        if (materialFilter && materialFilter !== 'all') {
+            filtered = filtered.filter(d => d.material === materialFilter);
+        }
+
+        return filtered.sort((a, b) => {
             const aVal = getSortValue(a, sortKey);
             const bVal = getSortValue(b, sortKey);
             if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
             if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [deals, sortKey, sortDir]);
+    }, [deals, sortKey, sortDir, searchFilter, statusFilter, locationFilter, materialFilter]);
 
     const handleSort = (key: keyof DeliveredDeal) => {
         if (sortKey === key) {

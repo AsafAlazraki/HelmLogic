@@ -192,7 +192,7 @@ export function StockManagementWorkspace({
             </div>
 
             {/* Filter Bar (stock and onorder views) */}
-            {(view === 'stock' || view === 'onorder') && (
+            {(view === 'stock' || view === 'onorder' || view === 'delivered') && (
                 <div className="shrink-0 px-8 py-3 flex items-end gap-3 border-b-2 border-slate-200 bg-slate-50/50">
                     <div className="flex flex-col gap-1 flex-1 max-w-xs">
                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Search</span>
@@ -206,17 +206,27 @@ export function StockManagementWorkspace({
                             />
                         </div>
                     </div>
-                    {view === 'stock' && (
+                    {(view === 'stock' || view === 'delivered') && (
                         <div className="flex flex-col gap-1">
                             <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Status</span>
                             <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                <SelectTrigger className="w-[130px] h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest">
+                                <SelectTrigger className="w-[140px] h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest">
                                     <SelectValue placeholder="Status" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">All</SelectItem>
-                                    <SelectItem value="In Stock">In Stock</SelectItem>
-                                    <SelectItem value="On Order">On Order</SelectItem>
+                                    {view === 'stock' ? (
+                                        <>
+                                            <SelectItem value="In Stock">In Stock</SelectItem>
+                                            <SelectItem value="On Order">On Order</SelectItem>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <SelectItem value="Delivered">Delivered</SelectItem>
+                                            <SelectItem value="Pending Delivery">Pending</SelectItem>
+                                            <SelectItem value="Sold">Sold</SelectItem>
+                                        </>
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -302,6 +312,11 @@ export function StockManagementWorkspace({
                             moduleId={moduleId}
                             isAdmin={isAdmin}
                             readOnly={readOnly}
+                            hideHeader={true}
+                            searchFilter={searchTerm}
+                            statusFilter={statusFilter}
+                            locationFilter={locationFilter}
+                            materialFilter={materialFilter}
                         />
                     </div>
                 )}
