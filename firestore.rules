@@ -109,6 +109,14 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    match /holdRequests/{requestId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /customers/{customerId} {
+      allow read, write: if isSignedIn();
+    }
+
     // Legacy support for clients collection
     match /clients/{clientId} {
       allow read: if isSignedIn();
