@@ -410,7 +410,7 @@ export function StockList({
                                                             <ArrowRightLeft className="h-3 w-3" />
                                                         </Button>
                                                     )}
-                                                    {!readOnly && isAdmin && (
+                                                    {!readOnly && (
                                                         <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(item.id); }} title="Delete">
                                                             <Trash2 className="h-3 w-3" />
                                                         </Button>
