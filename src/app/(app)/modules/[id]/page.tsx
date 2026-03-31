@@ -75,6 +75,7 @@ import { OrganisationModuleConfig } from '@/components/organisation-module-confi
 import { StockLocationManager } from '@/components/stock-location-manager';
 import { StockManagementWorkspace } from '@/components/stock-management-workspace';
 import { DeliveredDeals } from '@/components/delivered-deals';
+import { ModuleDealerFitManager } from '@/components/module-dealer-fit-manager';
 
 import {
   DndContext,
@@ -1111,6 +1112,11 @@ export default function ModuleDetailsPage() {
                                     locations={moduleData?.stockLocations || []}
                                     stockVisibleToSubDealers={moduleData?.stockVisibleToSubDealers ?? false}
                                     subDealerVisibleColumns={moduleData?.subDealerVisibleColumns || []}
+                                    subDealers={(subDealersList || []).map((sd: any) => ({ id: sd.id, name: sd.name }))}
+                                />
+                                <ModuleDealerFitManager
+                                    moduleId={moduleData.id}
+                                    categories={moduleData?.moduleDealerFitCategories || []}
                                 />
                             </div>
                         )}
