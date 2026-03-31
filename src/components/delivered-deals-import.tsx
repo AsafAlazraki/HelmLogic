@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { collection, collectionGroup, addDoc, getDocs, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, collectionGroup, addDoc, getDocs, serverTimestamp, Timestamp, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import {
     Dialog,
@@ -246,9 +246,27 @@ export function DeliveredDealsImport({ moduleId, organisationId, onComplete }: D
         let count = 0;
 
         try {
+            // Fetch existing stock numbers for duplicate checking
+            const existingSnap = await getDocs(query(
+                collection(firestore, 'delivered-deals'),
+                where('moduleId', '==', moduleId),
+                where('organisationId', '==', organisationId)
+            ));
+            const existingStockNumbers = new Set(
+                existingSnap.docs.map(d => d.data().stockNumber?.toLowerCase?.() || '')
+            );
+
+            let skipped = 0;
             for (let i = 0; i < mappedRows.length; i++) {
                 const item = mappedRows[i];
                 const match = modelMatches.get(i) || null;
+
+                // Skip duplicates based on stockNumber
+                const sn = (item.stockNumber || '').toLowerCase();
+                if (sn && existingStockNumbers.has(sn)) {
+                    skipped++;
+                    continue;
+                }
 
                 let deliveryDate = null;
                 if (item.deliveryDate) {
@@ -293,7 +311,7 @@ export function DeliveredDealsImport({ moduleId, organisationId, onComplete }: D
 
             setImportedCount(count);
             setStep('done');
-            toast({ title: 'Import Complete', description: `Successfully imported ${count} delivered deals.` });
+            toast({ title: 'Import Complete', description: `Imported ${count} deals${skipped > 0 ? `, skipped ${skipped} duplicates` : ''}.` });
             onComplete?.();
         } catch (err) {
             console.error('Import failed:', err);

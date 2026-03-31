@@ -13,7 +13,7 @@ import { StockImport } from '@/components/stock-import';
 import { DeliveredDeals } from '@/components/delivered-deals';
 import { DeliveredDealsExport } from '@/components/delivered-deals-export';
 import { DeliveredDealsImport } from '@/components/delivered-deals-import';
-import { Box, Plus, MapPin, Users, Package, Search, Truck } from 'lucide-react';
+import { Box, Plus, MapPin, Users, Package, Search, Truck, Ship } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -50,7 +50,7 @@ export function StockManagementWorkspace({
     vendorName,
 }: StockManagementWorkspaceProps) {
     const firestore = useFirestore();
-    const [view, setView] = useState<'table' | 'delivered' | 'map' | 'assignments'>('table');
+    const [view, setView] = useState<'stock' | 'onorder' | 'delivered' | 'map' | 'assignments'>('stock');
     const [formOpen, setFormOpen] = useState(false);
 
     // Filter state
@@ -99,11 +99,19 @@ export function StockManagementWorkspace({
     ];
 
     const allViews = [
-        { key: 'table' as const, label: 'Table View', icon: Package },
+        { key: 'stock' as const, label: 'Stock Boats', icon: Package },
+        { key: 'onorder' as const, label: 'On Order', icon: Ship },
         { key: 'delivered' as const, label: 'Delivered Deals', icon: Truck },
         { key: 'map' as const, label: 'Map View', icon: MapPin, hideWhenReadOnly: true },
         { key: 'assignments' as const, label: 'Assignments', icon: Users, hideWhenReadOnly: true },
     ];
+
+    const handleViewChange = (newView: typeof view) => {
+        setView(newView);
+        if (newView === 'stock') setStatusFilter('In Stock');
+        else if (newView === 'onorder') setStatusFilter('On Order');
+        else setStatusFilter('all');
+    };
     const views = readOnly ? allViews.filter(v => !v.hideWhenReadOnly) : allViews;
 
     return (
@@ -126,14 +134,14 @@ export function StockManagementWorkspace({
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    {view === 'table' && <StockExport inventory={inventory || []} fileName={`stock-${vendorName || 'export'}`} />}
+                    {(view === 'stock' || view === 'onorder') && <StockExport inventory={inventory || []} fileName={`stock-${vendorName || 'export'}`} />}
                     {view === 'delivered' && (
                         <>
                             <DeliveredDealsExport deals={deliveredDeals || []} fileName={`delivered-${vendorName || 'export'}`} />
                             {!readOnly && <DeliveredDealsImport moduleId={moduleId} organisationId={organisation?.id || ''} />}
                         </>
                     )}
-                    {!readOnly && view === 'table' && (
+                    {!readOnly && (view === 'stock' || view === 'onorder') && (
                         <>
                             <StockImport moduleId={moduleId} organisationId={organisation?.id || ''} vendorId={vendorName} />
                             <Button
@@ -169,7 +177,7 @@ export function StockManagementWorkspace({
                     {views.map(({ key, label, icon: Icon }) => (
                         <button
                             key={key}
-                            onClick={() => setView(key)}
+                            onClick={() => handleViewChange(key)}
                             className={`px-3 h-7 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-all ${
                                 view === key
                                     ? 'bg-white shadow-sm text-slate-950 rounded-lg'
@@ -183,8 +191,8 @@ export function StockManagementWorkspace({
                 </div>
             </div>
 
-            {/* Filter Bar (table view only) */}
-            {view === 'table' && (
+            {/* Filter Bar (stock and onorder views) */}
+            {(view === 'stock' || view === 'onorder') && (
                 <div className="shrink-0 px-8 py-3 flex items-center gap-3 border-b-2 border-slate-200 bg-slate-50/50">
                     <div className="relative flex-1 max-w-xs">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -195,19 +203,21 @@ export function StockManagementWorkspace({
                             className="pl-9 h-9 rounded-xl border-2 text-xs"
                         />
                     </div>
-                    <div className="flex flex-col gap-1">
-                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Status</span>
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[130px] h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All</SelectItem>
-                                <SelectItem value="In Stock">In Stock</SelectItem>
-                                <SelectItem value="On Order">On Order</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    {view === 'stock' && (
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Status</span>
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="w-[130px] h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest">
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All</SelectItem>
+                                    <SelectItem value="In Stock">In Stock</SelectItem>
+                                    <SelectItem value="On Order">On Order</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
                     <div className="flex flex-col gap-1">
                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Location</span>
                         <Select value={locationFilter} onValueChange={setLocationFilter}>
@@ -242,7 +252,23 @@ export function StockManagementWorkspace({
 
             {/* Content Area */}
             <div className="flex-1 min-h-0 overflow-y-auto">
-                {view === 'table' && (
+                {view === 'stock' && (
+                    <div className="px-8 py-4">
+                        <StockList
+                            organisation={organisation}
+                            subDealers={subDealers}
+                            parentOrg={parentOrg}
+                            moduleId={moduleId}
+                            filterOrgId={filterOrgId}
+                            isAdmin={isAdmin}
+                            locations={locations}
+                            readOnly={readOnly}
+                            hideHeader={true}
+                        />
+                    </div>
+                )}
+
+                {view === 'onorder' && (
                     <div className="px-8 py-4">
                         <StockList
                             organisation={organisation}

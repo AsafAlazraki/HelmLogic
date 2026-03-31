@@ -655,7 +655,7 @@ export default function ModuleDetailsPage() {
                                                             subDealers={[]}
                                                             parentOrg={parentOrgData ?? null}
                                                             moduleId={moduleData.id}
-                                                            filterOrgId={currentMemberOrg.id}
+                                                            filterOrgId="all-with-parent"
                                                             isAdmin={false}
                                                             locations={moduleData?.stockLocations || []}
                                                             readOnly={true}
@@ -728,14 +728,14 @@ export default function ModuleDetailsPage() {
                             </div>
                         </TabsContent>
 
-                        {/* Stock Management — same workspace as parent org but read-only */}
+                        {/* Stock Management — sub-dealer sees parent org stock + their own */}
                         <TabsContent value="stock" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                             <StockManagementWorkspace
                                 organisation={currentMemberOrg as any}
                                 subDealers={[]}
                                 parentOrg={parentOrgData ?? null}
                                 moduleId={moduleData.id}
-                                filterOrgId={currentMemberOrg.id}
+                                filterOrgId="all-with-parent"
                                 isAdmin={false}
                                 locations={moduleData?.stockLocations || []}
                                 readOnly={true}
