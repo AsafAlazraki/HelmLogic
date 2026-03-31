@@ -634,22 +634,19 @@ export default function ModuleDetailsPage() {
                                             </CardHeader>
                                         </Card>
 
-                                        {/* Stock Access Card */}
+                                        {/* Parent Org Stock Card */}
                                         {showStock && (
                                             <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden">
                                                 <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
                                                     <div className="flex items-center gap-3 shrink-0">
-                                                        <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
-                                                        <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Your Stock</h3>
-                                                        {dashboardStockCounts.total > 0 && (
-                                                            <Badge variant="secondary" className="text-[9px] font-black h-5 px-2">{dashboardStockCounts.total}</Badge>
-                                                        )}
+                                                        <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Supplier</Badge>
+                                                        <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">{parentOrgData?.name || 'Supplier'} Stock</h3>
                                                     </div>
                                                     <Button variant="ghost" size="sm" onClick={() => setActiveTab('stock')} className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white rounded-xl transition-colors h-7 px-3 gap-1">
                                                         View All <ArrowRight className="h-3 w-3" />
                                                     </Button>
                                                 </CardHeader>
-                                                <CardContent className="p-0 max-h-[250px] overflow-hidden">
+                                                <CardContent className="p-0 max-h-[200px] overflow-hidden">
                                                     <ScrollArea className="h-full">
                                                         <StockList
                                                             organisation={currentMemberOrg as any}
@@ -667,6 +664,31 @@ export default function ModuleDetailsPage() {
                                                 </CardContent>
                                             </Card>
                                         )}
+
+                                        {/* Sub-dealer's Own Stock */}
+                                        <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden">
+                                            <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Your Stock</Badge>
+                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">{currentMemberOrg.name} Stock</h3>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="p-0 max-h-[200px] overflow-hidden">
+                                                <ScrollArea className="h-full">
+                                                    <StockList
+                                                        organisation={currentMemberOrg as any}
+                                                        subDealers={[]}
+                                                        parentOrg={null}
+                                                        moduleId={moduleData.id}
+                                                        filterOrgId="local"
+                                                        isAdmin={false}
+                                                        locations={moduleData?.stockLocations || []}
+                                                        readOnly={false}
+                                                        hideHeader={true}
+                                                    />
+                                                </ScrollArea>
+                                            </CardContent>
+                                        </Card>
                                     </div>
 
                                     {/* Right — Info Panel */}
