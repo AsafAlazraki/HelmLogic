@@ -105,7 +105,6 @@ export function StockManagementWorkspace({
         { key: 'assignments' as const, label: 'Assignments', icon: Users, hideWhenReadOnly: true },
     ];
     const views = readOnly ? allViews.filter(v => !v.hideWhenReadOnly) : allViews;
-    ];
 
     return (
         <div className="flex flex-col h-full">
