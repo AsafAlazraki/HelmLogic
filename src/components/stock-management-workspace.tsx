@@ -97,11 +97,13 @@ export function StockManagementWorkspace({
         { label: 'Total', value: stats.total, color: 'text-primary', borderColor: 'border-primary/20' },
     ];
 
-    const views = [
+    const allViews = [
         { key: 'table' as const, label: 'Table View', icon: Package },
         { key: 'delivered' as const, label: 'Delivered Deals', icon: Truck },
-        { key: 'map' as const, label: 'Map View', icon: MapPin },
-        { key: 'assignments' as const, label: 'Assignments', icon: Users },
+        { key: 'map' as const, label: 'Map View', icon: MapPin, hideWhenReadOnly: true },
+        { key: 'assignments' as const, label: 'Assignments', icon: Users, hideWhenReadOnly: true },
+    ];
+    const views = readOnly ? allViews.filter(v => !v.hideWhenReadOnly) : allViews;
     ];
 
     return (

@@ -659,6 +659,7 @@ export default function ModuleDetailsPage() {
                                                             isAdmin={false}
                                                             locations={moduleData?.stockLocations || []}
                                                             readOnly={true}
+                                                            hideHeader={true}
                                                             visibleColumns={moduleData?.subDealerVisibleColumns}
                                                         />
                                                     </ScrollArea>
