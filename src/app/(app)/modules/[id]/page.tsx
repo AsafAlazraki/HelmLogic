@@ -354,6 +354,35 @@ export default function ModuleDetailsPage() {
     [firestore, user]);
     const { data: recentQuotes } = useCollection<any>(recentQuotesQuery);
 
+    // Dashboard stock counts
+    const dashboardInventoryQuery = useMemoFirebase(() => {
+        if (!currentMemberOrg?.id || !moduleData?.id) return null;
+        return query(
+            collection(firestore, 'inventory'),
+            where('moduleId', '==', moduleData.id),
+            where('organisationId', '==', currentMemberOrg.id)
+        );
+    }, [firestore, currentMemberOrg?.id, moduleData?.id]);
+    const { data: dashboardInventory } = useCollection<any>(dashboardInventoryQuery);
+
+    const dashboardVesselsQuery = useMemoFirebase(() => {
+        if (!currentMemberOrg?.id || !moduleData?.id) return null;
+        return query(
+            collection(firestore, 'vessels'),
+            where('organisationId', '==', currentMemberOrg.id),
+            where('status', '==', 'On Order')
+        );
+    }, [firestore, currentMemberOrg?.id, moduleData?.id]);
+    const { data: dashboardVessels } = useCollection<any>(dashboardVesselsQuery);
+
+    const dashboardStockCounts = useMemo(() => {
+        const inv = dashboardInventory || [];
+        const inStock = inv.filter((i: any) => i.status === 'In Stock').length;
+        const onOrder = (dashboardVessels || []).length;
+        const locationSet = new Set(inv.map((i: any) => i.location).filter(Boolean));
+        return { inStock, onOrder, locations: locationSet.size, total: inv.length };
+    }, [dashboardInventory, dashboardVessels]);
+
     const userPermissions = useMemo(() => {
         const roleId = userProfile?.organisationRole;
         if (!roleId || !currentMemberOrg?.permissions?.[roleId]) return {};
@@ -501,38 +530,60 @@ export default function ModuleDetailsPage() {
             <main className="flex-1 overflow-hidden relative">
                 <Tabs value={activeTab} className="h-full">
                     <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
-                        <ScrollArea className="h-full">
-                            <div className="p-8 min-h-[calc(100vh-224px)] flex flex-col">
-                                <div className="grid grid-cols-12 gap-8 flex-1">
-                                    <div className="col-span-7 flex flex-col gap-8 h-full">
-                                        <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
-                                            <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
-                                                <div className="flex items-center gap-3 shrink-0">
-                                                    <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
-                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock Units</h3>
-                                                </div>
-                                                <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
-                                            </CardHeader>
-                                            <CardContent className="flex-1 min-h-0 p-0">
-                                                <StockList organisation={currentMemberOrg as any} subDealers={[]} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
-                                            </CardContent>
-                                        </Card>
+                        <div className="h-full p-6 md:p-8 flex flex-col">
+                            {/* Summary Stats Row */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0">
+                                <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                    <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.inStock}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-green-600">In Stock</span>
+                                </Card>
+                                <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                    <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.onOrder}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-blue-600">On Order</span>
+                                </Card>
+                                <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                    <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.locations}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Locations</span>
+                                </Card>
+                                <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                    <span className="text-2xl font-black text-slate-900">{recentQuotes?.length || 0}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-purple-600">Proposals</span>
+                                </Card>
+                            </div>
 
-                                        <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
-                                            <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
-                                                <div className="flex items-center gap-3 shrink-0">
-                                                    <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
-                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Corporate On Order</h3>
-                                                </div>
-                                                <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
-                                            </CardHeader>
-                                            <CardContent className="flex-1 min-h-0 p-0">
-                                                <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
-                                            </CardContent>
-                                        </Card>
-                                    </div>
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 flex-1 min-h-0 mt-6">
+                                {/* Left — Stock Preview */}
+                                <div className="lg:col-span-7 flex flex-col min-h-0">
+                                    <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden">
+                                        <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
+                                            <div className="flex items-center gap-3">
+                                                <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Stock</Badge>
+                                                <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900">Stock Management</h3>
+                                                {dashboardStockCounts.total > 0 && (
+                                                    <Badge variant="secondary" className="text-[9px] font-black h-5 px-2">{dashboardStockCounts.total}</Badge>
+                                                )}
+                                            </div>
+                                            <Button variant="ghost" size="sm" onClick={() => setActiveTab('stock')} className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white rounded-xl transition-colors h-7 px-3 gap-1">
+                                                View All <ArrowRight className="h-3 w-3" />
+                                            </Button>
+                                        </CardHeader>
+                                        <CardContent className="p-0 max-h-[180px] overflow-hidden">
+                                            <ScrollArea className="h-full">
+                                                <StockList
+                                                    organisation={currentMemberOrg as any}
+                                                    subDealers={[]}
+                                                    parentOrg={null}
+                                                    moduleId={moduleData.id}
+                                                    filterOrgId="local"
+                                                    isAdmin={isAdmin}
+                                                />
+                                            </ScrollArea>
+                                        </CardContent>
+                                    </Card>
+                                </div>
 
-                                    <Card className="col-span-5 flex flex-col border rounded-2xl shadow-sm bg-white overflow-hidden">
+                                {/* Right — Recent Proposals */}
+                                <Card className="lg:col-span-5 flex flex-col border-2 rounded-2xl shadow-sm bg-white overflow-hidden min-h-0 max-h-[calc(100vh-340px)]">
                                         <CardHeader className="px-5 py-4 border-b flex flex-row items-center justify-between shrink-0">
                                             <div className="flex items-center gap-2.5">
                                                 <h2 className="text-sm font-semibold text-slate-900">Recent Proposals</h2>
@@ -628,9 +679,8 @@ export default function ModuleDetailsPage() {
                                             )}
                                         </CardContent>
                                     </Card>
-                                </div>
                             </div>
-                        </ScrollArea>
+                        </div>
                     </TabsContent>
 
                     <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
