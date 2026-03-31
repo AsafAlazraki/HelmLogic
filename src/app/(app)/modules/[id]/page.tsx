@@ -76,6 +76,7 @@ import { StockLocationManager } from '@/components/stock-location-manager';
 import { StockManagementWorkspace } from '@/components/stock-management-workspace';
 import { DeliveredDeals } from '@/components/delivered-deals';
 import { ModuleDealerFitManager } from '@/components/module-dealer-fit-manager';
+import { ModuleRoleAssignment } from '@/components/module-role-assignment';
 
 import {
   DndContext,
@@ -1139,6 +1140,12 @@ export default function ModuleDetailsPage() {
                                 <ModuleDealerFitManager
                                     moduleId={moduleData.id}
                                     categories={moduleData?.moduleDealerFitCategories || []}
+                                />
+                                <ModuleRoleAssignment
+                                    moduleId={moduleData.id}
+                                    organisationId={currentMemberOrg.id}
+                                    currentBrandCaptain={moduleData?.brandCaptainUserId ? { userId: moduleData.brandCaptainUserId, userName: moduleData.brandCaptainUserName || '' } : null}
+                                    currentModuleManager={moduleData?.moduleManagerUserId ? { userId: moduleData.moduleManagerUserId, userName: moduleData.moduleManagerUserName || '' } : null}
                                 />
                             </div>
                         )}
