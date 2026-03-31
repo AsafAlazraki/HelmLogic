@@ -47,30 +47,31 @@ function buildRows(inventory: any[]) {
   }));
 }
 
+const STOCK_HEADERS = [
+  'Date into Stock', 'Days in Stock', 'Status', 'Location', 'Sold By',
+  'Stock Number', 'Label', 'Model', 'Colour', 'Serial Number', 'Material', 'Notes', 'Name',
+];
+
 function exportToExcel(inventory: any[], fileName: string) {
   const rows = buildRows(inventory);
-  const ws = XLSX.utils.json_to_sheet(rows);
+  const ws = rows.length > 0
+    ? XLSX.utils.json_to_sheet(rows)
+    : XLSX.utils.aoa_to_sheet([STOCK_HEADERS]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Stock');
 
-  // Auto-size columns
-  const colWidths = Object.keys(rows[0] || {}).map((key) => ({
-    wch:
-      Math.max(
-        key.length,
-        ...rows
-          .map((r) => String((r as Record<string, any>)[key] || '').length)
-          .slice(0, 100)
-      ) + 2,
+  ws['!cols'] = STOCK_HEADERS.map((h) => ({
+    wch: Math.max(h.length, ...rows.map((r) => String((r as Record<string, any>)[h] || '').length).slice(0, 100)) + 2,
   }));
-  ws['!cols'] = colWidths;
 
   XLSX.writeFile(wb, `${fileName}.xlsx`);
 }
 
 function exportToCSV(inventory: any[], fileName: string) {
   const rows = buildRows(inventory);
-  const ws = XLSX.utils.json_to_sheet(rows);
+  const ws = rows.length > 0
+    ? XLSX.utils.json_to_sheet(rows)
+    : XLSX.utils.aoa_to_sheet([STOCK_HEADERS]);
   const csv = XLSX.utils.sheet_to_csv(ws);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
