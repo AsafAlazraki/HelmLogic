@@ -5,7 +5,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowRightLeft, Trash2, Box, CheckCircle2, ChevronUp, ChevronDown, Plus, Pencil, Truck } from 'lucide-react';
+import { Loader2, ArrowRightLeft, Trash2, Box, CheckCircle2, ChevronUp, ChevronDown, Plus, Pencil, Truck, Shield } from 'lucide-react';
 import { StockItemDetail } from '@/components/stock-item-detail';
 import { StockItemForm } from '@/components/stock-item-form';
 import { MoveToDelivered } from '@/components/move-to-delivered';
@@ -117,6 +117,7 @@ export function StockList({
     statusFilter = '',
     locationFilter = '',
     materialFilter = '',
+    onRequestHold,
 }: {
     organisation: Organisation | null;
     subDealers: Organisation[];
@@ -132,6 +133,7 @@ export function StockList({
     statusFilter?: string;
     locationFilter?: string;
     materialFilter?: string;
+    onRequestHold?: (item: InventoryItem) => void;
 }) {
     const firestore = useFirestore();
     const [sortKey, setSortKey] = useState<SortKey>('dateIntoStock');
@@ -519,6 +521,12 @@ export function StockList({
                                                     {!readOnly && (
                                                         <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(item.id); }} title="Delete">
                                                             <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    )}
+                                                    {readOnly && onRequestHold && (
+                                                        <Button variant="outline" size="sm" className="h-7 rounded-lg text-[9px] font-black uppercase tracking-widest px-2 gap-1 border-2 border-primary/30 text-primary hover:bg-primary hover:text-white" onClick={(e) => { e.stopPropagation(); onRequestHold(item); }} title="Request Hold">
+                                                            <Shield className="h-3 w-3" />
+                                                            Hold
                                                         </Button>
                                                     )}
                                                 </div>
