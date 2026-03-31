@@ -193,15 +193,18 @@ export function StockManagementWorkspace({
 
             {/* Filter Bar (stock and onorder views) */}
             {(view === 'stock' || view === 'onorder') && (
-                <div className="shrink-0 px-8 py-3 flex items-center gap-3 border-b-2 border-slate-200 bg-slate-50/50">
-                    <div className="relative flex-1 max-w-xs">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-                        <Input
-                            placeholder="Search..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-9 h-9 rounded-xl border-2 text-xs"
-                        />
+                <div className="shrink-0 px-8 py-3 flex items-end gap-3 border-b-2 border-slate-200 bg-slate-50/50">
+                    <div className="flex flex-col gap-1 flex-1 max-w-xs">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Search</span>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                            <Input
+                                placeholder="Search..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9 h-9 rounded-xl border-2 text-xs"
+                            />
+                        </div>
                     </div>
                     {view === 'stock' && (
                         <div className="flex flex-col gap-1">
@@ -264,6 +267,10 @@ export function StockManagementWorkspace({
                             locations={locations}
                             readOnly={readOnly}
                             hideHeader={true}
+                            searchFilter={searchTerm}
+                            statusFilter={statusFilter}
+                            locationFilter={locationFilter}
+                            materialFilter={materialFilter}
                         />
                     </div>
                 )}
@@ -280,6 +287,10 @@ export function StockManagementWorkspace({
                             locations={locations}
                             readOnly={readOnly}
                             hideHeader={true}
+                            searchFilter={searchTerm}
+                            statusFilter={statusFilter}
+                            locationFilter={locationFilter}
+                            materialFilter={materialFilter}
                         />
                     </div>
                 )}
