@@ -12,6 +12,7 @@ import { StockExport } from '@/components/stock-export';
 import { StockImport } from '@/components/stock-import';
 import { DeliveredDeals } from '@/components/delivered-deals';
 import { DeliveredDealsExport } from '@/components/delivered-deals-export';
+import { DeliveredDealsImport } from '@/components/delivered-deals-import';
 import { Box, Plus, MapPin, Users, Package, Search, Truck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -127,7 +128,12 @@ export function StockManagementWorkspace({
                 </div>
                 <div className="flex items-center gap-2">
                     {view === 'table' && <StockExport inventory={inventory || []} fileName={`stock-${vendorName || 'export'}`} />}
-                    {view === 'delivered' && <DeliveredDealsExport deals={deliveredDeals || []} fileName={`delivered-${vendorName || 'export'}`} />}
+                    {view === 'delivered' && (
+                        <>
+                            <DeliveredDealsExport deals={deliveredDeals || []} fileName={`delivered-${vendorName || 'export'}`} />
+                            {!readOnly && <DeliveredDealsImport moduleId={moduleId} organisationId={organisation?.id || ''} />}
+                        </>
+                    )}
                     {!readOnly && view === 'table' && (
                         <>
                             <StockImport moduleId={moduleId} organisationId={organisation?.id || ''} vendorId={vendorName} />
