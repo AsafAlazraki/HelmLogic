@@ -33,30 +33,6 @@ service cloud.firestore {
       );
     }
 
-    /**
-     * Organisation Member Check
-     * Returns true if the signed-in user belongs to the given organisation.
-     * Used to allow org-level admins (e.g. Managing Director) to manage their own org.
-     */
-    function isOrgMember(orgId) {
-      return isSignedIn() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == orgId;
-    }
-
-    /**
-     * Parent Organisation Member Check
-     * Returns true if the target org is a sub-dealer of the caller's organisation.
-     * Allows parent org users to manage their sub-dealer organisations.
-     */
-    function isParentOrgMember(orgId) {
-      return isSignedIn() &&
-        exists(/databases/$(database)/documents/organisations/$(orgId)) &&
-        get(/databases/$(database)/documents/organisations/$(orgId)).data.parentOrganisationId != null &&
-        get(/databases/$(database)/documents/organisations/$(orgId)).data.parentOrganisationId ==
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId;
-    }
-
     // --- COLLECTION RULES ---
 
     // HelmLogic Admins get full access to the entire database
@@ -65,32 +41,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin() ||
-        // Same-org members can read each other's profiles
-        (isSignedIn() &&
-         resource.data.organisationId != null &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == resource.data.organisationId) ||
-        // Parent org members can read sub-dealer user profiles
-        (isSignedIn() &&
-         resource.data.organisationId != null &&
-         exists(/databases/$(database)/documents/organisations/$(resource.data.organisationId)) &&
-         get(/databases/$(database)/documents/organisations/$(resource.data.organisationId)).data.parentOrganisationId ==
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId);
-      // Allow any signed-in user to create a new user profile (needed for org-level enrollment flow).
-      allow create: if isSignedIn();
-      // Allow update by the owner, a HelmLogic Admin, or any member of the same organisation
-      // (so Managing Directors can edit team member profiles and roles).
-      allow update: if isOwner(userId) || isAdmin() ||
-        (isSignedIn() &&
-         resource.data.organisationId != null &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == resource.data.organisationId) ||
-        // Parent org members can update sub-dealer user profiles
-        (isSignedIn() &&
-         resource.data.organisationId != null &&
-         exists(/databases/$(database)/documents/organisations/$(resource.data.organisationId)) &&
-         get(/databases/$(database)/documents/organisations/$(resource.data.organisationId)).data.parentOrganisationId ==
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId);
-      allow delete: if isOwner(userId) || isAdmin();
+      allow read, write: if isOwner(userId) || isAdmin();
 
       match /notifications/{notifId} {
         allow read, write: if isOwner(userId) || isAdmin();
@@ -113,13 +64,12 @@ service cloud.firestore {
 
     match /modules/{moduleId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow write: if isAdmin();
     }
 
     match /organisations/{orgId} {
       allow read: if isSignedIn();
-      // Allow HelmLogic Admins, org members, or parent org members (managing sub-dealers)
-      allow write: if isAdmin() || isOrgMember(orgId) || isParentOrgMember(orgId);
+      allow write: if isAdmin();
 
       match /templates/{templateId} {
         allow read, write: if isSignedIn();
@@ -138,10 +88,6 @@ service cloud.firestore {
       }
       match /dealerFitSelections/{selectionId} {
         allow read, write: if isSignedIn();
-      }
-      match /priceLists/{priceListId} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
       }
     }
 
@@ -163,7 +109,11 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
-    match /delivered-deals/{dealId} {
+    match /holdRequests/{requestId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /customers/{customerId} {
       allow read, write: if isSignedIn();
     }
 
@@ -176,13 +126,6 @@ service cloud.firestore {
     // Legacy support for global models
     match /vessel_models/{vesselModelId} {
       allow read: if isSignedIn();
-    }
-
-    // Org members can read any quote belonging to their organisation (collection group query support)
-    match /{path=**}/quotes/{quoteId} {
-      allow read: if isSignedIn() &&
-        resource.data.organisationId != null &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == resource.data.organisationId;
     }
   }
 }
