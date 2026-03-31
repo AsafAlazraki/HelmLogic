@@ -41,11 +41,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin() ||
-        (isSignedIn() &&
-         resource.data.organisationId != null &&
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == resource.data.organisationId);
-      allow write: if isOwner(userId) || isAdmin();
+      allow read, write: if isOwner(userId) || isAdmin();
 
       match /notifications/{notifId} {
         allow read, write: if isOwner(userId) || isAdmin();
@@ -113,6 +109,18 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    match /delivered-deals/{dealId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /holdRequests/{requestId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /customers/{customerId} {
+      allow read, write: if isSignedIn();
+    }
+
     // Legacy support for clients collection
     match /clients/{clientId} {
       allow read: if isSignedIn();
@@ -122,13 +130,6 @@ service cloud.firestore {
     // Legacy support for global models
     match /vessel_models/{vesselModelId} {
       allow read: if isSignedIn();
-    }
-
-    // Org members can read any quote belonging to their organisation (collection group query support)
-    match /{path=**}/quotes/{quoteId} {
-      allow read: if isSignedIn() &&
-        resource.data.organisationId != null &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId == resource.data.organisationId;
     }
   }
 }

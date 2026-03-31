@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { useUser } from '@/firebase/auth/use-user';
-import { collection, doc, query, orderBy } from 'firebase/firestore';
+import { collection, collectionGroup, doc, query, where, orderBy } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Loader2, FileText, ChevronRight, Plus, Ship, Calendar, Anchor } from 'lucide-react';
 import Link from 'next/link';
@@ -28,21 +28,40 @@ function StatusBadge({ status }: { status: string }) {
 export default function ProposalsPage() {
     const params = useParams();
     const id = params.id as string;
+    const orgSlug = (params as any).orgSlug as string | undefined;
+    const navPrefix = orgSlug ? `/${orgSlug}` : '';
     const firestore = useFirestore();
     const { user } = useUser();
 
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user?.uid]);
     const { data: userProfile } = useDoc<any>(userProfileRef);
 
-    const quotesQuery = useMemoFirebase(() => {
+    // User-scoped baseline (always works)
+    const userQuotesQuery = useMemoFirebase(() => {
         if (!user?.uid) return null;
         return query(
             collection(firestore, `users/${user.uid}/quotes`),
             orderBy('createdAt', 'desc')
         );
     }, [firestore, user?.uid]);
+    const { data: userQuotesList, isLoading: userLoading } = useCollection<any>(userQuotesQuery);
 
-    const { data: quotes, isLoading } = useCollection<any>(quotesQuery);
+    // Org-wide overlay — silent so it won't crash if indexes aren't deployed yet
+    const orgQuotesQuery = useMemoFirebase(() => {
+        if (!user?.uid) return null;
+        const orgId = userProfile?.organisationId;
+        if (!orgId) return null;
+        return query(
+            collectionGroup(firestore, 'quotes'),
+            where('organisationId', '==', orgId),
+            orderBy('createdAt', 'desc')
+        );
+    }, [firestore, user?.uid, userProfile?.organisationId]);
+    const { data: orgQuotesList } = useCollection<any>(orgQuotesQuery, { silent: true });
+
+    // Prefer org-wide when available, fall back to user-scoped
+    const quotes = orgQuotesList || userQuotesList;
+    const isLoading = !quotes && userLoading;
 
     const moduleLabel = id.replace(/-/g, ' ');
 
@@ -64,7 +83,7 @@ export default function ProposalsPage() {
                     </p>
                 </div>
                 <Button asChild className="h-12 px-6 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg hover:scale-[1.02] active:scale-100 transition-transform bg-primary text-white shrink-0">
-                    <Link href={`/modules/${id}`}>
+                    <Link href={`${navPrefix}/modules/${id}`}>
                         <Plus className="h-4 w-4 mr-2" />
                         New Quote
                     </Link>
@@ -91,7 +110,7 @@ export default function ProposalsPage() {
                         return (
                             <Link
                                 key={quote.id}
-                                href={`/modules/${id}/proposals/${quote.id}`}
+                                href={`${navPrefix}/modules/${id}/proposals/${quote.id}`}
                                 className="group block bg-white rounded-[2rem] border-2 border-slate-100 hover:border-primary/30 shadow-sm hover:shadow-xl transition-all duration-200 overflow-hidden"
                             >
                                 {/* Card image strip */}
@@ -159,7 +178,7 @@ export default function ProposalsPage() {
                         </p>
                     </div>
                     <Button asChild className="h-11 px-6 rounded-2xl font-black uppercase tracking-widest text-[10px] bg-primary text-white mt-2">
-                        <Link href={`/modules/${id}`}>
+                        <Link href={`${navPrefix}/modules/${id}`}>
                             <Plus className="h-4 w-4 mr-2" />
                             Start a Build
                         </Link>

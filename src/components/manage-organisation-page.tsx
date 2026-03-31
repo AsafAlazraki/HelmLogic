@@ -126,6 +126,8 @@ const permissionsConfig = [
     { id: 'can_view_subdealers', label: 'View Sub-Dealers' },
     { id: 'can_access_price_book', label: 'Access Price Book' },
     { id: 'can_access_settings', label: 'Access Settings' },
+    { id: 'can_manage_stock', label: 'Manage Stock' },
+    { id: 'can_view_stock', label: 'View Stock' },
 ];
 
 function ColorFormField({ name, label, description }: { name: "primaryColor" | "accentColor" | "secondaryColor", label: string, description: string }) {
@@ -351,6 +353,13 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
 
     const orgDocRef = useMemoFirebase(() => doc(firestore, 'organisations', orgId), [firestore, orgId]);
     const { data: organisation, loading: orgLoading } = useDoc<OrganisationFormData>(orgDocRef);
+
+    // Sub-dealers query (only needed when subDealersEnabled)
+    const subDealersQuery = useMemoFirebase(
+        () => query(collection(firestore, 'organisations'), where('parentOrganisationId', '==', orgId)),
+        [firestore, orgId]
+    );
+    const { data: subDealers } = useCollection<any>(subDealersQuery);
 
     const form = useForm<OrganisationFormData>({
         resolver: zodResolver(formSchema),
@@ -898,6 +907,89 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                             </CardContent>
                         </Card>
                     </TabsContent>
+
+                    {organisation?.subDealersEnabled && (
+                        <TabsContent value="sub-dealers">
+                            <Card>
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <CardTitle>Sub-Dealer Network</CardTitle>
+                                            <CardDescription className="mt-1">
+                                                {subDealers?.length || 0} sub-dealer{subDealers?.length !== 1 ? 's' : ''} registered
+                                            </CardDescription>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => router.push(`/organisations/${orgId}/add-sub-dealer`)}
+                                            className="h-9 px-5 rounded-xl font-black text-[10px] uppercase tracking-widest"
+                                        >
+                                            <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+                                            Add Sub-Dealer
+                                        </Button>
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    {!subDealers || subDealers.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center py-16 text-center gap-3 border-2 border-dashed rounded-2xl">
+                                            <Building className="h-10 w-10 text-slate-200" />
+                                            <p className="text-sm font-black uppercase tracking-widest text-slate-300">No sub-dealers yet</p>
+                                            <p className="text-[10px] font-bold text-slate-400 max-w-xs">
+                                                Add your first sub-dealer to start distributing price lists and managing their access.
+                                            </p>
+                                            <Button
+                                                size="sm"
+                                                onClick={() => router.push(`/organisations/${orgId}/add-sub-dealer`)}
+                                                className="mt-2 rounded-xl font-black text-[10px] uppercase tracking-widest"
+                                            >
+                                                <PlusCircle className="h-3.5 w-3.5 mr-1.5" />
+                                                Add Sub-Dealer
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {subDealers.map((sd: any) => (
+                                                <div
+                                                    key={sd.id}
+                                                    className="group flex items-center justify-between p-4 rounded-xl border-2 border-slate-100 hover:border-primary/20 hover:shadow-sm transition-all cursor-pointer"
+                                                    onClick={() => router.push(`/sub-dealers/${sd.slug || sd.id}`)}
+                                                >
+                                                    <div className="flex items-center gap-4">
+                                                        {sd.primaryLogoUrl ? (
+                                                            <div className="relative h-10 w-16 rounded-lg overflow-hidden bg-slate-50 border border-slate-100 shrink-0">
+                                                                <Image src={sd.primaryLogoUrl} alt={sd.name} fill className="object-contain p-1" />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="h-10 w-16 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                                                                <Building className="h-4 w-4 text-slate-300" />
+                                                            </div>
+                                                        )}
+                                                        <div>
+                                                            <p className="font-black text-sm uppercase tracking-tight text-slate-800 group-hover:text-primary transition-colors">{sd.name}</p>
+                                                            <div className="flex items-center gap-3 mt-0.5">
+                                                                {sd.address && (
+                                                                    <p className="text-[10px] font-bold text-slate-400 truncate max-w-xs">{sd.address}</p>
+                                                                )}
+                                                                {sd.phoneNumber && (
+                                                                    <p className="text-[10px] font-bold text-slate-400">{sd.phoneNumber}</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest">
+                                                            Manage
+                                                        </Badge>
+                                                        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-primary transition-colors" />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    )}
                 </Tabs>
             </div>
         </FormProvider>

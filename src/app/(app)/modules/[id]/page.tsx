@@ -49,7 +49,9 @@ import {
     Upload,
     Save,
     Building,
-    Layout
+    Layout,
+    Box,
+    Settings
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -61,12 +63,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn, createSlug } from '@/lib/utils';
-import { StockList } from '@/components/inventory-list';
+import { StockList } from '@/components/stock-list';
 import { VesselOnOrderList } from '@/components/vessel-on-order-list';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { HelmLogicLoading } from "@/components/helmlogic-loading";
 import { HighfieldPricingWorkspace } from '@/components/highfield-pricing-workspace';
+import { PriceListViewer } from '@/components/price-list-viewer';
+import { PriceListManager } from '@/components/price-list-manager';
+import { OrganisationModuleConfig } from '@/components/organisation-module-config';
+import { StockLocationManager } from '@/components/stock-location-manager';
+import { StockManagementWorkspace } from '@/components/stock-management-workspace';
+import { DeliveredDeals } from '@/components/delivered-deals';
+import { ModuleDealerFitManager } from '@/components/module-dealer-fit-manager';
+import { ModuleRoleAssignment } from '@/components/module-role-assignment';
 
 import {
   DndContext,
@@ -110,6 +120,7 @@ interface Organisation {
     enabledModuleSubscriptions?: string[];
     permissions?: Record<string, Record<string, boolean>>;
     subDealersEnabled?: boolean;
+    parentOrganisationId?: string;
     phoneNumber?: string;
     address?: string;
     roles?: any[];
@@ -314,6 +325,7 @@ export default function ModuleDetailsPage() {
     const storage = useStorage();
 
     const [activeTab, setActiveTab] = useState('dashboard');
+    const [pricingSubTab, setPricingSubTab] = useState<'matrix' | 'pricelists'>('matrix');
     const [view, setView] = useState<'ranges' | 'models' | 'bmt'>('ranges');
     const [selectedRangeId, setSelectedRangeId] = useState<string | null>(null);
     const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
@@ -344,16 +356,76 @@ export default function ModuleDetailsPage() {
         userProfile?.organisationId ? allOrganisations?.find((o: any) => o.id === userProfile.organisationId) : null,
     [userProfile?.organisationId, allOrganisations]);
 
-    // Recent proposals for the dashboard — user-scoped
-    const recentQuotesQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return query(
+    // Sub-dealer support
+    const isSubDealer = !!currentMemberOrg?.parentOrganisationId;
+
+    const subDealersQuery = useMemoFirebase(() =>
+        currentMemberOrg?.id && !isSubDealer
+            ? query(collection(firestore, 'organisations'), where('parentOrganisationId', '==', currentMemberOrg.id))
+            : null,
+    [firestore, currentMemberOrg?.id, isSubDealer]);
+    const { data: subDealersList } = useCollection<Organisation>(subDealersQuery);
+
+    const parentOrgRef = useMemoFirebase(() =>
+        isSubDealer && currentMemberOrg?.parentOrganisationId
+            ? doc(firestore, 'organisations', currentMemberOrg.parentOrganisationId)
+            : null,
+    [firestore, isSubDealer, currentMemberOrg?.parentOrganisationId]);
+    const { data: parentOrgData } = useDoc<Organisation>(parentOrgRef);
+
+    // Settings tab queries
+    const allVendorsQuery = useMemoFirebase(
+        () => collection(firestore, 'data-warehouse'),
+        [firestore]
+    );
+    const { data: allVendors } = useCollection<any>(allVendorsQuery);
+
+    const dealerFitCatsQuery = useMemoFirebase(
+        () => collection(firestore, 'dealerFitCategories'),
+        [firestore]
+    );
+    const { data: allDealerFitCategories } = useCollection<any>(dealerFitCatsQuery);
+
+    // Recent proposals for the dashboard
+    const recentQuotesQuery = useMemoFirebase(() =>
+        user ? query(
             collection(firestore, `users/${user.uid}/quotes`),
             orderBy('createdAt', 'desc'),
             limit(8)
-        );
-    }, [firestore, user]);
+        ) : null,
+    [firestore, user]);
     const { data: recentQuotes } = useCollection<any>(recentQuotesQuery);
+
+    // Dashboard stock counts
+    const dashboardInventoryQuery = useMemoFirebase(() => {
+        if (!currentMemberOrg?.id || !moduleData?.id) return null;
+        const orgId = isSubDealer ? currentMemberOrg.id : currentMemberOrg.id;
+        return query(
+            collection(firestore, 'inventory'),
+            where('moduleId', '==', moduleData.id),
+            where('organisationId', '==', orgId)
+        );
+    }, [firestore, currentMemberOrg?.id, moduleData?.id, isSubDealer]);
+    const { data: dashboardInventory } = useCollection<any>(dashboardInventoryQuery);
+
+    const dashboardVesselsQuery = useMemoFirebase(() => {
+        if (!currentMemberOrg?.id || !moduleData?.id) return null;
+        const targetOrgId = isSubDealer ? (parentOrgData?.id || currentMemberOrg.id) : currentMemberOrg.id;
+        return query(
+            collection(firestore, 'vessels'),
+            where('organisationId', '==', targetOrgId),
+            where('status', '==', 'On Order')
+        );
+    }, [firestore, currentMemberOrg?.id, parentOrgData?.id, moduleData?.id, isSubDealer]);
+    const { data: dashboardVessels } = useCollection<any>(dashboardVesselsQuery);
+
+    const dashboardStockCounts = useMemo(() => {
+        const inv = dashboardInventory || [];
+        const inStock = inv.filter((i: any) => i.status === 'In Stock').length;
+        const onOrder = (dashboardVessels || []).length;
+        const locationSet = new Set(inv.map((i: any) => i.location).filter(Boolean));
+        return { inStock, onOrder, locations: locationSet.size, total: inv.length };
+    }, [dashboardInventory, dashboardVessels]);
 
     const userPermissions = useMemo(() => {
         const roleId = userProfile?.organisationRole;
@@ -431,15 +503,291 @@ export default function ModuleDetailsPage() {
         toast({ title: "Item Updated" });
     };
 
+    // Settings tab handlers
+    const handleUpdateVendors = async (vendorIds: string[]) => {
+        if (!currentMemberOrg?.id || !moduleData) return;
+        await updateDoc(doc(firestore, 'organisations', currentMemberOrg.id), {
+            [`moduleAssociatedVendorAccess.${moduleData.id}`]: vendorIds,
+        });
+    };
+
+    const handleUpdateCategories = async (categoryIds: string[]) => {
+        if (!currentMemberOrg?.id) return;
+        await updateDoc(doc(firestore, 'organisations', currentMemberOrg.id), {
+            dealerFitCategories: categoryIds,
+        });
+    };
+
+    const handleToggleSubDealerAccess = async (sdId: string, hasAccess: boolean) => {
+        if (!moduleData) return;
+        const sdRef = doc(firestore, 'organisations', sdId);
+        const sd = subDealersList?.find((s: any) => s.id === sdId);
+        const currentSubs: string[] = sd?.enabledModuleSubscriptions || [];
+        const next = hasAccess
+            ? [...new Set([...currentSubs, moduleData.id])]
+            : currentSubs.filter((id: string) => id !== moduleData.id);
+        await updateDoc(sdRef, { enabledModuleSubscriptions: next });
+    };
+
     const loading = slugLoading || idLoading || mainVendorLoading;
 
     if (loading) return <HelmLogicLoading label="Synchronizing Module" />;
     if (!moduleData) return <div className="p-12 text-center font-bold">Module Context Lost.</div>;
 
+    // Sub-dealer tabbed experience — same visual style as parent orgs
+    if (isSubDealer && currentMemberOrg) {
+        const showStock = moduleData?.stockVisibleToSubDealers === true;
+        const subDealerTabs = [
+            { id: 'dashboard', label: 'Dashboard' },
+            { id: 'stock', label: 'Stock Management', visible: showStock },
+            { id: 'pricing', label: 'Price List' },
+        ].filter(t => t.visible !== false);
+
+        // Ensure activeTab is valid for sub-dealer tabs
+        const validSubDealerTab = subDealerTabs.some(t => t.id === activeTab) ? activeTab : 'dashboard';
+
+        return (
+            <div className="flex flex-col h-screen overflow-hidden bg-background">
+                {/* Header — same style as parent org */}
+                <div className="relative shrink-0 overflow-hidden bg-primary px-12 text-primary-foreground z-20 h-44 border-b-2 border-white/10">
+                    <div className="absolute inset-0 z-0 bg-primary/95">
+                        <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
+                        <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-indigo-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
+                    </div>
+                    <div className="relative z-10 flex flex-col h-full justify-center">
+                        <div className="flex items-center justify-between w-full gap-12">
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-white/50 leading-none">
+                                    <Navigation className="h-2.5 w-2.5" />
+                                    <span>MODULE</span>
+                                </div>
+                                <h1 className="text-3xl sm:text-5xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl">
+                                    {moduleData.name}
+                                </h1>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                className="h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 group shadow-xl flex items-center"
+                                onClick={() => router.push(orgSlug ? `/${orgSlug}/dashboard` : '/dashboard')}
+                            >
+                                <X className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
+                                <span>Back to Hub</span>
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Single Tabs wrapping both bar and content */}
+                <Tabs value={validSubDealerTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+                    <div className="bg-white border-b shrink-0 z-10 px-10">
+                        <TabsList className={cn("grid w-full h-12 bg-transparent p-0 gap-4", `grid-cols-${subDealerTabs.length}`)}>
+                            {subDealerTabs.map((t) => (
+                                <TabsTrigger
+                                    key={t.id}
+                                    value={t.id}
+                                    className="rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-[0.2em] h-full transition-all duration-300 text-slate-500 data-[state=active]:text-slate-950 hover:text-slate-700"
+                                >
+                                    {t.label}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                    </div>
+
+                    <div className="flex-1 min-h-0 overflow-hidden">
+                        {/* Dashboard */}
+                        <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                            <div className="h-full p-6 md:p-8 overflow-y-auto">
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
+                                    {/* Left — Summary + Quick Access */}
+                                    <div className="lg:col-span-7 flex flex-col gap-6">
+                                        {/* Summary Stats */}
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                            <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                                <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.inStock}</span>
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-green-600">Your Stock</span>
+                                            </Card>
+                                            <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                                <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.onOrder}</span>
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-blue-600">On Order</span>
+                                            </Card>
+                                            <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                                <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.locations}</span>
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Locations</span>
+                                            </Card>
+                                        </div>
+
+                                        {/* Price List Access Card */}
+                                        <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden cursor-pointer hover:border-primary/40 hover:shadow-md transition-all" onClick={() => setActiveTab('pricing')}>
+                                            <CardHeader className="py-4 px-6 flex flex-row items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary border-2 border-primary/20">
+                                                        <DollarSign className="h-5 w-5" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900">Price Lists</h3>
+                                                        <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mt-0.5">View pricing from {parentOrgData?.name || 'your supplier'}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                    <ArrowRight className="h-4 w-4" />
+                                                </div>
+                                            </CardHeader>
+                                        </Card>
+
+                                        {/* Parent Org Stock Card */}
+                                        {showStock && (
+                                            <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden">
+                                                <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
+                                                    <div className="flex items-center gap-3 shrink-0">
+                                                        <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Supplier</Badge>
+                                                        <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">{parentOrgData?.name || 'Supplier'} Stock</h3>
+                                                    </div>
+                                                    <Button variant="ghost" size="sm" onClick={() => setActiveTab('stock')} className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white rounded-xl transition-colors h-7 px-3 gap-1">
+                                                        View All <ArrowRight className="h-3 w-3" />
+                                                    </Button>
+                                                </CardHeader>
+                                                <CardContent className="p-0 max-h-[200px] overflow-hidden">
+                                                    <ScrollArea className="h-full">
+                                                        <StockList
+                                                            organisation={currentMemberOrg as any}
+                                                            subDealers={[]}
+                                                            parentOrg={parentOrgData ?? null}
+                                                            moduleId={moduleData.id}
+                                                            filterOrgId="all-with-parent"
+                                                            isAdmin={false}
+                                                            locations={moduleData?.stockLocations || []}
+                                                            readOnly={true}
+                                                            hideHeader={true}
+                                                            visibleColumns={moduleData?.subDealerVisibleColumns}
+                                                        />
+                                                    </ScrollArea>
+                                                </CardContent>
+                                            </Card>
+                                        )}
+
+                                        {/* Sub-dealer's Own Stock */}
+                                        <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden">
+                                            <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Your Stock</Badge>
+                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">{currentMemberOrg.name} Stock</h3>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="p-0 max-h-[200px] overflow-hidden">
+                                                <ScrollArea className="h-full">
+                                                    <StockList
+                                                        organisation={currentMemberOrg as any}
+                                                        subDealers={[]}
+                                                        parentOrg={null}
+                                                        moduleId={moduleData.id}
+                                                        filterOrgId="local"
+                                                        isAdmin={false}
+                                                        locations={moduleData?.stockLocations || []}
+                                                        readOnly={false}
+                                                        hideHeader={true}
+                                                    />
+                                                </ScrollArea>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+
+                                    {/* Right — Info Panel */}
+                                    <div className="lg:col-span-5 flex flex-col gap-6">
+                                        <Card className="border-2 rounded-2xl shadow-sm bg-white p-6">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="h-10 w-10 bg-slate-100 rounded-xl flex items-center justify-center border-2 border-slate-200">
+                                                    <Building className="h-5 w-5 text-slate-500" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-sm font-bold text-slate-900">{currentMemberOrg.name}</h3>
+                                                    <p className="text-[9px] uppercase tracking-widest font-black text-slate-400">Sub-Dealer</p>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <div className="flex items-center justify-between py-2 border-b border-slate-100">
+                                                    <span className="text-[9px] uppercase tracking-widest font-black text-slate-400">Supplier</span>
+                                                    <span className="text-xs font-semibold">{parentOrgData?.name || '—'}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between py-2 border-b border-slate-100">
+                                                    <span className="text-[9px] uppercase tracking-widest font-black text-slate-400">Module</span>
+                                                    <span className="text-xs font-semibold">{moduleData.name}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between py-2 border-b border-slate-100">
+                                                    <span className="text-[9px] uppercase tracking-widest font-black text-slate-400">Stock Access</span>
+                                                    <Badge variant="outline" className={`text-[9px] font-black uppercase px-2 h-5 border ${showStock ? 'border-green-500/30 text-green-600 bg-green-50' : 'border-slate-300 text-slate-500'}`}>
+                                                        {showStock ? 'Enabled' : 'Not Available'}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex items-center justify-between py-2">
+                                                    <span className="text-[9px] uppercase tracking-widest font-black text-slate-400">Price Lists</span>
+                                                    <Badge variant="outline" className="text-[9px] font-black uppercase px-2 h-5 border border-green-500/30 text-green-600 bg-green-50">
+                                                        Available
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        </Card>
+
+                                        {/* On Order preview */}
+                                        <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden max-h-[240px]">
+                                            <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
+                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">On Order</h3>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="flex-1 min-h-0 p-0 overflow-hidden">
+                                                <ScrollArea className="h-full">
+                                                    <VesselOnOrderList
+                                                        organisation={currentMemberOrg as any}
+                                                        parentOrg={parentOrgData ?? null}
+                                                        moduleId={moduleData.id}
+                                                        isAdmin={false}
+                                                    />
+                                                </ScrollArea>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        {/* Stock Management — sub-dealer sees parent org stock + their own */}
+                        <TabsContent value="stock" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                            <StockManagementWorkspace
+                                organisation={currentMemberOrg as any}
+                                subDealers={[]}
+                                parentOrg={parentOrgData ?? null}
+                                moduleId={moduleData.id}
+                                filterOrgId="all-with-parent"
+                                isAdmin={false}
+                                locations={moduleData?.stockLocations || []}
+                                readOnly={true}
+                                vendorName={moduleData.name}
+                                parentOrgName={parentOrgData?.name}
+                                isSubDealer={true}
+                                user={user}
+                                brandCaptainUserId={moduleData?.brandCaptainUserId || null}
+                            />
+                        </TabsContent>
+
+                        {/* Price List */}
+                        <TabsContent value="pricing" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                            <PriceListViewer
+                                parentOrganisationId={currentMemberOrg.parentOrganisationId}
+                                subDealerOrgId={currentMemberOrg.id}
+                                vendorId={moduleData.mainVendorId}
+                            />
+                        </TabsContent>
+                    </div>
+                </Tabs>
+            </div>
+        );
+    }
+
     const navTabs = [
         { id: 'dashboard', label: 'Dashboard' },
         { id: 'bmt', label: 'Catalog' },
-        { id: 'stock', label: 'Stock Management' },
+        { id: 'stock', label: 'Stock Management', visible: (isAdmin || !!userPermissions.can_view_stock || !!userPermissions.can_manage_stock) },
         { id: 'pricing', label: 'Pricing', visible: (isAdmin || !!userPermissions.can_access_pricing_manager) },
         { id: 'settings', label: 'Settings' }
     ].filter(t => t.visible !== false);
@@ -483,57 +831,102 @@ export default function ModuleDetailsPage() {
                 </div>
             </div>
 
-            <div className="bg-white border-b shrink-0 z-10 px-10">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+                <div className="bg-white border-b shrink-0 z-10 px-10">
                     <TabsList className={cn("grid w-full h-12 bg-transparent p-0 gap-4", `grid-cols-${navTabs.length}`)}>
                         {navTabs.map((t) => (
-                            <TabsTrigger 
-                                key={t.id} 
-                                value={t.id} 
+                            <TabsTrigger
+                                key={t.id}
+                                value={t.id}
                                 className="rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-[0.2em] h-full transition-all duration-300 text-slate-500 data-[state=active]:text-slate-950 hover:text-slate-700"
                             >
                                 {t.label}
                             </TabsTrigger>
                         ))}
                     </TabsList>
-                </Tabs>
-            </div>
+                </div>
 
-            <main className="flex-1 overflow-hidden relative">
-                <Tabs value={activeTab} className="h-full">
-                    <TabsContent value="dashboard" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
-                        <ScrollArea className="h-full">
-                            <div className="p-8 min-h-[calc(100vh-224px)] flex flex-col">
-                                <div className="grid grid-cols-12 gap-8 flex-1">
-                                    <div className="col-span-7 flex flex-col gap-8 h-full">
-                                        <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
-                                            <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
-                                                <div className="flex items-center gap-3 shrink-0">
-                                                    <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-primary/20 text-primary bg-primary/5 px-2">Asset</Badge>
-                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Stock Units</h3>
+                <div className="flex-1 overflow-hidden relative" style={{ minHeight: 0 }}>
+                    <TabsContent value="dashboard" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden data-[state=inactive]:hidden">
+                        <div className="h-full p-6 md:p-8 flex flex-col">
+                            {/* Summary Stats Row */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0">
+                                <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                    <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.inStock}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-green-600">In Stock</span>
+                                </Card>
+                                <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                    <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.onOrder}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-blue-600">On Order</span>
+                                </Card>
+                                <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                    <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.locations}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Locations</span>
+                                </Card>
+                                <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                    <span className="text-2xl font-black text-slate-900">{recentQuotes?.length || 0}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-purple-600">Proposals</span>
+                                </Card>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0 mt-6">
+                                {/* Left — Quick Access Cards */}
+                                <div className="lg:col-span-7 flex flex-col gap-4 min-h-0">
+                                    {/* Stock Management Card */}
+                                    <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden cursor-pointer hover:border-primary/40 hover:shadow-md transition-all" onClick={() => setActiveTab('stock')}>
+                                        <div className="p-5 flex items-center justify-between">
+                                            <div className="flex items-center gap-4">
+                                                <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary border-2 border-primary/20">
+                                                    <Box className="h-6 w-6" />
                                                 </div>
-                                                <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
-                                            </CardHeader>
-                                            <CardContent className="flex-1 min-h-0 p-0">
-                                                <StockList organisation={currentMemberOrg as any} subDealers={[]} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
-                                            </CardContent>
-                                        </Card>
-
-                                        <Card className="flex-1 flex flex-col border-2 rounded-[2.5rem] shadow-sm bg-white overflow-hidden transition-all hover:shadow-md">
-                                            <CardHeader className="py-4 px-8 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0 flex-nowrap">
-                                                <div className="flex items-center gap-3 shrink-0">
-                                                    <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-green-500/20 text-green-600 bg-green-50/50 px-2">Pipeline</Badge>
-                                                    <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900 whitespace-nowrap">Corporate On Order</h3>
+                                                <div>
+                                                    <h3 className="text-sm font-bold text-slate-900">Stock Management</h3>
+                                                    <p className="text-[10px] text-slate-500 mt-0.5">
+                                                        {dashboardStockCounts.inStock} in stock · {dashboardStockCounts.onOrder} on order · {dashboardStockCounts.locations} location{dashboardStockCounts.locations !== 1 ? 's' : ''}
+                                                    </p>
                                                 </div>
-                                                <Button variant="ghost" size="icon" onClick={() => setActiveTab('stock')} className="h-8 w-8 text-primary hover:bg-primary hover:text-white rounded-full transition-colors active:scale-95"><ArrowRight className="h-4 w-4" /></Button>
-                                            </CardHeader>
-                                            <CardContent className="flex-1 min-h-0 p-0">
-                                                <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
-                                            </CardContent>
-                                        </Card>
-                                    </div>
+                                            </div>
+                                            <ArrowRight className="h-5 w-5 text-slate-400" />
+                                        </div>
+                                    </Card>
 
-                                    <Card className="col-span-5 flex flex-col border rounded-2xl shadow-sm bg-white overflow-hidden">
+                                    {/* Catalog Card */}
+                                    <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden cursor-pointer hover:border-primary/40 hover:shadow-md transition-all" onClick={() => setActiveTab('bmt')}>
+                                        <div className="p-5 flex items-center justify-between">
+                                            <div className="flex items-center gap-4">
+                                                <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 border-2 border-blue-200">
+                                                    <Layout className="h-6 w-6" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-sm font-bold text-slate-900">Catalog</h3>
+                                                    <p className="text-[10px] text-slate-500 mt-0.5">Browse models, ranges, and configurations</p>
+                                                </div>
+                                            </div>
+                                            <ArrowRight className="h-5 w-5 text-slate-400" />
+                                        </div>
+                                    </Card>
+
+                                    {/* Pricing Card */}
+                                    {(isAdmin || !!userPermissions.can_access_pricing_manager) && (
+                                        <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden cursor-pointer hover:border-primary/40 hover:shadow-md transition-all" onClick={() => setActiveTab('pricing')}>
+                                            <div className="p-5 flex items-center justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="h-12 w-12 bg-green-50 rounded-xl flex items-center justify-center text-green-600 border-2 border-green-200">
+                                                        <DollarSign className="h-6 w-6" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-sm font-bold text-slate-900">Pricing</h3>
+                                                        <p className="text-[10px] text-slate-500 mt-0.5">Pricing matrix and price lists</p>
+                                                    </div>
+                                                </div>
+                                                <ArrowRight className="h-5 w-5 text-slate-400" />
+                                            </div>
+                                        </Card>
+                                    )}
+                                </div>
+
+                                {/* Right — Recent Proposals */}
+                                <Card className="lg:col-span-5 flex flex-col border-2 rounded-2xl shadow-sm bg-white overflow-hidden min-h-0 max-h-[calc(100vh-340px)]">
                                         <CardHeader className="px-5 py-4 border-b flex flex-row items-center justify-between shrink-0">
                                             <div className="flex items-center gap-2.5">
                                                 <h2 className="text-sm font-semibold text-slate-900">Recent Proposals</h2>
@@ -629,12 +1022,11 @@ export default function ModuleDetailsPage() {
                                             )}
                                         </CardContent>
                                     </Card>
-                                </div>
                             </div>
-                        </ScrollArea>
+                        </div>
                     </TabsContent>
 
-                    <TabsContent value="bmt" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
+                    <TabsContent value="bmt" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden flex flex-col data-[state=inactive]:hidden">
                         {/* Tactical Workspace Header */}
                         <div className="flex items-center justify-between gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300 relative z-[150]">
                             <div className="flex items-center gap-4">
@@ -702,29 +1094,91 @@ export default function ModuleDetailsPage() {
                         </ScrollArea>
                     </TabsContent>
 
-                    <TabsContent value="stock" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
-                        <ScrollArea className="h-full">
-                            <div className="p-8 space-y-8">
-                                <div>
-                                    <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">Stock Units</h2>
-                                    <StockList organisation={currentMemberOrg as any} subDealers={[]} parentOrg={null} moduleId={moduleData.id} filterOrgId="local" isAdmin={isAdmin} />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-black uppercase italic tracking-tight mb-4">On Order</h2>
-                                    <VesselOnOrderList organisation={currentMemberOrg as any} parentOrg={null} moduleId={moduleData.id} isAdmin={isAdmin} />
-                                </div>
-                            </div>
-                        </ScrollArea>
+                    <TabsContent value="stock" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden data-[state=inactive]:hidden">
+                        <StockManagementWorkspace
+                            organisation={currentMemberOrg as any}
+                            subDealers={subDealersList || []}
+                            parentOrg={null}
+                            moduleId={moduleData.id}
+                            filterOrgId="local"
+                            isAdmin={isAdmin}
+                            locations={moduleData?.stockLocations || []}
+                            readOnly={!isAdmin && !userPermissions.can_manage_stock}
+                            vendorName={mainVendor?.name}
+                        />
                     </TabsContent>
 
-                    {(isAdmin || !!userPermissions.can_access_pricing_manager) && mainVendor && currentMemberOrg?.id && (
-                        <TabsContent value="pricing" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden flex flex-col">
-                            <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
-                        </TabsContent>
-                    )}
+                    <TabsContent value="pricing" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden flex flex-col data-[state=inactive]:hidden">
+                        {(isAdmin || !!userPermissions.can_access_pricing_manager) && mainVendor && currentMemberOrg?.id ? (
+                            <div className="flex flex-col h-full">
+                                <div className="flex items-center gap-4 py-4 px-8 shrink-0 bg-white border-b-2 border-slate-300">
+                                    <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
+                                        <DollarSign className="h-5 w-5" />
+                                    </div>
+                                    <div className="h-9 bg-slate-100 rounded-xl p-1 inline-flex gap-1">
+                                        <button
+                                            onClick={() => setPricingSubTab('matrix')}
+                                            className={cn('rounded-lg text-[10px] font-black uppercase tracking-widest px-4 h-7 transition-colors', pricingSubTab === 'matrix' ? 'bg-white shadow-sm text-slate-950' : 'text-slate-500 hover:text-slate-700')}
+                                        >Pricing Matrix</button>
+                                        <button
+                                            onClick={() => setPricingSubTab('pricelists')}
+                                            className={cn('rounded-lg text-[10px] font-black uppercase tracking-widest px-4 h-7 transition-colors', pricingSubTab === 'pricelists' ? 'bg-white shadow-sm text-slate-950' : 'text-slate-500 hover:text-slate-700')}
+                                        >Price Lists</button>
+                                    </div>
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                    {pricingSubTab === 'matrix' && (
+                                        <HighfieldPricingWorkspace vendor={mainVendor} organisationId={currentMemberOrg.id} />
+                                    )}
+                                    {pricingSubTab === 'pricelists' && (
+                                        <PriceListManager organisationId={currentMemberOrg.id} vendorId={mainVendor.id} />
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex-1 flex items-center justify-center">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Access restricted</p>
+                            </div>
+                        )}
+                    </TabsContent>
 
-                </Tabs>
-            </main>
+                    <TabsContent value="settings" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden data-[state=inactive]:hidden">
+                        {moduleData && currentMemberOrg && (
+                            <div className="h-full overflow-y-auto p-8 space-y-8">
+                                <OrganisationModuleConfig
+                                    organisation={currentMemberOrg as any}
+                                    subDealers={subDealersList || []}
+                                    module={moduleData as any}
+                                    allVendors={allVendors || []}
+                                    allDealerFitCategories={allDealerFitCategories || []}
+                                    onBack={() => setActiveTab('dashboard')}
+                                    onUpdateVendors={handleUpdateVendors}
+                                    onUpdateCategories={handleUpdateCategories}
+                                    onToggleSubDealerAccess={handleToggleSubDealerAccess}
+                                />
+                                <StockLocationManager
+                                    moduleId={moduleData.id}
+                                    locations={moduleData?.stockLocations || []}
+                                    stockVisibleToSubDealers={moduleData?.stockVisibleToSubDealers ?? false}
+                                    subDealerVisibleColumns={moduleData?.subDealerVisibleColumns || []}
+                                    subDealers={(subDealersList || []).map((sd: any) => ({ id: sd.id, name: sd.name }))}
+                                />
+                                <ModuleDealerFitManager
+                                    moduleId={moduleData.id}
+                                    categories={moduleData?.moduleDealerFitCategories || []}
+                                />
+                                <ModuleRoleAssignment
+                                    moduleId={moduleData.id}
+                                    organisationId={currentMemberOrg.id}
+                                    currentBrandCaptain={moduleData?.brandCaptainUserId ? { userId: moduleData.brandCaptainUserId, userName: moduleData.brandCaptainUserName || '' } : null}
+                                    currentModuleManager={moduleData?.moduleManagerUserId ? { userId: moduleData.moduleManagerUserId, userName: moduleData.moduleManagerUserName || '' } : null}
+                                />
+                            </div>
+                        )}
+                    </TabsContent>
+
+                </div>
+            </Tabs>
 
             {moduleData && (
                 <QuoteInitializationDialog

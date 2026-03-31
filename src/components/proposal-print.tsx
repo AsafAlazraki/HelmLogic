@@ -95,12 +95,14 @@ export function ProposalPrint({ quote, organisation, financials }: ProposalPrint
                 {quote.coverImageUrl && (
                     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%', zIndex: 0 }}>
                         <Image src={quote.coverImageUrl} alt="" fill className="object-cover" style={{ objectPosition: 'center 40%' }} />
-                        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(15,23,42,0.15) 0%, rgba(255,255,255,0.4) 60%, white 100%)' }} />
                     </div>
                 )}
 
-                {/* Logo bar */}
-                <div style={{ position: 'relative', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '14mm 16mm 0' }}>
+                {/* White overlay — solid at top for logos, consistent left-to-right fade into the image */}
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '55%', zIndex: 1, background: 'linear-gradient(to bottom, white 30%, rgba(255,255,255,0.6) 55%, transparent 80%)' }} />
+
+                {/* Logo bar — floats above overlay, vertically centred */}
+                <div style={{ position: 'relative', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10mm 16mm 10mm' }}>
                     {organisation?.primaryLogoUrl ? (
                         <div style={{ position: 'relative', height: '40px', width: '140px' }}>
                             <Image src={organisation.primaryLogoUrl} alt="" fill className="object-contain object-left" />

@@ -617,7 +617,7 @@ export function HighfieldQuoteFlow({
                         });
 
                         const allPossible = [...new Map([...filtered, ...manualMotors].map(m => [m.id, m])).values()];
-                        setMotors(allPossible.map(m => ({ ...m, vendorName: motorVendor.name })));
+                        setMotors(allPossible.map(m => ({ ...m, vendorName: motorVendor.name, vendorLogoUrl: motorVendor.logoUrl || null })));
                     }
                 }
             } catch (e) { console.error(e); } finally { setMotorsLoading(false); }

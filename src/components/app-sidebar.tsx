@@ -77,6 +77,9 @@ export function AppSidebar() {
     userProfile?.organisationId ? organisations?.find((o: any) => o.id === userProfile.organisationId) ?? null : null,
   [userProfile, organisations]);
 
+  const orgSlug = organisation?.slug || userProfile?.organisationId || '';
+  const isSubDealer = !!organisation?.parentOrganisationId;
+
   const isLoading = userLoading || profileLoading || (isAdmin ? allOrgsLoading : orgDocLoading);
 
   useEffect(() => {
@@ -116,28 +119,38 @@ export function AppSidebar() {
 
   const currentRole = isAdmin ? 'admin' : (userProfile?.organisationId ? 'employee' : '');
 
-  const checkActive = (href: string) => pathname.startsWith(href);
+  const checkActive = (href: string) => href !== '/' && pathname.startsWith(href);
   const checkSubLinksActive = (subLinks: typeof navLinks[0]['subLinks']) =>
     subLinks && subLinks.some((sub) => pathname.startsWith(sub.href));
+
+  // Labels that should be prefixed with /{orgSlug}/ for org members
+  const ORG_PREFIXED_LABELS = new Set(['Dashboard', 'Settings', 'Pricing Manager']);
 
   const filteredNavLinks = useMemo(() => {
     if (isLoading) return [];
     const isOrgMember = !!userProfile?.organisationId;
     const roleId = userProfile?.organisationRole;
     const userPermissions = roleId && organisation?.permissions?.[roleId] ? organisation.permissions[roleId] : {};
-    
-    return navLinks.filter(link => {
-      if (link.label === 'Admin') return isAdmin;
-      if (link.label === 'Dashboard' && isAdmin) return false;
-      if (link.label === 'Pricing Manager') {
-        if (isAdmin || !isOrgMember) return false;
-        const isMD = organisation?.roles?.find((r: any) => r.id === roleId)?.name === 'Managing Director';
-        return !!userPermissions.can_access_pricing_manager || isMD;
-      }
-      if (link.label === 'Settings') return isOrgMember && !!userPermissions.can_access_settings;
-      return true;
-    });
-  }, [userProfile, isAdmin, isLoading, organisation]);
+
+    return navLinks
+      .filter(link => {
+        if (link.label === 'Admin') return isAdmin;
+        if (link.label === 'Dashboard' && isAdmin) return false;
+        if (link.label === 'Pricing Manager') {
+          if (isAdmin || !isOrgMember) return false;
+          const isMD = organisation?.roles?.find((r: any) => r.id === roleId)?.name === 'Managing Director';
+          return !!userPermissions.can_access_pricing_manager || isMD;
+        }
+        if (link.label === 'Settings') return isOrgMember && !!userPermissions.can_access_settings;
+        return true;
+      })
+      .map(link => {
+        if (orgSlug && link.href && ORG_PREFIXED_LABELS.has(link.label)) {
+          return { ...link, href: `/${orgSlug}${link.href}` };
+        }
+        return link;
+      });
+  }, [userProfile, isAdmin, isLoading, organisation, orgSlug]);
 
   return (
     <Sidebar collapsible="icon" className="border-r-0 shadow-2xl">
@@ -211,8 +224,8 @@ export function AppSidebar() {
       <SidebarFooter className="p-4 border-t bg-muted/5 group-data-[collapsible=icon]:p-2">
         <SidebarGroup className="p-0 space-y-4">
           <div className="flex items-center justify-between group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:gap-4">
-            <NotificationBell />
-            <UserMenu />
+            {!isSubDealer && <NotificationBell />}
+            <UserMenu minimal={isSubDealer} />
           </div>
           
           {/* Role Switcher Restricted to Admins */}
