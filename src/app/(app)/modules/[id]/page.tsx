@@ -765,6 +765,8 @@ export default function ModuleDetailsPage() {
                                 vendorName={moduleData.name}
                                 parentOrgName={parentOrgData?.name}
                                 isSubDealer={true}
+                                user={user}
+                                brandCaptainUserId={moduleData?.brandCaptainUserId || null}
                             />
                         </TabsContent>
 

@@ -13,7 +13,9 @@ import { StockImport } from '@/components/stock-import';
 import { DeliveredDeals } from '@/components/delivered-deals';
 import { DeliveredDealsExport } from '@/components/delivered-deals-export';
 import { DeliveredDealsImport } from '@/components/delivered-deals-import';
-import { Box, Plus, MapPin, Users, Package, Search, Truck, Ship } from 'lucide-react';
+import { Box, Plus, MapPin, Users, Package, Search, Truck, Ship, Shield } from 'lucide-react';
+import { HoldRequestsDashboard } from '@/components/hold-requests-dashboard';
+import { HoldRequestDialog } from '@/components/hold-request-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -38,6 +40,8 @@ interface StockManagementWorkspaceProps {
     vendorName?: string;
     parentOrgName?: string;
     isSubDealer?: boolean;
+    user?: any;
+    brandCaptainUserId?: string | null;
 }
 
 export function StockManagementWorkspace({
@@ -52,10 +56,13 @@ export function StockManagementWorkspace({
     vendorName,
     parentOrgName,
     isSubDealer = false,
+    user,
+    brandCaptainUserId,
 }: StockManagementWorkspaceProps) {
     const firestore = useFirestore();
-    const [view, setView] = useState<'stock' | 'onorder' | 'delivered' | 'map' | 'assignments'>('stock');
+    const [view, setView] = useState<'stock' | 'onorder' | 'delivered' | 'holdrequests' | 'map' | 'assignments'>('stock');
     const [formOpen, setFormOpen] = useState(false);
+    const [holdRequestItem, setHoldRequestItem] = useState<any>(null);
 
     // Filter state
     const [searchTerm, setSearchTerm] = useState('');
@@ -106,6 +113,7 @@ export function StockManagementWorkspace({
         { key: 'stock' as const, label: isSubDealer ? `${parentOrgName || 'Supplier'} Stock` : 'Stock Boats', icon: Package },
         { key: 'onorder' as const, label: 'On Order', icon: Ship },
         { key: 'delivered' as const, label: 'Delivered Deals', icon: Truck, hideWhenSubDealer: true },
+        { key: 'holdrequests' as const, label: 'Hold Requests', icon: Shield, hideWhenSubDealer: true },
         { key: 'map' as const, label: 'Map View', icon: MapPin, hideWhenReadOnly: true },
         { key: 'assignments' as const, label: 'Assignments', icon: Users, hideWhenReadOnly: true },
     ];
@@ -289,6 +297,7 @@ export function StockManagementWorkspace({
                             statusFilter={statusFilter}
                             locationFilter={locationFilter}
                             materialFilter={materialFilter}
+                            onRequestHold={isSubDealer ? (item) => setHoldRequestItem(item) : undefined}
                         />
                     </div>
                 )}
@@ -329,6 +338,16 @@ export function StockManagementWorkspace({
                     </div>
                 )}
 
+                {view === 'holdrequests' && (
+                    <div className="px-8 py-4">
+                        <HoldRequestsDashboard
+                            organisation={organisation}
+                            moduleId={moduleId}
+                            user={null}
+                        />
+                    </div>
+                )}
+
                 {view === 'map' && (
                     <div className="h-full p-6">
                         <StockLocationMap
@@ -357,6 +376,20 @@ export function StockManagementWorkspace({
                 organisationId={organisation?.id || ''}
                 locations={locations}
             />
+
+            {/* Hold Request Dialog (sub-dealers) */}
+            {isSubDealer && (
+                <HoldRequestDialog
+                    item={holdRequestItem}
+                    open={!!holdRequestItem}
+                    onOpenChange={(open) => { if (!open) setHoldRequestItem(null); }}
+                    organisation={organisation}
+                    parentOrganisationId={parentOrg?.id || ''}
+                    moduleId={moduleId}
+                    user={user}
+                    brandCaptainUserId={brandCaptainUserId}
+                />
+            )}
         </div>
     );
 }
