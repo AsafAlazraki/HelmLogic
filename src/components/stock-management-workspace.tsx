@@ -128,7 +128,7 @@ export function StockManagementWorkspace({
                     {view === 'delivered' && <DeliveredDealsExport deals={deliveredDeals || []} fileName={`delivered-${vendorName || 'export'}`} />}
                     {!readOnly && view === 'table' && (
                         <>
-                            <StockImport moduleId={moduleId} organisationId={organisation?.id || ''} />
+                            <StockImport moduleId={moduleId} organisationId={organisation?.id || ''} vendorId={vendorName} />
                             <Button
                                 onClick={() => setFormOpen(true)}
                                 className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2"
