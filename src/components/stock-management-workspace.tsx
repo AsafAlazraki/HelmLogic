@@ -69,6 +69,17 @@ export function StockManagementWorkspace({
     }, [firestore, moduleId, organisation?.id]);
     const { data: inventory } = useCollection<any>(inventoryQuery);
 
+    // Firestore query for delivered deals (for export)
+    const deliveredQuery = useMemoFirebase(() => {
+        if (!organisation?.id) return null;
+        return query(
+            collection(firestore, 'delivered-deals'),
+            where('moduleId', '==', moduleId),
+            where('organisationId', '==', organisation.id)
+        );
+    }, [firestore, moduleId, organisation?.id]);
+    const { data: deliveredDeals } = useCollection<any>(deliveredQuery);
+
     const stats = useMemo(() => {
         const items = inventory || [];
         return {
@@ -113,8 +124,9 @@ export function StockManagementWorkspace({
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <StockExport inventory={inventory || []} fileName={`stock-${vendorName || 'export'}`} />
-                    {!readOnly && (
+                    {view === 'table' && <StockExport inventory={inventory || []} fileName={`stock-${vendorName || 'export'}`} />}
+                    {view === 'delivered' && <DeliveredDealsExport deals={deliveredDeals || []} fileName={`delivered-${vendorName || 'export'}`} />}
+                    {!readOnly && view === 'table' && (
                         <>
                             <StockImport moduleId={moduleId} organisationId={organisation?.id || ''} />
                             <Button
@@ -176,39 +188,48 @@ export function StockManagementWorkspace({
                             className="pl-9 h-9 rounded-xl border-2 text-xs"
                         />
                     </div>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                        <SelectTrigger className="w-[130px] h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest">
-                            <SelectValue placeholder="Status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
-                            <SelectItem value="In Stock">In Stock</SelectItem>
-                            <SelectItem value="On Order">On Order</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Select value={locationFilter} onValueChange={setLocationFilter}>
-                        <SelectTrigger className="w-[140px] h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest">
-                            <SelectValue placeholder="Location" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
-                            {locations.map((loc) => (
-                                <SelectItem key={loc} value={loc}>
-                                    {loc}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select value={materialFilter} onValueChange={setMaterialFilter}>
-                        <SelectTrigger className="w-[130px] h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest">
-                            <SelectValue placeholder="Material" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
-                            <SelectItem value="HYP">HYP</SelectItem>
-                            <SelectItem value="PVC">PVC</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Status</span>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-[130px] h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All</SelectItem>
+                                <SelectItem value="In Stock">In Stock</SelectItem>
+                                <SelectItem value="On Order">On Order</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Location</span>
+                        <Select value={locationFilter} onValueChange={setLocationFilter}>
+                            <SelectTrigger className="w-[140px] h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest">
+                                <SelectValue placeholder="Location" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All</SelectItem>
+                                {locations.map((loc) => (
+                                    <SelectItem key={loc} value={loc}>
+                                        {loc}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Material</span>
+                        <Select value={materialFilter} onValueChange={setMaterialFilter}>
+                            <SelectTrigger className="w-[130px] h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest">
+                                <SelectValue placeholder="Material" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All</SelectItem>
+                                <SelectItem value="HYP">HYP</SelectItem>
+                                <SelectItem value="PVC">PVC</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
             )}
 

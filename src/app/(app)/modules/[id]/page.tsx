@@ -819,52 +819,30 @@ export default function ModuleDetailsPage() {
 
                 <div className="flex-1 overflow-hidden relative" style={{ minHeight: 0 }}>
                     <TabsContent value="dashboard" className="m-0 absolute inset-0 animate-in fade-in duration-500 overflow-hidden data-[state=inactive]:hidden">
-                        <div className="h-full p-6 md:p-8 overflow-y-auto">
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
-                                {/* Left — Summary + Quick Access */}
-                                <div className="lg:col-span-7 flex flex-col gap-6 min-h-0">
-                                    {/* Summary Stats Row */}
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                        <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
-                                            <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.inStock}</span>
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-green-600">In Stock</span>
-                                        </Card>
-                                        <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
-                                            <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.onOrder}</span>
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-blue-600">On Order</span>
-                                        </Card>
-                                        <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
-                                            <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.locations}</span>
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Locations</span>
-                                        </Card>
-                                        <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
-                                            <span className="text-2xl font-black text-slate-900">{recentQuotes?.length || 0}</span>
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-purple-600">Proposals</span>
-                                        </Card>
-                                    </div>
+                        <div className="h-full p-6 md:p-8 flex flex-col">
+                            {/* Summary Stats Row */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0">
+                                <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                    <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.inStock}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-green-600">In Stock</span>
+                                </Card>
+                                <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                    <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.onOrder}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-blue-600">On Order</span>
+                                </Card>
+                                <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                    <span className="text-2xl font-black text-slate-900">{dashboardStockCounts.locations}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Locations</span>
+                                </Card>
+                                <Card className="border-2 rounded-2xl p-4 flex flex-col items-center gap-1 bg-white">
+                                    <span className="text-2xl font-black text-slate-900">{recentQuotes?.length || 0}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-purple-600">Proposals</span>
+                                </Card>
+                            </div>
 
-                                    {/* Quick Actions */}
-                                    <div className="flex flex-wrap gap-3">
-                                        {(isAdmin || !!userPermissions.can_view_stock || !!userPermissions.can_manage_stock) && (
-                                            <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setActiveTab('stock')}>
-                                                <Box className="h-4 w-4" />
-                                                Manage Stock
-                                            </Button>
-                                        )}
-                                        <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setIsQuoteInitializationOpen(true)}>
-                                            <PlusCircle className="h-4 w-4" />
-                                            New Quote
-                                        </Button>
-                                        <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setActiveTab('bmt')}>
-                                            <Layout className="h-4 w-4" />
-                                            Catalog
-                                        </Button>
-                                        <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2" onClick={() => setActiveTab('settings')}>
-                                            <Settings className="h-4 w-4" />
-                                            Settings
-                                        </Button>
-                                    </div>
-
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 flex-1 min-h-0 mt-6">
+                                {/* Left — Stock Preview */}
+                                <div className="lg:col-span-7 flex flex-col min-h-0">
                                     {/* Stock Preview */}
                                     <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden">
                                         <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
@@ -879,7 +857,7 @@ export default function ModuleDetailsPage() {
                                                 View All <ArrowRight className="h-3 w-3" />
                                             </Button>
                                         </CardHeader>
-                                        <CardContent className="p-0 max-h-[250px] overflow-hidden">
+                                        <CardContent className="p-0 max-h-[180px] overflow-hidden">
                                             <ScrollArea className="h-full">
                                                 <StockList
                                                     organisation={currentMemberOrg as any}
@@ -895,35 +873,10 @@ export default function ModuleDetailsPage() {
                                             </ScrollArea>
                                         </CardContent>
                                     </Card>
-
-                                    {/* Delivered Deals Preview */}
-                                    <Card className="border-2 rounded-2xl shadow-sm bg-white overflow-hidden">
-                                        <CardHeader className="py-3 px-6 border-b bg-muted/5 flex flex-row items-center justify-between shrink-0">
-                                            <div className="flex items-center gap-3">
-                                                <Badge variant="outline" className="h-5 text-[9px] font-black uppercase border-orange-500/20 text-orange-600 bg-orange-50/50 px-2">Deals</Badge>
-                                                <h3 className="font-black uppercase italic text-sm tracking-tight text-slate-900">Delivered Deals</h3>
-                                            </div>
-                                            <Button variant="ghost" size="sm" onClick={() => setActiveTab('stock')} className="text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary hover:text-white rounded-xl transition-colors h-7 px-3 gap-1">
-                                                View All <ArrowRight className="h-3 w-3" />
-                                            </Button>
-                                        </CardHeader>
-                                        <CardContent className="p-0 max-h-[200px] overflow-hidden">
-                                            <ScrollArea className="h-full">
-                                                <DeliveredDeals
-                                                    organisation={currentMemberOrg as any}
-                                                    moduleId={moduleData.id}
-                                                    isAdmin={isAdmin}
-                                                    readOnly={true}
-                                                    hideHeader={true}
-                                                    compact={true}
-                                                />
-                                            </ScrollArea>
-                                        </CardContent>
-                                    </Card>
                                 </div>
 
                                 {/* Right — Recent Proposals */}
-                                <Card className="lg:col-span-5 flex flex-col border-2 rounded-2xl shadow-sm bg-white overflow-hidden min-h-0 max-h-[calc(100vh-240px)]">
+                                <Card className="lg:col-span-5 flex flex-col border-2 rounded-2xl shadow-sm bg-white overflow-hidden min-h-0 max-h-[calc(100vh-340px)]">
                                         <CardHeader className="px-5 py-4 border-b flex flex-row items-center justify-between shrink-0">
                                             <div className="flex items-center gap-2.5">
                                                 <h2 className="text-sm font-semibold text-slate-900">Recent Proposals</h2>
