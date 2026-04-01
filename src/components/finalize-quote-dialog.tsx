@@ -2,10 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { useUser } from '@/firebase/auth/use-user';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { doc, setDoc, serverTimestamp, collection as firestoreCollection } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, serverTimestamp, collection as firestoreCollection } from 'firebase/firestore';
+import { pdf } from '@react-pdf/renderer';
+import { uploadFileToStorage } from '@/firebase/storage';
+import { ProposalPDFDocument } from '@/components/proposal-pdf';
 import {
     Dialog,
     DialogContent,
@@ -61,12 +64,14 @@ interface FinalizeQuoteDialogProps {
     };
     organisationId: string | null;
     userProfile: any;
+    canSaveAsStock?: boolean;
 }
 
 type FinalizeMode = 'customer' | 'stock';
 
-export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisationId, userProfile }: FinalizeQuoteDialogProps) {
+export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisationId, userProfile, canSaveAsStock = true }: FinalizeQuoteDialogProps) {
     const firestore = useFirestore();
+    const storage = useStorage();
     const { user } = useUser();
     const router = useRouter();
     const { toast } = useToast();
@@ -273,7 +278,42 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     stockNumber,
                     status: 'In Stock',
                     name: `${quoteData.model?.name || 'Unit'} - ${quoteData.activeVariant?.colorName || quoteData.activeVariant?.name || 'Standard'}`,
+                    // Locked configuration fields
+                    isLocked: true,
+                    isFromQuote: true,
+                    quoteId: inventoryRef.id,
+                    quotePayload: payload,
+                    proposalPdfUrl: null,
+                    // Flattened fields for stock table
+                    model: payload.modelName || payload.modelCode || '',
+                    colour: payload.variant?.colorName || '',
+                    serialNumber: '',
+                    material: payload.variant?.material || '',
+                    location: '',
+                    soldBy: '',
+                    label: payload.variant?.sku || '',
+                    notes: '',
+                    dateIntoStock: serverTimestamp(),
+                    photoUrls: payload.variant?.imageUrl ? [payload.variant.imageUrl] : [],
+                    pdfAttachments: [],
+                    coverImageUrl: payload.coverImageUrl || null,
+                    variantImageUrl: payload.variant?.imageUrl || null,
                 });
+
+                // Generate and store PDF
+                try {
+                    const pdfBlob = await pdf(<ProposalPDFDocument quote={payload} organisation={organisation} />).toBlob();
+                    const pdfFile = new File([pdfBlob], `${stockNumber}-proposal.pdf`, { type: 'application/pdf' });
+                    const pdfUrl = await uploadFileToStorage(storage, pdfFile, `inventory/${inventoryRef.id}/proposal-${stockNumber}.pdf`);
+
+                    await updateDoc(doc(firestore, 'inventory', inventoryRef.id), {
+                        proposalPdfUrl: pdfUrl,
+                    });
+                } catch (pdfError) {
+                    console.error('Failed to generate/store PDF:', pdfError);
+                    // Don't fail the whole operation — stock item is already created
+                }
+
                 toast({ title: 'Stock Item Created', description: `${stockNumber} added to inventory.` });
                 onOpenChange(false);
                 resetForm();
@@ -339,9 +379,12 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setMode('stock')}
+                                    onClick={() => { if (canSaveAsStock) setMode('stock'); }}
+                                    disabled={!canSaveAsStock}
+                                    title={!canSaveAsStock ? "You don't have permission to save as stock" : undefined}
                                     className={cn(
                                         "flex flex-col items-center gap-3 p-5 rounded-xl border-2 transition-all",
+                                        !canSaveAsStock && "opacity-40 cursor-not-allowed",
                                         mode === 'stock'
                                             ? "border-primary bg-primary/5 shadow-lg"
                                             : "border-muted hover:border-primary/30"
@@ -352,7 +395,9 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                                     </div>
                                     <div className="text-center">
                                         <p className="text-[11px] font-black uppercase tracking-tight">Save as Stock</p>
-                                        <p className="text-[9px] text-muted-foreground mt-0.5">Add unit to org inventory</p>
+                                        <p className="text-[9px] text-muted-foreground mt-0.5">
+                                            {canSaveAsStock ? 'Add unit to org inventory' : 'Permission required'}
+                                        </p>
                                     </div>
                                 </button>
                             </div>

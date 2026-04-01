@@ -7,7 +7,7 @@ import { useFirestore, useMemoFirebase } from "@/firebase/provider";
 import { doc, collection, query, where, getDocs, updateDoc, serverTimestamp, orderBy } from "firebase/firestore";
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, Zap, Maximize2, Minimize2, ArrowRightLeft, Percent, Save, Ship, ChevronDown, CheckCircle2, Star, History, Clock, Link2, MessageSquare, ClipboardList, ShieldCheck, Calculator, Truck, Upload, Download, Filter, FileSpreadsheet } from "lucide-react";
+import { Loader2, Building, Search, Coins, ChevronRight, ShieldAlert, Zap, Maximize2, Minimize2, ArrowRightLeft, Percent, Save, Ship, ChevronDown, CheckCircle2, Star, History, Clock, Link2, MessageSquare, ClipboardList, ShieldCheck, Calculator, Truck, Upload, Download, Filter, FileSpreadsheet, AlertTriangle, Info } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -630,6 +630,23 @@ function MatrixContent({
                     </div>
                 </div>
             </div>
+            {strategy?.lastUpdateAt && strategy?.lastPublishAt &&
+             strategy.lastUpdateAt?.toMillis?.() > strategy.lastPublishAt?.toMillis?.() && (
+                <div className="mx-8 mt-2 flex items-center gap-2 px-4 py-2 bg-amber-50 border-2 border-amber-200 rounded-xl">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                    <p className="text-xs font-bold text-amber-700">
+                        Prices have been modified since last publish. Click &quot;Publish Prices&quot; to update quotes.
+                    </p>
+                </div>
+            )}
+            {strategy && !strategy.lastPublishAt && (
+                <div className="mx-8 mt-2 flex items-center gap-2 px-4 py-2 bg-blue-50 border-2 border-blue-200 rounded-xl">
+                    <Info className="h-4 w-4 text-blue-600 shrink-0" />
+                    <p className="text-xs font-bold text-blue-700">
+                        Prices have never been published. Quotes will use default data warehouse prices.
+                    </p>
+                </div>
+            )}
             <PricingTable {...commonProps} />
         </div>
     );
@@ -940,8 +957,10 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             for (let i = 0; i < updates.length; i += 20) {
                 await Promise.all(updates.slice(i, i + 20).map(fn => fn()));
             }
+            await updateDoc(strategyRef, { lastPublishAt: serverTimestamp() });
             toast({ title: "Prices Published", description: `${updates.length} catalog items updated with new sell prices.` });
         } catch (e) {
+            console.error('Publish failed:', e);
             toast({ title: "Publish Failed", description: String(e), variant: "destructive" });
         } finally {
             setIsPublishing(false);
