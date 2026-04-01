@@ -354,6 +354,10 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     const orgDocRef = useMemoFirebase(() => doc(firestore, 'organisations', orgId), [firestore, orgId]);
     const { data: organisation, loading: orgLoading } = useDoc<OrganisationFormData>(orgDocRef);
 
+    // All modules query (for Modules tab)
+    const allModulesQuery = useMemoFirebase(() => collection(firestore, 'modules'), [firestore]);
+    const { data: allModules } = useCollection<any>(allModulesQuery);
+
     // Sub-dealers query (only needed when subDealersEnabled)
     const subDealersQuery = useMemoFirebase(
         () => query(collection(firestore, 'organisations'), where('parentOrganisationId', '==', orgId)),
@@ -536,11 +540,12 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 </div>
 
                 <Tabs defaultValue="details" className="space-y-4">
-                    <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-5' : 'grid-cols-4')}>
+                    <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-6' : 'grid-cols-5')}>
                         <TabsTrigger value="details">Company Details</TabsTrigger>
                         <TabsTrigger value="users">Users & Permissions</TabsTrigger>
                         <TabsTrigger value="templates">Document Templates</TabsTrigger>
                         <TabsTrigger value="margins">Margins</TabsTrigger>
+                        <TabsTrigger value="modules">Modules</TabsTrigger>
                         {organisation?.subDealersEnabled && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
                     </TabsList>
                     
@@ -903,6 +908,48 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                 <div className="flex flex-col items-center justify-center py-20 text-center opacity-20 gap-3 border-2 border-dashed rounded-3xl">
                                     <TrendingUp className="h-10 w-10" />
                                     <p className="text-[10px] font-black uppercase tracking-widest">Pricing Matrix Initialized</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="modules">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Module Access</CardTitle>
+                                <CardDescription>Select which modules this organisation has access to</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {allModules?.map((mod: any) => {
+                                        const isEnabled = (form.watch('enabledModuleSubscriptions') || []).includes(mod.id);
+                                        return (
+                                            <div
+                                                key={mod.id}
+                                                onClick={() => {
+                                                    const current = form.getValues('enabledModuleSubscriptions') || [];
+                                                    const updated = current.includes(mod.id)
+                                                        ? current.filter((id: string) => id !== mod.id)
+                                                        : [...current, mod.id];
+                                                    form.setValue('enabledModuleSubscriptions', updated, { shouldDirty: true });
+                                                }}
+                                                className={cn(
+                                                    'p-4 rounded-2xl border-2 cursor-pointer transition-all',
+                                                    isEnabled
+                                                        ? 'border-primary bg-primary/5'
+                                                        : 'border-slate-200 hover:border-slate-300'
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <input type="checkbox" checked={isEnabled} readOnly className="rounded border-2" />
+                                                    <div>
+                                                        <p className="text-xs font-bold">{mod.name}</p>
+                                                        {mod.slug && <p className="text-[9px] text-slate-400">{mod.slug}</p>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </CardContent>
                         </Card>
