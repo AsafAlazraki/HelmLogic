@@ -61,6 +61,21 @@ MUST use a SINGLE `<Tabs>` component wrapping both `<TabsList>` and `<TabsConten
 - `readOnly` prop gates all CRUD UI — controlled by permissions
 - Import duplicate checking needs multi-field fingerprinting
 - Sub-dealer `filterOrgId="all-with-parent"` shows parent + own stock
+- Universal publish writes ALL price levels — no selector
+- Quote prices are locked at save time — proposals read from saved data
+- `priceLevelUsed` on every finalized quote for audit trail
+- Default price level is `hull_cash` (org's shortCode column)
+- Module `moduleType` field controls rendering: "catalog" (default) vs "used-boats" vs "website-listings"
+
+## Recent Evolution (Session: April 1, 2026 — v1.1.0)
+
+### Features Built:
+1. **Pricing System Overhaul** — universal publish, price level selector in quotes, GST labels
+2. **Quote → Stock Boat** — PDF storage, locked config, customer/audit info on stock detail
+3. **Sub-Dealer Quoting** — toggle + price level assignment, quotes tab
+4. **Placeholder Module Types** — Used Boats, Website Listings with cover image
+5. **Admin** — Modules tab in org editor, add module page UI fix
+6. **Proposal Images** — option/trailer/dealer fit thumbnails on PDF
 
 ## How to Proceed (For Future Agents)
 - **Read SESSION_HANDOVER.md** first for complete context

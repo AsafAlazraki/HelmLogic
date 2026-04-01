@@ -37,13 +37,14 @@ interface Vendor {
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Module name is required.' }),
-  mainVendorId: z.string().min(1, { message: 'A main vendor must be selected.' }),
+  mainVendorId: z.string().default(''),
   associatedVendorIds: z.array(z.string()).default([]),
 });
 
 export default function AddModulePage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
+    const [moduleType, setModuleType] = useState('catalog');
     const { toast } = useToast();
     const firestore = useFirestore();
 
