@@ -176,11 +176,13 @@ function PricingRow({
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_sea_freight_cost_aud'] || seaFreightAudConv.toFixed(2)} onChange={(val: any) => onUpdateValue(id, 'op_sea_freight_cost_aud', val)} align="right" /></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_sea_freight_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_sea_freight_margin_percent', val)} /></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(seaFreightSell, orgCurrency)}</span></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/10 relative"><span className="relative z-10">{formatCurrency(seaFreightSell * gstMultiplier, orgCurrency)}</span></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 relative"><span className="relative z-10">{formatCurrency(seaFreightGP, orgCurrency)}</span></TableCell>
 
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_road_freight_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_road_freight_cost_aud', val)} align="right" /></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_road_freight_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_road_freight_margin_percent', val)} /></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(roadFreightSell, orgCurrency)}</span></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/10 relative"><span className="relative z-10">{formatCurrency(roadFreightSell * gstMultiplier, orgCurrency)}</span></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 relative"><span className="relative z-10">{formatCurrency(roadFreightGP, orgCurrency)}</span></TableCell>
                 </React.Fragment>
             )}
@@ -188,6 +190,7 @@ function PricingRow({
             <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_handling_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_cost_aud', val)} align="right" /></TableCell>
             <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_handling_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_margin_percent', val)} /></TableCell>
             <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(handlingSell, orgCurrency)}</span></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/10 relative"><span className="relative z-10">{formatCurrency(handlingSell * gstMultiplier, orgCurrency)}</span></TableCell>
             <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 relative"><span className="relative z-10">{formatCurrency(handlingGP, orgCurrency)}</span></TableCell>
 
             {activeView === 'boats' && (
@@ -195,6 +198,7 @@ function PricingRow({
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_predel_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_cost_aud', val)} align="right" /></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_predel_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_margin_percent', val)} /></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(preDelSell, orgCurrency)}</span></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/10 relative"><span className="relative z-10">{formatCurrency(preDelSell * gstMultiplier, orgCurrency)}</span></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 relative"><span className="relative z-10">{formatCurrency(preDelGP, orgCurrency)}</span></TableCell>
                 </React.Fragment>
             )}
@@ -273,12 +277,12 @@ function PricingTable({
                             <TableHead colSpan={6} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">{isOptions ? "Base Option Cost" : "Base Hull Cost"}</span></TableHead>
                             {!isOptions && (
                                 <React.Fragment>
-                                    <TableHead colSpan={6} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Sea Freight (Intl.)</span></TableHead>
-                                    <TableHead colSpan={4} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Road Freight (Dom.)</span></TableHead>
+                                    <TableHead colSpan={7} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Sea Freight (Intl.)</span></TableHead>
+                                    <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Road Freight (Dom.)</span></TableHead>
                                 </React.Fragment>
                             )}
-                            <TableHead colSpan={4} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
-                            {!isOptions && <TableHead colSpan={4} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
+                            <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Handling</span></TableHead>
+                            {!isOptions && <TableHead colSpan={5} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Pre-Delivery</span></TableHead>}
                             <TableHead colSpan={3} className="border-r-2 border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Final Pricing Baseline</span></TableHead>
                             <TableHead colSpan={isOptions ? 3 : 21} className="border-r border-b-2 bg-slate-100 text-center border-slate-200 sticky top-0 z-[90] h-[52px] align-middle"><span className="text-[9px] font-black uppercase tracking-[0.2em] text-primary">Audited Price Levels</span></TableHead>
                         </TableRow>
@@ -301,22 +305,26 @@ function PricingTable({
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-primary/5 text-primary w-[100px] sticky top-[52px] z-[90]">Sell AUD</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-primary w-[120px] sticky top-[52px] z-[90]">Sell {inclLabel}</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-primary/5 text-primary w-[100px] sticky top-[52px] z-[90]">Sell AUD</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-primary w-[120px] sticky top-[52px] z-[90]">Sell {inclLabel}</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
                                 </React.Fragment>
                             )}
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-primary/5 text-primary w-[100px] sticky top-[52px] z-[90]">Sell AUD</TableHead>
+                            <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-primary w-[120px] sticky top-[52px] z-[90]">Sell {inclLabel}</TableHead>
                             <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
                             {!isOptions && (
                                 <React.Fragment>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">Cost AUD</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[80px] sticky top-[52px] z-[90]">Margin %</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-primary/5 text-primary w-[100px] sticky top-[52px] z-[90]">Sell AUD</TableHead>
+                                    <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-slate-50 text-primary w-[120px] sticky top-[52px] z-[90]">Sell {inclLabel}</TableHead>
                                     <TableHead className="border-r border-b-2 border-slate-300 text-center text-[8px] font-black uppercase bg-white w-[100px] sticky top-[52px] z-[90]">GP $</TableHead>
                                 </React.Fragment>
                             )}
@@ -371,7 +379,7 @@ function PricingTable({
                                         </div>
                                     </TableCell>
                                     {/* Range default margin — shown in the margin column position */}
-                                    <TableCell colSpan={isOptions ? 19 : 53} className="border-b-2 border-slate-300 bg-slate-100 p-0" />
+                                    <TableCell colSpan={isOptions ? 20 : 57} className="border-b-2 border-slate-300 bg-slate-100 p-0" />
                                     <TableCell className="border-b-2 border-slate-300 bg-amber-50 p-0 w-[80px]" title="Range default margin %">
                                         <div className="flex items-center gap-1 px-2 h-full min-h-[40px]">
                                             <span className="text-[8px] font-black text-amber-600 uppercase">RNG%</span>
@@ -639,14 +647,6 @@ function MatrixContent({
                     </p>
                 </div>
             )}
-            {strategy && !strategy.lastPublishAt && (
-                <div className="mx-8 mt-2 flex items-center gap-2 px-4 py-2 bg-blue-50 border-2 border-blue-200 rounded-xl">
-                    <Info className="h-4 w-4 text-blue-600 shrink-0" />
-                    <p className="text-xs font-bold text-blue-700">
-                        Prices have never been published. Quotes will use default data warehouse prices.
-                    </p>
-                </div>
-            )}
             <PricingTable {...commonProps} />
         </div>
     );
@@ -725,56 +725,53 @@ const PRICE_LEVELS = [
 ];
 
 function PublishPricesDialog({ isOpen, onOpenChange, onConfirm, isPublishing, strategy, allModels, allVariants }: any) {
-    const [selectedLevel, setSelectedLevel] = useState('hull_cash');
-
-    const countPricesSet = useMemo(() => {
+    const countItems = useMemo(() => {
         if (!strategy?.itemValues) return 0;
-        const key = `${selectedLevel}_price`;
         let count = 0;
         for (const model of (allModels || [])) {
             for (const v of (allVariants?.[model.id] || [])) {
-                if (parseFloat(strategy.itemValues[v.id]?.[key] || '0') > 0) count++;
+                // Count items that have ANY price level set
+                const hasPrice = PRICE_LEVELS.some(l => parseFloat(strategy.itemValues[v.id]?.[`${l.key}_price`] || '0') > 0);
+                if (hasPrice) count++;
             }
             for (const f of (model.optionalFeatures || [])) {
-                if (parseFloat(strategy.itemValues[f.id]?.[key] || '0') > 0) count++;
+                const hasPrice = PRICE_LEVELS.some(l => parseFloat(strategy.itemValues[f.id]?.[`${l.key}_price`] || '0') > 0);
+                if (hasPrice) count++;
             }
         }
         return count;
-    }, [strategy, selectedLevel, allModels, allVariants]);
+    }, [strategy, allModels, allVariants]);
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md rounded-[2.5rem] border-4 shadow-2xl p-0 overflow-hidden">
                 <DialogHeader className="p-8 border-b bg-emerald-50">
                     <DialogTitle className="text-2xl font-black uppercase tracking-tight italic text-emerald-700">Publish Prices</DialogTitle>
-                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mt-1">Write selected price level to catalog sell prices</DialogDescription>
+                    <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mt-1">Write all price levels to the catalog</DialogDescription>
                 </DialogHeader>
-                <div className="p-8 space-y-6">
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Price Level to Publish</Label>
-                        <Select value={selectedLevel} onValueChange={setSelectedLevel}>
-                            <SelectTrigger className="h-12 font-black text-xs border-2 rounded-xl bg-background">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-2">
-                                {PRICE_LEVELS.map(l => <SelectItem key={l.key} value={l.key} className="text-[10px] font-bold uppercase py-2.5">{l.label}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                <div className="p-8 space-y-4">
                     <div className="p-4 bg-emerald-50 rounded-xl border-2 border-emerald-200">
-                        <p className="text-[11px] font-black text-emerald-700">{countPricesSet} items with prices set will be published to the catalog.</p>
-                        <p className="text-[9px] text-emerald-600 mt-1">This updates <code className="bg-emerald-100 px-1 rounded">sellPriceExclGst</code> on each variant and factory option. Quotes will immediately reflect the new prices.</p>
+                        <p className="text-[11px] font-black text-emerald-700">{countItems} items will be published to the catalog.</p>
+                        <p className="text-[9px] text-emerald-600 mt-1">This updates all price levels and <code className="bg-emerald-100 px-1 rounded">sellPriceExclGst</code> on each variant and factory option. New quotes will use the updated prices.</p>
+                    </div>
+                    <div className="space-y-1.5">
+                        <p className="text-[9px] uppercase tracking-widest font-black text-slate-400">Price levels being published:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                            {PRICE_LEVELS.map(l => (
+                                <span key={l.key} className="text-[9px] font-bold bg-slate-100 px-2 py-1 rounded-lg border">{l.label}</span>
+                            ))}
+                        </div>
                     </div>
                 </div>
                 <DialogFooter className="p-8 bg-muted/5 border-t gap-3">
                     <DialogClose asChild><Button variant="outline" className="h-12 px-8 rounded-xl font-black uppercase text-[10px] border-2">Cancel</Button></DialogClose>
                     <Button
-                        onClick={() => onConfirm(selectedLevel)}
-                        disabled={isPublishing || countPricesSet === 0}
+                        onClick={() => onConfirm('all')}
+                        disabled={isPublishing || countItems === 0}
                         className="h-12 px-10 rounded-xl font-black uppercase text-[10px] shadow-xl bg-emerald-600 text-white hover:bg-emerald-700"
                     >
                         {isPublishing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-                        Publish {countPricesSet} Prices
+                        Publish {countItems} Items
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -923,26 +920,42 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const handlePublishPrices = useCallback(async (priceLevel: string) => {
         if (!strategy || !vendor.id || !ranges) return;
         setIsPublishing(true);
-        const priceKey = `${priceLevel}_price`;
         const updates: Array<() => Promise<void>> = [];
 
+        // Use hull_cash as the primary sellPriceExclGst
+        const primaryKey = 'hull_cash_price';
+
         for (const model of allModels) {
-            // Variants
+            // Variants — write sellPriceExclGst + priceLevels for ALL levels
             for (const variant of (allVariants[model.id] || [])) {
-                const price = parseFloat(strategy.itemValues?.[variant.id]?.[priceKey] || '0');
-                if (price > 0) {
+                const primaryPrice = parseFloat(strategy.itemValues?.[variant.id]?.[primaryKey] || '0');
+                const priceLevels: Record<string, number> = {};
+                for (const level of PRICE_LEVELS) {
+                    const val = parseFloat(strategy.itemValues?.[variant.id]?.[`${level.key}_price`] || '0');
+                    if (val > 0) priceLevels[level.key] = val;
+                }
+                if (primaryPrice > 0 || Object.keys(priceLevels).length > 0) {
                     const vRef = doc(firestore, `data-warehouse/${vendor.id}/ranges/${model.rangeId}/models/${model.id}/variants/${variant.id}`);
-                    updates.push(() => updateDoc(vRef, { sellPriceExclGst: price }));
+                    updates.push(() => updateDoc(vRef, {
+                        sellPriceExclGst: primaryPrice || priceLevels[PRICE_LEVELS[0]?.key] || 0,
+                        priceLevels,
+                        activePriceLevel: 'hull_cash',
+                    }));
                 }
             }
-            // Optional features (rewrite the array on the model doc)
+            // Optional features — same approach
             const features: any[] = model.optionalFeatures || [];
             let featuresDirty = false;
             const updatedFeatures = features.map((f: any) => {
-                const price = parseFloat(strategy.itemValues?.[f.id]?.[priceKey] || '0');
-                if (price > 0 && price !== f.sellPriceExclGst) {
+                const primaryPrice = parseFloat(strategy.itemValues?.[f.id]?.[primaryKey] || '0');
+                const priceLevels: Record<string, number> = {};
+                for (const level of PRICE_LEVELS) {
+                    const val = parseFloat(strategy.itemValues?.[f.id]?.[`${level.key}_price`] || '0');
+                    if (val > 0) priceLevels[level.key] = val;
+                }
+                if (primaryPrice > 0 || Object.keys(priceLevels).length > 0) {
                     featuresDirty = true;
-                    return { ...f, sellPriceExclGst: price };
+                    return { ...f, sellPriceExclGst: primaryPrice || f.sellPriceExclGst, priceLevels };
                 }
                 return f;
             });
