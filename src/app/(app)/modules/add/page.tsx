@@ -106,24 +106,24 @@ export default function AddModulePage() {
 
     return (
         <AdminGuard>
-            <div className="space-y-4">
+            <div className="p-8 space-y-8">
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-3xl mx-auto space-y-8">
                         <div className="flex items-start justify-between">
                             <div>
                                 <h1 className="text-2xl font-semibold">Add New Module</h1>
                                 <BreadcrumbNav />
                             </div>
                             <div className="flex gap-2">
-                                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isLoading}>Cancel</Button>
-                                <Button type="submit" disabled={isLoading || vendorsLoading}>
+                                <Button type="button" variant="outline" className="rounded-xl" onClick={() => router.back()} disabled={isLoading}>Cancel</Button>
+                                <Button type="submit" className="rounded-xl" disabled={isLoading || vendorsLoading}>
                                     {(isLoading || vendorsLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Create Module
                                 </Button>
                             </div>
                         </div>
 
-                         <Card>
+                         <Card className="rounded-2xl border-2">
                             <CardHeader>
                                 <CardTitle>Module Details</CardTitle>
                                 <CardDescription>Define the new module and its vendor relationships.</CardDescription>
@@ -134,9 +134,9 @@ export default function AddModulePage() {
                                     name="name"
                                     render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Module Name</FormLabel>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Module Name</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="e.g., Yamaha Outboard Quoting" {...field} />
+                                            <Input className="rounded-xl border-2" placeholder="e.g., Yamaha Outboard Quoting" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -147,10 +147,10 @@ export default function AddModulePage() {
                                     name="mainVendorId"
                                     render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Main Vendor</FormLabel>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Main Vendor</FormLabel>
                                          <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl>
-                                                <SelectTrigger>
+                                                <SelectTrigger className="rounded-xl border-2">
                                                     <SelectValue placeholder="Select the main vendor for this module" />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -160,7 +160,7 @@ export default function AddModulePage() {
                                                 )) : <SelectItem value="loading" disabled>Loading vendors...</SelectItem>}
                                             </SelectContent>
                                         </Select>
-                                        <FormDescription>The module will use this vendor's logo and primary identity.</FormDescription>
+                                        <FormDescription>The module will use this vendor&apos;s logo and primary identity.</FormDescription>
                                         <FormMessage />
                                     </FormItem>
                                     )}
@@ -171,7 +171,7 @@ export default function AddModulePage() {
                                     render={() => (
                                         <FormItem>
                                             <div className="mb-4">
-                                                <FormLabel>Associated Vendors</FormLabel>
+                                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Associated Vendors</FormLabel>
                                                 <FormDescription>Select other vendors whose data might be used in this module.</FormDescription>
                                             </div>
                                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -184,7 +184,7 @@ export default function AddModulePage() {
                                                     return (
                                                         <FormItem
                                                             key={vendor.id}
-                                                            className="flex flex-row items-center space-x-3 space-y-0 p-3 border rounded-md"
+                                                            className="flex flex-row items-center space-x-3 space-y-0 p-3 border-2 rounded-xl"
                                                         >
                                                             <FormControl>
                                                                 <Checkbox
