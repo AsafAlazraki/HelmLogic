@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
@@ -37,13 +38,14 @@ interface Vendor {
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Module name is required.' }),
-  mainVendorId: z.string().min(1, { message: 'A main vendor must be selected.' }),
+  mainVendorId: z.string().default(''),
   associatedVendorIds: z.array(z.string()).default([]),
 });
 
 export default function AddModulePage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
+    const [moduleType, setModuleType] = useState('catalog');
     const { toast } = useToast();
     const firestore = useFirestore();
 
@@ -60,6 +62,11 @@ export default function AddModulePage() {
     });
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
+        if (moduleType === 'catalog' && !values.mainVendorId) {
+            form.setError('mainVendorId', { message: 'A main vendor must be selected for catalog modules.' });
+            return;
+        }
+
         setIsLoading(true);
         try {
             const modulesCollection = collection(firestore, 'modules');
@@ -71,7 +78,8 @@ export default function AddModulePage() {
             const dataToCreate: { [key: string]: any } = {
                 name: values.name,
                 slug: createSlug(values.name),
-                mainVendorId: values.mainVendorId,
+                moduleType,
+                mainVendorId: values.mainVendorId || null,
                 associatedVendorIds: values.associatedVendorIds,
                 logoUrl: mainVendor?.logoUrl || null,
             };
@@ -142,6 +150,20 @@ export default function AddModulePage() {
                                     </FormItem>
                                     )}
                                 />
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Module Type</Label>
+                                    <Select value={moduleType} onValueChange={setModuleType}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select module type..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="catalog">Catalog Module (Boat Brand)</SelectItem>
+                                            <SelectItem value="used-boats">Used Boats</SelectItem>
+                                            <SelectItem value="website-listings">Website Listings</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-muted-foreground">Catalog modules have pricing, quoting, and stock management. Other types have custom functionality.</p>
+                                </div>
                                 <FormField
                                     control={form.control}
                                     name="mainVendorId"
@@ -160,7 +182,11 @@ export default function AddModulePage() {
                                                 )) : <SelectItem value="loading" disabled>Loading vendors...</SelectItem>}
                                             </SelectContent>
                                         </Select>
-                                        <FormDescription>The module will use this vendor's logo and primary identity.</FormDescription>
+                                        <FormDescription>
+                                            {moduleType === 'catalog'
+                                                ? "The module will use this vendor's logo and primary identity."
+                                                : "Not required for this module type."}
+                                        </FormDescription>
                                         <FormMessage />
                                     </FormItem>
                                     )}
