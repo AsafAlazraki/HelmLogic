@@ -1162,6 +1162,8 @@ export default function ModuleDetailsPage() {
                                     stockVisibleToSubDealers={moduleData?.stockVisibleToSubDealers ?? false}
                                     subDealerVisibleColumns={moduleData?.subDealerVisibleColumns || []}
                                     subDealers={(subDealersList || []).map((sd: any) => ({ id: sd.id, name: sd.name }))}
+                                    subDealerQuotingEnabled={moduleData?.subDealerQuotingEnabled ?? false}
+                                    subDealerDefaultPriceLevel={moduleData?.subDealerDefaultPriceLevel || 'hull_subdealer'}
                                 />
                                 <ModuleDealerFitManager
                                     moduleId={moduleData.id}
