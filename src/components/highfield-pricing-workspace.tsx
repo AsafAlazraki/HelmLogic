@@ -563,7 +563,7 @@ function MatrixContent({
                                     <ChevronDown className="h-3 w-3 ml-1.5 opacity-50" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 rounded-xl border-2 shadow-xl z-[500]">
+                            <DropdownMenuContent align="end" className="w-56 rounded-xl border-2 shadow-xl z-[10000]">
                                 <DropdownMenuLabel className="text-[8px] font-black uppercase tracking-widest text-slate-400">Export</DropdownMenuLabel>
                                 <DropdownMenuItem onClick={onExportHulls} className="font-bold text-[10px] uppercase cursor-pointer rounded-lg">
                                     <Download className="h-3.5 w-3.5 mr-2 text-primary" />
@@ -1270,6 +1270,11 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
             {isFocusMode && (
                 <div className="fixed inset-0 z-[9999] bg-white flex flex-col shadow-2xl">
                     <MatrixContent {...commonProps} isFocus={true} />
+                    <GlobalUpdateDialog
+                        isOpen={isGlobalUpdateOpen}
+                        onOpenChange={setIsGlobalUpdateOpen}
+                        onApply={handleGlobalUpdate}
+                    />
                 </div>
             )}
 

@@ -186,12 +186,14 @@ function QuoteInitializationDialog({
     isOpen,
     onOpenChange,
     vendor,
-    onModelSelect
+    onModelSelect,
+    defaultPriceLevel
 }: {
     isOpen: boolean,
     onOpenChange: (open: boolean) => void,
     vendor: Vendor | null,
-    onModelSelect: (model: Model, range: Range) => void
+    onModelSelect: (model: Model, range: Range) => void,
+    defaultPriceLevel?: string
 }) {
     const firestore = useFirestore();
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
@@ -540,6 +542,7 @@ export default function ModuleDetailsPage() {
         const subDealerTabs = [
             { id: 'dashboard', label: 'Dashboard' },
             { id: 'stock', label: 'Stock Management', visible: showStock },
+            { id: 'quotes', label: 'Quotes', visible: moduleData?.subDealerQuotingEnabled === true },
             { id: 'pricing', label: 'Price List' },
         ].filter(t => t.visible !== false);
 
@@ -767,6 +770,57 @@ export default function ModuleDetailsPage() {
                                 isSubDealer={true}
                                 user={user}
                                 brandCaptainUserId={moduleData?.brandCaptainUserId || null}
+                            />
+                        </TabsContent>
+
+                        {/* Quotes — sub-dealer quoting when enabled */}
+                        <TabsContent value="quotes" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                            <div className="p-8">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-xl font-black uppercase italic tracking-tight">Your Quotes</h2>
+                                    <Button onClick={() => setIsQuoteInitializationOpen(true)} className="rounded-xl text-[10px] font-black uppercase tracking-widest gap-2">
+                                        <PlusCircle className="h-4 w-4" />
+                                        New Quote
+                                    </Button>
+                                </div>
+                                <ScrollArea className="h-[calc(100vh-400px)]">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {recentQuotes?.map((q: any) => (
+                                            <Card
+                                                key={q.id}
+                                                className="border-2 rounded-2xl p-4 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all"
+                                                onClick={() => router.push(`/modules/${moduleData.id}/quote/${q.modelId}?range=${q.rangeId}&vendor=${mainVendor?.id}&quoteId=${q.id}`)}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary border-2 border-primary/20">
+                                                        <FileText className="h-5 w-5" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h3 className="text-xs font-bold truncate">{q.customerName || q.modelName || 'Untitled Quote'}</h3>
+                                                        <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mt-0.5">
+                                                            {q.modelName || 'No model'} {q.createdAt?.toDate ? `• ${q.createdAt.toDate().toLocaleDateString()}` : ''}
+                                                        </p>
+                                                    </div>
+                                                    <ArrowRight className="h-4 w-4 text-slate-400 shrink-0" />
+                                                </div>
+                                            </Card>
+                                        ))}
+                                        {(!recentQuotes || recentQuotes.length === 0) && (
+                                            <div className="col-span-2 py-16 text-center">
+                                                <FileText className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                                                <p className="text-sm font-bold text-slate-400">No quotes yet</p>
+                                                <p className="text-[9px] uppercase tracking-widest font-black text-slate-300 mt-1">Create your first quote to get started</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+                            <QuoteInitializationDialog
+                                isOpen={isQuoteInitializationOpen}
+                                onOpenChange={setIsQuoteInitializationOpen}
+                                vendor={mainVendor ?? null}
+                                onModelSelect={handleQuoteInitialization}
+                                defaultPriceLevel={moduleData?.subDealerDefaultPriceLevel}
                             />
                         </TabsContent>
 
