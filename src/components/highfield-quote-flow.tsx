@@ -163,7 +163,7 @@ export function HighfieldQuoteFlow({
     const { user } = useUser();
     
     // Price Level State
-    const [priceLevel, setPriceLevel] = useState<string>('default');
+    const [priceLevel, setPriceLevel] = useState<string>('hull_cash');
 
     // Auto-set price level from prop (e.g. for sub-dealers)
     useEffect(() => {
@@ -173,7 +173,7 @@ export function HighfieldQuoteFlow({
     /** Get the price for a given item based on the selected price level.
      *  Falls back to sellPriceExclGst when no priceLevels exist (backward compat). */
     function getPriceForLevel(item: any, level: string): number {
-        if (level === 'default' || !item?.priceLevels) {
+        if (!level || level === 'default' || !item?.priceLevels) {
             return item?.sellPriceExclGst || 0;
         }
         return item?.priceLevels?.[level] || item?.sellPriceExclGst || 0;
