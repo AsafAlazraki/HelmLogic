@@ -114,9 +114,9 @@ export default function AddModulePage() {
 
     return (
         <AdminGuard>
-            <div className="space-y-4">
+            <div className="p-8 space-y-8">
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-3xl mx-auto space-y-8">
                         <div className="flex items-start justify-between">
                             <div>
                                 <h1 className="text-2xl font-semibold">Add New Module</h1>
@@ -131,9 +131,9 @@ export default function AddModulePage() {
                             </div>
                         </div>
 
-                         <Card>
+                         <Card className="rounded-2xl border-2">
                             <CardHeader>
-                                <CardTitle>Module Details</CardTitle>
+                                <CardTitle className="text-lg font-bold">Module Details</CardTitle>
                                 <CardDescription>Define the new module and its vendor relationships.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
@@ -142,9 +142,9 @@ export default function AddModulePage() {
                                     name="name"
                                     render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Module Name</FormLabel>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Module Name</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="e.g., Yamaha Outboard Quoting" {...field} />
+                                            <Input placeholder="e.g., Yamaha Outboard Quoting" className="rounded-xl border-2" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -153,7 +153,7 @@ export default function AddModulePage() {
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Module Type</Label>
                                     <Select value={moduleType} onValueChange={setModuleType}>
-                                        <SelectTrigger>
+                                        <SelectTrigger className="rounded-xl border-2">
                                             <SelectValue placeholder="Select module type..." />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -169,10 +169,10 @@ export default function AddModulePage() {
                                     name="mainVendorId"
                                     render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Main Vendor</FormLabel>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Main Vendor</FormLabel>
                                          <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl>
-                                                <SelectTrigger>
+                                                <SelectTrigger className="rounded-xl border-2">
                                                     <SelectValue placeholder="Select the main vendor for this module" />
                                                 </SelectTrigger>
                                             </FormControl>
