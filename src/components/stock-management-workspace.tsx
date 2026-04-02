@@ -282,7 +282,7 @@ export function StockManagementWorkspace({
             {/* Content Area — only this scrolls */}
             <div className="flex-1 min-h-0 overflow-y-auto">
                 {view === 'stock' && (
-                    <div className="px-8 pb-4">
+                    <div className="px-8 pb-4 h-full">
                         <StockList
                             organisation={organisation}
                             subDealers={subDealers}
@@ -303,7 +303,7 @@ export function StockManagementWorkspace({
                 )}
 
                 {view === 'onorder' && (
-                    <div className="px-8 py-4">
+                    <div className="px-8 py-4 h-full">
                         <StockList
                             organisation={organisation}
                             subDealers={subDealers}
@@ -323,7 +323,7 @@ export function StockManagementWorkspace({
                 )}
 
                 {view === 'delivered' && (
-                    <div className="px-8 py-4">
+                    <div className="px-8 py-4 h-full">
                         <DeliveredDeals
                             organisation={organisation}
                             moduleId={moduleId}
@@ -339,7 +339,7 @@ export function StockManagementWorkspace({
                 )}
 
                 {view === 'holdrequests' && (
-                    <div className="px-8 py-4">
+                    <div className="px-8 py-4 h-full overflow-y-auto">
                         <HoldRequestsDashboard
                             organisation={organisation}
                             moduleId={moduleId}

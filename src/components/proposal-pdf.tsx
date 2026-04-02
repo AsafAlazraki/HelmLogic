@@ -353,7 +353,11 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                                                 borderTopColor: '#f8fafc',
                                             }}>
                                                 <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
-                                                    <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: GREEN, marginRight: 7, flexShrink: 0 }} />
+                                                    {opt.imageUrl ? (
+                                                        <Image src={opt.imageUrl} style={{ width: 24, height: 24, objectFit: 'contain', marginRight: 7, borderRadius: 2, flexShrink: 0 }} />
+                                                    ) : (
+                                                        <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: GREEN, marginRight: 7, flexShrink: 0 }} />
+                                                    )}
                                                     <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY, flexShrink: 1, textTransform: 'uppercase', letterSpacing: 0.3 }}>
                                                         {base}{color ? ` (${color})` : ''}
                                                     </Text>
@@ -405,7 +409,11 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                                         <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
                                             {(items as any[]).map((acc: any, i: number) => (
                                                 <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 14, marginBottom: 2 }}>
-                                                    <View style={S.dot} />
+                                                    {acc.imageUrl ? (
+                                                        <Image src={acc.imageUrl} style={{ width: 20, height: 20, objectFit: 'contain', marginRight: 5, borderRadius: 2, flexShrink: 0 }} />
+                                                    ) : (
+                                                        <View style={S.dot} />
+                                                    )}
                                                     <Text style={{ fontSize: 7, color: SLATE }}>{acc.name}</Text>
                                                 </View>
                                             ))}
@@ -420,11 +428,16 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                 {/* Trailer */}
                 {quote.trailer && (
                     <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: '10 14', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                        <View>
-                            <Text style={[S.sectionLabel, { marginBottom: 3 }]}>Trailer Package</Text>
-                            <Text style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', color: NAVY }}>
-                                {quote.trailer.name || 'Trailer'}
-                            </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            {quote.trailer.imageUrl && (
+                                <Image src={quote.trailer.imageUrl} style={{ width: 36, height: 36, objectFit: 'contain', marginRight: 12, borderRadius: 3 }} />
+                            )}
+                            <View>
+                                <Text style={[S.sectionLabel, { marginBottom: 3 }]}>Trailer Package</Text>
+                                <Text style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', color: NAVY }}>
+                                    {quote.trailer.name || 'Trailer'}
+                                </Text>
+                            </View>
                         </View>
                         <Text style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(f.trailerTotal)}</Text>
                     </View>
@@ -440,13 +453,19 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                                     <View key={`${gi}-${ii}`} style={{
                                         flexDirection: 'row',
                                         justifyContent: 'space-between',
+                                        alignItems: 'center',
                                         paddingHorizontal: 10,
                                         paddingVertical: 5,
                                         borderTopWidth: (gi > 0 || ii > 0) ? 1 : 0,
                                         borderTopColor: '#f1f5f9',
                                     }}>
-                                        <Text style={{ fontSize: 7.5, color: SLATE }}>{item.name}</Text>
-                                        <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY }}>{currency(item.sellPriceExclGst || 0)}</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
+                                            {item.imageUrl && (
+                                                <Image src={item.imageUrl} style={{ width: 24, height: 24, objectFit: 'contain', marginRight: 7, borderRadius: 2, flexShrink: 0 }} />
+                                            )}
+                                            <Text style={{ fontSize: 7.5, color: SLATE }}>{item.name}</Text>
+                                        </View>
+                                        <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY, flexShrink: 0, marginLeft: 12 }}>{currency(item.sellPriceExclGst || 0)}</Text>
                                     </View>
                                 ))
                             )}

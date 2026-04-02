@@ -15,6 +15,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
@@ -37,13 +38,14 @@ interface Vendor {
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Module name is required.' }),
-  mainVendorId: z.string().min(1, { message: 'A main vendor must be selected.' }),
+  mainVendorId: z.string().default(''),
   associatedVendorIds: z.array(z.string()).default([]),
 });
 
 export default function AddModulePage() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
+    const [moduleType, setModuleType] = useState('catalog');
     const { toast } = useToast();
     const firestore = useFirestore();
 
@@ -60,6 +62,11 @@ export default function AddModulePage() {
     });
 
     async function onSubmit(values: z.infer<typeof formSchema>) {
+        if (moduleType === 'catalog' && !values.mainVendorId) {
+            form.setError('mainVendorId', { message: 'A main vendor must be selected for catalog modules.' });
+            return;
+        }
+
         setIsLoading(true);
         try {
             const modulesCollection = collection(firestore, 'modules');
@@ -71,7 +78,8 @@ export default function AddModulePage() {
             const dataToCreate: { [key: string]: any } = {
                 name: values.name,
                 slug: createSlug(values.name),
-                mainVendorId: values.mainVendorId,
+                moduleType,
+                mainVendorId: values.mainVendorId || null,
                 associatedVendorIds: values.associatedVendorIds,
                 logoUrl: mainVendor?.logoUrl || null,
             };
@@ -106,9 +114,9 @@ export default function AddModulePage() {
 
     return (
         <AdminGuard>
-            <div className="space-y-4">
+            <div className="p-8 space-y-8">
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="max-w-3xl mx-auto space-y-8">
                         <div className="flex items-start justify-between">
                             <div>
                                 <h1 className="text-2xl font-semibold">Add New Module</h1>
@@ -123,9 +131,9 @@ export default function AddModulePage() {
                             </div>
                         </div>
 
-                         <Card>
+                         <Card className="rounded-2xl border-2">
                             <CardHeader>
-                                <CardTitle>Module Details</CardTitle>
+                                <CardTitle className="text-lg font-bold">Module Details</CardTitle>
                                 <CardDescription>Define the new module and its vendor relationships.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-6">
@@ -134,23 +142,37 @@ export default function AddModulePage() {
                                     name="name"
                                     render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Module Name</FormLabel>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Module Name</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="e.g., Yamaha Outboard Quoting" {...field} />
+                                            <Input placeholder="e.g., Yamaha Outboard Quoting" className="rounded-xl border-2" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                     )}
                                 />
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Module Type</Label>
+                                    <Select value={moduleType} onValueChange={setModuleType}>
+                                        <SelectTrigger className="rounded-xl border-2">
+                                            <SelectValue placeholder="Select module type..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="catalog">Catalog Module (Boat Brand)</SelectItem>
+                                            <SelectItem value="used-boats">Used Boats</SelectItem>
+                                            <SelectItem value="website-listings">Website Listings</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-muted-foreground">Catalog modules have pricing, quoting, and stock management. Other types have custom functionality.</p>
+                                </div>
                                 <FormField
                                     control={form.control}
                                     name="mainVendorId"
                                     render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Main Vendor</FormLabel>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Main Vendor</FormLabel>
                                          <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl>
-                                                <SelectTrigger>
+                                                <SelectTrigger className="rounded-xl border-2">
                                                     <SelectValue placeholder="Select the main vendor for this module" />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -160,7 +182,11 @@ export default function AddModulePage() {
                                                 )) : <SelectItem value="loading" disabled>Loading vendors...</SelectItem>}
                                             </SelectContent>
                                         </Select>
-                                        <FormDescription>The module will use this vendor's logo and primary identity.</FormDescription>
+                                        <FormDescription>
+                                            {moduleType === 'catalog'
+                                                ? "The module will use this vendor's logo and primary identity."
+                                                : "Not required for this module type."}
+                                        </FormDescription>
                                         <FormMessage />
                                     </FormItem>
                                     )}

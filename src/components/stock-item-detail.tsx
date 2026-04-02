@@ -2,7 +2,7 @@
 
 import React, { useRef, useState } from 'react';
 import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { Plus, FileText, Download, X, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Plus, FileText, Download, X, Loader2, Image as ImageIcon, Lock } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,11 @@ interface InventoryItem {
   pdfAttachments: { name: string; url: string; uploadedAt: any }[];
   coverImageUrl?: string;   // From matched model
   variantImageUrl?: string; // From matched variant
+  isFromQuote?: boolean;
+  isLocked?: boolean;
+  quotePayload?: any;        // Full nested quote config
+  proposalPdfUrl?: string;   // Stored PDF URL
+  quoteId?: string;
 }
 
 interface StockItemDetailProps {
@@ -346,6 +351,159 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
                   onChange={handlePdfUpload}
                 />
               </div>
+
+              {/* Quote Configuration (only for stock from quotes) */}
+              {item.isFromQuote && item.quotePayload && (
+                <div className="mt-6">
+                  <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-3">Quote Configuration</p>
+
+                  {/* Locked badge */}
+                  {item.isLocked && (
+                    <Badge variant="outline" className="border-2 border-amber-300 bg-amber-50 text-amber-700 text-[9px] font-black uppercase mb-3">
+                      <Lock className="h-3 w-3 mr-1" /> Locked Configuration
+                    </Badge>
+                  )}
+
+                  {/* Variant */}
+                  {item.quotePayload.variant && (
+                    <div className="border-2 rounded-xl p-3 mb-2 bg-slate-50/50">
+                      <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-1">Base Boat</p>
+                      <p className="text-xs font-semibold">{item.quotePayload.variant.name}</p>
+                      <p className="text-[10px] text-slate-500">{item.quotePayload.variant.sku} · {item.quotePayload.variant.colorName} · {item.quotePayload.variant.material}</p>
+                      <p className="text-xs font-bold text-primary mt-1">${(item.quotePayload.variant.sellPriceExclGst || 0).toLocaleString()} excl. GST</p>
+                    </div>
+                  )}
+
+                  {/* Factory Options */}
+                  {item.quotePayload.selectedOptions?.length > 0 && (
+                    <div className="border-2 rounded-xl p-3 mb-2 bg-slate-50/50">
+                      <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-1">Factory Options ({item.quotePayload.selectedOptions.length})</p>
+                      {item.quotePayload.selectedOptions.map((opt: any, i: number) => (
+                        <div key={i} className="flex justify-between text-xs py-0.5">
+                          <span>{opt.name}</span>
+                          <span className="font-mono">${(opt.sellPriceExclGst || 0).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Motor */}
+                  {item.quotePayload.motor && (
+                    <div className="border-2 rounded-xl p-3 mb-2 bg-slate-50/50">
+                      <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-1">Motor</p>
+                      <p className="text-xs font-semibold">{item.quotePayload.motor.name}</p>
+                      <p className="text-xs font-bold text-primary">${(item.quotePayload.motor.sellPriceExclGst || 0).toLocaleString()}</p>
+                    </div>
+                  )}
+
+                  {/* Trailer */}
+                  {item.quotePayload.trailer && (
+                    <div className="border-2 rounded-xl p-3 mb-2 bg-slate-50/50">
+                      <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-1">Trailer</p>
+                      <p className="text-xs font-semibold">{item.quotePayload.trailer.name}</p>
+                      <p className="text-xs font-bold text-primary">${(item.quotePayload.trailer.sellPriceExclGst || 0).toLocaleString()}</p>
+                    </div>
+                  )}
+
+                  {/* Dealer Fit */}
+                  {item.quotePayload.dealerFit?.length > 0 && (
+                    <div className="border-2 rounded-xl p-3 mb-2 bg-slate-50/50">
+                      <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-1">Dealer Fit</p>
+                      {item.quotePayload.dealerFit.map((cat: any, i: number) => (
+                        <div key={i}>
+                          <p className="text-[9px] font-bold text-slate-500 mt-1">{cat.category}</p>
+                          {cat.items?.map((itm: any, j: number) => (
+                            <div key={j} className="flex justify-between text-xs py-0.5">
+                              <span>{itm.name}</span>
+                              <span className="font-mono">${(itm.sellPriceExclGst || 0).toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Total */}
+                  <div className="border-2 rounded-xl p-3 bg-primary/5 border-primary/20">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span>Total (Excl. GST)</span>
+                      <span className="text-primary">${(item.quotePayload.totalPriceExclGst || 0).toLocaleString()}</span>
+                    </div>
+                    {item.quotePayload.totalPriceExclGst && (
+                      <div className="flex justify-between text-xs text-slate-500 mt-1">
+                        <span>Total (Incl. GST)</span>
+                        <span>${((item.quotePayload.totalPriceExclGst || 0) * 1.1).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Customer Details */}
+                  {item.quotePayload.customer && item.quotePayload.customer.name && (
+                    <div className="border-2 rounded-xl p-3 bg-slate-50/50 mt-2">
+                      <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-2">Customer</p>
+                      <p className="text-xs font-bold">{item.quotePayload.customer.name}</p>
+                      {item.quotePayload.customer.email && <p className="text-[10px] text-slate-500">{item.quotePayload.customer.email}</p>}
+                      {item.quotePayload.customer.phone && <p className="text-[10px] text-slate-500">{item.quotePayload.customer.phone}</p>}
+                      {item.quotePayload.customer.company && <p className="text-[10px] text-slate-500">{item.quotePayload.customer.company}</p>}
+                    </div>
+                  )}
+
+                  {/* Dealer Audit Info */}
+                  <div className="border-2 rounded-xl p-3 bg-slate-50/50 mt-2">
+                    <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-2">Deal Audit</p>
+                    <div className="space-y-1.5">
+                      {item.quotePayload.priceLevelUsed && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Price Level</span>
+                          <Badge variant="outline" className="text-[9px] font-black uppercase border-2">{item.quotePayload.priceLevelUsed.replace('hull_', '').replace('_', ' ')}</Badge>
+                        </div>
+                      )}
+                      {item.quotePayload.quoteNumber && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Quote #</span>
+                          <span className="font-mono font-bold">{item.quotePayload.quoteNumber}</span>
+                        </div>
+                      )}
+                      {item.quotePayload.createdByName && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Created By</span>
+                          <span className="font-semibold">{item.quotePayload.createdByName}</span>
+                        </div>
+                      )}
+                      {item.quotePayload.createdAt && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Date</span>
+                          <span>{formatDate(item.quotePayload.createdAt)}</span>
+                        </div>
+                      )}
+                      {item.quotePayload.discountExclGst > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Discount Applied</span>
+                          <span className="font-bold text-orange-600">${(item.quotePayload.discountExclGst || 0).toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Proposal Actions */}
+              {(item.proposalPdfUrl || item.quoteId) && (
+                <div className="mt-4 pb-6 flex flex-wrap gap-2">
+                  {item.proposalPdfUrl && (
+                    <a href={item.proposalPdfUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-xs font-bold hover:bg-slate-50 transition-colors">
+                      <Download className="h-4 w-4" />
+                      Download PDF
+                    </a>
+                  )}
+                  {item.quoteId && item.quotePayload?.createdByUid && (
+                    <a href={`/modules/${item.moduleId}/proposals/${item.quoteId}`} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-xs font-bold hover:bg-primary/5 hover:border-primary/30 transition-colors text-primary">
+                      <FileText className="h-4 w-4" />
+                      View Proposal
+                    </a>
+                  )}
+                </div>
+              )}
             </>
           )}
         </SheetContent>

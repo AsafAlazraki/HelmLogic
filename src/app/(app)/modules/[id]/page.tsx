@@ -51,7 +51,8 @@ import {
     Building,
     Layout,
     Box,
-    Settings
+    Settings,
+    Globe
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -186,12 +187,14 @@ function QuoteInitializationDialog({
     isOpen,
     onOpenChange,
     vendor,
-    onModelSelect
+    onModelSelect,
+    defaultPriceLevel
 }: {
     isOpen: boolean,
     onOpenChange: (open: boolean) => void,
     vendor: Vendor | null,
-    onModelSelect: (model: Model, range: Range) => void
+    onModelSelect: (model: Model, range: Range) => void,
+    defaultPriceLevel?: string
 }) {
     const firestore = useFirestore();
     const [selectedRange, setSelectedRange] = useState<Range | null>(null);
@@ -346,7 +349,7 @@ export default function ModuleDetailsPage() {
     const { data: moduleById, isLoading: idLoading } = useDoc<any>(moduleByIdRef);
     const moduleData = useMemo(() => moduleById || modulesBySlug?.[0], [modulesBySlug, moduleById]);
 
-    const mainVendorRef = useMemoFirebase(() => moduleData ? doc(firestore, 'data-warehouse', moduleData.mainVendorId) : null, [firestore, moduleData]);
+    const mainVendorRef = useMemoFirebase(() => moduleData?.mainVendorId ? doc(firestore, 'data-warehouse', moduleData.mainVendorId) : null, [firestore, moduleData?.mainVendorId]);
     const { data: mainVendor, isLoading: mainVendorLoading } = useDoc<Vendor>(mainVendorRef);
     
     const organisationsQuery = useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]);
@@ -534,12 +537,124 @@ export default function ModuleDetailsPage() {
     if (loading) return <HelmLogicLoading label="Synchronizing Module" />;
     if (!moduleData) return <div className="p-12 text-center font-bold">Module Context Lost.</div>;
 
+    const moduleType = moduleData?.moduleType || 'catalog'; // default = existing behavior
+
+    // Placeholder modules (used-boats, website-listings, etc.)
+    if (moduleType !== 'catalog' && moduleData && currentMemberOrg) {
+        return (
+            <div className="flex flex-col h-screen overflow-hidden bg-background">
+                {/* Same blue header banner */}
+                <div className="relative shrink-0 overflow-hidden bg-primary px-12 text-primary-foreground z-20 h-44 border-b-2 border-white/10">
+                    {/* Same gradient background */}
+                    <div className="absolute inset-0 z-0 bg-primary/95">
+                        <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
+                        <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-indigo-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
+                    </div>
+                    <div className="relative z-10 flex flex-col h-full justify-center">
+                        <div className="flex items-center justify-between w-full gap-12">
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-white/50 leading-none">
+                                    <Navigation className="h-2.5 w-2.5" />
+                                    <span>{moduleType === 'used-boats' ? 'USED BOATS' : moduleType === 'website-listings' ? 'WEBSITE LISTINGS' : 'MODULE'}</span>
+                                </div>
+                                <h1 className="text-3xl sm:text-5xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl">
+                                    {moduleData.name}
+                                </h1>
+                            </div>
+                            <Button variant="ghost" className="h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 group shadow-xl flex items-center" onClick={() => router.push('/dashboard')}>
+                                <X className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
+                                <span>Back to Hub</span>
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Placeholder content */}
+                <main className="flex-1 overflow-y-auto p-8">
+                    <div className="max-w-4xl mx-auto space-y-8">
+                        {/* Module cover image */}
+                        <Card className="border-2 rounded-2xl overflow-hidden">
+                            {moduleData.coverImageUrl ? (
+                                <div className="relative h-48 bg-slate-100">
+                                    <img src={moduleData.coverImageUrl} alt={moduleData.name} className="w-full h-full object-cover" />
+                                </div>
+                            ) : (
+                                <div className="h-48 bg-gradient-to-br from-slate-100 to-slate-50 flex items-center justify-center">
+                                    <div className="text-center space-y-2">
+                                        <ImageIcon className="h-12 w-12 text-slate-300 mx-auto" />
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No cover image set</p>
+                                    </div>
+                                </div>
+                            )}
+                            <CardContent className="p-6">
+                                <h2 className="text-xl font-black uppercase tracking-tight mb-2">{moduleData.name}</h2>
+                                <p className="text-xs text-slate-500">{moduleData.description || 'This module is being set up. Content coming soon.'}</p>
+
+                                {/* Cover image upload (for org members) */}
+                                <div className="mt-4">
+                                    <label className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-xs font-bold cursor-pointer hover:bg-slate-50 transition-colors">
+                                        <Upload className="h-4 w-4" />
+                                        {moduleData.coverImageUrl ? 'Change Cover Image' : 'Set Cover Image'}
+                                        <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (!file || !storage) return;
+                                            try {
+                                                const url = await uploadFileToStorage(storage, file, `modules/${moduleData.id}/cover-${Date.now()}`);
+                                                await updateDoc(doc(firestore, 'modules', moduleData.id), { coverImageUrl: url });
+                                                toast({ title: 'Cover image updated' });
+                                            } catch (error) {
+                                                console.error('Upload failed:', error);
+                                                toast({ variant: 'destructive', title: 'Upload failed' });
+                                            }
+                                        }} />
+                                    </label>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Coming soon cards based on type */}
+                        {moduleType === 'used-boats' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <Card className="border-2 rounded-2xl p-6 space-y-3">
+                                    <Ship className="h-8 w-8 text-primary/40" />
+                                    <h3 className="text-sm font-bold">Used Boat Listings</h3>
+                                    <p className="text-xs text-slate-500">List and manage pre-owned vessels for sale. Coming soon.</p>
+                                </Card>
+                                <Card className="border-2 rounded-2xl p-6 space-y-3">
+                                    <DollarSign className="h-8 w-8 text-primary/40" />
+                                    <h3 className="text-sm font-bold">Used Boat Pricing</h3>
+                                    <p className="text-xs text-slate-500">Manage pricing and valuations for used inventory. Coming soon.</p>
+                                </Card>
+                            </div>
+                        )}
+
+                        {moduleType === 'website-listings' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <Card className="border-2 rounded-2xl p-6 space-y-3">
+                                    <Globe className="h-8 w-8 text-primary/40" />
+                                    <h3 className="text-sm font-bold">Website Integration</h3>
+                                    <p className="text-xs text-slate-500">Sync inventory listings to your website. Coming soon.</p>
+                                </Card>
+                                <Card className="border-2 rounded-2xl p-6 space-y-3">
+                                    <Layout className="h-8 w-8 text-primary/40" />
+                                    <h3 className="text-sm font-bold">Listing Templates</h3>
+                                    <p className="text-xs text-slate-500">Customise how your boats appear online. Coming soon.</p>
+                                </Card>
+                            </div>
+                        )}
+                    </div>
+                </main>
+            </div>
+        );
+    }
+
     // Sub-dealer tabbed experience — same visual style as parent orgs
     if (isSubDealer && currentMemberOrg) {
         const showStock = moduleData?.stockVisibleToSubDealers === true;
         const subDealerTabs = [
             { id: 'dashboard', label: 'Dashboard' },
             { id: 'stock', label: 'Stock Management', visible: showStock },
+            { id: 'quotes', label: 'Quotes', visible: moduleData?.subDealerQuotingEnabled === true },
             { id: 'pricing', label: 'Price List' },
         ].filter(t => t.visible !== false);
 
@@ -767,6 +882,57 @@ export default function ModuleDetailsPage() {
                                 isSubDealer={true}
                                 user={user}
                                 brandCaptainUserId={moduleData?.brandCaptainUserId || null}
+                            />
+                        </TabsContent>
+
+                        {/* Quotes — sub-dealer quoting when enabled */}
+                        <TabsContent value="quotes" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
+                            <div className="p-8">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-xl font-black uppercase italic tracking-tight">Your Quotes</h2>
+                                    <Button onClick={() => setIsQuoteInitializationOpen(true)} className="rounded-xl text-[10px] font-black uppercase tracking-widest gap-2">
+                                        <PlusCircle className="h-4 w-4" />
+                                        New Quote
+                                    </Button>
+                                </div>
+                                <ScrollArea className="h-[calc(100vh-400px)]">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {recentQuotes?.map((q: any) => (
+                                            <Card
+                                                key={q.id}
+                                                className="border-2 rounded-2xl p-4 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all"
+                                                onClick={() => router.push(`/modules/${moduleData.id}/quote/${q.modelId}?range=${q.rangeId}&vendor=${mainVendor?.id}&quoteId=${q.id}`)}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary border-2 border-primary/20">
+                                                        <FileText className="h-5 w-5" />
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h3 className="text-xs font-bold truncate">{q.customerName || q.modelName || 'Untitled Quote'}</h3>
+                                                        <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mt-0.5">
+                                                            {q.modelName || 'No model'} {q.createdAt?.toDate ? `• ${q.createdAt.toDate().toLocaleDateString()}` : ''}
+                                                        </p>
+                                                    </div>
+                                                    <ArrowRight className="h-4 w-4 text-slate-400 shrink-0" />
+                                                </div>
+                                            </Card>
+                                        ))}
+                                        {(!recentQuotes || recentQuotes.length === 0) && (
+                                            <div className="col-span-2 py-16 text-center">
+                                                <FileText className="h-10 w-10 text-slate-300 mx-auto mb-3" />
+                                                <p className="text-sm font-bold text-slate-400">No quotes yet</p>
+                                                <p className="text-[9px] uppercase tracking-widest font-black text-slate-300 mt-1">Create your first quote to get started</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+                            <QuoteInitializationDialog
+                                isOpen={isQuoteInitializationOpen}
+                                onOpenChange={setIsQuoteInitializationOpen}
+                                vendor={mainVendor ?? null}
+                                onModelSelect={handleQuoteInitialization}
+                                defaultPriceLevel={moduleData?.subDealerDefaultPriceLevel}
                             />
                         </TabsContent>
 
@@ -1162,6 +1328,8 @@ export default function ModuleDetailsPage() {
                                     stockVisibleToSubDealers={moduleData?.stockVisibleToSubDealers ?? false}
                                     subDealerVisibleColumns={moduleData?.subDealerVisibleColumns || []}
                                     subDealers={(subDealersList || []).map((sd: any) => ({ id: sd.id, name: sd.name }))}
+                                    subDealerQuotingEnabled={moduleData?.subDealerQuotingEnabled ?? false}
+                                    subDealerDefaultPriceLevel={moduleData?.subDealerDefaultPriceLevel || 'hull_subdealer'}
                                 />
                                 <ModuleDealerFitManager
                                     moduleId={moduleData.id}

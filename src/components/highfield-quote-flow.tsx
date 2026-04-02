@@ -148,6 +148,7 @@ export function HighfieldQuoteFlow({
     range,
     rangeId,
     initialState,
+    defaultPriceLevel,
 }: {
     module: any,
     model: any,
@@ -155,11 +156,29 @@ export function HighfieldQuoteFlow({
     range?: any,
     rangeId: string,
     initialState?: DuplicateInitialState,
+    defaultPriceLevel?: string,
 }) {
     const firestore = useFirestore();
     const router = useRouter();
     const { user } = useUser();
     
+    // Price Level State
+    const [priceLevel, setPriceLevel] = useState<string>('hull_cash');
+
+    // Auto-set price level from prop (e.g. for sub-dealers)
+    useEffect(() => {
+        if (defaultPriceLevel) setPriceLevel(defaultPriceLevel);
+    }, [defaultPriceLevel]);
+
+    /** Get the price for a given item based on the selected price level.
+     *  Falls back to sellPriceExclGst when no priceLevels exist (backward compat). */
+    function getPriceForLevel(item: any, level: string): number {
+        if (!level || level === 'default' || !item?.priceLevels) {
+            return item?.sellPriceExclGst || 0;
+        }
+        return item?.priceLevels?.[level] || item?.sellPriceExclGst || 0;
+    }
+
     // 1. Core State — seeded from initialState when duplicating an existing quote
     const [currentStep, setCurrentStep] = useState(initialState ? 6 : 1);
     const [selectedMaterial, setSelectedMaterial] = useState<'PVC' | 'HYP' | null>(initialState?.material ?? null);
@@ -351,8 +370,8 @@ export function HighfieldQuoteFlow({
     }, [dealerFitSelections]);
 
     const totalPrice = useMemo(() => {
-        let total = activeVariant?.sellPriceExclGst || 0;
-        selectedOptionsData.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
+        let total = getPriceForLevel(activeVariant, priceLevel);
+        selectedOptionsData.forEach(opt => { total += getPriceForLevel(opt, priceLevel); });
         customOptions.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
         if (isRegoSelected) {
             total += (model.registration?.price12Months || 0);
@@ -360,19 +379,19 @@ export function HighfieldQuoteFlow({
             if (isTenderToSelected) total += (model.registration?.tenderToStickerPrice || 0);
         }
         if (selectedMotor) {
-            total += (selectedMotor.sellPriceExclGst || 0);
-            selectedMotorAccessories.forEach((a: any) => { total += (a.sellPriceExclGst || 0); });
+            total += getPriceForLevel(selectedMotor, priceLevel);
+            selectedMotorAccessories.forEach((a: any) => { total += getPriceForLevel(a, priceLevel); });
         }
         if (selectedTrailerId && model.trailerConfig) {
-            total += (model.trailerConfig.sellPriceExclGst || 0);
-            selectedTrailerOptionsData.forEach((o: any) => { total += (o.sellPriceExclGst || 0); });
+            total += getPriceForLevel(model.trailerConfig, priceLevel);
+            selectedTrailerOptionsData.forEach((o: any) => { total += getPriceForLevel(o, priceLevel); });
             if (isTrailerRegoSelected) total += (model.registration?.trailerPrice12Months || 0);
         }
         selectedDealerFitData.forEach(s => {
-            s.items?.forEach((i: any) => { total += (i.data?.sellPriceExclGst || 0); });
+            s.items?.forEach((i: any) => { total += getPriceForLevel(i.data, priceLevel); });
         });
         return total;
-    }, [activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration]);
+    }, [activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration, priceLevel]);
 
     // 4. Selection Handlers
     const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
@@ -725,6 +744,21 @@ export function HighfieldQuoteFlow({
                                 </div>
                             </div>
                             <div className="flex flex-col items-end px-1 gap-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-[9px] uppercase tracking-widest font-black text-slate-400">Price Level</span>
+                                    <select
+                                        value={priceLevel}
+                                        onChange={(e) => setPriceLevel(e.target.value)}
+                                        className="text-xs rounded-xl border-2 px-2 py-1 font-bold bg-white"
+                                    >
+                                        <option value="default">Published Price</option>
+                                        <option value="hull_cash">Cash Price</option>
+                                        <option value="hull_trade">Trade Price</option>
+                                        <option value="hull_subdealer">Sub-Dealer Price</option>
+                                        <option value="hull_subdealer_excl">Sub-Dealer Excl</option>
+                                        <option value="hull_aus_sailing">AUS Sailing</option>
+                                    </select>
+                                </div>
                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Package Pricing (Excl. GST)</span>
                                 <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{totalPrice.toLocaleString()}</span></div>
                             </div>
@@ -1292,6 +1326,7 @@ export function HighfieldQuoteFlow({
                     isTenderToSelected,
                     isTrailerRegoSelected,
                     selectedTrailerId,
+                    priceLevelUsed: priceLevel,
                 }}
                 organisationId={orgId || null}
                 userProfile={userProfile}

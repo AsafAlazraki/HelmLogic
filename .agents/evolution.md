@@ -61,6 +61,31 @@ MUST use a SINGLE `<Tabs>` component wrapping both `<TabsList>` and `<TabsConten
 - `readOnly` prop gates all CRUD UI — controlled by permissions
 - Import duplicate checking needs multi-field fingerprinting
 - Sub-dealer `filterOrgId="all-with-parent"` shows parent + own stock
+- Universal publish writes ALL price levels — no selector
+- Quote prices are locked at save time — proposals read from saved data
+- `priceLevelUsed` on every finalized quote for audit trail
+- Default price level is `hull_cash` (org's shortCode column)
+- Module `moduleType` field controls rendering: "catalog" (default) vs "used-boats" vs "website-listings"
+
+## Recent Evolution (Session: April 1-2, 2026 — v1.1.0)
+
+### Features Built:
+1. **Pricing System Overhaul** — universal publish (all levels at once), price level selector in quotes, GST labels on all Sell AUD columns
+2. **Quote → Stock Boat** — PDF storage in Firebase Storage, locked config (`isLocked`), customer/audit info on stock detail, proposal link
+3. **Sub-Dealer Quoting** — toggle + price level assignment in module settings, quotes tab for sub-dealers
+4. **Placeholder Module Types** — Used Boats, Website Listings with cover image upload, module type selector on Add Module page
+5. **Admin** — Modules tab in org editor for assigning module access, Add Module page UI fix
+6. **Proposal Images** — option/trailer/dealer fit thumbnails on PDF
+7. **Dashboard** — module cards show coverImageUrl when no vendor logo
+8. **Focus Mode Fix** — export dropdown and global update dialog work in pricing manager focus mode
+
+### Key Lessons:
+- Modules with `mainVendorId: null` crash Firestore `doc()` — always check before creating ref
+- Sell AUD columns need explicit "(EXCL. GST)" and "(INCL. GST)" labels
+- Universal publish is better UX than asking users to choose a price level
+- Default price level should be `hull_cash` (org's shortCode column)
+- `coverImageUrl` on module doc is separate from vendor `logoUrl` — dashboard needs to check both
+- Quote prices ARE locked at save time — `buildQuotePayload()` snapshots everything
 
 ## How to Proceed (For Future Agents)
 - **Read SESSION_HANDOVER.md** first for complete context

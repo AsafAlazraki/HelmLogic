@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { X, Plus, MapPin, Lock, Globe } from 'lucide-react';
+import { X, Plus, MapPin, Lock, Globe, FileText } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -33,9 +34,11 @@ interface StockLocationManagerProps {
     stockVisibleToSubDealers?: boolean;
     subDealerVisibleColumns?: string[];
     subDealers?: { id: string; name: string }[];
+    subDealerQuotingEnabled?: boolean;
+    subDealerDefaultPriceLevel?: string;
 }
 
-export function StockLocationManager({ moduleId, locations, stockVisibleToSubDealers: initialVisibility = false, subDealerVisibleColumns: initialVisibleColumns = [], subDealers }: StockLocationManagerProps) {
+export function StockLocationManager({ moduleId, locations, stockVisibleToSubDealers: initialVisibility = false, subDealerVisibleColumns: initialVisibleColumns = [], subDealers, subDealerQuotingEnabled: initialQuotingEnabled = false, subDealerDefaultPriceLevel: initialPriceLevel = 'hull_subdealer' }: StockLocationManagerProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [newLocation, setNewLocation] = useState('');
@@ -43,6 +46,8 @@ export function StockLocationManager({ moduleId, locations, stockVisibleToSubDea
     const [visibleColumns, setVisibleColumns] = useState<string[]>(
         initialVisibleColumns.length > 0 ? initialVisibleColumns : ALL_STOCK_COLUMNS.map(c => c.id)
     );
+    const [quotingEnabled, setQuotingEnabled] = useState(initialQuotingEnabled);
+    const [subDealerPriceLevel, setSubDealerPriceLevel] = useState(initialPriceLevel);
 
     // Sync with prop when module doc updates externally
     useEffect(() => {
@@ -55,6 +60,15 @@ export function StockLocationManager({ moduleId, locations, stockVisibleToSubDea
             setVisibleColumns(initialVisibleColumns);
         }
     }, [initialVisibleColumns]);
+
+    // Sync quoting state with props
+    useEffect(() => {
+        setQuotingEnabled(initialQuotingEnabled);
+    }, [initialQuotingEnabled]);
+
+    useEffect(() => {
+        setSubDealerPriceLevel(initialPriceLevel);
+    }, [initialPriceLevel]);
 
     const moduleRef = useMemoFirebase(
         () => doc(firestore, 'modules', moduleId),
@@ -105,6 +119,28 @@ export function StockLocationManager({ moduleId, locations, stockVisibleToSubDea
             toast({ title: 'Column visibility updated' });
         } catch (error) {
             console.error('Failed to update column visibility:', error);
+            toast({ variant: 'destructive', title: 'Failed to update' });
+        }
+    };
+
+    const handleToggleQuoting = async (enabled: boolean) => {
+        try {
+            await updateDoc(moduleRef, { subDealerQuotingEnabled: enabled });
+            setQuotingEnabled(enabled);
+            toast({ title: enabled ? 'Sub-dealer quoting enabled' : 'Sub-dealer quoting disabled' });
+        } catch (error) {
+            console.error('Failed to update quoting:', error);
+            toast({ variant: 'destructive', title: 'Failed to update' });
+        }
+    };
+
+    const handlePriceLevelChange = async (level: string) => {
+        try {
+            await updateDoc(moduleRef, { subDealerDefaultPriceLevel: level });
+            setSubDealerPriceLevel(level);
+            toast({ title: 'Price level updated' });
+        } catch (error) {
+            console.error('Failed to update price level:', error);
             toast({ variant: 'destructive', title: 'Failed to update' });
         }
     };
@@ -261,6 +297,64 @@ export function StockLocationManager({ moduleId, locations, stockVisibleToSubDea
                                     );
                                 })}
                             </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Sub-Dealer Quoting Card */}
+            <Card className="border-2 rounded-2xl">
+                <CardHeader>
+                    <CardTitle className="text-xs font-bold">Sub-Dealer Quoting</CardTitle>
+                    <CardDescription className="text-[9px] uppercase tracking-widest font-black text-slate-400">
+                        Allow sub-dealers to create quotes using their assigned price level
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {/* Enable/Disable toggle */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            onClick={() => handleToggleQuoting(false)}
+                            className={cn(
+                                'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-center',
+                                !quotingEnabled
+                                    ? 'border-primary bg-primary/5 text-primary'
+                                    : 'border-muted hover:border-muted-foreground/20 text-muted-foreground'
+                            )}
+                        >
+                            <Lock className="h-5 w-5" />
+                            <span className="text-xs font-bold">Disabled</span>
+                        </button>
+                        <button
+                            onClick={() => handleToggleQuoting(true)}
+                            className={cn(
+                                'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all text-center',
+                                quotingEnabled
+                                    ? 'border-primary bg-primary/5 text-primary'
+                                    : 'border-muted hover:border-muted-foreground/20 text-muted-foreground'
+                            )}
+                        >
+                            <FileText className="h-5 w-5" />
+                            <span className="text-xs font-bold">Enabled</span>
+                        </button>
+                    </div>
+
+                    {/* Price level selector (shown when enabled) */}
+                    {quotingEnabled && (
+                        <div className="border-t pt-4">
+                            <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-3">Default Price Level for Sub-Dealers</p>
+                            <Select value={subDealerPriceLevel} onValueChange={handlePriceLevelChange}>
+                                <SelectTrigger className="rounded-xl border-2">
+                                    <SelectValue placeholder="Select price level..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="hull_cash">Cash Price</SelectItem>
+                                    <SelectItem value="hull_trade">Trade Price</SelectItem>
+                                    <SelectItem value="hull_subdealer">Sub-Dealer Price</SelectItem>
+                                    <SelectItem value="hull_subdealer_excl">Sub-Dealer Excl Price</SelectItem>
+                                    <SelectItem value="hull_aus_sailing">AUS Sailing Price</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                     )}
                 </CardContent>
