@@ -114,5 +114,23 @@
 - `src/components/manage-organisation-page.tsx` — Modules tab
 - `src/components/proposal-pdf.tsx` — Option/trailer/dealer fit images
 - `src/app/(app)/modules/[id]/page.tsx` — Module types, sub-dealer quotes tab
-- `src/app/(app)/modules/add/page.tsx` — UI fix
+- `src/app/(app)/modules/add/page.tsx` — Module type selector + UI fix
 - `scripts/seed-placeholder-modules.ts` — New seed script
+
+---
+
+## Bug Fixes
+
+### Used Boats / Website Listings Module Crash
+- Module page crashed with `Cannot read properties of null (reading 'indexOf')` when `mainVendorId` is null
+- Fixed by checking `mainVendorId` exists before creating Firestore doc ref
+
+### Add Module Page
+- Module Type dropdown added (Catalog, Used Boats, Website Listings)
+- Main Vendor field optional for non-catalog modules
+- Proper padding, max-width container, consistent label styling
+
+### Pricing Manager
+- Sell AUD columns now labelled "(EXCL. GST)" and "(INCL. GST)" explicitly
+- Export and Global Update dialogs work in Focus Mode (z-index fix)
+- Removed confusing "never published" banner
