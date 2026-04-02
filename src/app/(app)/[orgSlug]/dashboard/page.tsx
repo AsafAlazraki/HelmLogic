@@ -78,11 +78,12 @@ function SortableModuleCard({ module, orgSlug }: { module: Module; orgSlug: stri
         <div ref={setNodeRef} style={style} className="group relative">
             <Link href={`/${orgSlug}/modules/${module.slug || module.id}`} className="block h-full">
                 <Card className="h-full transition-all duration-300 ease-in-out hover:border-primary hover:-translate-y-2 hover:shadow-2xl overflow-hidden flex flex-col rounded-2xl border-2">
-                    <CardHeader className="h-32 bg-muted/30 flex items-center justify-center p-6 border-b relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <CardHeader className="h-32 bg-muted/30 flex items-center justify-center p-0 border-b relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity z-10" />
                         {(module.logoUrl || module.coverImageUrl) ? (
-                            <div className="relative h-full w-full">
-                                <Image src={(module.logoUrl || module.coverImageUrl)!} alt={`${module.name} logo`} fill className={module.coverImageUrl && !module.logoUrl ? "object-cover" : "object-contain p-2"} />
+                            <div className="relative h-full w-full overflow-hidden">
+                                <Image src={(module.logoUrl || module.coverImageUrl)!} alt={`${module.name}`} fill className="object-contain p-3" sizes="(max-width: 768px) 50vw, 25vw" />
+                            </div>
                             </div>
                         ) : (
                             <Blocks className="h-12 w-12 text-muted-foreground opacity-20"/>
