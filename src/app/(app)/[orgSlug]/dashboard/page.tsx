@@ -84,7 +84,6 @@ function SortableModuleCard({ module, orgSlug }: { module: Module; orgSlug: stri
                             <div className="relative h-full w-full overflow-hidden">
                                 <Image src={(module.logoUrl || module.coverImageUrl)!} alt={`${module.name}`} fill className="object-contain p-3" sizes="(max-width: 768px) 50vw, 25vw" />
                             </div>
-                            </div>
                         ) : (
                             <Blocks className="h-12 w-12 text-muted-foreground opacity-20"/>
                         )}
