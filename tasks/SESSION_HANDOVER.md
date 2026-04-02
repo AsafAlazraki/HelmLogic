@@ -93,13 +93,61 @@ customers/{customerId}          <- Customer records (org-scoped)
 
 ---
 
+## Pricing Architecture
+
+### Data Flow: Pricing Manager → Quotes
+```
+Pricing Workspace edits → organisations/{orgId}/pricingStrategies/{vendorId}
+    (stores: itemValues with all cost components + price levels)
+    ↓
+Publish Prices (manual action, publishes ALL levels at once)
+    ↓
+Writes to data-warehouse variants:
+    - sellPriceExclGst (from hull_cash / org shortCode column)
+    - priceLevels: { hull_cash, hull_trade, hull_subdealer, ... }
+    - activePriceLevel: 'hull_cash'
+    ↓
+Quote Builder reads sellPriceExclGst OR priceLevels[selectedLevel]
+    - Default level: hull_cash (org's shortCode sell price)
+    - Sub-dealers: use module's subDealerDefaultPriceLevel
+    - Price level selector dropdown in quote builder
+    ↓
+Finalize saves ALL prices as snapshot (prices locked at save time)
+```
+
+### Price Levels (hardcoded)
+- `hull_cash` — Cash Price (displayed as "{ORG_SHORTCODE} SELL PRICE")
+- `hull_trade` — Trade Price
+- `hull_subdealer` — Sub-Dealer Price
+- `hull_subdealer_excl` — Sub-Dealer Excl Price
+- `hull_aus_sailing` — AUS Sailing Price
+
+### Quote Price Locking
+- `buildQuotePayload()` snapshots ALL `sellPriceExclGst` values at save time
+- Proposal view reads from saved quote data, NOT live variants
+- Pricing changes don't affect existing quotes
+- `priceLevelUsed` saved on every finalized quote for audit trail
+
+---
+
+## Module Types
+
+- `catalog` (default) — boat brand catalog with pricing, quoting, stock management
+- `used-boats` — placeholder module with cover image, coming-soon cards
+- `website-listings` — placeholder module with cover image, coming-soon cards
+
+Non-catalog modules have `mainVendorId: null` — code must check before creating Firestore doc refs.
+
+---
+
 ## Module Page Architecture (Critical — Most Complex File)
 
-`/src/app/(app)/modules/[id]/page.tsx` — The central module workspace. ~1200 lines.
+`/src/app/(app)/modules/[id]/page.tsx` — The central module workspace. ~1300 lines.
 
 ### Structure:
-1. **Sub-dealer early return** (~line 491) — if `isSubDealer`, renders a separate tabbed view with Dashboard, Stock Management, Price List tabs
-2. **Parent org view** (~line 600+) — full tabs: Dashboard, Catalog, Stock Management, Pricing, Settings
+1. **Non-catalog module early return** — if `moduleType !== 'catalog'`, renders placeholder view with cover image
+2. **Sub-dealer early return** — if `isSubDealer`, renders Dashboard, Stock Management, Quotes (if enabled), Price List tabs
+3. **Parent org view** — full tabs: Dashboard, Catalog, Stock Management, Pricing, Settings
 
 ### Sub-dealer view:
 - Dashboard: stats + parent stock card + own stock card + price list access + info panel
