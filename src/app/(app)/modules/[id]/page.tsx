@@ -349,7 +349,7 @@ export default function ModuleDetailsPage() {
     const { data: moduleById, isLoading: idLoading } = useDoc<any>(moduleByIdRef);
     const moduleData = useMemo(() => moduleById || modulesBySlug?.[0], [modulesBySlug, moduleById]);
 
-    const mainVendorRef = useMemoFirebase(() => moduleData ? doc(firestore, 'data-warehouse', moduleData.mainVendorId) : null, [firestore, moduleData]);
+    const mainVendorRef = useMemoFirebase(() => moduleData?.mainVendorId ? doc(firestore, 'data-warehouse', moduleData.mainVendorId) : null, [firestore, moduleData?.mainVendorId]);
     const { data: mainVendor, isLoading: mainVendorLoading } = useDoc<Vendor>(mainVendorRef);
     
     const organisationsQuery = useMemoFirebase(() => collection(firestore, 'organisations'), [firestore]);
