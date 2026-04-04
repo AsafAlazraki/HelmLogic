@@ -160,6 +160,7 @@ export default function AddModulePage() {
                                             <SelectItem value="catalog">Catalog Module (Boat Brand)</SelectItem>
                                             <SelectItem value="used-boats">Used Boats</SelectItem>
                                             <SelectItem value="website-listings">Website Listings</SelectItem>
+                                            <SelectItem value="master-price-file">Master Price File</SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <p className="text-xs text-muted-foreground">Catalog modules have pricing, quoting, and stock management. Other types have custom functionality.</p>
