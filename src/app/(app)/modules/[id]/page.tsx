@@ -327,7 +327,13 @@ export default function ModuleDetailsPage() {
     const firestore = useFirestore();
     const storage = useStorage();
 
-    const [activeTab, setActiveTab] = useState('dashboard');
+    const [activeTab, setActiveTab] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('tab') || 'dashboard';
+        }
+        return 'dashboard';
+    });
     const [pricingSubTab, setPricingSubTab] = useState<'matrix' | 'pricelists'>('matrix');
     const [view, setView] = useState<'ranges' | 'models' | 'bmt'>('ranges');
     const [selectedRangeId, setSelectedRangeId] = useState<string | null>(null);

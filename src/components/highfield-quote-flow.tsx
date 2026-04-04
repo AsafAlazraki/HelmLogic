@@ -1382,6 +1382,11 @@ export function HighfieldQuoteFlow({
                 }}
                 organisationId={orgId || null}
                 userProfile={userProfile}
+                locations={module?.stockLocations || []}
+                onStockCreated={() => {
+                    setShowFinalizeDialog(false);
+                    router.push(`/modules/${module?.id}?tab=stock`);
+                }}
             />
         </div>
     );
