@@ -845,25 +845,64 @@ export function HighfieldQuoteFlow({
                             )}
                             {currentStep === 2 && (
                                 <div className="space-y-12 animate-in fade-in duration-1000 mt-4">
-                                    {groupedOptions.map(([cat, opts]) => (
+                                    {groupedOptions.map(([cat, opts]) => {
+                                        /* Seat category visibility rules:
+                                         * - If a console is selected with a paired seat → show only that seat, locked
+                                         * - If a console is selected with NO paired seat → hide seats entirely
+                                         * - If no console is selected → hide seat category (seats are console-dependent) */
+                                        if (cat === 'Seats') {
+                                            const hasSelectedConsole = relevantFeatures.some((f: any) => f.category === 'Consoles' && selectedOptionIds.includes(f.id));
+                                            if (!hasSelectedConsole) return null;
+                                            if (!lockedSeatId) {
+                                                return (
+                                                    <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 scroll-mt-10">
+                                                        <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                                        </div>
+                                                        <div className="px-6 py-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 text-center">
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No paired seat for this console</p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                        }
+
+                                        /* For seat category with a locked seat, show only the paired seat */
+                                        const displayOpts = (cat === 'Seats' && lockedSeatId)
+                                            ? opts.filter((o: any) => o.id === lockedSeatId)
+                                            : opts;
+
+                                        return (
                                         <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 scroll-mt-10">
                                             <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
                                                 <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
                                             </div>
                                             <div className="grid grid-cols-2 gap-4">
-                                                {opts.map((opt: any) => (
-                                                    <button key={opt.id} onClick={() => toggleOption(opt.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", selectedOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                {displayOpts.map((opt: any) => {
+                                                    const isLocked = lockedSeatId === opt.id;
+                                                    const isSelected = selectedOptionIds.includes(opt.id);
+                                                    return (
+                                                    <button key={opt.id} onClick={() => toggleOption(opt.id)} disabled={isLocked} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20", isLocked && "cursor-default opacity-90")}>
                                                         <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !opt.imageUrl && "hidden")}>{opt.imageUrl && <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
                                                         <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                            {(() => { const { base, color } = formatOptionDisplayLabel(opt.name); return (<><p className={cn("text-[10px] font-black uppercase tracking-widest leading-tight", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{base}</p>{color && <p className={cn("text-[9px] font-black uppercase tracking-widest", selectedOptionIds.includes(opt.id) ? "text-primary/70" : "text-slate-400")}>{color}</p>}</>); })()}
-                                                            <p className={cn("text-[9px] font-black", selectedOptionIds.includes(opt.id) ? "text-primary" : "text-slate-400")}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            {(() => { const { base, color } = formatOptionDisplayLabel(opt.name); return (<><p className={cn("text-[10px] font-black uppercase tracking-widest leading-tight", isSelected ? "text-primary" : "text-slate-700")}>{base}</p>{color && <p className={cn("text-[9px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{color}</p>}</>); })()}
+                                                            <p className={cn("text-[9px] font-black", isSelected ? "text-primary" : "text-slate-400")}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            {isLocked && (
+                                                                <div className="flex items-center gap-1 mt-1">
+                                                                    <Lock className="h-3 w-3 text-primary/60" />
+                                                                    <span className="text-[8px] font-bold text-primary/60 uppercase tracking-wide">Paired with {(() => { const { base } = formatOptionDisplayLabel(activeConsoleFeature?.name || 'Console'); return base; })()}</span>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </button>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
 
                                     <div className="space-y-6 scroll-mt-10">
                                         <div className="flex items-center gap-3 bg-slate-900 px-6 py-3 rounded-2xl shadow-xl w-full">
