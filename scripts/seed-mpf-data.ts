@@ -13,24 +13,23 @@
  *     with type "master-price-file" and select the Master Price File vendor)
  */
 
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, doc, setDoc, getDocs, query, where, writeBatch, deleteDoc } from 'firebase/firestore';
+import { initializeApp, cert, getApps } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 
-const firebaseConfig = {
-    apiKey: "AIzaSyDJ7b5G9zL2uTpDzgwTLvQtVUIyaVBpSBY",
-    authDomain: "studio-2290360004-3b963.firebaseapp.com",
-    projectId: "studio-2290360004-3b963",
-    storageBucket: "studio-2290360004-3b963.firebasestorage.app",
-    messagingSenderId: "908992306421",
-    appId: "1:908992306421:web:34a5f3aba4ddac8ad2c6e0"
-};
+// Handle both CJS and ESM
+const __filename2 = typeof __filename !== 'undefined' ? __filename : fileURLToPath(import.meta.url);
+const __dirname2 = path.dirname(__filename2);
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+// Initialize Firebase Admin (uses Application Default Credentials or GOOGLE_APPLICATION_CREDENTIALS)
+if (getApps().length === 0) {
+    initializeApp({ projectId: 'studio-2290360004-3b963' });
+}
+const db = getFirestore();
 
-const EXTRACTED_DIR = path.join(__dirname, '..', 'data-import', 'extracted');
+const EXTRACTED_DIR = path.join(__dirname2, '..', 'data-import', 'extracted');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -65,14 +64,13 @@ function parseTSV(filePath: string, headerRow = 0): Record<string, string>[] {
 }
 
 async function clearDataSet(vendorId: string, dataSetName: string) {
-    const snap = await getDocs(collection(db, `data-warehouse/${vendorId}/dataSets/${dataSetName}/rows`));
+    const snap = await db.collection(`data-warehouse/${vendorId}/dataSets/${dataSetName}/rows`).get();
     if (snap.size === 0) return;
 
     console.log(`  Clearing ${snap.size} existing rows from ${dataSetName}...`);
-    // Delete in batches of 500
     const docs = snap.docs;
     for (let i = 0; i < docs.length; i += 500) {
-        const batch = writeBatch(db);
+        const batch = db.batch();
         docs.slice(i, i + 500).forEach(d => batch.delete(d.ref));
         await batch.commit();
     }
@@ -87,7 +85,7 @@ async function writeRows(vendorId: string, dataSetName: string, displayName: str
     console.log(`  Writing ${displayName}: ${rows.length} rows...`);
 
     // Create/update dataset doc
-    await setDoc(doc(db, `data-warehouse/${vendorId}/dataSets`, dataSetName), {
+    await db.doc(`data-warehouse/${vendorId}/dataSets/${dataSetName}`).set({
         name: displayName,
         rowCount: rows.length,
         createdAt: new Date(),
@@ -100,9 +98,9 @@ async function writeRows(vendorId: string, dataSetName: string, displayName: str
     let written = 0;
     for (let i = 0; i < rows.length; i += 500) {
         const chunk = rows.slice(i, i + 500);
-        const batch = writeBatch(db);
+        const batch = db.batch();
         for (const row of chunk) {
-            const ref = doc(collection(db, `data-warehouse/${vendorId}/dataSets/${dataSetName}/rows`));
+            const ref = db.collection(`data-warehouse/${vendorId}/dataSets/${dataSetName}/rows`).doc();
             batch.set(ref, row);
         }
         await batch.commit();
@@ -120,20 +118,23 @@ async function seed() {
     console.log('=== Master Price File Data Seeder ===\n');
 
     // 1. Find the Master Price File vendor
-    const vendorsSnap = await getDocs(collection(db, 'data-warehouse'));
+    const vendorsSnap = await db.collection('data-warehouse').get();
     const mpfVendor = vendorsSnap.docs.find(d => {
         const data = d.data();
         return data.slug === 'master-price-file' || data.name === 'Master Price File';
     });
 
+    let vendorId: string;
     if (!mpfVendor) {
-        console.error('ERROR: Master Price File vendor not found in data-warehouse!');
-        console.error('Create it first via Admin > Modules > Add New Module > Master Price File type');
-        process.exit(1);
+        console.log('Master Price File vendor not found — creating it...');
+        const ref = db.collection('data-warehouse').doc();
+        await ref.set({ name: 'Master Price File', slug: 'master-price-file', vendorType: 'Internal', currency: 'AUD', createdAt: new Date() });
+        vendorId = ref.id;
+        console.log(`Created vendor: ${vendorId}\n`);
+    } else {
+        vendorId = mpfVendor.id;
+        console.log(`Found vendor: ${mpfVendor.data().name} (${vendorId})\n`);
     }
-
-    const vendorId = mpfVendor.id;
-    console.log(`Found vendor: ${mpfVendor.data().name} (${vendorId})\n`);
 
     // 2. Dealer Fit Packages
     console.log('--- Dealer Fit Packages ---');
