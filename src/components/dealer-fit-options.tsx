@@ -207,15 +207,9 @@ export function DealerFitOptions({
                 <div className="flex items-center gap-2 text-left">
                     {hasSeeder && (
                         <Button 
-                            variant="secondary" 
-                            size="sm" 
-                            className="h-8 px-4 font-black uppercase text-[9px] tracking-widest bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all border-none"
-                            onClick={() => handleSeedCategory(category)}
-                            disabled={!!isSeeding}
                         >
-                            {isSeeding === category.id ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Zap className="h-3 w-3 mr-1.5 fill-current" />}
-                            Sync Demo Data
-                        </Button>
+                            {/* Sync Demo Data button removed — use Master Data Browser instead */}
+
                     )}
                     {categorySelections.length > 0 && (
                         <Button 
