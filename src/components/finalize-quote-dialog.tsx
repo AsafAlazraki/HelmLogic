@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { CustomerPicker } from '@/components/customer-picker';
 import { cn } from '@/lib/utils';
 import {
     Loader2,
@@ -73,11 +74,12 @@ interface FinalizeQuoteDialogProps {
     userProfile: any;
     canSaveAsStock?: boolean;
     locations?: string[];  // Available stock locations
+    onStockCreated?: () => void;
 }
 
 type FinalizeMode = 'customer' | 'stock';
 
-export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisationId, userProfile, canSaveAsStock = true, locations }: FinalizeQuoteDialogProps) {
+export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisationId, userProfile, canSaveAsStock = true, locations, onStockCreated }: FinalizeQuoteDialogProps) {
     const firestore = useFirestore();
     const storage = useStorage();
     const { user } = useUser();
@@ -104,6 +106,8 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     const [stockNumber, setStockNumber] = useState('');
     const [stockLocation, setStockLocation] = useState('');
     const [stockStatus, setStockStatus] = useState('In Stock');
+    const [stockCustomerId, setStockCustomerId] = useState('');
+    const [stockCustomerName, setStockCustomerName] = useState('');
 
     const resetForm = () => {
         setCustomerName('');
@@ -114,6 +118,8 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
         setStockNumber('');
         setStockLocation('');
         setStockStatus('In Stock');
+        setStockCustomerId('');
+        setStockCustomerName('');
         setMode('customer');
     };
 
