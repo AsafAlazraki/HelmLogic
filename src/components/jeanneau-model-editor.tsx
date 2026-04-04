@@ -169,7 +169,22 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
                         {coverImageUrl ? (
                             <div className="h-full w-full flex items-center justify-center relative">
                                 <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-4" sizes="(max-width: 1024px) 100vw, 50vw" />
-                                <Button type="button" variant="destructive" size="icon" className="absolute top-3 right-3 h-8 w-8 shadow-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => setValue('coverImageUrl', null)}><X className="h-4 w-4" /></Button>
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-10">
+                                    <label className="cursor-pointer">
+                                        <Button type="button" variant="secondary" size="icon" className="h-8 px-3 shadow-xl rounded-full font-bold text-xs pointer-events-none">Replace</Button>
+                                        <Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file && storage) {
+                                                setIsCoverUploading(true);
+                                                try {
+                                                    const url = await uploadFileToStorage(storage, file, `models/${model.id}/cover-${Date.now()}`);
+                                                    setValue('coverImageUrl', url, { shouldDirty: true });
+                                                } finally { setIsCoverUploading(false); }
+                                            }
+                                        }} />
+                                    </label>
+                                    <Button type="button" variant="destructive" size="icon" className="h-8 w-8 shadow-xl rounded-full" onClick={() => setValue('coverImageUrl', null, { shouldDirty: true })}><X className="h-4 w-4" /></Button>
+                                </div>
                             </div>
                         ) : (
                             <label className="flex flex-col items-center justify-center w-full h-full cursor-pointer hover:bg-secondary/80 transition-all">
@@ -181,7 +196,7 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
                                         setIsCoverUploading(true);
                                         try {
                                             const url = await uploadFileToStorage(storage, file, `models/${model.id}/cover-${Date.now()}`);
-                                            setValue('coverImageUrl', url);
+                                            setValue('coverImageUrl', url, { shouldDirty: true });
                                         } finally { setIsCoverUploading(false); }
                                     }
                                 }} /></FormControl>

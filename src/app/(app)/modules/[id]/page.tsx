@@ -494,22 +494,27 @@ export default function ModuleDetailsPage() {
     const handleQuickSaveEdit = async (data: any) => {
         if (!editingItem || !mainVendor) return;
         const isRange = 'vendorId' in editingItem;
-        const path = isRange 
+        const path = isRange
             ? `data-warehouse/${mainVendor.id}/ranges/${editingItem.id}`
             : `data-warehouse/${mainVendor.id}/ranges/${editingItem.rangeId}/models/${editingItem.id}`;
-        
+
         const docRef = doc(firestore, path);
         const updateData: any = { name: data.name };
 
-        if (data.image && storage) {
-            const fileName = `cover-${Date.now()}`;
-            const url = await uploadFileToStorage(storage, data.image, `${path}/${fileName}`);
-            if (isRange) updateData.imageUrl = url;
-            else updateData.coverImageUrl = url;
-        }
+        try {
+            if (data.image && storage) {
+                const fileName = `cover-${Date.now()}`;
+                const url = await uploadFileToStorage(storage, data.image, `${path}/${fileName}`);
+                if (isRange) updateData.imageUrl = url;
+                else updateData.coverImageUrl = url;
+            }
 
-        await updateDoc(docRef, updateData);
-        toast({ title: "Item Updated" });
+            await updateDoc(docRef, updateData);
+            toast({ title: "Item Updated" });
+        } catch (error) {
+            console.error("Failed to save catalog item:", error);
+            toast({ variant: "destructive", title: "Save Failed", description: "Could not update the item. Please try again." });
+        }
     };
 
     // Settings tab handlers
@@ -1585,6 +1590,7 @@ function EditItemDialog({ isOpen, onOpenChange, item, onSave }: any) {
     useEffect(() => {
         if (item) {
             setName(item.name || '');
+            setImage(null);
             setPreview(item.imageUrl || item.coverImageUrl || null);
         }
     }, [item]);

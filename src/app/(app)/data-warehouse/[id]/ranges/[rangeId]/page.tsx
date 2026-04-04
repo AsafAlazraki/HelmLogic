@@ -523,6 +523,7 @@ export default function RangeDetailsPage() {
         setEditingGroup(group);
         setGroupName(group.name);
         setGroupCode(group.modelCode);
+        setGroupImage(null);
         setGroupImagePreview(group.coverImageUrl || null);
         setIsGroupDialogOpen(true);
     };
