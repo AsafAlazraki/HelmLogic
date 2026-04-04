@@ -404,8 +404,15 @@ export function VisualAssetsCard({ model, isModuleView }: { model: any, isModule
                         {coverImageUrl ? (
                             <div className="h-full w-full flex items-center justify-center relative text-left">
                                 <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-6" />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <Button type="button" variant="destructive" size="icon" className="font-black uppercase text-[9px] h-7 px-3" onClick={() => setValue('coverImageUrl', null)}>Remove Render</Button>
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-10">
+                                    <label className="cursor-pointer">
+                                        <Button type="button" variant="secondary" size="icon" className="font-black uppercase text-[9px] h-7 px-3 pointer-events-none">Replace</Button>
+                                        <Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file && storage) { setIsCoverUploading(true); try { const url = await uploadFileToStorage(storage, file, `models/${model.id}/cover-${Date.now()}`); setValue('coverImageUrl', url, { shouldDirty: true }); } finally { setIsCoverUploading(false); } }
+                                        }} />
+                                    </label>
+                                    <Button type="button" variant="destructive" size="icon" className="font-black uppercase text-[9px] h-7 px-3" onClick={() => setValue('coverImageUrl', null, { shouldDirty: true })}>Remove</Button>
                                 </div>
                             </div>
                         ) : (
@@ -414,7 +421,7 @@ export function VisualAssetsCard({ model, isModuleView }: { model: any, isModule
                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Set Build Render</span>
                                 <FormControl><Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
                                     const file = e.target.files?.[0];
-                                    if (file && storage) { setIsCoverUploading(true); try { const url = await uploadFileToStorage(storage, file, `models/${model.id}/cover-${Date.now()}`); setValue('coverImageUrl', url); } finally { setIsCoverUploading(false); } }
+                                    if (file && storage) { setIsCoverUploading(true); try { const url = await uploadFileToStorage(storage, file, `models/${model.id}/cover-${Date.now()}`); setValue('coverImageUrl', url, { shouldDirty: true }); } finally { setIsCoverUploading(false); } }
                                 }} /></FormControl>
                             </label>
                         )}
