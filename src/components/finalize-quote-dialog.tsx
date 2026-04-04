@@ -66,11 +66,13 @@ interface FinalizeQuoteDialogProps {
     organisationId: string | null;
     userProfile: any;
     canSaveAsStock?: boolean;
+    locations?: string[];
+    onStockCreated?: () => void;
 }
 
 type FinalizeMode = 'customer' | 'stock';
 
-export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisationId, userProfile, canSaveAsStock = true }: FinalizeQuoteDialogProps) {
+export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisationId, userProfile, canSaveAsStock = true, locations = [], onStockCreated }: FinalizeQuoteDialogProps) {
     const firestore = useFirestore();
     const storage = useStorage();
     const { user } = useUser();
@@ -92,6 +94,13 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerCompany, setCustomerCompany] = useState('');
     const [customerAddress, setCustomerAddress] = useState('');
+
+    // Stock fields
+    const [stockNumber, setStockNumber] = useState('');
+    const [stockLocation, setStockLocation] = useState('');
+    const [stockStatus, setStockStatus] = useState('In Stock');
+    const [stockCustomerId, setStockCustomerId] = useState('');
+    const [stockCustomerName, setStockCustomerName] = useState('');
 
     const resetForm = () => {
         setCustomerName('');
@@ -272,12 +281,12 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 router.push(`/modules/${quoteData.module?.slug || quoteData.module?.id}/proposals/${quoteRef.id}`);
             } else {
                 // Save as stock in inventory collection
-                const stockNumber = generateStockNumber();
+                const finalStockNumber = stockNumber || generateStockNumber();
                 const inventoryRef = doc(firestoreCollection(firestore, 'inventory'));
                 await setDoc(inventoryRef, {
                     ...payload,
-                    stockNumber,
-                    status: 'In Stock',
+                    stockNumber: finalStockNumber,
+                    status: stockStatus,
                     name: `${quoteData.model?.name || 'Unit'} - ${quoteData.activeVariant?.colorName || quoteData.activeVariant?.name || 'Standard'}`,
                     // Locked configuration fields
                     isLocked: true,
@@ -290,7 +299,9 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     colour: payload.variant?.colorName || '',
                     serialNumber: '',
                     material: payload.variant?.material || '',
-                    location: '',
+                    location: stockLocation,
+                    customerId: stockCustomerId || null,
+                    customerName: stockCustomerName || null,
                     soldBy: '',
                     label: payload.variant?.sku || '',
                     notes: '',
@@ -328,7 +339,8 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     // Don't fail the whole operation — stock item is already created
                 }
 
-                toast({ title: 'Stock Item Created', description: `${stockNumber} added to inventory.` });
+                toast({ title: 'Stock Item Created', description: `${finalStockNumber} added to inventory.` });
+                onStockCreated?.();
                 onOpenChange(false);
                 resetForm();
                 router.push(`/modules/${quoteData.module?.slug || quoteData.module?.id}`);
