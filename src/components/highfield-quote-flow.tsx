@@ -451,6 +451,10 @@ export function HighfieldQuoteFlow({
         const feature = relevantFeatures.find((f: any) => f.id === id);
         if (!feature) return;
         const currentCat = feature.category || 'General Options';
+
+        // Prevent toggling off a seat that is locked via console pairing
+        if (currentCat === 'Seats' && selectedOptionIds.includes(id) && lockedSeatId === id) return;
+
         const isCurrentlySelected = selectedOptionIds.includes(id);
         let nextSelectedIds = [...selectedOptionIds];
         if (isCurrentlySelected) {
@@ -900,7 +904,7 @@ export function HighfieldQuoteFlow({
                                                             <p className={cn("text-[9px] font-black", isSelected ? "text-primary" : "text-slate-400")}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                             {isLocked && (
                                                                 <div className="flex items-center gap-1 mt-1">
-                                                                    <Lock className="h-3 w-3 text-primary/60" />
+                                                                    <CheckCircle2 className="h-3 w-3 text-primary/60" />
                                                                     <span className="text-[8px] font-bold text-primary/60 uppercase tracking-wide">Paired with {(() => { const { base } = formatOptionDisplayLabel(activeConsoleFeature?.name || 'Console'); return base; })()}</span>
                                                                 </div>
                                                             )}
