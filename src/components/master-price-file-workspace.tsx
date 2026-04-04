@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { collection, query, doc, updateDoc, addDoc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, query, doc, setDoc, updateDoc, addDoc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import * as XLSX from 'xlsx';
@@ -227,6 +227,75 @@ export function MasterPriceFileWorkspace({ vendorId, organisationId, isAdmin }: 
         }
     }, [firestore, vendorId, effectiveDataSet]);
 
+    // Import as NEW dataset (creates dataset from file)
+    const handleImportNewDataset = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setImporting(true);
+
+        try {
+            const data = await file.arrayBuffer();
+            const wb = XLSX.read(data, { type: 'array' });
+
+            // Process each sheet as a separate dataset
+            for (const sheetName of wb.SheetNames) {
+                const ws = wb.Sheets[sheetName];
+                const parsed = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
+
+                if (parsed.length === 0) continue;
+
+                // Clean sheet name for dataset ID
+                const dataSetId = sheetName.toLowerCase()
+                    .replace(/[^a-z0-9\s-]/g, '')
+                    .replace(/\s+/g, '-')
+                    .substring(0, 40);
+
+                console.log(`Importing sheet: ${sheetName} → ${dataSetId} (${parsed.length} rows)`);
+
+                // Create dataset doc
+                await setDoc(doc(firestore, `data-warehouse/${vendorId}/dataSets`, dataSetId), {
+                    name: sheetName,
+                    rowCount: parsed.length,
+                    createdAt: new Date(),
+                });
+
+                // Write rows in batches
+                let written = 0;
+                for (let i = 0; i < parsed.length; i += 500) {
+                    const chunk = parsed.slice(i, i + 500);
+                    const b = writeBatch(firestore);
+                    for (const row of chunk) {
+                        // Clean row — remove empty string values
+                        const cleanRow: Record<string, any> = {};
+                        for (const [key, val] of Object.entries(row)) {
+                            if (key && String(val).trim()) {
+                                cleanRow[key] = val;
+                            }
+                        }
+                        if (Object.keys(cleanRow).length > 0) {
+                            const ref = doc(collection(firestore, `data-warehouse/${vendorId}/dataSets/${dataSetId}/rows`));
+                            b.set(ref, cleanRow);
+                        }
+                    }
+                    await b.commit();
+                    written += chunk.length;
+                }
+                console.log(`  ✓ ${sheetName}: ${written} rows`);
+            }
+
+            toast({ title: 'Import Complete', description: `Imported ${wb.SheetNames.length} sheet(s) from ${file.name}` });
+            // Switch to the first imported dataset
+            const firstId = wb.SheetNames[0]?.toLowerCase().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').substring(0, 40);
+            if (firstId) setActiveDataSet(firstId);
+        } catch (error) {
+            console.error('Import failed:', error);
+            toast({ variant: 'destructive', title: 'Import failed', description: String(error) });
+        } finally {
+            setImporting(false);
+            e.target.value = '';
+        }
+    }, [firestore, vendorId]);
+
     // Delete row
     const handleDeleteRow = useCallback(async (rowId: string) => {
         if (!effectiveDataSet) return;
@@ -289,14 +358,23 @@ export function MasterPriceFileWorkspace({ vendorId, organisationId, isAdmin }: 
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
-                    <label className="inline-flex items-center gap-2 h-10 px-5 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-slate-50 transition-colors">
-                        {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                        Import
-                        <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} disabled={importing} />
+                    {effectiveDataSet && (
+                        <label className="inline-flex items-center gap-2 h-10 px-5 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-slate-50 transition-colors">
+                            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                            Replace Data
+                            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} disabled={importing} />
+                        </label>
+                    )}
+                    <label className="inline-flex items-center gap-2 h-10 px-5 rounded-xl border-2 bg-primary text-white text-[10px] font-black uppercase tracking-widest cursor-pointer hover:bg-primary/90 transition-colors">
+                        {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+                        Import Excel File
+                        <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportNewDataset} disabled={importing} />
                     </label>
-                    <Button onClick={handleAddRow} className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2">
-                        <Plus className="h-4 w-4" /> Add Row
-                    </Button>
+                    {effectiveDataSet && (
+                        <Button onClick={handleAddRow} className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2">
+                            <Plus className="h-4 w-4" /> Add Row
+                        </Button>
+                    )}
                 </div>
             </div>
 
