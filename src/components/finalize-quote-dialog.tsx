@@ -9,6 +9,7 @@ import { doc, setDoc, updateDoc, serverTimestamp, collection as firestoreCollect
 import { pdf } from '@react-pdf/renderer';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { ProposalPDFDocument } from '@/components/proposal-pdf';
+import { buildQuoteFinancials } from '@/lib/quote-financials';
 import {
     Dialog,
     DialogContent,
@@ -23,16 +24,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { CustomerPicker } from '@/components/customer-picker';
 import { cn } from '@/lib/utils';
 import {
     Loader2,
@@ -73,13 +66,11 @@ interface FinalizeQuoteDialogProps {
     organisationId: string | null;
     userProfile: any;
     canSaveAsStock?: boolean;
-    locations?: string[];  // Available stock locations
-    onStockCreated?: () => void;
 }
 
 type FinalizeMode = 'customer' | 'stock';
 
-export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisationId, userProfile, canSaveAsStock = true, locations, onStockCreated }: FinalizeQuoteDialogProps) {
+export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisationId, userProfile, canSaveAsStock = true }: FinalizeQuoteDialogProps) {
     const firestore = useFirestore();
     const storage = useStorage();
     const { user } = useUser();
@@ -102,24 +93,12 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     const [customerCompany, setCustomerCompany] = useState('');
     const [customerAddress, setCustomerAddress] = useState('');
 
-    // Stock fields
-    const [stockNumber, setStockNumber] = useState('');
-    const [stockLocation, setStockLocation] = useState('');
-    const [stockStatus, setStockStatus] = useState('In Stock');
-    const [stockCustomerId, setStockCustomerId] = useState('');
-    const [stockCustomerName, setStockCustomerName] = useState('');
-
     const resetForm = () => {
         setCustomerName('');
         setCustomerEmail('');
         setCustomerPhone('');
         setCustomerCompany('');
         setCustomerAddress('');
-        setStockNumber('');
-        setStockLocation('');
-        setStockStatus('In Stock');
-        setStockCustomerId('');
-        setStockCustomerName('');
         setMode('customer');
     };
 
@@ -293,12 +272,12 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 router.push(`/modules/${quoteData.module?.slug || quoteData.module?.id}/proposals/${quoteRef.id}`);
             } else {
                 // Save as stock in inventory collection
-                const finalStockNumber = stockNumber || generateStockNumber();
+                const stockNumber = generateStockNumber();
                 const inventoryRef = doc(firestoreCollection(firestore, 'inventory'));
                 await setDoc(inventoryRef, {
                     ...payload,
-                    stockNumber: finalStockNumber,
-                    status: stockStatus,
+                    stockNumber,
+                    status: 'In Stock',
                     name: `${quoteData.model?.name || 'Unit'} - ${quoteData.activeVariant?.colorName || quoteData.activeVariant?.name || 'Standard'}`,
                     // Locked configuration fields
                     isLocked: true,
@@ -311,7 +290,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     colour: payload.variant?.colorName || '',
                     serialNumber: '',
                     material: payload.variant?.material || '',
-                    location: stockLocation,
+                    location: '',
                     soldBy: '',
                     label: payload.variant?.sku || '',
                     notes: '',
@@ -324,19 +303,32 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
 
                 // Generate and store PDF
                 try {
-                    const pdfBlob = await pdf(<ProposalPDFDocument quote={payload} organisation={organisation} />).toBlob();
-                    const pdfFile = new File([pdfBlob], `${finalStockNumber}-proposal.pdf`, { type: 'application/pdf' });
-                    const pdfUrl = await uploadFileToStorage(storage, pdfFile, `inventory/${inventoryRef.id}/proposal-${finalStockNumber}.pdf`);
+                    const financials = buildQuoteFinancials(payload);
+                    const pdfBlob = await pdf(<ProposalPDFDocument quote={payload} organisation={organisation} financials={financials} />).toBlob();
+                    if (!pdfBlob || pdfBlob.size === 0) {
+                        throw new Error('PDF generation returned an empty blob');
+                    }
+                    const pdfFile = new File([pdfBlob], `${stockNumber}-proposal.pdf`, { type: 'application/pdf' });
+                    const pdfUrl = await uploadFileToStorage(storage, pdfFile, `inventory/${inventoryRef.id}/proposal-${stockNumber}.pdf`);
+
+                    if (!pdfUrl || typeof pdfUrl !== 'string') {
+                        throw new Error('PDF upload returned an invalid URL');
+                    }
 
                     await updateDoc(doc(firestore, 'inventory', inventoryRef.id), {
                         proposalPdfUrl: pdfUrl,
                     });
                 } catch (pdfError) {
-                    console.error('Failed to generate/store PDF:', pdfError);
+                    console.error('Failed to generate/store proposal PDF:', pdfError);
+                    toast({
+                        variant: 'destructive',
+                        title: 'PDF Generation Failed',
+                        description: 'Stock item was created but the proposal PDF could not be generated. You can re-generate it from the stock detail panel.',
+                    });
                     // Don't fail the whole operation — stock item is already created
                 }
 
-                toast({ title: 'Stock Item Created', description: `${finalStockNumber} added to inventory.` });
+                toast({ title: 'Stock Item Created', description: `${stockNumber} added to inventory.` });
                 onOpenChange(false);
                 resetForm();
                 router.push(`/modules/${quoteData.module?.slug || quoteData.module?.id}`);
@@ -484,42 +476,6 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                                     <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest">
                                         {organisation?.name || 'Your Organisation'}
                                     </Badge>
-                                </div>
-
-                                {/* Stock Number */}
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Stock Number</Label>
-                                    <Input value={stockNumber} onChange={(e) => setStockNumber(e.target.value)} className="rounded-xl border-2" placeholder="Auto-generated if empty" />
-                                </div>
-
-                                {/* Location */}
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Location</Label>
-                                    <Select value={stockLocation} onValueChange={setStockLocation}>
-                                        <SelectTrigger className="rounded-xl border-2">
-                                            <SelectValue placeholder="Select location..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {(locations || []).map((loc: string) => (
-                                                <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Status */}
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Status</Label>
-                                    <Select value={stockStatus} onValueChange={setStockStatus}>
-                                        <SelectTrigger className="rounded-xl border-2">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Pending">Pending</SelectItem>
-                                            <SelectItem value="On Order">On Order</SelectItem>
-                                            <SelectItem value="In Stock">In Stock</SelectItem>
-                                        </SelectContent>
-                                    </Select>
                                 </div>
                             </div>
                         )}

@@ -2,14 +2,17 @@
 
 import React, { useRef, useState } from 'react';
 import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { Plus, FileText, Download, X, Loader2, Image as ImageIcon, Lock } from 'lucide-react';
+import { Plus, FileText, Download, X, Loader2, Image as ImageIcon, Lock, AlertTriangle } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useFirestore, useStorage } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
+import { pdf } from '@react-pdf/renderer';
+import { ProposalPDFDocument } from '@/components/proposal-pdf';
+import { buildQuoteFinancials } from '@/lib/quote-financials';
 import { toast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 interface InventoryItem {
   id: string;
@@ -80,6 +83,7 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null);
+  const [regeneratingPdf, setRegeneratingPdf] = useState(false);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
@@ -159,6 +163,46 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
     }
   }
 
+  async function handleRegeneratePdf() {
+    if (!item || !item.quotePayload) return;
+    setRegeneratingPdf(true);
+    try {
+      const financials = buildQuoteFinancials(item.quotePayload, item.quotePayload.discountExclGst || 0);
+      const pdfBlob = await pdf(
+        <ProposalPDFDocument quote={item.quotePayload} organisation={null} financials={financials} />
+      ).toBlob();
+      if (!pdfBlob || pdfBlob.size === 0) {
+        throw new Error('PDF generation returned an empty blob');
+      }
+      const pdfFile = new File(
+        [pdfBlob],
+        `${item.stockNumber}-proposal.pdf`,
+        { type: 'application/pdf' }
+      );
+      const pdfUrl = await uploadFileToStorage(
+        storage,
+        pdfFile,
+        `inventory/${item.id}/proposal-${item.stockNumber}.pdf`
+      );
+      if (!pdfUrl || typeof pdfUrl !== 'string') {
+        throw new Error('PDF upload returned an invalid URL');
+      }
+      await updateDoc(doc(firestore, 'inventory', item.id), {
+        proposalPdfUrl: pdfUrl,
+      });
+      toast({ title: 'PDF Generated', description: 'Proposal PDF has been created and attached.' });
+    } catch (error) {
+      console.error('Failed to regenerate proposal PDF:', error);
+      toast({
+        variant: 'destructive',
+        title: 'PDF Generation Failed',
+        description: 'Could not generate the proposal PDF. Please try again.',
+      });
+    } finally {
+      setRegeneratingPdf(false);
+    }
+  }
+
   const detailFields: { label: string; value: string }[] = item
     ? [
         { label: 'Model', value: item.model || '-' },
@@ -176,10 +220,7 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
   return (
     <>
       <Sheet open={item !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
-        <SheetContent side="right" className={cn(
-          "overflow-y-auto",
-          item?.isFromQuote ? "w-[900px] sm:max-w-4xl" : "w-[480px] sm:max-w-lg"
-        )}>
+        <SheetContent side="right" className="w-[480px] sm:max-w-lg overflow-y-auto">
           {item && (
             <>
               <SheetHeader className="pb-4">
@@ -198,50 +239,330 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
                 </div>
               </SheetHeader>
 
-              {item.isFromQuote ? (
-                <div className="flex gap-6 h-full">
-                  {/* Left — existing detail content */}
-                  <div className="w-1/2 overflow-y-auto pr-3 border-r">
-                    <DetailContent
-                      item={item}
-                      photos={photos}
-                      pdfs={pdfs}
-                      readOnly={readOnly}
-                      uploadingPhotos={uploadingPhotos}
-                      uploadingPdf={uploadingPdf}
-                      photoInputRef={photoInputRef}
-                      pdfInputRef={pdfInputRef}
-                      onEnlargePhoto={setEnlargedPhoto}
-                      onRemovePhoto={handleRemovePhoto}
-                      onRemovePdf={handleRemovePdf}
-                      onPhotoUpload={handlePhotoUpload}
-                      onPdfUpload={handlePdfUpload}
-                      detailFields={detailFields}
-                    />
+              {/* Photo Gallery */}
+              <div className="mt-6">
+                <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-2">Photos</p>
+                {photos.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-2 relative">
+                    {uploadingPhotos && (
+                      <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 rounded-xl">
+                        <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+                      </div>
+                    )}
+                    {photos.map((url, i) => (
+                      <div
+                        key={i}
+                        className="aspect-square rounded-xl border-2 overflow-hidden relative group cursor-pointer"
+                        onClick={() => setEnlargedPhoto(url)}
+                      >
+                        <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                        {!readOnly && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleRemovePhoto(url); }}
+                            className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {!readOnly && (
+                      <button
+                        onClick={() => photoInputRef.current?.click()}
+                        className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center gap-1 text-slate-400 hover:border-slate-400 hover:text-slate-500 transition-colors"
+                      >
+                        <Plus className="h-5 w-5" />
+                        <span className="text-[10px] font-semibold">Add Photos</span>
+                      </button>
+                    )}
+                  </div>
+                ) : (item?.coverImageUrl || item?.variantImageUrl) ? (
+                  <div className="space-y-2">
+                    <div className="relative aspect-video rounded-xl border-2 overflow-hidden bg-slate-50">
+                      <img
+                        src={item.variantImageUrl || item.coverImageUrl}
+                        alt={item.model || item.name}
+                        className="w-full h-full object-contain p-2"
+                      />
+                      <Badge variant="outline" className="absolute top-2 left-2 text-[8px] font-black uppercase bg-white/90 border-slate-200">
+                        From Catalog
+                      </Badge>
+                    </div>
+                    {!readOnly && (
+                      <button
+                        onClick={() => photoInputRef.current?.click()}
+                        className="w-full rounded-xl border-2 border-dashed border-slate-300 px-3 py-2 flex items-center justify-center gap-1 text-slate-400 hover:border-slate-400 hover:text-slate-500 transition-colors"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span className="text-[10px] font-semibold">Add Photos</span>
+                      </button>
+                    )}
+                  </div>
+                ) : readOnly ? (
+                  <div className="rounded-xl border-2 border-dashed border-slate-200 p-8 text-center text-xs text-slate-400">
+                    No photos yet
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => photoInputRef.current?.click()}
+                    className="w-full rounded-xl border-2 border-dashed border-slate-300 p-8 flex flex-col items-center justify-center gap-1 text-slate-400 hover:border-slate-400 hover:text-slate-500 transition-colors"
+                  >
+                    <ImageIcon className="h-6 w-6" />
+                    <span className="text-[10px] font-semibold">No photos yet — click to add</span>
+                  </button>
+                )}
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                />
+              </div>
+
+              {/* Item Details */}
+              <div className="mt-6">
+                <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-2">Details</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  {detailFields.map((field) => (
+                    <div key={field.label}>
+                      <p className="text-[9px] uppercase tracking-widest font-black text-slate-400">{field.label}</p>
+                      <p className="text-xs font-semibold">{field.value}</p>
+                    </div>
+                  ))}
+                </div>
+                {item.notes && (
+                  <div className="mt-3">
+                    <p className="text-[9px] uppercase tracking-widest font-black text-slate-400">Notes</p>
+                    <p className="text-xs font-semibold whitespace-pre-wrap">{item.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* PDF Attachments */}
+              <div className="mt-6 pb-6">
+                <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-2">PDF Attachments</p>
+                {pdfs.length === 0 && (
+                  <p className="text-xs text-slate-400">No PDFs attached</p>
+                )}
+                <div className="flex flex-col gap-2">
+                  {pdfs.map((pdf, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 border-2 group"
+                    >
+                      <FileText className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                      <span className="text-xs font-semibold truncate flex-1">{pdf.name}</span>
+                      <a
+                        href={pdf.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:underline flex items-center gap-1 flex-shrink-0"
+                      >
+                        <Download className="h-3 w-3" />
+                        Download
+                      </a>
+                      {!readOnly && (
+                        <button
+                          onClick={() => handleRemovePdf(pdf)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500 flex-shrink-0"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {!readOnly && (
+                  <button
+                    onClick={() => pdfInputRef.current?.click()}
+                    disabled={uploadingPdf}
+                    className="mt-2 flex items-center gap-2 rounded-xl border-2 border-dashed border-slate-300 px-3 py-2 text-slate-400 hover:border-slate-400 hover:text-slate-500 transition-colors text-xs font-semibold disabled:opacity-50"
+                  >
+                    {uploadingPdf ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
+                    Attach PDF
+                  </button>
+                )}
+                <input
+                  ref={pdfInputRef}
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  onChange={handlePdfUpload}
+                />
+              </div>
+
+              {/* Quote Configuration (only for stock from quotes) */}
+              {item.isFromQuote && item.quotePayload && (
+                <div className="mt-6">
+                  <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-3">Quote Configuration</p>
+
+                  {/* Locked badge */}
+                  {item.isLocked && (
+                    <Badge variant="outline" className="border-2 border-amber-300 bg-amber-50 text-amber-700 text-[9px] font-black uppercase mb-3">
+                      <Lock className="h-3 w-3 mr-1" /> Locked Configuration
+                    </Badge>
+                  )}
+
+                  {/* Variant */}
+                  {item.quotePayload.variant && (
+                    <div className="border-2 rounded-xl p-3 mb-2 bg-slate-50/50">
+                      <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-1">Base Boat</p>
+                      <p className="text-xs font-semibold">{item.quotePayload.variant.name}</p>
+                      <p className="text-[10px] text-slate-500">{item.quotePayload.variant.sku} · {item.quotePayload.variant.colorName} · {item.quotePayload.variant.material}</p>
+                      <p className="text-xs font-bold text-primary mt-1">${(item.quotePayload.variant.sellPriceExclGst || 0).toLocaleString()} excl. GST</p>
+                    </div>
+                  )}
+
+                  {/* Factory Options */}
+                  {item.quotePayload.selectedOptions?.length > 0 && (
+                    <div className="border-2 rounded-xl p-3 mb-2 bg-slate-50/50">
+                      <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-1">Factory Options ({item.quotePayload.selectedOptions.length})</p>
+                      {item.quotePayload.selectedOptions.map((opt: any, i: number) => (
+                        <div key={i} className="flex justify-between text-xs py-0.5">
+                          <span>{opt.name}</span>
+                          <span className="font-mono">${(opt.sellPriceExclGst || 0).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Motor */}
+                  {item.quotePayload.motor && (
+                    <div className="border-2 rounded-xl p-3 mb-2 bg-slate-50/50">
+                      <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-1">Motor</p>
+                      <p className="text-xs font-semibold">{item.quotePayload.motor.name}</p>
+                      <p className="text-xs font-bold text-primary">${(item.quotePayload.motor.sellPriceExclGst || 0).toLocaleString()}</p>
+                    </div>
+                  )}
+
+                  {/* Trailer */}
+                  {item.quotePayload.trailer && (
+                    <div className="border-2 rounded-xl p-3 mb-2 bg-slate-50/50">
+                      <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-1">Trailer</p>
+                      <p className="text-xs font-semibold">{item.quotePayload.trailer.name}</p>
+                      <p className="text-xs font-bold text-primary">${(item.quotePayload.trailer.sellPriceExclGst || 0).toLocaleString()}</p>
+                    </div>
+                  )}
+
+                  {/* Dealer Fit */}
+                  {item.quotePayload.dealerFit?.length > 0 && (
+                    <div className="border-2 rounded-xl p-3 mb-2 bg-slate-50/50">
+                      <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-1">Dealer Fit</p>
+                      {item.quotePayload.dealerFit.map((cat: any, i: number) => (
+                        <div key={i}>
+                          <p className="text-[9px] font-bold text-slate-500 mt-1">{cat.category}</p>
+                          {cat.items?.map((itm: any, j: number) => (
+                            <div key={j} className="flex justify-between text-xs py-0.5">
+                              <span>{itm.name}</span>
+                              <span className="font-mono">${(itm.sellPriceExclGst || 0).toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Total */}
+                  <div className="border-2 rounded-xl p-3 bg-primary/5 border-primary/20">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span>Total (Excl. GST)</span>
+                      <span className="text-primary">${(item.quotePayload.totalPriceExclGst || 0).toLocaleString()}</span>
+                    </div>
+                    {item.quotePayload.totalPriceExclGst && (
+                      <div className="flex justify-between text-xs text-slate-500 mt-1">
+                        <span>Total (Incl. GST)</span>
+                        <span>${((item.quotePayload.totalPriceExclGst || 0) * 1.1).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Right — Mini Proposal View */}
-                  <div className="w-1/2 overflow-y-auto pl-3">
-                    <MiniProposalView quote={item.quotePayload} />
+                  {/* Customer Details */}
+                  {item.quotePayload.customer && item.quotePayload.customer.name && (
+                    <div className="border-2 rounded-xl p-3 bg-slate-50/50 mt-2">
+                      <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-2">Customer</p>
+                      <p className="text-xs font-bold">{item.quotePayload.customer.name}</p>
+                      {item.quotePayload.customer.email && <p className="text-[10px] text-slate-500">{item.quotePayload.customer.email}</p>}
+                      {item.quotePayload.customer.phone && <p className="text-[10px] text-slate-500">{item.quotePayload.customer.phone}</p>}
+                      {item.quotePayload.customer.company && <p className="text-[10px] text-slate-500">{item.quotePayload.customer.company}</p>}
+                    </div>
+                  )}
+
+                  {/* Dealer Audit Info */}
+                  <div className="border-2 rounded-xl p-3 bg-slate-50/50 mt-2">
+                    <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-2">Deal Audit</p>
+                    <div className="space-y-1.5">
+                      {item.quotePayload.priceLevelUsed && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Price Level</span>
+                          <Badge variant="outline" className="text-[9px] font-black uppercase border-2">{item.quotePayload.priceLevelUsed.replace('hull_', '').replace('_', ' ')}</Badge>
+                        </div>
+                      )}
+                      {item.quotePayload.quoteNumber && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Quote #</span>
+                          <span className="font-mono font-bold">{item.quotePayload.quoteNumber}</span>
+                        </div>
+                      )}
+                      {item.quotePayload.createdByName && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Created By</span>
+                          <span className="font-semibold">{item.quotePayload.createdByName}</span>
+                        </div>
+                      )}
+                      {item.quotePayload.createdAt && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Date</span>
+                          <span>{formatDate(item.quotePayload.createdAt)}</span>
+                        </div>
+                      )}
+                      {item.quotePayload.discountExclGst > 0 && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500">Discount Applied</span>
+                          <span className="font-bold text-orange-600">${(item.quotePayload.discountExclGst || 0).toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              ) : (
-                <DetailContent
-                  item={item}
-                  photos={photos}
-                  pdfs={pdfs}
-                  readOnly={readOnly}
-                  uploadingPhotos={uploadingPhotos}
-                  uploadingPdf={uploadingPdf}
-                  photoInputRef={photoInputRef}
-                  pdfInputRef={pdfInputRef}
-                  onEnlargePhoto={setEnlargedPhoto}
-                  onRemovePhoto={handleRemovePhoto}
-                  onRemovePdf={handleRemovePdf}
-                  onPhotoUpload={handlePhotoUpload}
-                  onPdfUpload={handlePdfUpload}
-                  detailFields={detailFields}
-                />
+              )}
+
+              {/* Proposal Actions */}
+              {(item.isFromQuote || item.proposalPdfUrl || item.quoteId) && (
+                <div className="mt-4 pb-6 flex flex-wrap gap-2">
+                  {item.proposalPdfUrl && typeof item.proposalPdfUrl === 'string' && item.proposalPdfUrl.startsWith('http') ? (
+                    <a href={item.proposalPdfUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-xs font-bold hover:bg-slate-50 transition-colors">
+                      <Download className="h-4 w-4" />
+                      Download PDF
+                    </a>
+                  ) : item.isFromQuote && item.quotePayload ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRegeneratePdf}
+                      disabled={regeneratingPdf}
+                      className="rounded-xl border-2 text-xs font-bold"
+                    >
+                      {regeneratingPdf ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4 mr-2 text-amber-500" />
+                      )}
+                      {regeneratingPdf ? 'Generating...' : 'Generate PDF'}
+                    </Button>
+                  ) : null}
+                  {item.quoteId && item.quotePayload?.createdByUid && (
+                    <a href={`/modules/${item.moduleId}/proposals/${item.quoteId}`} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-xs font-bold hover:bg-primary/5 hover:border-primary/30 transition-colors text-primary">
+                      <FileText className="h-4 w-4" />
+                      View Proposal
+                    </a>
+                  )}
+                </div>
               )}
             </>
           )}
