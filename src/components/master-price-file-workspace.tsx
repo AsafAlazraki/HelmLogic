@@ -437,29 +437,38 @@ export function MasterPriceFileWorkspace({ vendorId, organisationId, isAdmin }: 
                         </p>
                     </div>
                 ) : (
-                    <ScrollArea className="h-full">
-                        <div className="overflow-x-auto">
+                    <div className="flex-1 w-full overflow-hidden flex flex-col bg-white relative border-t">
+                        <div className="flex-1 overflow-auto scrollbar-thin">
                             <table className="border-separate border-spacing-0 w-max table-fixed">
-                                <thead className="bg-slate-50 sticky top-0 z-10">
+                                <thead className="sticky top-0 z-[100]">
                                     <tr>
-                                        {columns.map((col) => (
+                                        <th className="w-[50px] sticky left-0 top-0 z-[120] bg-white border-r-2 border-b-2 border-slate-300 text-center text-[8px] font-black uppercase shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] py-2.5 px-2">
+                                            #
+                                        </th>
+                                        {columns.map((col, idx) => (
                                             <th
                                                 key={col}
-                                                className="text-[8px] font-black uppercase tracking-widest text-slate-400 px-3 py-2.5 border-r border-b-2 border-slate-200 whitespace-nowrap text-left w-[140px]"
+                                                className={`text-[8px] font-black uppercase tracking-widest text-slate-400 px-4 py-3 border-r border-b-2 border-slate-300 whitespace-nowrap text-left bg-slate-100 ${
+                                                    isNumericField(col) ? 'text-right min-w-[120px]' : 'min-w-[180px]'
+                                                } ${idx === 0 ? 'sticky left-[50px] z-[110] bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)]' : ''}`}
                                             >
-                                                {col}
+                                                <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-600">{col}</span>
                                             </th>
                                         ))}
-                                        <th className="text-[8px] font-black uppercase tracking-widest text-slate-400 px-3 py-2.5 border-b-2 border-slate-200 w-[60px]">
-                                            Actions
+                                        <th className="text-[8px] font-black uppercase tracking-widest text-slate-400 px-3 py-3 border-b-2 border-slate-300 w-[60px] bg-slate-100">
                                         </th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredRows.map((row: any) => (
-                                        <tr key={row.id} className="hover:bg-slate-50/50 group">
-                                            {columns.map((col) => (
-                                                <td key={col} className="border-r border-b border-slate-100 text-xs w-[140px]">
+                                    {filteredRows.map((row: any, rowIdx: number) => (
+                                        <tr key={row.id} className="group hover:bg-primary/5 transition-colors">
+                                            <td className="sticky left-0 z-[80] border-r-2 border-b border-slate-200 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)] text-center text-[9px] text-slate-400 font-mono px-2 py-1 group-hover:bg-primary/5">
+                                                {rowIdx + 1}
+                                            </td>
+                                            {columns.map((col, idx) => (
+                                                <td key={col} className={`border-r border-b border-slate-200 text-xs ${
+                                                    idx === 0 ? 'sticky left-[50px] z-[70] bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.03)] group-hover:bg-primary/5 font-semibold' : 'group-hover:bg-primary/5'
+                                                }`}>
                                                     <EditableCell
                                                         value={String(row[col] ?? '')}
                                                         onChange={(v) => handleCellEdit(row.id, col, v)}
@@ -467,7 +476,7 @@ export function MasterPriceFileWorkspace({ vendorId, organisationId, isAdmin }: 
                                                     />
                                                 </td>
                                             ))}
-                                            <td className="border-b border-slate-100 px-2 w-[60px]">
+                                            <td className="border-b border-slate-200 px-2 group-hover:bg-primary/5">
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
@@ -482,7 +491,7 @@ export function MasterPriceFileWorkspace({ vendorId, organisationId, isAdmin }: 
                                 </tbody>
                             </table>
                         </div>
-                    </ScrollArea>
+                    </div>
                 )}
             </div>
         </div>
