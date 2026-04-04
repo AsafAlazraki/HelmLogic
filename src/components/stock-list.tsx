@@ -433,13 +433,12 @@ export function StockList({
                                             {/* Status */}
                                             {visibleColumnKeys.has('status') && (
                                                 <td className="px-3 py-2 whitespace-nowrap">
-                                                    {item.status === 'In Stock' ? (
-                                                        <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] px-2 py-0">In Stock</Badge>
-                                                    ) : item.status === 'On Order' ? (
-                                                        <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0">On Order</Badge>
-                                                    ) : (
-                                                        <span>{item.status ?? '—'}</span>
-                                                    )}
+                                                    {item.status === 'In Stock' && <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] px-2 py-0">In Stock</Badge>}
+                                                    {item.status === 'On Order' && <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0">On Order</Badge>}
+                                                    {item.status === 'Pending' && <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 text-[10px] px-2 py-0">Pending</Badge>}
+                                                    {item.status === 'In Stock - Sold' && <Badge className="bg-purple-100 text-purple-700 border-purple-200 text-[10px] px-2 py-0">In Stock - Sold</Badge>}
+                                                    {item.status === 'On Order - Sold' && <Badge className="bg-orange-100 text-orange-700 border-orange-200 text-[10px] px-2 py-0">On Order - Sold</Badge>}
+                                                    {!['In Stock', 'On Order', 'Pending', 'In Stock - Sold', 'On Order - Sold'].includes(item.status) && <span>{item.status ?? '—'}</span>}
                                                 </td>
                                             )}
 

@@ -260,8 +260,11 @@ export function StockItemForm({
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="In Stock">In Stock</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
                   <SelectItem value="On Order">On Order</SelectItem>
+                  <SelectItem value="In Stock">In Stock</SelectItem>
+                  <SelectItem value="In Stock - Sold">In Stock - Sold</SelectItem>
+                  <SelectItem value="On Order - Sold">On Order - Sold</SelectItem>
                 </SelectContent>
               </Select>
             </div>
