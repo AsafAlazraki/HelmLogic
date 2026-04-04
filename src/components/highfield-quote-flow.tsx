@@ -325,6 +325,15 @@ export function HighfieldQuoteFlow({
         }) as [string, any][];
     }, [relevantFeatures]);
 
+    // Determine which seat is auto-locked via console pairing
+    const activeConsoleFeature = useMemo(() => {
+        return relevantFeatures.find((f: any) => f.category === 'Consoles' && selectedOptionIds.includes(f.id)) || null;
+    }, [relevantFeatures, selectedOptionIds]);
+
+    const lockedSeatId = useMemo(() => {
+        return activeConsoleFeature?.associatedSeatId || null;
+    }, [activeConsoleFeature]);
+
     const selectedMotorAccessories = useMemo(() => {
         if (!selectedMotor) return [];
         return (selectedMotor.masterAccessories || []).filter((a: any) => selectedMotorAccessoryIds.includes(a.id));
