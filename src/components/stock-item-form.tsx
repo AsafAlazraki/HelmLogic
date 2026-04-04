@@ -24,6 +24,7 @@ import {
 import { collection, doc, addDoc, updateDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
+import { CustomerPicker } from '@/components/customer-picker';
 
 interface InventoryItem {
   id: string;
@@ -99,6 +100,8 @@ export function StockItemForm({
   const [soldBy, setSoldBy] = useState('');
   const [dateIntoStock, setDateIntoStock] = useState('');
   const [notes, setNotes] = useState('');
+  const [customerId, setCustomerId] = useState('');
+  const [customerName, setCustomerName] = useState('');
   const [saving, setSaving] = useState(false);
 
   // Reset form when dialog opens or item changes
@@ -117,6 +120,8 @@ export function StockItemForm({
         setSoldBy(item.soldBy || '');
         setDateIntoStock(formatTimestampToDateString(item.dateIntoStock));
         setNotes(item.notes || '');
+        setCustomerId((item as any).customerId || '');
+        setCustomerName((item as any).customerName || '');
       } else {
         setName('');
         setStockNumber(generateStockNumber(organisationId));
@@ -130,6 +135,8 @@ export function StockItemForm({
         setSoldBy('');
         setDateIntoStock('');
         setNotes('');
+        setCustomerId('');
+        setCustomerName('');
       }
     }
   }, [open, item, organisationId]);
@@ -146,6 +153,10 @@ export function StockItemForm({
     }
     if (!dateIntoStock) {
       toast({ title: 'Date into Stock is required', variant: 'destructive' });
+      return;
+    }
+    if ((status === 'In Stock - Sold' || status === 'On Order - Sold') && !customerId) {
+      toast({ variant: 'destructive', title: 'Customer required for sold items' });
       return;
     }
 
@@ -169,6 +180,8 @@ export function StockItemForm({
           soldBy: soldBy.trim(),
           dateIntoStock: dateTimestamp,
           notes: notes.trim(),
+          customerId: customerId || null,
+          customerName: customerName || null,
           updatedAt: serverTimestamp(),
         };
 
@@ -189,6 +202,8 @@ export function StockItemForm({
           soldBy: soldBy.trim(),
           dateIntoStock: dateTimestamp,
           notes: notes.trim(),
+          customerId: customerId || null,
+          customerName: customerName || null,
           moduleId,
           organisationId,
           createdAt: serverTimestamp(),
@@ -283,6 +298,19 @@ export function StockItemForm({
               </Select>
             </div>
           </div>
+
+          {/* Customer Picker for Sold statuses */}
+          {(status === 'In Stock - Sold' || status === 'On Order - Sold') && (
+            <div className="col-span-2 space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Customer *</Label>
+              <CustomerPicker
+                organisationId={organisationId}
+                selectedCustomerId={customerId || null}
+                onSelect={(customer) => { setCustomerId(customer.id); setCustomerName(customer.name); }}
+              />
+              {!customerId && <p className="text-xs text-destructive">Customer is required for sold items</p>}
+            </div>
+          )}
 
           {/* Row 3: Model + Colour */}
           <div className="grid grid-cols-2 gap-4">
