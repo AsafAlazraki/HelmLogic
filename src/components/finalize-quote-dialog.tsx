@@ -9,6 +9,7 @@ import { doc, setDoc, updateDoc, serverTimestamp, collection as firestoreCollect
 import { pdf } from '@react-pdf/renderer';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { ProposalPDFDocument } from '@/components/proposal-pdf';
+import { buildQuoteFinancials } from '@/lib/quote-financials';
 import {
     Dialog,
     DialogContent,
@@ -302,15 +303,28 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
 
                 // Generate and store PDF
                 try {
-                    const pdfBlob = await pdf(<ProposalPDFDocument quote={payload} organisation={organisation} />).toBlob();
+                    const financials = buildQuoteFinancials(payload);
+                    const pdfBlob = await pdf(<ProposalPDFDocument quote={payload} organisation={organisation} financials={financials} />).toBlob();
+                    if (!pdfBlob || pdfBlob.size === 0) {
+                        throw new Error('PDF generation returned an empty blob');
+                    }
                     const pdfFile = new File([pdfBlob], `${stockNumber}-proposal.pdf`, { type: 'application/pdf' });
                     const pdfUrl = await uploadFileToStorage(storage, pdfFile, `inventory/${inventoryRef.id}/proposal-${stockNumber}.pdf`);
+
+                    if (!pdfUrl || typeof pdfUrl !== 'string') {
+                        throw new Error('PDF upload returned an invalid URL');
+                    }
 
                     await updateDoc(doc(firestore, 'inventory', inventoryRef.id), {
                         proposalPdfUrl: pdfUrl,
                     });
                 } catch (pdfError) {
-                    console.error('Failed to generate/store PDF:', pdfError);
+                    console.error('Failed to generate/store proposal PDF:', pdfError);
+                    toast({
+                        variant: 'destructive',
+                        title: 'PDF Generation Failed',
+                        description: 'Stock item was created but the proposal PDF could not be generated. You can re-generate it from the stock detail panel.',
+                    });
                     // Don't fail the whole operation — stock item is already created
                 }
 

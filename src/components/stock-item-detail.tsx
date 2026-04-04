@@ -2,12 +2,16 @@
 
 import React, { useRef, useState } from 'react';
 import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { Plus, FileText, Download, X, Loader2, Image as ImageIcon, Lock } from 'lucide-react';
+import { Plus, FileText, Download, X, Loader2, Image as ImageIcon, Lock, AlertTriangle } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useFirestore, useStorage } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
+import { pdf } from '@react-pdf/renderer';
+import { ProposalPDFDocument } from '@/components/proposal-pdf';
+import { buildQuoteFinancials } from '@/lib/quote-financials';
 import { toast } from '@/hooks/use-toast';
 
 interface InventoryItem {
@@ -79,6 +83,7 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null);
+  const [regeneratingPdf, setRegeneratingPdf] = useState(false);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
@@ -155,6 +160,46 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
     } catch (error) {
       console.error('Remove PDF failed:', error);
       toast({ title: 'Remove failed', description: 'Could not remove PDF.', variant: 'destructive' });
+    }
+  }
+
+  async function handleRegeneratePdf() {
+    if (!item || !item.quotePayload) return;
+    setRegeneratingPdf(true);
+    try {
+      const financials = buildQuoteFinancials(item.quotePayload, item.quotePayload.discountExclGst || 0);
+      const pdfBlob = await pdf(
+        <ProposalPDFDocument quote={item.quotePayload} organisation={null} financials={financials} />
+      ).toBlob();
+      if (!pdfBlob || pdfBlob.size === 0) {
+        throw new Error('PDF generation returned an empty blob');
+      }
+      const pdfFile = new File(
+        [pdfBlob],
+        `${item.stockNumber}-proposal.pdf`,
+        { type: 'application/pdf' }
+      );
+      const pdfUrl = await uploadFileToStorage(
+        storage,
+        pdfFile,
+        `inventory/${item.id}/proposal-${item.stockNumber}.pdf`
+      );
+      if (!pdfUrl || typeof pdfUrl !== 'string') {
+        throw new Error('PDF upload returned an invalid URL');
+      }
+      await updateDoc(doc(firestore, 'inventory', item.id), {
+        proposalPdfUrl: pdfUrl,
+      });
+      toast({ title: 'PDF Generated', description: 'Proposal PDF has been created and attached.' });
+    } catch (error) {
+      console.error('Failed to regenerate proposal PDF:', error);
+      toast({
+        variant: 'destructive',
+        title: 'PDF Generation Failed',
+        description: 'Could not generate the proposal PDF. Please try again.',
+      });
+    } finally {
+      setRegeneratingPdf(false);
     }
   }
 
@@ -488,14 +533,29 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
               )}
 
               {/* Proposal Actions */}
-              {(item.proposalPdfUrl || item.quoteId) && (
+              {(item.isFromQuote || item.proposalPdfUrl || item.quoteId) && (
                 <div className="mt-4 pb-6 flex flex-wrap gap-2">
-                  {item.proposalPdfUrl && (
+                  {item.proposalPdfUrl && typeof item.proposalPdfUrl === 'string' && item.proposalPdfUrl.startsWith('http') ? (
                     <a href={item.proposalPdfUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-xs font-bold hover:bg-slate-50 transition-colors">
                       <Download className="h-4 w-4" />
                       Download PDF
                     </a>
-                  )}
+                  ) : item.isFromQuote && item.quotePayload ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRegeneratePdf}
+                      disabled={regeneratingPdf}
+                      className="rounded-xl border-2 text-xs font-bold"
+                    >
+                      {regeneratingPdf ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4 mr-2 text-amber-500" />
+                      )}
+                      {regeneratingPdf ? 'Generating...' : 'Generate PDF'}
+                    </Button>
+                  ) : null}
                   {item.quoteId && item.quotePayload?.createdByUid && (
                     <a href={`/modules/${item.moduleId}/proposals/${item.quoteId}`} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 text-xs font-bold hover:bg-primary/5 hover:border-primary/30 transition-colors text-primary">
                       <FileText className="h-4 w-4" />
