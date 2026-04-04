@@ -66,7 +66,7 @@ export function StockManagementWorkspace({
 
     // Filter state
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('In Stock');
+    const [statusFilter, setStatusFilter] = useState('all');
     const [locationFilter, setLocationFilter] = useState('all');
     const [materialFilter, setMaterialFilter] = useState('all');
 
@@ -120,7 +120,7 @@ export function StockManagementWorkspace({
 
     const handleViewChange = (newView: typeof view) => {
         setView(newView);
-        if (newView === 'stock') setStatusFilter('In Stock');
+        if (newView === 'stock') setStatusFilter('all');
         else if (newView === 'onorder') setStatusFilter('On Order');
         else setStatusFilter('all');
     };
@@ -233,8 +233,11 @@ export function StockManagementWorkspace({
                                     <SelectItem value="all">All</SelectItem>
                                     {view === 'stock' ? (
                                         <>
-                                            <SelectItem value="In Stock">In Stock</SelectItem>
+                                            <SelectItem value="Pending">Pending</SelectItem>
                                             <SelectItem value="On Order">On Order</SelectItem>
+                                            <SelectItem value="In Stock">In Stock</SelectItem>
+                                            <SelectItem value="In Stock - Sold">In Stock - Sold</SelectItem>
+                                            <SelectItem value="On Order - Sold">On Order - Sold</SelectItem>
                                         </>
                                     ) : (
                                         <>
