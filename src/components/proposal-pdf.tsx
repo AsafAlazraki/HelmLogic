@@ -375,10 +375,22 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                 )}
 
                 {/* Motor */}
-                {quote.motor && (
+                {quote.motor && (() => {
+                    const motorSpecs = [
+                        { label: 'HP Rating', value: quote.motor.hpRating || quote.motor['HP Rating'] },
+                        { label: 'Shaft Length', value: quote.motor.shaftLength || quote.motor['Shaft Length'] },
+                        { label: 'Control', value: quote.motor.control || quote.motor['Control'] },
+                        { label: 'Starting', value: quote.motor.starting || quote.motor['Starting'] },
+                        { label: 'Tilt & Trim', value: quote.motor.tiltTrim || quote.motor['Tilt & Trim'] },
+                        { label: 'Fuel Tank', value: quote.motor.fuelTank || quote.motor['Fuel Tank'] },
+                        { label: 'Propeller', value: quote.motor.prop || quote.motor['Prop'] },
+                        { label: 'Warranty', value: quote.motor.warranty || quote.motor['Warranty'] },
+                    ].filter(s => s.value);
+                    return (
                     <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
+                        {/* Motor header with image */}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <View style={{ flexShrink: 1 }}>
+                            <View style={{ flexShrink: 1, flex: 1 }}>
                                 <Text style={[S.sectionLabel, { marginBottom: 4 }]}>Propulsion System</Text>
                                 <Text style={{ fontSize: 15, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.3, color: NAVY, marginBottom: 2 }}>
                                     {quote.motor.name}
@@ -389,13 +401,31 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                             </View>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                 {quote.motor.imageUrl && (
-                                    <Image src={quote.motor.imageUrl} style={{ height: 44, width: 44, objectFit: 'contain', marginRight: 12 }} />
+                                    <Image src={quote.motor.imageUrl} style={{ height: 72, width: 72, objectFit: 'contain', marginRight: 12 }} />
                                 )}
-                                <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(f.motorTotal)}</Text>
+                                <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(quote.motor.sellPriceExclGst || 0)}</Text>
                             </View>
                         </View>
+
+                        {/* Motor Specifications */}
+                        {motorSpecs.length > 0 && (
+                            <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER }}>
+                                <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: BRAND, marginBottom: 6 }}>Motor Specifications</Text>
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                                    {motorSpecs.map((spec, i) => (
+                                        <View key={i} style={{ width: '25%', marginBottom: 6, paddingRight: 8 }}>
+                                            <Text style={{ fontSize: 5.5, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: MUTED, marginBottom: 1.5 }}>{spec.label}</Text>
+                                            <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY }}>{spec.value}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Motor Accessories */}
                         {(quote.motor.accessories?.length > 0) && (
                             <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER }}>
+                                <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: BRAND, marginBottom: 4 }}>Motor Accessories</Text>
                                 {Object.entries(
                                     (quote.motor.accessories as any[]).reduce((acc: Record<string, any[]>, a: any) => {
                                         const cat = a.category || 'Accessories';
@@ -405,10 +435,10 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                                     }, {})
                                 ).map(([cat, items]) => (
                                     <View key={cat} style={{ marginBottom: 5 }}>
-                                        <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: BRAND, marginBottom: 4 }}>{cat}</Text>
-                                        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                                            {(items as any[]).map((acc: any, i: number) => (
-                                                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginRight: 14, marginBottom: 2 }}>
+                                        <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE, marginBottom: 4 }}>{cat}</Text>
+                                        {(items as any[]).map((acc: any, i: number) => (
+                                            <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2, paddingHorizontal: 4 }}>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
                                                     {acc.imageUrl ? (
                                                         <Image src={acc.imageUrl} style={{ width: 20, height: 20, objectFit: 'contain', marginRight: 5, borderRadius: 2, flexShrink: 0 }} />
                                                     ) : (
@@ -416,14 +446,24 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                                                     )}
                                                     <Text style={{ fontSize: 7, color: SLATE }}>{acc.name}</Text>
                                                 </View>
-                                            ))}
-                                        </View>
+                                                <Text style={{ fontSize: 7, fontWeight: 'bold', color: NAVY, flexShrink: 0, marginLeft: 8 }}>
+                                                    {acc.sellPriceExclGst ? currency(acc.sellPriceExclGst) : 'Incl.'}
+                                                </Text>
+                                            </View>
+                                        ))}
                                     </View>
                                 ))}
                             </View>
                         )}
+
+                        {/* Motor Subtotal */}
+                        <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Text style={{ fontSize: 7, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE }}>Motor Total</Text>
+                            <Text style={{ fontSize: 11, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(f.motorTotal)}</Text>
+                        </View>
                     </View>
-                )}
+                    );
+                })()}
 
                 {/* Trailer */}
                 {quote.trailer && (
