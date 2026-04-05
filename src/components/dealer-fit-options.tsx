@@ -227,12 +227,6 @@ export function DealerFitOptions({
                     <CardDescription className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{categorySelections.length} Active Proposals</CardDescription>
                 </div>
                 <div className="flex items-center gap-2 text-left">
-                    {hasSeeder && (
-                        <Button 
-                        >
-                            {/* Sync Demo Data button removed — use Master Data Browser instead */}
-
-                    )}
                     {categorySelections.length > 0 && (
                         <Button 
                             variant="ghost" 
