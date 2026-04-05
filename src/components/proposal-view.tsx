@@ -513,6 +513,11 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                                 </div>
                                             )}
                                             <div className="flex-1 min-w-0">
+                                                {quote.motor.brandLogoUrl && (
+                                                    <div className="relative h-5 w-20 mb-1.5">
+                                                        <Image src={quote.motor.brandLogoUrl} alt={quote.motor.brand || ''} fill className="object-contain object-left" />
+                                                    </div>
+                                                )}
                                                 <p className="font-black text-lg text-slate-950 uppercase italic tracking-tighter leading-tight">{quote.motor.name}</p>
                                                 <p className="text-[9px] font-black uppercase text-primary tracking-widest mt-0.5">{quote.motor.brand}</p>
                                                 {quote.motor.model && quote.motor.model !== quote.motor.name && (

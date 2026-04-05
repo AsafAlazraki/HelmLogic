@@ -392,6 +392,9 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <View style={{ flexShrink: 1, flex: 1 }}>
                                 <Text style={[S.sectionLabel, { marginBottom: 4 }]}>Propulsion System</Text>
+                                {quote.motor.brandLogoUrl && (
+                                    <Image src={quote.motor.brandLogoUrl} style={{ height: 16, maxWidth: 70, objectFit: 'contain', marginBottom: 4 }} />
+                                )}
                                 <Text style={{ fontSize: 15, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.3, color: NAVY, marginBottom: 2 }}>
                                     {quote.motor.name}
                                 </Text>
