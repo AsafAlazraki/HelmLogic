@@ -212,7 +212,7 @@ export function MasterDataBrowserDialog({
         { keys: ['imageLink', 'Image Link', 'imageUrl', 'image', 'SummaryImage'], label: 'Image' },
         { keys: ['CODE', 'Code', 'Part_Number', 'SKU', 'PartNo', 'PartNumber', 'Part Number', 'ITEM_CODE'], label: 'Code' },
         { keys: ['OPERATION DESCRIPTION', 'ITEM_NAME', 'Product Name', 'Description', 'name', 'INSTALL TYPE', 'DESCRIPTION', 'DESC'], label: 'Description' },
-        { keys: ['PARTS', 'RRP', 'price', 'SellPrice', 'Price', 'Retail', 'sellPriceExclGst', 'PRICE', 'UNIT_PRICE', 'TOTAL_CTD'], label: 'Price' }
+        { keys: ['PARTS', 'RRP', 'price', 'SellPrice', 'Price', 'Retail', 'Trade', 'sellPriceExclGst', 'PRICE', 'UNIT_PRICE', 'TOTAL_CTD'], label: 'Price' }
     ];
 
     const detectedHeaders: { key: string, label: string }[] = [];
@@ -494,8 +494,8 @@ export function MasterDataBrowserDialog({
                     {stagedItems.length > 0 ? stagedItems.map((item, index) => (
                         <Card key={`${item.row.id}-${index}`} className="relative border-2 border-transparent hover:border-primary/20 transition-all bg-background shadow-sm overflow-hidden group rounded-lg">
                             <div className="p-3 pr-10 flex items-center gap-3">
-                                {(item.row.imageLink || item.row['Image Link'] || item.row.imageUrl || item.row.image) && (
-                                    <img src={item.row.imageLink || item.row['Image Link'] || item.row.imageUrl || item.row.image} alt="" className="h-10 w-10 object-contain rounded border bg-white shrink-0" />
+                                {(item.row.imageLink || item.row['Image Link'] || item.row.imageUrl || item.row.image || item.row.SummaryImage) && (
+                                    <img src={item.row.imageLink || item.row['Image Link'] || item.row.imageUrl || item.row.image || item.row.SummaryImage} alt="" className="h-10 w-10 object-contain rounded border bg-white shrink-0" />
                                 )}
                                 <div className="min-w-0">
                                     <p className="text-[11px] font-black uppercase leading-tight truncate">
