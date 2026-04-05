@@ -7,8 +7,8 @@ This file serves as the persistent memory and reasoning log for the HelmLogic de
 - **Database/Backend**: Firebase Firestore & Storage
 - **UI Library**: Radix UI + Tailwind CSS (shadcn/ui)
 - **Map**: Leaflet + OpenStreetMap (no API key)
-- **Core Entity**: "Data Warehouse" (Vendor-specific hardware, specs, and configurations)
-- **Stock Management**: Full logistics system with inventory, delivered deals, hold requests
+- **Core Entities**: Data Warehouse, Modules, Organisations, Inventory, Quotes, Promotions
+- **Skills Library**: 1,356 antigravity skills installed at `~/.claude/skills/`
 
 ## Architectural Logic & Philosophy
 
@@ -18,80 +18,111 @@ The Data Warehouse often contains partial rows or missing fields. Always impleme
 ### 2. Robust Firestore Payloads (Critical)
 Firestore `setDoc()` and `addDoc()` calls fail if ANY field contains `undefined`. Always use `|| null`, `|| ''`, `|| 0` fallbacks.
 
-### 3. Stock Management Architecture
-- **inventory/{itemId}**: Single collection for both In Stock and On Order items (differentiated by `status` field)
-- **delivered-deals/{dealId}**: Separate collection for completed deals
-- **holdRequests/{requestId}**: Sub-dealer → parent org workflow
-- **customers/{customerId}**: Org-scoped customer records
-- Stock assignment via `organisationId` field changes
-- Sub-dealer visibility via `stockVisibleToSubDealers` + `subDealerVisibleColumns` on module doc
+### 3. Module Type System
+Modules have a `moduleType` field that controls rendering:
+- `catalog` (default) — boat brand with full pricing, quoting, stock management
+- `motor-brand` — motor catalog with accessories, pricing, promotions (detected by `vendorType === 'Motor Brand'` OR `moduleType === 'motor-brand'`)
+- `master-price-file` — editable data tables with Excel import/export
+- `used-boats` / `website-listings` — placeholder modules with cover image
 
-### 4. Module Page Architecture
-The module page (`/src/app/(app)/modules/[id]/page.tsx`) is the most complex file (~1200 lines). It has:
-- Sub-dealer early return with its own tabbed view
-- Parent org view with Dashboard, Catalog, Stock Management, Pricing, Settings
-- Stock Management uses `StockManagementWorkspace` with 6 sub-tabs
-- Pricing has sub-tabs: Pricing Matrix + Price Lists
-- Settings has: OrgModuleConfig, StockLocationManager, DealerFitManager, RoleAssignment
+Non-catalog modules have `mainVendorId: null` — ALWAYS check before creating Firestore doc refs.
 
-### 5. Radix Tabs Gotcha
-MUST use a SINGLE `<Tabs>` component wrapping both `<TabsList>` and `<TabsContent>`. Two separate `<Tabs>` creates separate contexts causing empty content. Use `absolute inset-0` positioning for tab panels.
+### 4. Stock Management Architecture
+- `inventory/{itemId}`: Single collection for In Stock, On Order, Pending, and Sold items (differentiated by `status`)
+- `delivered-deals/{dealId}`: Separate collection for completed deals
+- `holdRequests/{requestId}`: Sub-dealer → parent org workflow
+- `customers/{customerId}`: Org-scoped customer records
+- Status values: Pending, On Order, In Stock, In Stock - Sold, On Order - Sold
+- Sold statuses require customer attachment
 
-### 6. Agent Team Development
+### 5. Pricing Architecture
+- Pricing workspace calculates costs → freight → margins → final prices
+- Publish writes ALL price levels to variants: `sellPriceExclGst` (from hull_cash) + `priceLevels` object
+- Quote builder reads `priceLevels[selectedLevel]` with fallback to `sellPriceExclGst`
+- Default price level: `hull_cash` (org's shortCode column)
+- Prices are LOCKED at quote save time — proposals read from saved data
+
+### 6. Promotions System
+- `modules/{moduleId}/promotions/{promoId}` — per-module promotions/rebates
+- Types: fixed-amount, per-hp, percentage, category-discount
+- Image + PDF attachments with quote display toggles
+- Active/inactive with audit changelog
+- Currently used in Yamaha motor workspace
+
+### 7. Master Price File
+- Vendor in data-warehouse with datasets containing supplier price lists
+- In-app Excel import: each sheet becomes a dataset
+- Editable tables with inline cell editing
+- Image column auto-detection
+- Linked to Highfield dealer fit options via Master Data Browser
+
+### 8. Module Page Architecture (Critical — Most Complex File ~1400 lines)
+`/src/app/(app)/modules/[id]/page.tsx` has multiple early returns:
+1. Non-catalog module (master-price-file) → MasterPriceFileWorkspace
+2. Motor brand module → YamahaMotorWorkspace  
+3. Placeholder modules (used-boats, website-listings) → placeholder view
+4. Sub-dealer → separate tabbed view
+5. Parent org → full tabs (Dashboard, Catalog, Stock, Pricing, Settings)
+
+### 9. Radix Tabs Gotcha
+MUST use a SINGLE `<Tabs>` component wrapping both `<TabsList>` and `<TabsContent>`. Use `absolute inset-0` positioning for tab panels with `data-[state=inactive]:hidden`.
+
+### 10. Agent Team Development
 - Spawn developer agents with `isolation: "worktree"` for parallel work
+- LFS causes worktree creation failures — use `git config lfs.fetchexclude "*"` to skip
 - Always diff against original before resolving merge conflicts
-- Worktree-based agents can cause merge conflicts — resolve by keeping HEAD and cherry-picking specific changes
-- Check that imported components exist before pushing (placeholder stubs if needed)
+- Check imported components exist before pushing (placeholder stubs if needed)
+- Build verify (`npm run build`) before every push to dev/main
 
-## Recent Evolution (Session: March 31, 2026 — v1.0.0 Release)
+## Session History
 
-### Major Features Built:
-1. **Complete Stock Management System** — spreadsheet table, CRUD, photos, PDFs, import/export, map, assignments
-2. **Delivered Deals** — separate table with 25 columns, move-to-delivered workflow, export/import
-3. **Hold Request System** — sub-dealer requests, customer association, Brand Captain notifications, accept/reject
-4. **Sub-Dealer Experience** — separate dashboard, parent stock visibility, own stock management
-5. **Module Settings** — locations, visibility, dealer fit categories, role assignments
-6. **Permissions** — can_manage_stock, can_view_stock added to role permissions table
-7. **Agent Team Infrastructure** — .claude/agents/ definitions, admin visualization page
+### Session: March 31, 2026 — v1.0.0 Release
+Complete stock management system, delivered deals, hold requests, sub-dealer experience, permissions, agent team infrastructure.
 
-### Key Lessons Learned:
-- Radix Tabs MUST be single context (not two separate `<Tabs>`)
-- Worktree merges can silently drop code — always verify
-- Firestore rules don't auto-deploy — must paste in console
+### Session: April 1, 2026 — v1.1.0 Release
+Pricing overhaul (universal publish, price level selector), quote-to-stock with PDF, sub-dealer quoting, placeholder module types, proposal images.
+
+### Session: April 2-4, 2026 — v1.2.0 (Current)
+- Enhanced stock creation (location, status, customer for sold)
+- New statuses (Pending, In Stock - Sold, On Order - Sold)
+- Console-seat auto-pairing in quote builder
+- Wide stock detail panel with mini proposal view
+- PDF generation fix (missing financials prop)
+- Master Price File module with in-app Excel import
+- Yamaha motor workspace (catalog, pricing, promotions)
+- Motor specs on proposals/PDF
+- Promotions system with images, PDFs, audit log
+- Module rename/delete, module types
+- Dealer fit MPF integration with images
+- Code audit: fixed stale promo fields, filtered empty states, select-all bugs
+- 1,356 antigravity skills installed
+- Catalog image replacement fix
+
+## Key Lessons Learned
+- `mainVendorId: null` crashes Firestore `doc()` — always check
+- Sell AUD columns need "(EXCL. GST)" and "(INCL. GST)" labels
+- Universal publish is better UX than asking users to choose
+- Default price level should be `hull_cash` (org's shortCode column)
+- `coverImageUrl` on module doc is separate from vendor `logoUrl`
+- Quote prices ARE locked at save time via `buildQuotePayload()`
+- `ProposalPDFDocument` needs `financials` prop — use `buildQuoteFinancials()`
+- Removing JSX elements must remove ENTIRE element (opening + closing tags)
+- `setValue` in react-hook-form needs `{ shouldDirty: true }` to prevent reset
+- LFS blocks worktree creation — disable smudge filter
+- Firestore `in` queries max 30 elements — slice arrays
+- Sub-dealer `filterOrgId="all-with-parent"` shows parent + own stock
 - `readOnly` prop gates all CRUD UI — controlled by permissions
 - Import duplicate checking needs multi-field fingerprinting
-- Sub-dealer `filterOrgId="all-with-parent"` shows parent + own stock
-- Universal publish writes ALL price levels — no selector
-- Quote prices are locked at save time — proposals read from saved data
-- `priceLevelUsed` on every finalized quote for audit trail
-- Default price level is `hull_cash` (org's shortCode column)
-- Module `moduleType` field controls rendering: "catalog" (default) vs "used-boats" vs "website-listings"
-
-## Recent Evolution (Session: April 1-2, 2026 — v1.1.0)
-
-### Features Built:
-1. **Pricing System Overhaul** — universal publish (all levels at once), price level selector in quotes, GST labels on all Sell AUD columns
-2. **Quote → Stock Boat** — PDF storage in Firebase Storage, locked config (`isLocked`), customer/audit info on stock detail, proposal link
-3. **Sub-Dealer Quoting** — toggle + price level assignment in module settings, quotes tab for sub-dealers
-4. **Placeholder Module Types** — Used Boats, Website Listings with cover image upload, module type selector on Add Module page
-5. **Admin** — Modules tab in org editor for assigning module access, Add Module page UI fix
-6. **Proposal Images** — option/trailer/dealer fit thumbnails on PDF
-7. **Dashboard** — module cards show coverImageUrl when no vendor logo
-8. **Focus Mode Fix** — export dropdown and global update dialog work in pricing manager focus mode
-
-### Key Lessons:
-- Modules with `mainVendorId: null` crash Firestore `doc()` — always check before creating ref
-- Sell AUD columns need explicit "(EXCL. GST)" and "(INCL. GST)" labels
-- Universal publish is better UX than asking users to choose a price level
-- Default price level should be `hull_cash` (org's shortCode column)
-- `coverImageUrl` on module doc is separate from vendor `logoUrl` — dashboard needs to check both
-- Quote prices ARE locked at save time — `buildQuotePayload()` snapshots everything
+- Select-all should operate on FILTERED results, not total
+- Reset all filters when switching workspace views
 
 ## How to Proceed (For Future Agents)
-- **Read SESSION_HANDOVER.md** first for complete context
+- **Read tasks/SESSION_HANDOVER.md** first for complete technical context
 - **Check CLAUDE.md** for workflow rules
-- **The module page is fragile** — always read fully before editing, never take worktree version blindly
-- **Test with Bill Hull** (billh@nsmarine.com.au) — parent org user at Northside Marine
+- **The module page is fragile** (~1400 lines) — always read fully before editing
+- **Test with Bill Hull** (billh@nsmarine.com.au) — parent org user, role ID `bfffa6bd-6f7b-4822-a008-8e7214012f3f`
 - **Test sub-dealers** via organisations with `parentOrganisationId` set
 - **Firestore rules**: always provide full ruleset for user to paste in Firebase Console
+- **Build verify** before every push: `npm run build`
 - **Update this file** after significant changes
+- **Use antigravity skills** for code review and quality checks

@@ -1,6 +1,6 @@
 # HelmLogic — Session Handover Document
 > Give this file to a new Claude session along with the CLAUDE.md file.
-> Updated: 2026-03-31 (after v1.0.0 release to main)
+> Updated: 2026-04-04 (after v1.2.0 — Yamaha, MPF, Promotions, Stock Enhancements)
 
 ---
 
@@ -133,10 +133,71 @@ Finalize saves ALL prices as snapshot (prices locked at save time)
 ## Module Types
 
 - `catalog` (default) — boat brand catalog with pricing, quoting, stock management
+- `motor-brand` — motor catalog with accessories, pricing, promotions (Yamaha)
+- `master-price-file` — editable data tables with Excel import/export
 - `used-boats` — placeholder module with cover image, coming-soon cards
 - `website-listings` — placeholder module with cover image, coming-soon cards
 
 Non-catalog modules have `mainVendorId: null` — code must check before creating Firestore doc refs.
+
+---
+
+## Yamaha Motor Module
+
+- `YamahaMotorWorkspace` renders for motor-brand modules
+- Tabs: Catalog (motor card grid), Pricing Manager (reuses MasterPriceFileWorkspace), Promotions, Settings
+- Motors loaded from `data-warehouse/{vendorId}/dataSets/{motorDataSet}/rows`
+- Motor detail Sheet shows specs, image, accessories by category
+- Motor specs snapshot saved on quotes: hpRating, shaftLength, control, starting, tiltTrim, fuelTank, prop, warranty
+
+---
+
+## Promotions System
+
+- Stored at `modules/{moduleId}/promotions/{promoId}`
+- Types: fixed-amount, per-hp, percentage, category-discount
+- appliesTo: motor, rigging, propeller, all-accessories, total
+- Image + PDF uploads to Firebase Storage
+- Quote display toggles: showOnQuote, showImageOnQuote, showPdfOnQuote
+- Active/inactive with audit changelog array
+- Currently used in Yamaha workspace Promotions tab
+
+---
+
+## Master Price File
+
+- Vendor in `data-warehouse` with `vendorType: 'Internal'`
+- Each dataset at `data-warehouse/{vendorId}/dataSets/{name}/rows/{id}`
+- In-app Excel import: each sheet → separate dataset
+- Editable inline cells, export (xlsx/csv), search
+- Image column auto-detection (imageLink, Image Link, imageUrl)
+- Connected to Highfield dealer fit via Master Data Browser (associate MPF as vendor in module settings)
+
+---
+
+## Stock Statuses
+
+- Pending (yellow) — awaiting processing
+- On Order (blue) — ordered from supplier
+- In Stock (green) — available in warehouse
+- In Stock - Sold (purple) — in stock, sold to customer (requires customer)
+- On Order - Sold (orange) — on order, sold to customer (requires customer)
+
+---
+
+## Console-Seat Pairing
+
+- Consoles with `associatedSeatId` auto-select paired seat
+- Locked seats can't be toggled off while console is selected
+- Switching consoles swaps seats automatically
+- Seat category hidden when no console selected
+
+---
+
+## Antigravity Skills
+
+1,356 skills installed at `~/.claude/skills/` from antigravity-awesome-skills repo.
+Key skills: production-code-audit, code-reviewer, nextjs-best-practices, firebase, typescript-expert, agent-orchestrator, acceptance-orchestrator, parallel-agents.
 
 ---
 
@@ -256,6 +317,14 @@ Key collections and access:
 | Stock table `readOnly` | Controlled by `!isAdmin && !userPermissions.can_manage_stock`. Hides checkboxes, edit, delete, assign buttons. |
 | Import duplicates | Use multi-field fingerprinting (stockNumber + serialNumber + model+colour+label combo). |
 | Worktree merges can lose code | Always diff against original before taking worktree version in conflict resolution. |
+| `mainVendorId: null` | Non-catalog modules crash Firestore `doc()`. Always check `moduleData?.mainVendorId` before creating ref. |
+| LFS blocks worktrees | Use `git config lfs.fetchexclude "*"` or `git lfs install --skip-smudge` to skip LFS downloads. |
+| `ProposalPDFDocument` needs `financials` | Use `buildQuoteFinancials()` from `src/lib/quote-financials.ts`. Missing prop causes silent PDF crash. |
+| `setValue` in react-hook-form | Must pass `{ shouldDirty: true }` or form resets wipe the value on re-render. |
+| Removing JSX elements | Must remove ENTIRE element (opening + closing tags + content). Orphaned tags break webpack build. |
+| Select-all with filters | Must operate on filtered/sorted results, not total dataset. |
+| Filter persistence across views | Reset all filters (search, status, location, material) when switching workspace tabs. |
+| Promotion type change | Clear ALL amount fields (fixedAmount, perHpAmount, percentage) to null when type changes — prevents stale data. |
 
 ---
 
