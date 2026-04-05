@@ -173,10 +173,11 @@ export function HighfieldQuoteFlow({
     /** Get the price for a given item based on the selected price level.
      *  Falls back to sellPriceExclGst when no priceLevels exist (backward compat). */
     function getPriceForLevel(item: any, level: string): number {
+        const fallbackPrice = item?.sellPriceExclGst || item?.PARTS || item?.RRP || item?.Price || item?.Retail || item?.Trade || 0;
         if (!level || level === 'default' || !item?.priceLevels) {
-            return item?.sellPriceExclGst || 0;
+            return fallbackPrice;
         }
-        return item?.priceLevels?.[level] || item?.sellPriceExclGst || 0;
+        return item?.priceLevels?.[level] || fallbackPrice;
     }
 
     // 1. Core State — seeded from initialState when duplicating an existing quote
@@ -1116,7 +1117,7 @@ export function HighfieldQuoteFlow({
                                                             <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
                                                             <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
                                                                 <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{sel.name}</p>
-                                                                <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0)).toLocaleString()}</p>
+                                                                <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
                                                             </div>
                                                         </button>
                                                         );
@@ -1307,7 +1308,7 @@ export function HighfieldQuoteFlow({
                                                                     </div>
                                                                     <div><p className="text-[10px] font-black uppercase tracking-tight">{sel.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1">{sel.category || 'Gear'}</Badge></div>
                                                                 </div>
-                                                                <p className="text-[10px] font-bold text-slate-600">${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || 0), 0)).toLocaleString()}</p>
+                                                                <p className="text-[10px] font-bold text-slate-600">${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
                                                             </div>
                                                         ))}
                                                     </div>

@@ -248,10 +248,10 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 name: sel.name || 'Dealer Fit',
                 category: sel.category || null,
                 items: (sel.items || []).map((i: any) => ({
-                    // Firestore warehouse items may use 'name', 'Name', or 'Description' as the display field
-                    name: i.data?.name || i.data?.Name || i.data?.Description || i.data?.description || i.name || 'Item',
-                    sellPriceExclGst: i.data?.sellPriceExclGst || 0,
-                    imageUrl: i.data?.imageLink || i.data?.['Image Link'] || i.data?.imageUrl || i.data?.image || null,
+                    // Firestore warehouse items may use various field names for the display label
+                    name: i.data?.['OPERATION DESCRIPTION'] || i.data?.ITEM_NAME || i.data?.['Product Name'] || i.data?.name || i.data?.Name || i.data?.Description || i.data?.description || i.name || 'Item',
+                    sellPriceExclGst: i.data?.sellPriceExclGst || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0,
+                    imageUrl: i.data?.imageLink || i.data?.['Image Link'] || i.data?.imageUrl || i.data?.image || i.data?.SummaryImage || null,
                 })),
             })),
 
