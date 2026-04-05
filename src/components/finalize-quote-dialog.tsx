@@ -221,6 +221,15 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 brandLogoUrl: selectedMotor.vendorLogoUrl || null,
                 sellPriceExclGst: selectedMotor.sellPriceExclGst || 0,
                 imageUrl: selectedMotor.imageUrl || selectedMotor.SummaryImage || null,
+                // Motor spec fields (may not be present on all motors)
+                hpRating: selectedMotor['HP Rating'] || selectedMotor.hp || null,
+                shaftLength: selectedMotor['Shaft Length'] || selectedMotor.shaft || null,
+                control: selectedMotor['Control'] || selectedMotor.control || null,
+                starting: selectedMotor['Starting'] || selectedMotor.starting || null,
+                tiltTrim: selectedMotor['Tilt & Trim'] || selectedMotor.tiltTrim || null,
+                fuelTank: selectedMotor['Fuel Tank'] || selectedMotor.fuelTank || null,
+                prop: selectedMotor['Prop'] || selectedMotor.prop || null,
+                warranty: selectedMotor['Warranty'] || selectedMotor.warranty || null,
                 accessories: (selectedMotorAccessories || []).map((a: any) => ({
                     id: a.id || null,
                     name: a.name || 'Unnamed Accessory',

@@ -522,6 +522,34 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                             <span className="font-black text-lg tabular-nums shrink-0">{formatCurrency(quote.motor.sellPriceExclGst || 0)}</span>
                                         </div>
 
+                                        {/* Motor Specifications */}
+                                        {(() => {
+                                            const specs = [
+                                                { label: 'HP Rating', value: quote.motor.hpRating || quote.motor['HP Rating'] },
+                                                { label: 'Shaft Length', value: quote.motor.shaftLength || quote.motor['Shaft Length'] },
+                                                { label: 'Control', value: quote.motor.control || quote.motor['Control'] },
+                                                { label: 'Starting', value: quote.motor.starting || quote.motor['Starting'] },
+                                                { label: 'Tilt & Trim', value: quote.motor.tiltTrim || quote.motor['Tilt & Trim'] },
+                                                { label: 'Fuel Tank', value: quote.motor.fuelTank || quote.motor['Fuel Tank'] },
+                                                { label: 'Propeller', value: quote.motor.prop || quote.motor['Prop'] },
+                                                { label: 'Warranty', value: quote.motor.warranty || quote.motor['Warranty'] },
+                                            ].filter(s => s.value);
+                                            if (specs.length === 0) return null;
+                                            return (
+                                                <div className="pt-3 border-t">
+                                                    <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400 mb-2">Motor Specifications</p>
+                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                                        {specs.map((spec, i) => (
+                                                            <div key={i} className="px-3 py-2.5 bg-slate-50 rounded-xl">
+                                                                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{spec.label}</p>
+                                                                <p className="text-[11px] font-black text-slate-900 leading-tight">{spec.value}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+
                                         {/* Accessories — grouped by category */}
                                         {(() => {
                                             const accessories = quote.motor.accessories || [];
@@ -532,6 +560,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                                 acc[cat].push(a);
                                                 return acc;
                                             }, {});
+                                            const accessoriesTotal = accessories.reduce((a: number, acc: any) => a + (acc.sellPriceExclGst || 0), 0);
                                             return (
                                                 <div className="pt-3 border-t space-y-3">
                                                     {Object.entries(groups).map(([cat, items]) => (
@@ -552,6 +581,14 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                                 </div>
                                             );
                                         })()}
+
+                                        {/* Motor Subtotal */}
+                                        {f.motorTotal > 0 && (
+                                            <div className="pt-3 border-t flex items-center justify-between px-1">
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Motor Total</span>
+                                                <span className="font-black text-sm tabular-nums text-slate-900">{formatCurrency(f.motorTotal)}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </SectionCard>
                             )}
