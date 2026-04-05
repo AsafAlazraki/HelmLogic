@@ -99,6 +99,20 @@ export function DealerFitOptions({
     setIsBrowserOpen(true);
   };
 
+  const handleClearAll = async () => {
+    if (!organisationId) return;
+    try {
+        const snap = await getDocs(collection(firestore, `organisations/${organisationId}/dealerFitSelections`));
+        const batch = writeBatch(firestore);
+        snap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        toast({ title: 'All dealer fit options cleared' });
+    } catch (error) {
+        console.error('Clear all failed:', error);
+        toast({ variant: 'destructive', title: 'Failed to clear' });
+    }
+  };
+
   const handleClearCategory = async (categoryId: string) => {
     if (!organisationId) return;
     const q = query(
@@ -192,6 +206,14 @@ export function DealerFitOptions({
   return (
     <>
       <div className="space-y-6 text-left">
+        {selections && selections.length > 0 && (
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" className="rounded-xl border-2 border-destructive/30 text-destructive text-[10px] font-black uppercase tracking-widest gap-1" onClick={handleClearAll}>
+              <Trash2 className="h-3.5 w-3.5" />
+              Clear All
+            </Button>
+          </div>
+        )}
         {assignedCategories.map(category => {
           const categorySelections = selectionsByCategory.get(category.id) || [];
           const nameLower = category.name.toLowerCase();

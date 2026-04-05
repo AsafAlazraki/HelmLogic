@@ -251,6 +251,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     // Firestore warehouse items may use 'name', 'Name', or 'Description' as the display field
                     name: i.data?.name || i.data?.Name || i.data?.Description || i.data?.description || i.name || 'Item',
                     sellPriceExclGst: i.data?.sellPriceExclGst || 0,
+                    imageUrl: i.data?.imageLink || i.data?.['Image Link'] || i.data?.imageUrl || i.data?.image || null,
                 })),
             })),
 

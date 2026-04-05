@@ -209,6 +209,7 @@ export function MasterDataBrowserDialog({
     const allKeys = Object.keys(filteredData[0]).filter(k => !k.startsWith('_') && k !== 'id');
     
     const priorityGroups = [
+        { keys: ['imageLink', 'Image Link', 'imageUrl', 'image', 'SummaryImage'], label: 'Image' },
         { keys: ['CODE', 'Code', 'Part_Number', 'SKU', 'PartNo', 'PartNumber', 'Part Number', 'ITEM_CODE'], label: 'Code' },
         { keys: ['OPERATION DESCRIPTION', 'ITEM_NAME', 'Product Name', 'Description', 'name', 'INSTALL TYPE', 'DESCRIPTION', 'DESC'], label: 'Description' },
         { keys: ['PARTS', 'RRP', 'price', 'SellPrice', 'Price', 'Retail', 'sellPriceExclGst', 'PRICE', 'UNIT_PRICE', 'TOTAL_CTD'], label: 'Price' }
@@ -230,7 +231,7 @@ export function MasterDataBrowserDialog({
     }
 
     allKeys.forEach(k => {
-        if (detectedHeaders.length >= 5) return;
+        if (detectedHeaders.length >= 6) return;
         if (matchedKeys.has(k)) return;
         
         const val = filteredData[0][k];
@@ -385,6 +386,7 @@ export function MasterDataBrowserDialog({
                                     {headers.map(header => (
                                         <TableHead key={header.key} className={cn(
                                             "text-[10px] font-black uppercase tracking-tighter py-3 px-4",
+                                            header.label === 'Image' ? "w-14 text-center" : "",
                                             (header.key === 'sellPriceExclGst' || header.key.toLowerCase().includes('price') || header.key === 'PARTS') ? "text-right" : ""
                                         )}>
                                             {header.label.replace(/_/g, ' ')}
@@ -403,9 +405,14 @@ export function MasterDataBrowserDialog({
                                         {headers.map(header => (
                                             <TableCell key={header.key} className={cn(
                                                 "text-[11px] font-medium py-3 px-4 truncate",
+                                                header.label === 'Image' ? "w-14 p-1" : "",
                                                 (header.key === 'sellPriceExclGst' || header.key.toLowerCase().includes('price') || header.key === 'PARTS') ? "text-right font-black" : ""
                                             )}>
-                                                {header.key === '_sourceTable' ? (
+                                                {header.label === 'Image' ? (
+                                                    row[header.key] ? (
+                                                        <img src={row[header.key]} alt="" className="h-10 w-10 object-contain rounded border bg-white mx-auto" />
+                                                    ) : null
+                                                ) : header.key === '_sourceTable' ? (
                                                     <Badge variant="outline" className="text-[8px] font-black uppercase h-4 px-1 border-primary/20 text-primary">{row[header.key]}</Badge>
                                                 ) : (
                                                     formatTableCell(row[header.key])
@@ -486,11 +493,16 @@ export function MasterDataBrowserDialog({
                 <div className="space-y-2">
                     {stagedItems.length > 0 ? stagedItems.map((item, index) => (
                         <Card key={`${item.row.id}-${index}`} className="relative border-2 border-transparent hover:border-primary/20 transition-all bg-background shadow-sm overflow-hidden group rounded-lg">
-                            <div className="p-3 pr-10">
-                                <p className="text-[11px] font-black uppercase leading-tight truncate">
-                                    {item.label}
-                                </p>
-                                <p className="text-[9px] font-bold text-muted-foreground/60 mt-1 uppercase truncate">{item.vendorName}</p>
+                            <div className="p-3 pr-10 flex items-center gap-3">
+                                {(item.row.imageLink || item.row['Image Link'] || item.row.imageUrl || item.row.image) && (
+                                    <img src={item.row.imageLink || item.row['Image Link'] || item.row.imageUrl || item.row.image} alt="" className="h-10 w-10 object-contain rounded border bg-white shrink-0" />
+                                )}
+                                <div className="min-w-0">
+                                    <p className="text-[11px] font-black uppercase leading-tight truncate">
+                                        {item.label}
+                                    </p>
+                                    <p className="text-[9px] font-bold text-muted-foreground/60 mt-1 uppercase truncate">{item.vendorName}</p>
+                                </div>
                             </div>
                             <Button 
                                 type="button"

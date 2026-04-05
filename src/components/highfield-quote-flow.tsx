@@ -269,7 +269,7 @@ export function HighfieldQuoteFlow({
     }, [selectedOptionIds, model.optionalFeatures]);
 
     const resolveImageUrl = (item: any) => {
-        const path = item?.imageUrl || item?.SummaryImage || item?.url || item?.image;
+        const path = item?.imageUrl || item?.imageLink || item?.['Image Link'] || item?.SummaryImage || item?.url || item?.image;
         if (!path || typeof path !== 'string') return null;
         if (path.startsWith('http') || path.startsWith('data:image')) return path;
         if (path.includes('images/products') || path.includes('images/accessories')) {
