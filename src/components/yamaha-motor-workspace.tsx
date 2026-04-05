@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Ship, Search, Package, Settings as SettingsIcon, DollarSign, ChevronDown, ArrowUpDown } from 'lucide-react';
+import { Ship, Search, Package, Settings as SettingsIcon, DollarSign, ChevronDown, ArrowUpDown, Tag } from 'lucide-react';
+import { ModulePromotions } from '@/components/module-promotions';
 import { MasterPriceFileWorkspace } from '@/components/master-price-file-workspace';
 import {
     DropdownMenu,
@@ -254,7 +255,7 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
     const firestore = useFirestore();
 
     // Tab state
-    const [activeTab, setActiveTab] = useState<'catalog' | 'pricing' | 'settings'>('catalog');
+    const [activeTab, setActiveTab] = useState<'catalog' | 'pricing' | 'promotions' | 'settings'>('catalog');
 
     // Catalog state
     const [search, setSearch] = useState('');
@@ -378,6 +379,7 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
     const tabs = [
         { key: 'catalog' as const, label: 'Catalog', icon: <Ship className="h-4 w-4" /> },
         { key: 'pricing' as const, label: 'Pricing Manager', icon: <DollarSign className="h-4 w-4" /> },
+        { key: 'promotions' as const, label: 'Promotions', icon: <Tag className="h-4 w-4" /> },
         { key: 'settings' as const, label: 'Settings', icon: <SettingsIcon className="h-4 w-4" /> },
     ];
 
@@ -538,6 +540,18 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
                 )}
 
                 {/* ---- SETTINGS TAB ---- */}
+                {activeTab === 'promotions' && (
+                    <ScrollArea className="h-full">
+                        <div className="p-8">
+                            <ModulePromotions
+                                moduleId={moduleId}
+                                vendorId={vendorId}
+                                organisationId={organisationId}
+                            />
+                        </div>
+                    </ScrollArea>
+                )}
+
                 {activeTab === 'settings' && (
                     <ScrollArea className="h-full">
                         <div className="p-8 space-y-8">
