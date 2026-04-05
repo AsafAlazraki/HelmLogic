@@ -120,7 +120,10 @@ export function StockManagementWorkspace({
 
     const handleViewChange = (newView: typeof view) => {
         setView(newView);
-        if (newView === 'stock') setStatusFilter('all');
+        setSearchTerm('');
+        setLocationFilter('all');
+        setMaterialFilter('all');
+        if (newView === 'stock') setStatusFilter('In Stock');
         else if (newView === 'onorder') setStatusFilter('On Order');
         else setStatusFilter('all');
     };
@@ -346,7 +349,7 @@ export function StockManagementWorkspace({
                         <HoldRequestsDashboard
                             organisation={organisation}
                             moduleId={moduleId}
-                            user={null}
+                            user={user}
                         />
                     </div>
                 )}

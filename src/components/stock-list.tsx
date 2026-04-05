@@ -5,7 +5,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowRightLeft, Trash2, Box, CheckCircle2, ChevronUp, ChevronDown, Plus, Pencil, Truck, Shield } from 'lucide-react';
+import { Loader2, ArrowRightLeft, Trash2, Box, CheckCircle2, ChevronUp, ChevronDown, Plus, Pencil, Truck, Shield, Search } from 'lucide-react';
 import { StockItemDetail } from '@/components/stock-item-detail';
 import { StockItemForm } from '@/components/stock-item-form';
 import { MoveToDelivered } from '@/components/move-to-delivered';
@@ -342,6 +342,11 @@ export function StockList({
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-4">
                     <Box className="h-8 w-8 text-muted-foreground/20" />
                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">No Units in Stock</p>
+                </div>
+            ) : inventory.length > 0 && sortedInventory.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-4">
+                    <Search className="h-8 w-8 text-muted-foreground/20" />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">No matching items</p>
                 </div>
             ) : (
                 <>

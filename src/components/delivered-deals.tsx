@@ -17,7 +17,7 @@ import {
     DialogFooter,
     DialogClose,
 } from '@/components/ui/dialog';
-import { Check, Minus, ChevronUp, ChevronDown, Truck, Trash2 } from 'lucide-react';
+import { Check, Minus, ChevronUp, ChevronDown, Truck, Trash2, Search } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface DeliveredDeal {
@@ -321,15 +321,6 @@ export function DeliveredDeals({
         });
     }, []);
 
-    const toggleSelectAll = useCallback(() => {
-        if (!deals) return;
-        if (selectedIds.size === deals.length) {
-            setSelectedIds(new Set());
-        } else {
-            setSelectedIds(new Set(deals.map(d => d.id)));
-        }
-    }, [deals, selectedIds.size]);
-
     const handleBulkDelete = useCallback(async () => {
         setShowDeleteConfirm(false);
         try {
@@ -387,6 +378,15 @@ export function DeliveredDeals({
         });
     }, [deals, sortKey, sortDir, searchFilter, statusFilter, locationFilter, materialFilter]);
 
+    const toggleSelectAll = useCallback(() => {
+        if (!sortedDeals || sortedDeals.length === 0) return;
+        if (selectedIds.size === sortedDeals.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(sortedDeals.map(d => d.id)));
+        }
+    }, [sortedDeals, selectedIds.size]);
+
     const handleSort = (key: keyof DeliveredDeal) => {
         if (sortKey === key) {
             setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -430,7 +430,7 @@ export function DeliveredDeals({
                                             <th className="px-3 py-2.5 w-10">
                                                 <input
                                                     type="checkbox"
-                                                    checked={!!deals && deals.length > 0 && selectedIds.size === deals.length}
+                                                    checked={sortedDeals.length > 0 && selectedIds.size === sortedDeals.length}
                                                     onChange={toggleSelectAll}
                                                     className="h-3.5 w-3.5 rounded border-2 border-slate-300 cursor-pointer"
                                                 />
@@ -461,6 +461,15 @@ export function DeliveredDeals({
                                                 <Truck className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
                                                 <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
                                                     No delivered deals yet
+                                                </p>
+                                            </td>
+                                        </tr>
+                                    ) : sortedDeals.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={columns.length + (!readOnly ? 1 : 0)} className="px-3 py-12 text-center">
+                                                <Search className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                                                    No matching items
                                                 </p>
                                             </td>
                                         </tr>

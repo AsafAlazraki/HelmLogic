@@ -232,25 +232,13 @@ export function ModulePromotions({ moduleId, vendorId, organisationId }: ModuleP
 
             setUploading(false);
 
-            const amountFields: Partial<Promotion> = {};
-            switch (formType) {
-                case 'fixed-amount':
-                    amountFields.fixedAmount = formAmount;
-                    break;
-                case 'per-hp':
-                    amountFields.perHpAmount = formAmount;
-                    break;
-                case 'percentage':
-                case 'category-discount':
-                    amountFields.percentage = formAmount;
-                    break;
-            }
-
             const promoData = {
                 name: formName.trim(),
                 description: formDescription.trim(),
                 type: formType,
-                ...amountFields,
+                fixedAmount: formType === 'fixed-amount' ? formAmount : null,
+                perHpAmount: formType === 'per-hp' ? formAmount : null,
+                percentage: (formType === 'percentage' || formType === 'category-discount') ? formAmount : null,
                 appliesTo: formAppliesTo,
                 startDate: formStartDate || null,
                 endDate: formEndDate || null,
