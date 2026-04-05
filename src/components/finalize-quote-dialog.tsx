@@ -291,6 +291,11 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 router.push(`/modules/${quoteData.module?.slug || quoteData.module?.id}/proposals/${quoteRef.id}`);
             } else {
                 // Save as stock in inventory collection
+                if (!organisationId) {
+                    toast({ variant: 'destructive', title: 'Organisation required to save as stock' });
+                    setIsSaving(false);
+                    return;
+                }
                 const finalStockNumber = stockNumber || generateStockNumber();
                 const inventoryRef = doc(firestoreCollection(firestore, 'inventory'));
                 await setDoc(inventoryRef, {
@@ -329,7 +334,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     if (!pdfBlob || pdfBlob.size === 0) {
                         throw new Error('PDF generation returned an empty blob');
                     }
-                    const pdfFile = new File([pdfBlob], `${stockNumber}-proposal.pdf`, { type: 'application/pdf' });
+                    const pdfFile = new File([pdfBlob], `${finalStockNumber}-proposal.pdf`, { type: 'application/pdf' });
                     const pdfUrl = await uploadFileToStorage(storage, pdfFile, `inventory/${inventoryRef.id}/proposal-${stockNumber}.pdf`);
 
                     if (!pdfUrl || typeof pdfUrl !== 'string') {
