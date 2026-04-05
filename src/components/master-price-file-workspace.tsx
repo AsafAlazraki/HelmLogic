@@ -16,7 +16,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Download, Upload, Search, FileSpreadsheet, FileText, Database, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Download, Upload, Search, FileSpreadsheet, FileText, Database, Loader2, Plus, Trash2, ImageIcon } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 // ---------------------------------------------------------------------------
@@ -70,6 +70,46 @@ function EditableCell({ value, onChange, isNumeric }: { value: string; onChange:
         >
             {displayValue}
         </span>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Image Cell
+// ---------------------------------------------------------------------------
+
+function isImageField(fieldName: string): boolean {
+    const lower = fieldName.toLowerCase();
+    return lower.includes('image') || lower.includes('photo') || lower.includes('thumbnail') || lower.includes('logo');
+}
+
+function ImageCell({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+    const [editing, setEditing] = useState(false);
+
+    if (editing) {
+        return (
+            <div className="p-1 space-y-1">
+                <input
+                    autoFocus
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    onBlur={() => setEditing(false)}
+                    placeholder="Image URL..."
+                    className="w-full px-2 py-1 text-[10px] border-2 border-primary rounded-lg outline-none"
+                />
+            </div>
+        );
+    }
+
+    return (
+        <div className="px-1 py-1 cursor-pointer" onClick={() => setEditing(true)}>
+            {value ? (
+                <img src={value} alt="" className="h-8 w-8 object-contain rounded border-2" />
+            ) : (
+                <div className="h-8 w-8 rounded border-2 border-dashed border-slate-200 flex items-center justify-center">
+                    <ImageIcon className="h-3 w-3 text-slate-300" />
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -469,11 +509,18 @@ export function MasterPriceFileWorkspace({ vendorId, organisationId, isAdmin }: 
                                                 <td key={col} className={`border-r border-b border-slate-200 text-xs ${
                                                     idx === 0 ? 'sticky left-[50px] z-[70] bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.03)] group-hover:bg-primary/5 font-semibold' : 'group-hover:bg-primary/5'
                                                 }`}>
-                                                    <EditableCell
-                                                        value={String(row[col] ?? '')}
-                                                        onChange={(v) => handleCellEdit(row.id, col, v)}
-                                                        isNumeric={isNumericField(col)}
-                                                    />
+                                                    {isImageField(col) ? (
+                                                        <ImageCell
+                                                            value={String(row[col] ?? '')}
+                                                            onChange={(v) => handleCellEdit(row.id, col, v)}
+                                                        />
+                                                    ) : (
+                                                        <EditableCell
+                                                            value={String(row[col] ?? '')}
+                                                            onChange={(v) => handleCellEdit(row.id, col, v)}
+                                                            isNumeric={isNumericField(col)}
+                                                        />
+                                                    )}
                                                 </td>
                                             ))}
                                             <td className="border-b border-slate-200 px-2 group-hover:bg-primary/5">
