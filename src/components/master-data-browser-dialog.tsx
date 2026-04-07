@@ -8,43 +8,24 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, PackagePlus, X, Plus, Table as TableIcon, Search, PlusCircle, CheckCircle2 } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Loader2, Package, X, Plus, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { ScrollArea } from './ui/scroll-area';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
-import { cn } from '@/lib/utils';
+import { collection, getDocs } from 'firebase/firestore';
 
 interface Vendor {
   id: string;
   name: string;
+  vendorType?: string;
 }
 
 interface Organisation {
   id: string;
   dataWarehouseSubscriptions?: string[];
-}
-
-interface DataSet {
-    id: string;
-    name: string;
-    rowCount: number;
-}
-
-interface StagedItem {
-    vendorId: string;
-    vendorName: string;
-    row: any;
-    label: string;
 }
 
 interface DealerFitSelection {
@@ -60,30 +41,33 @@ interface DealerFitSelection {
   }[];
 }
 
-/**
- * Utility to find the best display name for a data row based on common spreadsheet keys.
- */
-const getItemLabel = (row: any): string => {
-    if (!row) return 'Unnamed Item';
-    const priorities = [
-        'OPERATION DESCRIPTION',
-        'ITEM_NAME',
-        'Product Name',
-        'Model Name',
-        'Description',
-        'name',
-        'DESC',
-        'INSTALL TYPE', // Lowest priority as it's often generic like "Supply Only"
-    ];
-    
-    for (const key of priorities) {
-        if (row[key] && String(row[key]).trim() !== '') {
-            return String(row[key]).trim();
-        }
-    }
-    
-    return row.id || 'Unnamed Item';
-};
+interface StagedItem {
+  vendorId: string;
+  vendorName: string;
+  row: any;
+  label: string;
+}
+
+function getItemName(item: any): string {
+  return item.Description || item.description || item.Name || item.name ||
+    item['OPERATION DESCRIPTION'] || item.Accessory || item['Item / Description'] ||
+    item['Model Name'] || 'Unknown Item';
+}
+
+function getItemCode(item: any): string {
+  return item.Code || item.code || item['BLA | Code'] || item['Garmin Part Number'] ||
+    item.Part || item['Package Code'] || '';
+}
+
+function getItemPrice(item: any): number {
+  return parseFloat(item['Act Sell'] || item.Sell || item.sellPriceExclGst ||
+    item['RRP (inc GST)'] || item.Retail || item.Trade || item['Base List'] || '0') || 0;
+}
+
+function getItemImage(item: any): string {
+  return item.imageLink || item['Image Link'] || item.imageUrl || item.image ||
+    item.SummaryImage || '';
+}
 
 export function MasterDataBrowserDialog({
   isOpen,
@@ -92,8 +76,8 @@ export function MasterDataBrowserDialog({
   categoryId,
   initialCategory,
   onSave,
-  title = "Master Data Browser",
-  description = "Select items from your data warehouse to build a new selection.",
+  title = "Add Dealer Fit Item",
+  description = "Search your master price file",
   initialVendorId,
   initialStagedItems = [],
   allowedVendorIds
@@ -112,177 +96,119 @@ export function MasterDataBrowserDialog({
 }) {
   const firestore = useFirestore();
   const { toast } = useToast();
-  
+
   const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);
   const { data: allVendors, loading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
-  
-  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
-  const [selectedDataSetId, setSelectedDataSetId] = useState<string | null>('master'); 
+
   const [searchTerm, setSearchTerm] = useState('');
   const [targetCategory, setTargetCategory] = useState(initialCategory || 'Other');
+  const [displayName, setDisplayName] = useState('');
   const [stagedItems, setStagedItems] = useState<StagedItem[]>([]);
-  const [packageName, setPackageName] = useState('');
-
-  const [aggregateData, setAggregateData] = useState<any[] | null>(null);
-  const [isAggregating, setIsAggregating] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      if (initialVendorId) setSelectedVendorId(initialVendorId);
-      if (initialStagedItems.length > 0) setStagedItems(initialStagedItems);
-      if (initialCategory) setTargetCategory(initialCategory);
-      setSelectedDataSetId('master'); // Default to Global Master List
-    }
-  }, [isOpen, initialVendorId, initialStagedItems, initialCategory]);
+  const [allItems, setAllItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const subscribedVendors = useMemo(() => {
     if (!allVendors) return [];
     const effectiveAllowedIds = allowedVendorIds || organisation?.dataWarehouseSubscriptions || [];
-    // Filter out Motor Brand vendors — they shouldn't appear in dealer fit options
     return allVendors.filter(v => effectiveAllowedIds.includes(v.id) && v.vendorType !== 'Motor Brand');
   }, [allVendors, organisation?.dataWarehouseSubscriptions, allowedVendorIds]);
 
+  // Reset state on open
   useEffect(() => {
-    if (isOpen && subscribedVendors.length === 1 && !selectedVendorId) {
-        setSelectedVendorId(subscribedVendors[0].id);
+    if (isOpen) {
+      if (initialStagedItems.length > 0) setStagedItems(initialStagedItems);
+      if (initialCategory) setTargetCategory(initialCategory);
     }
-  }, [isOpen, subscribedVendors, selectedVendorId]);
+  }, [isOpen, initialStagedItems, initialCategory]);
 
-  const dataSetsQuery = useMemoFirebase(() => {
-    if (!selectedVendorId) return null;
-    return query(collection(firestore, 'data-warehouse', selectedVendorId, 'dataSets'), orderBy('name'));
-  }, [firestore, selectedVendorId]);
-  const { data: dataSets, isLoading: setsLoading } = useCollection<DataSet>(dataSetsQuery);
-
-  const masterDataQuery = useMemoFirebase(() => {
-    if (!selectedVendorId) return null;
-    if (selectedDataSetId && selectedDataSetId !== 'master') {
-        return collection(firestore, 'data-warehouse', selectedVendorId, 'dataSets', selectedDataSetId, 'rows');
-    }
-    return collection(firestore, 'data-warehouse', selectedVendorId, 'masterDataSet');
-  }, [firestore, selectedVendorId, selectedDataSetId]);
-  
-  const { data: masterData, loading: dataLoading } = useCollection(masterDataQuery);
-
+  // Load all datasets from all subscribed vendors on open
   useEffect(() => {
-    const fetchAggregate = async () => {
-      if (selectedDataSetId === 'master' && selectedVendorId && dataSets && dataSets.length > 0) {
-        setIsAggregating(true);
-        try {
-          const promises = dataSets.map(async (ds) => {
-            const snap = await getDocs(collection(firestore, `data-warehouse/${selectedVendorId}/dataSets/${ds.id}/rows`));
-            return snap.docs.map(d => ({ id: d.id, ...d.data(), _sourceTable: ds.name }));
-          });
-          const results = await Promise.all(promises);
-          setAggregateData(results.flat());
-        } catch (e) {
-          console.error("Aggregation failed", e);
-        } finally {
-          setIsAggregating(false);
+    if (!isOpen || subscribedVendors.length === 0) return;
+
+    const loadAll = async () => {
+      setLoading(true);
+      const items: any[] = [];
+
+      try {
+        for (const vendor of subscribedVendors) {
+          const dsSnap = await getDocs(collection(firestore, `data-warehouse/${vendor.id}/dataSets`));
+          for (const ds of dsSnap.docs) {
+            const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${vendor.id}/dataSets/${ds.id}/rows`));
+            rowsSnap.docs.forEach(d => {
+              items.push({
+                id: d.id,
+                vendorId: vendor.id,
+                vendorName: vendor.name,
+                dataSetId: ds.id,
+                dataSetName: ds.data().name || ds.id,
+                ...d.data(),
+              });
+            });
+          }
         }
-      } else {
-        setAggregateData(null);
-        setIsAggregating(false);
+
+        setAllItems(items);
+      } catch (error) {
+        console.error('Failed to load master data:', error);
+        toast({ variant: 'destructive', title: 'Failed to load data' });
+      } finally {
+        setLoading(false);
       }
     };
-    fetchAggregate();
-  }, [selectedDataSetId, selectedVendorId, dataSets, firestore]);
 
-  const displayData = useMemo(() => {
-    if (selectedDataSetId === 'master') {
-        if (aggregateData && aggregateData.length > 0) return aggregateData;
-        return masterData || [];
-    }
-    return masterData || [];
-  }, [selectedDataSetId, aggregateData, masterData]);
+    loadAll();
+  }, [isOpen, subscribedVendors, firestore, toast]);
 
-  const filteredData = useMemo(() => {
-    if (!displayData) return [];
-    if (!searchTerm) return displayData;
-    const lower = searchTerm.toLowerCase();
-    return displayData.filter(row => 
-        Object.values(row).some(val => String(val ?? '').toLowerCase().includes(lower))
-    );
-  }, [displayData, searchTerm]);
+  // Client-side search
+  const filteredItems = useMemo(() => {
+    if (!searchTerm || searchTerm.length < 2) return allItems.slice(0, 50);
+    const q = searchTerm.toLowerCase();
+    return allItems.filter(item => {
+      const searchable = Object.values(item)
+        .filter(v => typeof v === 'string' || typeof v === 'number')
+        .map(v => String(v).toLowerCase())
+        .join(' ');
+      return searchable.includes(q);
+    }).slice(0, 50);
+  }, [allItems, searchTerm]);
 
-  const headers = useMemo(() => {
-    if (!filteredData || filteredData.length === 0) return [];
-    
-    const allKeys = Object.keys(filteredData[0]).filter(k => !k.startsWith('_') && k !== 'id');
-    
-    const priorityGroups = [
-        { keys: ['imageLink', 'Image Link', 'imageUrl', 'image', 'SummaryImage'], label: 'Image' },
-        { keys: ['CODE', 'Code', 'Part_Number', 'SKU', 'PartNo', 'PartNumber', 'Part Number', 'ITEM_CODE'], label: 'Code' },
-        { keys: ['OPERATION DESCRIPTION', 'ITEM_NAME', 'Product Name', 'Description', 'name', 'INSTALL TYPE', 'DESCRIPTION', 'DESC'], label: 'Description' },
-        { keys: ['PARTS', 'RRP', 'price', 'SellPrice', 'Price', 'Retail', 'Trade', 'sellPriceExclGst', 'PRICE', 'UNIT_PRICE', 'TOTAL_CTD'], label: 'Price' }
-    ];
-
-    const detectedHeaders: { key: string, label: string }[] = [];
-    const matchedKeys = new Set<string>();
-
-    priorityGroups.forEach(group => {
-        const key = group.keys.find(k => allKeys.includes(k));
-        if (key) {
-            detectedHeaders.push({ key, label: group.label });
-            matchedKeys.add(key);
-        }
-    });
-
-    if (selectedDataSetId === 'master' && dataSets && dataSets.length > 0) {
-        detectedHeaders.push({ key: '_sourceTable', label: 'Source' });
-    }
-
-    allKeys.forEach(k => {
-        if (detectedHeaders.length >= 6) return;
-        if (matchedKeys.has(k)) return;
-        
-        const val = filteredData[0][k];
-        const isUsefulString = typeof val === 'string' && val.length > 0 && val.length < 50;
-        const isNumeric = typeof val === 'number';
-        
-        if ((isUsefulString || isNumeric)) {
-            detectedHeaders.push({ key: k, label: k });
-            matchedKeys.add(k);
-        }
-    });
-
-    return detectedHeaders;
-  }, [filteredData, selectedDataSetId, dataSets]);
-
-  const handleAddItem = (row: any) => {
-    const vId = selectedVendorId || initialVendorId;
-    if (!vId) return;
-    
-    const selectedVendor = subscribedVendors.find(v => v.id === vId);
-    if (selectedVendor) {
-      const label = getItemLabel(row);
-      setStagedItems(prev => [...prev, { vendorId: selectedVendor.id, vendorName: selectedVendor.name, row, label }]);
-      toast({ title: "Item Staged", description: `${label} added.` });
-    }
-  };
-  
-  const handleRemoveItem = (rowIndex: number) => {
-    setStagedItems(prev => prev.filter((_, index) => index !== rowIndex));
+  const addItem = (item: any) => {
+    const label = getItemName(item);
+    setStagedItems(prev => [...prev, {
+      vendorId: item.vendorId,
+      vendorName: item.vendorName,
+      row: item,
+      label,
+    }]);
+    toast({ title: 'Item Staged', description: `${label} added.` });
   };
 
-  const handleSavePackage = () => {
+  const removeItem = (index: number) => {
+    setStagedItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSave = () => {
     if (stagedItems.length === 0) return;
-    
+
     const isPackage = stagedItems.length > 1;
-    if (isPackage && !packageName.trim()) {
-        toast({ variant: 'destructive', title: 'Package name required', description: 'Please provide a name for this bundled selection.' });
-        return;
+    if (isPackage && !displayName.trim()) {
+      toast({ variant: 'destructive', title: 'Package name required', description: 'Please provide a name for this bundled selection.' });
+      return;
     }
 
     const selection = {
-      name: isPackage ? packageName : stagedItems[0].label,
+      name: isPackage ? displayName : (displayName || stagedItems[0].label),
       categoryId,
       category: targetCategory,
       type: isPackage ? 'package' as const : 'item' as const,
       items: stagedItems.map(item => ({
         vendorId: item.vendorId,
         rowId: item.row.id,
-        data: item.row,
+        data: {
+          ...item.row,
+          sellPriceExclGst: getItemPrice(item.row),
+          imageUrl: getItemImage(item.row),
+        },
       })),
     };
     onSave(selection);
@@ -292,250 +218,158 @@ export function MasterDataBrowserDialog({
   const resetState = () => {
     onClose();
     setTimeout(() => {
-        setSelectedVendorId(null);
-        setSelectedDataSetId('master');
-        setStagedItems([]);
-        setPackageName('');
-        setSearchTerm('');
-        setAggregateData(null);
+      setStagedItems([]);
+      setDisplayName('');
+      setSearchTerm('');
+      setAllItems([]);
     }, 300);
-  };
-
-  const formatTableCell = (value: any) => {
-    if (value === null || value === undefined) return '';
-    if (typeof value === 'number') {
-        return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-    const strVal = String(value);
-    if (/^\d*\.?\d+$/.test(strVal) && strVal.includes('.')) {
-        const num = parseFloat(strVal);
-        return isNaN(num) ? strVal : num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-    return strVal;
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={resetState}>
-      <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0 overflow-hidden rounded-xl">
-        <DialogHeader className="p-6 border-b bg-muted/10">
-          <DialogTitle className="text-xl font-bold">{title}</DialogTitle>
-          <DialogDescription className="text-xs font-black uppercase tracking-widest opacity-60">
+      <DialogContent className="rounded-3xl border-4 shadow-2xl p-0 overflow-hidden max-w-5xl max-h-[85vh] flex flex-col">
+        {/* Header */}
+        <DialogHeader className="p-6 border-b bg-muted/5 shrink-0">
+          <DialogTitle className="text-xl font-black uppercase tracking-tight">{title}</DialogTitle>
+          <DialogDescription className="text-[9px] font-black uppercase tracking-widest opacity-60">
             {description}
           </DialogDescription>
         </DialogHeader>
-        
-        <div className="flex-1 min-h-0 flex flex-col md:flex-row">
-          <div className="flex-1 flex flex-col min-w-0 border-r">
-            <div className="p-4 bg-muted/5 border-b space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">1. Select Vendor</Label>
-                        <Select onValueChange={(val) => { setSelectedVendorId(val); setSelectedDataSetId('master'); setAggregateData(null); }} value={selectedVendorId || ''}>
-                            <SelectTrigger className="h-10 font-bold bg-background">
-                                <SelectValue placeholder={vendorsLoading ? 'Loading...' : 'Choose a vendor'} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {subscribedVendors.map(vendor => (
-                                    <SelectItem key={vendor.id} value={vendor.id}>{vendor.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    {selectedVendorId && (
-                        <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">2. Data Table</Label>
-                            <Select onValueChange={setSelectedDataSetId} value={selectedDataSetId || 'master'}>
-                                <SelectTrigger className="h-10 font-bold bg-background">
-                                    <div className="flex items-center gap-2">
-                                        <TableIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                                        <SelectValue placeholder="Global Master List" />
-                                    </div>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="master">Global Master List (Aggregated)</SelectItem>
-                                    {dataSets?.map(set => (
-                                        <SelectItem key={set.id} value={set.id}>{set.name} ({set.rowCount} rows)</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
-                </div>
 
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Search items by name, code or description..." 
-                        className="pl-9 h-10 font-bold bg-background transition-all focus-visible:ring-primary/20"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        disabled={!selectedVendorId}
-                    />
-                </div>
+        {/* Search + Controls */}
+        <div className="p-4 border-b shrink-0 space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, code, or description..."
+              className="pl-9 rounded-xl border-2 text-xs h-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Category</Label>
+              <Select value={targetCategory} onValueChange={setTargetCategory}>
+                <SelectTrigger className="h-9 text-xs font-bold border-2 rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={initialCategory || 'Other'}>{initialCategory || 'Other'}</SelectItem>
+                  <SelectItem value="Propeller">Propeller</SelectItem>
+                  <SelectItem value="Rigging">Rigging</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Display Name</Label>
+              <Input
+                value={displayName}
+                onChange={e => setDisplayName(e.target.value)}
+                placeholder={stagedItems.length > 1 ? 'e.g. Premium Rigging Kit' : 'Auto-named for single item'}
+                className="h-9 text-xs font-bold border-2 rounded-xl"
+                disabled={stagedItems.length === 0}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Main content: Results + Staged panel */}
+        <div className="flex-1 min-h-0 flex">
+          {/* Results */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="px-4 pt-3 pb-2 shrink-0">
+              <p className="text-[9px] uppercase tracking-widest font-black text-slate-400">
+                Results {allItems.length > 0 && `(showing ${filteredItems.length} of ${allItems.length.toLocaleString()})`}
+              </p>
             </div>
 
-            <div className="flex-1 overflow-hidden relative">
-                {dataLoading || setsLoading || isAggregating ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 z-20 gap-3">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        {isAggregating && <p className="text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">Building aggregated catalog...</p>}
+            <div className="flex-1 overflow-y-auto p-4 pt-0 space-y-2">
+              {loading || vendorsLoading ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-[9px] font-black uppercase tracking-widest text-primary animate-pulse">
+                    Loading all datasets...
+                  </p>
+                </div>
+              ) : filteredItems.length > 0 ? (
+                filteredItems.map((item, idx) => (
+                  <div
+                    key={`${item.id}-${idx}`}
+                    className="flex items-center gap-3 p-3 rounded-xl border-2 hover:border-primary/40 transition-all group"
+                  >
+                    {getItemImage(item) ? (
+                      <img src={getItemImage(item)} alt="" className="h-10 w-10 object-contain rounded border-2 shrink-0" />
+                    ) : (
+                      <div className="h-10 w-10 rounded border-2 border-dashed border-slate-200 flex items-center justify-center shrink-0">
+                        <Package className="h-4 w-4 text-slate-300" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold truncate">{getItemName(item)}</p>
+                      <div className="flex items-center gap-2">
+                        {getItemCode(item) && <span className="text-[9px] font-mono text-slate-400">{getItemCode(item)}</span>}
+                        <span className="text-[9px] text-slate-400">&middot; {item.dataSetName}</span>
+                      </div>
                     </div>
-                ) : filteredData && filteredData.length > 0 ? (
-                    <ScrollArea className="h-full">
-                        <Table className="border-collapse table-fixed w-full">
-                            <TableHeader className="sticky top-0 bg-secondary z-10 shadow-sm">
-                                <TableRow className="hover:bg-transparent">
-                                    {headers.map(header => (
-                                        <TableHead key={header.key} className={cn(
-                                            "text-[10px] font-black uppercase tracking-tighter py-3 px-4",
-                                            header.label === 'Image' ? "w-14 text-center" : "",
-                                            (header.key === 'sellPriceExclGst' || header.key.toLowerCase().includes('price') || header.key === 'PARTS') ? "text-right" : ""
-                                        )}>
-                                            {header.label.replace(/_/g, ' ')}
-                                        </TableHead>
-                                    ))}
-                                    <TableHead className="text-right w-24 pr-6">Action</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredData.map((row, idx) => (
-                                    <TableRow 
-                                        key={row.id || idx} 
-                                        className="hover:bg-primary/5 transition-colors group cursor-pointer"
-                                        onClick={() => handleAddItem(row)}
-                                    >
-                                        {headers.map(header => (
-                                            <TableCell key={header.key} className={cn(
-                                                "text-[11px] font-medium py-3 px-4 truncate",
-                                                header.label === 'Image' ? "w-14 p-1" : "",
-                                                (header.key === 'sellPriceExclGst' || header.key.toLowerCase().includes('price') || header.key === 'PARTS') ? "text-right font-black" : ""
-                                            )}>
-                                                {header.label === 'Image' ? (
-                                                    row[header.key] ? (
-                                                        <img src={row[header.key]} alt="" className="h-10 w-10 object-contain rounded border bg-white mx-auto" />
-                                                    ) : null
-                                                ) : header.key === '_sourceTable' ? (
-                                                    <Badge variant="outline" className="text-[8px] font-black uppercase h-4 px-1 border-primary/20 text-primary">{row[header.key]}</Badge>
-                                                ) : (
-                                                    formatTableCell(row[header.key])
-                                                )}
-                                            </TableCell>
-                                        ))}
-                                        <TableCell className="text-right py-3 pr-6">
-                                            <Button 
-                                                type="button"
-                                                variant="outline" 
-                                                size="sm" 
-                                                className="h-7 text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-primary-foreground transition-all"
-                                                onClick={(e) => { e.stopPropagation(); handleAddItem(row); }}
-                                            >
-                                                <Plus className="h-3 w-3 mr-1" /> Add
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </ScrollArea>
-                ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-12 text-center">
-                        <div className="opacity-40">
-                            <TableIcon className="h-12 w-12 mb-4 mx-auto" />
-                            <p className="text-sm font-bold uppercase tracking-widest">
-                                {selectedVendorId ? 'No matching items.' : (subscribedVendors.length === 0 ? 'No associated vendors.' : 'Select a vendor to start.')}
-                            </p>
-                        </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-bold text-primary">${getItemPrice(item).toLocaleString()}</p>
                     </div>
-                )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => addItem(item)}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 opacity-30">
+                  <Package className="h-12 w-12 mb-4" />
+                  <p className="text-[9px] font-black uppercase tracking-widest">
+                    {allItems.length === 0 && !loading
+                      ? (subscribedVendors.length === 0 ? 'No associated vendors.' : 'No items loaded.')
+                      : 'No matching items.'}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="w-full md:w-[380px] shrink-0 bg-muted/5 flex flex-col">
-            <div className="p-6 border-b bg-background shadow-sm space-y-6">
-                <h3 className="font-black text-xs uppercase tracking-widest text-primary flex items-center gap-2">
-                    <PackagePlus className="h-4 w-4" />
-                    New Selection
-                </h3>
-                
-                <div className="space-y-4">
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Display Category</Label>
-                        <Select value={targetCategory} onValueChange={setTargetCategory}>
-                            <SelectTrigger className="h-10 font-bold bg-background shadow-inner">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value={initialCategory || 'Other'}>{initialCategory || 'Other'}</SelectItem>
-                                <SelectItem value="Propeller">Propeller</SelectItem>
-                                <SelectItem value="Rigging">Rigging</SelectItem>
-                                <SelectItem value="Other">Other</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Display Name</Label>
-                        <Input 
-                            value={packageName}
-                            onChange={e => setPackageName(e.target.value)}
-                            placeholder={stagedItems.length > 1 ? 'e.g. Premium Rigging Kit' : 'Auto-named for single item'}
-                            className="h-10 font-bold bg-background shadow-inner"
-                            disabled={stagedItems.length === 0}
-                        />
-                    </div>
-                    
-                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-tighter pt-2">
-                        <span className="text-muted-foreground">Items Staged</span>
-                        <div className="h-5 min-w-[20px] rounded-full bg-secondary flex items-center justify-center px-1.5 font-black">{stagedItems.length}</div>
-                    </div>
+          {/* Staged items panel */}
+          <div className="w-72 shrink-0 border-l-2 bg-slate-50/50 p-4 flex flex-col">
+            <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-3">
+              Selected ({stagedItems.length})
+            </p>
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {stagedItems.length > 0 ? (
+                stagedItems.map((item, i) => (
+                  <div key={`staged-${i}`} className="flex items-center gap-2 p-2 rounded-xl bg-primary/5 border-2 border-primary/20">
+                    <span className="text-xs font-semibold flex-1 truncate">{item.label}</span>
+                    <span className="text-xs font-mono text-primary">${getItemPrice(item.row).toLocaleString()}</span>
+                    <button onClick={() => removeItem(i)} className="text-destructive hover:bg-destructive/10 rounded p-0.5">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="py-12 text-center flex flex-col items-center gap-2 opacity-20 border-2 border-dashed rounded-xl">
+                  <Plus className="h-6 w-6" />
+                  <p className="text-[9px] font-black uppercase tracking-widest">Click + to add items</p>
                 </div>
+              )}
             </div>
-
-            <ScrollArea className="flex-1 p-4">
-                <div className="space-y-2">
-                    {stagedItems.length > 0 ? stagedItems.map((item, index) => (
-                        <Card key={`${item.row.id}-${index}`} className="relative border-2 border-transparent hover:border-primary/20 transition-all bg-background shadow-sm overflow-hidden group rounded-lg">
-                            <div className="p-3 pr-10 flex items-center gap-3">
-                                {(item.row.imageLink || item.row['Image Link'] || item.row.imageUrl || item.row.image || item.row.SummaryImage) && (
-                                    <img src={item.row.imageLink || item.row['Image Link'] || item.row.imageUrl || item.row.image || item.row.SummaryImage} alt="" className="h-10 w-10 object-contain rounded border bg-white shrink-0" />
-                                )}
-                                <div className="min-w-0">
-                                    <p className="text-[11px] font-black uppercase leading-tight truncate">
-                                        {item.label}
-                                    </p>
-                                    <p className="text-[9px] font-bold text-muted-foreground/60 mt-1 uppercase truncate">{item.vendorName}</p>
-                                </div>
-                            </div>
-                            <Button 
-                                type="button"
-                                variant="ghost" 
-                                size="icon" 
-                                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" 
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRemoveItem(index); }}
-                            >
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </Card>
-                    )) : (
-                        <div className="py-20 text-center flex flex-col items-center gap-3 opacity-20 border-2 border-dashed rounded-xl m-2 bg-muted/5">
-                            <PlusCircle className="h-8 w-8" />
-                            <p className="text-[10px] font-black uppercase tracking-widest">Select items on the left</p>
-                        </div>
-                    )}
-                </div>
-            </ScrollArea>
-
-            <div className="p-6 border-t bg-background mt-auto shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-                <Button 
-                    type="button"
-                    onClick={handleSavePackage} 
-                    disabled={stagedItems.length === 0}
-                    className="w-full h-11 font-black uppercase tracking-widest shadow-lg rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
-                >
-                    <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Apply to {targetCategory}
-                </Button>
-            </div>
+            <Button
+              onClick={handleSave}
+              disabled={stagedItems.length === 0}
+              className="mt-3 rounded-xl font-black uppercase text-[10px]"
+            >
+              Save to {targetCategory || 'Category'}
+            </Button>
           </div>
         </div>
       </DialogContent>
