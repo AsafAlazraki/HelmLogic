@@ -201,14 +201,28 @@ Key skills: production-code-audit, code-reviewer, nextjs-best-practices, firebas
 
 ---
 
+## Master Data Browser (Dealer Fit Item Selection)
+
+- Simplified UX: single search bar searches across ALL MPF datasets at once
+- Results as cards with image, name, code, source dataset, price
+- One-click [+] to add items, right panel for staged items
+- No vendor/dataset dropdowns — auto-loads all associated vendor data
+- Motor Brand vendors filtered out (Yamaha won't appear in dealer fit)
+- `ModuleDealerFitManager` is the ONLY card for dealer fit categories (org-level toggling removed)
+- Component: `/src/components/master-data-browser-dialog.tsx`
+
+---
+
 ## Module Page Architecture (Critical — Most Complex File)
 
-`/src/app/(app)/modules/[id]/page.tsx` — The central module workspace. ~1300 lines.
+`/src/app/(app)/modules/[id]/page.tsx` — The central module workspace. ~1400 lines.
 
 ### Structure:
-1. **Non-catalog module early return** — if `moduleType !== 'catalog'`, renders placeholder view with cover image
-2. **Sub-dealer early return** — if `isSubDealer`, renders Dashboard, Stock Management, Quotes (if enabled), Price List tabs
-3. **Parent org view** — full tabs: Dashboard, Catalog, Stock Management, Pricing, Settings
+1. **Master Price File module** — if `moduleType === 'master-price-file'`, renders `MasterPriceFileWorkspace` (editable data tables)
+2. **Motor Brand module** — if `moduleType === 'motor-brand'` OR vendor `vendorType === 'Motor Brand'`, renders `YamahaMotorWorkspace` (catalog + pricing + promotions)
+3. **Placeholder modules** — if `moduleType` is `used-boats` or `website-listings`, renders placeholder view with cover image
+4. **Sub-dealer early return** — if `isSubDealer`, renders Dashboard, Stock Management, Quotes (if enabled), Price List tabs
+5. **Parent org view** — full tabs: Dashboard, Catalog, Stock Management, Pricing, Settings
 
 ### Sub-dealer view:
 - Dashboard: stats + parent stock card + own stock card + price list access + info panel

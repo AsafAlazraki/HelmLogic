@@ -53,10 +53,16 @@
 - Dataset tabs for each imported sheet
 
 ### Dealer Fit Integration
-- Master Data Browser shows images from MPF items
+- **Master Data Browser completely rewritten** — single search bar, card results, one-click add
+- No vendor/dataset dropdowns — searches across ALL MPF datasets at once
+- Motor Brand vendors filtered out of dealer fit (Yamaha won't appear)
+- Result cards show image, name, code, source dataset, price
+- Right panel for staged items with remove
 - Dealer fit selections preserve imageUrl through finalize to proposal
 - "Clear All" button removes all dealer fit selections at once
 - Demo seed data button removed — use Master Data Browser exclusively
+- Removed duplicate dealer fit categories card (single CRUD card via ModuleDealerFitManager)
+- Edit associated vendors on existing modules (was read-only)
 
 ---
 
