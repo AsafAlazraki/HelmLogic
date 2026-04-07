@@ -88,15 +88,17 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - Console-seat auto-pairing in quote builder
 - Wide stock detail panel with mini proposal view
 - PDF generation fix (missing financials prop)
-- Master Price File module with in-app Excel import
-- Yamaha motor workspace (catalog, pricing, promotions)
+- Master Price File module with in-app Excel import, editable tables, multi-dataset tabs
+- Yamaha motor workspace (catalog, pricing with import/export, promotions)
 - Motor specs on proposals/PDF
-- Promotions system with images, PDFs, audit log
-- Module rename/delete, module types
-- Dealer fit MPF integration with images
-- Code audit: fixed stale promo fields, filtered empty states, select-all bugs
-- 1,356 antigravity skills installed
+- Promotions system with images, PDFs, audit log, quote toggles
+- Module rename/delete, module types (catalog, motor-brand, master-price-file, used-boats, website-listings)
+- Dealer fit: simplified data browser (search all, one-click add), removed duplicate categories card, Clear All
+- Associated vendors editable on existing modules
+- Code audit: fixed stale promo fields, filtered empty states, select-all bugs, validation
 - Catalog image replacement fix
+- 1,356 antigravity skills installed
+- Data browser: motor brand vendors filtered out of dealer fit
 
 ## Key Lessons Learned
 - `mainVendorId: null` crashes Firestore `doc()` — always check
@@ -115,6 +117,10 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - Import duplicate checking needs multi-field fingerprinting
 - Select-all should operate on FILTERED results, not total
 - Reset all filters when switching workspace views
+- Master Data Browser: `isAggregating` state must be cleared when switching away from Global Master List
+- Motor Brand vendors must be excluded from dealer fit vendor list
+- MasterPriceFileWorkspace is reusable — Yamaha pricing tab renders it pointed at Yamaha vendor
+- Per-module dealer fit categories (ModuleDealerFitManager) is the single source of truth — org-level category toggling was removed
 
 ## How to Proceed (For Future Agents)
 - **Read tasks/SESSION_HANDOVER.md** first for complete technical context
