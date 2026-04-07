@@ -204,55 +204,6 @@ export function OrganisationModuleConfig({
                     </CardContent>
                 </Card>
 
-                {/* Dealer Fit Categories Section */}
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center gap-2">
-                            <Wrench className="h-5 w-5 text-primary" />
-                            <CardTitle>Dealer Fit Options</CardTitle>
-                        </div>
-                        <CardDescription>
-                            Select which master category cards are available for this organisation.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid gap-2">
-                            {allDealerFitCategories && allDealerFitCategories.length > 0 ? (
-                                allDealerFitCategories.map(cat => {
-                                    const isChecked = (organisation.dealerFitCategories || []).includes(cat.id);
-                                    return (
-                                        <div 
-                                            key={cat.id} 
-                                            className={cn(
-                                                "flex items-center gap-2 px-3 py-2 rounded-md border text-sm transition-all cursor-pointer",
-                                                isChecked ? "bg-secondary/50 border-primary/20" : "hover:bg-muted/50 opacity-60"
-                                            )}
-                                            onClick={() => handleCategoryToggle(cat.id, !isChecked)}
-                                        >
-                                            <div className="flex-1 flex items-center gap-2">
-                                                {isChecked ? <Check className="h-4 w-4 text-primary" /> : <div className="w-4 h-4" />}
-                                                <span className={cn(isChecked ? "font-medium text-foreground" : "")}>{cat.name}</span>
-                                            </div>
-                                            <Checkbox 
-                                                checked={isChecked}
-                                                onCheckedChange={(checked) => handleCategoryToggle(cat.id, !!checked)}
-                                                onClick={(e) => e.stopPropagation()}
-                                            />
-                                        </div>
-                                    );
-                                })
-                            ) : (
-                                <div className="text-center py-8 border border-dashed rounded-md">
-                                    <p className="text-sm text-muted-foreground">No master categories created.</p>
-                                    <Button variant="link" size="sm" asChild>
-                                        <a href="/admin/dealer-fit-options">Create Master Categories</a>
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
-
                 {/* Sub Dealers Access Section */}
                 {organisation.subDealersEnabled && (
                     <Card className="lg:col-span-2">
