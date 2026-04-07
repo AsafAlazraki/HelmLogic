@@ -138,7 +138,8 @@ export function MasterDataBrowserDialog({
   const subscribedVendors = useMemo(() => {
     if (!allVendors) return [];
     const effectiveAllowedIds = allowedVendorIds || organisation?.dataWarehouseSubscriptions || [];
-    return allVendors.filter(v => effectiveAllowedIds.includes(v.id));
+    // Filter out Motor Brand vendors — they shouldn't appear in dealer fit options
+    return allVendors.filter(v => effectiveAllowedIds.includes(v.id) && v.vendorType !== 'Motor Brand');
   }, [allVendors, organisation?.dataWarehouseSubscriptions, allowedVendorIds]);
 
   useEffect(() => {
@@ -181,6 +182,7 @@ export function MasterDataBrowserDialog({
         }
       } else {
         setAggregateData(null);
+        setIsAggregating(false);
       }
     };
     fetchAggregate();
