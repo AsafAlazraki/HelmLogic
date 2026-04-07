@@ -6,9 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Check, ChevronLeft, Building, Wrench, ShieldCheck, Globe, Users, Settings2 } from 'lucide-react';
+import { Check, ChevronLeft, Building, Wrench, ShieldCheck, Globe, Users, Settings2, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ModuleVendorAccessDialog } from '@/components/module-vendor-access-dialog';
+import { useFirestore } from '@/firebase/provider';
+import { doc, updateDoc } from 'firebase/firestore';
+import { toast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 
 interface Vendor {
     id: string;
@@ -62,6 +66,8 @@ export function OrganisationModuleConfig({
     onUpdateSubDealerVendors?: (sdId: string, vendorIds: string[]) => void;
 }) {
     const [configSdId, setConfigSdId] = useState<string | null>(null);
+    const [editingAssociatedVendors, setEditingAssociatedVendors] = useState(false);
+    const firestore = useFirestore();
 
     const currentAllowedVendorIds = useMemo(() => 
         organisation.moduleAssociatedVendorAccess?.[module.id] || [], 
@@ -120,23 +126,81 @@ export function OrganisationModuleConfig({
                     </CardHeader>
                     <CardContent className="space-y-6">
                         <div className="space-y-2">
-                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Default Module Access</h4>
-                            <p className="text-xs text-muted-foreground mb-2">These vendors are automatically available to all users of this module.</p>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Associated Vendors</h4>
+                                    <p className="text-xs text-muted-foreground">Vendors whose data is available in this module (dealer fit, motors, etc.)</p>
+                                </div>
+                                <Button variant="outline" size="sm" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest gap-1" onClick={() => setEditingAssociatedVendors(true)}>
+                                    <Pencil className="h-3 w-3" />
+                                    Edit
+                                </Button>
+                            </div>
                             <div className="space-y-2">
                                 {allVendors?.find(v => v.id === module.mainVendorId) && (
-                                    <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/30 border text-sm opacity-70">
-                                        <Check className="h-4 w-4 text-green-600" />
-                                        <span>Main Vendor: {allVendors.find(v => v.id === module.mainVendorId)?.name}</span>
+                                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border-2 border-primary/20 text-sm">
+                                        <Check className="h-4 w-4 text-primary" />
+                                        <span className="font-semibold">Main: {allVendors.find(v => v.id === module.mainVendorId)?.name}</span>
                                     </div>
                                 )}
-                                {associatedVendors.map(v => (
-                                    <div key={v.id} className="flex items-center gap-2 px-3 py-2 rounded-md bg-secondary/30 border text-sm opacity-70">
+                                {associatedVendors.length > 0 ? associatedVendors.map(v => (
+                                    <div key={v.id} className="flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-sm">
                                         <Check className="h-4 w-4 text-green-600" />
-                                        <span>{v.vendorType || 'Associated'}: {v.name}</span>
+                                        <span>{v.name}</span>
+                                        <span className="text-[9px] text-slate-400 ml-auto">{v.vendorType}</span>
                                     </div>
-                                ))}
+                                )) : (
+                                    <p className="text-xs text-slate-400 italic py-2">No associated vendors. Click Edit to add.</p>
+                                )}
                             </div>
                         </div>
+
+                        {/* Edit Associated Vendors Dialog */}
+                        <Dialog open={editingAssociatedVendors} onOpenChange={setEditingAssociatedVendors}>
+                            <DialogContent className="rounded-3xl border-4 shadow-2xl">
+                                <DialogHeader>
+                                    <DialogTitle className="text-xl font-black uppercase tracking-tight">Associated Vendors</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-2 max-h-[60vh] overflow-y-auto py-2">
+                                    {allVendors?.filter(v => v.id !== module.mainVendorId).map(v => {
+                                        const isAssociated = (module.associatedVendorIds || []).includes(v.id);
+                                        return (
+                                            <div
+                                                key={v.id}
+                                                className={cn(
+                                                    "flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all",
+                                                    isAssociated ? "border-primary bg-primary/5" : "hover:border-slate-300"
+                                                )}
+                                                onClick={async () => {
+                                                    const current = module.associatedVendorIds || [];
+                                                    const updated = isAssociated
+                                                        ? current.filter((id: string) => id !== v.id)
+                                                        : [...current, v.id];
+                                                    try {
+                                                        await updateDoc(doc(firestore, 'modules', module.id), { associatedVendorIds: updated });
+                                                        toast({ title: isAssociated ? `${v.name} removed` : `${v.name} added` });
+                                                    } catch (error) {
+                                                        console.error('Failed to update:', error);
+                                                        toast({ variant: 'destructive', title: 'Update failed' });
+                                                    }
+                                                }}
+                                            >
+                                                <input type="checkbox" checked={isAssociated} readOnly className="rounded border-2" />
+                                                <div>
+                                                    <p className="text-xs font-bold">{v.name}</p>
+                                                    {v.vendorType && <p className="text-[9px] text-slate-400">{v.vendorType}</p>}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <DialogFooter>
+                                    <DialogClose asChild>
+                                        <Button className="rounded-xl">Done</Button>
+                                    </DialogClose>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
                     </CardContent>
                 </Card>
 
