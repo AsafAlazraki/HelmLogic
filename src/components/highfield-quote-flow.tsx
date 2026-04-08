@@ -1100,6 +1100,60 @@ export function HighfieldQuoteFlow({
                                             </div>
                                         </div>
                                     ))}
+
+                                    {/* Active Promotions */}
+                                    {validPromotions.filter(p => p.appliesTo === 'motor' || p.appliesTo === 'total').length > 0 && (
+                                        <div className="space-y-3 mt-4">
+                                            <div className="flex items-center gap-3 bg-green-600 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Active Promotions</h3>
+                                            </div>
+                                            {validPromotions.filter(p => p.appliesTo === 'motor' || p.appliesTo === 'total').map(promo => (
+                                                <div key={promo.id} className="flex items-start gap-3 p-4 rounded-2xl border-2 border-green-200 bg-green-50/50">
+                                                    <input type="checkbox" checked={selectedPromoIds.has(promo.id)} onChange={() => togglePromo(promo.id)} className="mt-1 rounded border-2 h-4 w-4 accent-green-600" />
+                                                    <div className="flex-1">
+                                                        <p className="text-xs font-bold text-green-800">{promo.name}</p>
+                                                        {promo.description && <p className="text-[10px] text-green-600 mt-0.5">{promo.description}</p>}
+                                                        <div className="flex items-center gap-2 mt-1.5">
+                                                            <Badge className="bg-green-100 text-green-700 border-green-300 text-[9px]">
+                                                                {promo.type === 'fixed-amount' && `-$${promo.fixedAmount}`}
+                                                                {promo.type === 'per-hp' && `-$${promo.perHpAmount}/HP`}
+                                                                {promo.type === 'percentage' && `-${promo.percentage}%`}
+                                                                {promo.type === 'category-discount' && 'Category Discount'}
+                                                            </Badge>
+                                                            {promo.startDate && promo.endDate && (
+                                                                <span className="text-[9px] text-green-500">
+                                                                    Valid: {new Date(promo.startDate.toMillis()).toLocaleDateString()} - {new Date(promo.endDate.toMillis()).toLocaleDateString()}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {promo.showImageOnQuote && promo.imageUrl && (
+                                                            <img src={promo.imageUrl} alt="" className="mt-2 h-16 object-contain rounded border" />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Dealer Services (NSM Extended Warranty & Service Plan) */}
+                                    <div className="space-y-2 mt-4 p-4 rounded-2xl border-2 bg-slate-50/50">
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Dealer Services</h4>
+                                        <label className="flex items-center gap-3 p-3 rounded-xl hover:bg-white cursor-pointer transition-colors">
+                                            <input type="checkbox" checked={extendedWarranty} onChange={() => setExtendedWarranty(!extendedWarranty)} className="rounded border-2 h-4 w-4" />
+                                            <div>
+                                                <p className="text-xs font-bold">NSM 6 Year Extended Warranty</p>
+                                                <p className="text-[9px] text-slate-400">Extended manufacturer warranty coverage</p>
+                                            </div>
+                                        </label>
+                                        <label className="flex items-center gap-3 p-3 rounded-xl hover:bg-white cursor-pointer transition-colors">
+                                            <input type="checkbox" checked={servicePlan} onChange={() => setServicePlan(!servicePlan)} className="rounded border-2 h-4 w-4" />
+                                            <div>
+                                                <p className="text-xs font-bold">Direct Debit Service Plan</p>
+                                                <p className="text-[9px] text-slate-400">Scheduled servicing with direct debit payments</p>
+                                            </div>
+                                        </label>
+                                    </div>
                                 </div>
                             )}
                             {currentStep === 4 && (
