@@ -197,6 +197,13 @@ export function HighfieldQuoteFlow({
     const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>(initialState?.selectedTrailerOptionIds ?? []);
     const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>(initialState?.selectedDealerFitIds ?? []);
 
+    // Promotions State
+    const [selectedPromoIds, setSelectedPromoIds] = useState<Set<string>>(new Set());
+
+    // Dealer Services State (NSM Extended Warranty & Service Plan)
+    const [extendedWarranty, setExtendedWarranty] = useState(false);
+    const [servicePlan, setServicePlan] = useState(false);
+
     // Custom Option Form State
     const [newCustomName, setNewCustomName] = useState('');
     const [newCustomPrice, setNewCustomPrice] = useState('');
@@ -233,6 +240,12 @@ export function HighfieldQuoteFlow({
         orgId ? collection(firestore, `organisations/${orgId}/dealerFitSelections`) : null,
     [firestore, orgId]);
     const { data: dealerFitSelections, isLoading: dealerFitLoading } = useCollection<any>(dealerFitQuery);
+
+    // Promotions query
+    const promotionsQuery = useMemoFirebase(() =>
+        module?.id ? query(collection(firestore, `modules/${module.id}/promotions`), where('status', '==', 'active')) : null,
+    [firestore, module?.id]);
+    const { data: activePromotions } = useCollection<any>(promotionsQuery);
 
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
@@ -381,6 +394,44 @@ export function HighfieldQuoteFlow({
         return Object.entries(groups) as [string, any][];
     }, [dealerFitSelections]);
 
+    // Filter promotions to currently valid date range
+    const validPromotions = useMemo(() => {
+        if (!activePromotions) return [];
+        const now = Date.now();
+        return activePromotions.filter((p: any) => {
+            if (p.startDate && p.startDate.toMillis() > now) return false;
+            if (p.endDate && p.endDate.toMillis() < now) return false;
+            return true;
+        });
+    }, [activePromotions]);
+
+    // Auto-select all valid promotions when they load/change
+    useEffect(() => {
+        if (validPromotions.length > 0) {
+            setSelectedPromoIds(new Set(validPromotions.map((p: any) => p.id)));
+        }
+    }, [validPromotions]);
+
+    const togglePromo = (id: string) => {
+        setSelectedPromoIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    /** Calculate the discount amount for a single promotion */
+    const calculatePromoDiscount = (promo: any, subtotal: number): number => {
+        if (promo.type === 'fixed-amount') return promo.fixedAmount || 0;
+        if (promo.type === 'per-hp' && selectedMotor) {
+            const hp = parseFloat(selectedMotor['HP Rating'] || selectedMotor.hp || '0');
+            return (promo.perHpAmount || 0) * hp;
+        }
+        if (promo.type === 'percentage') return subtotal * (promo.percentage || 0) / 100;
+        return 0;
+    };
+
     const totalPrice = useMemo(() => {
         let total = getPriceForLevel(activeVariant, priceLevel);
         selectedOptionsData.forEach(opt => { total += getPriceForLevel(opt, priceLevel); });
@@ -402,8 +453,15 @@ export function HighfieldQuoteFlow({
         selectedDealerFitData.forEach(s => {
             s.items?.forEach((i: any) => { total += getPriceForLevel(i.data, priceLevel); });
         });
+        // Apply promotion discounts
+        let promoDiscount = 0;
+        for (const promo of validPromotions) {
+            if (!selectedPromoIds.has(promo.id)) continue;
+            promoDiscount += calculatePromoDiscount(promo, total);
+        }
+        total -= promoDiscount;
         return total;
-    }, [activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration, priceLevel]);
+    }, [activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration, priceLevel, validPromotions, selectedPromoIds]);
 
     // 4. Selection Handlers
     const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
