@@ -343,7 +343,7 @@ export function HighfieldQuoteFlow({
     const groupedMotorAccessories = useMemo(() => {
         if (!selectedMotor) return [];
         const groups = (selectedMotor.masterAccessories || []).reduce((acc: any, opt: any) => {
-            const cat = opt.category || 'Other Hardware';
+            const cat = opt.category || 'Factory Options';
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(opt);
             return acc;
@@ -508,7 +508,7 @@ export function HighfieldQuoteFlow({
         const accessory = selectedMotor?.masterAccessories?.find((a: any) => a.id === id);
         if (!accessory) return;
         const isSelected = selectedMotorAccessoryIds.includes(id);
-        const cat = accessory.category || 'Other Hardware';
+        const cat = accessory.category || 'Factory Options';
         const isSingleSelect = cat === 'Propeller' || cat === 'Rigging';
         let next = isSelected ? selectedMotorAccessoryIds.filter(i => i !== id) : [...selectedMotorAccessoryIds];
         if (!isSelected) {
@@ -752,7 +752,7 @@ export function HighfieldQuoteFlow({
                             <div className="flex flex-col items-start px-1 gap-3">
                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] leading-none">Technical Utilities</span>
                                 <div className="flex items-center gap-2">
-                                    <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowFeatures(true)}><ListChecks className="h-3.5 w-3.5 mr-2 text-primary" /> Features</Button>
+                                    <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowFeatures(true)}><ListChecks className="h-3.5 w-3.5 mr-2 text-primary" /> Standard Features</Button>
                                     <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-3.5 w-3.5 mr-2 text-primary" /> Specs</Button>
                                     <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowDocs(true)}><FileText className="h-3.5 w-3.5 mr-2 text-primary" /> Docs</Button>
                                 </div>
@@ -921,7 +921,7 @@ export function HighfieldQuoteFlow({
                                     <div className="space-y-6 scroll-mt-10">
                                         <div className="flex items-center gap-3 bg-slate-900 px-6 py-3 rounded-2xl shadow-xl w-full">
                                             <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Custom Tactical Additions</h3>
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Additional Factory Boat Notes/Options</h3>
                                         </div>
                                         <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white space-y-6">
                                             <div className="grid gap-4">
@@ -1204,7 +1204,7 @@ export function HighfieldQuoteFlow({
                                                                         <FilePlus2 className="h-3 w-3 text-primary group-hover/remove:opacity-0 transition-opacity" />
                                                                         <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => handleRemoveCustomOption(opt.id)}><X className="h-3 w-3" /></Button>
                                                                     </div>
-                                                                    <div><p className="text-[10px] font-black uppercase tracking-tight">{opt.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1 border-primary/20 text-primary bg-primary/5">Custom Addition</Badge></div>
+                                                                    <div><p className="text-[10px] font-black uppercase tracking-tight">{opt.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1 border-primary/20 text-primary bg-primary/5">Additional Option</Badge></div>
                                                                 </div>
                                                                 <p className="text-[10px] font-bold text-slate-600">${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                             </div>
