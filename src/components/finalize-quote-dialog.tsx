@@ -62,6 +62,9 @@ interface FinalizeQuoteDialogProps {
         isTenderToSelected: boolean;
         isTrailerRegoSelected: boolean;
         selectedTrailerId: string | null;
+        priceLevelUsed?: string;
+        appliedPromotions?: any[];
+        dealerServices?: { extendedWarranty: boolean; servicePlan: boolean };
     };
     organisationId: string | null;
     userProfile: any;
@@ -124,7 +127,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     };
 
     const buildQuotePayload = () => {
-        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId } = quoteData;
+        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, appliedPromotions, dealerServices } = quoteData;
 
         return {
             // Quote metadata
@@ -263,6 +266,12 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     imageUrl: i.data?.imageLink || i.data?.['Image Link'] || i.data?.imageUrl || i.data?.image || i.data?.SummaryImage || null,
                 })),
             })),
+
+            // Applied Promotions
+            appliedPromotions: appliedPromotions || [],
+
+            // Dealer Services
+            dealerServices: dealerServices || { extendedWarranty: false, servicePlan: false },
 
             // Pricing
             totalPriceExclGst: totalPrice || 0,

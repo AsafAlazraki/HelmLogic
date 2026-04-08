@@ -1431,6 +1431,72 @@ export function HighfieldQuoteFlow({
                                                 </CardContent>
                                             </Card>
                                         )}
+
+                                        {/* Applied Promotions Summary */}
+                                        {validPromotions.filter(p => selectedPromoIds.has(p.id)).length > 0 && (
+                                            <Card className="rounded-[1.5rem] border-2 border-green-200 shadow-lg overflow-hidden">
+                                                <CardHeader className="bg-green-50/50 border-b border-green-100 p-4"><div className="flex items-center gap-2"><Tag className="h-4 w-4 text-green-600" /><CardTitle className="text-xs font-black uppercase tracking-widest text-green-700">Applied Promotions</CardTitle></div></CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="divide-y divide-green-100">
+                                                        {validPromotions.filter(p => selectedPromoIds.has(p.id)).map((promo: any) => (
+                                                            <div key={promo.id} className="p-4 flex items-center justify-between hover:bg-green-50/30 transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="group/remove h-6 w-6 rounded-lg bg-green-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                        <Check className="h-3 w-3 text-green-600 group-hover/remove:opacity-0 transition-opacity" />
+                                                                        <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => togglePromo(promo.id)}><X className="h-3 w-3" /></Button>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black uppercase tracking-tight text-green-800">{promo.name}</p>
+                                                                        <Badge className="bg-green-100 text-green-700 border-green-300 text-[7px]">
+                                                                            {promo.type === 'fixed-amount' && `-$${promo.fixedAmount}`}
+                                                                            {promo.type === 'per-hp' && `-$${promo.perHpAmount}/HP`}
+                                                                            {promo.type === 'percentage' && `-${promo.percentage}%`}
+                                                                            {promo.type === 'category-discount' && 'Category Discount'}
+                                                                        </Badge>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-green-600">-${calculatePromoDiscount(promo, totalPrice).toLocaleString()}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        )}
+
+                                        {/* Dealer Services Summary */}
+                                        {(extendedWarranty || servicePlan) && (
+                                            <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
+                                                <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Star className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Dealer Services</CardTitle></div></CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="divide-y">
+                                                        {extendedWarranty && (
+                                                            <div className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="group/remove h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                        <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
+                                                                        <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => setExtendedWarranty(false)}><X className="h-3 w-3" /></Button>
+                                                                    </div>
+                                                                    <div><p className="text-[10px] font-black uppercase tracking-tight">NSM 6 Year Extended Warranty</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1">Warranty</Badge></div>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-slate-600">Included</p>
+                                                            </div>
+                                                        )}
+                                                        {servicePlan && (
+                                                            <div className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="group/remove h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                        <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
+                                                                        <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => setServicePlan(false)}><X className="h-3 w-3" /></Button>
+                                                                    </div>
+                                                                    <div><p className="text-[10px] font-black uppercase tracking-tight">Direct Debit Service Plan</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1">Service</Badge></div>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-slate-600">Included</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -1572,6 +1638,18 @@ export function HighfieldQuoteFlow({
                     isTrailerRegoSelected,
                     selectedTrailerId,
                     priceLevelUsed: priceLevel,
+                    appliedPromotions: validPromotions.filter(p => selectedPromoIds.has(p.id)).map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        type: p.type,
+                        discount: calculatePromoDiscount(p, totalPrice),
+                        imageUrl: p.showImageOnQuote ? p.imageUrl : null,
+                        pdfUrl: p.showPdfOnQuote ? p.pdfUrl : null,
+                    })),
+                    dealerServices: {
+                        extendedWarranty,
+                        servicePlan,
+                    },
                 }}
                 organisationId={orgId || null}
                 userProfile={userProfile}
