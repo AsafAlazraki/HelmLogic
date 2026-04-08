@@ -199,6 +199,7 @@ export function HighfieldQuoteFlow({
 
     // Promotions State
     const [selectedPromoIds, setSelectedPromoIds] = useState<Set<string>>(new Set());
+    const promoAutoSelected = useRef(false);
 
     // Dealer Services State (NSM Extended Warranty & Service Plan)
     const [extendedWarranty, setExtendedWarranty] = useState(false);
@@ -405,10 +406,11 @@ export function HighfieldQuoteFlow({
         });
     }, [activePromotions]);
 
-    // Auto-select all valid promotions when they load/change
+    // Auto-select all valid promotions on first load only (skip after user manually toggles)
     useEffect(() => {
-        if (validPromotions.length > 0) {
+        if (validPromotions.length > 0 && !promoAutoSelected.current) {
             setSelectedPromoIds(new Set(validPromotions.map((p: any) => p.id)));
+            promoAutoSelected.current = true;
         }
     }, [validPromotions]);
 
@@ -432,7 +434,10 @@ export function HighfieldQuoteFlow({
         return 0;
     };
 
-    const totalPrice = useMemo(() => {
+    /** Subtotal before any promotional discounts — used as the correct base
+     *  for percentage promos so they calculate on the full price, not the
+     *  already-discounted total. */
+    const subtotalBeforePromos = useMemo(() => {
         let total = getPriceForLevel(activeVariant, priceLevel);
         selectedOptionsData.forEach(opt => { total += getPriceForLevel(opt, priceLevel); });
         customOptions.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
@@ -453,15 +458,17 @@ export function HighfieldQuoteFlow({
         selectedDealerFitData.forEach(s => {
             s.items?.forEach((i: any) => { total += getPriceForLevel(i.data, priceLevel); });
         });
-        // Apply promotion discounts
+        return total;
+    }, [activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration, priceLevel]);
+
+    const totalPrice = useMemo(() => {
         let promoDiscount = 0;
         for (const promo of validPromotions) {
             if (!selectedPromoIds.has(promo.id)) continue;
-            promoDiscount += calculatePromoDiscount(promo, total);
+            promoDiscount += calculatePromoDiscount(promo, subtotalBeforePromos);
         }
-        total -= promoDiscount;
-        return total;
-    }, [activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration, priceLevel, validPromotions, selectedPromoIds]);
+        return subtotalBeforePromos - promoDiscount;
+    }, [subtotalBeforePromos, validPromotions, selectedPromoIds]);
 
     // 4. Selection Handlers
     const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
@@ -1455,7 +1462,7 @@ export function HighfieldQuoteFlow({
                                                                         </Badge>
                                                                     </div>
                                                                 </div>
-                                                                <p className="text-[10px] font-bold text-green-600">-${calculatePromoDiscount(promo, totalPrice).toLocaleString()}</p>
+                                                                <p className="text-[10px] font-bold text-green-600">-${calculatePromoDiscount(promo, subtotalBeforePromos).toLocaleString()}</p>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -1642,7 +1649,7 @@ export function HighfieldQuoteFlow({
                         id: p.id,
                         name: p.name,
                         type: p.type,
-                        discount: calculatePromoDiscount(p, totalPrice),
+                        discount: calculatePromoDiscount(p, subtotalBeforePromos),
                         imageUrl: p.showImageOnQuote ? p.imageUrl : null,
                         pdfUrl: p.showPdfOnQuote ? p.pdfUrl : null,
                     })),

@@ -274,6 +274,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
             dealerServices: dealerServices || { extendedWarranty: false, servicePlan: false },
 
             // Pricing
+            priceLevelUsed: quoteData.priceLevelUsed || 'default',
             totalPriceExclGst: totalPrice || 0,
         };
     };
@@ -338,13 +339,14 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
 
                 // Generate and store PDF
                 try {
-                    const financials = buildQuoteFinancials(payload);
+                    const totalPromoDiscount = (payload.appliedPromotions || []).reduce((sum: number, p: any) => sum + (p.discount || 0), 0);
+                    const financials = buildQuoteFinancials(payload, totalPromoDiscount);
                     const pdfBlob = await pdf(<ProposalPDFDocument quote={payload} organisation={organisation} financials={financials} />).toBlob();
                     if (!pdfBlob || pdfBlob.size === 0) {
                         throw new Error('PDF generation returned an empty blob');
                     }
                     const pdfFile = new File([pdfBlob], `${finalStockNumber}-proposal.pdf`, { type: 'application/pdf' });
-                    const pdfUrl = await uploadFileToStorage(storage, pdfFile, `inventory/${inventoryRef.id}/proposal-${stockNumber}.pdf`);
+                    const pdfUrl = await uploadFileToStorage(storage, pdfFile, `inventory/${inventoryRef.id}/proposal-${finalStockNumber}.pdf`);
 
                     if (!pdfUrl || typeof pdfUrl !== 'string') {
                         throw new Error('PDF upload returned an invalid URL');
