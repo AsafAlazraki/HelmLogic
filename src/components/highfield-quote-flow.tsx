@@ -206,6 +206,8 @@ export function HighfieldQuoteFlow({
     const [showFeatures, setShowFeatures] = useState(false);
     const [showSpecs, setShowSpecs] = useState(false);
     const [showDocs, setShowDocs] = useState(false);
+    const [showEngineSpecs, setShowEngineSpecs] = useState(false);
+    const [showTrailerSpecs, setShowTrailerSpecs] = useState(false);
     const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
     const [api, setApi] = useState<CarouselApi>();
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -753,7 +755,9 @@ export function HighfieldQuoteFlow({
                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] leading-none">Technical Utilities</span>
                                 <div className="flex items-center gap-2">
                                     <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowFeatures(true)}><ListChecks className="h-3.5 w-3.5 mr-2 text-primary" /> Standard Features</Button>
-                                    <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-3.5 w-3.5 mr-2 text-primary" /> Specs</Button>
+                                    <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-3.5 w-3.5 mr-2 text-primary" /> Hull Specs</Button>
+                                    <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowEngineSpecs(true)}><Ship className="h-3.5 w-3.5 mr-2 text-primary" /> Engine Specs</Button>
+                                    <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowTrailerSpecs(true)}><Truck className="h-3.5 w-3.5 mr-2 text-primary" /> Trailer Specs</Button>
                                     <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowDocs(true)}><FileText className="h-3.5 w-3.5 mr-2 text-primary" /> Docs</Button>
                                 </div>
                             </div>
@@ -1354,6 +1358,82 @@ export function HighfieldQuoteFlow({
                     <div className="p-6 space-y-3">{model?.documents?.length > 0 ? model.documents.map((doc: any, i: number) => (
                         <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-xl border-2 hover:border-primary/40 hover:bg-primary/5 group"><div className="flex items-center gap-3"><FileText className="h-4 w-4 text-primary/40 group-hover:text-primary" /><span className="text-[10px] font-black uppercase tracking-tight">{doc.name}</span></div><ExternalLink className="h-3.5 w-3.5 opacity-20 group-hover:opacity-100" /></a>
                     )) : <div className="py-12 text-center opacity-20 flex flex-col items-center gap-2"><FileText className="h-10 w-10" /><p className="text-[9px] font-black uppercase tracking-widest">No Documents Linked</p></div>}</div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showEngineSpecs} onOpenChange={setShowEngineSpecs}>
+                <DialogContent className="rounded-3xl border-4 shadow-2xl">
+                    <DialogHeader className="p-6 border-b bg-muted/5">
+                        <DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">
+                            Engine Specifications
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="p-6 space-y-3">
+                        {selectedMotor ? (
+                            <>
+                                <h3 className="text-sm font-bold">{getMotorDisplayName(selectedMotor)}</h3>
+                                {selectedMotor.imageUrl && <img src={selectedMotor.imageUrl} alt="" className="h-24 object-contain rounded-xl border-2 bg-slate-50 p-2" />}
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { label: 'HP Rating', value: selectedMotor['HP Rating'] || selectedMotor.hp },
+                                        { label: 'Shaft Length', value: selectedMotor['Shaft Length'] || selectedMotor.shaft },
+                                        { label: 'Control', value: selectedMotor['Control'] || selectedMotor.control },
+                                        { label: 'Starting', value: selectedMotor['Starting'] || selectedMotor.starting },
+                                        { label: 'Tilt & Trim', value: selectedMotor['Tilt & Trim'] || selectedMotor.tiltTrim },
+                                        { label: 'Fuel Tank', value: selectedMotor['Fuel Tank'] || selectedMotor.fuelTank },
+                                        { label: 'Propeller', value: selectedMotor['Prop'] || selectedMotor.prop },
+                                        { label: 'Warranty', value: selectedMotor['Warranty'] || selectedMotor.warranty },
+                                    ].filter(s => s.value).map(spec => (
+                                        <div key={spec.label} className="border-2 rounded-xl p-2">
+                                            <p className="text-[9px] uppercase tracking-widest font-black text-slate-400">{spec.label}</p>
+                                            <p className="text-xs font-semibold">{spec.value}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        ) : (
+                            <p className="text-xs text-slate-400 italic text-center py-8">No motor selected</p>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showTrailerSpecs} onOpenChange={setShowTrailerSpecs}>
+                <DialogContent className="rounded-3xl border-4 shadow-2xl">
+                    <DialogHeader className="p-6 border-b bg-muted/5">
+                        <DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">
+                            Trailer Specifications
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="p-6 space-y-3">
+                        {model.trailerConfig ? (
+                            <>
+                                <h3 className="text-sm font-bold">{model.trailerConfig.name}</h3>
+                                {model.trailerConfig.imageUrl && <img src={model.trailerConfig.imageUrl} alt="" className="h-24 object-contain rounded-xl border-2 bg-slate-50 p-2" />}
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { label: 'Weight Capacity', value: model.trailerConfig.weightCapacity },
+                                        { label: 'Length', value: model.trailerConfig.length },
+                                        { label: 'Width', value: model.trailerConfig.width },
+                                        { label: 'Axle Type', value: model.trailerConfig.axleType },
+                                        { label: 'Brake Type', value: model.trailerConfig.brakeType },
+                                        { label: 'Tyre Size', value: model.trailerConfig.tyreSize },
+                                        { label: 'Suspension', value: model.trailerConfig.suspension },
+                                        { label: 'Coupling', value: model.trailerConfig.coupling },
+                                        { label: 'Tare Weight', value: model.trailerConfig.tareWeight },
+                                        { label: 'GTM', value: model.trailerConfig.gtm },
+                                    ].filter(s => s.value).map(spec => (
+                                        <div key={spec.label} className="border-2 rounded-xl p-2">
+                                            <p className="text-[9px] uppercase tracking-widest font-black text-slate-400">{spec.label}</p>
+                                            <p className="text-xs font-semibold">{spec.value}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        ) : (
+                            <p className="text-xs text-slate-400 italic text-center py-8">No trailer configured for this model</p>
+                        )}
+                    </div>
                 </DialogContent>
             </Dialog>
 
