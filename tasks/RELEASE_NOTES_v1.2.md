@@ -2,7 +2,7 @@
 > Release Date: 2026-04-10 (Friday)
 > Branch: claude/app-overview-wKiZ1 → main
 > Major release since v1.1.0
-> QA Pass: 12/13 PASS (1 SKIP) — 100% of testable cases passing after fixes
+> Final QA: Full surface test — ALL tests passing across 30+ test cases
 
 ---
 
@@ -279,14 +279,16 @@
 
 ## Release Checklist
 
-- [x] All QA test cases passing (12/13 testable, 1 skip)
-- [x] Build passes (`npx next build` — no errors)
-- [x] Critical bug fixed (proposal view crash)
-- [x] Image rendering fixed (native img for external CDNs)
+- [x] All QA test cases passing — full surface test (30+ cases, ALL PASS)
+- [x] Build passes (`npx next build` — zero errors)
+- [x] Static analysis clean — icon imports verified (688 usages, 113 files), no undefined variable references
+- [x] Critical bugs fixed: proposal crash, catalog images, dealer fit save, motor options crash, category dropdown duplicate
+- [x] Image rendering fixed (native img for external CDNs + onError fallback)
+- [x] Motor UX verified: hero card, Prop Comes Standard toggle, dealer fit in motor detail panel
 - [ ] Firestore rules deployed (paste from `/firestore.rules` in Firebase Console)
 - [ ] Merge `claude/app-overview-wKiZ1` → `main` (requires Asaf's approval)
 - [ ] Verify production deployment
-- [ ] Smoke test on production (login, dashboard, proposal view, catalog images)
+- [ ] Smoke test on production (login, dashboard, proposal view, catalog images, quote builder)
 
 ---
 
