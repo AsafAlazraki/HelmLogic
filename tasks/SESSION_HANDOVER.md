@@ -201,6 +201,18 @@ Key skills: production-code-audit, code-reviewer, nextjs-best-practices, firebas
 
 ---
 
+## Motor Dealer Fit Architecture
+
+- **`motorDealerFitCategories`** is stored on the **boat module** (`modules/{moduleId}`), NOT on the motor module
+  - Rationale: motor dealer fit items are configured in the context of the boat being quoted, not the motor vendor
+- `ModuleDealerFitManager` accepts a `fieldName` prop — pass `"moduleDealerFitCategories"` for standard dealer fit or `"motorDealerFitCategories"` for motor dealer fit
+- Motor dealer fit categories appear in quote step 3 with blue-themed headers (distinct from standard dealer fit)
+- **Prop Comes Standard** state: boolean toggle in quote flow, default ON, auto-set to OFF when user selects a propeller manually
+  - Tracked on the quote so proposals and PDFs reflect whether prop was included or purchased separately
+- Motor module Settings tab now renders full settings: associated vendors list, dealer fit categories (via `ModuleDealerFitManager`), and role assignment (Brand Captain + Module Manager)
+
+---
+
 ## Master Data Browser (Dealer Fit Item Selection)
 
 - Simplified UX: single search bar searches across ALL MPF datasets at once

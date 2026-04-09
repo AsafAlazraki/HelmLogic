@@ -170,6 +170,30 @@
 
 ---
 
+## Motor UX Improvements (April 9)
+
+### Step 3 UX Overhaul
+- Hero card display when a motor is selected — full-width card with image, specs, and price
+- Motor grid hides after selection to reduce visual clutter
+- "Choose Another Motor" button to re-open the grid and change selection
+- Cleaner flow: select → confirm via hero card → proceed
+
+### Prop Comes Standard Toggle
+- Green toggle in motor step, default ON for models where propeller is included
+- Auto-turns OFF when user manually selects a propeller
+- State tracked in quote flow for accurate pricing and proposal display
+
+### Motor Dealer Fit Categories
+- `motorDealerFitCategories` field on boat module (`modules/{moduleId}`) — configurable per-boat-module, not per-motor-module
+- Motor dealer fit items shown in step 3 with blue-themed category headers
+- `ModuleDealerFitManager` made generic with `fieldName` prop (supports both `moduleDealerFitCategories` and `motorDealerFitCategories`)
+
+### Yamaha Motor Fixes
+- Motor card names now use MODEL field correctly (was showing wrong identifier)
+- Yamaha Settings tab renders full settings: associated vendors, dealer fit categories, role assignment (Brand Captain / Module Manager)
+
+---
+
 ## Post-QA Bug Fixes (April 9)
 
 ### TC-09: Proposal View Crash — FIXED

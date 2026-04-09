@@ -100,6 +100,15 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - 1,356 antigravity skills installed
 - Data browser: motor brand vendors filtered out of dealer fit
 
+### Session: April 9, 2026 — Motor UX Overhaul & Dealer Fit
+- Motor step 3 UX redesign: hero card on selection, grid hides, "Choose Another Motor" button to re-select
+- Prop Comes Standard toggle (green, default ON, auto-OFF on propeller selection) — state carried through quote flow
+- Motor dealer fit categories (`motorDealerFitCategories`) stored per-boat-module, not per-motor-module — architectural decision for quote context
+- Motor dealer fit shown in step 3 with blue-themed category headers
+- `ModuleDealerFitManager` made configurable with `fieldName` prop for reuse across standard and motor dealer fit
+- Yamaha motor card names fixed to use MODEL field
+- Yamaha Settings tab now renders full settings (associated vendors, dealer fit categories, role assignment)
+
 ### Session: April 9, 2026 — v1.2.0 QA & Release Prep
 - Full QA pass: 15 test cases, 12 PASS / 2 FAIL / 1 SKIP
 - **FIXED TC-09**: Proposal view crash — `orgQuoteList is not defined` (stale variable refs from refactor)
@@ -133,6 +142,8 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - Next.js `<Image>` blocks external CDN images (Cloudflare anti-hotlinking) — ALWAYS use native `<img>` for external URLs
 - After refactoring variable names, search codebase for ALL old references — stale refs cause ReferenceErrors at runtime
 - Manual QA (cowork agents) more effective than Playwright for deployed site testing when env can't reach the site
+- Motor dealer fit categories belong on the BOAT module, not the motor module — dealer fit is configured in the context of the boat being quoted
+- `ModuleDealerFitManager` should accept a `fieldName` prop for reuse — don't duplicate the component for different category fields
 
 ## How to Proceed (For Future Agents)
 - **Read tasks/SESSION_HANDOVER.md** first for complete technical context
