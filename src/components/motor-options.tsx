@@ -56,6 +56,7 @@ interface Organisation {
 }
 
 const formatConfigType = (type: string) => {
+    if (!type) return 'Engine';
     const label = type.replace(/([A-Z])/g, ' $1').trim();
     if (label === 'Single') return 'Single Engine';
     return label;
@@ -521,7 +522,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             const allPossible = [...new Map([...baseMotors, ...manualMotors].map(m => [m.id, { ...m, vendorName: motorVendor.name }])).values()];
             const visibleMotors = allPossible.filter(m => !overrides.hiddenIds.includes(m.id));
             
-            return { configType: config.type, combinations: visibleMotors.map(m => [m]) };
+            return { configType: config.type || 'Single', combinations: visibleMotors.map(m => [m]) };
         }).filter(c => c.combinations.length > 0);
 
     }, [motorDataSet, motorConfigurations, motorVendor, motorOverrides]);
