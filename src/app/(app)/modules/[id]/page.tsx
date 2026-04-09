@@ -257,12 +257,15 @@ function QuoteInitializationDialog({
                                     {ranges?.map(range => (
                                         <Card key={range.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => setSelectedRange(range)}>
                                             <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden p-6 flex items-center justify-center">
-                                                {range.imageUrl && (
+                                                {range.imageUrl ? (
                                                     <img
                                                         src={range.imageUrl}
                                                         alt={range.name}
                                                         className="absolute inset-0 w-full h-full object-contain p-4 group-hover:scale-105 transition-transform"
+                                                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                                     />
+                                                ) : (
+                                                    <Ship className="h-12 w-12 text-muted-foreground/20" />
                                                 )}
                                             </div>
                                             <div className="p-4 bg-white text-center flex-1 flex items-center justify-center">
@@ -1601,12 +1604,12 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
                             src={range.imageUrl}
                             alt={range.name}
                             className="absolute inset-0 w-full h-full object-contain p-6 group-hover:scale-105 transition-transform duration-500"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }}
                         />
-                    ) : (
-                        <div className="flex items-center justify-center h-full">
-                            <Ship className="h-12 w-12 text-muted-foreground/20" />
-                        </div>
-                    )}
+                    ) : null}
+                    <div className={`flex items-center justify-center h-full ${range.imageUrl ? 'hidden' : ''}`}>
+                        <Ship className="h-12 w-12 text-muted-foreground/20" />
+                    </div>
                 </div>
                 
                 <div className="p-6 flex flex-col items-center justify-center bg-white mt-auto text-center">
@@ -1639,12 +1642,12 @@ function ModelCard({ model, isSelected, onClick }: any) {
                         src={model.coverImageUrl}
                         alt={model.name}
                         className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling?.classList.remove('hidden'); }}
                     />
-                ) : (
-                    <div className="flex items-center justify-center h-full">
-                        <Ship className="h-12 w-12 text-muted-foreground/20" />
-                    </div>
-                )}
+                ) : null}
+                <div className={`flex items-center justify-center h-full ${model.coverImageUrl ? 'hidden' : ''}`}>
+                    <Ship className="h-12 w-12 text-muted-foreground/20" />
+                </div>
             </div>
             <div className="p-6 flex flex-col items-center justify-center bg-white mt-auto gap-1 text-center">
                 <p className="font-black uppercase tracking-tight text-sm transition-colors text-primary">
