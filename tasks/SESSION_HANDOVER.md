@@ -1,6 +1,6 @@
 # HelmLogic — Session Handover Document
 > Give this file to a new Claude session along with the CLAUDE.md file.
-> Updated: 2026-04-04 (after v1.2.0 — Yamaha, MPF, Promotions, Stock Enhancements)
+> Updated: 2026-04-09 (v1.2.0 QA complete — all bugs fixed, ready for Friday main push)
 
 ---
 
@@ -342,10 +342,26 @@ Key collections and access:
 
 ---
 
+## v1.2 Release Status (April 9)
+
+- **QA**: 12/13 testable cases PASS, 1 SKIP (sub-dealer — no credentials)
+- **Post-QA fixes**: Proposal view crash (orgQuoteList undefined), catalog images (Next.js Image → native img)
+- **Build**: Passes cleanly
+- **Pending**: Firestore rules deploy (manual paste), merge to main (awaiting Asaf approval)
+- **v1.3 branch**: `claude/v1.3-dev` — 12 client requirements built, separate from v1.2
+
+### Post-QA Lessons Learned
+- Next.js `<Image>` breaks external CDN images (Cloudflare anti-hotlinking blocks optimization proxy) — always use native `<img>` for external URLs
+- Refactoring org-wide lookup left stale variable references — always search for all old variable names after refactoring
+- Manual QA (cowork agent) proved more effective than Playwright for deployed site testing in this context
+
+---
+
 ## Git Workflow
 
 - **Dev branch**: `claude/app-overview-wKiZ1` — auto-deploys via Firebase App Hosting
 - **Main branch**: `main` — production, merge from dev
+- **v1.3 branch**: `claude/v1.3-dev` — next release (12 client requirements)
 - **Feature branches**: `claude/setup-agent-teams-NJq6l` etc
 - Push: `git push -u origin <branch>` with retry on 403
 - Always create new commits, never amend

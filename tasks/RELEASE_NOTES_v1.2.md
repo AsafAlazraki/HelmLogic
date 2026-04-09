@@ -1,7 +1,8 @@
 # HelmLogic — Release Notes v1.2.0
-> Release Date: 2026-04-04
+> Release Date: 2026-04-10 (Friday)
 > Branch: claude/app-overview-wKiZ1 → main
 > Major release since v1.1.0
+> QA Pass: 12/13 PASS (1 SKIP) — 100% of testable cases passing after fixes
 
 ---
 
@@ -169,9 +170,61 @@
 
 ---
 
+## Post-QA Bug Fixes (April 9)
+
+### TC-09: Proposal View Crash — FIXED
+- **Bug**: Clicking any proposal crashed with `orgQuoteList is not defined`
+- **Root Cause**: Stale variable references (`orgQuoteList`, `quoteList`, `orgQuoteLoading`, `quoteListLoading`) left behind when org-wide quote lookup was refactored to use `orgFallbackQuote` state
+- **Fix**: Removed undefined variable references in `proposal-view.tsx:170-171`
+- **Severity**: Critical — was blocking all proposal views
+
+### TC-03: Classic Range Broken Images — FIXED
+- **Bug**: Classic range model cards showed broken image icons in the catalog
+- **Root Cause**: `ModelCard` component still used Next.js `<Image>` which applies image optimization — this fails for external CDN images from `media.highfieldboats.com` (Cloudflare anti-hotlinking blocks the optimization proxy)
+- **Fix**: Switched all remaining Next.js `<Image>` to native `<img>` tags for model cards and range cards in `page.tsx`
+- **Severity**: Medium — visual-only, other ranges worked
+
+---
+
+## QA Test Results (April 9)
+
+| ID | Test Case | Status |
+|----|-----------|--------|
+| TC-01 | Login & Dashboard | PASS |
+| TC-02 | Highfield Module Tabs | PASS |
+| TC-03 | Catalog Model Images | PASS (after fix) |
+| TC-04 | Stock Management | PASS |
+| TC-05 | Stock Item Creation from Quote | PASS |
+| TC-06 | Console-Seat Pairing | PASS |
+| TC-07 | Pricing Tab | PASS |
+| TC-08 | Settings Tab | PASS |
+| TC-09 | Proposal View | PASS (after fix) |
+| TC-10 | Master Price File Module | PASS |
+| TC-11 | Yamaha Motor Module | PASS |
+| TC-12 | Module Management Admin | PASS |
+| TC-13 | Dealer Fit Options | PASS |
+| TC-14 | Organisation Editor Modules Tab | PASS |
+| TC-15 | Sub-Dealer Experience | SKIP (no sub-dealer credentials) |
+
+---
+
+## Release Checklist
+
+- [x] All QA test cases passing (12/13 testable, 1 skip)
+- [x] Build passes (`npx next build` — no errors)
+- [x] Critical bug fixed (proposal view crash)
+- [x] Image rendering fixed (native img for external CDNs)
+- [ ] Firestore rules deployed (paste from `/firestore.rules` in Firebase Console)
+- [ ] Merge `claude/app-overview-wKiZ1` → `main` (requires Asaf's approval)
+- [ ] Verify production deployment
+- [ ] Smoke test on production (login, dashboard, proposal view, catalog images)
+
+---
+
 ## Files Changed (Key New Components)
 - `src/components/yamaha-motor-workspace.tsx` — Motor catalog + pricing + promotions
 - `src/components/module-promotions.tsx` — Promotions management (742 lines)
 - `src/components/master-price-file-workspace.tsx` — Editable data tables
+- `src/components/proposal-view.tsx` — Org-wide quote lookup + crash fix
 - `src/lib/quote-financials.ts` — Shared financials computation
 - `scripts/seed-mpf-data.ts` — MPF data seeder

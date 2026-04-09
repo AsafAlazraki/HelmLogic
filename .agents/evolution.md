@@ -82,7 +82,7 @@ Complete stock management system, delivered deals, hold requests, sub-dealer exp
 ### Session: April 1, 2026 — v1.1.0 Release
 Pricing overhaul (universal publish, price level selector), quote-to-stock with PDF, sub-dealer quoting, placeholder module types, proposal images.
 
-### Session: April 2-4, 2026 — v1.2.0 (Current)
+### Session: April 2-4, 2026 — v1.2.0 Development
 - Enhanced stock creation (location, status, customer for sold)
 - New statuses (Pending, In Stock - Sold, On Order - Sold)
 - Console-seat auto-pairing in quote builder
@@ -99,6 +99,15 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - Catalog image replacement fix
 - 1,356 antigravity skills installed
 - Data browser: motor brand vendors filtered out of dealer fit
+
+### Session: April 9, 2026 — v1.2.0 QA & Release Prep
+- Full QA pass: 15 test cases, 12 PASS / 2 FAIL / 1 SKIP
+- **FIXED TC-09**: Proposal view crash — `orgQuoteList is not defined` (stale variable refs from refactor)
+- **FIXED TC-03**: Classic range broken images — switched remaining Next.js `<Image>` to native `<img>` for external CDN images
+- v1.3 backlog documented (12 client requirements on separate branch `claude/v1.3-dev`)
+- Playwright e2e tests set up but impractical for deployed site testing from CLI environment
+- Release documentation finalized
+- All tests now passing — ready for Friday main push pending Asaf approval
 
 ## Key Lessons Learned
 - `mainVendorId: null` crashes Firestore `doc()` — always check
@@ -121,6 +130,9 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - Motor Brand vendors must be excluded from dealer fit vendor list
 - MasterPriceFileWorkspace is reusable — Yamaha pricing tab renders it pointed at Yamaha vendor
 - Per-module dealer fit categories (ModuleDealerFitManager) is the single source of truth — org-level category toggling was removed
+- Next.js `<Image>` blocks external CDN images (Cloudflare anti-hotlinking) — ALWAYS use native `<img>` for external URLs
+- After refactoring variable names, search codebase for ALL old references — stale refs cause ReferenceErrors at runtime
+- Manual QA (cowork agents) more effective than Playwright for deployed site testing when env can't reach the site
 
 ## How to Proceed (For Future Agents)
 - **Read tasks/SESSION_HANDOVER.md** first for complete technical context
