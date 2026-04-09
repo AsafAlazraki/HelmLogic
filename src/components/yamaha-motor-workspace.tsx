@@ -44,7 +44,7 @@ interface MotorRow {
 // ---------------------------------------------------------------------------
 
 function getMotorName(motor: MotorRow): string {
-    return motor['Model Name'] || motor['Model'] || motor.name || motor.modelName || motor.id;
+    return motor['MODEL'] || motor['Model Name'] || motor['MODEL CODE'] || motor['Model'] || motor.name || motor.modelName || motor.id;
 }
 
 function getMotorHp(motor: MotorRow): number {
@@ -53,7 +53,7 @@ function getMotorHp(motor: MotorRow): number {
 }
 
 function getMotorPrice(motor: MotorRow): number {
-    const raw = motor.sellPriceExclGst || motor['Store Price'] || motor['Sell Price'] || motor.price || 0;
+    const raw = motor['Store Price'] || motor['Sell Price'] || motor.sellPriceExclGst || motor['NSM Retail'] || motor.price || 0;
     return typeof raw === 'number' ? raw : parseFloat(raw) || 0;
 }
 
