@@ -41,15 +41,16 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
+      allow read: if isSignedIn();
+      allow write: if isOwner(userId) || isAdmin();
 
       match /notifications/{notifId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
       match /quotes/{quoteId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read, write: if isSignedIn();
         match /service_items/{itemId} {
-          allow read, write: if isOwner(userId) || isAdmin();
+          allow read, write: if isSignedIn();
         }
       }
       match /routes/{routeId} {
@@ -73,7 +74,7 @@ service cloud.firestore {
 
     match /organisations/{orgId} {
       allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow write: if isSignedIn();
 
       match /templates/{templateId} {
         allow read, write: if isSignedIn();

@@ -585,19 +585,8 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
                 {activeTab === 'settings' && (
                     <ScrollArea className="h-full">
                         <div className="p-8 space-y-8">
-                            {moduleData && organisation && onUpdateVendors && onUpdateCategories && onToggleSubDealerAccess ? (
+                            {moduleData ? (
                                 <>
-                                    <OrganisationModuleConfig
-                                        organisation={organisation}
-                                        subDealers={subDealers || []}
-                                        module={moduleData}
-                                        allVendors={allVendors || []}
-                                        allDealerFitCategories={allDealerFitCategories || []}
-                                        onBack={() => setActiveTab('catalog')}
-                                        onUpdateVendors={onUpdateVendors}
-                                        onUpdateCategories={onUpdateCategories}
-                                        onToggleSubDealerAccess={onToggleSubDealerAccess}
-                                    />
                                     <ModuleDealerFitManager
                                         moduleId={moduleId}
                                         categories={moduleData?.moduleDealerFitCategories || []}
