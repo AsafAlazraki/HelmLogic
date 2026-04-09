@@ -562,11 +562,15 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
 
                 {/* ---- PRICING MANAGER TAB ---- */}
                 {activeTab === 'pricing' && (
-                    <MasterPriceFileWorkspace
-                        vendorId={vendorId}
-                        organisationId={organisationId}
-                        isAdmin={isAdmin}
-                    />
+                    <div className="h-full overflow-hidden p-6">
+                        <div className="h-full rounded-2xl border-2 border-slate-100 overflow-hidden bg-white shadow-sm">
+                            <MasterPriceFileWorkspace
+                                vendorId={vendorId}
+                                organisationId={organisationId}
+                                isAdmin={isAdmin}
+                            />
+                        </div>
+                    </div>
                 )}
 
                 {/* ---- SETTINGS TAB ---- */}

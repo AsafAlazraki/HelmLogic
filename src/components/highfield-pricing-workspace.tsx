@@ -268,7 +268,7 @@ function PricingTable({
 
     return (
         <div className="flex-1 w-full overflow-hidden flex flex-col bg-white relative pricing-matrix-container border-t">
-            <div className="flex-1 overflow-auto scrollbar-thin">
+            <div className="flex-1 overflow-auto scrollbar-thin" style={{ overflowX: 'auto', overflowY: 'auto' }}>
                 <Table className="border-separate border-spacing-0 w-max table-fixed pricing-matrix-table">
                     <TableHeader className="sticky top-0 z-[100]">
                         <TableRow className="hover:bg-transparent h-[52px]">
