@@ -5,18 +5,25 @@ const TEST_EMAIL = 'billh@nsmarine.com.au';
 const TEST_PASSWORD = 'Bill2026!';
 
 async function login(page: Page) {
-  await page.goto(BASE_URL);
-  // Wait for either dashboard or login page
+  await page.goto(`${BASE_URL}/login`);
   await page.waitForLoadState('networkidle');
 
-  // Check if we need to login
-  const url = page.url();
-  if (url.includes('login') || url.includes('signup')) {
-    await page.fill('input[type="email"]', TEST_EMAIL);
-    await page.fill('input[type="password"]', TEST_PASSWORD);
-    await page.click('button[type="submit"]');
-    await page.waitForURL(/dashboard|modules/, { timeout: 15000 });
-  }
+  // Fill email
+  const emailInput = page.locator('input[placeholder*="email"], input[placeholder*="Email"], input[type="email"]').first();
+  await emailInput.waitFor({ timeout: 10000 });
+  await emailInput.fill(TEST_EMAIL);
+
+  // Fill password
+  const passwordInput = page.locator('input[type="password"]').first();
+  await passwordInput.fill(TEST_PASSWORD);
+
+  // Click login button
+  const loginButton = page.locator('button:has-text("Login"), button:has-text("Sign in"), button[type="submit"]').first();
+  await loginButton.click();
+
+  // Wait for navigation away from login
+  await page.waitForURL(/(?!.*login).*/, { timeout: 15000 });
+  await page.waitForLoadState('networkidle');
 }
 
 test.describe('v1.2 Feature Verification', () => {
