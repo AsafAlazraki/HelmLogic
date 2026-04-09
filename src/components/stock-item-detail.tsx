@@ -76,6 +76,64 @@ function materialBadgeClass(material: string): string {
   return 'bg-slate-100 text-slate-800 border-slate-200';
 }
 
+function MiniProposalView({ quote }: { quote: any }) {
+    if (!quote) return null;
+    return (
+        <div className="space-y-4">
+            <div>
+                <p className="text-[9px] uppercase tracking-widest font-black text-primary mb-1">{quote.vendorName} · {quote.rangeName}</p>
+                <h3 className="text-lg font-black uppercase tracking-tight">{quote.modelName}</h3>
+            </div>
+            {quote.coverImageUrl && (
+                <div className="rounded-xl border-2 overflow-hidden">
+                    <img src={quote.coverImageUrl} alt="" className="w-full h-32 object-contain bg-slate-50 p-2" />
+                </div>
+            )}
+            {quote.variant && (
+                <div className="border-2 rounded-xl p-3 space-y-1">
+                    <p className="text-[9px] uppercase tracking-widest font-black text-slate-400">Variant</p>
+                    <p className="text-xs font-bold">{quote.variant.name || quote.variant.sku}</p>
+                    {quote.variant.imageUrl && <img src={quote.variant.imageUrl} alt="" className="w-full h-20 object-contain bg-slate-50 rounded-lg mt-1" />}
+                    <p className="text-xs font-bold text-primary">${(quote.variant.sellPriceExclGst || 0).toLocaleString()}</p>
+                </div>
+            )}
+            {quote.selectedOptions?.length > 0 && (
+                <div className="border-2 rounded-xl p-3 space-y-1">
+                    <p className="text-[9px] uppercase tracking-widest font-black text-slate-400">Factory Options</p>
+                    {quote.selectedOptions.map((opt: any, i: number) => (
+                        <div key={i} className="flex items-center gap-2 py-1 border-b border-slate-100 last:border-0">
+                            {opt.imageUrl && <img src={opt.imageUrl} alt="" className="w-6 h-6 object-contain rounded" />}
+                            <span className="text-xs flex-1 truncate">{opt.name}</span>
+                            <span className="text-xs font-mono">${(opt.sellPriceExclGst || 0).toLocaleString()}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+            {quote.motor && (
+                <div className="border-2 rounded-xl p-3 space-y-1">
+                    <p className="text-[9px] uppercase tracking-widest font-black text-slate-400">Motor</p>
+                    {quote.motor.imageUrl && <img src={quote.motor.imageUrl} alt="" className="w-full h-16 object-contain" />}
+                    <p className="text-xs font-bold">{quote.motor.name}</p>
+                    <p className="text-xs font-bold text-primary">${(quote.motor.sellPriceExclGst || 0).toLocaleString()}</p>
+                </div>
+            )}
+            {quote.trailer && (
+                <div className="border-2 rounded-xl p-3 space-y-1">
+                    <p className="text-[9px] uppercase tracking-widest font-black text-slate-400">Trailer</p>
+                    <p className="text-xs font-bold">{quote.trailer.name}</p>
+                    <p className="text-xs font-bold text-primary">${(quote.trailer.sellPriceExclGst || 0).toLocaleString()}</p>
+                </div>
+            )}
+            <div className="border-2 rounded-xl p-3 bg-primary/5 border-primary/20">
+                <div className="flex justify-between text-sm font-black">
+                    <span>Total</span>
+                    <span className="text-primary">${(quote.totalPriceExclGst || 0).toLocaleString()}</span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDetailProps) {
   const firestore = useFirestore();
   const storage = useStorage();

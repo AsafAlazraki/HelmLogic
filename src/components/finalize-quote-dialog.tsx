@@ -26,6 +26,8 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CustomerPicker } from '@/components/customer-picker';
 import { cn } from '@/lib/utils';
 import {
     Loader2,
@@ -492,18 +494,52 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                         {mode === 'stock' && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <Separator />
-                                <div className="bg-muted/30 rounded-xl p-6 border-2 border-dashed text-center space-y-3">
-                                    <Box className="h-10 w-10 text-primary/40 mx-auto" />
-                                    <div>
-                                        <p className="text-[11px] font-black uppercase tracking-tight">Organisation Stock</p>
-                                        <p className="text-[9px] text-muted-foreground mt-1">
-                                            This build configuration will be saved directly to your organisation's inventory. No customer will be associated with this unit.
-                                        </p>
-                                    </div>
-                                    <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest">
-                                        {organisation?.name || 'Your Organisation'}
-                                    </Badge>
+                                <div className="p-4 bg-primary/5 rounded-xl border-2 border-primary/20">
+                                    <p className="text-xs font-bold">Saving as stock item to {organisation?.name || 'your organisation'}</p>
                                 </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Stock Number</Label>
+                                        <Input value={stockNumber} onChange={(e) => setStockNumber(e.target.value)} className="rounded-xl border-2" placeholder="Auto-generated if empty" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Status</Label>
+                                        <Select value={stockStatus} onValueChange={setStockStatus}>
+                                            <SelectTrigger className="rounded-xl border-2"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Pending">Pending</SelectItem>
+                                                <SelectItem value="On Order">On Order</SelectItem>
+                                                <SelectItem value="In Stock">In Stock</SelectItem>
+                                                <SelectItem value="In Stock - Sold">In Stock - Sold</SelectItem>
+                                                <SelectItem value="On Order - Sold">On Order - Sold</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Location</Label>
+                                    <Select value={stockLocation} onValueChange={setStockLocation}>
+                                        <SelectTrigger className="rounded-xl border-2"><SelectValue placeholder="Select location..." /></SelectTrigger>
+                                        <SelectContent>
+                                            {(locations || []).map((loc: string) => (
+                                                <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {(stockStatus === 'In Stock - Sold' || stockStatus === 'On Order - Sold') && (
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Customer *</Label>
+                                        <CustomerPicker
+                                            organisationId={organisationId || ''}
+                                            selectedCustomerId={stockCustomerId || null}
+                                            onSelect={(c) => { setStockCustomerId(c.id); setStockCustomerName(c.name); }}
+                                        />
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
