@@ -7,23 +7,31 @@ const TEST_PASSWORD = 'Bill2026!';
 async function login(page: Page) {
   await page.goto(`${BASE_URL}/login`);
   await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(2000); // Let Firebase Auth SDK initialize
 
   // Fill email
-  const emailInput = page.locator('input[placeholder*="email"], input[placeholder*="Email"], input[type="email"]').first();
+  const emailInput = page.locator('input[placeholder="name@example.com"]').first();
   await emailInput.waitFor({ timeout: 10000 });
+  await emailInput.click();
   await emailInput.fill(TEST_EMAIL);
 
   // Fill password
   const passwordInput = page.locator('input[type="password"]').first();
+  await passwordInput.click();
   await passwordInput.fill(TEST_PASSWORD);
 
   // Click login button
-  const loginButton = page.locator('button:has-text("Login"), button:has-text("Sign in"), button[type="submit"]').first();
+  const loginButton = page.locator('button:has-text("Login")').first();
+  await loginButton.waitFor({ timeout: 5000 });
   await loginButton.click();
 
-  // Wait for navigation away from login
-  await page.waitForURL(/(?!.*login).*/, { timeout: 15000 });
+  // Wait for login to complete — URL should no longer contain /login
+  await page.waitForFunction(
+    () => !window.location.pathname.includes('/login'),
+    { timeout: 20000 }
+  );
   await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(2000); // Let dashboard fully render
 }
 
 test.describe('v1.2 Feature Verification', () => {
