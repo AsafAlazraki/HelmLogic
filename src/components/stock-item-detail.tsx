@@ -220,7 +220,7 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
   return (
     <>
       <Sheet open={item !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
-        <SheetContent side="right" className="w-[480px] sm:max-w-lg overflow-y-auto">
+        <SheetContent side="right" className={`overflow-y-auto ${item?.isFromQuote ? 'w-[900px] sm:max-w-4xl' : 'w-[480px] sm:max-w-lg'}`}>
           {item && (
             <>
               <SheetHeader className="pb-4">

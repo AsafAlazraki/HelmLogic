@@ -137,7 +137,7 @@ export function StockList({
 }) {
     const firestore = useFirestore();
     const [sortKey, setSortKey] = useState<SortKey>('dateIntoStock');
-    const [sortDir, setSortDir] = useState<SortDir>('asc');
+    const [sortDir, setSortDir] = useState<SortDir>('desc');
     const [detailItem, setDetailItem] = useState<InventoryItem | null>(null);
     const [formOpen, setFormOpen] = useState(false);
     const [editItem, setEditItem] = useState<InventoryItem | null>(null);
