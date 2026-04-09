@@ -257,9 +257,7 @@ export function MasterDataBrowserDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={initialCategory || 'Other'}>{initialCategory || 'Other'}</SelectItem>
-                  <SelectItem value="Propeller">Propeller</SelectItem>
-                  <SelectItem value="Rigging">Rigging</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
+                  {initialCategory !== 'Other' && <SelectItem value="Other">Other</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
