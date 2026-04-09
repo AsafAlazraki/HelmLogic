@@ -37,14 +37,16 @@ interface DealerFitSelection {
   }[];
 }
 
-export function DealerFitOptions({ 
-    module, 
-    organisationId, 
-    isAdmin 
-}: { 
-    module: any; 
-    organisationId?: string; 
-    isAdmin?: boolean 
+export function DealerFitOptions({
+    module,
+    organisationId,
+    isAdmin,
+    moduleOnly = false
+}: {
+    module: any;
+    organisationId?: string;
+    isAdmin?: boolean;
+    moduleOnly?: boolean;
 }) {
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -68,6 +70,11 @@ export function DealerFitOptions({
   const [isSeeding, setIsSeeding] = useState<string | null>(null);
 
   const assignedCategories = useMemo(() => {
+    // moduleOnly mode: only show this module's own categories in defined order
+    if (moduleOnly) {
+      const moduleCats: string[] = module?.moduleDealerFitCategories || [];
+      return moduleCats.map(name => ({ id: `module-${name}`, name } as DealerFitCategory));
+    }
     const cats: DealerFitCategory[] = [];
     // Global categories (from dealerFitCategories collection)
     if (allCategories) {
@@ -92,7 +99,7 @@ export function DealerFitOptions({
       }
     });
     return cats;
-  }, [allCategories, organisation, isAdmin, module]);
+  }, [allCategories, organisation, isAdmin, module, moduleOnly]);
 
   const activeCategory = useMemo(() => {
     return assignedCategories.find(c => c.id === activeCategoryId);

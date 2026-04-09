@@ -269,6 +269,7 @@ function MotorDetailSheet({
                             module={moduleData}
                             organisationId={organisationId}
                             isAdmin={isAdmin}
+                            moduleOnly
                         />
                     </div>
                 )}

@@ -391,15 +391,22 @@ export function HighfieldQuoteFlow({
 
     const groupedMotorDealerFit = useMemo(() => {
         if (!dealerFitSelections || motorModuleCategories.length === 0) return [];
-        const motorCats = new Set(motorModuleCategories.map(c => c.toLowerCase()));
-        const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
+        const motorCatsLower = motorModuleCategories.map(c => c.toLowerCase());
+        const groups: Record<string, any[]> = {};
+        dealerFitSelections.forEach((sel: any) => {
             const cat = sel.category || '';
-            if (!motorCats.has(cat.toLowerCase())) return acc;
-            if (!acc[cat]) acc[cat] = [];
-            acc[cat].push(sel);
-            return acc;
-        }, {});
-        return Object.entries(groups) as [string, any][];
+            if (!motorCatsLower.includes(cat.toLowerCase())) return;
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(sel);
+        });
+        // Return in the order defined in motorModuleCategories
+        return motorModuleCategories
+            .filter(cat => groups[cat] || Object.keys(groups).some(k => k.toLowerCase() === cat.toLowerCase()))
+            .map(cat => {
+                const key = Object.keys(groups).find(k => k.toLowerCase() === cat.toLowerCase()) || cat;
+                return [key, groups[key] || []] as [string, any[]];
+            })
+            .filter(([, items]) => items.length > 0);
     }, [dealerFitSelections, motorModuleCategories]);
 
     const totalPrice = useMemo(() => {
