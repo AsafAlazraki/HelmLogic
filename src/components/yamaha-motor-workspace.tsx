@@ -16,6 +16,7 @@ import { MasterPriceFileWorkspace } from '@/components/master-price-file-workspa
 import { OrganisationModuleConfig } from '@/components/organisation-module-config';
 import { ModuleDealerFitManager } from '@/components/module-dealer-fit-manager';
 import { ModuleRoleAssignment } from '@/components/module-role-assignment';
+import { DealerFitOptions } from '@/components/dealer-fit-options';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -139,10 +140,16 @@ function MotorDetailSheet({
     motor,
     open,
     onOpenChange,
+    moduleData,
+    organisationId,
+    isAdmin,
 }: {
     motor: MotorRow | null;
     open: boolean;
     onOpenChange: (open: boolean) => void;
+    moduleData?: any;
+    organisationId?: string;
+    isAdmin?: boolean;
 }) {
     if (!motor) return null;
 
@@ -252,6 +259,18 @@ function MotorDetailSheet({
                     </div>
                 ) : (
                     <p className="text-xs text-slate-400 italic">No accessories linked to this motor.</p>
+                )}
+
+                {/* Dealer Fit Options — same Master Data Browser as Highfield */}
+                {moduleData && organisationId && (
+                    <div className="mt-8 pt-6 border-t">
+                        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Dealer Fit Options</h4>
+                        <DealerFitOptions
+                            module={moduleData}
+                            organisationId={organisationId}
+                            isAdmin={isAdmin}
+                        />
+                    </div>
                 )}
             </SheetContent>
         </Sheet>
@@ -606,6 +625,9 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
                 motor={selectedMotor}
                 open={detailOpen}
                 onOpenChange={setDetailOpen}
+                moduleData={moduleData}
+                organisationId={organisationId}
+                isAdmin={isAdmin}
             />
         </div>
     );
