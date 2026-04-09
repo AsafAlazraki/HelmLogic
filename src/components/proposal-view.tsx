@@ -5,7 +5,7 @@ import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useUser } from '@/firebase/auth/use-user';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { doc, collection, collectionGroup, query, where, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, collectionGroup, query, where, getDocs, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -127,28 +127,48 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     [firestore, user?.uid, quoteId]);
     const { data: ownQuote, loading: ownQuoteLoading } = useDoc<any>(ownQuoteRef);
 
-    // Org-wide fallback: fires only when own-quote lookup completed with no result
-    const orgQuoteQuery = useMemoFirebase(() => {
-        if (ownQuote || ownQuoteLoading || !quoteId || !user) return null;
-        const orgId = userProfile?.organisationId;
-        if (!orgId) return null;
-        return query(
-            collectionGroup(firestore, 'quotes'),
-            where('organisationId', '==', orgId),
-            where('id', '==', quoteId)
-        );
-    }, [firestore, quoteId, user, ownQuote, ownQuoteLoading, userProfile?.organisationId]);
-    const { data: orgQuoteList, loading: orgQuoteLoading } = useCollection<any>(orgQuoteQuery, { silent: true });
+    // Org-wide fallback: when own-quote lookup fails, search all org members' quotes
+    const [orgFallbackQuote, setOrgFallbackQuote] = useState<any>(null);
+    const [orgFallbackLoading, setOrgFallbackLoading] = useState(false);
 
-    // quoteNumber path (for /proposals/[quoteNumber] — public share link)
-    const quoteNumberQuery = useMemoFirebase(() => {
-        if (!user || !userQuotesRef || quoteId || !quoteNumber) return null;
-        return query(userQuotesRef, where('quoteNumber', '==', quoteNumber));
-    }, [userQuotesRef, quoteId, quoteNumber, user?.uid]);
-    const { data: quoteList, loading: quoteListLoading } = useCollection<any>(quoteNumberQuery);
+    useEffect(() => {
+        if (ownQuote || ownQuoteLoading || !quoteId || !user || !userProfile?.organisationId) return;
 
-    const quote = ownQuote || orgQuoteList?.[0] || quoteList?.[0];
-    const isLoadingQuote = !quote && (ownQuoteLoading || orgQuoteLoading || quoteListLoading);
+        const searchOrgQuotes = async () => {
+            setOrgFallbackLoading(true);
+            try {
+                // Find all users in the same org
+                const usersSnap = await getDocs(query(
+                    collection(firestore, 'users'),
+                    where('organisationId', '==', userProfile.organisationId)
+                ));
+
+                // Try to find the quote under each user
+                for (const userDoc of usersSnap.docs) {
+                    if (userDoc.id === user.uid) continue; // Already checked own quotes
+                    try {
+                        const quoteRef = doc(firestore, `users/${userDoc.id}/quotes`, quoteId);
+                        const quoteSnap = await getDoc(quoteRef);
+                        if (quoteSnap.exists()) {
+                            setOrgFallbackQuote({ id: quoteSnap.id, ...quoteSnap.data() });
+                            break;
+                        }
+                    } catch {
+                        // Permission denied for this user's quotes — skip
+                    }
+                }
+            } catch (error) {
+                console.error('Org quote search failed:', error);
+            } finally {
+                setOrgFallbackLoading(false);
+            }
+        };
+
+        searchOrgQuotes();
+    }, [ownQuote, ownQuoteLoading, quoteId, user, userProfile?.organisationId, firestore]);
+
+    const quote = ownQuote || orgFallbackQuote || orgQuoteList?.[0] || quoteList?.[0];
+    const isLoadingQuote = !quote && (ownQuoteLoading || orgFallbackLoading || orgQuoteLoading || quoteListLoading);
 
     const orgRef = useMemoFirebase(() => quote?.organisationId ? doc(firestore, 'organisations', quote.organisationId) : null, [firestore, quote?.organisationId]);
     const { data: organisation } = useDoc<any>(orgRef);
