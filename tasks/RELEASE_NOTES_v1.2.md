@@ -202,19 +202,6 @@
 
 ---
 
-## Release Checklist
-
-- [x] All QA test cases passing — full surface test (30+ cases, ALL PASS)
-- [x] Build passes (`npx next build` — zero errors)
-- [x] Static analysis clean — icon imports verified, no undefined variable references
-- [x] Image rendering verified (native img for external CDNs + onError fallback)
-- [x] Motor UX verified: hero card, Prop Comes Standard toggle, dealer fit in motor detail panel
-- [x] Firestore rules deployed
-- [x] Merged `claude/app-overview-wKiZ1` → `main`
-- [ ] Verify production deployment
-- [ ] Smoke test on production (login, dashboard, proposal view, catalog images, quote builder)
-
----
 
 ## Files Changed (Key New Components)
 - `src/components/yamaha-motor-workspace.tsx` — Motor catalog + pricing + promotions + settings
