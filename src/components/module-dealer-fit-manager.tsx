@@ -13,9 +13,12 @@ import { useToast } from '@/hooks/use-toast';
 interface ModuleDealerFitManagerProps {
     moduleId: string;
     categories: string[];
+    fieldName?: string;
+    title?: string;
+    description?: string;
 }
 
-export function ModuleDealerFitManager({ moduleId, categories }: ModuleDealerFitManagerProps) {
+export function ModuleDealerFitManager({ moduleId, categories, fieldName = 'moduleDealerFitCategories', title = 'Dealer Fit Categories', description = 'Define categories for dealer fit options' }: ModuleDealerFitManagerProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [newCategory, setNewCategory] = useState('');
@@ -40,7 +43,7 @@ export function ModuleDealerFitManager({ moduleId, categories }: ModuleDealerFit
         }
 
         try {
-            await updateDoc(moduleRef, { moduleDealerFitCategories: [...categories, trimmed] });
+            await updateDoc(moduleRef, { [fieldName]: [...categories, trimmed] });
             setNewCategory('');
             toast({ title: 'Category added' });
         } catch (error) {
@@ -52,7 +55,7 @@ export function ModuleDealerFitManager({ moduleId, categories }: ModuleDealerFit
     const handleRemoveCategory = async (categoryToRemove: string) => {
         try {
             const updated = categories.filter((c) => c !== categoryToRemove);
-            await updateDoc(moduleRef, { moduleDealerFitCategories: updated.length > 0 ? updated : [] });
+            await updateDoc(moduleRef, { [fieldName]: updated.length > 0 ? updated : [] });
             toast({ title: 'Category removed' });
         } catch (error) {
             console.error(error);
@@ -78,7 +81,7 @@ export function ModuleDealerFitManager({ moduleId, categories }: ModuleDealerFit
         try {
             const updated = [...categories];
             updated[editingIndex] = trimmed;
-            await updateDoc(moduleRef, { moduleDealerFitCategories: updated });
+            await updateDoc(moduleRef, { [fieldName]: updated });
             setEditingIndex(null);
             toast({ title: 'Category renamed' });
         } catch (error) {
@@ -95,9 +98,9 @@ export function ModuleDealerFitManager({ moduleId, categories }: ModuleDealerFit
     return (
         <Card className="rounded-2xl border-2">
             <CardHeader>
-                <CardTitle className="text-xs font-bold">Dealer Fit Categories</CardTitle>
+                <CardTitle className="text-xs font-bold">{title}</CardTitle>
                 <CardDescription className="text-[9px] uppercase tracking-widest font-black text-slate-400">
-                    Define categories for dealer fit options
+                    {description}
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">

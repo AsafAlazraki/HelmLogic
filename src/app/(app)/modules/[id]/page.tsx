@@ -1436,6 +1436,13 @@ export default function ModuleDetailsPage() {
                                     moduleId={moduleData.id}
                                     categories={moduleData?.moduleDealerFitCategories || []}
                                 />
+                                <ModuleDealerFitManager
+                                    moduleId={moduleData.id}
+                                    categories={moduleData?.motorDealerFitCategories || []}
+                                    fieldName="motorDealerFitCategories"
+                                    title="Motor Dealer Fit Categories"
+                                    description="Define dealer fit categories for motors (e.g. Rigging, Propeller, General)"
+                                />
                                 <ModuleRoleAssignment
                                     moduleId={moduleData.id}
                                     organisationId={currentMemberOrg.id}
