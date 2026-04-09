@@ -126,6 +126,8 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - CL380 family data fix applied via `scripts/update-cl380-specs.py`
 - Comprehensive v1.2 documentation audit across all four doc files
 - Release date confirmed: 2026-04-10
+- **FIXED**: Missing `Layers` Lucide import in `dealer-fit-options.tsx` — crashed all dealer fit saves with ReferenceError
+- **FIXED**: Duplicate category dropdown text ("RiggingRigging") — hardcoded SelectItems overlapped with `initialCategory` prop
 
 ## Key Lessons Learned
 - `mainVendorId: null` crashes Firestore `doc()` — always check

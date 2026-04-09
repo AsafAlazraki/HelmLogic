@@ -241,6 +241,18 @@
 - **Fix**: Switched all remaining Next.js `<Image>` to native `<img>` tags for model cards and range cards in `page.tsx`
 - **Severity**: Medium — visual-only, other ranges worked
 
+### Dealer Fit Save Crash — FIXED
+- **Bug**: Saving any dealer fit selection from the Master Data Browser crashed with `Layers is not defined`
+- **Root Cause**: `Layers` icon from Lucide was used in `dealer-fit-options.tsx` JSX but never imported
+- **Fix**: Added `Layers` to the lucide-react import
+- **Severity**: Critical — blocked all dealer fit selection creation
+
+### Category Dropdown Duplicate Text — FIXED
+- **Bug**: Master Data Browser category dropdown showed "RiggingRigging" when opened from a Rigging category
+- **Root Cause**: Hardcoded "Rigging", "Propeller", "Other" SelectItems duplicated the `initialCategory` prop
+- **Fix**: Removed hardcoded SelectItems, only show `initialCategory` and "Other" fallback
+- **Severity**: Minor — cosmetic
+
 ---
 
 ## QA Test Results (April 9)
