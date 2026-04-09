@@ -68,11 +68,31 @@ export function DealerFitOptions({
   const [isSeeding, setIsSeeding] = useState<string | null>(null);
 
   const assignedCategories = useMemo(() => {
-    if (!allCategories) return [];
-    if (isAdmin) return allCategories;
-    if (!organisation?.dealerFitCategories) return [];
-    return allCategories.filter(cat => organisation.dealerFitCategories?.includes(cat.id));
-  }, [allCategories, organisation, isAdmin]);
+    const cats: DealerFitCategory[] = [];
+    // Global categories (from dealerFitCategories collection)
+    if (allCategories) {
+      if (isAdmin) {
+        cats.push(...allCategories);
+      } else if (organisation?.dealerFitCategories) {
+        cats.push(...allCategories.filter(cat => organisation.dealerFitCategories?.includes(cat.id)));
+      }
+    }
+    // Module-level boat dealer fit categories
+    const moduleCats: string[] = module?.moduleDealerFitCategories || [];
+    moduleCats.forEach(name => {
+      if (!cats.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+        cats.push({ id: `module-${name}`, name } as DealerFitCategory);
+      }
+    });
+    // Module-level motor dealer fit categories
+    const motorCats: string[] = module?.motorDealerFitCategories || [];
+    motorCats.forEach(name => {
+      if (!cats.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+        cats.push({ id: `motor-${name}`, name } as DealerFitCategory);
+      }
+    });
+    return cats;
+  }, [allCategories, organisation, isAdmin, module]);
 
   const activeCategory = useMemo(() => {
     return assignedCategories.find(c => c.id === activeCategoryId);
@@ -84,15 +104,30 @@ export function DealerFitOptions({
   }, [module]);
 
   const selectionsByCategory = useMemo(() => {
-    if (!selections) return new Map();
-    return selections.reduce((acc, selection) => {
-      if (!acc.has(selection.categoryId)) {
-        acc.set(selection.categoryId, []);
+    if (!selections) return new Map<string, DealerFitSelection[]>();
+    const byId = new Map<string, DealerFitSelection[]>();
+    const byName = new Map<string, DealerFitSelection[]>();
+    selections.forEach(selection => {
+      // Group by categoryId (for global categories)
+      if (!byId.has(selection.categoryId)) byId.set(selection.categoryId, []);
+      byId.get(selection.categoryId)!.push(selection);
+      // Group by category name (for module-level synthetic categories)
+      const catName = (selection.category || '').toLowerCase();
+      if (catName) {
+        if (!byName.has(catName)) byName.set(catName, []);
+        byName.get(catName)!.push(selection);
       }
-      acc.get(selection.categoryId)!.push(selection);
-      return acc;
-    }, new Map<string, DealerFitSelection[]>());
-  }, [selections]);
+    });
+    // Merge: for synthetic module/motor IDs, look up by name
+    const merged = new Map(byId);
+    assignedCategories.forEach(cat => {
+      if ((cat.id.startsWith('module-') || cat.id.startsWith('motor-')) && !merged.has(cat.id)) {
+        const nameMatches = byName.get(cat.name.toLowerCase()) || [];
+        if (nameMatches.length > 0) merged.set(cat.id, nameMatches);
+      }
+    });
+    return merged;
+  }, [selections, assignedCategories]);
 
   const handleOpenBrowser = (categoryId: string) => {
     setActiveCategoryId(categoryId);
