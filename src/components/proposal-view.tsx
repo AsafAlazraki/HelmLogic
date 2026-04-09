@@ -167,8 +167,8 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         searchOrgQuotes();
     }, [ownQuote, ownQuoteLoading, quoteId, user, userProfile?.organisationId, firestore]);
 
-    const quote = ownQuote || orgFallbackQuote || orgQuoteList?.[0] || quoteList?.[0];
-    const isLoadingQuote = !quote && (ownQuoteLoading || orgFallbackLoading || orgQuoteLoading || quoteListLoading);
+    const quote = ownQuote || orgFallbackQuote;
+    const isLoadingQuote = !quote && (ownQuoteLoading || orgFallbackLoading);
 
     const orgRef = useMemoFirebase(() => quote?.organisationId ? doc(firestore, 'organisations', quote.organisationId) : null, [firestore, quote?.organisationId]);
     const { data: organisation } = useDoc<any>(orgRef);

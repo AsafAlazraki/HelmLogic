@@ -258,12 +258,10 @@ function QuoteInitializationDialog({
                                         <Card key={range.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => setSelectedRange(range)}>
                                             <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden p-6 flex items-center justify-center">
                                                 {range.imageUrl && (
-                                                    <Image 
-                                                        src={range.imageUrl} 
-                                                        alt={range.name} 
-                                                        fill 
-                                                        className="object-contain p-4 group-hover:scale-105 transition-transform" 
-                                                        
+                                                    <img
+                                                        src={range.imageUrl}
+                                                        alt={range.name}
+                                                        className="absolute inset-0 w-full h-full object-contain p-4 group-hover:scale-105 transition-transform"
                                                     />
                                                 )}
                                             </div>
@@ -1599,12 +1597,10 @@ function SortableRangeCard({ range, isSelected, onClick, onEdit, canEdit }: any)
 
                 <div className="aspect-[16/10] bg-muted/30 relative border-b overflow-hidden p-6 text-center">
                     {range.imageUrl ? (
-                        <Image 
-                            src={range.imageUrl} 
-                            alt={range.name} 
-                            fill 
-                            className="object-contain p-6 group-hover:scale-105 transition-transform duration-500" 
-                            
+                        <img
+                            src={range.imageUrl}
+                            alt={range.name}
+                            className="absolute inset-0 w-full h-full object-contain p-6 group-hover:scale-105 transition-transform duration-500"
                         />
                     ) : (
                         <div className="flex items-center justify-center h-full">
@@ -1639,12 +1635,10 @@ function ModelCard({ model, isSelected, onClick }: any) {
         >
             <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
                 {model.coverImageUrl ? (
-                    <Image 
-                        src={model.coverImageUrl} 
-                        alt={model.name} 
-                        fill 
-                        className="object-cover group-hover:scale-105 transition-transform duration-500" 
-                        
+                    <img
+                        src={model.coverImageUrl}
+                        alt={model.name}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                 ) : (
                     <div className="flex items-center justify-center h-full">
