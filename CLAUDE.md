@@ -74,6 +74,9 @@ data-warehouse/{vendorId}/
     models/{modelId}/
       variants/{variantId}     ← SKU-level (material + color + price)
 modules/{moduleId}             ← Org access point to a vendor
+  moduleDealerFitCategories[]  ← Boat dealer fit category names
+  motorDealerFitCategories[]   ← Motor dealer fit category names (on BOAT module, not motor module)
+  modules/{moduleId}/promotions/{promoId}  ← Per-module promotions
 organisations/{orgId}/
   modelOverrides/{modelId}     ← Org-specific pricing overrides
   dealerFitSelections/
@@ -115,3 +118,10 @@ users/{userId}/quotes/{quoteId}
 - **`orderBy('field')` in Firestore silently excludes docs without that field** — seeded docs often don't have `order`; use unordered collection queries
 - **Vendor ID matters**: app reads from `data-warehouse/LafOLpLb6QIFE856TiD4`, not `data-warehouse/highfield`
 - **Module page passes vendorId + rangeId to model editors** — always pass both props to `HighfieldModelEditor` (and others)
+- **Motor dealer fit categories belong on the boat module** — `motorDealerFitCategories` field on `modules/{moduleId}`, not on the motor module. Dealer fit is configured in the context of the boat being quoted
+- **DealerFitOptions merges THREE category sources** — global (`dealerFitCategories` collection) + module-level (`moduleDealerFitCategories`) + motor-level (`motorDealerFitCategories`)
+- **`propComesStandard` is opt-in, default OFF** — do NOT auto-enable. User explicitly toggles when the motor prop is included
+- **Next.js `<Image>` breaks external CDN images** — Cloudflare anti-hotlinking blocks the optimization proxy. Always use native `<img>` for external URLs
+- **After refactoring, search for ALL old variable references** — stale refs cause ReferenceErrors at runtime (e.g., `orgQuoteList` after rename)
+- **`ProposalPDFDocument` needs `financials` prop** — use `buildQuoteFinancials()` from `src/lib/quote-financials.ts`
+- **Non-catalog modules have `mainVendorId: null`** — always check before creating Firestore doc refs

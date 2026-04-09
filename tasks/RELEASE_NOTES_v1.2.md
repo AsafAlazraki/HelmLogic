@@ -170,6 +170,32 @@
 
 ---
 
+## Org-Wide Proposal View
+
+- Proposal view searches ALL org members' quotes, not just the logged-in user's
+- `orgFallbackQuote` state finds quotes from any user in the organisation by quote number
+- Enables managers to view any proposal created by team members
+- Component: `src/components/proposal-view.tsx`
+
+---
+
+## Image Fallback System
+
+- All model/motor/range cards use `onError` fallback — shows Lucide `Ship` icon placeholder instead of broken image icons
+- Applies to: model cards, range cards, motor browser cards, proposal images
+- Prevents visual clutter when external CDN images fail to load (Cloudflare anti-hotlinking, missing images)
+- Uses native `<img>` tags (not Next.js `<Image>`) for all external URLs
+
+---
+
+## CL380 Family Firestore Data Fix
+
+- `scripts/update-cl380-specs.py` corrected specifications for CL380 family boats
+- Fixed motor HP ranges, cover images, and spec fields in Firestore
+- Ensures Classic range CL380 models display correctly in catalog
+
+---
+
 ## Motor UX Improvements (April 9)
 
 ### Step 3 UX Overhaul
@@ -188,6 +214,12 @@
 - `motorDealerFitCategories` field on boat module (`modules/{moduleId}`) — configurable per-boat-module, not per-motor-module
 - Motor dealer fit items shown in step 3 with blue-themed category headers
 - `ModuleDealerFitManager` made generic with `fieldName` prop (supports both `moduleDealerFitCategories` and `motorDealerFitCategories`)
+- `DealerFitOptions` component now merges categories from THREE sources:
+  1. Global categories (from `dealerFitCategories` collection)
+  2. Module-level categories (`module.moduleDealerFitCategories[]`)
+  3. Motor dealer fit categories (`module.motorDealerFitCategories[]`)
+- Synthetic category IDs prefixed `module-` or `motor-` for module-level categories
+- Master Data Browser accessible from DealerFitOptions for creating selections under any merged category
 
 ### Yamaha Motor Fixes
 - Motor card names now use MODEL field correctly (was showing wrong identifier)

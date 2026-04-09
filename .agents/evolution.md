@@ -118,6 +118,15 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - Release documentation finalized
 - All tests now passing — ready for Friday main push pending Asaf approval
 
+### Session: April 9, 2026 — Dealer Fit Gap Fix & Documentation Audit
+- `DealerFitOptions` component updated to merge categories from three sources: global collection + module-level + motor-level
+- Synthetic category IDs (`module-*`, `motor-*`) for module-level categories, matched by name for selections
+- Confirmed `propComesStandard` is opt-in (default OFF), auto-OFF on propeller selection — not auto-enabled
+- Image onError fallback pattern: Ship placeholder icon from Lucide replaces broken image icons across cards
+- CL380 family data fix applied via `scripts/update-cl380-specs.py`
+- Comprehensive v1.2 documentation audit across all four doc files
+- Release date confirmed: 2026-04-10
+
 ## Key Lessons Learned
 - `mainVendorId: null` crashes Firestore `doc()` — always check
 - Sell AUD columns need "(EXCL. GST)" and "(INCL. GST)" labels
@@ -144,6 +153,10 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - Manual QA (cowork agents) more effective than Playwright for deployed site testing when env can't reach the site
 - Motor dealer fit categories belong on the BOAT module, not the motor module — dealer fit is configured in the context of the boat being quoted
 - `ModuleDealerFitManager` should accept a `fieldName` prop for reuse — don't duplicate the component for different category fields
+- `DealerFitOptions` must merge categories from THREE sources (global + module + motor) — missing any source causes categories to not appear for selection creation
+- `propComesStandard` is opt-in (default OFF), NOT auto-enabled — user explicitly toggles when the motor's prop is included
+- Image onError fallback: use Lucide `Ship` icon as placeholder for broken external images across all card components
+- After refactoring, always search for ALL old variable references — stale refs (like `orgQuoteList`) cause ReferenceErrors at runtime
 
 ## How to Proceed (For Future Agents)
 - **Read tasks/SESSION_HANDOVER.md** first for complete technical context

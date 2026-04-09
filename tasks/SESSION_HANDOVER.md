@@ -34,8 +34,10 @@ data-warehouse/{vendorId}/
 
 modules/{moduleId}              <- Org's access point to a vendor
   Fields: stockLocations[], stockVisibleToSubDealers, subDealerVisibleColumns[],
-          moduleDealerFitCategories[], brandCaptainUserId, brandCaptainUserName,
-          moduleManagerUserId, moduleManagerUserName
+          moduleDealerFitCategories[], motorDealerFitCategories[],
+          brandCaptainUserId, brandCaptainUserName,
+          moduleManagerUserId, moduleManagerUserName,
+          moduleType, mainVendorId, associatedVendorIds[], coverImageUrl
 
 organisations/{orgId}/
   modelOverrides/{modelId}      <- Org-specific pricing overrides
@@ -207,9 +209,30 @@ Key skills: production-code-audit, code-reviewer, nextjs-best-practices, firebas
   - Rationale: motor dealer fit items are configured in the context of the boat being quoted, not the motor vendor
 - `ModuleDealerFitManager` accepts a `fieldName` prop — pass `"moduleDealerFitCategories"` for standard dealer fit or `"motorDealerFitCategories"` for motor dealer fit
 - Motor dealer fit categories appear in quote step 3 with blue-themed headers (distinct from standard dealer fit)
-- **Prop Comes Standard** state: optional boolean toggle in quote flow, default OFF, user opts in when applicable. Auto-set to OFF when user selects a different propeller
-  - Tracked on the quote so proposals and PDFs reflect whether prop was included or purchased separately
-- Motor module Settings tab now renders full settings: associated vendors list, dealer fit categories (via `ModuleDealerFitManager`), and role assignment (Brand Captain + Module Manager)
+
+### DealerFitOptions Category Merging
+
+`DealerFitOptions` component (`src/components/dealer-fit-options.tsx`) merges categories from THREE sources:
+1. **Global categories** — from `dealerFitCategories` Firestore collection (admin-managed via `/modules/dealer-fit-options` page)
+2. **Module-level categories** — from `module.moduleDealerFitCategories[]` (boat dealer fit)
+3. **Motor dealer fit categories** — from `module.motorDealerFitCategories[]` (motor dealer fit)
+
+Synthetic category IDs are prefixed `module-` or `motor-` for module-level categories. Selections are matched by category name (case-insensitive) for these synthetic categories.
+
+### Prop Comes Standard
+
+- Optional boolean toggle (`propComesStandard`) in quote flow — default OFF
+- User opts in when the motor's prop is included at no extra cost
+- Auto-set to OFF when user selects a different propeller from dealer fit or accessories
+- Tracked on the quote so proposals and PDFs reflect whether prop was included or purchased separately
+- NOT auto-enabled — this is explicitly opt-in behavior
+
+### Motor Module Settings Tab
+
+- Associated vendors list (editable)
+- Dealer fit categories via `ModuleDealerFitManager` with `fieldName="moduleDealerFitCategories"`
+- Motor dealer fit categories via `ModuleDealerFitManager` with `fieldName="motorDealerFitCategories"`
+- Role assignment: Brand Captain + Module Manager
 
 ---
 
@@ -342,6 +365,11 @@ Key collections and access:
 | Sub-dealer stock visibility | Use `filterOrgId="all-with-parent"` to show parent + own stock. |
 | Stock table `readOnly` | Controlled by `!isAdmin && !userPermissions.can_manage_stock`. Hides checkboxes, edit, delete, assign buttons. |
 | Import duplicates | Use multi-field fingerprinting (stockNumber + serialNumber + model+colour+label combo). |
+| Motor dealer fit categories location | Store `motorDealerFitCategories` on the BOAT module, not the motor module — dealer fit is in the context of the boat being quoted. |
+| DealerFitOptions category sources | Must merge global + module + motor categories — three sources, not just one. |
+| `propComesStandard` default | Default OFF (opt-in). Do NOT auto-enable — user explicitly toggles when applicable. |
+| Next.js `<Image>` external URLs | Breaks with Cloudflare anti-hotlinking CDNs — always use native `<img>` for external URLs. |
+| Post-refactor variable cleanup | After renaming/removing variables, search codebase for ALL old references — stale refs cause ReferenceErrors at runtime. |
 | Worktree merges can lose code | Always diff against original before taking worktree version in conflict resolution. |
 | `mainVendorId: null` | Non-catalog modules crash Firestore `doc()`. Always check `moduleData?.mainVendorId` before creating ref. |
 | LFS blocks worktrees | Use `git config lfs.fetchexclude "*"` or `git lfs install --skip-smudge` to skip LFS downloads. |
@@ -356,11 +384,30 @@ Key collections and access:
 
 ## v1.2 Release Status (April 9)
 
-- **QA**: 12/13 testable cases PASS, 1 SKIP (sub-dealer — no credentials)
-- **Post-QA fixes**: Proposal view crash (orgQuoteList undefined), catalog images (Next.js Image → native img)
-- **Build**: Passes cleanly
-- **Pending**: Firestore rules deploy (manual paste), merge to main (awaiting Asaf approval)
+- **Release date**: 2026-04-10 (Friday)
+- **QA**: 14/15 test cases — 12 PASS, 2 PASS (after fix), 1 SKIP (sub-dealer — no credentials)
+- **Post-QA fixes applied**:
+  - TC-09: Proposal view crash — stale `orgQuoteList` variable refs from refactor (Critical)
+  - TC-03: Classic range broken images — Next.js `<Image>` → native `<img>` for external CDNs (Medium)
+- **Build**: Passes cleanly (`npx next build`)
+- **Pending**: Firestore rules deploy (manual paste), merge `claude/app-overview-wKiZ1` → `main` (awaiting Asaf approval)
 - **v1.3 branch**: `claude/v1.3-dev` — 12 client requirements built, separate from v1.2
+
+### Key v1.2 Features
+- Yamaha Motor Module (catalog, pricing, promotions, settings)
+- Motor step 3 UX overhaul (hero card, grid hides, Choose Another Motor)
+- Motor dealer fit categories on boat modules
+- Prop Comes Standard toggle (optional, default OFF)
+- Master Price File module (Excel import, editable tables, export)
+- Master Data Browser rewrite (single search bar, card results)
+- Promotions system (CRUD, images, PDFs, audit log)
+- Enhanced stock management (new statuses, finalize dialog, wide detail panel)
+- Console-seat auto-pairing
+- Module type system (5 types)
+- PDF & proposal improvements
+- Org-wide proposal view
+- Module management (delete, rename, cover images)
+- Image onError fallback (Ship placeholder for broken images)
 
 ### Post-QA Lessons Learned
 - Next.js `<Image>` breaks external CDN images (Cloudflare anti-hotlinking blocks optimization proxy) — always use native `<img>` for external URLs
