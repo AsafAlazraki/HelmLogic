@@ -626,6 +626,14 @@ export default function ModuleDetailsPage() {
                         organisationId={currentMemberOrg.id}
                         isAdmin={isAdmin}
                         moduleId={moduleData.id}
+                        moduleData={moduleData}
+                        organisation={currentMemberOrg}
+                        allVendors={allVendors || []}
+                        allDealerFitCategories={allDealerFitCategories || []}
+                        subDealers={subDealersList || []}
+                        onUpdateVendors={handleUpdateVendors}
+                        onUpdateCategories={handleUpdateCategories}
+                        onToggleSubDealerAccess={handleToggleSubDealerAccess}
                     />
                 </main>
             </div>

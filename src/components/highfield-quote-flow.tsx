@@ -172,6 +172,10 @@ export function HighfieldQuoteFlow({
 
     /** Get the price for a given item based on the selected price level.
      *  Falls back to sellPriceExclGst when no priceLevels exist (backward compat). */
+    function getMotorLabel(motor: any): string {
+        return motor?.['MODEL'] || motor?.['Model Name'] || motor?.['MODEL CODE'] || motor?.['Model'] || motor?.name || 'Selected Motor';
+    }
+
     function getPriceForLevel(item: any, level: string): number {
         const fallbackPrice = item?.sellPriceExclGst || item?.PARTS || item?.RRP || item?.Price || item?.Retail || item?.Trade || 0;
         if (!level || level === 'default' || !item?.priceLevels) {
@@ -234,6 +238,7 @@ export function HighfieldQuoteFlow({
 
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
+    const [motorModuleCategories, setMotorModuleCategories] = useState<string[]>([]);
 
     // 3. Derived Memos (CRITICAL: Order of initialization to prevent ReferenceErrors)
     const availableMaterials = useMemo(() => {
@@ -370,14 +375,30 @@ export function HighfieldQuoteFlow({
 
     const groupedDealerFit = useMemo(() => {
         if (!dealerFitSelections) return [];
+        const motorCats = new Set(motorModuleCategories.map(c => c.toLowerCase()));
         const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
             const cat = sel.category || 'Gear';
+            // Skip motor categories — they're shown separately
+            if (motorCats.has(cat.toLowerCase())) return acc;
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(sel);
             return acc;
         }, {});
         return Object.entries(groups) as [string, any][];
-    }, [dealerFitSelections]);
+    }, [dealerFitSelections, motorModuleCategories]);
+
+    const groupedMotorDealerFit = useMemo(() => {
+        if (!dealerFitSelections || motorModuleCategories.length === 0) return [];
+        const motorCats = new Set(motorModuleCategories.map(c => c.toLowerCase()));
+        const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
+            const cat = sel.category || '';
+            if (!motorCats.has(cat.toLowerCase())) return acc;
+            if (!acc[cat]) acc[cat] = [];
+            acc[cat].push(sel);
+            return acc;
+        }, {});
+        return Object.entries(groups) as [string, any][];
+    }, [dealerFitSelections, motorModuleCategories]);
 
     const totalPrice = useMemo(() => {
         let total = getPriceForLevel(activeVariant, priceLevel);
@@ -607,6 +628,15 @@ export function HighfieldQuoteFlow({
                 const motorVendor = allVendors.find(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
 
                 if (motorVendor) {
+                    // Find the motor module to get its dealer fit categories
+                    try {
+                        const modulesSnap = await getDocs(query(collection(firestore, 'modules'), where('mainVendorId', '==', motorVendor.id)));
+                        const motorMod = modulesSnap.docs[0]?.data();
+                        if (motorMod?.moduleDealerFitCategories?.length) {
+                            setMotorModuleCategories(motorMod.moduleDealerFitCategories);
+                        }
+                    } catch { /* Motor module lookup failed — dealer fit won't show motor categories */ }
+
                     const dsSnap = await getDocs(collection(firestore, 'data-warehouse', motorVendor.id, 'dataSets'));
                     const datasets = dsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
                     const targetDS = datasets.find(s => s.name.toLowerCase().includes('outboard') || s.name.toLowerCase().includes('motor')) || datasets[0];
@@ -1099,6 +1129,50 @@ export function HighfieldQuoteFlow({
                             )}
                             {currentStep === 5 && (
                                 <div className="space-y-12 animate-in fade-in duration-1000 mt-4">
+                                    {/* Motor Dealer Fit — shown when motor is selected and motor categories exist */}
+                                    {selectedMotor && groupedMotorDealerFit.length > 0 && (
+                                        <>
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-3 bg-blue-600 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                    <Anchor className="h-4 w-4 text-white" />
+                                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Motor Dealer Fit</h3>
+                                                </div>
+                                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-2">Accessories & fittings for {getMotorLabel(selectedMotor)}</p>
+                                            </div>
+                                            {groupedMotorDealerFit.map(([cat, opts]) => (
+                                                <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 scroll-mt-10">
+                                                    <div className="flex items-center gap-3 bg-blue-500 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                        <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        {opts.map((sel: any) => {
+                                                            const isSelected = selectedDealerFitIds.includes(sel.id);
+                                                            const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
+                                                            return (
+                                                            <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1 relative", isSelected ? "bg-blue-50 border-blue-500 shadow-md ring-2 ring-blue-500/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-blue-500/20")}>
+                                                                {hasOverlap && <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5"><CopyCheck className="h-3 w-3 text-amber-600" /><span className="text-[7px] font-black uppercase tracking-wide text-amber-700">Already Included</span></div>}
+                                                                <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
+                                                                <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
+                                                                    <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-blue-600" : "text-slate-900")}>{sel.name}</p>
+                                                                    <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-blue-500/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
+                                                                </div>
+                                                            </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {/* Divider between motor and boat dealer fit */}
+                                            {groupedDealerFit.length > 0 && (
+                                                <div className="flex items-center gap-4 py-4">
+                                                    <div className="flex-1 border-t-2 border-dashed border-slate-200" />
+                                                    <span className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-300">Boat Fitments</span>
+                                                    <div className="flex-1 border-t-2 border-dashed border-slate-200" />
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
                                     {dealerFitLoading ? <div className="flex justify-center py-16"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div> : groupedDealerFit.length > 0 ? (
                                         groupedDealerFit.map(([cat, opts]) => (
                                             <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 scroll-mt-10">

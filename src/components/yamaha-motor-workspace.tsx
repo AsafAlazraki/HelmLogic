@@ -13,6 +13,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Ship, Search, Package, Settings as SettingsIcon, DollarSign, ChevronDown, ArrowUpDown, Tag } from 'lucide-react';
 import { ModulePromotions } from '@/components/module-promotions';
 import { MasterPriceFileWorkspace } from '@/components/master-price-file-workspace';
+import { OrganisationModuleConfig } from '@/components/organisation-module-config';
+import { ModuleDealerFitManager } from '@/components/module-dealer-fit-manager';
+import { ModuleRoleAssignment } from '@/components/module-role-assignment';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -29,6 +32,14 @@ interface YamahaMotorWorkspaceProps {
     organisationId: string;
     isAdmin: boolean;
     moduleId: string;
+    moduleData?: any;
+    organisation?: any;
+    allVendors?: any[];
+    allDealerFitCategories?: any[];
+    subDealers?: any[];
+    onUpdateVendors?: (vendorIds: string[]) => Promise<void>;
+    onUpdateCategories?: (categoryIds: string[]) => Promise<void>;
+    onToggleSubDealerAccess?: (sdId: string, hasAccess: boolean) => Promise<void>;
 }
 
 type SortKey = 'name' | 'hp' | 'price';
@@ -251,7 +262,7 @@ function MotorDetailSheet({
 // Main Component
 // ---------------------------------------------------------------------------
 
-export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, moduleId }: YamahaMotorWorkspaceProps) {
+export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, moduleId, moduleData, organisation, allVendors, allDealerFitCategories, subDealers, onUpdateVendors, onUpdateCategories, onToggleSubDealerAccess }: YamahaMotorWorkspaceProps) {
     const firestore = useFirestore();
 
     // Tab state
@@ -555,13 +566,36 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
                 {activeTab === 'settings' && (
                     <ScrollArea className="h-full">
                         <div className="p-8 space-y-8">
-                            <div className="space-y-1">
-                                <h2 className="text-lg font-semibold">Module Settings</h2>
-                                <p className="text-sm text-slate-500">Configure this Yamaha module for your organisation.</p>
-                            </div>
-                            <p className="text-sm text-slate-400 italic">
-                                Settings components (Stock Locations, Dealer Fit, Role Assignment) are managed from the parent module page.
-                            </p>
+                            {moduleData && organisation && onUpdateVendors && onUpdateCategories && onToggleSubDealerAccess ? (
+                                <>
+                                    <OrganisationModuleConfig
+                                        organisation={organisation}
+                                        subDealers={subDealers || []}
+                                        module={moduleData}
+                                        allVendors={allVendors || []}
+                                        allDealerFitCategories={allDealerFitCategories || []}
+                                        onBack={() => setActiveTab('catalog')}
+                                        onUpdateVendors={onUpdateVendors}
+                                        onUpdateCategories={onUpdateCategories}
+                                        onToggleSubDealerAccess={onToggleSubDealerAccess}
+                                    />
+                                    <ModuleDealerFitManager
+                                        moduleId={moduleId}
+                                        categories={moduleData?.moduleDealerFitCategories || []}
+                                    />
+                                    <ModuleRoleAssignment
+                                        moduleId={moduleId}
+                                        organisationId={organisationId}
+                                        currentBrandCaptain={moduleData?.brandCaptainUserId ? { userId: moduleData.brandCaptainUserId, userName: moduleData.brandCaptainUserName || '' } : null}
+                                        currentModuleManager={moduleData?.moduleManagerUserId ? { userId: moduleData.moduleManagerUserId, userName: moduleData.moduleManagerUserName || '' } : null}
+                                    />
+                                </>
+                            ) : (
+                                <div className="space-y-1">
+                                    <h2 className="text-lg font-semibold">Module Settings</h2>
+                                    <p className="text-sm text-slate-400 italic">Loading settings...</p>
+                                </div>
+                            )}
                         </div>
                     </ScrollArea>
                 )}
