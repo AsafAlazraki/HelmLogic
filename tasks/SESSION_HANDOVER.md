@@ -1,6 +1,6 @@
 # HelmLogic — Session Handover Document
 > Give this file to a new Claude session along with the CLAUDE.md file.
-> Updated: 2026-04-09 (v1.2.0 QA complete — all bugs fixed, ready for Friday main push)
+> Updated: 2026-04-10 (v1.2.0 shipped to production)
 
 ---
 
@@ -382,37 +382,15 @@ Key collections and access:
 
 ---
 
-## v1.2 Release Status (April 9)
+## v1.2 Release Status — SHIPPED
 
-- **Release date**: 2026-04-10 (Friday)
-- **QA**: 14/15 test cases — 12 PASS, 2 PASS (after fix), 1 SKIP (sub-dealer — no credentials)
-- **Post-QA fixes applied**:
-  - TC-09: Proposal view crash — stale `orgQuoteList` variable refs from refactor (Critical)
-  - TC-03: Classic range broken images — Next.js `<Image>` → native `<img>` for external CDNs (Medium)
-- **Build**: Passes cleanly (`npx next build`)
-- **Pending**: Firestore rules deploy (manual paste), merge `claude/app-overview-wKiZ1` → `main` (awaiting Asaf approval)
-- **v1.3 branch**: `claude/v1.3-dev` — 12 client requirements built, separate from v1.2
-
-### Key v1.2 Features
-- Yamaha Motor Module (catalog, pricing, promotions, settings)
-- Motor step 3 UX overhaul (hero card, grid hides, Choose Another Motor)
-- Motor dealer fit categories on boat modules
-- Prop Comes Standard toggle (optional, default OFF)
-- Master Price File module (Excel import, editable tables, export)
-- Master Data Browser rewrite (single search bar, card results)
-- Promotions system (CRUD, images, PDFs, audit log)
-- Enhanced stock management (new statuses, finalize dialog, wide detail panel)
-- Console-seat auto-pairing
-- Module type system (5 types)
-- PDF & proposal improvements
-- Org-wide proposal view
-- Module management (delete, rename, cover images)
-- Image onError fallback (Ship placeholder for broken images)
-
-### Post-QA Lessons Learned
-- Next.js `<Image>` breaks external CDN images (Cloudflare anti-hotlinking blocks optimization proxy) — always use native `<img>` for external URLs
-- Refactoring org-wide lookup left stale variable references — always search for all old variable names after refactoring
-- Manual QA (cowork agent) proved more effective than Playwright for deployed site testing in this context
+- **Released**: 2026-04-10
+- **Stats**: 87 commits, 65 files changed, 4,423 lines of new code
+- **QA**: Full surface test (30+ cases) — ALL PASS
+- **Static analysis**: Clean — 688 icon usages verified, zero undefined variable references
+- **Firestore rules**: Deployed
+- **Merged**: `claude/app-overview-wKiZ1` → `main`
+- **v1.3 branch**: `claude/v1.3-dev` — 12 client requirements, separate from v1.2
 
 ---
 

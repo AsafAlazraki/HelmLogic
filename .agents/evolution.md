@@ -125,9 +125,13 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - Image onError fallback pattern: Ship placeholder icon from Lucide replaces broken image icons across cards
 - CL380 family data fix applied via `scripts/update-cl380-specs.py`
 - Comprehensive v1.2 documentation audit across all four doc files
-- Release date confirmed: 2026-04-10
 - **FIXED**: Missing `Layers` Lucide import in `dealer-fit-options.tsx` — crashed all dealer fit saves with ReferenceError
 - **FIXED**: Duplicate category dropdown text ("RiggingRigging") — hardcoded SelectItems overlapped with `initialCategory` prop
+- **FIXED**: Motor options crash — `config.type` undefined caused `.replace()` error
+- Dealer fit options added inside motor detail side panel (same Master Data Browser as Highfield)
+- Full surface QA test (30+ cases) — ALL PASS
+- Static analysis: 688 icon usages verified across 113 files, zero undefined variable references
+- **v1.2.0 shipped to production** — 87 commits, 65 files, 4,423 lines of new code
 
 ## Key Lessons Learned
 - `mainVendorId: null` crashes Firestore `doc()` — always check
