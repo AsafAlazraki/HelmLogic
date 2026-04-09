@@ -179,9 +179,10 @@
 - Cleaner flow: select → confirm via hero card → proceed
 
 ### Prop Comes Standard Toggle
-- Green toggle in motor step, default ON for models where propeller is included
-- Auto-turns OFF when user manually selects a propeller
-- State tracked in quote flow for accurate pricing and proposal display
+- Optional green toggle on any motor — user ticks it if the motor's prop is included
+- Default OFF — user opts in when applicable
+- Auto-turns OFF if user selects a different propeller from dealer fit or accessories
+- State tracked in quote flow for accurate proposal display
 
 ### Motor Dealer Fit Categories
 - `motorDealerFitCategories` field on boat module (`modules/{moduleId}`) — configurable per-boat-module, not per-motor-module

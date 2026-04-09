@@ -102,7 +102,7 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 
 ### Session: April 9, 2026 — Motor UX Overhaul & Dealer Fit
 - Motor step 3 UX redesign: hero card on selection, grid hides, "Choose Another Motor" button to re-select
-- Prop Comes Standard toggle (green, default ON, auto-OFF on propeller selection) — state carried through quote flow
+- Prop Comes Standard toggle (green, optional, default OFF — user opts in per motor) — auto-OFF when propeller selected from dealer fit
 - Motor dealer fit categories (`motorDealerFitCategories`) stored per-boat-module, not per-motor-module — architectural decision for quote context
 - Motor dealer fit shown in step 3 with blue-themed category headers
 - `ModuleDealerFitManager` made configurable with `fieldName` prop for reuse across standard and motor dealer fit

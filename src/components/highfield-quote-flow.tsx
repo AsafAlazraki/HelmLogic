@@ -239,7 +239,7 @@ export function HighfieldQuoteFlow({
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
     const motorModuleCategories = useMemo(() => module?.motorDealerFitCategories || [], [module?.motorDealerFitCategories]);
-    const [propComesStandard, setPropComesStandard] = useState(true);
+    const [propComesStandard, setPropComesStandard] = useState(false);
     const motorDetailRef = useRef<HTMLDivElement>(null);
 
     // 3. Derived Memos (CRITICAL: Order of initialization to prevent ReferenceErrors)
@@ -1038,7 +1038,7 @@ export function HighfieldQuoteFlow({
                                                     </div>
                                                 </div>
                                                 <div className="flex justify-center mt-4">
-                                                    <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-6" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(true); }}>
+                                                    <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-6" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); }}>
                                                         <ArrowRight className="h-3 w-3 mr-2 rotate-180" /> Choose Another Motor
                                                     </Button>
                                                 </div>
@@ -1050,7 +1050,7 @@ export function HighfieldQuoteFlow({
                                                     const mUrl = resolveImageUrl(m);
                                                     const displayName = getMotorDisplayName(m);
                                                     return (
-                                                        <button key={m.id} onClick={() => { setSelectedMotor(m); setPropComesStandard(true); const standardIds = (m.masterAccessories || []).filter((a: any) => a.isStandard).map((a: any) => a.id); if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds); setTimeout(() => motorDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400); }} className="group relative flex flex-col border-4 rounded-[2rem] overflow-hidden transition-all bg-white shadow-2xl h-full border-transparent hover:border-primary/20">
+                                                        <button key={m.id} onClick={() => { setSelectedMotor(m); setPropComesStandard(false); const standardIds = (m.masterAccessories || []).filter((a: any) => a.isStandard).map((a: any) => a.id); if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds); setTimeout(() => motorDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400); }} className="group relative flex flex-col border-4 rounded-[2rem] overflow-hidden transition-all bg-white shadow-2xl h-full border-transparent hover:border-primary/20">
                                                             <div className="relative aspect-video w-full bg-slate-50 border-b flex items-center justify-center">
                                                                 {mUrl ? (
                                                                     <Image src={mUrl} alt="Motor" fill className="object-contain p-6 mix-blend-multiply transition-transform group-hover:scale-110" />
