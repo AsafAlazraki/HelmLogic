@@ -42,6 +42,24 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'media.highfieldboats.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.highfieldboats.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.northsidemarine.com.au',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   webpack: (config) => {

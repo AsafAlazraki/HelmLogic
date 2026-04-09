@@ -298,10 +298,10 @@ function QuoteInitializationDialog({
                                             .filter(m => !modelSearch || m.name.toLowerCase().includes(modelSearch.toLowerCase()) || m.modelCode?.toLowerCase().includes(modelSearch.toLowerCase()))
                                             .map(model => (
                                             <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => onModelSelect(model, selectedRange)}>
-                                                <div className="aspect-video bg-muted/30 relative border-b overflow-hidden flex items-center justify-center">
-                                                    {model.coverImageUrl ? (
-                                                        <img src={model.coverImageUrl} alt={model.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                                                    ) : null}
+                                                <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
+                                                    {model.coverImageUrl && (
+                                                        <img src={model.coverImageUrl} alt={model.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                                    )}
                                                 </div>
                                                 <div className="p-4 bg-white text-center flex flex-col gap-1.5 flex-1 justify-center">
                                                     <span className="font-black uppercase text-[11px] tracking-tight text-primary">{model.name}</span>
