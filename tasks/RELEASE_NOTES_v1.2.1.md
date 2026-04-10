@@ -3,8 +3,9 @@
 > Branch: claude/app-overview-wKiZ1 → main
 
 ### Release Stats
-- **4 files** changed
+- **5 files** changed
 - Pricing accuracy improvements across the full pipeline
+- Price level support flows through: motor cards → hero card → accessories → dealer fit → finalize payload → proposal → PDF → stock audit
 
 ---
 
@@ -25,7 +26,9 @@
   - `hull_commercial` → Commercial Price
   - `hull_boating_alliance` → Boating Alliance Price
 - Sub-dealers automatically get Trade Price on motors (via their defaultPriceLevel)
-- Price level selector in quote builder now affects motor pricing correctly
+- **Motor hero card and grid card prices respond to price level selector** — switching to Trade/Sub-Dealer shows correct lower price
+- Motor accessories also get priceLevels built from MPF fields (Act Sell, Act CTD, Trade)
+- Accessory price display in quote builder is price-level aware
 
 ---
 
@@ -34,8 +37,20 @@
 - `getPriceForLevel` fallback chain expanded with MPF field names:
   - Added: `Act Sell`, `Sell Price`, `Store Price`, `NSM Retail`
   - Existing: `sellPriceExclGst`, `PARTS`, `RRP`, `Price`, `Retail`, `Trade`
+- All dealer fit card price displays also expanded with `Act Sell` and `Store Price`
 - String price values now safely parsed with `parseFloat()`
 - Dealer fit items from MPF now resolve correct sell prices in quotes
+
+---
+
+## Finalize Payload — Price Level Resolution
+
+- `buildQuotePayload` now resolves prices through `resolvePrice()` using the selected price level
+- Motor `sellPriceExclGst` snapshots the price-level-resolved value (e.g., Trade Price for sub-dealers)
+- Motor accessories snapshot price-level-resolved values
+- Dealer fit items snapshot price-level-resolved values via `Act Sell` fallback
+- Motor `costPrice` and accessory `costPrice` snapshotted for dealer audit
+- `priceLevelUsed` explicitly saved on every quote payload
 
 ---
 
@@ -50,6 +65,7 @@
 
 ## Files Changed
 - `src/components/highfield-pricing-workspace.tsx` — roundIncGst helper, all Inc GST calculations
-- `src/components/highfield-quote-flow.tsx` — getPriceForLevel expansion, motor priceLevels mapping
+- `src/components/highfield-quote-flow.tsx` — getPriceForLevel expansion, motor priceLevels mapping, hero/grid card price display
+- `src/components/finalize-quote-dialog.tsx` — resolvePrice(), price-level-aware payload snapshots
 - `src/lib/quote-financials.ts` — Total Inc GST rounding
 - `src/components/stock-item-detail.tsx` — Dealer audit section

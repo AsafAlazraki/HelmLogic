@@ -127,3 +127,8 @@ users/{userId}/quotes/{quoteId}
 - **Non-catalog modules have `mainVendorId: null`** — always check before creating Firestore doc refs
 - **Always verify Lucide icon imports** — using an icon in JSX without importing it causes a ReferenceError at runtime (e.g., `Layers is not defined`). Search for the icon name in the import line before using it.
 - **Don't hardcode Select options that overlap with props** — if a dropdown receives `initialCategory` as a prop, don't also hardcode the same values as SelectItems (causes duplicate display bugs)
+- **Inc GST must be rounded UP to whole dollars** — use `Math.ceil(exGst * gstMultiplier)`. Applied per item row in pricing workspace and on totals in proposals/PDFs.
+- **Motor pricing uses priceLevels object** — built from Yamaha columns: hull_cash→NSM Retail, hull_trade/hull_subdealer→Trade Price, hull_commercial→Commercial Price, hull_boating_alliance→Boating Alliance Price
+- **Price display must use getPriceForLevel(), never hardcoded sellPriceExclGst** — applies to hero cards, grid cards, accessories, dealer fit. Hardcoded prices don't respond to price level selector.
+- **Dealer fit items use Act Sell for pricing** — MPF data uses 'Act Sell' (actual sell) and 'Act CTD' (actual cost to dealer) as the primary price/cost fields
+- **Finalize payload must resolve prices through the selected price level** — use resolvePrice() not raw sellPriceExclGst, otherwise sub-dealer quotes snapshot retail prices instead of trade prices
