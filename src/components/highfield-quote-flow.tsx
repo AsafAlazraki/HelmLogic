@@ -177,11 +177,12 @@ export function HighfieldQuoteFlow({
     }
 
     function getPriceForLevel(item: any, level: string): number {
-        const fallbackPrice = item?.sellPriceExclGst || item?.PARTS || item?.RRP || item?.Price || item?.Retail || item?.Trade || 0;
+        const fallbackPrice = item?.sellPriceExclGst || item?.['Act Sell'] || item?.['Sell Price'] || item?.['Store Price'] || item?.['NSM Retail'] || item?.PARTS || item?.RRP || item?.Price || item?.Retail || item?.Trade || 0;
         if (!level || level === 'default' || !item?.priceLevels) {
-            return fallbackPrice;
+            return typeof fallbackPrice === 'number' ? fallbackPrice : parseFloat(fallbackPrice) || 0;
         }
-        return item?.priceLevels?.[level] || fallbackPrice;
+        const levelPrice = item?.priceLevels?.[level];
+        return levelPrice ? (typeof levelPrice === 'number' ? levelPrice : parseFloat(levelPrice) || 0) : (typeof fallbackPrice === 'number' ? fallbackPrice : parseFloat(fallbackPrice) || 0);
     }
 
     // 1. Core State — seeded from initialState when duplicating an existing quote
@@ -643,8 +644,31 @@ export function HighfieldQuoteFlow({
                     
                     if (targetDS) {
                         const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`));
-                        const allRows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() as any }));
-                        
+                        const allRows = rowsSnap.docs.map(d => {
+                            const row = { id: d.id, ...d.data() as any };
+                            // Build priceLevels from Yamaha pricing columns
+                            const parsePrice = (v: any) => typeof v === 'number' ? v : parseFloat(v) || 0;
+                            const nsmRetail = parsePrice(row['NSM Retail']);
+                            const sellPrice = parsePrice(row['Sell Price']);
+                            const storePrice = parsePrice(row['Store Price']);
+                            const tradePrice = parsePrice(row['Trade Price']);
+                            const commercialPrice = parsePrice(row['Commercial Price']);
+                            const boatingAlliancePrice = parsePrice(row['Boating Alliance Price']);
+                            const dealerBuy = parsePrice(row['Dealer Buy']);
+                            // Set sellPriceExclGst to the primary sell price (Store Price → NSM Retail → Sell Price)
+                            row.sellPriceExclGst = storePrice || nsmRetail || sellPrice || 0;
+                            row.costPrice = dealerBuy || 0;
+                            row.priceLevels = {
+                                hull_cash: nsmRetail || storePrice || sellPrice || 0,
+                                hull_trade: tradePrice || 0,
+                                hull_subdealer: tradePrice || 0,
+                                hull_subdealer_excl: tradePrice || 0,
+                                hull_commercial: commercialPrice || 0,
+                                hull_boating_alliance: boatingAlliancePrice || 0,
+                            };
+                            return row;
+                        });
+
                         const motorConfigs = model.specifications?.motorConfigurations || [];
                         if (motorConfigs.length === 0) { setMotors([]); setMotorsLoading(false); return; }
 

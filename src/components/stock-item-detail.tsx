@@ -493,9 +493,42 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
                     )}
                   </div>
 
-                  {/* Right column: MiniProposalView */}
+                  {/* Right column: MiniProposalView + Dealer Audit */}
                   <div className="w-1/2 overflow-y-auto pl-3">
                     <MiniProposalView quote={item.quotePayload} />
+                    {item.quotePayload && (
+                      <div className="mt-4 border-2 rounded-xl p-3 space-y-2 bg-slate-50">
+                        <p className="text-[9px] uppercase tracking-widest font-black text-slate-400">Dealer Audit</p>
+                        <div className="space-y-1 text-xs">
+                          {item.quotePayload.priceLevelUsed && (
+                            <div className="flex justify-between"><span className="text-slate-500">Price Level</span><span className="font-bold uppercase">{item.quotePayload.priceLevelUsed.replace('hull_', '').replace(/_/g, ' ')}</span></div>
+                          )}
+                          {item.quotePayload.quoteNumber && (
+                            <div className="flex justify-between"><span className="text-slate-500">Quote #</span><span className="font-bold">{item.quotePayload.quoteNumber}</span></div>
+                          )}
+                          {item.quotePayload.createdByName && (
+                            <div className="flex justify-between"><span className="text-slate-500">Created By</span><span className="font-bold">{item.quotePayload.createdByName}</span></div>
+                          )}
+                          {item.quotePayload.discountExclGst > 0 && (
+                            <div className="flex justify-between"><span className="text-slate-500">Discount</span><span className="font-bold text-red-500">-${item.quotePayload.discountExclGst.toLocaleString()}</span></div>
+                          )}
+                          <div className="border-t pt-1 mt-1 space-y-1">
+                            <div className="flex justify-between"><span className="text-slate-500">Total Ex GST</span><span className="font-bold">${(item.quotePayload.totalPriceExclGst || 0).toLocaleString()}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">GST</span><span className="font-bold">${Math.ceil((item.quotePayload.totalPriceExclGst || 0) * 0.1).toLocaleString()}</span></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Total Inc GST</span><span className="font-bold text-primary">${Math.ceil((item.quotePayload.totalPriceExclGst || 0) * 1.1).toLocaleString()}</span></div>
+                          </div>
+                          {item.quotePayload.motor?.costPrice > 0 && (
+                            <div className="border-t pt-1 mt-1 space-y-1">
+                              <p className="text-[8px] uppercase tracking-widest font-black text-slate-400">Cost Breakdown</p>
+                              {item.quotePayload.variant?.cost > 0 && (
+                                <div className="flex justify-between"><span className="text-slate-500">Boat Cost</span><span className="font-bold">${item.quotePayload.variant.cost.toLocaleString()}</span></div>
+                              )}
+                              <div className="flex justify-between"><span className="text-slate-500">Motor Cost</span><span className="font-bold">${item.quotePayload.motor.costPrice.toLocaleString()}</span></div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (

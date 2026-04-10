@@ -28,8 +28,8 @@ export function buildQuoteFinancials(quote: any, discount = 0) {
 
   const subtotalExclGst = boatBasePrice + optionsTotal + regoTotal + motorTotal + trailerTotal + dealerFitTotal;
   const finalTotalPriceExclGst = subtotalExclGst - discount;
-  const gstAmount = finalTotalPriceExclGst * 0.1;
-  const totalInclGst = finalTotalPriceExclGst + gstAmount;
+  const totalInclGst = Math.ceil(finalTotalPriceExclGst * 1.1);
+  const gstAmount = totalInclGst - finalTotalPriceExclGst;
 
   // Simplified cost estimates (used when no landed-cost lookup is available)
   const boatCost = quote.variant?.cost || boatBasePrice * 0.7;

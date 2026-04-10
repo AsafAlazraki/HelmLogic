@@ -58,6 +58,9 @@ const getSellPrice = (cost: number, marginPercent: number) => {
     return cost / factor;
 };
 
+/** Round Inc GST up to whole dollars — client methodology */
+const roundIncGst = (exGst: number, gstMultiplier: number) => Math.ceil(exGst * gstMultiplier);
+
 const calculateBaseCostAudEx = (itemValues: Record<string, any>, baseCostUsd: number, exchangeRate: number): number => {
     const costOverride = itemValues['base_cost_override'];
     const usdBase = (costOverride !== undefined && costOverride !== '' && costOverride !== null) ? parseFloat(costOverride) : baseCostUsd;
@@ -111,7 +114,7 @@ function PricingRow({
     const rowBgClass = rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50";
 
     const baseCostAudEx = calculateBaseCostAudEx(itemValues, cost || 0, exchangeRate);
-    const baseCostAudIn = baseCostAudEx * gstMultiplier;
+    const baseCostAudIn = roundIncGst(baseCostAudEx, gstMultiplier);
 
     // 1. Sea Freight (International)
     const seaFreightUsd = parseFloat(itemValues['op_sea_freight_cost_usd'] || '0');
@@ -176,13 +179,13 @@ function PricingRow({
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_sea_freight_cost_aud'] || seaFreightAudConv.toFixed(2)} onChange={(val: any) => onUpdateValue(id, 'op_sea_freight_cost_aud', val)} align="right" /></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_sea_freight_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_sea_freight_margin_percent', val)} /></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(seaFreightSell, orgCurrency)}</span></TableCell>
-                    <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/10 relative"><span className="relative z-10">{formatCurrency(seaFreightSell * gstMultiplier, orgCurrency)}</span></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/10 relative"><span className="relative z-10">{formatCurrency(roundIncGst(seaFreightSell, gstMultiplier), orgCurrency)}</span></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 relative"><span className="relative z-10">{formatCurrency(seaFreightGP, orgCurrency)}</span></TableCell>
 
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_road_freight_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_road_freight_cost_aud', val)} align="right" /></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_road_freight_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_road_freight_margin_percent', val)} /></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(roadFreightSell, orgCurrency)}</span></TableCell>
-                    <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/10 relative"><span className="relative z-10">{formatCurrency(roadFreightSell * gstMultiplier, orgCurrency)}</span></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/10 relative"><span className="relative z-10">{formatCurrency(roundIncGst(roadFreightSell, gstMultiplier), orgCurrency)}</span></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 relative"><span className="relative z-10">{formatCurrency(roadFreightGP, orgCurrency)}</span></TableCell>
                 </React.Fragment>
             )}
@@ -190,7 +193,7 @@ function PricingRow({
             <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_handling_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_cost_aud', val)} align="right" /></TableCell>
             <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_handling_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_handling_margin_percent', val)} /></TableCell>
             <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(handlingSell, orgCurrency)}</span></TableCell>
-            <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/10 relative"><span className="relative z-10">{formatCurrency(handlingSell * gstMultiplier, orgCurrency)}</span></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/10 relative"><span className="relative z-10">{formatCurrency(roundIncGst(handlingSell, gstMultiplier), orgCurrency)}</span></TableCell>
             <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 relative"><span className="relative z-10">{formatCurrency(handlingGP, orgCurrency)}</span></TableCell>
 
             {activeView === 'boats' && (
@@ -198,7 +201,7 @@ function PricingRow({
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_predel_cost_aud'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_cost_aud', val)} align="right" /></TableCell>
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['op_predel_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'op_predel_margin_percent', val)} /></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/5 relative font-black"><span className="relative z-10">{formatCurrency(preDelSell, orgCurrency)}</span></TableCell>
-                    <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/10 relative"><span className="relative z-10">{formatCurrency(preDelSell * gstMultiplier, orgCurrency)}</span></TableCell>
+                    <TableCell className="text-right text-[10px] font-black text-primary border-r border-b border-slate-200 px-4 bg-primary/10 relative"><span className="relative z-10">{formatCurrency(roundIncGst(preDelSell, gstMultiplier), orgCurrency)}</span></TableCell>
                     <TableCell className="text-right text-[10px] font-black text-green-600 border-r border-b border-slate-200 px-4 bg-green-500/5 relative"><span className="relative z-10">{formatCurrency(preDelGP, orgCurrency)}</span></TableCell>
                 </React.Fragment>
             )}
@@ -210,7 +213,7 @@ function PricingRow({
             {activeView === 'boats' ? (
                 ['hull_cash', 'hull_trade', 'hull_subdealer', 'hull_subdealer_excl', 'hull_aus_sailing'].map(l => {
                     const sellEx = parseFloat(itemValues[`${l}_price`] || '0');
-                    const sellIn = sellEx * gstMultiplier;
+                    const sellIn = roundIncGst(sellEx, gstMultiplier);
                     const gpPercent = sellEx > 0 ? ((sellEx - totalStrategicLandedEx) / sellEx) * 100 : 0;
                     return (
                         <React.Fragment key={l}>
@@ -225,7 +228,7 @@ function PricingRow({
                     <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['hull_cash_price'] || ''} onChange={(val: any) => onUpdateValue(id, 'hull_cash_price', val)} align="right" /></TableCell>
                     {(() => {
                         const sellEx = parseFloat(itemValues['hull_cash_price'] || '0');
-                        const sellIn = sellEx * gstMultiplier;
+                        const sellIn = roundIncGst(sellEx, gstMultiplier);
                         const gpPercent = sellEx > 0 ? ((sellEx - totalStrategicLandedEx) / sellEx) * 100 : 0;
                         return (
                             <React.Fragment>
@@ -242,7 +245,7 @@ function PricingRow({
                 { id: 'hull_subdealer_excl_srp', label: 'Sub-Ex SRP' }
             ].map(l => {
                 const sellEx = parseFloat(itemValues[l.id] || '0');
-                const sellIn = sellEx * gstMultiplier;
+                const sellIn = roundIncGst(sellEx, gstMultiplier);
                 const gpPercent = sellEx > 0 ? ((sellEx - totalStrategicLandedEx) / sellEx) * 100 : 0;
                 return (
                     <React.Fragment key={l.id}>
@@ -986,7 +989,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         const gstRate = (organisation?.gstPercentage || 10) / 100;
         const gstMul = 1 + gstRate;
         const baseCostAudEx = calculateBaseCostAudEx(iv, cost, activeExchangeRate);
-        const baseCostAudIn = baseCostAudEx * gstMul;
+        const baseCostAudIn = roundIncGst(baseCostAudEx, gstMul);
 
         const seaFreightUsd = parseFloat(iv['op_sea_freight_cost_usd'] || '0');
         const seaFreightAudConv = activeExchangeRate > 0 ? seaFreightUsd / activeExchangeRate : seaFreightUsd;
@@ -1019,7 +1022,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
 
         const priceLevel = (key: string) => {
             const ex = parseFloat(iv[key] || '0');
-            const inc = ex * gstMul;
+            const inc = roundIncGst(ex, gstMul);
             const gp = ex > 0 ? ((ex - finalLanded) / ex) * 100 : 0;
             return { ex, inc, gp };
         };
@@ -1133,7 +1136,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 const iv = strategy?.itemValues?.[f.id] || {};
                 const c = calcRow(f.cost || 0, iv, true);
                 const sellEx = parseFloat(iv['hull_cash_price'] || '0');
-                const sellIn = sellEx * gstMul;
+                const sellIn = roundIncGst(sellEx, gstMul);
                 const gpPct = sellEx > 0 ? ((sellEx - c.finalLanded) / sellEx) * 100 : 0;
                 rows.push([
                     f.id, range?.name || '', model.name, f.category || '', f.code || '', f.name || '',
