@@ -666,6 +666,25 @@ export function HighfieldQuoteFlow({
                                 hull_commercial: commercialPrice || 0,
                                 hull_boating_alliance: boatingAlliancePrice || 0,
                             };
+                            // Build priceLevels on accessories (dealer fit items from MPF)
+                            if (row.masterAccessories) {
+                                row.masterAccessories = row.masterAccessories.map((acc: any) => {
+                                    const accSell = parsePrice(acc['Act Sell'] || acc.sellPriceExclGst || acc['Store Price'] || acc['Sell Price'] || acc.price);
+                                    const accTrade = parsePrice(acc['Trade Price'] || acc.tradePrice || acc['Trade']);
+                                    const accCost = parsePrice(acc['Act CTD'] || acc.cost || acc['Dealer Buy']);
+                                    return {
+                                        ...acc,
+                                        sellPriceExclGst: accSell || 0,
+                                        costPrice: accCost || 0,
+                                        priceLevels: {
+                                            hull_cash: accSell || 0,
+                                            hull_trade: accTrade || accSell || 0,
+                                            hull_subdealer: accTrade || accSell || 0,
+                                            hull_subdealer_excl: accTrade || accSell || 0,
+                                        },
+                                    };
+                                });
+                            }
                             return row;
                         });
 
@@ -1142,7 +1161,7 @@ export function HighfieldQuoteFlow({
                                                                 <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow">
                                                                     {opt.isStandard && <Badge className="mb-1.5 bg-emerald-500 text-white border-none font-black text-[6px] uppercase h-3.5 px-1">STANDARD</Badge>}
                                                                     <p className={cn("text-[10px] font-black uppercase tracking-widest leading-tight", selectedMotorAccessoryIds.includes(opt.id) ? "text-primary" : "text-slate-700")}>{opt.name}</p>
-                                                                    <p className={cn("text-[9px] font-black", selectedMotorAccessoryIds.includes(opt.id) ? "text-primary" : "text-slate-400")}>+${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                                    <p className={cn("text-[9px] font-black", selectedMotorAccessoryIds.includes(opt.id) ? "text-primary" : "text-slate-400")}>+${getPriceForLevel(opt, priceLevel).toLocaleString()}</p>
                                                                 </div>
                                                             </button>
                                                         ))}
@@ -1175,7 +1194,7 @@ export function HighfieldQuoteFlow({
                                                                         <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
                                                                         <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
                                                                             <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-blue-600" : "text-slate-900")}>{sel.name}</p>
-                                                                            <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-blue-500/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
+                                                                            <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-blue-500/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.['Act Sell'] || i.data?.sellPriceExclGst || i.data?.['Store Price'] || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
                                                                         </div>
                                                                     </button>
                                                                     );
@@ -1266,7 +1285,7 @@ export function HighfieldQuoteFlow({
                                                             <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
                                                             <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
                                                                 <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{sel.name}</p>
-                                                                <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
+                                                                <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.['Act Sell'] || i.data?.sellPriceExclGst || i.data?.['Store Price'] || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
                                                             </div>
                                                         </button>
                                                         );
@@ -1457,7 +1476,7 @@ export function HighfieldQuoteFlow({
                                                                     </div>
                                                                     <div><p className="text-[10px] font-black uppercase tracking-tight">{sel.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1">{sel.category || 'Gear'}</Badge></div>
                                                                 </div>
-                                                                <p className="text-[10px] font-bold text-slate-600">${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.sellPriceExclGst || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
+                                                                <p className="text-[10px] font-bold text-slate-600">${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.['Act Sell'] || i.data?.sellPriceExclGst || i.data?.['Store Price'] || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
                                                             </div>
                                                         ))}
                                                     </div>

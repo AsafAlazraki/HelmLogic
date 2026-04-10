@@ -126,7 +126,19 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     };
 
     const buildQuotePayload = () => {
-        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId } = quoteData;
+        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, priceLevelUsed } = quoteData;
+
+        /** Resolve price for an item based on the selected price level */
+        const resolvePrice = (item: any): number => {
+            if (!item) return 0;
+            const level = priceLevelUsed || 'hull_cash';
+            if (item.priceLevels?.[level]) {
+                const v = item.priceLevels[level];
+                return typeof v === 'number' ? v : parseFloat(v) || 0;
+            }
+            const fallback = item.sellPriceExclGst || item['Act Sell'] || item['Store Price'] || item['Sell Price'] || item['NSM Retail'] || item.PARTS || item.RRP || item.Price || item.Retail || item.Trade || 0;
+            return typeof fallback === 'number' ? fallback : parseFloat(fallback) || 0;
+        };
 
         return {
             // Quote metadata
@@ -221,7 +233,8 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 model: motorName,
                 brand: selectedMotor.brand || 'Yamaha',
                 brandLogoUrl: selectedMotor.vendorLogoUrl || null,
-                sellPriceExclGst: selectedMotor.sellPriceExclGst || 0,
+                sellPriceExclGst: resolvePrice(selectedMotor),
+                costPrice: selectedMotor.costPrice || 0,
                 imageUrl: selectedMotor.imageUrl || selectedMotor.SummaryImage || null,
                 // Motor spec fields (may not be present on all motors)
                 hpRating: selectedMotor['HP Rating'] || selectedMotor.hp || null,
@@ -236,7 +249,8 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     id: a.id || null,
                     name: a.name || 'Unnamed Accessory',
                     category: a.category || null,
-                    sellPriceExclGst: a.sellPriceExclGst || 0,
+                    sellPriceExclGst: resolvePrice(a),
+                    costPrice: a.costPrice || 0,
                 })),
                 }; })() : null,
 
@@ -261,13 +275,14 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 items: (sel.items || []).map((i: any) => ({
                     // Firestore warehouse items may use various field names for the display label
                     name: i.data?.['OPERATION DESCRIPTION'] || i.data?.ITEM_NAME || i.data?.['Product Name'] || i.data?.name || i.data?.Name || i.data?.Description || i.data?.description || i.name || 'Item',
-                    sellPriceExclGst: i.data?.sellPriceExclGst || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0,
+                    sellPriceExclGst: resolvePrice(i.data || {}),
                     imageUrl: i.data?.imageLink || i.data?.['Image Link'] || i.data?.imageUrl || i.data?.image || i.data?.SummaryImage || null,
                 })),
             })),
 
             // Pricing
             totalPriceExclGst: totalPrice || 0,
+            priceLevelUsed: priceLevelUsed || 'hull_cash',
         };
     };
 
