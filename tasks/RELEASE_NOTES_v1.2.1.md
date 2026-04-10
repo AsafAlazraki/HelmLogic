@@ -97,17 +97,3 @@ All 7 test cases passing:
 ### Notes
 - Motor accessories from MPF (rigging kits, prop kits) have a single price column and don't differentiate by price level — this is correct data behavior, not a bug
 - Sub-Dealer and Sub-Exclusive price levels in the pricing workspace showed anomalous values ($3 instead of ~$3,086) — this is a data import issue from the client, not a code bug. Re-import the price level columns to fix.
-
----
-
-## Release Checklist
-
-- [x] Client pricing feedback addressed (GST rounding, motor columns, Act Sell)
-- [x] All QA test cases passing (7/7)
-- [x] Build passes (`npx next build` — zero errors)
-- [x] Motor hero/grid card prices respond to price level selector
-- [x] Finalize payload snapshots price-level-resolved values
-- [x] Dealer audit panel shows cost/sell breakdown
-- [ ] Merge `claude/app-overview-wKiZ1` → `main` (awaiting Asaf's approval)
-- [ ] Verify production deployment
-- [ ] Smoke test on production
