@@ -49,6 +49,7 @@
 - **Document Results**: Add review section to tasks/todo.md
 - **Capture Lessons**: Update tasks/lessons.md after corrections
 - **On Every Release (dev or main)**: Update `.agents/evolution.md` with new patterns/lessons learned, and update `tasks/SESSION_HANDOVER.md` with any new Firestore collections, component changes, or architectural decisions
+- **Release Notes Format**: Every `RELEASE_NOTES_vX.Y.Z.md` file must follow the same layout — title, date/branch header, Release Stats, feature sections with sub-sections, Files Changed at the end. **NO release checklists** — release notes describe what shipped, not what's pending.
 
 ---
 
