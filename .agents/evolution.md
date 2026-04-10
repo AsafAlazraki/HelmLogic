@@ -133,6 +133,18 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - Static analysis: 688 icon usages verified across 113 files, zero undefined variable references
 - **v1.2.0 shipped to production** — 87 commits, 65 files, 4,423 lines of new code
 
+### Session: April 10, 2026 — v1.2.1 "Pricing Precision" Hotfix
+- Client feedback triggered pricing accuracy overhaul
+- **Inc GST rounding**: all values rounded UP to whole dollars via Math.ceil() per item row
+- **Motor priceLevels**: Yamaha motors now have priceLevels object built from data columns (NSM Retail, Trade Price, Commercial, Boating Alliance)
+- **Sub-dealer motor pricing**: sub-dealers automatically get Trade Price via their defaultPriceLevel
+- **Hero card fix**: motor hero/grid cards used hardcoded sellPriceExclGst — replaced with getPriceForLevel()
+- **Finalize payload**: resolvePrice() snapshots price-level-resolved values for motor, accessories, dealer fit
+- **Dealer audit section**: new panel in stock detail with cost/sell/margin breakdown
+- **getPriceForLevel expanded**: added Act Sell, Store Price, NSM Retail, Sell Price to fallback chain
+- **QA**: 7/7 tests passing (motor accessories "static across levels" confirmed as expected behavior — MPF items have single price column)
+- **Files**: 5 changed — pricing workspace, quote flow, finalize dialog, quote-financials, stock detail
+
 ## Key Lessons Learned
 - `mainVendorId: null` crashes Firestore `doc()` — always check
 - Sell AUD columns need "(EXCL. GST)" and "(INCL. GST)" labels

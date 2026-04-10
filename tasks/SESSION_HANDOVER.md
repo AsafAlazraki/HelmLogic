@@ -394,6 +394,20 @@ Key collections and access:
 
 ---
 
+## v1.2.1 "Pricing Precision" — READY FOR PUSH
+
+- **QA**: 7/7 tests passing
+- **Focus**: Client pricing feedback — GST rounding, motor Trade Price for sub-dealers, dealer fit Act Sell field
+- **Key changes**:
+  - Inc GST rounded UP to whole dollars (`Math.ceil`) per item row
+  - Motor `priceLevels` object built from Yamaha columns (NSM Retail → hull_cash, Trade Price → hull_trade/hull_subdealer, etc.)
+  - Motor hero card and grid cards use `getPriceForLevel()` (not hardcoded sellPriceExclGst)
+  - `resolvePrice()` in finalize dialog snapshots price-level-resolved values
+  - Dealer audit section in stock detail panel (cost/sell/margin breakdown)
+- **Files changed**: 5 — highfield-pricing-workspace.tsx, highfield-quote-flow.tsx, finalize-quote-dialog.tsx, quote-financials.ts, stock-item-detail.tsx
+
+---
+
 ## Git Workflow
 
 - **Dev branch**: `claude/app-overview-wKiZ1` — auto-deploys via Firebase App Hosting

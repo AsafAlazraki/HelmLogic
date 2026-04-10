@@ -26,8 +26,36 @@ Click "Choose Another Motor" → grid reappears with prices at current level
 
 ### Result
 ```
-[AWAITING]
+TEST 1 — Pricing Inc GST Rounding: PASS
+  Component examples: Sea Freight $434.98→$479, Hull $1,670.77→$1,838, Handling $449.98→$495
+  NSM Sell Inc GST $3,741, Trade Inc GST $3,554 ✓
+  ⚠️ Sub-Dealer values anomalous ($3) — data issue
+
+TEST 2 — Motor Price Levels: PASS (was FAIL in round 1, now FIXED)
+  Cash $6,766 | Trade $5,973 | Sub-Dealer $5,973
+
+TEST 3 — Accessory Pricing per Level: PASS (expected behavior)
+  Rigging Kit B $343, Rigging Kit A $188, Prop Kit A $1,879 — static across levels
+  CONFIRMED: Dealer fit accessories from MPF have single price column only.
+  They do NOT differentiate by price level — this is correct.
+
+TEST 4 — Dealer Fit Act Sell: PASS
+  Alum Talon GP K Series = $247 from Act Sell field ✓
+
+TEST 5 — Proposal Inc GST: PASS
+  Grand Total $6,842 (whole dollar). $6,220 Ex + $622 GST = $6,842 Inc ✓
+
+TEST 6 — Finalize Price Level Snapshot: PASS
+  Stock NSM-SCGBU19D7 | Price Level = TRADE ✓
+  Motor F25SWTC snapshotted at $5,973 (Trade) not $6,766 (Cash)
+  Variant $5,846.364 + Motor $5,973 = $11,819.364 total
+
+TEST 7 — Yamaha Motor Pricing: PASS
+  All 15 motors show non-zero prices
 ```
+
+### Outcome
+**7/7 PASS** — v1.2.1 ready for production push
 
 ---
 

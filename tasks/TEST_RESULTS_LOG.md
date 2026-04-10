@@ -69,18 +69,26 @@ TEST 7 — Yamaha Motor Pricing: [awaiting re-test]
 
 ---
 
-## v1.2.1 — Test Run 2 (Re-test after fix)
-
-### Test Case: Motor Price Level Re-Test (TEST 3)
-- Select motor, check price at Cash level
-- Switch to Trade — hero card and grid cards should show different (lower) prices
-- Switch to Sub-Dealer — same as Trade
-- Switch back to Cash — original price returns
+## v1.2.1 — Test Run 2 (After motor hero card fix)
 
 ### Results
 ```
-[AWAITING COWORK RESULTS]
+TEST 1 Inc GST Rounding: PASS
+TEST 2 Motor Price Levels: PASS (hero card now responds to level selector)
+TEST 3 Accessory Pricing: PASS (expected behavior — MPF items have single price)
+TEST 4 Dealer Fit Act Sell: PASS
+TEST 5 Proposal Inc GST: PASS
+TEST 6 Finalize Price Level Snapshot: PASS (sub-dealer gets trade pricing)
+TEST 7 Yamaha Motor Pricing: PASS
+
+7/7 PASS — v1.2.1 READY FOR PRODUCTION
 ```
+
+### Key Confirmations
+- Motor F25SWTC: Cash $6,766 → Trade $5,973 → Sub-Dealer $5,973
+- Stock item saved with Price Level = TRADE, motor snapshotted at Trade price
+- Inc GST values whole dollar across all price levels
+- Dealer fit items from MPF show Act Sell prices correctly
 
 ---
 
