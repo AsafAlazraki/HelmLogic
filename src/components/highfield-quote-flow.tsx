@@ -1082,7 +1082,7 @@ export function HighfieldQuoteFlow({
                                                             </div>
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="font-black text-primary italic text-2xl">${(selectedMotor.sellPriceExclGst || selectedMotor['Store Price'] || 0).toLocaleString()}</p>
+                                                            <p className="font-black text-primary italic text-2xl">${getPriceForLevel(selectedMotor, priceLevel).toLocaleString()}</p>
                                                             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Excl. GST</span>
                                                         </div>
                                                     </div>
@@ -1114,7 +1114,7 @@ export function HighfieldQuoteFlow({
                                                             <div className="p-6 flex flex-col items-start text-left gap-2 flex-grow bg-white">
                                                                 <p className="text-sm font-black uppercase tracking-tight leading-tight text-slate-900">{displayName}</p>
                                                                 <div className="flex items-center gap-2 mt-auto">
-                                                                    <p className="font-black text-primary italic text-xl">${(m.sellPriceExclGst || m['Store Price'] || 0).toLocaleString()}</p>
+                                                                    <p className="font-black text-primary italic text-xl">${getPriceForLevel(m, priceLevel).toLocaleString()}</p>
                                                                     <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Excl. GST</span>
                                                                 </div>
                                                             </div>
