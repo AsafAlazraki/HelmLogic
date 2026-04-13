@@ -98,6 +98,13 @@ export function DealerFitOptions({
         cats.push({ id: `motor-${name}`, name } as DealerFitCategory);
       }
     });
+    // Module-level trailer dealer fit categories
+    const trailerCats: string[] = module?.trailerDealerFitCategories || [];
+    trailerCats.forEach(name => {
+      if (!cats.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+        cats.push({ id: `trailer-${name}`, name } as DealerFitCategory);
+      }
+    });
     return cats;
   }, [allCategories, organisation, isAdmin, module, moduleOnly]);
 
@@ -128,7 +135,7 @@ export function DealerFitOptions({
     // Merge: for synthetic module/motor IDs, look up by name
     const merged = new Map(byId);
     assignedCategories.forEach(cat => {
-      if ((cat.id.startsWith('module-') || cat.id.startsWith('motor-')) && !merged.has(cat.id)) {
+      if ((cat.id.startsWith('module-') || cat.id.startsWith('motor-') || cat.id.startsWith('trailer-')) && !merged.has(cat.id)) {
         const nameMatches = byName.get(cat.name.toLowerCase()) || [];
         if (nameMatches.length > 0) merged.set(cat.id, nameMatches);
       }
