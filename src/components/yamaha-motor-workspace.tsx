@@ -61,7 +61,22 @@ function getMotorName(motor: MotorRow): string {
 
 function getMotorHp(motor: MotorRow): number {
     const raw = motor['HP Rating'] || motor['HP'] || motor.hp || motor.horsepower || 0;
-    return typeof raw === 'number' ? raw : parseFloat(raw) || 0;
+    if (typeof raw === 'number') return raw;
+    const str = String(raw).trim();
+    // Handle twin/triple configs like "2 × 300" or "2 x 300" — return the per-engine HP
+    const multiMatch = str.match(/(\d+)\s*[x×]\s*(\d+)/i);
+    if (multiMatch) return parseInt(multiMatch[2]) || 0;
+    return parseFloat(str) || 0;
+}
+
+function getMotorHpDisplay(motor: MotorRow): string {
+    const raw = motor['HP Rating'] || motor['HP'] || motor.hp || motor.horsepower || '';
+    const str = String(raw).trim();
+    // "2 × 300" → "2 × 300 HP", "90" → "90 HP"
+    const multiMatch = str.match(/(\d+)\s*[x×]\s*(\d+)/i);
+    if (multiMatch) return `${multiMatch[1]} × ${multiMatch[2]} HP`;
+    const num = parseFloat(str);
+    return num > 0 ? `${num} HP` : '';
 }
 
 function getMotorPrice(motor: MotorRow): number {
@@ -122,7 +137,7 @@ function MotorCard({ motor, onClick }: { motor: MotorRow; onClick: () => void })
             <CardContent className="p-4 space-y-2">
                 <h3 className="text-sm font-bold truncate" title={name}>{name}</h3>
                 <div className="flex gap-2 flex-wrap">
-                    {hp > 0 && <Badge variant="outline" className="text-[9px]">{hp} HP</Badge>}
+                    {hp > 0 && <Badge variant="outline" className="text-[9px]">{getMotorHpDisplay(motor)}</Badge>}
                     {shaft && <Badge variant="outline" className="text-[9px]">{shaft}</Badge>}
                 </div>
                 {price > 0 && (
@@ -200,7 +215,7 @@ function MotorDetailSheet({
 
                 {/* Quick stats */}
                 <div className="flex gap-3 mb-6">
-                    {hp > 0 && <Badge variant="secondary">{hp} HP</Badge>}
+                    {hp > 0 && <Badge variant="secondary">{getMotorHpDisplay(motor)}</Badge>}
                     {shaft && <Badge variant="secondary">{shaft}</Badge>}
                     {price > 0 && <Badge variant="default">${price.toLocaleString()}</Badge>}
                 </div>
