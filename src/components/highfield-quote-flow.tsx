@@ -41,7 +41,12 @@ import {
     Gauge,
     Gift,
     Calendar,
-    Percent
+    Percent,
+    Car,
+    Shield,
+    Banknote,
+    Clock,
+    MessageSquare
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -77,6 +82,8 @@ import {
 } from "@/components/ui/table";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 
 /** Normalize spacing, strip internal model-code suffixes, and extract first color from parenthetical */
 function formatOptionDisplayLabel(name: string): { base: string; color: string | null } {
@@ -232,6 +239,16 @@ export function HighfieldQuoteFlow({
     const [availablePromotions, setAvailablePromotions] = useState<any[]>([]);
     const [appliedPromotionIds, setAppliedPromotionIds] = useState<string[]>([]);
 
+    // Admin & Trade-In State
+    const [tradeInDescription, setTradeInDescription] = useState('');
+    const [tradeInValue, setTradeInValue] = useState('');
+    const [wantsInsurance, setWantsInsurance] = useState(false);
+    const [insuranceNotes, setInsuranceNotes] = useState('');
+    const [wantsFinance, setWantsFinance] = useState(false);
+    const [financeNotes, setFinanceNotes] = useState('');
+    const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState('');
+    const [timingNotes, setTimingNotes] = useState('');
+
     // Refs for Auto-Scroll
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const materialSectionRef = useRef<HTMLDivElement>(null);
@@ -259,6 +276,8 @@ export function HighfieldQuoteFlow({
     const motorModuleCategories = useMemo(() => module?.motorDealerFitCategories || [], [module?.motorDealerFitCategories]);
     const trailerModuleCategories = useMemo(() => module?.trailerDealerFitCategories || [], [module?.trailerDealerFitCategories]);
     const [propComesStandard, setPropComesStandard] = useState(false);
+    const [extendedWarranty, setExtendedWarranty] = useState(false);
+    const [servicePlan, setServicePlan] = useState(false);
     const motorDetailRef = useRef<HTMLDivElement>(null);
 
     // 3. Derived Memos (CRITICAL: Order of initialization to prevent ReferenceErrors)
@@ -1329,6 +1348,38 @@ export function HighfieldQuoteFlow({
                                                 </div>
                                             </div>
 
+                                            {/* NSM Extended Warranty & Service Plan toggles */}
+                                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
+                                                <div className="flex items-center gap-3 bg-blue-500 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Dealer Services</h3>
+                                                </div>
+                                                <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", extendedWarranty ? "bg-blue-50 border-blue-500 ring-2 ring-blue-500/20 shadow-md" : "border-transparent hover:border-blue-500/20")} onClick={() => setExtendedWarranty(!extendedWarranty)}>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", extendedWarranty ? "bg-blue-500 border-blue-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Star className="h-5 w-5" /></div>
+                                                        <div>
+                                                            <p className={cn("text-[11px] font-black uppercase tracking-widest", extendedWarranty ? "text-blue-700" : "text-slate-600")}>NSM 6 Year Extended Warranty</p>
+                                                            <p className="text-[9px] font-bold text-muted-foreground mt-0.5">Extend factory warranty to 6 years with NSM coverage</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className={cn("h-8 w-8 rounded-full flex items-center justify-center", extendedWarranty ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-300")}>
+                                                        <Check className="h-4 w-4" />
+                                                    </div>
+                                                </div>
+                                                <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", servicePlan ? "bg-blue-50 border-blue-500 ring-2 ring-blue-500/20 shadow-md" : "border-transparent hover:border-blue-500/20")} onClick={() => setServicePlan(!servicePlan)}>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", servicePlan ? "bg-blue-500 border-blue-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Wrench className="h-5 w-5" /></div>
+                                                        <div>
+                                                            <p className={cn("text-[11px] font-black uppercase tracking-widest", servicePlan ? "text-blue-700" : "text-slate-600")}>Direct Debit Service Plan</p>
+                                                            <p className="text-[9px] font-bold text-muted-foreground mt-0.5">Scheduled servicing via convenient direct debit payments</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className={cn("h-8 w-8 rounded-full flex items-center justify-center", servicePlan ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-300")}>
+                                                        <Check className="h-4 w-4" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             {groupedMotorAccessories.map(([cat, opts]) => (
                                                 <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
                                                     <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
@@ -1754,6 +1805,46 @@ export function HighfieldQuoteFlow({
                                             </Card>
                                         )}
 
+                                        {(extendedWarranty || servicePlan) && (
+                                            <Card className="rounded-[1.5rem] border-2 border-blue-200 shadow-lg overflow-hidden bg-blue-50/30">
+                                                <CardHeader className="bg-blue-500 border-b p-4"><div className="flex items-center gap-2"><Star className="h-4 w-4 text-white" /><CardTitle className="text-xs font-black uppercase tracking-widest text-white">Dealer Services</CardTitle></div></CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="divide-y divide-blue-100">
+                                                        {extendedWarranty && (
+                                                            <div className="p-4 flex items-center justify-between hover:bg-blue-50 transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="group/remove h-6 w-6 rounded-lg bg-blue-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                        <Check className="h-3 w-3 text-blue-600 group-hover/remove:opacity-0 transition-opacity" />
+                                                                        <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => setExtendedWarranty(false)}><X className="h-3 w-3" /></Button>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black uppercase tracking-tight text-blue-800">NSM 6 Year Extended Warranty</p>
+                                                                        <Badge className="text-[7px] font-black h-3.5 px-1 bg-blue-100 text-blue-600 border-blue-200">Extended Coverage</Badge>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-blue-600">Included</p>
+                                                            </div>
+                                                        )}
+                                                        {servicePlan && (
+                                                            <div className="p-4 flex items-center justify-between hover:bg-blue-50 transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="group/remove h-6 w-6 rounded-lg bg-blue-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                        <Check className="h-3 w-3 text-blue-600 group-hover/remove:opacity-0 transition-opacity" />
+                                                                        <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => setServicePlan(false)}><X className="h-3 w-3" /></Button>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black uppercase tracking-tight text-blue-800">Direct Debit Service Plan</p>
+                                                                        <Badge className="text-[7px] font-black h-3.5 px-1 bg-blue-100 text-blue-600 border-blue-200">Service Plan</Badge>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-blue-600">Included</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        )}
+
                                         {selectedTrailerId && model.trailerConfig && (
                                             <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
                                                 <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Towing Solution</CardTitle></div></CardHeader>
@@ -1871,6 +1962,128 @@ export function HighfieldQuoteFlow({
                                                 </CardContent>
                                             </Card>
                                         )}
+
+                                        {/* Admin & Trade-In Section */}
+                                        <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
+                                            <CardHeader className="bg-muted/30 border-b p-4">
+                                                <div className="flex items-center gap-2">
+                                                    <ClipboardList className="h-4 w-4 text-primary" />
+                                                    <CardTitle className="text-xs font-black uppercase tracking-widest">Admin & Trade-In</CardTitle>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="p-5 space-y-6">
+
+                                                {/* Trade-In */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Car className="h-3.5 w-3.5 text-primary" />
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trade-In Vehicle</Label>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Textarea
+                                                            placeholder="Description (make, model, year, condition...)"
+                                                            value={tradeInDescription}
+                                                            onChange={(e) => setTradeInDescription(e.target.value)}
+                                                            className="min-h-[72px] rounded-xl border-2 text-sm font-bold resize-none"
+                                                        />
+                                                        <div className="space-y-1.5">
+                                                            <Label htmlFor="trade-in-value" className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5">
+                                                                <DollarSign className="h-3 w-3" /> Agreed Trade-In Value
+                                                            </Label>
+                                                            <Input
+                                                                id="trade-in-value"
+                                                                type="number"
+                                                                placeholder="0"
+                                                                value={tradeInValue}
+                                                                onChange={(e) => setTradeInValue(e.target.value)}
+                                                                className="h-11 rounded-xl border-2 font-bold text-sm"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <Separator />
+
+                                                {/* Insurance Quote */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <Checkbox
+                                                            id="wants-insurance"
+                                                            checked={wantsInsurance}
+                                                            onCheckedChange={(checked) => setWantsInsurance(checked === true)}
+                                                            className="h-5 w-5 rounded border-2"
+                                                        />
+                                                        <Label htmlFor="wants-insurance" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 cursor-pointer">
+                                                            <Shield className="h-3.5 w-3.5 text-primary" /> I would like an Insurance Quote
+                                                        </Label>
+                                                    </div>
+                                                    {wantsInsurance && (
+                                                        <Textarea
+                                                            placeholder="Insurance notes (coverage preferences, existing policies...)"
+                                                            value={insuranceNotes}
+                                                            onChange={(e) => setInsuranceNotes(e.target.value)}
+                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none animate-in fade-in slide-in-from-top-1 duration-200"
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                <Separator />
+
+                                                {/* Finance Quote */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <Checkbox
+                                                            id="wants-finance"
+                                                            checked={wantsFinance}
+                                                            onCheckedChange={(checked) => setWantsFinance(checked === true)}
+                                                            className="h-5 w-5 rounded border-2"
+                                                        />
+                                                        <Label htmlFor="wants-finance" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 cursor-pointer">
+                                                            <Banknote className="h-3.5 w-3.5 text-primary" /> I would like a Finance Quote
+                                                        </Label>
+                                                    </div>
+                                                    {wantsFinance && (
+                                                        <Textarea
+                                                            placeholder="Finance notes (deposit amount, term preference, trade equity...)"
+                                                            value={financeNotes}
+                                                            onChange={(e) => setFinanceNotes(e.target.value)}
+                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none animate-in fade-in slide-in-from-top-1 duration-200"
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                <Separator />
+
+                                                {/* Timing / Delivery */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="h-3.5 w-3.5 text-primary" />
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Timing & Delivery</Label>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <div className="space-y-1.5">
+                                                            <Label htmlFor="delivery-date" className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5">
+                                                                <Calendar className="h-3 w-3" /> Estimated Delivery Date
+                                                            </Label>
+                                                            <Input
+                                                                id="delivery-date"
+                                                                type="date"
+                                                                value={estimatedDeliveryDate}
+                                                                onChange={(e) => setEstimatedDeliveryDate(e.target.value)}
+                                                                className="h-11 rounded-xl border-2 font-bold text-sm"
+                                                            />
+                                                        </div>
+                                                        <Textarea
+                                                            placeholder="Timing notes (slot availability, special delivery instructions...)"
+                                                            value={timingNotes}
+                                                            onChange={(e) => setTimingNotes(e.target.value)}
+                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                            </CardContent>
+                                        </Card>
                                     </div>
                                 </div>
                             )}
@@ -1989,6 +2202,25 @@ export function HighfieldQuoteFlow({
                     priceLevelUsed: priceLevel,
                     appliedPromotions,
                     promotionDiscount,
+                    dealerServices: { extendedWarranty, servicePlan },
+                    adminDetails: {
+                        tradeIn: {
+                            description: tradeInDescription,
+                            value: tradeInValue ? parseFloat(tradeInValue) : 0,
+                        },
+                        insurance: {
+                            requested: wantsInsurance,
+                            notes: insuranceNotes,
+                        },
+                        finance: {
+                            requested: wantsFinance,
+                            notes: financeNotes,
+                        },
+                        timing: {
+                            estimatedDeliveryDate: estimatedDeliveryDate || null,
+                            notes: timingNotes,
+                        },
+                    },
                 }}
                 organisationId={orgId || null}
                 userProfile={userProfile}

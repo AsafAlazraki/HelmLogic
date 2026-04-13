@@ -68,6 +68,13 @@ interface FinalizeQuoteDialogProps {
         priceLevelUsed?: string;
         appliedPromotions?: any[];
         promotionDiscount?: number;
+        dealerServices?: { extendedWarranty: boolean; servicePlan: boolean };
+        adminDetails?: {
+            tradeIn: { description: string; value: number };
+            insurance: { requested: boolean; notes: string };
+            finance: { requested: boolean; notes: string };
+            timing: { estimatedDeliveryDate: string | null; notes: string };
+        };
     };
     organisationId: string | null;
     userProfile: any;
@@ -130,7 +137,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     };
 
     const buildQuotePayload = () => {
-        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, priceLevelUsed, appliedPromotions, promotionDiscount } = quoteData;
+        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, priceLevelUsed, appliedPromotions, promotionDiscount, dealerServices, adminDetails } = quoteData;
 
         /** Resolve price for an item based on the selected price level */
         const resolvePrice = (item: any): number => {
@@ -309,6 +316,33 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 pdfUrl: p.showPdfOnQuote ? (p.pdfUrl || null) : null,
             })),
             promotionDiscount: promotionDiscount || 0,
+
+            // Dealer Services
+            dealerServices: {
+                extendedWarranty: dealerServices?.extendedWarranty || false,
+                servicePlan: dealerServices?.servicePlan || false,
+            },
+
+            // Admin & Trade-In
+            adminDetails: adminDetails ? {
+                tradeIn: {
+                    description: adminDetails.tradeIn.description || '',
+                    value: adminDetails.tradeIn.value || 0,
+                },
+                insurance: {
+                    requested: adminDetails.insurance.requested || false,
+                    notes: adminDetails.insurance.notes || '',
+                },
+                finance: {
+                    requested: adminDetails.finance.requested || false,
+                    notes: adminDetails.finance.notes || '',
+                },
+                timing: {
+                    estimatedDeliveryDate: adminDetails.timing.estimatedDeliveryDate || null,
+                    notes: adminDetails.timing.notes || '',
+                },
+            } : null,
+
             finalPriceExclGst: Math.max(0, (totalPrice || 0) - (promotionDiscount || 0)),
         };
     };
