@@ -37,7 +37,8 @@ import {
     Plus,
     FilePlus2,
     AlertTriangle,
-    CopyCheck
+    CopyCheck,
+    Gauge
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -218,6 +219,8 @@ export function HighfieldQuoteFlow({
     const [showFeatures, setShowFeatures] = useState(false);
     const [showSpecs, setShowSpecs] = useState(false);
     const [showDocs, setShowDocs] = useState(false);
+    const [showEngineSpecs, setShowEngineSpecs] = useState(false);
+    const [showTrailerSpecs, setShowTrailerSpecs] = useState(false);
     const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
     const [api, setApi] = useState<CarouselApi>();
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -876,6 +879,8 @@ export function HighfieldQuoteFlow({
                                     <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowFeatures(true)}><ListChecks className="h-3.5 w-3.5 mr-2 text-primary" /> Features</Button>
                                     <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-3.5 w-3.5 mr-2 text-primary" /> Specs</Button>
                                     <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowDocs(true)}><FileText className="h-3.5 w-3.5 mr-2 text-primary" /> Docs</Button>
+                                    {selectedMotor && <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowEngineSpecs(true)}><Gauge className="h-3.5 w-3.5 mr-2 text-primary" /> Engine Specs</Button>}
+                                    {selectedTrailerId && <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowTrailerSpecs(true)}><Truck className="h-3.5 w-3.5 mr-2 text-primary" /> Trailer Specs</Button>}
                                 </div>
                             </div>
                             <div className="flex flex-col items-end px-1 gap-1">
@@ -1672,6 +1677,56 @@ export function HighfieldQuoteFlow({
                     <div className="p-6 space-y-3">{model?.documents?.length > 0 ? model.documents.map((doc: any, i: number) => (
                         <a key={i} href={doc.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-4 rounded-xl border-2 hover:border-primary/40 hover:bg-primary/5 group"><div className="flex items-center gap-3"><FileText className="h-4 w-4 text-primary/40 group-hover:text-primary" /><span className="text-[10px] font-black uppercase tracking-tight">{doc.name}</span></div><ExternalLink className="h-3.5 w-3.5 opacity-20 group-hover:opacity-100" /></a>
                     )) : <div className="py-12 text-center opacity-20 flex flex-col items-center gap-2"><FileText className="h-10 w-10" /><p className="text-[9px] font-black uppercase tracking-widest">No Documents Linked</p></div>}</div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showEngineSpecs} onOpenChange={setShowEngineSpecs}>
+                <DialogContent className="sm:max-w-lg rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-6 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Engine Specs</DialogTitle></DialogHeader>
+                    <ScrollArea className="max-h-[60vh]"><div className="p-0"><Table><TableBody>
+                        {selectedMotor?.['HP Rating'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">HP Rating</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['HP Rating']}</TableCell></TableRow>}
+                        {selectedMotor?.['Shaft Length'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Shaft Length</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Shaft Length']}</TableCell></TableRow>}
+                        {selectedMotor?.['Control'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Control</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Control']}</TableCell></TableRow>}
+                        {selectedMotor?.['Starting'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Starting</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Starting']}</TableCell></TableRow>}
+                        {selectedMotor?.['Tilt & Trim'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Tilt & Trim</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Tilt & Trim']}</TableCell></TableRow>}
+                        {selectedMotor?.['Fuel Tank'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Fuel Tank</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Fuel Tank']}</TableCell></TableRow>}
+                        {selectedMotor?.['Prop'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Prop</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Prop']}</TableCell></TableRow>}
+                        {selectedMotor?.['Warranty'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Warranty</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Warranty']}</TableCell></TableRow>}
+                        {(selectedMotor?.['Cylinders'] || selectedMotor?.['Displacement']) && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Cylinders / Displacement</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{[selectedMotor['Cylinders'], selectedMotor['Displacement']].filter(Boolean).join(' / ')}</TableCell></TableRow>}
+                        {selectedMotor?.['Engine Colour'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Engine Colour</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Engine Colour']}</TableCell></TableRow>}
+                    </TableBody></Table></div></ScrollArea>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showTrailerSpecs} onOpenChange={setShowTrailerSpecs}>
+                <DialogContent className="sm:max-w-lg rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-6 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Trailer Specs</DialogTitle></DialogHeader>
+                    <ScrollArea className="max-h-[60vh]">
+                        <div className="p-6 space-y-4">
+                            {model.trailerConfig?.imageUrl && (
+                                <div className="relative aspect-video w-full bg-white rounded-2xl overflow-hidden border-2">
+                                    <img src={model.trailerConfig.imageUrl} alt={model.trailerConfig?.name || 'Trailer'} className="w-full h-full object-contain p-4 mix-blend-multiply" />
+                                </div>
+                            )}
+                            <Table><TableBody>
+                                {model.trailerConfig?.name && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Name</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{model.trailerConfig.name}</TableCell></TableRow>}
+                                {model.trailerConfig?.sellPriceExclGst != null && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Price (Excl. GST)</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">${model.trailerConfig.sellPriceExclGst.toLocaleString()}</TableCell></TableRow>}
+                            </TableBody></Table>
+                            {model.trailerConfig?.options?.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 px-2">Available Options</p>
+                                    <Table><TableBody>
+                                        {model.trailerConfig.options.map((opt: any) => (
+                                            <TableRow key={opt.id} className="hover:bg-primary/5 border-b">
+                                                <TableCell className="font-black uppercase text-[10px] text-slate-900 pl-6 py-3">{opt.name}</TableCell>
+                                                <TableCell className="font-black uppercase text-[10px] text-primary pr-6 py-3 text-right">${(opt.sellPriceExclGst || 0).toLocaleString()}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody></Table>
+                                </div>
+                            )}
+                        </div>
+                    </ScrollArea>
                 </DialogContent>
             </Dialog>
 
