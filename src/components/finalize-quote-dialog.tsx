@@ -57,6 +57,7 @@ interface FinalizeQuoteDialogProps {
         selectedMotor: any;
         selectedMotorAccessories: any[];
         selectedTrailerOptionsData: any[];
+        customTrailerOptions?: any[];
         selectedDealerFitData: any[];
         totalPrice: number;
         isRegoSelected: boolean;
@@ -126,7 +127,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     };
 
     const buildQuotePayload = () => {
-        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, priceLevelUsed } = quoteData;
+        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, priceLevelUsed } = quoteData;
 
         /** Resolve price for an item based on the selected price level */
         const resolvePrice = (item: any): number => {
@@ -264,6 +265,12 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     id: o.id || null,
                     name: o.name || 'Trailer Option',
                     sellPriceExclGst: o.sellPriceExclGst || 0,
+                })),
+                customOptions: (customTrailerOptions || []).map((o: any) => ({
+                    id: o.id || null,
+                    name: o.name || 'Custom Trailer Option',
+                    sellPriceExclGst: o.sellPriceExclGst || 0,
+                    description: o.description || null,
                 })),
             } : null,
 

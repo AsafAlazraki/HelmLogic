@@ -134,6 +134,7 @@ interface DuplicateInitialState {
     selectedMotorAccessoryIds: string[];
     selectedTrailerId: string | null;
     selectedTrailerOptionIds: string[];
+    customTrailerOptions?: CustomOption[];
     selectedDealerFitIds: string[];
     isRegoSelected: boolean;
     isStickerSelected: boolean;
@@ -202,10 +203,16 @@ export function HighfieldQuoteFlow({
     const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>(initialState?.selectedTrailerOptionIds ?? []);
     const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>(initialState?.selectedDealerFitIds ?? []);
 
-    // Custom Option Form State
+    // Custom Option Form State (Boat)
     const [newCustomName, setNewCustomName] = useState('');
     const [newCustomPrice, setNewCustomPrice] = useState('');
     const [newCustomDesc, setNewCustomDesc] = useState('');
+
+    // Custom Trailer Option State
+    const [customTrailerOptions, setCustomTrailerOptions] = useState<CustomOption[]>(initialState?.customTrailerOptions ?? []);
+    const [newCustomTrailerName, setNewCustomTrailerName] = useState('');
+    const [newCustomTrailerPrice, setNewCustomTrailerPrice] = useState('');
+    const [newCustomTrailerDesc, setNewCustomTrailerDesc] = useState('');
 
     // Modal & Carousel State
     const [showFeatures, setShowFeatures] = useState(false);
@@ -240,6 +247,7 @@ export function HighfieldQuoteFlow({
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
     const motorModuleCategories = useMemo(() => module?.motorDealerFitCategories || [], [module?.motorDealerFitCategories]);
+    const trailerModuleCategories = useMemo(() => module?.trailerDealerFitCategories || [], [module?.trailerDealerFitCategories]);
     const [propComesStandard, setPropComesStandard] = useState(false);
     const motorDetailRef = useRef<HTMLDivElement>(null);
 
@@ -379,16 +387,18 @@ export function HighfieldQuoteFlow({
     const groupedDealerFit = useMemo(() => {
         if (!dealerFitSelections) return [];
         const motorCats = new Set(motorModuleCategories.map(c => c.toLowerCase()));
+        const trailerCats = new Set(trailerModuleCategories.map(c => c.toLowerCase()));
         const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
             const cat = sel.category || 'Gear';
-            // Skip motor categories — they're shown separately
+            // Skip motor and trailer categories — they're shown separately
             if (motorCats.has(cat.toLowerCase())) return acc;
+            if (trailerCats.has(cat.toLowerCase())) return acc;
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(sel);
             return acc;
         }, {});
         return Object.entries(groups) as [string, any][];
-    }, [dealerFitSelections, motorModuleCategories]);
+    }, [dealerFitSelections, motorModuleCategories, trailerModuleCategories]);
 
     const groupedMotorDealerFit = useMemo(() => {
         if (!dealerFitSelections || motorModuleCategories.length === 0) return [];
@@ -410,6 +420,25 @@ export function HighfieldQuoteFlow({
             .filter(([, items]) => items.length > 0);
     }, [dealerFitSelections, motorModuleCategories]);
 
+    const groupedTrailerDealerFit = useMemo(() => {
+        if (!dealerFitSelections || trailerModuleCategories.length === 0) return [];
+        const trailerCatsLower = trailerModuleCategories.map(c => c.toLowerCase());
+        const groups: Record<string, any[]> = {};
+        dealerFitSelections.forEach((sel: any) => {
+            const cat = sel.category || '';
+            if (!trailerCatsLower.includes(cat.toLowerCase())) return;
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(sel);
+        });
+        return trailerModuleCategories
+            .filter(cat => groups[cat] || Object.keys(groups).some(k => k.toLowerCase() === cat.toLowerCase()))
+            .map(cat => {
+                const key = Object.keys(groups).find(k => k.toLowerCase() === cat.toLowerCase()) || cat;
+                return [key, groups[key] || []] as [string, any[]];
+            })
+            .filter(([, items]) => items.length > 0);
+    }, [dealerFitSelections, trailerModuleCategories]);
+
     const totalPrice = useMemo(() => {
         let total = getPriceForLevel(activeVariant, priceLevel);
         selectedOptionsData.forEach(opt => { total += getPriceForLevel(opt, priceLevel); });
@@ -426,13 +455,14 @@ export function HighfieldQuoteFlow({
         if (selectedTrailerId && model.trailerConfig) {
             total += getPriceForLevel(model.trailerConfig, priceLevel);
             selectedTrailerOptionsData.forEach((o: any) => { total += getPriceForLevel(o, priceLevel); });
+            customTrailerOptions.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
             if (isTrailerRegoSelected) total += (model.registration?.trailerPrice12Months || 0);
         }
         selectedDealerFitData.forEach(s => {
             s.items?.forEach((i: any) => { total += getPriceForLevel(i.data, priceLevel); });
         });
         return total;
-    }, [activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration, priceLevel]);
+    }, [activeVariant, selectedOptionsData, customOptions, customTrailerOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration, priceLevel]);
 
     // 4. Selection Handlers
     const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
@@ -533,6 +563,24 @@ export function HighfieldQuoteFlow({
 
     const handleRemoveCustomOption = (id: string) => {
         setCustomOptions(prev => prev.filter(o => o.id !== id));
+    };
+
+    const handleAddCustomTrailerOption = () => {
+        if (!newCustomTrailerName.trim() || !newCustomTrailerPrice) return;
+        const newOpt: CustomOption = {
+            id: `custom-trailer-${Date.now()}`,
+            name: newCustomTrailerName.trim(),
+            sellPriceExclGst: parseFloat(newCustomTrailerPrice) || 0,
+            description: newCustomTrailerDesc.trim() || undefined
+        };
+        setCustomTrailerOptions(prev => [...prev, newOpt]);
+        setNewCustomTrailerName('');
+        setNewCustomTrailerPrice('');
+        setNewCustomTrailerDesc('');
+    };
+
+    const handleRemoveCustomTrailerOption = (id: string) => {
+        setCustomTrailerOptions(prev => prev.filter(o => o.id !== id));
     };
 
     const toggleMotorAccessory = (id: string) => {
@@ -1248,6 +1296,92 @@ export function HighfieldQuoteFlow({
                                                     </div>
                                                 </div>
                                             )}
+
+                                            {/* --- ADDITIONAL FACTORY TRAILER NOTES/OPTIONS --- */}
+                                            <div className="space-y-6 scroll-mt-10">
+                                                <div className="flex items-center gap-3 bg-slate-900 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Additional Factory Trailer Notes/Options</h3>
+                                                </div>
+                                                <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white space-y-6">
+                                                    <div className="grid gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Addition Label</Label>
+                                                            <Input placeholder="e.g. Spare Wheel Mount" value={newCustomTrailerName} onChange={e => setNewCustomTrailerName(e.target.value)} className="h-11 font-bold border-2 rounded-xl" />
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Sell Price (Excl.)</Label>
+                                                                <div className="relative">
+                                                                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                                                                    <Input type="number" placeholder="0.00" value={newCustomTrailerPrice} onChange={e => setNewCustomTrailerPrice(e.target.value)} className="h-11 pl-9 font-black border-2 rounded-xl" />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col justify-end">
+                                                                <Button onClick={handleAddCustomTrailerOption} disabled={!newCustomTrailerName.trim() || !newCustomTrailerPrice} className="h-11 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg bg-primary">
+                                                                    <Plus className="h-4 w-4 mr-2" /> Add to Build
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Description (Optional)</Label>
+                                                            <Input placeholder="Technical notes or specific requirements..." value={newCustomTrailerDesc} onChange={e => setNewCustomTrailerDesc(e.target.value)} className="h-11 font-bold border-2 rounded-xl" />
+                                                        </div>
+                                                    </div>
+
+                                                    {customTrailerOptions.length > 0 && (
+                                                        <div className="pt-6 border-t space-y-3">
+                                                            {customTrailerOptions.map(opt => (
+                                                                <div key={opt.id} className="flex items-center justify-between p-4 rounded-2xl border-2 bg-slate-50 group/custom">
+                                                                    <div className="min-w-0">
+                                                                        <p className="font-black text-xs uppercase tracking-tight text-slate-900">{opt.name}</p>
+                                                                        {opt.description && <p className="text-[9px] font-bold text-muted-foreground uppercase mt-0.5 truncate">{opt.description}</p>}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-4">
+                                                                        <p className="font-black text-xs text-primary">${opt.sellPriceExclGst.toLocaleString()}</p>
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-full" onClick={() => handleRemoveCustomTrailerOption(opt.id)}><Trash2 className="h-4 w-4" /></Button>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </Card>
+                                            </div>
+
+                                            {/* --- TRAILER DEALER FIT --- */}
+                                            {groupedTrailerDealerFit.length > 0 && (
+                                                <>
+                                                    <div className="flex items-center gap-4 py-2">
+                                                        <div className="flex-1 border-t-2 border-dashed border-slate-200" />
+                                                        <span className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-300">Trailer Dealer Fit</span>
+                                                        <div className="flex-1 border-t-2 border-dashed border-slate-200" />
+                                                    </div>
+                                                    {groupedTrailerDealerFit.map(([cat, opts]) => (
+                                                        <div key={`tdf-${cat}`} ref={el => { categoryRefs.current[`tdf-${cat}`] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
+                                                            <div className="flex items-center gap-3 bg-amber-600 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                {opts.map((sel: any) => {
+                                                                    const isSelected = selectedDealerFitIds.includes(sel.id);
+                                                                    const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
+                                                                    return (
+                                                                    <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1 relative", isSelected ? "bg-amber-50 border-amber-600 shadow-md ring-2 ring-amber-600/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-amber-600/20")}>
+                                                                        {hasOverlap && <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5"><CopyCheck className="h-3 w-3 text-amber-600" /><span className="text-[7px] font-black uppercase tracking-wide text-amber-700">Already Included</span></div>}
+                                                                        <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
+                                                                        <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
+                                                                            <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-amber-700" : "text-slate-900")}>{sel.name}</p>
+                                                                            <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-amber-600/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.['Act Sell'] || i.data?.sellPriceExclGst || i.data?.['Store Price'] || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
+                                                                        </div>
+                                                                    </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </>
+                                            )}
                                             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-24">
                                                 <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
                                                     <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
@@ -1458,6 +1592,22 @@ export function HighfieldQuoteFlow({
                                                             ))}
                                                         </div>
                                                     )}
+                                                    {customTrailerOptions.length > 0 && (
+                                                        <div className="divide-y bg-slate-50/50">
+                                                            {customTrailerOptions.map((opt) => (
+                                                                <div key={opt.id} className="p-4 flex items-center justify-between">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="group/remove h-6 w-6 rounded-lg bg-white border flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                            <FilePlus2 className="h-3 w-3 text-primary group-hover/remove:opacity-0 transition-opacity" />
+                                                                            <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => handleRemoveCustomTrailerOption(opt.id)}><X className="h-3 w-3" /></Button>
+                                                                        </div>
+                                                                        <div><p className="text-[10px] font-black uppercase tracking-tight">{opt.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1 border-primary/20 text-primary bg-primary/5">Custom Trailer Addition</Badge></div>
+                                                                    </div>
+                                                                    <p className="text-[10px] font-bold text-slate-600">+${opt.sellPriceExclGst.toLocaleString()}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </CardContent>
                                             </Card>
                                         )}
@@ -1540,6 +1690,7 @@ export function HighfieldQuoteFlow({
                     selectedMotor,
                     selectedMotorAccessories,
                     selectedTrailerOptionsData,
+                    customTrailerOptions,
                     selectedDealerFitData,
                     totalPrice,
                     isRegoSelected,
