@@ -46,7 +46,8 @@ import {
     Shield,
     Banknote,
     Clock,
-    MessageSquare
+    MessageSquare,
+    Paperclip
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -278,6 +279,13 @@ export function HighfieldQuoteFlow({
     const [propComesStandard, setPropComesStandard] = useState(false);
     const [extendedWarranty, setExtendedWarranty] = useState(false);
     const [servicePlan, setServicePlan] = useState(false);
+
+    // Section PDF attachments (supplier quotes)
+    const [sectionPdfs, setSectionPdfs] = useState<Record<string, File | null>>({ boat: null, motor: null, trailer: null, dealerFit: null });
+    const boatPdfRef = useRef<HTMLInputElement>(null);
+    const motorPdfRef = useRef<HTMLInputElement>(null);
+    const trailerPdfRef = useRef<HTMLInputElement>(null);
+    const dealerFitPdfRef = useRef<HTMLInputElement>(null);
     const motorDetailRef = useRef<HTMLDivElement>(null);
 
     // 3. Derived Memos (CRITICAL: Order of initialization to prevent ReferenceErrors)
@@ -1328,6 +1336,51 @@ export function HighfieldQuoteFlow({
                                     {/* --- MOTOR ACCESSORIES (Propeller, Rigging, etc.) --- */}
                                     {selectedMotor && (
                                         <>
+                                            {/* Pre-Rig Information */}
+                                            {(() => {
+                                                const installationText = selectedMotor['Installation'] || selectedMotor['installation']?.opCode;
+                                                const standardRiggingAccessories = (selectedMotor.masterAccessories || []).filter(
+                                                    (a: any) => a.isStandard && (a.category || '').toLowerCase() === 'rigging'
+                                                );
+                                                if (!installationText && standardRiggingAccessories.length === 0) return null;
+                                                return (
+                                                    <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-700">
+                                                        <div className="flex items-center gap-3 bg-slate-500 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Pre-Rig Information</h3>
+                                                        </div>
+                                                        <div className="rounded-[2rem] border-2 border-slate-200 bg-slate-50 p-6 shadow-sm">
+                                                            <div className="flex items-start gap-4">
+                                                                <div className="h-10 w-10 rounded-2xl flex items-center justify-center bg-slate-200 text-slate-600 shrink-0">
+                                                                    <Info className="h-5 w-5" />
+                                                                </div>
+                                                                <div className="space-y-3 min-w-0">
+                                                                    {installationText && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Installation Type</p>
+                                                                            <p className="text-sm font-bold text-slate-800">{installationText}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {standardRiggingAccessories.length > 0 && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Included Rigging</p>
+                                                                            <div className="space-y-1.5">
+                                                                                {standardRiggingAccessories.map((acc: any) => (
+                                                                                    <div key={acc.id} className="flex items-center gap-2">
+                                                                                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                                                                        <span className="text-xs font-bold text-slate-700">{acc.name || acc.description || acc.id}</span>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+
                                             {/* Prop Comes Standard toggle */}
                                             <div ref={el => { categoryRefs.current['PropStandard'] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
                                                 <div className="flex items-center gap-3 bg-emerald-500 px-6 py-3 rounded-2xl shadow-xl w-full">
@@ -1689,7 +1742,7 @@ export function HighfieldQuoteFlow({
                                 <div className="space-y-8 animate-in fade-in duration-1000 mt-4">
                                     <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full"><div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /><h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Project Build Summary</h3></div>
                                     <div className="space-y-4">
-                                        <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Ship className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Base Vessel</CardTitle></div></CardHeader><CardContent className="p-4">
+                                        <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Ship className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Base Vessel</CardTitle></div><div className="flex items-center gap-1.5"><input ref={boatPdfRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setSectionPdfs(prev => ({ ...prev, boat: f })); }} />{sectionPdfs.boat ? (<span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><Paperclip className="h-2.5 w-2.5" />{sectionPdfs.boat.name.length > 18 ? sectionPdfs.boat.name.slice(0, 15) + '...' : sectionPdfs.boat.name}<button type="button" className="ml-0.5 hover:text-destructive" onClick={() => { setSectionPdfs(prev => ({ ...prev, boat: null })); if (boatPdfRef.current) boatPdfRef.current.value = ''; }}><X className="h-2.5 w-2.5" /></button></span>) : (<button type="button" onClick={() => boatPdfRef.current?.click()} className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors"><Paperclip className="h-2.5 w-2.5" />Attach PDF</button>)}</div></div></CardHeader><CardContent className="p-4">
                                             <div className="flex items-center justify-between">
                                                 <div className="space-y-0.5">
                                                     <p className="font-black text-sm uppercase tracking-tight text-slate-900">{range?.name} {model?.name}</p>
@@ -1773,7 +1826,7 @@ export function HighfieldQuoteFlow({
 
                                         {selectedMotor && (
                                             <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
-                                                <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Powertrain</CardTitle></div></CardHeader>
+                                                <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Powertrain</CardTitle></div><div className="flex items-center gap-1.5"><input ref={motorPdfRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setSectionPdfs(prev => ({ ...prev, motor: f })); }} />{sectionPdfs.motor ? (<span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><Paperclip className="h-2.5 w-2.5" />{sectionPdfs.motor.name.length > 18 ? sectionPdfs.motor.name.slice(0, 15) + '...' : sectionPdfs.motor.name}<button type="button" className="ml-0.5 hover:text-destructive" onClick={() => { setSectionPdfs(prev => ({ ...prev, motor: null })); if (motorPdfRef.current) motorPdfRef.current.value = ''; }}><X className="h-2.5 w-2.5" /></button></span>) : (<button type="button" onClick={() => motorPdfRef.current?.click()} className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors"><Paperclip className="h-2.5 w-2.5" />Attach PDF</button>)}</div></div></CardHeader>
                                                 <CardContent className="p-0">
                                                     <div className="p-4 border-b flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
@@ -1847,7 +1900,7 @@ export function HighfieldQuoteFlow({
 
                                         {selectedTrailerId && model.trailerConfig && (
                                             <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
-                                                <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Towing Solution</CardTitle></div></CardHeader>
+                                                <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Towing Solution</CardTitle></div><div className="flex items-center gap-1.5"><input ref={trailerPdfRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setSectionPdfs(prev => ({ ...prev, trailer: f })); }} />{sectionPdfs.trailer ? (<span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><Paperclip className="h-2.5 w-2.5" />{sectionPdfs.trailer.name.length > 18 ? sectionPdfs.trailer.name.slice(0, 15) + '...' : sectionPdfs.trailer.name}<button type="button" className="ml-0.5 hover:text-destructive" onClick={() => { setSectionPdfs(prev => ({ ...prev, trailer: null })); if (trailerPdfRef.current) trailerPdfRef.current.value = ''; }}><X className="h-2.5 w-2.5" /></button></span>) : (<button type="button" onClick={() => trailerPdfRef.current?.click()} className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors"><Paperclip className="h-2.5 w-2.5" />Attach PDF</button>)}</div></div></CardHeader>
                                                 <CardContent className="p-0">
                                                     <div className="p-4 border-b flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
@@ -1909,7 +1962,7 @@ export function HighfieldQuoteFlow({
 
                                         {selectedDealerFitData.length > 0 && (
                                             <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
-                                                <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Dealer Fitments</CardTitle></div></CardHeader>
+                                                <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Dealer Fitments</CardTitle></div><div className="flex items-center gap-1.5"><input ref={dealerFitPdfRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setSectionPdfs(prev => ({ ...prev, dealerFit: f })); }} />{sectionPdfs.dealerFit ? (<span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><Paperclip className="h-2.5 w-2.5" />{sectionPdfs.dealerFit.name.length > 18 ? sectionPdfs.dealerFit.name.slice(0, 15) + '...' : sectionPdfs.dealerFit.name}<button type="button" className="ml-0.5 hover:text-destructive" onClick={() => { setSectionPdfs(prev => ({ ...prev, dealerFit: null })); if (dealerFitPdfRef.current) dealerFitPdfRef.current.value = ''; }}><X className="h-2.5 w-2.5" /></button></span>) : (<button type="button" onClick={() => dealerFitPdfRef.current?.click()} className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors"><Paperclip className="h-2.5 w-2.5" />Attach PDF</button>)}</div></div></CardHeader>
                                                 <CardContent className="p-0">
                                                     <div className="divide-y">
                                                         {selectedDealerFitData.map((sel: any) => (
@@ -2221,6 +2274,7 @@ export function HighfieldQuoteFlow({
                             notes: timingNotes,
                         },
                     },
+                    sectionPdfs,
                 }}
                 organisationId={orgId || null}
                 userProfile={userProfile}

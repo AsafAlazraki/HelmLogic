@@ -75,6 +75,7 @@ interface FinalizeQuoteDialogProps {
             finance: { requested: boolean; notes: string };
             timing: { estimatedDeliveryDate: string | null; notes: string };
         };
+        sectionPdfs?: Record<string, File | null>;
     };
     organisationId: string | null;
     userProfile: any;
@@ -363,6 +364,25 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 // Save quote under user's quotes subcollection
                 const quoteRef = doc(firestoreCollection(firestore, `users/${user.uid}/quotes`));
                 await setDoc(quoteRef, { ...payload, id: quoteRef.id });
+
+                // Upload section PDFs if any attached
+                const sectionPdfs = quoteData.sectionPdfs;
+                if (sectionPdfs) {
+                    const sectionPdfUrls: Record<string, string> = {};
+                    const sections = Object.entries(sectionPdfs).filter(([, file]) => file != null) as [string, File][];
+                    for (const [section, file] of sections) {
+                        try {
+                            const url = await uploadFileToStorage(storage, file, `quotes/${quoteRef.id}/section-pdfs/${section}.pdf`);
+                            sectionPdfUrls[section] = url;
+                        } catch (err) {
+                            console.error(`Failed to upload ${section} PDF:`, err);
+                        }
+                    }
+                    if (Object.keys(sectionPdfUrls).length > 0) {
+                        await updateDoc(doc(firestore, `users/${user.uid}/quotes`, quoteRef.id), { sectionPdfUrls });
+                    }
+                }
+
                 toast({ title: 'Proposal Created', description: `Quote ${payload.quoteNumber} has been saved.` });
                 onOpenChange(false);
                 resetForm();
@@ -404,6 +424,24 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     coverImageUrl: payload.coverImageUrl || null,
                     variantImageUrl: payload.variant?.imageUrl || null,
                 });
+
+                // Upload section PDFs if any attached
+                const stockSectionPdfs = quoteData.sectionPdfs;
+                if (stockSectionPdfs) {
+                    const sectionPdfUrls: Record<string, string> = {};
+                    const sections = Object.entries(stockSectionPdfs).filter(([, file]) => file != null) as [string, File][];
+                    for (const [section, file] of sections) {
+                        try {
+                            const url = await uploadFileToStorage(storage, file, `quotes/${inventoryRef.id}/section-pdfs/${section}.pdf`);
+                            sectionPdfUrls[section] = url;
+                        } catch (err) {
+                            console.error(`Failed to upload ${section} PDF:`, err);
+                        }
+                    }
+                    if (Object.keys(sectionPdfUrls).length > 0) {
+                        await updateDoc(doc(firestore, 'inventory', inventoryRef.id), { sectionPdfUrls });
+                    }
+                }
 
                 // Generate and store PDF
                 try {
