@@ -38,7 +38,10 @@ import {
     FilePlus2,
     AlertTriangle,
     CopyCheck,
-    Gauge
+    Gauge,
+    Gift,
+    Calendar,
+    Percent
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -224,6 +227,10 @@ export function HighfieldQuoteFlow({
     const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
     const [api, setApi] = useState<CarouselApi>();
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+    // Promotions State
+    const [availablePromotions, setAvailablePromotions] = useState<any[]>([]);
+    const [appliedPromotionIds, setAppliedPromotionIds] = useState<string[]>([]);
 
     // Refs for Auto-Scroll
     const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -466,6 +473,67 @@ export function HighfieldQuoteFlow({
         });
         return total;
     }, [activeVariant, selectedOptionsData, customOptions, customTrailerOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration, priceLevel]);
+
+    // Promotions Derived Memos
+    const appliedPromotions = useMemo(() => {
+        return availablePromotions.filter(p => appliedPromotionIds.includes(p.id));
+    }, [availablePromotions, appliedPromotionIds]);
+
+    const promotionDiscount = useMemo(() => {
+        let discount = 0;
+        const motorHp = selectedMotor ? (parseFloat(String(selectedMotor['HP Rating'] || '0').replace(/[^\d.]/g, '')) || 0) : 0;
+
+        // Build subtotals for percentage-based promos
+        const motorSubtotal = selectedMotor ? getPriceForLevel(selectedMotor, priceLevel) : 0;
+        const riggingSubtotal = selectedMotorAccessories.filter((a: any) => (a.category || '').toLowerCase() === 'rigging').reduce((acc: number, a: any) => acc + getPriceForLevel(a, priceLevel), 0);
+        const propellerSubtotal = selectedMotorAccessories.filter((a: any) => (a.category || '').toLowerCase() === 'propeller').reduce((acc: number, a: any) => acc + getPriceForLevel(a, priceLevel), 0);
+        const accessoriesSubtotal = selectedMotorAccessories.reduce((acc: number, a: any) => acc + getPriceForLevel(a, priceLevel), 0);
+
+        appliedPromotions.forEach(promo => {
+            switch (promo.type) {
+                case 'fixed-amount':
+                    discount += (promo.fixedAmount || 0);
+                    break;
+                case 'per-hp':
+                    discount += (promo.perHpAmount || 0) * motorHp;
+                    break;
+                case 'percentage': {
+                    const pct = (promo.percentage || 0) / 100;
+                    switch (promo.appliesTo) {
+                        case 'motor': discount += pct * motorSubtotal; break;
+                        case 'rigging': discount += pct * riggingSubtotal; break;
+                        case 'propeller': discount += pct * propellerSubtotal; break;
+                        case 'all-accessories': discount += pct * accessoriesSubtotal; break;
+                        case 'total': discount += pct * totalPrice; break;
+                        default: discount += pct * totalPrice; break;
+                    }
+                    break;
+                }
+                case 'category-discount': {
+                    const catPct = (promo.percentage || 0) / 100;
+                    switch (promo.appliesTo) {
+                        case 'motor': discount += catPct * motorSubtotal; break;
+                        case 'rigging': discount += catPct * riggingSubtotal; break;
+                        case 'propeller': discount += catPct * propellerSubtotal; break;
+                        case 'all-accessories': discount += catPct * accessoriesSubtotal; break;
+                        default: discount += catPct * totalPrice; break;
+                    }
+                    break;
+                }
+            }
+        });
+        return Math.round(discount);
+    }, [appliedPromotions, selectedMotor, selectedMotorAccessories, totalPrice, priceLevel]);
+
+    const finalPrice = useMemo(() => {
+        return Math.max(0, totalPrice - promotionDiscount);
+    }, [totalPrice, promotionDiscount]);
+
+    const togglePromotion = (id: string) => {
+        setAppliedPromotionIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
 
     // 4. Selection Handlers
     const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
@@ -813,6 +881,60 @@ export function HighfieldQuoteFlow({
         if (fresh) setSelectedMotor(fresh);
     }, [motors]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Fetch promotions from boat module and motor vendor module
+    useEffect(() => {
+        const fetchPromotions = async () => {
+            if (currentStep < 3) return;
+            try {
+                const allPromos: any[] = [];
+                const now = new Date();
+
+                // 1. Check boat module promotions
+                if (module?.id) {
+                    const boatPromoSnap = await getDocs(collection(firestore, `modules/${module.id}/promotions`));
+                    boatPromoSnap.docs.forEach(d => {
+                        allPromos.push({ id: d.id, source: 'boat', ...d.data() as any });
+                    });
+                }
+
+                // 2. Find motor vendor module and check its promotions
+                const allModuleVendorIds = [...(module?.associatedVendorIds || []), module?.mainVendorId].filter(Boolean);
+                if (allModuleVendorIds.length > 0) {
+                    const vendorsSnap = await getDocs(collection(firestore, 'data-warehouse'));
+                    const motorVendor = vendorsSnap.docs.map(d => ({ id: d.id, ...d.data() as any })).find(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
+                    if (motorVendor) {
+                        const motorModulesSnap = await getDocs(query(collection(firestore, 'modules'), where('mainVendorId', '==', motorVendor.id)));
+                        for (const mDoc of motorModulesSnap.docs) {
+                            const motorPromoSnap = await getDocs(collection(firestore, `modules/${mDoc.id}/promotions`));
+                            motorPromoSnap.docs.forEach(d => {
+                                allPromos.push({ id: d.id, source: 'motor', ...d.data() as any });
+                            });
+                        }
+                    }
+                }
+
+                // Filter: isActive and within date range
+                const activePromos = allPromos.filter(p => {
+                    if (!p.isActive) return false;
+                    if (p.startDate) {
+                        const start = p.startDate.toDate ? p.startDate.toDate() : new Date(p.startDate);
+                        if (now < start) return false;
+                    }
+                    if (p.endDate) {
+                        const end = p.endDate.toDate ? p.endDate.toDate() : new Date(p.endDate);
+                        if (now > end) return false;
+                    }
+                    return true;
+                });
+
+                setAvailablePromotions(activePromos);
+                // Auto-tick all active promotions
+                setAppliedPromotionIds(activePromos.map(p => p.id));
+            } catch (e) { console.error('Failed to fetch promotions:', e); }
+        };
+        fetchPromotions();
+    }, [currentStep, firestore, module]);
+
     const getMotorDisplayName = (m: any) => {
         const vendor = (m?.vendorName || 'YAMAHA').toUpperCase();
         // Normalize-and-match approach: handles any field name casing/spacing variation
@@ -900,7 +1022,13 @@ export function HighfieldQuoteFlow({
                                     </select>
                                 </div>
                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Package Pricing (Excl. GST)</span>
-                                <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{totalPrice.toLocaleString()}</span></div>
+                                {promotionDiscount > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-black text-slate-400 line-through">${totalPrice.toLocaleString()}</span>
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">SAVE ${promotionDiscount.toLocaleString()}</span>
+                                    </div>
+                                )}
+                                <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{finalPrice.toLocaleString()}</span></div>
                             </div>
                         </div>
                     </div>
@@ -1258,6 +1386,77 @@ export function HighfieldQuoteFlow({
                                                 </>
                                             )}
                                         </>
+                                    )}
+
+                                    {/* --- PROMOTIONS & OFFERS --- */}
+                                    {availablePromotions.length > 0 && (
+                                        <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
+                                            <div className="flex items-center gap-3 bg-emerald-600 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                <Gift className="h-4 w-4 text-white" />
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Promotions & Offers</h3>
+                                            </div>
+                                            <div className="space-y-4">
+                                                {availablePromotions.map(promo => {
+                                                    const isApplied = appliedPromotionIds.includes(promo.id);
+                                                    const startDate = promo.startDate ? (promo.startDate.toDate ? promo.startDate.toDate() : new Date(promo.startDate)) : null;
+                                                    const endDate = promo.endDate ? (promo.endDate.toDate ? promo.endDate.toDate() : new Date(promo.endDate)) : null;
+                                                    const discountLabel = promo.type === 'fixed-amount' ? `$${(promo.fixedAmount || 0).toLocaleString()} OFF`
+                                                        : promo.type === 'per-hp' ? `$${(promo.perHpAmount || 0)} / HP`
+                                                        : promo.type === 'percentage' || promo.type === 'category-discount' ? `${promo.percentage || 0}% OFF`
+                                                        : 'OFFER';
+                                                    return (
+                                                        <div key={promo.id} onClick={() => togglePromotion(promo.id)} className={cn("rounded-[2rem] border-2 overflow-hidden transition-all cursor-pointer bg-white shadow-xl", isApplied ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-transparent hover:border-emerald-500/20")}>
+                                                            {promo.showImageOnQuote && promo.imageUrl && (
+                                                                <div className="relative w-full aspect-[21/9] bg-emerald-50/30">
+                                                                    <img src={promo.imageUrl} alt={promo.name} className="w-full h-full object-cover" />
+                                                                </div>
+                                                            )}
+                                                            <div className="p-6 flex items-start gap-4">
+                                                                <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner shrink-0 mt-0.5", isApplied ? "bg-emerald-500 border-emerald-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}>
+                                                                    <Check className="h-5 w-5" />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                        <p className={cn("text-[11px] font-black uppercase tracking-widest", isApplied ? "text-emerald-700" : "text-slate-600")}>{promo.name}</p>
+                                                                        <Badge className="bg-emerald-500 text-white border-none font-black text-[8px] uppercase h-5 px-2">{discountLabel}</Badge>
+                                                                    </div>
+                                                                    {promo.description && <p className="text-[9px] font-bold text-muted-foreground mt-1.5 leading-relaxed">{promo.description}</p>}
+                                                                    <div className="flex items-center gap-3 mt-2 flex-wrap">
+                                                                        {(startDate || endDate) && (
+                                                                            <Badge variant="outline" className="text-[7px] font-black h-5 px-2 gap-1 border-emerald-200 text-emerald-600 bg-emerald-50">
+                                                                                <Calendar className="h-2.5 w-2.5" />
+                                                                                {startDate && endDate ? `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}` : startDate ? `From ${startDate.toLocaleDateString()}` : `Until ${endDate!.toLocaleDateString()}`}
+                                                                            </Badge>
+                                                                        )}
+                                                                        {promo.appliesTo && promo.appliesTo !== 'total' && (
+                                                                            <Badge variant="outline" className="text-[7px] font-black h-5 px-2 border-slate-200 text-slate-500">
+                                                                                Applies to: {promo.appliesTo}
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                    {promo.showPdfOnQuote && promo.pdfUrl && (
+                                                                        <a href={promo.pdfUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1.5 mt-2 text-[9px] font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition-colors">
+                                                                            <FileText className="h-3 w-3" /> View Promotion Details
+                                                                            <ExternalLink className="h-2.5 w-2.5" />
+                                                                        </a>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            {promotionDiscount > 0 && (
+                                                <div className="flex items-center justify-between p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-200">
+                                                    <div className="flex items-center gap-3">
+                                                        <Percent className="h-5 w-5 text-emerald-600" />
+                                                        <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700">Total Savings</span>
+                                                    </div>
+                                                    <span className="text-lg font-black text-emerald-600 italic">-${promotionDiscount.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -1638,6 +1837,40 @@ export function HighfieldQuoteFlow({
                                                 </CardContent>
                                             </Card>
                                         )}
+
+                                        {appliedPromotions.length > 0 && (
+                                            <Card className="rounded-[1.5rem] border-2 border-emerald-200 shadow-lg overflow-hidden bg-emerald-50/30">
+                                                <CardHeader className="bg-emerald-600 border-b p-4"><div className="flex items-center gap-2"><Gift className="h-4 w-4 text-white" /><CardTitle className="text-xs font-black uppercase tracking-widest text-white">Applied Promotions</CardTitle></div></CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="divide-y divide-emerald-100">
+                                                        {appliedPromotions.map(promo => (
+                                                            <div key={promo.id} className="p-4 flex items-center justify-between hover:bg-emerald-50 transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="h-6 w-6 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                                                        <Check className="h-3 w-3 text-emerald-600" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black uppercase tracking-tight text-emerald-800">{promo.name}</p>
+                                                                        <Badge className="text-[7px] font-black h-3.5 px-1 bg-emerald-100 text-emerald-600 border-emerald-200">
+                                                                            {promo.type === 'fixed-amount' ? 'Fixed Discount' : promo.type === 'per-hp' ? 'Per HP' : promo.type === 'percentage' ? 'Percentage' : 'Category Discount'}
+                                                                        </Badge>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-emerald-600">
+                                                                    {promo.type === 'fixed-amount' ? `-$${(promo.fixedAmount || 0).toLocaleString()}` : promo.type === 'per-hp' ? `$${promo.perHpAmount}/HP` : `${promo.percentage}% OFF`}
+                                                                </p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    {promotionDiscount > 0 && (
+                                                        <div className="p-4 border-t-2 border-emerald-200 bg-emerald-100/50 flex items-center justify-between">
+                                                            <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700">Total Savings</span>
+                                                            <span className="font-black text-emerald-600 italic text-lg">-${promotionDiscount.toLocaleString()}</span>
+                                                        </div>
+                                                    )}
+                                                </CardContent>
+                                            </Card>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -1754,6 +1987,8 @@ export function HighfieldQuoteFlow({
                     isTrailerRegoSelected,
                     selectedTrailerId,
                     priceLevelUsed: priceLevel,
+                    appliedPromotions,
+                    promotionDiscount,
                 }}
                 organisationId={orgId || null}
                 userProfile={userProfile}

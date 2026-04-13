@@ -65,6 +65,9 @@ interface FinalizeQuoteDialogProps {
         isTenderToSelected: boolean;
         isTrailerRegoSelected: boolean;
         selectedTrailerId: string | null;
+        priceLevelUsed?: string;
+        appliedPromotions?: any[];
+        promotionDiscount?: number;
     };
     organisationId: string | null;
     userProfile: any;
@@ -127,7 +130,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     };
 
     const buildQuotePayload = () => {
-        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, priceLevelUsed } = quoteData;
+        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, priceLevelUsed, appliedPromotions, promotionDiscount } = quoteData;
 
         /** Resolve price for an item based on the selected price level */
         const resolvePrice = (item: any): number => {
@@ -290,6 +293,23 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
             // Pricing
             totalPriceExclGst: totalPrice || 0,
             priceLevelUsed: priceLevelUsed || 'hull_cash',
+
+            // Promotions
+            appliedPromotions: (appliedPromotions || []).map(p => ({
+                id: p.id || null,
+                name: p.name || 'Promotion',
+                description: p.description || null,
+                type: p.type || null,
+                fixedAmount: p.fixedAmount || 0,
+                perHpAmount: p.perHpAmount || 0,
+                percentage: p.percentage || 0,
+                appliesTo: p.appliesTo || null,
+                source: p.source || null,
+                imageUrl: p.showImageOnQuote ? (p.imageUrl || null) : null,
+                pdfUrl: p.showPdfOnQuote ? (p.pdfUrl || null) : null,
+            })),
+            promotionDiscount: promotionDiscount || 0,
+            finalPriceExclGst: Math.max(0, (totalPrice || 0) - (promotionDiscount || 0)),
         };
     };
 
