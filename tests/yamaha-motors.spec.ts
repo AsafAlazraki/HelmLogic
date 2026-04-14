@@ -3,20 +3,24 @@ import { login, BASE_URL } from './helpers/auth';
 
 async function openYamahaCatalog(page: Page): Promise<boolean> {
   await page.goto(`${BASE_URL}/dashboard`);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(1500);
 
-  const yamahaCard = page.locator('text=Yamaha').first();
+  const yamahaCard = page
+    .locator('a[href*="/modules/"]')
+    .filter({ hasText: /yamaha/i })
+    .first();
   if (!(await yamahaCard.isVisible().catch(() => false))) {
     return false;
   }
 
   await yamahaCard.click();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForSelector('[role="tab"]', { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(2500);
 
   // Click Catalog tab if present (it should be the default view for motor workspace).
-  const catalogTab = page.locator('text=Catalog').first();
+  const catalogTab = page.getByRole('tab', { name: 'Catalog' }).first();
   if (await catalogTab.isVisible().catch(() => false)) {
     await catalogTab.click();
     await page.waitForTimeout(2000);

@@ -16,8 +16,18 @@ test.describe('Critical Paths (Smoke)', () => {
     await expect(page).toHaveURL(/.*\/(dashboard|modules|organisation|settings|$)/, { timeout: 15000 });
 
     // At least one module card or the Highfield tile should be visible within 15s.
-    const anyCard = page.locator('text=Highfield').first();
-    await expect(anyCard).toBeVisible({ timeout: 15000 });
+    // Prefer the dashboard card link over any sidebar matches.
+    const anyCard = page
+      .locator('a[href*="/modules/"]')
+      .filter({ hasText: /highfield/i })
+      .first();
+    const fallback = page.locator('text=Highfield').first();
+    const cardVisible = await anyCard.isVisible().catch(() => false);
+    if (cardVisible) {
+      await expect(anyCard).toBeVisible({ timeout: 15000 });
+    } else {
+      await expect(fallback).toBeVisible({ timeout: 15000 });
+    }
   });
 
   test('2. Highfield module loads all 5 tabs without crash', async ({ page }) => {
@@ -30,12 +40,12 @@ test.describe('Critical Paths (Smoke)', () => {
     // Assert all five tab labels are visible (order-independent).
     const tabLabels = ['Dashboard', 'Catalog', 'Stock Management', 'Pricing', 'Settings'];
     for (const label of tabLabels) {
-      await expect(page.locator(`text=${label}`).first()).toBeVisible({ timeout: 10000 });
+      await expect(page.getByRole('tab', { name: label }).first()).toBeVisible({ timeout: 10000 });
     }
 
     // Click each tab in sequence and ensure the page doesn't crash.
     for (const label of tabLabels) {
-      await page.locator(`text=${label}`).first().click();
+      await page.getByRole('tab', { name: label }).first().click();
       await page.waitForTimeout(1500);
       await expect(crashText).not.toBeVisible({ timeout: 1000 }).catch(() => {});
     }
@@ -43,8 +53,8 @@ test.describe('Critical Paths (Smoke)', () => {
 
   test('3. Clicking a range in Catalog shows models grid', async ({ page }) => {
     await openHighfieldModule(page);
-    await page.locator('text=Catalog').first().click();
-    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: 'Catalog' }).first().click();
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
 
     // Click the first visible range card (Classic, Sport, Roll-Up, etc.)
@@ -65,8 +75,8 @@ test.describe('Critical Paths (Smoke)', () => {
 
   test('4. Click a model shows model editor', async ({ page }) => {
     await openHighfieldModule(page);
-    await page.locator('text=Catalog').first().click();
-    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: 'Catalog' }).first().click();
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
 
     const rangeCard = page.locator('text=/Classic|Sport|Roll[- ]?Up|Adventure|Patrol/i').first();
@@ -108,7 +118,7 @@ test.describe('Critical Paths (Smoke)', () => {
 
     if (!hasStart) {
       console.log('No explicit Start Quote button visible — navigating through catalog instead');
-      await page.locator('text=Catalog').first().click();
+      await page.getByRole('tab', { name: 'Catalog' }).first().click();
       await page.waitForTimeout(2000);
       const rangeCard = page.locator('text=/Classic|Sport|Roll[- ]?Up|Adventure|Patrol/i').first();
       if (await rangeCard.isVisible().catch(() => false)) {
@@ -151,7 +161,7 @@ test.describe('Critical Paths (Smoke)', () => {
   test('6. Recent proposal click does not crash the proposal view', async ({ page }) => {
     // Go to dashboard and look for recent proposals
     await page.goto(`${BASE_URL}/dashboard`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
 
     // Recent Proposals section
@@ -165,7 +175,7 @@ test.describe('Critical Paths (Smoke)', () => {
     }
 
     await proposalItem.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000);
 
     // MUST NOT show the error screen

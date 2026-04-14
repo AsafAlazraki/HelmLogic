@@ -49,8 +49,8 @@ test.describe('Settings — Highfield Module', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await openHighfieldModule(page);
-    await page.locator('text=Settings').first().click();
-    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: 'Settings' }).first().click();
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
   });
 
@@ -91,21 +91,24 @@ test.describe('Settings — Yamaha Module', () => {
   test('Yamaha settings show only Yamaha categories (not Highfield)', async ({ page }) => {
     // Navigate to Yamaha module
     await page.goto(`${BASE_URL}/dashboard`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(1500);
 
-    const yamahaCard = page.locator('text=Yamaha').first();
+    const yamahaCard = page
+      .locator('a[href*="/modules/"]')
+      .filter({ hasText: /yamaha/i })
+      .first();
     if (!(await yamahaCard.isVisible().catch(() => false))) {
       console.log('Yamaha module not on dashboard — skipping');
       test.skip();
       return;
     }
     await yamahaCard.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
 
     // Click Settings tab
-    const settingsTab = page.locator('text=Settings').first();
+    const settingsTab = page.getByRole('tab', { name: 'Settings' }).first();
     if (!(await settingsTab.isVisible().catch(() => false))) {
       console.log('Yamaha settings tab not visible — skipping');
       test.skip();

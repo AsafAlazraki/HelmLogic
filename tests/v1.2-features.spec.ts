@@ -6,7 +6,7 @@ const TEST_PASSWORD = 'Bill2026!';
 
 async function login(page: Page) {
   await page.goto(`${BASE_URL}/login`);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(2000); // Let Firebase Auth SDK initialize
 
   // Fill email
@@ -30,8 +30,27 @@ async function login(page: Page) {
     () => !window.location.pathname.includes('/login'),
     { timeout: 20000 }
   );
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(2000); // Let dashboard fully render
+}
+
+/**
+ * Opens the Highfield module from the dashboard by clicking the module card link
+ * (NOT the sidebar nav item — those share the same text and collide with text= selectors).
+ */
+async function openHighfield(page: Page): Promise<void> {
+  const moduleLink = page
+    .locator('a[href*="/modules/"]')
+    .filter({ hasText: /highfield/i })
+    .first();
+  if (await moduleLink.isVisible().catch(() => false)) {
+    await moduleLink.click();
+  } else {
+    await page.locator('text=Highfield').first().click();
+  }
+  await page.waitForLoadState('domcontentloaded');
+  await page.waitForSelector('[role="tab"]', { timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(1500);
 }
 
 test.describe('v1.2 Feature Verification', () => {
@@ -50,10 +69,9 @@ test.describe('v1.2 Feature Verification', () => {
 
   test('Model images render without broken alt text', async ({ page }) => {
     // Navigate to Highfield module catalog
-    await page.click('text=Highfield');
-    await page.waitForLoadState('networkidle');
+    await openHighfield(page);
     // Click on Catalog tab
-    await page.click('text=Catalog', { timeout: 5000 }).catch(() => {});
+    await page.getByRole('tab', { name: 'Catalog' }).first().click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(2000);
 
     // Check no broken image alt text visible as plain text
@@ -68,7 +86,8 @@ test.describe('v1.2 Feature Verification', () => {
 
   test('Admin modules page has delete and rename buttons', async ({ page }) => {
     await page.goto(`${BASE_URL}/modules`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
 
     // Hover over a module card to reveal action buttons
     const firstCard = page.locator('[class*="group relative"]').first();
@@ -82,7 +101,8 @@ test.describe('v1.2 Feature Verification', () => {
 
   test('Add module page has module type selector', async ({ page }) => {
     await page.goto(`${BASE_URL}/modules/add`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
 
     // Look for module type dropdown
     const hasModuleType = await page.locator('text=Module Type').count();
@@ -92,23 +112,21 @@ test.describe('v1.2 Feature Verification', () => {
   // ---- HIGHFIELD MODULE ----
 
   test('Highfield module loads with tabs', async ({ page }) => {
-    await page.click('text=Highfield');
-    await page.waitForLoadState('networkidle');
+    await openHighfield(page);
 
-    // Check tabs exist
-    await expect(page.locator('text=Dashboard')).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('text=Catalog')).toBeVisible();
-    await expect(page.locator('text=Stock Management')).toBeVisible();
-    await expect(page.locator('text=Pricing')).toBeVisible();
-    await expect(page.locator('text=Settings')).toBeVisible();
+    // Check tabs exist — use role-based selectors to avoid collision with sidebar links
+    await expect(page.getByRole('tab', { name: 'Dashboard' }).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('tab', { name: 'Catalog' }).first()).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Stock Management' }).first()).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Pricing' }).first()).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Settings' }).first()).toBeVisible();
   });
 
   // ---- STOCK MANAGEMENT ----
 
   test('Stock Management tab loads with workspace', async ({ page }) => {
-    await page.click('text=Highfield');
-    await page.waitForLoadState('networkidle');
-    await page.click('text=Stock Management');
+    await openHighfield(page);
+    await page.getByRole('tab', { name: 'Stock Management' }).first().click();
     await page.waitForTimeout(2000);
 
     // Check workspace header
@@ -121,9 +139,8 @@ test.describe('v1.2 Feature Verification', () => {
   });
 
   test('Stock table shows items sorted most recent first', async ({ page }) => {
-    await page.click('text=Highfield');
-    await page.waitForLoadState('networkidle');
-    await page.click('text=Stock Management');
+    await openHighfield(page);
+    await page.getByRole('tab', { name: 'Stock Management' }).first().click();
     await page.waitForTimeout(3000);
 
     // Check that table rows exist
@@ -132,9 +149,8 @@ test.describe('v1.2 Feature Verification', () => {
   });
 
   test('Stock status badges include new statuses', async ({ page }) => {
-    await page.click('text=Highfield');
-    await page.waitForLoadState('networkidle');
-    await page.click('text=Stock Management');
+    await openHighfield(page);
+    await page.getByRole('tab', { name: 'Stock Management' }).first().click();
     await page.waitForTimeout(2000);
 
     // Check status filter has new options
@@ -146,9 +162,8 @@ test.describe('v1.2 Feature Verification', () => {
   });
 
   test('Stock search and filters work', async ({ page }) => {
-    await page.click('text=Highfield');
-    await page.waitForLoadState('networkidle');
-    await page.click('text=Stock Management');
+    await openHighfield(page);
+    await page.getByRole('tab', { name: 'Stock Management' }).first().click();
     await page.waitForTimeout(2000);
 
     // Find and use search
@@ -163,9 +178,8 @@ test.describe('v1.2 Feature Verification', () => {
   // ---- STOCK DETAIL PANEL ----
 
   test('Stock item click opens detail panel', async ({ page }) => {
-    await page.click('text=Highfield');
-    await page.waitForLoadState('networkidle');
-    await page.click('text=Stock Management');
+    await openHighfield(page);
+    await page.getByRole('tab', { name: 'Stock Management' }).first().click();
     await page.waitForTimeout(3000);
 
     // Click first stock row
@@ -184,9 +198,8 @@ test.describe('v1.2 Feature Verification', () => {
   // ---- PRICING ----
 
   test('Pricing tab loads with workspace', async ({ page }) => {
-    await page.click('text=Highfield');
-    await page.waitForLoadState('networkidle');
-    await page.click('text=Pricing');
+    await openHighfield(page);
+    await page.getByRole('tab', { name: 'Pricing' }).first().click();
     await page.waitForTimeout(2000);
 
     // Check pricing matrix or sub-tabs
@@ -199,9 +212,8 @@ test.describe('v1.2 Feature Verification', () => {
   // ---- SETTINGS ----
 
   test('Settings tab has associated vendors edit', async ({ page }) => {
-    await page.click('text=Highfield');
-    await page.waitForLoadState('networkidle');
-    await page.click('text=Settings');
+    await openHighfield(page);
+    await page.getByRole('tab', { name: 'Settings' }).first().click();
     await page.waitForTimeout(2000);
 
     // Check for associated vendors section with Edit button
@@ -210,9 +222,8 @@ test.describe('v1.2 Feature Verification', () => {
   });
 
   test('Settings has single dealer fit categories card', async ({ page }) => {
-    await page.click('text=Highfield');
-    await page.waitForLoadState('networkidle');
-    await page.click('text=Settings');
+    await openHighfield(page);
+    await page.getByRole('tab', { name: 'Settings' }).first().click();
     await page.waitForTimeout(2000);
 
     // Check for dealer fit manager
@@ -225,9 +236,8 @@ test.describe('v1.2 Feature Verification', () => {
   // ---- CONSOLE-SEAT PAIRING ----
 
   test('Quote builder loads', async ({ page }) => {
-    await page.click('text=Highfield');
-    await page.waitForLoadState('networkidle');
-    await page.click('text=Catalog');
+    await openHighfield(page);
+    await page.getByRole('tab', { name: 'Catalog' }).first().click();
     await page.waitForTimeout(2000);
 
     // Click a range then a model to enter quote flow
@@ -240,9 +250,8 @@ test.describe('v1.2 Feature Verification', () => {
 
   test('Proposal view handles org-wide quote lookup', async ({ page }) => {
     // Navigate to a proposal page
-    await page.click('text=Highfield');
-    await page.waitForLoadState('networkidle');
-    await page.click('text=Dashboard');
+    await openHighfield(page);
+    await page.getByRole('tab', { name: 'Dashboard' }).first().click();
     await page.waitForTimeout(2000);
 
     // Check if proposals section exists
@@ -254,15 +263,20 @@ test.describe('v1.2 Feature Verification', () => {
 
   test('Master Price File module loads', async ({ page }) => {
     await page.goto(`${BASE_URL}/dashboard`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
 
     // Look for Master Price File module on dashboard
-    const hasMPF = await page.locator('text=Master Price File').count();
+    const mpfLink = page
+      .locator('a[href*="/modules/"]')
+      .filter({ hasText: /master price file/i })
+      .first();
+    const hasMPF = await mpfLink.isVisible().catch(() => false);
     console.log(`Master Price File on dashboard: ${hasMPF}`);
 
-    if (hasMPF > 0) {
-      await page.click('text=Master Price File');
-      await page.waitForLoadState('networkidle');
+    if (hasMPF) {
+      await mpfLink.click();
+      await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(3000);
 
       // Check for workspace elements
@@ -276,19 +290,25 @@ test.describe('v1.2 Feature Verification', () => {
 
   test('Yamaha module loads with motor workspace', async ({ page }) => {
     await page.goto(`${BASE_URL}/dashboard`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(2000);
 
-    const hasYamaha = await page.locator('text=Yamaha').count();
+    const yamahaLink = page
+      .locator('a[href*="/modules/"]')
+      .filter({ hasText: /yamaha/i })
+      .first();
+    const hasYamaha = await yamahaLink.isVisible().catch(() => false);
     console.log(`Yamaha on dashboard: ${hasYamaha}`);
 
-    if (hasYamaha > 0) {
-      await page.click('text=Yamaha');
-      await page.waitForLoadState('networkidle');
+    if (hasYamaha) {
+      await yamahaLink.click();
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForSelector('[role="tab"]', { timeout: 15000 }).catch(() => {});
       await page.waitForTimeout(3000);
 
       // Check for motor workspace tabs
-      const hasCatalog = await page.locator('text=Catalog').count();
-      const hasPromotions = await page.locator('text=Promotions').count();
+      const hasCatalog = await page.getByRole('tab', { name: 'Catalog' }).count();
+      const hasPromotions = await page.getByRole('tab', { name: 'Promotions' }).count();
       console.log(`Yamaha Catalog: ${hasCatalog}, Promotions: ${hasPromotions}`);
     }
   });

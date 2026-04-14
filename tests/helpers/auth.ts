@@ -7,10 +7,14 @@ export const TEST_PASSWORD = 'Bill2026!';
 /**
  * Logs the test user into HelmLogic and waits until the post-login route loads.
  * Reusable across all specs — mirrors the pattern established in v1.2-features.spec.ts.
+ *
+ * NOTE: We avoid waitForLoadState('networkidle') because Firebase uses long-lived
+ * websocket/streaming connections that prevent "networkidle" from ever firing.
+ * Instead we wait for specific UI elements and use 'domcontentloaded'.
  */
 export async function login(page: Page): Promise<void> {
   await page.goto(`${BASE_URL}/login`);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(2000); // Let Firebase Auth SDK initialize
 
   const emailInput = page.locator('input[placeholder="name@example.com"]').first();
@@ -30,24 +34,39 @@ export async function login(page: Page): Promise<void> {
     () => !window.location.pathname.includes('/login'),
     { timeout: 20000 }
   );
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(2000); // Let dashboard fully render
 }
 
 /**
  * Navigates to the Highfield module via the dashboard card.
  * Assumes the user is already authenticated.
+ *
+ * NOTE: The sidebar may also contain "Highfield" text, so we target the
+ * dashboard module card specifically — it's rendered as an <a> link pointing
+ * at `/[orgSlug]/modules/...`. Falls back to the first visible Highfield element
+ * if the link locator doesn't resolve.
  */
 export async function openHighfieldModule(page: Page): Promise<void> {
-  await page.click('text=Highfield');
-  await page.waitForLoadState('networkidle');
+  // Dashboard module cards are <Link> elements wrapping a <Card>.
+  const moduleLink = page.locator('a[href*="/modules/"]').filter({ hasText: /highfield/i }).first();
+  if (await moduleLink.isVisible().catch(() => false)) {
+    await moduleLink.click();
+  } else {
+    // Fallback: click the first visible Highfield node (excluding hidden sidebar items).
+    await page.locator('text=Highfield').first().click();
+  }
+  await page.waitForLoadState('domcontentloaded');
+  // Wait for any tab to appear, indicating the module workspace has loaded.
+  await page.waitForSelector('[role="tab"]', { timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(1500);
 }
 
 /**
  * Clicks a named tab within a workspace (Dashboard/Catalog/Stock Management/Pricing/Settings).
+ * Uses role="tab" to disambiguate from sidebar links with identical text.
  */
 export async function clickTab(page: Page, label: string): Promise<void> {
-  await page.locator(`[role="tab"]:has-text("${label}"), button:has-text("${label}")`).first().click();
+  await page.getByRole('tab', { name: label }).first().click();
   await page.waitForTimeout(1500);
 }

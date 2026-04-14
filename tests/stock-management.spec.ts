@@ -6,8 +6,8 @@ test.describe('Stock Management', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await openHighfieldModule(page);
-    await page.locator('text=Stock Management').first().click();
-    await page.waitForLoadState('networkidle');
+    await page.getByRole('tab', { name: 'Stock Management' }).first().click();
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2500);
   });
 

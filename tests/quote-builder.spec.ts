@@ -25,7 +25,7 @@ async function enterQuoteFlow(page: Page): Promise<void> {
     }
   } else {
     // Fallback: open catalog → range → model to reach quote flow via model editor
-    await page.locator('text=Catalog').first().click();
+    await page.getByRole('tab', { name: 'Catalog' }).first().click();
     await page.waitForTimeout(1500);
     const range = page.locator('text=/Classic|Sport|Roll[- ]?Up|Adventure|Patrol/i').first();
     if (await range.isVisible().catch(() => false)) {
