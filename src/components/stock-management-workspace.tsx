@@ -13,7 +13,7 @@ import { StockImport } from '@/components/stock-import';
 import { DeliveredDeals } from '@/components/delivered-deals';
 import { DeliveredDealsExport } from '@/components/delivered-deals-export';
 import { DeliveredDealsImport } from '@/components/delivered-deals-import';
-import { Box, Plus, MapPin, Users, Package, Search, Truck, Ship, Shield } from 'lucide-react';
+import { Box, Plus, MapPin, Users, Package, Search, Truck, Ship, Shield, Clock } from 'lucide-react';
 import { HoldRequestsDashboard } from '@/components/hold-requests-dashboard';
 import { HoldRequestDialog } from '@/components/hold-request-dialog';
 import { Badge } from '@/components/ui/badge';
@@ -60,7 +60,7 @@ export function StockManagementWorkspace({
     brandCaptainUserId,
 }: StockManagementWorkspaceProps) {
     const firestore = useFirestore();
-    const [view, setView] = useState<'stock' | 'onorder' | 'delivered' | 'holdrequests' | 'map' | 'assignments'>('stock');
+    const [view, setView] = useState<'stock' | 'onorder' | 'pending' | 'delivered' | 'holdrequests' | 'map' | 'assignments'>('stock');
     const [formOpen, setFormOpen] = useState(false);
     const [holdRequestItem, setHoldRequestItem] = useState<any>(null);
 
@@ -112,6 +112,7 @@ export function StockManagementWorkspace({
     const allViews = [
         { key: 'stock' as const, label: isSubDealer ? `${parentOrgName || 'Supplier'} Stock` : 'Stock Boats', icon: Package },
         { key: 'onorder' as const, label: 'On Order', icon: Ship },
+        { key: 'pending' as const, label: 'Pending', icon: Clock },
         { key: 'delivered' as const, label: 'Delivered Deals', icon: Truck, hideWhenSubDealer: true },
         { key: 'holdrequests' as const, label: 'Hold Requests', icon: Shield, hideWhenSubDealer: true },
         { key: 'map' as const, label: 'Map View', icon: MapPin, hideWhenReadOnly: true },
@@ -125,6 +126,7 @@ export function StockManagementWorkspace({
         setMaterialFilter('all');
         if (newView === 'stock') setStatusFilter('In Stock');
         else if (newView === 'onorder') setStatusFilter('On Order');
+        else if (newView === 'pending') setStatusFilter('Pending');
         else setStatusFilter('all');
     };
     const views = allViews.filter(v => {
