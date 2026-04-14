@@ -1,4 +1,4 @@
-# HelmLogic v1.2 — QA Testing Handbook
+# HelmLogic v1.3 — QA Testing Handbook
 
 > This document is the single source of truth for QA testing HelmLogic.
 > Give this entire file as context to any QA tester or cowork agent.
@@ -52,6 +52,7 @@ Dashboard
 │   ├── Stock Management tab
 │   │   ├── Stock Boats sub-tab
 │   │   ├── On Order sub-tab
+│   │   ├── Pending sub-tab (NEW v1.3)
 │   │   ├── Delivered Deals sub-tab
 │   │   ├── Hold Requests sub-tab
 │   │   ├── Map View sub-tab
@@ -63,6 +64,7 @@ Dashboard
 │       ├── Associated Vendors (with Edit button)
 │       ├── Dealer Fit Categories (boat categories)
 │       ├── Motor Dealer Fit Categories (motor categories — Rigging, Propeller, General)
+│       ├── Trailer Dealer Fit Categories (NEW v1.3 — trailer categories)
 │       └── Module Roles (Brand Captain, Module Manager)
 ├── Yamaha Module
 │   ├── Catalog tab (motor cards grouped by HP range)
@@ -135,12 +137,13 @@ Dashboard
   - **Dealer Fit**: Categories from THREE sources (global + module boat + module motor). Each category shows existing selections with "Add Selection" button → opens Master Data Browser
 
 #### Tab 3: Stock Management
-- **Sub-tabs**: Stock Boats, On Order, Delivered Deals, Hold Requests, Map View, Assignments
-- **Table columns**: Stock #, Name/Model, Colour, Material, Status badge, Location, Sold By, Date
+- **Sub-tabs**: Stock Boats, On Order, **Pending (NEW v1.3)**, Delivered Deals, Hold Requests, Map View, Assignments
+- **Table columns (v1.3 order)**: **Model** (bold, first per customer request), Colour, Stock Number, Status, Location, Date into Stock, Days in Stock, Sold By, Label, Serial Number, Material, Notes
 - **Filters**: Search, status dropdown, location dropdown, material filter
 - **Stock Detail Panel**:
   - **Wide (900px)** for quote-origin items: Left column (photos, details, PDFs, actions) + Right column (MiniProposalView with full quote config)
   - **Narrow (480px)** for manual items: Single column only
+  - **Location is an interactive dropdown (NEW v1.3)** — users can change a stock item's location directly from the panel without opening a separate edit dialog; selection persists immediately to Firestore
 
 #### Tab 4: Pricing
 - **Sub-tabs**: Pricing Matrix (editable cost components) + Price Lists
@@ -151,6 +154,7 @@ Dashboard
 - **Associated Vendors**: Card with vendor list and Edit button
 - **Dealer Fit Categories**: Card — add/edit/delete boat dealer fit category names
 - **Motor Dealer Fit Categories**: SEPARATE card below — add/edit/delete motor categories (e.g., Rigging, Propeller, General). This controls what motor dealer fit categories appear in the quote builder.
+- **Trailer Dealer Fit Categories (NEW v1.3)**: SEPARATE card — add/edit/delete trailer dealer fit category names. Stored on `modules/{moduleId}.trailerDealerFitCategories[]`. Drives the trailer dealer fit section on Step 4 of the quote builder.
 - **Module Roles**: Brand Captain + Module Manager dropdowns with save
 
 ---
@@ -170,31 +174,45 @@ Dashboard
 - Grouped by category with blue category headers
 - Card grid per category — click to select, blue border when selected
 - **Console-seat pairing**: Selecting a console auto-selects its paired seat (locked with lock icon, "Paired with" badge)
-- Custom option form at bottom (name, price, description inputs)
+- **Additional Factory Boat Notes/Options** (renamed from "Custom Tactical Additions" in v1.3) — free-form form at bottom with name, price, description inputs
 
 #### Step 3: Motor
 - **Before selection**: Grid of motor cards (2 columns) with image, HP badge, name, price
+  - **HP Badge (v1.3)**: Multi-engine configurations now display as `2 × 300 HP` (etc.) rather than the old `2 HP` bug
 - **After selection**:
   - Grid HIDES
   - **Hero card** appears: full-width, motor image, HP badge, model name, specs badges (Shaft Length, Control, Starting), large price
   - **"Choose Another Motor" button** below hero card — clicking it shows the grid again
   - **"Prop Comes Standard" toggle** (green card, default OFF, user ticks it if applicable). Auto-turns OFF if user selects a different propeller from accessories or dealer fit.
+  - **Pre-Rig Information section (NEW v1.3)** — displays any pre-rig notes/specs tied to the selected motor
   - **Motor accessories** slide in grouped by category (Propeller, Rigging, General) — Propeller and Rigging are single-select (radio behavior)
   - **Motor Dealer Fit** (blue-themed headers): Categories from boat module's `motorDealerFitCategories`. Shows dealer fit selections if configured. Only appears if categories exist AND selections have been created.
+  - **Dealer Services section (NEW v1.3)**: Toggles for **NSM Extended Warranty** and **Service Plan**
+  - **Promotions & Offers section (NEW v1.3)**: Active Yamaha rebates/promotions auto-tick when eligible (date-filtered against promotion validity window). User can untick to exclude. Discount flows through to totals.
 
 #### Step 4: Trailer
 - Trailer package card (click to select)
 - Trailer hardware options (if trailer selected)
+- **Additional Factory Trailer Notes/Options (NEW v1.3)** — free-form notes + custom option form
+- **Trailer Dealer Fit (NEW v1.3)** — categories sourced from `modules/{moduleId}.trailerDealerFitCategories[]`
 - Trailer registration toggle
 
 #### Step 5: Dealer Fit (Boat only)
-- Boat dealer fit categories only (motor categories are on Step 3)
+- Boat dealer fit categories only (motor and trailer categories are on Steps 3 and 4)
 - Empty state: "No dealer fit options configured" (if no selections exist)
 
 #### Step 6: Summary
 - Cards for each section: Base Vessel, Factory Options, Powertrain, Trailer, Dealer Fitments
 - Each item removable (hover → X button)
+- **PDF attach button per section (NEW v1.3)** — Upload button on each section card (Boat, Motor, Trailer, Dealer Fit). PDFs are stored in Firebase Storage under `quotes/{quoteId}/section-pdfs/{section}.pdf` and URLs are saved to `sectionPdfUrls.{section}` on the quote doc.
+- **Admin & Trade-In card (NEW v1.3)** — captures `adminDetails.tradeIn`, `adminDetails.insurance`, `adminDetails.finance`, `adminDetails.timing`
 - "Finalize Project" button → opens Finalize Dialog
+
+**Technical Utilities buttons (bottom action row)**:
+- **Standard Features** (renamed from "Features" in v1.3) — opens standard features dialog for the selected boat
+- **Specs (Hull)** — hull specifications dialog
+- **Engine Specs (NEW v1.3)** — appears only when a motor is selected; shows engine specification sheet
+- **Trailer Specs (NEW v1.3)** — appears only when a trailer is selected; shows trailer specification sheet
 
 ---
 
