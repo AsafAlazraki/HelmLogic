@@ -1,23 +1,253 @@
-# HelmLogic v1.3 — QA Testing Handbook
+# HelmLogic Testing Handbook
 
-> This document is the single source of truth for QA testing HelmLogic.
-> Give this entire file as context to any QA tester or cowork agent.
+> **Welcome to the HelmLogic team.** This document walks you through the product,
+> your environment, the test workflow, and every UI surface you're expected to
+> cover. Read it end-to-end once, then use it as your reference going forward.
 
 ---
 
-## Environment & Credentials
+## Part 1: Welcome & Product Overview
+
+### What is HelmLogic?
+
+HelmLogic is a SaaS platform for marine dealers — the businesses that sell boats,
+motors, and trailers to consumers. It replaces the spreadsheets, emails, and
+disconnected pricing docs that most dealers currently rely on with a single
+source of truth for:
+
+- **Product data** — boat models, specifications, factory options, pricing
+- **Quoting** — building a customer proposal (boat + motor + trailer + accessories)
+- **Stock management** — tracking inventory, on-order units, delivered deals
+- **Sub-dealer distribution** — larger dealers can share stock and pricing with
+  smaller sub-dealers
+- **Promotions** — vendor rebates (Yamaha etc.) that auto-apply to eligible quotes
+
+### Who uses it?
+
+- **Primary client**: Northside Marine (Sydney) — an Australian Highfield Boats dealer
+- **Users within Northside**: Management (Bill Hull, our test user), sales consultants, stock managers
+- **Sub-dealers**: Smaller marine shops that sell Northside's stock
+- **Future clients**: Other boat/motor dealers in AU/NZ
+
+### The Core User Flow
+
+```
+Vendor sends data (boats, motors, parts)
+            ↓
+Data Warehouse stores master product info
+            ↓
+Organisation (e.g., Northside) creates a Module linking to the vendor
+            ↓
+Pricing Workspace — dealer sets cost + markup = sell price across levels
+            ↓
+Quote Builder — sales consultant picks boat + options + motor + trailer + dealer fit
+            ↓
+Finalize → Customer Proposal (PDF) OR Save as Stock
+            ↓
+Stock Management tracks inventory, promotions apply automatically
+```
+
+### Key Terminology (You'll See These Everywhere)
+
+| Term | Meaning |
+|------|---------|
+| **Vendor** | A brand like Highfield, Yamaha, or a parts supplier |
+| **Range** | A series within a brand (Classic, Sport, Patrol for Highfield) |
+| **Model** | A specific boat (CL340, SP390) — has features, specs, options |
+| **Variant / SKU** | A specific material + colour combination of a model, with a price |
+| **Module** | An organisation's access point to a vendor — has its own pricing, stock, settings |
+| **Dealer Fit** | Accessories dealers add to a quote (safety gear, electronics, canvas work) |
+| **Master Price File (MPF)** | Supplier price lists imported as data (parts, accessories) |
+| **Price Level** | A pricing tier: `hull_cash` (retail), `hull_trade` (trade dealers), `hull_subdealer`, etc. |
+| **Sub-dealer** | A smaller org that belongs to a larger parent org (inherits parent's stock/pricing) |
+| **Prop Comes Standard** | Optional toggle on a motor — ticks if the standard prop is included |
+| **Promotion** | A vendor rebate that reduces the total quote price (auto-ticked when active) |
+
+---
+
+## Part 2: Getting Set Up
+
+### Prerequisites
+
+- **Node.js 18+** (check: `node --version`)
+- **Git** (check: `git --version`)
+- A **GitHub account** with access to the repo (ask Asaf)
+
+### Clone & Install
+
+```bash
+git clone <REPO_URL>
+cd HelmLogic
+git checkout claude/app-overview-wKiZ1   # our dev branch
+npm install
+npx playwright install                    # installs browser drivers for automated tests
+```
+
+### Credentials
 
 - **Dev URL**: https://dev--studio-2290360004-3b963.asia-southeast1.hosted.app/
-- **Test User**: Bill Hull (billh@nsmarine.com.au / Bill2026!)
-- **Role**: Managing Director, Northside Marine
-- **Organisation**: Northside Marine (orgId: `AcFZVEFA5UDJG2hyetWT`)
+- **Login**: billh@nsmarine.com.au / Bill2026!
+- **Role**: Managing Director, Northside Marine — has admin-level access
 
-### Login Flow
-1. Navigate to the dev URL — redirects to `/login`
-2. Email input: placeholder "name@example.com"
-3. Password input: type="password"
-4. Click "Login" button
-5. Should redirect to dashboard after successful auth
+### Folder Layout (What You Care About)
+
+```
+HelmLogic/
+├── src/              ← Application code (read-only for QA)
+├── tests/            ← Playwright automated tests (add new ones here)
+├── testing/          ← YOUR home — this handbook + per-release test artifacts
+│   ├── HANDBOOK.md   ← You are here
+│   ├── README.md
+│   ├── shared/       ← Templates
+│   └── v1.X/         ← Per-release folders
+├── tasks/            ← Release notes, session handovers (reference, not your primary workspace)
+└── playwright.config.ts
+```
+
+### Branches
+
+- `claude/app-overview-wKiZ1` — **dev**, auto-deploys to the dev URL above
+- `main` — **production**, auto-deploys to the production URL
+- `claude/v1.3-release` and similar — feature branches (merged into dev then main)
+
+---
+
+## Part 3: Running Automated Tests
+
+We have a Playwright E2E suite covering 46 tests across 6 spec files. You should
+run these before every release and when investigating a bug.
+
+### Commands
+
+```bash
+# Full suite (all 46 tests, ~5 min)
+npm run test:e2e
+
+# Smoke tests only (6 critical paths, ~30 sec) — run this before merging to main
+npm run test:e2e:smoke
+
+# Watch the browser as tests run (useful for debugging)
+npx playwright test --headed
+
+# Single file
+npx playwright test tests/settings.spec.ts
+
+# Single test by name
+npx playwright test -g "Stock table column order"
+
+# Debug mode — step through one test
+npx playwright test tests/critical-paths.spec.ts --debug
+
+# View HTML report after a run
+npx playwright show-report
+```
+
+### Test Files & Coverage
+
+| File | Covers |
+|------|--------|
+| `critical-paths.spec.ts` | 6 smoke tests — login, Highfield tabs, catalog, model editor, quote flow, proposal view |
+| `quote-builder.spec.ts` | 8 tests — all 6 steps of the quote builder including v1.3 features |
+| `stock-management.spec.ts` | 4 tests — sub-tabs, column order, detail panel, location dropdown |
+| `settings.spec.ts` | 5 tests — dealer fit category management, Yamaha settings isolation |
+| `yamaha-motors.spec.ts` | 5 tests — motor catalog, name/ID check, multi-engine HP format |
+| `v1.2-features.spec.ts` | Older regression suite for v1.2 features |
+
+### Interpreting Failures
+
+When a test fails, Playwright saves:
+
+- **Screenshot** at time of failure (`test-results/<test-name>/test-failed-1.png`)
+- **Trace** (`trace.zip`) — timeline of every action with DOM snapshots
+- **Error context** (`error-context.md`) — DOM tree at the time
+
+To inspect a trace:
+```bash
+npx playwright show-trace test-results/<test-name>/trace.zip
+```
+
+**Common failure patterns you'll see:**
+
+1. `locator resolved to <span ... collapsible=icon]:hidden>` — the test is matching
+   a hidden sidebar link. If you see this, the test selector needs to be
+   role-based (`getByRole('tab', { name: '...' })`).
+2. `Test timeout ... waitForLoadState('networkidle')` — Firebase keeps a live
+   websocket; the page never reaches "idle". Replace with `domcontentloaded`.
+3. `element is not visible` after click — race condition; add a `waitForSelector`
+   before the action.
+
+### Adding a New Test
+
+Copy an existing test as a starting point, then:
+
+1. Use `test.describe('Feature Area', () => { ... })` to group related tests
+2. Use the `login()` helper from `tests/helpers/auth.ts`
+3. Use **role-based selectors**: `page.getByRole('tab', { name: 'Catalog' })`
+4. Prefer `page.waitForSelector(...)` over `page.waitForTimeout(...)`
+5. Never use `waitForLoadState('networkidle')` — always use `domcontentloaded`
+6. Verify discovery: `npx playwright test --list`
+
+---
+
+## Part 4: Manual Testing Workflow
+
+Automated tests catch regressions. Manual testing catches everything else —
+visual polish, edge cases, new features before we write automated coverage,
+and the "does this actually feel right?" check.
+
+### When to do manual testing
+
+- **New feature just landed** — walk through the feature before we write a
+  Playwright test for it. Often reveals issues the automation would miss.
+- **Exploratory** — spend 30 min clicking around a part of the app you haven't
+  touched recently. You'll find things.
+- **Customer-reported bugs** — always reproduce manually first.
+- **Visual/polish** — fonts, spacing, colours, hover states, empty states,
+  responsive behaviour.
+
+### Test Case Format
+
+Use `testing/shared/test-case-template.md`. Every test case has:
+
+- **Test ID** (e.g., `TC-v1.3-07`)
+- **Preconditions** (what must be true before starting)
+- **Steps** (numbered, specific)
+- **Expected result** (what should happen)
+- **Actual result** (what did happen)
+- **Status** (Pass / Fail / Blocked / Skipped)
+
+### Picking What to Test (Risk-Based)
+
+You can't test everything every release. Prioritise by risk:
+
+1. **What changed** — read the release notes, test those features deeply
+2. **What breaks often** — the quote builder, pricing workspace, proposal PDF
+3. **What affects customers** — anything user-facing that a dealer would notice
+4. **What breaks silently** — data that saves incorrectly and only shows up in
+   proposals or reports later
+
+### Writing a Good Bug Report
+
+Use `testing/shared/bug-report-template.md`. Every bug needs:
+
+- Clear title ("Photo change doesn't persist in catalog grid" not "images broken")
+- Severity (Critical / Major / Minor / Cosmetic)
+- Exact steps to reproduce
+- Expected vs actual behaviour
+- Screenshots or screen recording
+- Browser console errors if any
+- Firestore document paths if relevant
+
+---
+
+## Part 5: Complete UI Specification
+
+The rest of this document is your reference map of every screen, tab, button,
+and flow in HelmLogic. Use it to:
+
+1. Verify new features match the spec
+2. Write test cases with accurate expectations
+3. Understand how one area connects to another
 
 ---
 
@@ -478,4 +708,208 @@ Reference for QA, engineering, and data verification. New or changed fields in v
 
 ---
 
-**End of QA Testing Handbook**
+## Part 6: Firestore & Data
+
+You'll occasionally need to verify that data saved correctly. Firebase Console
+is your friend.
+
+### Firebase Project
+
+- Project ID: `studio-2290360004-3b963`
+- Console: https://console.firebase.google.com/project/studio-2290360004-3b963/firestore
+- Ask Asaf for read-only access
+
+### Key Collections for QA
+
+| Collection | What it stores | When to check |
+|------------|---------------|---------------|
+| `modules/{moduleId}` | Module config, dealer fit category arrays | After adding/removing categories in Settings |
+| `modules/{moduleId}/promotions/{id}` | Promotion definitions | After creating/editing a promo |
+| `organisations/{orgId}/dealerFitSelections/{id}` | Dealer fit items saved by this org | After "Add Selection" in the Master Data Browser |
+| `users/{uid}/quotes/{quoteId}` | Saved customer quotes | After finalizing a quote as a Proposal |
+| `inventory/{itemId}` | Stock items | After finalizing as Stock, or editing stock details |
+| `delivered-deals/{dealId}` | Completed deals | After marking stock as Delivered |
+| `customers/{customerId}` | Customer records (org-scoped) | After creating a customer |
+| `data-warehouse/{vendorId}/...` | Master product data (read-only to most users) | To verify vendor imports |
+
+### What to Verify After Finalizing a Quote
+
+Navigate to `users/{user.uid}/quotes/{quoteId}` in Firestore Console. Check:
+
+- `totalPriceExclGst` — matches the UI's displayed total
+- `priceLevelUsed` — matches the price level selected in the quote builder
+- `variant.sellPriceExclGst` — price at the level used, not default retail
+- `motor.sellPriceExclGst` — same
+- `appliedPromotions[]` — correct promotions present
+- `dealerServices.{extendedWarranty, servicePlan}` — booleans match toggles
+- `adminDetails.{tradeIn, insurance, finance, timing}` — populated if filled
+- `sectionPdfUrls.{boat, motor, trailer, dealerFit}` — URLs present if PDFs attached
+
+---
+
+## Part 7: Release Process
+
+### Branch Model
+
+- `claude/app-overview-wKiZ1` — **DEV**. Every push auto-deploys to the dev URL.
+- `main` — **PRODUCTION**. Every push auto-deploys to the production URL.
+- `claude/v1.X-release` — **feature branches**. Merged into dev first, then main.
+
+### Who Does What
+
+- **Developer (Claude / Asaf)**: Writes code, pushes to dev, asks you to test
+- **QA (you)**: Runs automated tests + manual verification on dev
+- **Decision**: Does it merge to main?
+  - All Playwright tests pass
+  - Your manual test plan passes
+  - No Critical or Major bugs open
+- **Asaf**: Handles the main merge, Firestore rules deployment, production monitoring
+
+### Firestore Rules
+
+These are in `firestore.rules` at the repo root. **They are NOT auto-deployed.**
+Asaf must paste them into Firebase Console → Firestore → Rules → Publish.
+If a release touches Firestore rules, make sure you confirm with Asaf that they
+were deployed before doing production testing.
+
+---
+
+## Part 8: Per-Release Workflow
+
+Every release gets its own folder in `testing/v1.X/`. When a new release
+starts (Asaf will tell you), create the folder and these four files:
+
+### `testing/v1.X/test-plan.md`
+
+- What's in this release (summarise the release notes)
+- Risk areas — what might break, what you'll focus on
+- Test approach — manual first, then automated, or vice versa
+- Sign-off criteria — when is this release "ready"?
+
+### `testing/v1.X/test-cases.md`
+
+Use `testing/shared/test-case-template.md` as the format. Write one entry per
+test case. Number them `TC-vX.Y-01`, `TC-vX.Y-02`, etc.
+
+### `testing/v1.X/test-results.md`
+
+Running log of what you've run and the outcome. One row per test case with:
+
+- Test ID
+- Run date
+- Pass / Fail / Blocked / Skipped
+- Notes / link to bug if failed
+
+### `testing/v1.X/bugs-found.md`
+
+One entry per bug discovered during testing, in the bug-report-template format.
+Mark each with Status: Open / Fixed / Won't Fix.
+
+---
+
+## Part 9: Checklists
+
+### Every-Deploy Smoke Test (5 min)
+
+Run this after every deploy to dev or main:
+
+- [ ] Login works (no errors, redirects to dashboard)
+- [ ] Dashboard shows module cards + Recent Proposals
+- [ ] Click Highfield module → all 5 tabs clickable (Dashboard, Catalog, Stock Management, Pricing, Settings)
+- [ ] Click any recent proposal → loads without "SOMETHING WENT WRONG"
+- [ ] Start a quote: Highfield → Catalog → any range → any model → reach Step 1
+
+If any of these fail, stop and investigate. Something fundamental is broken.
+
+### Pre-Main-Push Regression (30 min)
+
+Run before merging dev to main:
+
+- [ ] `npm run test:e2e` passes (all 46 tests)
+- [ ] Full quote flow works: all 6 steps, finalize as Proposal, finalize as Stock
+- [ ] Pricing Workspace: Inc GST values are whole dollars, GP% calculates
+- [ ] Stock Management: all 7 sub-tabs load, column order is Model first
+- [ ] Stock detail panel: location dropdown works, MiniProposalView renders
+- [ ] Yamaha Catalog: motor cards show names not Firestore IDs, multi-engine "N × M HP"
+- [ ] Settings: 4 dealer fit category cards, can add/remove a category
+- [ ] Yamaha Settings: shows only Yamaha's own categories
+- [ ] Change a model photo in Highfield → verify it appears in catalog grid
+- [ ] Open proposals of several different ages → no crashes
+
+### New Feature Review Checklist
+
+For each newly-shipped feature:
+
+- [ ] Matches the behaviour described in release notes
+- [ ] Works on desktop viewport (~1440px)
+- [ ] Works on mobile viewport (~375px) — use browser DevTools device mode
+- [ ] Saves correctly to Firestore (verify doc fields)
+- [ ] Displays correctly in proposal view + PDF
+- [ ] Doesn't break existing flows (do a smoke pass)
+- [ ] Empty states handled (what happens if the data isn't there?)
+- [ ] Error states handled (what happens if Firestore is slow / offline?)
+
+---
+
+## Part 10: Bug Reporting
+
+### Severity Levels
+
+| Severity | Criteria | Example |
+|----------|----------|---------|
+| **Critical** | Blocks core business function, no workaround | Can't log in; can't save a quote; all proposals crash |
+| **Major** | Significant feature broken, workaround exists | Price level selector doesn't change motor price (can edit manually) |
+| **Minor** | Small feature broken or missing, minor impact | A field doesn't save; a badge is the wrong colour |
+| **Cosmetic** | Visual only, no functional impact | Misalignment; typo; slightly wrong shade |
+
+### Where to File Bugs
+
+- Add to `testing/v1.X/bugs-found.md` in the current release folder
+- Use the template at `testing/shared/bug-report-template.md`
+- For Critical bugs, also notify Asaf immediately (Slack/text)
+- Once a bug is fixed, update the status and note the fix commit
+
+### Writing the Title
+
+Good titles:
+- "Photo change on CL340 doesn't appear in catalog grid after save"
+- "Proposal view crashes with 'orgQuoteList is not defined'"
+
+Bad titles:
+- "Photos broken"
+- "Something wrong with proposals"
+
+---
+
+## Part 11: Glossary
+
+| Term | Definition |
+|------|------------|
+| **Act Sell** | Actual Sell price column in Master Price File data — the primary sell price for dealer fit items |
+| **Act CTD** | Actual Cost To Dealer column in MPF — the cost price |
+| **BMT** | Boat/Motor/Trailer — a full package quote |
+| **Catalog module** | Default module type — a boat brand with pricing, quoting, stock |
+| **Dealer Fit** | Accessories/services added at the dealer stage (electronics, canvas, rigging) |
+| **Factory Options** | Options configurable at the boat factory (consoles, seats, trim, colour) |
+| **GST** | Australian Goods and Services Tax (10%); Inc GST values are rounded UP to whole dollars |
+| **Hull** | The boat itself (vs. motor or trailer) |
+| **Master Data Browser** | Dialog for searching MPF data and adding items as dealer fit selections |
+| **Master Price File (MPF)** | Supplier parts/accessories price lists imported as data |
+| **Module** | An organisation's access point to a vendor with its own pricing and settings |
+| **Motor Brand module** | Module type for Yamaha, Honda, etc. — motor catalog with pricing and promotions |
+| **MPF** | See Master Price File |
+| **NSM** | Northside Marine — our primary client |
+| **NSM Retail** | Yamaha's retail pricing column used for BMT packages |
+| **Pre-Rig** | Rigging kit that comes with a motor installation |
+| **Price Level** | Pricing tier: hull_cash, hull_trade, hull_subdealer, hull_commercial, hull_boating_alliance |
+| **Promotion** | Vendor rebate (e.g., Yamaha's $500 off promo) that auto-applies within its date range |
+| **Prop Comes Standard** | Optional toggle — user ticks if the motor's standard propeller is included |
+| **Range** | A series within a vendor's lineup (Classic, Sport, Patrol for Highfield) |
+| **SKU** | Stock Keeping Unit — a specific material + colour variant of a model, with a price |
+| **Sub-dealer** | A smaller org that belongs to a parent dealer (inherits stock/pricing) |
+| **Trade Price** | Price level for Yamaha motors when sold to trade dealers / sub-dealers |
+| **Variant** | Same as SKU |
+
+---
+
+**End of Handbook.** Welcome aboard.
