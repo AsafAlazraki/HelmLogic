@@ -392,4 +392,90 @@ This is the complete workflow for setting up and using dealer fit:
 
 ---
 
+### 14. v1.3 NEW FEATURES
+
+These features were added or substantially changed in the v1.3 release. QA should explicitly regression-test each.
+
+#### 14.1 PDF Upload Per Section (Quote Builder Step 6)
+- Each summary card (Boat, Motor, Trailer, Dealer Fit) exposes an **Upload PDF** button.
+- Selecting a PDF uploads to Firebase Storage at `quotes/{quoteId}/section-pdfs/{section}.pdf`.
+- Resulting download URL is persisted to `users/{uid}/quotes/{qid}.sectionPdfUrls.{boat|motor|trailer|dealerFit}`.
+- Re-uploading replaces the previous PDF. A remove/clear control resets the URL to `null` on the quote doc.
+- PDFs should be retrievable/linkable from the proposal view and included in any generated proposal PDF attachments where applicable.
+
+#### 14.2 Engine Specs + Trailer Specs Buttons
+- Step 6 technical utilities row:
+  - **Engine Specs** button appears only when a motor is selected. Opens a dialog with full motor specification sheet.
+  - **Trailer Specs** button appears only when a trailer is selected. Opens a dialog with full trailer specification sheet.
+- **Standard Features** button is the renamed "Features" button — same behavior, updated label.
+
+#### 14.3 Pre-Rig Information on Motor Page
+- Step 3 (Motor) displays a Pre-Rig information panel after a motor is selected.
+- Sources data from the motor's pre-rig fields (if present). Hidden when no pre-rig data exists.
+
+#### 14.4 NSM Extended Warranty + Service Plan Toggles
+- Step 3 (Motor) displays a **Dealer Services** card with two toggles:
+  - **NSM Extended Warranty** → saved to `users/{uid}/quotes/{qid}.dealerServices.extendedWarranty`
+  - **Service Plan** → saved to `users/{uid}/quotes/{qid}.dealerServices.servicePlan`
+- Both default OFF. Toggled state flows into totals and the finalized proposal.
+
+#### 14.5 Yamaha Rebate Auto-Apply
+- Step 3 (Motor) displays a **Promotions & Offers** section.
+- Currently-active Yamaha promotions matching the selected motor are auto-ticked on load.
+- Filtered against each promotion's `startDate` / `endDate` window — expired or not-yet-started promos are not shown or auto-applied.
+- User can untick any auto-applied promo to exclude it.
+- Applied promotions saved to `users/{uid}/quotes/{qid}.appliedPromotions[]`.
+- Combined discount saved to `users/{uid}/quotes/{qid}.promotionDiscount` and deducted from grand total.
+
+#### 14.6 Trailer Factory Options + Notes
+- Step 4 (Trailer) gains an **Additional Factory Trailer Notes/Options** section.
+- Mirrors the boat-level custom additions: free-form name, price, description inputs plus notes field.
+
+#### 14.7 Trailer Dealer Fit Categories
+- Configured on the Highfield module at **Settings → Trailer Dealer Fit Categories** (`modules/{moduleId}.trailerDealerFitCategories[]`).
+- Appears as a new block on Step 4 with Master Data Browser-driven selections, analogous to motor dealer fit.
+
+#### 14.8 Admin & Trade-In Section (Step 6 Summary)
+- New **Admin & Trade-In** card with subsections:
+  - **Trade-In** — captures trade-in details (make/model/year/value, etc.)
+  - **Insurance** — insurance preference / provider
+  - **Finance** — finance application info
+  - **Timing** — desired delivery / timing notes
+- Persists to `users/{uid}/quotes/{qid}.adminDetails.{tradeIn|insurance|finance|timing}`.
+
+#### 14.9 HP Badge Fix (Multi-Engine Configs)
+- Motor cards and hero cards now render HP correctly for multi-engine configurations.
+- Expected format: `2 × 300 HP` for a twin 300 HP setup, `3 × 425 HP` for triple-425 etc.
+- Previous buggy output `2 HP` is the regression to watch for.
+
+---
+
+### 15. FIRESTORE COLLECTIONS & FIELDS (v1.3)
+
+Reference for QA, engineering, and data verification. New or changed fields in v1.3 are flagged.
+
+**Module-level (Highfield boat module)**
+- `modules/{moduleId}.moduleDealerFitCategories[]` — boat dealer fit category names
+- `modules/{moduleId}.motorDealerFitCategories[]` — motor dealer fit category names (lives on the boat module — dealer fit is configured in the context of the boat being quoted)
+- `modules/{moduleId}.trailerDealerFitCategories[]` — **NEW v1.3** — trailer dealer fit category names
+
+**Quote document (`users/{uid}/quotes/{quoteId}`)**
+- `appliedPromotions[]` — **NEW v1.3** — array of applied promotion objects/IDs
+- `promotionDiscount` — **NEW v1.3** — total discount applied across promotions
+- `dealerServices.extendedWarranty` — **NEW v1.3** — boolean for NSM Extended Warranty toggle
+- `dealerServices.servicePlan` — **NEW v1.3** — boolean for Service Plan toggle
+- `adminDetails.tradeIn` — **NEW v1.3** — trade-in details object
+- `adminDetails.insurance` — **NEW v1.3** — insurance details object
+- `adminDetails.finance` — **NEW v1.3** — finance details object
+- `adminDetails.timing` — **NEW v1.3** — timing details object
+- `sectionPdfUrls.boat` — **NEW v1.3** — download URL for uploaded boat-section PDF
+- `sectionPdfUrls.motor` — **NEW v1.3** — download URL for uploaded motor-section PDF
+- `sectionPdfUrls.trailer` — **NEW v1.3** — download URL for uploaded trailer-section PDF
+- `sectionPdfUrls.dealerFit` — **NEW v1.3** — download URL for uploaded dealer-fit-section PDF
+
+**Firebase Storage**
+- `quotes/{quoteId}/section-pdfs/{section}.pdf` — **NEW v1.3** — section PDF attachments, one object per section (`boat`, `motor`, `trailer`, `dealerFit`)
+
+---
+
 **End of QA Testing Handbook**
