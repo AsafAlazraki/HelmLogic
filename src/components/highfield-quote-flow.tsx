@@ -1202,7 +1202,7 @@ export function HighfieldQuoteFlow({
                                     <div className="space-y-6 scroll-mt-10">
                                         <div className="flex items-center gap-3 bg-slate-900 px-6 py-3 rounded-2xl shadow-xl w-full">
                                             <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Custom Tactical Additions</h3>
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Additional Factory Boat Notes/Options</h3>
                                         </div>
                                         <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white space-y-6">
                                             <div className="grid gap-4">
