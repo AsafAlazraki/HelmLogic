@@ -314,9 +314,24 @@ export function ModelConfigurationEditor({
     const canEdit = isAdmin || permissions.can_edit_boat_data;
     const shouldSaveToMaster = isAdmin && (isMasterContext || module.id === 'master');
 
+    const onValidationError = (errors: any) => {
+        console.error("Form validation failed:", errors);
+        // Surface the first field that failed so the user knows why save didn't happen
+        const firstError = Object.entries(errors)[0];
+        const fieldName = firstError ? firstError[0] : 'unknown field';
+        const errorMsg = firstError && (firstError[1] as any)?.message
+            ? (firstError[1] as any).message
+            : 'Some fields are invalid. Open the browser console for details.';
+        toast({
+            variant: "destructive",
+            title: `Save blocked: ${fieldName}`,
+            description: errorMsg,
+        });
+    };
+
     return (
         <FormProvider {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
+            <form onSubmit={form.handleSubmit(onSubmit, onValidationError)}>
                 <div className="space-y-6 text-left">
                     <Card className="border-primary/20 bg-primary/5 rounded-xl shadow-inner text-left overflow-hidden">
                         <CardContent className="p-4 text-left">
