@@ -56,7 +56,8 @@ export function CustomerList({ organisationId, subDealerOrgIds, readOnly = false
   const orgIds = useMemo(() => {
     const ids = [organisationId];
     if (subDealerOrgIds?.length) ids.push(...subDealerOrgIds);
-    return ids;
+    // Firestore 'in' query max 30 elements — slice to be safe
+    return ids.slice(0, 30);
   }, [organisationId, subDealerOrgIds]);
 
   const customersQuery = useMemoFirebase(() => {

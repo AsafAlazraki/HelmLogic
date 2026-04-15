@@ -547,10 +547,12 @@ export function StockItemDetail({ item, onClose, readOnly = false, availableLoca
                           {item.quotePayload.motor?.costPrice > 0 && (
                             <div className="border-t pt-1 mt-1 space-y-1">
                               <p className="text-[8px] uppercase tracking-widest font-black text-slate-400">Cost Breakdown</p>
-                              {item.quotePayload.variant?.cost > 0 && (
-                                <div className="flex justify-between"><span className="text-slate-500">Boat Cost</span><span className="font-bold">${item.quotePayload.variant.cost.toLocaleString()}</span></div>
+                              {(item.quotePayload.variant?.cost ?? 0) > 0 && (
+                                <div className="flex justify-between"><span className="text-slate-500">Boat Cost</span><span className="font-bold">${item.quotePayload.variant?.cost?.toLocaleString() ?? '0'}</span></div>
                               )}
-                              <div className="flex justify-between"><span className="text-slate-500">Motor Cost</span><span className="font-bold">${item.quotePayload.motor.costPrice.toLocaleString()}</span></div>
+                              {(item.quotePayload.motor?.costPrice ?? 0) > 0 && (
+                                <div className="flex justify-between"><span className="text-slate-500">Motor Cost</span><span className="font-bold">${item.quotePayload.motor?.costPrice?.toLocaleString() ?? '0'}</span></div>
+                              )}
                             </div>
                           )}
                         </div>
