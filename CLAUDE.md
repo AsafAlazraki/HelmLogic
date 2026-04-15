@@ -133,3 +133,11 @@ users/{userId}/quotes/{quoteId}
 - **Price display must use getPriceForLevel(), never hardcoded sellPriceExclGst** — applies to hero cards, grid cards, accessories, dealer fit. Hardcoded prices don't respond to price level selector.
 - **Dealer fit items use Act Sell for pricing** — MPF data uses 'Act Sell' (actual sell) and 'Act CTD' (actual cost to dealer) as the primary price/cost fields
 - **Finalize payload must resolve prices through the selected price level** — use resolvePrice() not raw sellPriceExclGst, otherwise sub-dealer quotes snapshot retail prices instead of trade prices
+- **Firestore `where('field', 'in', arr)` capped at 30 elements** — always `.slice(0, 30)` arrays of org IDs / sub-dealer IDs / variant IDs before querying
+- **Optional chaining must extend to property access** — `obj?.x > 0` followed by `obj.x.toLocaleString()` will crash if obj is null. Be consistent: `obj?.x?.toLocaleString() ?? '0'`
+- **Catalog list views must merge modelOverrides** — ModelsGrid (and similar list components) reading from `data-warehouse/.../models` must also merge `organisations/{orgId}/modelOverrides` so saved org-level changes (cover images, etc.) appear immediately
+- **Multi-engine HP parsing** — Yamaha HP Rating field "2 × 300" must extract per-engine HP (300), not raw `parseFloat()` (which returns 2). Use `getMotorHp()` helper.
+- **Currency display** — `formatCurrency` auto-detects whole-dollar values and omits decimals (e.g., `$39,815` not `$39,815.00`). Fractional values still show 2 decimals.
+- **Parallel agents on the same file overwrite each other** — when multiple sub-agents need to edit a large component file (e.g., `highfield-quote-flow.tsx`), run them sequentially. Stash conflicts cause silent loss of work.
+- **Playwright tab selectors** — use `getByRole('tab', { name: '...' })` not `text=Dashboard`. Sidebar nav links share the same text and are hidden, causing timeouts.
+- **Playwright `networkidle` doesn't work with Firebase** — websockets keep the network "active" forever. Use `waitForLoadState('domcontentloaded')` plus explicit `waitForSelector(...)` calls.

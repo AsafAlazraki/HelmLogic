@@ -1,15 +1,25 @@
 # HelmLogic — Release Notes v1.3.0
-> Release Date: TBD (pending QA)
-> Branch: claude/v1.3-release → main
+> Release Date: 2026-04-15
+> Branch: claude/app-overview-wKiZ1 → main
 > Major release since v1.2.1
 
 ### Release Stats
 - **13 client requirements** addressed from April 4 feedback
-- **9 feature commits** + **1 customer fix commit**
-- Features span quote builder, stock management, module settings
+- **20+ commits** across features, bug fixes, infrastructure, and documentation
+- Features span quote builder, stock management, module settings, customer feedback fixes
+- Static analysis pass: build clean, all icon imports verified, 3 critical pre-release bugs caught and fixed
 
 ### Source of Requirements
 Client (Northside Marine) feedback received April 4, 2026 — 12 feature requests + mobile responsiveness check. Customer feedback on dev deployment added photo save bug, stock column order, pending tab, and location change UX.
+
+### Looking Ahead — v1.4 Trailers Module (in design)
+Design work has begun on the v1.4 Trailers Module. Full design document at `tasks/v1.4-trailers-module-design.md` covers:
+- New `trailers` module type with multi-brand support (one module covers Mackay, Dunbier, Easytow, etc.)
+- Each trailer brand is a vendor with its own pricing and dealer fit categories
+- New "Trailer Options" tab in boat model editor — assign specific trailers to each boat model with pre-configured dealer fit (mirrors the existing Motor Options pattern)
+- Quote builder Step 4 reads from `model.trailerAssignments[]` — only assigned trailers shown
+- Sub-dealer Trade pricing flows through automatically
+Implementation begins on the v1.4 branch after v1.3 ships.
 
 ---
 
@@ -146,6 +156,43 @@ Client (Northside Marine) feedback received April 4, 2026 — 12 feature request
 
 ### Firebase Storage
 - `quotes/{quoteId}/section-pdfs/{section}.pdf` — per-section attached PDFs
+
+---
+
+## Pre-Release Static Analysis Pass
+
+A comprehensive static analysis was run before release. Build is clean and all 46 Playwright tests are discoverable. Three critical bugs were caught and fixed:
+
+### Stock Detail Cost Breakdown — Possible Crash (Critical)
+- **File**: `src/components/stock-item-detail.tsx`
+- **Bug**: Cost Breakdown section guarded `variant?.cost > 0` with optional chaining but accessed `motor.costPrice` directly. If a quote-origin stock item was missing motor data, the panel would crash.
+- **Fix**: Both lines now use optional chaining + null-safe `toLocaleString` fallback. Motor row only renders when `costPrice > 0`.
+
+### Firestore "in" Query Limit — Inventory List (Critical)
+- **File**: `src/components/inventory-list.tsx`
+- **Bug**: `targetOrgIds` for the "all" filter combined org + sub-dealer IDs without slicing. Firestore caps `where('field', 'in', arr)` at 30 elements. An org with >29 sub-dealers would throw at runtime.
+- **Fix**: `.slice(0, 30)` applied to the combined array.
+
+### Firestore "in" Query Limit — Customer List (Critical)
+- **File**: `src/components/customer-list.tsx`
+- **Bug**: Same pattern — `orgIds` array (org + sub-dealer IDs) wasn't sliced before being used in `where('organisationId', 'in', orgIds)`.
+- **Fix**: `.slice(0, 30)` applied.
+
+### Static Analysis Coverage
+All clean:
+- Lucide icon imports across 113 .tsx files (688 icon usages verified)
+- Undefined variable references in 9 critical components
+- `.replace()` and `parseFloat()` null-safety
+- Firestore `setDoc`/`updateDoc` undefined field protection
+- Hardcoded SelectItems collision with `initialCategory` props
+
+---
+
+## Testing Infrastructure
+
+- **Playwright E2E suite expanded**: 46 tests across 6 spec files (critical-paths, quote-builder, stock-management, settings, yamaha-motors, v1.2-features)
+- **Selector and timing fixes**: Replaced ambiguous `text=` selectors with role-based `getByRole('tab', ...)`; replaced `networkidle` waits (Firebase websockets prevent these from resolving) with `domcontentloaded`
+- **`testing/` folder structure** introduced for the new full-time QA hire — per-release subfolders, shared bug/test case templates, fully rewritten onboarding handbook (~42KB, 11 parts)
 
 ---
 

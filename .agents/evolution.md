@@ -145,6 +145,20 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - **QA**: 7/7 tests passing (motor accessories "static across levels" confirmed as expected behavior — MPF items have single price column)
 - **Files**: 5 changed — pricing workspace, quote flow, finalize dialog, quote-financials, stock detail
 
+### Session: April 13-15, 2026 — v1.3 Major Release
+- 13 client requirements addressed across the quote builder, stock management, and module settings
+- **Quote builder additions**: PDF upload per section, Engine/Trailer Specs buttons, Pre-Rig Information display, NSM Extended Warranty + Direct Debit Service Plan toggles, Yamaha rebate auto-apply with date filtering, Trailer enhancements (custom notes + dealer fit), Admin & Trade-In card on Step 6
+- **Label changes**: Features → Standard Features, Custom Tactical Additions → Additional Factory Boat Notes/Options
+- **Settings**: Trailer Dealer Fit Categories card added, DealerFitOptions now merges FOUR category sources (global + module + motor + trailer)
+- **Multi-engine HP fix**: `getMotorHp` parses "2 × 300" correctly, badges display "2 × 300 HP"
+- **Currency format**: Whole-dollar values display without ".00" decimals
+- **Customer fixes from dev feedback**: Photo save (modelOverrides merge in catalog grid), stock column order (Model first), Pending sub-tab, interactive location dropdown
+- **Pre-release static analysis caught 3 critical bugs**: stock-item-detail null safety on Cost Breakdown, inventory-list and customer-list Firestore `in` query 30-element limits
+- **Testing infrastructure overhaul**: Playwright E2E suite (46 tests across 6 spec files), `testing/` folder structure with per-release subfolders, full handbook rewrite for new QA hire (~42KB, 11 parts), bug report and test case templates
+- **Coordination pattern that worked**: parallel agents for independent features failed when they touched the same file (highfield-quote-flow.tsx). Sequential agents worked well. Lesson: parallelize only when files are truly independent.
+- **v1.4 design started**: `tasks/v1.4-trailers-module-design.md` — multi-brand Trailers module with per-boat-model trailer assignments mirroring the Motor Options pattern
+- **Files changed**: ~10 components + tests + docs
+
 ## Key Lessons Learned
 - `mainVendorId: null` crashes Firestore `doc()` — always check
 - Sell AUD columns need "(EXCL. GST)" and "(INCL. GST)" labels
@@ -175,6 +189,12 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - `propComesStandard` is opt-in (default OFF), NOT auto-enabled — user explicitly toggles when the motor's prop is included
 - Image onError fallback: use Lucide `Ship` icon as placeholder for broken external images across all card components
 - After refactoring, always search for ALL old variable references — stale refs (like `orgQuoteList`) cause ReferenceErrors at runtime
+- Firestore `where('field', 'in', arr)` caps at 30 elements — always `.slice(0, 30)` arrays of org IDs / sub-dealer IDs before querying
+- Optional chaining guards must extend through to property access — `obj?.x > 0` followed by `obj.x.toLocaleString()` will crash if obj is null. Use `obj?.x?.toLocaleString() ?? '0'` consistently
+- ModelsGrid (and any catalog list view) must merge `organisations/{orgId}/modelOverrides` with master `data-warehouse/.../models` data, otherwise saved org-level changes (cover images, etc.) appear to "not save"
+- Parallel sub-agents editing the same large file (e.g., `highfield-quote-flow.tsx`) overwrite each other via stash conflicts — run them sequentially when touching the same file
+- Playwright `text=Dashboard` selectors collide with hidden sidebar nav links — always use `getByRole('tab', { name: 'Dashboard' })` for tab navigation
+- Playwright `waitForLoadState('networkidle')` never resolves with Firebase — use `waitForLoadState('domcontentloaded')` and explicit element waits
 
 ## How to Proceed (For Future Agents)
 - **Read tasks/SESSION_HANDOVER.md** first for complete technical context
