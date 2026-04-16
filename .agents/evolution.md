@@ -145,6 +145,15 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - **QA**: 7/7 tests passing (motor accessories "static across levels" confirmed as expected behavior — MPF items have single price column)
 - **Files**: 5 changed — pricing workspace, quote flow, finalize dialog, quote-financials, stock detail
 
+### Session: April 16, 2026 — v1.3 Eve-of-Release Hotfixes
+- **Update Config silently failing** — root cause was `form.handleSubmit(onSubmit)` swallowing Zod errors when no `onError` is passed AND the `highfieldModelSchema` having required fields (`motorConfigSchema.type` enum, `optionalFeatureSchema.id`/`name`, `documents[].id/name/url`) that legacy Firestore data didn't satisfy.
+  - Fix: rewrote schema to be fully permissive — every nested field `optional().nullable().default()`, every object `.passthrough()`. Schema is now a safety net only.
+  - Fix: added `onValidationError` that walks the nested errors object to log the deepest failing path, then calls `onSubmit(form.getValues())` directly. Validation can NEVER block a save again.
+- **Replace cover image button did nothing** — shadcn `<Input type="file">` wrapped in `<label>` broke the input binding; Button had `pointer-events-none`. Switched to native `<input type="file" hidden>` + `Button onClick={(e) => (e.currentTarget.nextElementSibling)?.click()}`. Added `e.target.value = ''` reset so same file can re-upload.
+- **Refresh redirects to dashboard / loses tab** — root cause was `activeTab`/`view`/`selectedRangeId`/`selectedModelId` lived in component state only, lost on refresh.
+  - Fix: synced all four to URL search params via `window.history.replaceState` (no extra render). State initialised from `window.location.search` in `useState` initialiser. Same pattern applied to yamaha-motor-workspace (`?motorTab=`) and stock-management-workspace (`?stockView=`).
+- **Files**: `highfield-model-editor.tsx`, `model-configuration-editor.tsx`, `app/(app)/modules/[id]/page.tsx`, `yamaha-motor-workspace.tsx`, `stock-management-workspace.tsx`
+
 ### Session: April 13-15, 2026 — v1.3 Major Release
 - 13 client requirements addressed across the quote builder, stock management, and module settings
 - **Quote builder additions**: PDF upload per section, Engine/Trailer Specs buttons, Pre-Rig Information display, NSM Extended Warranty + Direct Debit Service Plan toggles, Yamaha rebate auto-apply with date filtering, Trailer enhancements (custom notes + dealer fit), Admin & Trade-In card on Step 6
@@ -195,6 +204,10 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - Parallel sub-agents editing the same large file (e.g., `highfield-quote-flow.tsx`) overwrite each other via stash conflicts — run them sequentially when touching the same file
 - Playwright `text=Dashboard` selectors collide with hidden sidebar nav links — always use `getByRole('tab', { name: 'Dashboard' })` for tab navigation
 - Playwright `waitForLoadState('networkidle')` never resolves with Firebase — use `waitForLoadState('domcontentloaded')` and explicit element waits
+- `form.handleSubmit(onSubmit)` swallows validation errors silently when no `onError` handler is passed — always pass a second `onError`. For critical persistence flows, the `onError` should call `onSubmit(form.getValues())` so legacy data can never gate a save
+- Schemas validating LEGACY Firestore data must be fully permissive — every nested field `optional().nullable().default()`, every object `.passthrough()`. Strict enums and required ids on legacy fields cause silent save failures
+- shadcn `<Input type="file">` wrapped in `<label>` doesn't fire — the Input wrapper div breaks the binding. Use native `<input type="file" hidden>` + `Button onClick` triggering `nextElementSibling.click()`. Always reset `e.target.value = ''` after upload so the same file can be re-selected
+- UI state that the user expects to survive a refresh (active tab, view mode, selected entity) must sync to URL search params via `window.history.replaceState`. Initialise state from `window.location.search` in the `useState` initialiser. Component-only state evaporates on F5
 
 ## How to Proceed (For Future Agents)
 - **Read tasks/SESSION_HANDOVER.md** first for complete technical context

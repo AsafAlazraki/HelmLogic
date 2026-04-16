@@ -419,6 +419,11 @@ Key collections and access:
 - **New testing infrastructure**: Playwright suite (46 tests), `testing/` folder with per-release subfolders, full handbook rewrite for new QA hire
 - **v1.4 in design**: `tasks/v1.4-trailers-module-design.md` — multi-brand Trailers module with per-boat-model trailer assignments and pre-configured dealer fit (mirrors Motor Options pattern)
 
+### Eve-of-release hotfixes (2026-04-16)
+- **Update Config now unblockable** — `highfieldModelSchema` rewritten with `optional().nullable().default()` on every field + `.passthrough()`. `model-configuration-editor.tsx` got an `onValidationError` handler that walks the nested errors object to log the deepest failing path, then calls `onSubmit(form.getValues())` directly so the save still happens. Validation is a safety net only.
+- **Replace cover image button** — switched from shadcn `<Input type="file">` in `<label>` to native `<input type="file" hidden>` + Button onClick triggering `nextElementSibling.click()`. Resets `e.target.value = ''` after upload so the same file can re-upload.
+- **Refresh restores page state** — `activeTab` / `view` / `selectedRangeId` / `selectedModelId` on `modules/[id]/page.tsx` now sync to URL search params (`?tab=`, `?view=`, `?range=`, `?model=`) via `window.history.replaceState`. Same pattern applied to `yamaha-motor-workspace.tsx` (`?motorTab=`) and `stock-management-workspace.tsx` (`?stockView=`).
+
 ---
 
 ## Git Workflow

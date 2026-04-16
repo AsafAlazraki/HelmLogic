@@ -134,6 +134,27 @@ Implementation begins on the v1.4 branch after v1.3 ships.
 - **Root Cause**: `parseFloat("2 × 300")` returns `2`
 - **Fix**: `getMotorHp` now parses multi-engine format correctly. New `getMotorHpDisplay` shows "2 × 300 HP" on badges, "90 HP" for singles.
 
+### Update Config Silently Did Nothing
+- **Bug**: User changed model photo, hit "Update Config" — no toast, no save, refresh wiped the change
+- **Root Cause #1**: Form `handleSubmit(onSubmit)` swallows Zod validation errors silently if a second `onError` handler isn't provided. Legacy data in Firestore had nullish/missing fields that tripped the strict schema, blocking the save with no user feedback.
+- **Root Cause #2**: `motorConfigSchema.type` was a required enum, `optionalFeatureSchema.id`/`name` were required, `documents[].id`/`name`/`url` were required — any legacy entry missing those would block save.
+- **Fix Part 1**: Every nested field in `highfieldModelSchema` is now `optional().nullable().default()`, every object uses `.passthrough()`. Schema is purely a safety net — never blocks save.
+- **Fix Part 2**: Added `onValidationError` handler that walks the nested errors object to log the deepest failing path, then calls `onSubmit(form.getValues())` directly with raw form values. `sanitizeDataForFirestore` strips undefineds before writing. Save can no longer be blocked by validation, period.
+- **Files**: `src/components/highfield-model-editor.tsx` (schema), `src/components/model-configuration-editor.tsx` (error handler)
+
+### Replace Cover Image Button Did Nothing
+- **Bug**: "Replace" button on the cover image card didn't open the file picker. Removing + re-adding worked but was annoying.
+- **Root Cause**: shadcn `<Input type="file">` was wrapped in a `<label>`, but `<Input>` renders its own div wrapper that broke the label-for-input binding. Button had `pointer-events-none` so clicks went to the wrong element.
+- **Fix**: Replaced with native `<input type="file">` + `Button onClick` that programmatically clicks `nextElementSibling`. Also resets `e.target.value = ''` after upload so the same file can be re-selected.
+- **File**: `src/components/highfield-model-editor.tsx`
+
+### Refresh Loses Your Place
+- **Bug**: Refresh on `/modules/abc` while on the Stock tab (or in the model editor) sent you back to Dashboard / catalog ranges view
+- **Root Cause**: `activeTab`, `view`, `selectedRangeId`, `selectedModelId` were all kept in component state only — refresh cleared them and the component re-mounted at its defaults
+- **Fix**: All four pieces of state now sync to URL search params via `window.history.replaceState` (no extra render). On mount, state is initialised from the URL. Refresh restores the exact tab + view + selected range/model.
+- **Same pattern applied to**: `yamaha-motor-workspace.tsx` (`?motorTab=`), `stock-management-workspace.tsx` (`?stockView=`)
+- **Files**: `src/app/(app)/modules/[id]/page.tsx`, `src/components/yamaha-motor-workspace.tsx`, `src/components/stock-management-workspace.tsx`
+
 ---
 
 ## Firestore Collections (v1.3 Additions)
@@ -200,8 +221,10 @@ All clean:
 - `src/components/highfield-quote-flow.tsx` — 12 of 13 features touch this (~740 new lines)
 - `src/components/finalize-quote-dialog.tsx` — all new payload fields
 - `src/components/stock-list.tsx` — column reorder, location dropdown
-- `src/components/stock-management-workspace.tsx` — pending sub-tab
+- `src/components/stock-management-workspace.tsx` — pending sub-tab + URL view persistence
 - `src/components/stock-item-detail.tsx` — interactive location dropdown
 - `src/components/dealer-fit-options.tsx` — four-source category merge
-- `src/components/yamaha-motor-workspace.tsx` — multi-engine HP parsing
-- `src/app/(app)/modules/[id]/page.tsx` — trailer DF settings, modelOverrides merge in catalog grid
+- `src/components/yamaha-motor-workspace.tsx` — multi-engine HP parsing + URL tab persistence
+- `src/components/highfield-model-editor.tsx` — fully permissive schema + native file input for Replace button
+- `src/components/model-configuration-editor.tsx` — validation can no longer block save (raw save fallback)
+- `src/app/(app)/modules/[id]/page.tsx` — trailer DF settings, modelOverrides merge in catalog grid, URL tab/view/range/model persistence
