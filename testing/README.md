@@ -102,3 +102,52 @@ Default test user: **Bill Hull** — `billh@nsmarine.com.au` / `Bill2026!`
 
 The HANDBOOK is meant to answer every question a new tester has. If it doesn't,
 that's a bug in the handbook — open a PR to fix it, or flag it to the team lead.
+
+---
+
+## Automated Test Coverage & Known Gaps
+
+The `/tests` folder contains Playwright E2E specs. As of v1.3 they cover:
+
+| Area | Status |
+|---|---|
+| Login + dashboard loads | ✅ |
+| Module loads all 5 tabs | ✅ |
+| Catalog drill-down (range → model → editor) | ✅ |
+| Quote builder Steps 1–6 reachable | ⚠ best-effort |
+| Quote builder advanced features (PDF attach, promotions, etc.) | ⚠ visibility only |
+| **Tab / view / range / model survive refresh** | ✅ (new in v1.3) |
+| **Model editor save roundtrip (edit → save → reload → persisted)** | ✅ (new in v1.3) |
+| **Replace cover image button opens file picker** | ✅ (new in v1.3) |
+| Stock / On Order / Pending sub-views persist across refresh | ✅ (new in v1.3) |
+| Sub-dealer flows | ❌ NOT COVERED |
+| Price level switching changes displayed prices | ⚠ shallow |
+| Firestore write confirmation (not just toast) | ❌ NOT COVERED |
+| Photo upload to Firebase Storage | ❌ NOT COVERED |
+| Mobile viewport rendering | ❌ NOT COVERED |
+| PDF generation / download | ❌ NOT COVERED |
+
+### Spec files
+- `tests/critical-paths.spec.ts` — smoke tests. Must pass for any deploy.
+- `tests/hotfixes-v1.3.spec.ts` — regression tests for the three eve-of-release bugs (Update Config silent save, refresh redirect, Replace button dead). Ensures those don't resurface.
+- `tests/persistence.spec.ts` — save-then-reload roundtrips. The single most valuable file here — it catches the class of bug where the UI appears to succeed but the action didn't persist.
+- `tests/quote-builder.spec.ts` — quote flow steps
+- `tests/stock-management.spec.ts` — stock workspace
+- `tests/settings.spec.ts` — module settings
+- `tests/yamaha-motors.spec.ts` — Yamaha motor workspace
+- `tests/v1.2-features.spec.ts` — v1.2 regression
+
+### Test quality rules (for future contributors)
+1. **No `test.skip()` when a feature is broken.** If an element you need isn't visible, fail loudly — silent skips are how bugs reach prod.
+2. **Every save action must assert a toast.** Use `waitForToast(page, { text: /.../ })` from `tests/helpers/utils.ts`. Saves without toast confirmation hid the Update Config bug for a full sprint.
+3. **Persistence > visibility.** Prefer a save → reload → re-read test over a "the input is visible" test. The former catches real bugs; the latter catches typos.
+4. **Use `openTab()` not `click()` on tabs.** `openTab` asserts the tab's `data-state="active"` after clicking so you know the tab actually switched.
+5. **Any new page-level state should sync to URL.** When you add a tab/view/selection, add it to the URL via `window.history.replaceState` and add a refresh test in `persistence.spec.ts`.
+
+### Known gaps — on the roadmap
+- Sub-dealer login + quote flow (currently only parent org `billh@` is tested)
+- Firestore read-back verification via Admin SDK or direct query (harder in a test env)
+- Visual regression (Percy / Playwright snapshots) — not yet wired up
+- Mobile viewports — Playwright can emulate device; no specs use this yet
+- PDF generation + download validation
+

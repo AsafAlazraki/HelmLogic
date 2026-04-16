@@ -1,8 +1,11 @@
 import { type Page } from '@playwright/test';
 
-export const BASE_URL = 'https://dev--studio-2290360004-3b963.asia-southeast1.hosted.app';
-export const TEST_EMAIL = 'billh@nsmarine.com.au';
-export const TEST_PASSWORD = 'Bill2026!';
+// Override via env: E2E_BASE_URL, E2E_EMAIL, E2E_PASSWORD.
+export const BASE_URL =
+  process.env.E2E_BASE_URL ||
+  'https://dev--studio-2290360004-3b963.asia-southeast1.hosted.app';
+export const TEST_EMAIL = process.env.E2E_EMAIL || 'billh@nsmarine.com.au';
+export const TEST_PASSWORD = process.env.E2E_PASSWORD || 'Bill2026!';
 
 /**
  * Logs the test user into HelmLogic and waits until the post-login route loads.
@@ -16,6 +19,13 @@ export async function login(page: Page): Promise<void> {
   await page.goto(`${BASE_URL}/login`);
   await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(2000); // Let Firebase Auth SDK initialize
+
+  // If already authenticated (session cookie/localStorage), the login page may redirect.
+  if (!page.url().includes('/login')) {
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1500);
+    return;
+  }
 
   const emailInput = page.locator('input[placeholder="name@example.com"]').first();
   await emailInput.waitFor({ timeout: 10000 });
