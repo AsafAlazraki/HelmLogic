@@ -32,19 +32,19 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { ChevronRight } from 'lucide-react';
 
 const specSchema = z.object({
-    id: z.string(),
-    label: z.string().min(1, 'Label is required'),
-    value: z.string().min(1, 'Value is required'),
+    id: z.string().optional().default(() => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `spec-${Date.now()}-${Math.random().toString(36).slice(2)}`)),
+    label: z.string().optional().default(''),
+    value: z.string().optional().default(''),
 });
 
 const motorConfigSchema = z.object({
     type: z.enum(["Single", "Twin", "Triple", "Quad", "SingleWithAux"]),
     engines: z.array(z.object({
-        label: z.string(),
+        label: z.string().optional().default(''),
         minHp: z.coerce.number().min(0).default(0),
         maxHp: z.coerce.number().min(0).default(0),
         recommendedHp: z.coerce.number().min(0).default(0),
-    })),
+    })).default([]),
 });
 
 const optionalFeatureSchema = z.object({
