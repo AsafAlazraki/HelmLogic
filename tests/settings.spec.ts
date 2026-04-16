@@ -1,47 +1,61 @@
 import { test, expect, type Page } from '@playwright/test';
 import { login, openHighfieldModule, BASE_URL } from './helpers/auth';
+import { openTab, assertNoCrash, reloadAndAssert, waitForFirestoreSettle } from './helpers/utils';
 
-const TEMP_CATEGORY_NAME = `E2E_TEMP_${Date.now()}`;
+/**
+ * Each test creates a UNIQUE category name so multiple tests running in parallel
+ * or retrying don't collide on the same Firestore document.
+ */
+const uniqueCategoryName = () => `E2E_TEMP_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
-async function addAndRemoveCategory(page: Page, cardTitle: string): Promise<void> {
-  // Find the Card whose title matches `cardTitle`
-  const card = page.locator(
-    `[class*="card"], [data-slot="card"]`
-  ).filter({ hasText: new RegExp(cardTitle, 'i') }).first();
-
-  // Fall back to locating by title text then walking up to a parent card-like ancestor.
+async function findCategorySection(page: Page, cardTitle: string) {
   const titleEl = page.locator(`text=${cardTitle}`).first();
-  await expect(titleEl).toBeVisible({ timeout: 10000 });
-
-  // Use the nearest section that contains an Input + Add button
-  const section = titleEl.locator(
+  await expect(titleEl, `Settings card "${cardTitle}" should be visible`).toBeVisible({ timeout: 10000 });
+  return titleEl.locator(
     'xpath=ancestor::*[self::section or self::div][.//input and .//button][1]'
   );
+}
 
-  const input = section.locator('input[placeholder*="category"], input[placeholder*="Enter"]').first();
-  await input.fill(TEMP_CATEGORY_NAME);
+/**
+ * Creates a category, VERIFIES IT PERSISTS ACROSS A PAGE RELOAD,
+ * then deletes it and verifies deletion also persists. This is a proper
+ * roundtrip test, not a visibility check.
+ */
+async function addReloadAndRemoveCategory(page: Page, cardTitle: string): Promise<void> {
+  const name = uniqueCategoryName();
 
-  const addBtn = section.locator('button:has-text("Add")').first();
-  await addBtn.click();
-  await page.waitForTimeout(1200);
+  // --- ADD ---
+  const section = await findCategorySection(page, cardTitle);
+  const input = section.locator('input[placeholder*="category" i], input[placeholder*="Enter" i]').first();
+  await input.fill(name);
+  await section.locator('button:has-text("Add")').first().click();
+  await waitForFirestoreSettle(page);
 
-  // Verify it shows up
-  const chip = page.locator(`text=${TEMP_CATEGORY_NAME}`).first();
-  await expect(chip).toBeVisible({ timeout: 5000 });
+  // Immediate visibility check
+  await expect(page.locator(`text=${name}`).first()).toBeVisible({ timeout: 5000 });
 
-  // Now delete it — find the row and click the X / trash button next to the label.
-  const row = page.locator(`div:has(> * > span:has-text("${TEMP_CATEGORY_NAME}"))`).first();
-  const rowByText = page.locator(`xpath=//span[normalize-space()="${TEMP_CATEGORY_NAME}"]/ancestor::div[1]`).first();
+  // --- RELOAD & VERIFY PERSISTED ---
+  // This catches the class of bug where add-UI optimistically renders but
+  // the Firestore write silently failed (exactly the kind of thing that hid
+  // the Update Config bug for a sprint).
+  await reloadAndAssert(page, async () => {
+    // Must re-open Settings tab because refresh restores tab via URL
+    const tabActive = page.getByRole('tab', { name: 'Settings' }).first();
+    await expect(tabActive).toHaveAttribute('data-state', 'active', { timeout: 10000 });
+    await expect(page.locator(`text=${name}`).first()).toBeVisible({ timeout: 10000 });
+  });
 
-  const removeBtn = rowByText
-    .locator('button')
-    .filter({ has: page.locator('svg') })
-    .last();
+  // --- REMOVE ---
+  const rowByText = page.locator(`xpath=//span[normalize-space()="${name}"]/ancestor::div[1]`).first();
+  const removeBtn = rowByText.locator('button').filter({ has: page.locator('svg') }).last();
   await removeBtn.click();
-  await page.waitForTimeout(1200);
+  await waitForFirestoreSettle(page);
+  await expect(page.locator(`text=${name}`)).toHaveCount(0, { timeout: 5000 });
 
-  // Confirm it was removed
-  await expect(page.locator(`text=${TEMP_CATEGORY_NAME}`)).toHaveCount(0, { timeout: 5000 });
+  // --- RELOAD & VERIFY DELETION PERSISTED ---
+  await reloadAndAssert(page, async () => {
+    await expect(page.locator(`text=${name}`)).toHaveCount(0, { timeout: 10000 });
+  });
 }
 
 test.describe('Settings — Highfield Module', () => {
@@ -49,9 +63,8 @@ test.describe('Settings — Highfield Module', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await openHighfieldModule(page);
-    await page.getByRole('tab', { name: 'Settings' }).first().click();
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(2000);
+    await openTab(page, 'Settings');
+    await assertNoCrash(page);
   });
 
   test('has 4 dealer-fit section cards', async ({ page }) => {
@@ -64,20 +77,20 @@ test.describe('Settings — Highfield Module', () => {
 
     for (const title of expectedCards) {
       const card = page.locator(`text=${title}`).first();
-      await expect(card).toBeVisible({ timeout: 10000 });
+      await expect(card, `${title} card must be on Settings page`).toBeVisible({ timeout: 10000 });
     }
   });
 
-  test('can add & remove a category on Dealer Fit Categories card', async ({ page }) => {
-    await addAndRemoveCategory(page, 'Dealer Fit Categories');
+  test('Dealer Fit Categories — add persists across reload', async ({ page }) => {
+    await addReloadAndRemoveCategory(page, 'Dealer Fit Categories');
   });
 
-  test('can add & remove a category on Motor Dealer Fit Categories card', async ({ page }) => {
-    await addAndRemoveCategory(page, 'Motor Dealer Fit Categories');
+  test('Motor Dealer Fit Categories — add persists across reload', async ({ page }) => {
+    await addReloadAndRemoveCategory(page, 'Motor Dealer Fit Categories');
   });
 
-  test('can add & remove a category on Trailer Dealer Fit Categories card', async ({ page }) => {
-    await addAndRemoveCategory(page, 'Trailer Dealer Fit Categories');
+  test('Trailer Dealer Fit Categories — add persists across reload', async ({ page }) => {
+    await addReloadAndRemoveCategory(page, 'Trailer Dealer Fit Categories');
   });
 
 });
@@ -98,37 +111,23 @@ test.describe('Settings — Yamaha Module', () => {
       .locator('a[href*="/modules/"]')
       .filter({ hasText: /yamaha/i })
       .first();
-    if (!(await yamahaCard.isVisible().catch(() => false))) {
-      console.log('Yamaha module not on dashboard — skipping');
-      test.skip();
-      return;
-    }
+    // Yamaha module must exist in the test env — if not, that's a real regression
+    // (dev seed data is expected to include Yamaha), so fail loudly.
+    await expect(yamahaCard, 'Yamaha module card must exist on dashboard (dev seed)').toBeVisible({ timeout: 10000 });
     await yamahaCard.click();
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
+    await assertNoCrash(page);
 
-    // Click Settings tab
-    const settingsTab = page.getByRole('tab', { name: 'Settings' }).first();
-    if (!(await settingsTab.isVisible().catch(() => false))) {
-      console.log('Yamaha settings tab not visible — skipping');
-      test.skip();
-      return;
-    }
-    await settingsTab.click();
-    await page.waitForTimeout(2000);
+    await openTab(page, 'Settings');
 
-    // The Yamaha settings should NOT show Highfield-specific dealer fit cards
-    // (Motor Dealer Fit / Trailer Dealer Fit are boat-scoped, not motor-scoped).
-    const motorDealerFitOnYamaha = await page
-      .locator('text=Motor Dealer Fit Categories')
-      .count();
-    const trailerDealerFitOnYamaha = await page
-      .locator('text=Trailer Dealer Fit Categories')
-      .count();
+    // Yamaha (motor brand) settings must NOT show the boat-scoped dealer fit cards.
+    // These belong on the BOAT module, not the motor module.
+    const motorDealerFitOnYamaha = await page.locator('text=Motor Dealer Fit Categories').count();
+    const trailerDealerFitOnYamaha = await page.locator('text=Trailer Dealer Fit Categories').count();
 
-    // Those should not be present on Yamaha's own settings screen (they belong on the boat module).
-    expect(motorDealerFitOnYamaha).toBe(0);
-    expect(trailerDealerFitOnYamaha).toBe(0);
+    expect(motorDealerFitOnYamaha, 'Motor DF Categories must NOT appear on Yamaha settings').toBe(0);
+    expect(trailerDealerFitOnYamaha, 'Trailer DF Categories must NOT appear on Yamaha settings').toBe(0);
   });
 
 });

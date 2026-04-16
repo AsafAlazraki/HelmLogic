@@ -1,7 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
 import { login, BASE_URL } from './helpers/auth';
+import { openTab, assertNoCrash, reloadAndAssert, getUrlParam } from './helpers/utils';
 
-async function openYamahaCatalog(page: Page): Promise<boolean> {
+async function openYamahaCatalog(page: Page): Promise<void> {
   await page.goto(`${BASE_URL}/dashboard`);
   await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(1500);
@@ -10,130 +11,90 @@ async function openYamahaCatalog(page: Page): Promise<boolean> {
     .locator('a[href*="/modules/"]')
     .filter({ hasText: /yamaha/i })
     .first();
-  if (!(await yamahaCard.isVisible().catch(() => false))) {
-    return false;
-  }
+  // Yamaha module is expected in the dev seed. Missing = regression, fail loud.
+  await expect(yamahaCard, 'Yamaha module must be on dashboard (dev seed expectation)').toBeVisible({ timeout: 10000 });
 
   await yamahaCard.click();
   await page.waitForLoadState('domcontentloaded');
-  await page.waitForSelector('[role="tab"]', { timeout: 15000 }).catch(() => {});
-  await page.waitForTimeout(2500);
+  await page.waitForSelector('[role="tab"]', { timeout: 15000 });
+  await page.waitForTimeout(2000);
+  await assertNoCrash(page);
 
-  // Click Catalog tab if present (it should be the default view for motor workspace).
-  const catalogTab = page.getByRole('tab', { name: 'Catalog' }).first();
-  if (await catalogTab.isVisible().catch(() => false)) {
-    await catalogTab.click();
-    await page.waitForTimeout(2000);
-  }
-
-  return true;
+  // Catalog is the default Yamaha tab but we click explicitly to assert tab activation.
+  await openTab(page, 'Catalog');
+  await page.waitForTimeout(1500);
 }
 
 test.describe('Yamaha Motors', () => {
 
   test.beforeEach(async ({ page }) => {
     await login(page);
+    await openYamahaCatalog(page);
   });
 
   test('catalog loads with motor cards', async ({ page }) => {
-    const opened = await openYamahaCatalog(page);
-    if (!opened) {
-      test.skip();
-      return;
-    }
-
-    // Motor cards typically show an HP value
+    // Motor cards display an HP value
     const hpBadge = page.locator('text=/\\d+\\s?HP/i').first();
-    await expect(hpBadge).toBeVisible({ timeout: 10000 });
+    await expect(hpBadge, 'At least one motor card with HP badge must render').toBeVisible({ timeout: 10000 });
 
-    // There should be multiple cards
+    // Multiple cards expected
     const cards = page.locator('[class*="card"], [class*="rounded-2xl"]');
     const count = await cards.count();
-    expect(count).toBeGreaterThan(1);
+    expect(count, 'Yamaha catalog must show multiple motor cards').toBeGreaterThan(1);
   });
 
   test('motor card titles show engine model names, not Firestore IDs', async ({ page }) => {
-    const opened = await openYamahaCatalog(page);
-    if (!opened) {
-      test.skip();
-      return;
-    }
-
     await page.waitForTimeout(2000);
 
-    // Firestore IDs are 20-char alphanumeric strings with no spaces.
-    // Motor model names are human-readable (e.g. "F300 XCA", "F25LMHC").
-    // Look at all visible card titles and assert none are raw 20-char IDs.
     const allTitles = await page
       .locator('h1, h2, h3, h4, [class*="CardTitle"], [class*="font-black"]')
       .allTextContents();
 
+    // Firestore IDs are 18–22 char alphanumeric with no spaces.
     const firestoreIdPattern = /^[A-Za-z0-9]{18,22}$/;
     const rawIdTitles = allTitles.filter((t) => firestoreIdPattern.test(t.trim()));
 
-    expect(rawIdTitles.length).toBe(0);
+    expect(
+      rawIdTitles,
+      `Motor cards showing raw Firestore IDs: ${rawIdTitles.join(', ')} (MODEL field missing from data)`
+    ).toEqual([]);
   });
 
   test('multi-engine HP badges show "N × M HP" format', async ({ page }) => {
-    const opened = await openYamahaCatalog(page);
-    if (!opened) {
-      test.skip();
-      return;
-    }
-
     await page.waitForTimeout(2000);
 
-    // Multi-engine motors render badges like "2 × 300 HP" or "3 × 250 HP".
-    // Accept either × (multiplication sign) or x (ascii fallback).
+    // Multi-engine motors render "2 × 300 HP" / "3 × 250 HP". Accept × or x.
     const multiEngineBadge = page.locator('text=/\\d+\\s*[×x]\\s*\\d+\\s*HP/i').first();
-    const hasMulti = await multiEngineBadge.isVisible().catch(() => false);
+    const hasMulti = await multiEngineBadge.isVisible({ timeout: 5000 }).catch(() => false);
 
     if (!hasMulti) {
-      console.log('No multi-engine motors in Yamaha catalog — skipping');
-      test.skip();
+      // Twin-engine motor may not exist in test seed. Warn but don't fail.
+      console.warn('No multi-engine motors in dev Yamaha catalog — cannot verify "N × M HP" format');
       return;
     }
 
     const text = (await multiEngineBadge.textContent()) ?? '';
-    expect(text).toMatch(/[×x]/);
+    expect(text, `Expected "N × M HP" format, got "${text}"`).toMatch(/[×x]/);
+    // v1.3 regression: confirm the HP value is the per-engine HP, not the engine count.
+    // Badge must contain a 3-digit HP number (Yamaha range is F25-F450, so 25-450).
+    expect(text).toMatch(/[×x]\s*\d{2,3}/);
   });
 
-  test('clicking a motor card opens a detail sheet', async ({ page }) => {
-    const opened = await openYamahaCatalog(page);
-    if (!opened) {
-      test.skip();
-      return;
-    }
-
-    // Click the first motor card
+  test('clicking a motor card opens the detail sheet', async ({ page }) => {
     const firstCard = page.locator('[class*="card"], [class*="rounded-2xl"]').filter({ hasText: /HP/i }).first();
-    const visible = await firstCard.isVisible().catch(() => false);
-    if (!visible) {
-      console.log('No motor cards visible — skipping');
-      test.skip();
-      return;
-    }
+    await expect(firstCard, 'At least one motor card must be clickable').toBeVisible({ timeout: 10000 });
 
     await firstCard.click();
     await page.waitForTimeout(1500);
+    await assertNoCrash(page);
 
-    // Detail sheet / dialog should appear
     const sheet = page.locator('[role="dialog"]').first();
-    await expect(sheet).toBeVisible({ timeout: 8000 });
+    await expect(sheet, 'Motor detail sheet must open').toBeVisible({ timeout: 8000 });
   });
 
   test('detail sheet has a dealer fit options section', async ({ page }) => {
-    const opened = await openYamahaCatalog(page);
-    if (!opened) {
-      test.skip();
-      return;
-    }
-
     const firstCard = page.locator('[class*="card"], [class*="rounded-2xl"]').filter({ hasText: /HP/i }).first();
-    if (!(await firstCard.isVisible().catch(() => false))) {
-      test.skip();
-      return;
-    }
+    await expect(firstCard).toBeVisible({ timeout: 10000 });
     await firstCard.click();
     await page.waitForTimeout(2000);
 
@@ -141,7 +102,28 @@ test.describe('Yamaha Motors', () => {
     await expect(sheet).toBeVisible({ timeout: 8000 });
 
     const dealerFit = sheet.locator('text=/Dealer Fit|Rigging|Propeller/i').first();
-    await expect(dealerFit).toBeVisible({ timeout: 5000 });
+    await expect(
+      dealerFit,
+      'Motor detail sheet must have a Dealer Fit section (v1.2 requirement)'
+    ).toBeVisible({ timeout: 5000 });
+  });
+
+  test('Yamaha motorTab URL persistence: Pricing tab survives refresh', async ({ page }) => {
+    // Click Pricing (motor workspace tab, not the boat workspace tab).
+    const pricingTab = page.locator('button:has-text("Pricing")').first();
+    await expect(pricingTab).toBeVisible({ timeout: 10000 });
+    await pricingTab.click();
+    await page.waitForTimeout(1500);
+
+    await expect.poll(
+      () => getUrlParam(page, 'motorTab'),
+      { timeout: 5000, message: 'motorTab should sync to URL' }
+    ).toBe('pricing');
+
+    await reloadAndAssert(page, async () => {
+      expect(getUrlParam(page, 'motorTab')).toBe('pricing');
+      await assertNoCrash(page);
+    });
   });
 
 });
