@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { collection, query, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -60,7 +60,22 @@ export function StockManagementWorkspace({
     brandCaptainUserId,
 }: StockManagementWorkspaceProps) {
     const firestore = useFirestore();
-    const [view, setView] = useState<'stock' | 'onorder' | 'pending' | 'delivered' | 'holdrequests' | 'map' | 'assignments'>('stock');
+    const [view, setView] = useState<'stock' | 'onorder' | 'pending' | 'delivered' | 'holdrequests' | 'map' | 'assignments'>(() => {
+        if (typeof window !== 'undefined') {
+            const v = new URLSearchParams(window.location.search).get('stockView');
+            if (v === 'stock' || v === 'onorder' || v === 'pending' || v === 'delivered' || v === 'holdrequests' || v === 'map' || v === 'assignments') return v;
+        }
+        return 'stock';
+    });
+
+    // Sync view to URL so refresh restores the current sub-tab
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const url = new URL(window.location.href);
+        if (view && view !== 'stock') url.searchParams.set('stockView', view);
+        else url.searchParams.delete('stockView');
+        window.history.replaceState({}, '', url.toString());
+    }, [view]);
     const [formOpen, setFormOpen] = useState(false);
     const [holdRequestItem, setHoldRequestItem] = useState<any>(null);
 

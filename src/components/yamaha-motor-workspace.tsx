@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -300,8 +300,23 @@ function MotorDetailSheet({
 export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, moduleId, moduleData, organisation, allVendors, allDealerFitCategories, subDealers, onUpdateVendors, onUpdateCategories, onToggleSubDealerAccess }: YamahaMotorWorkspaceProps) {
     const firestore = useFirestore();
 
-    // Tab state
-    const [activeTab, setActiveTab] = useState<'catalog' | 'pricing' | 'promotions' | 'settings'>('catalog');
+    // Tab state — initialized from URL ?motorTab= param so refresh stays put
+    const [activeTab, setActiveTab] = useState<'catalog' | 'pricing' | 'promotions' | 'settings'>(() => {
+        if (typeof window !== 'undefined') {
+            const t = new URLSearchParams(window.location.search).get('motorTab');
+            if (t === 'catalog' || t === 'pricing' || t === 'promotions' || t === 'settings') return t;
+        }
+        return 'catalog';
+    });
+
+    // Sync activeTab to URL on change
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const url = new URL(window.location.href);
+        if (activeTab && activeTab !== 'catalog') url.searchParams.set('motorTab', activeTab);
+        else url.searchParams.delete('motorTab');
+        window.history.replaceState({}, '', url.toString());
+    }, [activeTab]);
 
     // Catalog state
     const [search, setSearch] = useState('');

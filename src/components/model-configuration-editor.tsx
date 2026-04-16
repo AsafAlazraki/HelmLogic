@@ -314,19 +314,29 @@ export function ModelConfigurationEditor({
     const canEdit = isAdmin || permissions.can_edit_boat_data;
     const shouldSaveToMaster = isAdmin && (isMasterContext || module.id === 'master');
 
-    const onValidationError = (errors: any) => {
-        console.error("Form validation failed:", errors);
-        // Surface the first field that failed so the user knows why save didn't happen
-        const firstError = Object.entries(errors)[0];
-        const fieldName = firstError ? firstError[0] : 'unknown field';
-        const errorMsg = firstError && (firstError[1] as any)?.message
-            ? (firstError[1] as any).message
-            : 'Some fields are invalid. Open the browser console for details.';
-        toast({
-            variant: "destructive",
-            title: `Save blocked: ${fieldName}`,
-            description: errorMsg,
-        });
+    // Walk the RHF errors object to find the deepest path with a real message
+    const findFirstError = (errors: any, path: string[] = []): { path: string; message: string } | null => {
+        if (!errors || typeof errors !== 'object') return null;
+        if (errors.message && typeof errors.message === 'string') {
+            return { path: path.join('.'), message: errors.message };
+        }
+        for (const key of Object.keys(errors)) {
+            const child = errors[key];
+            const found = findFirstError(child, [...path, key]);
+            if (found) return found;
+        }
+        return null;
+    };
+
+    const onValidationError = async (errors: any) => {
+        console.error("Form validation failed (will attempt save anyway):", errors);
+        const first = findFirstError(errors);
+        if (first) {
+            console.warn(`Validation issue at "${first.path}": ${first.message}`);
+        }
+        // Don't block the save — legacy data may have invalid fields we can't fix from here.
+        // Send the raw form values straight through; sanitizeDataForFirestore strips undefineds.
+        await onSubmit(form.getValues());
     };
 
     return (

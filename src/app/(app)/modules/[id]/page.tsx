@@ -340,9 +340,41 @@ export default function ModuleDetailsPage() {
         return 'dashboard';
     });
     const [pricingSubTab, setPricingSubTab] = useState<'matrix' | 'pricelists'>('matrix');
-    const [view, setView] = useState<'ranges' | 'models' | 'bmt'>('ranges');
-    const [selectedRangeId, setSelectedRangeId] = useState<string | null>(null);
-    const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+    const [view, setView] = useState<'ranges' | 'models' | 'bmt'>(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const v = params.get('view');
+            if (v === 'models' || v === 'bmt' || v === 'ranges') return v;
+        }
+        return 'ranges';
+    });
+    const [selectedRangeId, setSelectedRangeId] = useState<string | null>(() => {
+        if (typeof window !== 'undefined') {
+            return new URLSearchParams(window.location.search).get('range') || null;
+        }
+        return null;
+    });
+    const [selectedModelId, setSelectedModelId] = useState<string | null>(() => {
+        if (typeof window !== 'undefined') {
+            return new URLSearchParams(window.location.search).get('model') || null;
+        }
+        return null;
+    });
+
+    // Sync tab/view/range/model state to URL so refresh restores the current page
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const url = new URL(window.location.href);
+        const set = (key: string, value: string | null, defaultVal?: string) => {
+            if (!value || value === defaultVal) url.searchParams.delete(key);
+            else url.searchParams.set(key, value);
+        };
+        set('tab', activeTab, 'dashboard');
+        set('view', view, 'ranges');
+        set('range', selectedRangeId);
+        set('model', selectedModelId);
+        window.history.replaceState({}, '', url.toString());
+    }, [activeTab, view, selectedRangeId, selectedModelId]);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [isQuoteInitializationOpen, setIsQuoteInitializationOpen] = useState(false);
     
