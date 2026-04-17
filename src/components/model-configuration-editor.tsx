@@ -314,9 +314,34 @@ export function ModelConfigurationEditor({
     const canEdit = isAdmin || permissions.can_edit_boat_data;
     const shouldSaveToMaster = isAdmin && (isMasterContext || module.id === 'master');
 
+    // Walk the RHF errors object to find the deepest path with a real message
+    const findFirstError = (errors: any, path: string[] = []): { path: string; message: string } | null => {
+        if (!errors || typeof errors !== 'object') return null;
+        if (errors.message && typeof errors.message === 'string') {
+            return { path: path.join('.'), message: errors.message };
+        }
+        for (const key of Object.keys(errors)) {
+            const child = errors[key];
+            const found = findFirstError(child, [...path, key]);
+            if (found) return found;
+        }
+        return null;
+    };
+
+    const onValidationError = async (errors: any) => {
+        console.error("Form validation failed (will attempt save anyway):", errors);
+        const first = findFirstError(errors);
+        if (first) {
+            console.warn(`Validation issue at "${first.path}": ${first.message}`);
+        }
+        // Don't block the save — legacy data may have invalid fields we can't fix from here.
+        // Send the raw form values straight through; sanitizeDataForFirestore strips undefineds.
+        await onSubmit(form.getValues());
+    };
+
     return (
         <FormProvider {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
+            <form onSubmit={form.handleSubmit(onSubmit, onValidationError)}>
                 <div className="space-y-6 text-left">
                     <Card className="border-primary/20 bg-primary/5 rounded-xl shadow-inner text-left overflow-hidden">
                         <CardContent className="p-4 text-left">

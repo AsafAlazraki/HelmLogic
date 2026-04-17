@@ -37,7 +37,17 @@ import {
     Plus,
     FilePlus2,
     AlertTriangle,
-    CopyCheck
+    CopyCheck,
+    Gauge,
+    Gift,
+    Calendar,
+    Percent,
+    Car,
+    Shield,
+    Banknote,
+    Clock,
+    MessageSquare,
+    Paperclip
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -73,6 +83,8 @@ import {
 } from "@/components/ui/table";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 
 /** Normalize spacing, strip internal model-code suffixes, and extract first color from parenthetical */
 function formatOptionDisplayLabel(name: string): { base: string; color: string | null } {
@@ -134,6 +146,7 @@ interface DuplicateInitialState {
     selectedMotorAccessoryIds: string[];
     selectedTrailerId: string | null;
     selectedTrailerOptionIds: string[];
+    customTrailerOptions?: CustomOption[];
     selectedDealerFitIds: string[];
     isRegoSelected: boolean;
     isStickerSelected: boolean;
@@ -202,18 +215,40 @@ export function HighfieldQuoteFlow({
     const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>(initialState?.selectedTrailerOptionIds ?? []);
     const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>(initialState?.selectedDealerFitIds ?? []);
 
-    // Custom Option Form State
+    // Custom Option Form State (Boat)
     const [newCustomName, setNewCustomName] = useState('');
     const [newCustomPrice, setNewCustomPrice] = useState('');
     const [newCustomDesc, setNewCustomDesc] = useState('');
+
+    // Custom Trailer Option State
+    const [customTrailerOptions, setCustomTrailerOptions] = useState<CustomOption[]>(initialState?.customTrailerOptions ?? []);
+    const [newCustomTrailerName, setNewCustomTrailerName] = useState('');
+    const [newCustomTrailerPrice, setNewCustomTrailerPrice] = useState('');
+    const [newCustomTrailerDesc, setNewCustomTrailerDesc] = useState('');
 
     // Modal & Carousel State
     const [showFeatures, setShowFeatures] = useState(false);
     const [showSpecs, setShowSpecs] = useState(false);
     const [showDocs, setShowDocs] = useState(false);
+    const [showEngineSpecs, setShowEngineSpecs] = useState(false);
+    const [showTrailerSpecs, setShowTrailerSpecs] = useState(false);
     const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
     const [api, setApi] = useState<CarouselApi>();
     const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+    // Promotions State
+    const [availablePromotions, setAvailablePromotions] = useState<any[]>([]);
+    const [appliedPromotionIds, setAppliedPromotionIds] = useState<string[]>([]);
+
+    // Admin & Trade-In State
+    const [tradeInDescription, setTradeInDescription] = useState('');
+    const [tradeInValue, setTradeInValue] = useState('');
+    const [wantsInsurance, setWantsInsurance] = useState(false);
+    const [insuranceNotes, setInsuranceNotes] = useState('');
+    const [wantsFinance, setWantsFinance] = useState(false);
+    const [financeNotes, setFinanceNotes] = useState('');
+    const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState('');
+    const [timingNotes, setTimingNotes] = useState('');
 
     // Refs for Auto-Scroll
     const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -240,7 +275,17 @@ export function HighfieldQuoteFlow({
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
     const motorModuleCategories = useMemo(() => module?.motorDealerFitCategories || [], [module?.motorDealerFitCategories]);
+    const trailerModuleCategories = useMemo(() => module?.trailerDealerFitCategories || [], [module?.trailerDealerFitCategories]);
     const [propComesStandard, setPropComesStandard] = useState(false);
+    const [extendedWarranty, setExtendedWarranty] = useState(false);
+    const [servicePlan, setServicePlan] = useState(false);
+
+    // Section PDF attachments (supplier quotes)
+    const [sectionPdfs, setSectionPdfs] = useState<Record<string, File | null>>({ boat: null, motor: null, trailer: null, dealerFit: null });
+    const boatPdfRef = useRef<HTMLInputElement>(null);
+    const motorPdfRef = useRef<HTMLInputElement>(null);
+    const trailerPdfRef = useRef<HTMLInputElement>(null);
+    const dealerFitPdfRef = useRef<HTMLInputElement>(null);
     const motorDetailRef = useRef<HTMLDivElement>(null);
 
     // 3. Derived Memos (CRITICAL: Order of initialization to prevent ReferenceErrors)
@@ -379,16 +424,18 @@ export function HighfieldQuoteFlow({
     const groupedDealerFit = useMemo(() => {
         if (!dealerFitSelections) return [];
         const motorCats = new Set(motorModuleCategories.map(c => c.toLowerCase()));
+        const trailerCats = new Set(trailerModuleCategories.map(c => c.toLowerCase()));
         const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
             const cat = sel.category || 'Gear';
-            // Skip motor categories — they're shown separately
+            // Skip motor and trailer categories — they're shown separately
             if (motorCats.has(cat.toLowerCase())) return acc;
+            if (trailerCats.has(cat.toLowerCase())) return acc;
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(sel);
             return acc;
         }, {});
         return Object.entries(groups) as [string, any][];
-    }, [dealerFitSelections, motorModuleCategories]);
+    }, [dealerFitSelections, motorModuleCategories, trailerModuleCategories]);
 
     const groupedMotorDealerFit = useMemo(() => {
         if (!dealerFitSelections || motorModuleCategories.length === 0) return [];
@@ -410,6 +457,25 @@ export function HighfieldQuoteFlow({
             .filter(([, items]) => items.length > 0);
     }, [dealerFitSelections, motorModuleCategories]);
 
+    const groupedTrailerDealerFit = useMemo(() => {
+        if (!dealerFitSelections || trailerModuleCategories.length === 0) return [];
+        const trailerCatsLower = trailerModuleCategories.map(c => c.toLowerCase());
+        const groups: Record<string, any[]> = {};
+        dealerFitSelections.forEach((sel: any) => {
+            const cat = sel.category || '';
+            if (!trailerCatsLower.includes(cat.toLowerCase())) return;
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(sel);
+        });
+        return trailerModuleCategories
+            .filter(cat => groups[cat] || Object.keys(groups).some(k => k.toLowerCase() === cat.toLowerCase()))
+            .map(cat => {
+                const key = Object.keys(groups).find(k => k.toLowerCase() === cat.toLowerCase()) || cat;
+                return [key, groups[key] || []] as [string, any[]];
+            })
+            .filter(([, items]) => items.length > 0);
+    }, [dealerFitSelections, trailerModuleCategories]);
+
     const totalPrice = useMemo(() => {
         let total = getPriceForLevel(activeVariant, priceLevel);
         selectedOptionsData.forEach(opt => { total += getPriceForLevel(opt, priceLevel); });
@@ -426,13 +492,75 @@ export function HighfieldQuoteFlow({
         if (selectedTrailerId && model.trailerConfig) {
             total += getPriceForLevel(model.trailerConfig, priceLevel);
             selectedTrailerOptionsData.forEach((o: any) => { total += getPriceForLevel(o, priceLevel); });
+            customTrailerOptions.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
             if (isTrailerRegoSelected) total += (model.registration?.trailerPrice12Months || 0);
         }
         selectedDealerFitData.forEach(s => {
             s.items?.forEach((i: any) => { total += getPriceForLevel(i.data, priceLevel); });
         });
         return total;
-    }, [activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration, priceLevel]);
+    }, [activeVariant, selectedOptionsData, customOptions, customTrailerOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration, priceLevel]);
+
+    // Promotions Derived Memos
+    const appliedPromotions = useMemo(() => {
+        return availablePromotions.filter(p => appliedPromotionIds.includes(p.id));
+    }, [availablePromotions, appliedPromotionIds]);
+
+    const promotionDiscount = useMemo(() => {
+        let discount = 0;
+        const motorHp = selectedMotor ? (parseFloat(String(selectedMotor['HP Rating'] || '0').replace(/[^\d.]/g, '')) || 0) : 0;
+
+        // Build subtotals for percentage-based promos
+        const motorSubtotal = selectedMotor ? getPriceForLevel(selectedMotor, priceLevel) : 0;
+        const riggingSubtotal = selectedMotorAccessories.filter((a: any) => (a.category || '').toLowerCase() === 'rigging').reduce((acc: number, a: any) => acc + getPriceForLevel(a, priceLevel), 0);
+        const propellerSubtotal = selectedMotorAccessories.filter((a: any) => (a.category || '').toLowerCase() === 'propeller').reduce((acc: number, a: any) => acc + getPriceForLevel(a, priceLevel), 0);
+        const accessoriesSubtotal = selectedMotorAccessories.reduce((acc: number, a: any) => acc + getPriceForLevel(a, priceLevel), 0);
+
+        appliedPromotions.forEach(promo => {
+            switch (promo.type) {
+                case 'fixed-amount':
+                    discount += (promo.fixedAmount || 0);
+                    break;
+                case 'per-hp':
+                    discount += (promo.perHpAmount || 0) * motorHp;
+                    break;
+                case 'percentage': {
+                    const pct = (promo.percentage || 0) / 100;
+                    switch (promo.appliesTo) {
+                        case 'motor': discount += pct * motorSubtotal; break;
+                        case 'rigging': discount += pct * riggingSubtotal; break;
+                        case 'propeller': discount += pct * propellerSubtotal; break;
+                        case 'all-accessories': discount += pct * accessoriesSubtotal; break;
+                        case 'total': discount += pct * totalPrice; break;
+                        default: discount += pct * totalPrice; break;
+                    }
+                    break;
+                }
+                case 'category-discount': {
+                    const catPct = (promo.percentage || 0) / 100;
+                    switch (promo.appliesTo) {
+                        case 'motor': discount += catPct * motorSubtotal; break;
+                        case 'rigging': discount += catPct * riggingSubtotal; break;
+                        case 'propeller': discount += catPct * propellerSubtotal; break;
+                        case 'all-accessories': discount += catPct * accessoriesSubtotal; break;
+                        default: discount += catPct * totalPrice; break;
+                    }
+                    break;
+                }
+            }
+        });
+        return Math.round(discount);
+    }, [appliedPromotions, selectedMotor, selectedMotorAccessories, totalPrice, priceLevel]);
+
+    const finalPrice = useMemo(() => {
+        return Math.max(0, totalPrice - promotionDiscount);
+    }, [totalPrice, promotionDiscount]);
+
+    const togglePromotion = (id: string) => {
+        setAppliedPromotionIds(prev =>
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
+    };
 
     // 4. Selection Handlers
     const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
@@ -533,6 +661,24 @@ export function HighfieldQuoteFlow({
 
     const handleRemoveCustomOption = (id: string) => {
         setCustomOptions(prev => prev.filter(o => o.id !== id));
+    };
+
+    const handleAddCustomTrailerOption = () => {
+        if (!newCustomTrailerName.trim() || !newCustomTrailerPrice) return;
+        const newOpt: CustomOption = {
+            id: `custom-trailer-${Date.now()}`,
+            name: newCustomTrailerName.trim(),
+            sellPriceExclGst: parseFloat(newCustomTrailerPrice) || 0,
+            description: newCustomTrailerDesc.trim() || undefined
+        };
+        setCustomTrailerOptions(prev => [...prev, newOpt]);
+        setNewCustomTrailerName('');
+        setNewCustomTrailerPrice('');
+        setNewCustomTrailerDesc('');
+    };
+
+    const handleRemoveCustomTrailerOption = (id: string) => {
+        setCustomTrailerOptions(prev => prev.filter(o => o.id !== id));
     };
 
     const toggleMotorAccessory = (id: string) => {
@@ -762,6 +908,60 @@ export function HighfieldQuoteFlow({
         if (fresh) setSelectedMotor(fresh);
     }, [motors]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Fetch promotions from boat module and motor vendor module
+    useEffect(() => {
+        const fetchPromotions = async () => {
+            if (currentStep < 3) return;
+            try {
+                const allPromos: any[] = [];
+                const now = new Date();
+
+                // 1. Check boat module promotions
+                if (module?.id) {
+                    const boatPromoSnap = await getDocs(collection(firestore, `modules/${module.id}/promotions`));
+                    boatPromoSnap.docs.forEach(d => {
+                        allPromos.push({ id: d.id, source: 'boat', ...d.data() as any });
+                    });
+                }
+
+                // 2. Find motor vendor module and check its promotions
+                const allModuleVendorIds = [...(module?.associatedVendorIds || []), module?.mainVendorId].filter(Boolean);
+                if (allModuleVendorIds.length > 0) {
+                    const vendorsSnap = await getDocs(collection(firestore, 'data-warehouse'));
+                    const motorVendor = vendorsSnap.docs.map(d => ({ id: d.id, ...d.data() as any })).find(v => allModuleVendorIds.includes(v.id) && v.vendorType === 'Motor Brand');
+                    if (motorVendor) {
+                        const motorModulesSnap = await getDocs(query(collection(firestore, 'modules'), where('mainVendorId', '==', motorVendor.id)));
+                        for (const mDoc of motorModulesSnap.docs) {
+                            const motorPromoSnap = await getDocs(collection(firestore, `modules/${mDoc.id}/promotions`));
+                            motorPromoSnap.docs.forEach(d => {
+                                allPromos.push({ id: d.id, source: 'motor', ...d.data() as any });
+                            });
+                        }
+                    }
+                }
+
+                // Filter: isActive and within date range
+                const activePromos = allPromos.filter(p => {
+                    if (!p.isActive) return false;
+                    if (p.startDate) {
+                        const start = p.startDate.toDate ? p.startDate.toDate() : new Date(p.startDate);
+                        if (now < start) return false;
+                    }
+                    if (p.endDate) {
+                        const end = p.endDate.toDate ? p.endDate.toDate() : new Date(p.endDate);
+                        if (now > end) return false;
+                    }
+                    return true;
+                });
+
+                setAvailablePromotions(activePromos);
+                // Auto-tick all active promotions
+                setAppliedPromotionIds(activePromos.map(p => p.id));
+            } catch (e) { console.error('Failed to fetch promotions:', e); }
+        };
+        fetchPromotions();
+    }, [currentStep, firestore, module]);
+
     const getMotorDisplayName = (m: any) => {
         const vendor = (m?.vendorName || 'YAMAHA').toUpperCase();
         // Normalize-and-match approach: handles any field name casing/spacing variation
@@ -828,6 +1028,8 @@ export function HighfieldQuoteFlow({
                                     <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowFeatures(true)}><ListChecks className="h-3.5 w-3.5 mr-2 text-primary" /> Features</Button>
                                     <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-3.5 w-3.5 mr-2 text-primary" /> Specs</Button>
                                     <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowDocs(true)}><FileText className="h-3.5 w-3.5 mr-2 text-primary" /> Docs</Button>
+                                    {selectedMotor && <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowEngineSpecs(true)}><Gauge className="h-3.5 w-3.5 mr-2 text-primary" /> Engine Specs</Button>}
+                                    {selectedTrailerId && <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowTrailerSpecs(true)}><Truck className="h-3.5 w-3.5 mr-2 text-primary" /> Trailer Specs</Button>}
                                 </div>
                             </div>
                             <div className="flex flex-col items-end px-1 gap-1">
@@ -847,7 +1049,13 @@ export function HighfieldQuoteFlow({
                                     </select>
                                 </div>
                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Package Pricing (Excl. GST)</span>
-                                <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{totalPrice.toLocaleString()}</span></div>
+                                {promotionDiscount > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm font-black text-slate-400 line-through">${totalPrice.toLocaleString()}</span>
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">SAVE ${promotionDiscount.toLocaleString()}</span>
+                                    </div>
+                                )}
+                                <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{finalPrice.toLocaleString()}</span></div>
                             </div>
                         </div>
                     </div>
@@ -994,7 +1202,7 @@ export function HighfieldQuoteFlow({
                                     <div className="space-y-6 scroll-mt-10">
                                         <div className="flex items-center gap-3 bg-slate-900 px-6 py-3 rounded-2xl shadow-xl w-full">
                                             <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Custom Tactical Additions</h3>
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Additional Factory Boat Notes/Options</h3>
                                         </div>
                                         <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white space-y-6">
                                             <div className="grid gap-4">
@@ -1128,6 +1336,51 @@ export function HighfieldQuoteFlow({
                                     {/* --- MOTOR ACCESSORIES (Propeller, Rigging, etc.) --- */}
                                     {selectedMotor && (
                                         <>
+                                            {/* Pre-Rig Information */}
+                                            {(() => {
+                                                const installationText = selectedMotor['Installation'] || selectedMotor['installation']?.opCode;
+                                                const standardRiggingAccessories = (selectedMotor.masterAccessories || []).filter(
+                                                    (a: any) => a.isStandard && (a.category || '').toLowerCase() === 'rigging'
+                                                );
+                                                if (!installationText && standardRiggingAccessories.length === 0) return null;
+                                                return (
+                                                    <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-700">
+                                                        <div className="flex items-center gap-3 bg-slate-500 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Pre-Rig Information</h3>
+                                                        </div>
+                                                        <div className="rounded-[2rem] border-2 border-slate-200 bg-slate-50 p-6 shadow-sm">
+                                                            <div className="flex items-start gap-4">
+                                                                <div className="h-10 w-10 rounded-2xl flex items-center justify-center bg-slate-200 text-slate-600 shrink-0">
+                                                                    <Info className="h-5 w-5" />
+                                                                </div>
+                                                                <div className="space-y-3 min-w-0">
+                                                                    {installationText && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Installation Type</p>
+                                                                            <p className="text-sm font-bold text-slate-800">{installationText}</p>
+                                                                        </div>
+                                                                    )}
+                                                                    {standardRiggingAccessories.length > 0 && (
+                                                                        <div>
+                                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Included Rigging</p>
+                                                                            <div className="space-y-1.5">
+                                                                                {standardRiggingAccessories.map((acc: any) => (
+                                                                                    <div key={acc.id} className="flex items-center gap-2">
+                                                                                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                                                                        <span className="text-xs font-bold text-slate-700">{acc.name || acc.description || acc.id}</span>
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+
                                             {/* Prop Comes Standard toggle */}
                                             <div ref={el => { categoryRefs.current['PropStandard'] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
                                                 <div className="flex items-center gap-3 bg-emerald-500 px-6 py-3 rounded-2xl shadow-xl w-full">
@@ -1143,6 +1396,38 @@ export function HighfieldQuoteFlow({
                                                         </div>
                                                     </div>
                                                     <div className={cn("h-8 w-8 rounded-full flex items-center justify-center", propComesStandard ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-300")}>
+                                                        <Check className="h-4 w-4" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* NSM Extended Warranty & Service Plan toggles */}
+                                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
+                                                <div className="flex items-center gap-3 bg-blue-500 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Dealer Services</h3>
+                                                </div>
+                                                <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", extendedWarranty ? "bg-blue-50 border-blue-500 ring-2 ring-blue-500/20 shadow-md" : "border-transparent hover:border-blue-500/20")} onClick={() => setExtendedWarranty(!extendedWarranty)}>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", extendedWarranty ? "bg-blue-500 border-blue-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Star className="h-5 w-5" /></div>
+                                                        <div>
+                                                            <p className={cn("text-[11px] font-black uppercase tracking-widest", extendedWarranty ? "text-blue-700" : "text-slate-600")}>NSM 6 Year Extended Warranty</p>
+                                                            <p className="text-[9px] font-bold text-muted-foreground mt-0.5">Extend factory warranty to 6 years with NSM coverage</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className={cn("h-8 w-8 rounded-full flex items-center justify-center", extendedWarranty ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-300")}>
+                                                        <Check className="h-4 w-4" />
+                                                    </div>
+                                                </div>
+                                                <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", servicePlan ? "bg-blue-50 border-blue-500 ring-2 ring-blue-500/20 shadow-md" : "border-transparent hover:border-blue-500/20")} onClick={() => setServicePlan(!servicePlan)}>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", servicePlan ? "bg-blue-500 border-blue-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Wrench className="h-5 w-5" /></div>
+                                                        <div>
+                                                            <p className={cn("text-[11px] font-black uppercase tracking-widest", servicePlan ? "text-blue-700" : "text-slate-600")}>Direct Debit Service Plan</p>
+                                                            <p className="text-[9px] font-bold text-muted-foreground mt-0.5">Scheduled servicing via convenient direct debit payments</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className={cn("h-8 w-8 rounded-full flex items-center justify-center", servicePlan ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-300")}>
                                                         <Check className="h-4 w-4" />
                                                     </div>
                                                 </div>
@@ -1206,6 +1491,77 @@ export function HighfieldQuoteFlow({
                                             )}
                                         </>
                                     )}
+
+                                    {/* --- PROMOTIONS & OFFERS --- */}
+                                    {availablePromotions.length > 0 && (
+                                        <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
+                                            <div className="flex items-center gap-3 bg-emerald-600 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                <Gift className="h-4 w-4 text-white" />
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Promotions & Offers</h3>
+                                            </div>
+                                            <div className="space-y-4">
+                                                {availablePromotions.map(promo => {
+                                                    const isApplied = appliedPromotionIds.includes(promo.id);
+                                                    const startDate = promo.startDate ? (promo.startDate.toDate ? promo.startDate.toDate() : new Date(promo.startDate)) : null;
+                                                    const endDate = promo.endDate ? (promo.endDate.toDate ? promo.endDate.toDate() : new Date(promo.endDate)) : null;
+                                                    const discountLabel = promo.type === 'fixed-amount' ? `$${(promo.fixedAmount || 0).toLocaleString()} OFF`
+                                                        : promo.type === 'per-hp' ? `$${(promo.perHpAmount || 0)} / HP`
+                                                        : promo.type === 'percentage' || promo.type === 'category-discount' ? `${promo.percentage || 0}% OFF`
+                                                        : 'OFFER';
+                                                    return (
+                                                        <div key={promo.id} onClick={() => togglePromotion(promo.id)} className={cn("rounded-[2rem] border-2 overflow-hidden transition-all cursor-pointer bg-white shadow-xl", isApplied ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-transparent hover:border-emerald-500/20")}>
+                                                            {promo.showImageOnQuote && promo.imageUrl && (
+                                                                <div className="relative w-full aspect-[21/9] bg-emerald-50/30">
+                                                                    <img src={promo.imageUrl} alt={promo.name} className="w-full h-full object-cover" />
+                                                                </div>
+                                                            )}
+                                                            <div className="p-6 flex items-start gap-4">
+                                                                <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner shrink-0 mt-0.5", isApplied ? "bg-emerald-500 border-emerald-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}>
+                                                                    <Check className="h-5 w-5" />
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                        <p className={cn("text-[11px] font-black uppercase tracking-widest", isApplied ? "text-emerald-700" : "text-slate-600")}>{promo.name}</p>
+                                                                        <Badge className="bg-emerald-500 text-white border-none font-black text-[8px] uppercase h-5 px-2">{discountLabel}</Badge>
+                                                                    </div>
+                                                                    {promo.description && <p className="text-[9px] font-bold text-muted-foreground mt-1.5 leading-relaxed">{promo.description}</p>}
+                                                                    <div className="flex items-center gap-3 mt-2 flex-wrap">
+                                                                        {(startDate || endDate) && (
+                                                                            <Badge variant="outline" className="text-[7px] font-black h-5 px-2 gap-1 border-emerald-200 text-emerald-600 bg-emerald-50">
+                                                                                <Calendar className="h-2.5 w-2.5" />
+                                                                                {startDate && endDate ? `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}` : startDate ? `From ${startDate.toLocaleDateString()}` : `Until ${endDate!.toLocaleDateString()}`}
+                                                                            </Badge>
+                                                                        )}
+                                                                        {promo.appliesTo && promo.appliesTo !== 'total' && (
+                                                                            <Badge variant="outline" className="text-[7px] font-black h-5 px-2 border-slate-200 text-slate-500">
+                                                                                Applies to: {promo.appliesTo}
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                    {promo.showPdfOnQuote && promo.pdfUrl && (
+                                                                        <a href={promo.pdfUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1.5 mt-2 text-[9px] font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition-colors">
+                                                                            <FileText className="h-3 w-3" /> View Promotion Details
+                                                                            <ExternalLink className="h-2.5 w-2.5" />
+                                                                        </a>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            {promotionDiscount > 0 && (
+                                                <div className="flex items-center justify-between p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-200">
+                                                    <div className="flex items-center gap-3">
+                                                        <Percent className="h-5 w-5 text-emerald-600" />
+                                                        <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700">Total Savings</span>
+                                                    </div>
+                                                    <span className="text-lg font-black text-emerald-600 italic">-${promotionDiscount.toLocaleString()}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                             {currentStep === 4 && (
@@ -1247,6 +1603,92 @@ export function HighfieldQuoteFlow({
                                                         ))}
                                                     </div>
                                                 </div>
+                                            )}
+
+                                            {/* --- ADDITIONAL FACTORY TRAILER NOTES/OPTIONS --- */}
+                                            <div className="space-y-6 scroll-mt-10">
+                                                <div className="flex items-center gap-3 bg-slate-900 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Additional Factory Trailer Notes/Options</h3>
+                                                </div>
+                                                <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white space-y-6">
+                                                    <div className="grid gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Addition Label</Label>
+                                                            <Input placeholder="e.g. Spare Wheel Mount" value={newCustomTrailerName} onChange={e => setNewCustomTrailerName(e.target.value)} className="h-11 font-bold border-2 rounded-xl" />
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Sell Price (Excl.)</Label>
+                                                                <div className="relative">
+                                                                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                                                                    <Input type="number" placeholder="0.00" value={newCustomTrailerPrice} onChange={e => setNewCustomTrailerPrice(e.target.value)} className="h-11 pl-9 font-black border-2 rounded-xl" />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col justify-end">
+                                                                <Button onClick={handleAddCustomTrailerOption} disabled={!newCustomTrailerName.trim() || !newCustomTrailerPrice} className="h-11 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg bg-primary">
+                                                                    <Plus className="h-4 w-4 mr-2" /> Add to Build
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Description (Optional)</Label>
+                                                            <Input placeholder="Technical notes or specific requirements..." value={newCustomTrailerDesc} onChange={e => setNewCustomTrailerDesc(e.target.value)} className="h-11 font-bold border-2 rounded-xl" />
+                                                        </div>
+                                                    </div>
+
+                                                    {customTrailerOptions.length > 0 && (
+                                                        <div className="pt-6 border-t space-y-3">
+                                                            {customTrailerOptions.map(opt => (
+                                                                <div key={opt.id} className="flex items-center justify-between p-4 rounded-2xl border-2 bg-slate-50 group/custom">
+                                                                    <div className="min-w-0">
+                                                                        <p className="font-black text-xs uppercase tracking-tight text-slate-900">{opt.name}</p>
+                                                                        {opt.description && <p className="text-[9px] font-bold text-muted-foreground uppercase mt-0.5 truncate">{opt.description}</p>}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-4">
+                                                                        <p className="font-black text-xs text-primary">${opt.sellPriceExclGst.toLocaleString()}</p>
+                                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-full" onClick={() => handleRemoveCustomTrailerOption(opt.id)}><Trash2 className="h-4 w-4" /></Button>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </Card>
+                                            </div>
+
+                                            {/* --- TRAILER DEALER FIT --- */}
+                                            {groupedTrailerDealerFit.length > 0 && (
+                                                <>
+                                                    <div className="flex items-center gap-4 py-2">
+                                                        <div className="flex-1 border-t-2 border-dashed border-slate-200" />
+                                                        <span className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-300">Trailer Dealer Fit</span>
+                                                        <div className="flex-1 border-t-2 border-dashed border-slate-200" />
+                                                    </div>
+                                                    {groupedTrailerDealerFit.map(([cat, opts]) => (
+                                                        <div key={`tdf-${cat}`} ref={el => { categoryRefs.current[`tdf-${cat}`] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
+                                                            <div className="flex items-center gap-3 bg-amber-600 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                {opts.map((sel: any) => {
+                                                                    const isSelected = selectedDealerFitIds.includes(sel.id);
+                                                                    const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
+                                                                    return (
+                                                                    <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1 relative", isSelected ? "bg-amber-50 border-amber-600 shadow-md ring-2 ring-amber-600/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-amber-600/20")}>
+                                                                        {hasOverlap && <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5"><CopyCheck className="h-3 w-3 text-amber-600" /><span className="text-[7px] font-black uppercase tracking-wide text-amber-700">Already Included</span></div>}
+                                                                        <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
+                                                                        <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
+                                                                            <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-amber-700" : "text-slate-900")}>{sel.name}</p>
+                                                                            <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-amber-600/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.['Act Sell'] || i.data?.sellPriceExclGst || i.data?.['Store Price'] || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
+                                                                        </div>
+                                                                    </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </>
                                             )}
                                             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-24">
                                                 <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
@@ -1300,7 +1742,7 @@ export function HighfieldQuoteFlow({
                                 <div className="space-y-8 animate-in fade-in duration-1000 mt-4">
                                     <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full"><div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /><h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Project Build Summary</h3></div>
                                     <div className="space-y-4">
-                                        <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Ship className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Base Vessel</CardTitle></div></CardHeader><CardContent className="p-4">
+                                        <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Ship className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Base Vessel</CardTitle></div><div className="flex items-center gap-1.5"><input ref={boatPdfRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setSectionPdfs(prev => ({ ...prev, boat: f })); }} />{sectionPdfs.boat ? (<span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><Paperclip className="h-2.5 w-2.5" />{sectionPdfs.boat.name.length > 18 ? sectionPdfs.boat.name.slice(0, 15) + '...' : sectionPdfs.boat.name}<button type="button" className="ml-0.5 hover:text-destructive" onClick={() => { setSectionPdfs(prev => ({ ...prev, boat: null })); if (boatPdfRef.current) boatPdfRef.current.value = ''; }}><X className="h-2.5 w-2.5" /></button></span>) : (<button type="button" onClick={() => boatPdfRef.current?.click()} className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors"><Paperclip className="h-2.5 w-2.5" />Attach PDF</button>)}</div></div></CardHeader><CardContent className="p-4">
                                             <div className="flex items-center justify-between">
                                                 <div className="space-y-0.5">
                                                     <p className="font-black text-sm uppercase tracking-tight text-slate-900">{range?.name} {model?.name}</p>
@@ -1384,7 +1826,7 @@ export function HighfieldQuoteFlow({
 
                                         {selectedMotor && (
                                             <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
-                                                <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Powertrain</CardTitle></div></CardHeader>
+                                                <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Powertrain</CardTitle></div><div className="flex items-center gap-1.5"><input ref={motorPdfRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setSectionPdfs(prev => ({ ...prev, motor: f })); }} />{sectionPdfs.motor ? (<span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><Paperclip className="h-2.5 w-2.5" />{sectionPdfs.motor.name.length > 18 ? sectionPdfs.motor.name.slice(0, 15) + '...' : sectionPdfs.motor.name}<button type="button" className="ml-0.5 hover:text-destructive" onClick={() => { setSectionPdfs(prev => ({ ...prev, motor: null })); if (motorPdfRef.current) motorPdfRef.current.value = ''; }}><X className="h-2.5 w-2.5" /></button></span>) : (<button type="button" onClick={() => motorPdfRef.current?.click()} className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors"><Paperclip className="h-2.5 w-2.5" />Attach PDF</button>)}</div></div></CardHeader>
                                                 <CardContent className="p-0">
                                                     <div className="p-4 border-b flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
@@ -1416,9 +1858,49 @@ export function HighfieldQuoteFlow({
                                             </Card>
                                         )}
 
+                                        {(extendedWarranty || servicePlan) && (
+                                            <Card className="rounded-[1.5rem] border-2 border-blue-200 shadow-lg overflow-hidden bg-blue-50/30">
+                                                <CardHeader className="bg-blue-500 border-b p-4"><div className="flex items-center gap-2"><Star className="h-4 w-4 text-white" /><CardTitle className="text-xs font-black uppercase tracking-widest text-white">Dealer Services</CardTitle></div></CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="divide-y divide-blue-100">
+                                                        {extendedWarranty && (
+                                                            <div className="p-4 flex items-center justify-between hover:bg-blue-50 transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="group/remove h-6 w-6 rounded-lg bg-blue-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                        <Check className="h-3 w-3 text-blue-600 group-hover/remove:opacity-0 transition-opacity" />
+                                                                        <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => setExtendedWarranty(false)}><X className="h-3 w-3" /></Button>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black uppercase tracking-tight text-blue-800">NSM 6 Year Extended Warranty</p>
+                                                                        <Badge className="text-[7px] font-black h-3.5 px-1 bg-blue-100 text-blue-600 border-blue-200">Extended Coverage</Badge>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-blue-600">Included</p>
+                                                            </div>
+                                                        )}
+                                                        {servicePlan && (
+                                                            <div className="p-4 flex items-center justify-between hover:bg-blue-50 transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="group/remove h-6 w-6 rounded-lg bg-blue-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                        <Check className="h-3 w-3 text-blue-600 group-hover/remove:opacity-0 transition-opacity" />
+                                                                        <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => setServicePlan(false)}><X className="h-3 w-3" /></Button>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black uppercase tracking-tight text-blue-800">Direct Debit Service Plan</p>
+                                                                        <Badge className="text-[7px] font-black h-3.5 px-1 bg-blue-100 text-blue-600 border-blue-200">Service Plan</Badge>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-blue-600">Included</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        )}
+
                                         {selectedTrailerId && model.trailerConfig && (
                                             <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
-                                                <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Towing Solution</CardTitle></div></CardHeader>
+                                                <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Towing Solution</CardTitle></div><div className="flex items-center gap-1.5"><input ref={trailerPdfRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setSectionPdfs(prev => ({ ...prev, trailer: f })); }} />{sectionPdfs.trailer ? (<span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><Paperclip className="h-2.5 w-2.5" />{sectionPdfs.trailer.name.length > 18 ? sectionPdfs.trailer.name.slice(0, 15) + '...' : sectionPdfs.trailer.name}<button type="button" className="ml-0.5 hover:text-destructive" onClick={() => { setSectionPdfs(prev => ({ ...prev, trailer: null })); if (trailerPdfRef.current) trailerPdfRef.current.value = ''; }}><X className="h-2.5 w-2.5" /></button></span>) : (<button type="button" onClick={() => trailerPdfRef.current?.click()} className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors"><Paperclip className="h-2.5 w-2.5" />Attach PDF</button>)}</div></div></CardHeader>
                                                 <CardContent className="p-0">
                                                     <div className="p-4 border-b flex items-center justify-between">
                                                         <div className="flex items-center gap-3">
@@ -1458,13 +1940,29 @@ export function HighfieldQuoteFlow({
                                                             ))}
                                                         </div>
                                                     )}
+                                                    {customTrailerOptions.length > 0 && (
+                                                        <div className="divide-y bg-slate-50/50">
+                                                            {customTrailerOptions.map((opt) => (
+                                                                <div key={opt.id} className="p-4 flex items-center justify-between">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="group/remove h-6 w-6 rounded-lg bg-white border flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                            <FilePlus2 className="h-3 w-3 text-primary group-hover/remove:opacity-0 transition-opacity" />
+                                                                            <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => handleRemoveCustomTrailerOption(opt.id)}><X className="h-3 w-3" /></Button>
+                                                                        </div>
+                                                                        <div><p className="text-[10px] font-black uppercase tracking-tight">{opt.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1 border-primary/20 text-primary bg-primary/5">Custom Trailer Addition</Badge></div>
+                                                                    </div>
+                                                                    <p className="text-[10px] font-bold text-slate-600">+${opt.sellPriceExclGst.toLocaleString()}</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </CardContent>
                                             </Card>
                                         )}
 
                                         {selectedDealerFitData.length > 0 && (
                                             <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
-                                                <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Dealer Fitments</CardTitle></div></CardHeader>
+                                                <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Dealer Fitments</CardTitle></div><div className="flex items-center gap-1.5"><input ref={dealerFitPdfRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setSectionPdfs(prev => ({ ...prev, dealerFit: f })); }} />{sectionPdfs.dealerFit ? (<span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><Paperclip className="h-2.5 w-2.5" />{sectionPdfs.dealerFit.name.length > 18 ? sectionPdfs.dealerFit.name.slice(0, 15) + '...' : sectionPdfs.dealerFit.name}<button type="button" className="ml-0.5 hover:text-destructive" onClick={() => { setSectionPdfs(prev => ({ ...prev, dealerFit: null })); if (dealerFitPdfRef.current) dealerFitPdfRef.current.value = ''; }}><X className="h-2.5 w-2.5" /></button></span>) : (<button type="button" onClick={() => dealerFitPdfRef.current?.click()} className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors"><Paperclip className="h-2.5 w-2.5" />Attach PDF</button>)}</div></div></CardHeader>
                                                 <CardContent className="p-0">
                                                     <div className="divide-y">
                                                         {selectedDealerFitData.map((sel: any) => (
@@ -1483,6 +1981,162 @@ export function HighfieldQuoteFlow({
                                                 </CardContent>
                                             </Card>
                                         )}
+
+                                        {appliedPromotions.length > 0 && (
+                                            <Card className="rounded-[1.5rem] border-2 border-emerald-200 shadow-lg overflow-hidden bg-emerald-50/30">
+                                                <CardHeader className="bg-emerald-600 border-b p-4"><div className="flex items-center gap-2"><Gift className="h-4 w-4 text-white" /><CardTitle className="text-xs font-black uppercase tracking-widest text-white">Applied Promotions</CardTitle></div></CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="divide-y divide-emerald-100">
+                                                        {appliedPromotions.map(promo => (
+                                                            <div key={promo.id} className="p-4 flex items-center justify-between hover:bg-emerald-50 transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="h-6 w-6 rounded-lg bg-emerald-100 flex items-center justify-center">
+                                                                        <Check className="h-3 w-3 text-emerald-600" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black uppercase tracking-tight text-emerald-800">{promo.name}</p>
+                                                                        <Badge className="text-[7px] font-black h-3.5 px-1 bg-emerald-100 text-emerald-600 border-emerald-200">
+                                                                            {promo.type === 'fixed-amount' ? 'Fixed Discount' : promo.type === 'per-hp' ? 'Per HP' : promo.type === 'percentage' ? 'Percentage' : 'Category Discount'}
+                                                                        </Badge>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-emerald-600">
+                                                                    {promo.type === 'fixed-amount' ? `-$${(promo.fixedAmount || 0).toLocaleString()}` : promo.type === 'per-hp' ? `$${promo.perHpAmount}/HP` : `${promo.percentage}% OFF`}
+                                                                </p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    {promotionDiscount > 0 && (
+                                                        <div className="p-4 border-t-2 border-emerald-200 bg-emerald-100/50 flex items-center justify-between">
+                                                            <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700">Total Savings</span>
+                                                            <span className="font-black text-emerald-600 italic text-lg">-${promotionDiscount.toLocaleString()}</span>
+                                                        </div>
+                                                    )}
+                                                </CardContent>
+                                            </Card>
+                                        )}
+
+                                        {/* Admin & Trade-In Section */}
+                                        <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
+                                            <CardHeader className="bg-muted/30 border-b p-4">
+                                                <div className="flex items-center gap-2">
+                                                    <ClipboardList className="h-4 w-4 text-primary" />
+                                                    <CardTitle className="text-xs font-black uppercase tracking-widest">Admin & Trade-In</CardTitle>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="p-5 space-y-6">
+
+                                                {/* Trade-In */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Car className="h-3.5 w-3.5 text-primary" />
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trade-In Vehicle</Label>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Textarea
+                                                            placeholder="Description (make, model, year, condition...)"
+                                                            value={tradeInDescription}
+                                                            onChange={(e) => setTradeInDescription(e.target.value)}
+                                                            className="min-h-[72px] rounded-xl border-2 text-sm font-bold resize-none"
+                                                        />
+                                                        <div className="space-y-1.5">
+                                                            <Label htmlFor="trade-in-value" className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5">
+                                                                <DollarSign className="h-3 w-3" /> Agreed Trade-In Value
+                                                            </Label>
+                                                            <Input
+                                                                id="trade-in-value"
+                                                                type="number"
+                                                                placeholder="0"
+                                                                value={tradeInValue}
+                                                                onChange={(e) => setTradeInValue(e.target.value)}
+                                                                className="h-11 rounded-xl border-2 font-bold text-sm"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <Separator />
+
+                                                {/* Insurance Quote */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <Checkbox
+                                                            id="wants-insurance"
+                                                            checked={wantsInsurance}
+                                                            onCheckedChange={(checked) => setWantsInsurance(checked === true)}
+                                                            className="h-5 w-5 rounded border-2"
+                                                        />
+                                                        <Label htmlFor="wants-insurance" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 cursor-pointer">
+                                                            <Shield className="h-3.5 w-3.5 text-primary" /> I would like an Insurance Quote
+                                                        </Label>
+                                                    </div>
+                                                    {wantsInsurance && (
+                                                        <Textarea
+                                                            placeholder="Insurance notes (coverage preferences, existing policies...)"
+                                                            value={insuranceNotes}
+                                                            onChange={(e) => setInsuranceNotes(e.target.value)}
+                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none animate-in fade-in slide-in-from-top-1 duration-200"
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                <Separator />
+
+                                                {/* Finance Quote */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <Checkbox
+                                                            id="wants-finance"
+                                                            checked={wantsFinance}
+                                                            onCheckedChange={(checked) => setWantsFinance(checked === true)}
+                                                            className="h-5 w-5 rounded border-2"
+                                                        />
+                                                        <Label htmlFor="wants-finance" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 cursor-pointer">
+                                                            <Banknote className="h-3.5 w-3.5 text-primary" /> I would like a Finance Quote
+                                                        </Label>
+                                                    </div>
+                                                    {wantsFinance && (
+                                                        <Textarea
+                                                            placeholder="Finance notes (deposit amount, term preference, trade equity...)"
+                                                            value={financeNotes}
+                                                            onChange={(e) => setFinanceNotes(e.target.value)}
+                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none animate-in fade-in slide-in-from-top-1 duration-200"
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                <Separator />
+
+                                                {/* Timing / Delivery */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="h-3.5 w-3.5 text-primary" />
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Timing & Delivery</Label>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <div className="space-y-1.5">
+                                                            <Label htmlFor="delivery-date" className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5">
+                                                                <Calendar className="h-3 w-3" /> Estimated Delivery Date
+                                                            </Label>
+                                                            <Input
+                                                                id="delivery-date"
+                                                                type="date"
+                                                                value={estimatedDeliveryDate}
+                                                                onChange={(e) => setEstimatedDeliveryDate(e.target.value)}
+                                                                className="h-11 rounded-xl border-2 font-bold text-sm"
+                                                            />
+                                                        </div>
+                                                        <Textarea
+                                                            placeholder="Timing notes (slot availability, special delivery instructions...)"
+                                                            value={timingNotes}
+                                                            onChange={(e) => setTimingNotes(e.target.value)}
+                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                            </CardContent>
+                                        </Card>
                                     </div>
                                 </div>
                             )}
@@ -1525,6 +2179,56 @@ export function HighfieldQuoteFlow({
                 </DialogContent>
             </Dialog>
 
+            <Dialog open={showEngineSpecs} onOpenChange={setShowEngineSpecs}>
+                <DialogContent className="sm:max-w-lg rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-6 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Engine Specs</DialogTitle></DialogHeader>
+                    <ScrollArea className="max-h-[60vh]"><div className="p-0"><Table><TableBody>
+                        {selectedMotor?.['HP Rating'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">HP Rating</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['HP Rating']}</TableCell></TableRow>}
+                        {selectedMotor?.['Shaft Length'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Shaft Length</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Shaft Length']}</TableCell></TableRow>}
+                        {selectedMotor?.['Control'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Control</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Control']}</TableCell></TableRow>}
+                        {selectedMotor?.['Starting'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Starting</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Starting']}</TableCell></TableRow>}
+                        {selectedMotor?.['Tilt & Trim'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Tilt & Trim</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Tilt & Trim']}</TableCell></TableRow>}
+                        {selectedMotor?.['Fuel Tank'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Fuel Tank</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Fuel Tank']}</TableCell></TableRow>}
+                        {selectedMotor?.['Prop'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Prop</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Prop']}</TableCell></TableRow>}
+                        {selectedMotor?.['Warranty'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Warranty</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Warranty']}</TableCell></TableRow>}
+                        {(selectedMotor?.['Cylinders'] || selectedMotor?.['Displacement']) && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Cylinders / Displacement</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{[selectedMotor['Cylinders'], selectedMotor['Displacement']].filter(Boolean).join(' / ')}</TableCell></TableRow>}
+                        {selectedMotor?.['Engine Colour'] && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Engine Colour</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{selectedMotor['Engine Colour']}</TableCell></TableRow>}
+                    </TableBody></Table></div></ScrollArea>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showTrailerSpecs} onOpenChange={setShowTrailerSpecs}>
+                <DialogContent className="sm:max-w-lg rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-6 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Trailer Specs</DialogTitle></DialogHeader>
+                    <ScrollArea className="max-h-[60vh]">
+                        <div className="p-6 space-y-4">
+                            {model.trailerConfig?.imageUrl && (
+                                <div className="relative aspect-video w-full bg-white rounded-2xl overflow-hidden border-2">
+                                    <img src={model.trailerConfig.imageUrl} alt={model.trailerConfig?.name || 'Trailer'} className="w-full h-full object-contain p-4 mix-blend-multiply" />
+                                </div>
+                            )}
+                            <Table><TableBody>
+                                {model.trailerConfig?.name && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Name</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{model.trailerConfig.name}</TableCell></TableRow>}
+                                {model.trailerConfig?.sellPriceExclGst != null && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Price (Excl. GST)</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">${model.trailerConfig.sellPriceExclGst.toLocaleString()}</TableCell></TableRow>}
+                            </TableBody></Table>
+                            {model.trailerConfig?.options?.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 px-2">Available Options</p>
+                                    <Table><TableBody>
+                                        {model.trailerConfig.options.map((opt: any) => (
+                                            <TableRow key={opt.id} className="hover:bg-primary/5 border-b">
+                                                <TableCell className="font-black uppercase text-[10px] text-slate-900 pl-6 py-3">{opt.name}</TableCell>
+                                                <TableCell className="font-black uppercase text-[10px] text-primary pr-6 py-3 text-right">${(opt.sellPriceExclGst || 0).toLocaleString()}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody></Table>
+                                </div>
+                            )}
+                        </div>
+                    </ScrollArea>
+                </DialogContent>
+            </Dialog>
+
             <FinalizeQuoteDialog
                 isOpen={showFinalizeDialog}
                 onOpenChange={setShowFinalizeDialog}
@@ -1540,6 +2244,7 @@ export function HighfieldQuoteFlow({
                     selectedMotor,
                     selectedMotorAccessories,
                     selectedTrailerOptionsData,
+                    customTrailerOptions,
                     selectedDealerFitData,
                     totalPrice,
                     isRegoSelected,
@@ -1548,6 +2253,28 @@ export function HighfieldQuoteFlow({
                     isTrailerRegoSelected,
                     selectedTrailerId,
                     priceLevelUsed: priceLevel,
+                    appliedPromotions,
+                    promotionDiscount,
+                    dealerServices: { extendedWarranty, servicePlan },
+                    adminDetails: {
+                        tradeIn: {
+                            description: tradeInDescription,
+                            value: tradeInValue ? parseFloat(tradeInValue) : 0,
+                        },
+                        insurance: {
+                            requested: wantsInsurance,
+                            notes: insuranceNotes,
+                        },
+                        finance: {
+                            requested: wantsFinance,
+                            notes: financeNotes,
+                        },
+                        timing: {
+                            estimatedDeliveryDate: estimatedDeliveryDate || null,
+                            notes: timingNotes,
+                        },
+                    },
+                    sectionPdfs,
                 }}
                 organisationId={orgId || null}
                 userProfile={userProfile}

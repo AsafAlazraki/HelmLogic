@@ -21,17 +21,21 @@ export const SUPPORTED_CURRENCIES = [
  * @returns A formatted currency string.
  */
 export function formatCurrency(value: number | null | undefined, currency: string = 'AUD'): string {
-    if (value === null || value === undefined || isNaN(value)) return '$0.00';
-    
+    if (value === null || value === undefined || isNaN(value)) return '$0';
+
+    // Auto-detect: whole dollars show without decimals, fractional amounts show 2 decimals
+    const isWholeDollar = Number.isInteger(value);
+    const decimals = isWholeDollar ? 0 : 2;
+
     try {
         return new Intl.NumberFormat('en-AU', {
             style: 'currency',
             currency: currency,
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
         }).format(value);
     } catch (e) {
-        return `${currency} ${value.toFixed(2)}`;
+        return `${currency} ${value.toFixed(decimals)}`;
     }
 }
 

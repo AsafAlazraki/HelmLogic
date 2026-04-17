@@ -31,61 +31,68 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ChevronRight } from 'lucide-react';
 
+// All sub-schemas are intentionally permissive — legacy data in Firestore may
+// have missing/null fields and we never want validation to BLOCK a save.
+// The form UI is the source of correctness; validation is a safety net only.
 const specSchema = z.object({
-    id: z.string(),
-    label: z.string().min(1, 'Label is required'),
-    value: z.string().min(1, 'Value is required'),
-});
+    id: z.string().optional().default(() => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `spec-${Date.now()}-${Math.random().toString(36).slice(2)}`)),
+    label: z.string().nullable().optional().default(''),
+    value: z.string().nullable().optional().default(''),
+}).passthrough();
 
 const motorConfigSchema = z.object({
-    type: z.enum(["Single", "Twin", "Triple", "Quad", "SingleWithAux"]),
+    type: z.string().nullable().optional().default('Single'),
     engines: z.array(z.object({
-        label: z.string(),
-        minHp: z.coerce.number().min(0).default(0),
-        maxHp: z.coerce.number().min(0).default(0),
-        recommendedHp: z.coerce.number().min(0).default(0),
-    })),
-});
+        label: z.string().nullable().optional().default(''),
+        minHp: z.coerce.number().nullable().optional().default(0),
+        maxHp: z.coerce.number().nullable().optional().default(0),
+        recommendedHp: z.coerce.number().nullable().optional().default(0),
+    }).passthrough()).optional().default([]),
+}).passthrough();
 
 const optionalFeatureSchema = z.object({
-    id: z.string(),
-    name: z.string().min(1, 'Feature name is required'),
-    category: z.string().optional().nullable(),
-    code: z.string().optional(),
-    color: z.string().optional().nullable(),
+    id: z.string().optional().default(() => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `feat-${Date.now()}-${Math.random().toString(36).slice(2)}`)),
+    name: z.string().nullable().optional().default(''),
+    category: z.string().nullable().optional(),
+    code: z.string().nullable().optional(),
+    color: z.string().nullable().optional(),
     imageUrl: z.string().nullable().optional(),
-    applicableVariantIds: z.array(z.string()).default([]),
-    associatedSkus: z.array(z.string()).default([]),
-    associatedSeatId: z.string().optional().nullable(),
-    isStandard: z.boolean().default(false),
+    applicableVariantIds: z.array(z.string()).optional().default([]),
+    associatedSkus: z.array(z.string()).optional().default([]),
+    associatedSeatId: z.string().nullable().optional(),
+    isStandard: z.boolean().optional().default(false),
     cost: z.coerce.number().nullable().optional(),
     sellPriceExclGst: z.coerce.number().nullable().optional(),
-});
+}).passthrough();
 
 export const highfieldModelSchema = z.object({
     modelCode: z.string().min(1, 'Model Code is required'),
     coverImageUrl: z.string().nullable().optional(),
-    galleryImageUrls: z.array(z.string()).default([]),
+    galleryImageUrls: z.array(z.string()).optional().default([]),
     registration: z.object({
-        price12Months: z.coerce.number().optional(),
-        stickerPrice: z.coerce.number().optional(),
-        tenderToStickerPrice: z.coerce.number().optional(),
-        trailerPrice12Months: z.coerce.number().optional(),
-    }).optional(),
+        price12Months: z.coerce.number().nullable().optional(),
+        stickerPrice: z.coerce.number().nullable().optional(),
+        tenderToStickerPrice: z.coerce.number().nullable().optional(),
+        trailerPrice12Months: z.coerce.number().nullable().optional(),
+    }).passthrough().optional(),
     specifications: z.object({
-        motorConfigurations: z.array(motorConfigSchema).default([]),
-        otherSpecs: z.array(specSchema).default([]),
-    }).optional(),
-    standardFeatures: z.array(z.string()).default([]),
-    optionalFeatures: z.array(optionalFeatureSchema).default([]),
-    documents: z.array(z.object({ id: z.string(), name: z.string(), url: z.string() })).default([]),
-    rules: z.array(z.any()).default([]),
+        motorConfigurations: z.array(motorConfigSchema).optional().default([]),
+        otherSpecs: z.array(specSchema).optional().default([]),
+    }).passthrough().optional(),
+    standardFeatures: z.array(z.string()).optional().default([]),
+    optionalFeatures: z.array(optionalFeatureSchema).optional().default([]),
+    documents: z.array(z.object({
+        id: z.string().optional().default(() => `doc-${Date.now()}-${Math.random().toString(36).slice(2)}`),
+        name: z.string().nullable().optional().default(''),
+        url: z.string().nullable().optional().default(''),
+    }).passthrough()).optional().default([]),
+    rules: z.array(z.any()).optional().default([]),
     trailerConfig: z.object({
-        name: z.string().optional(),
+        name: z.string().nullable().optional(),
         imageUrl: z.string().nullable().optional(),
-        options: z.array(z.any()).default([]),
-    }).optional(),
-});
+        options: z.array(z.any()).optional().default([]),
+    }).passthrough().optional(),
+}).passthrough();
 
 type ModelFormData = z.infer<typeof highfieldModelSchema>;
 
@@ -405,13 +412,14 @@ export function VisualAssetsCard({ model, isModuleView }: { model: any, isModule
                             <div className="h-full w-full flex items-center justify-center relative text-left">
                                 <Image src={coverImageUrl} alt="Cover" fill className="object-contain p-6" />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-10">
-                                    <label className="cursor-pointer">
-                                        <Button type="button" variant="secondary" size="icon" className="font-black uppercase text-[9px] h-7 px-3 pointer-events-none">Replace</Button>
-                                        <Input type="file" className="hidden" accept="image/*" onChange={async (e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file && storage) { setIsCoverUploading(true); try { const url = await uploadFileToStorage(storage, file, `models/${model.id}/cover-${Date.now()}`); setValue('coverImageUrl', url, { shouldDirty: true }); } finally { setIsCoverUploading(false); } }
-                                        }} />
-                                    </label>
+                                    <Button type="button" variant="secondary" size="icon" className="font-black uppercase text-[9px] h-7 px-3" onClick={(e) => {
+                                        e.preventDefault();
+                                        (e.currentTarget.nextElementSibling as HTMLInputElement)?.click();
+                                    }}>Replace</Button>
+                                    <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file && storage) { setIsCoverUploading(true); try { const url = await uploadFileToStorage(storage, file, `models/${model.id}/cover-${Date.now()}`); setValue('coverImageUrl', url, { shouldDirty: true }); } finally { setIsCoverUploading(false); e.target.value = ''; } }
+                                    }} />
                                     <Button type="button" variant="destructive" size="icon" className="font-black uppercase text-[9px] h-7 px-3" onClick={() => setValue('coverImageUrl', null, { shouldDirty: true })}>Remove</Button>
                                 </div>
                             </div>

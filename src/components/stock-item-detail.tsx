@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useStorage } from '@/firebase/provider';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { pdf } from '@react-pdf/renderer';
@@ -45,6 +46,7 @@ interface StockItemDetailProps {
   item: InventoryItem | null;
   onClose: () => void;
   readOnly?: boolean;
+  availableLocations?: string[];
 }
 
 function formatDate(timestamp: any): string {
@@ -134,7 +136,7 @@ function MiniProposalView({ quote }: { quote: any }) {
     );
 }
 
-export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDetailProps) {
+export function StockItemDetail({ item, onClose, readOnly = false, availableLocations = [] }: StockItemDetailProps) {
   const firestore = useFirestore();
   const storage = useStorage();
 
@@ -148,6 +150,17 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
 
   const photos = item?.photoUrls ?? [];
   const pdfs = item?.pdfAttachments ?? [];
+
+  async function handleLocationChange(newLocation: string) {
+    if (!item || readOnly) return;
+    try {
+      await updateDoc(doc(firestore, 'inventory', item.id), { location: newLocation });
+      toast({ title: 'Location updated', description: `Stock moved to ${newLocation}.` });
+    } catch (error) {
+      console.error('Location update failed:', error);
+      toast({ title: 'Update failed', description: 'Could not change location.', variant: 'destructive' });
+    }
+  }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     if (!e.target.files || !item) return;
@@ -267,7 +280,6 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
         { label: 'Colour', value: item.colour || '-' },
         { label: 'Serial Number', value: item.serialNumber || '-' },
         { label: 'Material', value: item.material || '-' },
-        { label: 'Location', value: item.location || '-' },
         { label: 'Status', value: item.status || '-' },
         { label: 'Sold By', value: item.soldBy || '-' },
         { label: 'Date into Stock', value: formatDate(item.dateIntoStock) },
@@ -393,6 +405,21 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
                             <p className="text-xs font-semibold">{field.value}</p>
                           </div>
                         ))}
+                        <div className="col-span-2">
+                          <p className="text-[9px] uppercase tracking-widest font-black text-slate-400 mb-1">Location</p>
+                          {readOnly || availableLocations.length === 0 ? (
+                            <p className="text-xs font-semibold">{item.location || '-'}</p>
+                          ) : (
+                            <Select value={item.location || ''} onValueChange={handleLocationChange}>
+                              <SelectTrigger className="h-8 text-xs font-semibold"><SelectValue placeholder="Select location..." /></SelectTrigger>
+                              <SelectContent>
+                                {availableLocations.map(loc => (
+                                  <SelectItem key={loc} value={loc} className="text-xs">{loc}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
                       </div>
                       {item.notes && (
                         <div className="mt-3">
@@ -520,10 +547,12 @@ export function StockItemDetail({ item, onClose, readOnly = false }: StockItemDe
                           {item.quotePayload.motor?.costPrice > 0 && (
                             <div className="border-t pt-1 mt-1 space-y-1">
                               <p className="text-[8px] uppercase tracking-widest font-black text-slate-400">Cost Breakdown</p>
-                              {item.quotePayload.variant?.cost > 0 && (
-                                <div className="flex justify-between"><span className="text-slate-500">Boat Cost</span><span className="font-bold">${item.quotePayload.variant.cost.toLocaleString()}</span></div>
+                              {(item.quotePayload.variant?.cost ?? 0) > 0 && (
+                                <div className="flex justify-between"><span className="text-slate-500">Boat Cost</span><span className="font-bold">${item.quotePayload.variant?.cost?.toLocaleString() ?? '0'}</span></div>
                               )}
-                              <div className="flex justify-between"><span className="text-slate-500">Motor Cost</span><span className="font-bold">${item.quotePayload.motor.costPrice.toLocaleString()}</span></div>
+                              {(item.quotePayload.motor?.costPrice ?? 0) > 0 && (
+                                <div className="flex justify-between"><span className="text-slate-500">Motor Cost</span><span className="font-bold">${item.quotePayload.motor?.costPrice?.toLocaleString() ?? '0'}</span></div>
+                              )}
                             </div>
                           )}
                         </div>

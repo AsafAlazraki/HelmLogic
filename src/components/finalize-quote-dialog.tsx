@@ -57,6 +57,7 @@ interface FinalizeQuoteDialogProps {
         selectedMotor: any;
         selectedMotorAccessories: any[];
         selectedTrailerOptionsData: any[];
+        customTrailerOptions?: any[];
         selectedDealerFitData: any[];
         totalPrice: number;
         isRegoSelected: boolean;
@@ -64,6 +65,17 @@ interface FinalizeQuoteDialogProps {
         isTenderToSelected: boolean;
         isTrailerRegoSelected: boolean;
         selectedTrailerId: string | null;
+        priceLevelUsed?: string;
+        appliedPromotions?: any[];
+        promotionDiscount?: number;
+        dealerServices?: { extendedWarranty: boolean; servicePlan: boolean };
+        adminDetails?: {
+            tradeIn: { description: string; value: number };
+            insurance: { requested: boolean; notes: string };
+            finance: { requested: boolean; notes: string };
+            timing: { estimatedDeliveryDate: string | null; notes: string };
+        };
+        sectionPdfs?: Record<string, File | null>;
     };
     organisationId: string | null;
     userProfile: any;
@@ -126,7 +138,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     };
 
     const buildQuotePayload = () => {
-        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, priceLevelUsed } = quoteData;
+        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, priceLevelUsed, appliedPromotions, promotionDiscount, dealerServices, adminDetails } = quoteData;
 
         /** Resolve price for an item based on the selected price level */
         const resolvePrice = (item: any): number => {
@@ -265,6 +277,12 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     name: o.name || 'Trailer Option',
                     sellPriceExclGst: o.sellPriceExclGst || 0,
                 })),
+                customOptions: (customTrailerOptions || []).map((o: any) => ({
+                    id: o.id || null,
+                    name: o.name || 'Custom Trailer Option',
+                    sellPriceExclGst: o.sellPriceExclGst || 0,
+                    description: o.description || null,
+                })),
             } : null,
 
             // Dealer Fit
@@ -283,6 +301,50 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
             // Pricing
             totalPriceExclGst: totalPrice || 0,
             priceLevelUsed: priceLevelUsed || 'hull_cash',
+
+            // Promotions
+            appliedPromotions: (appliedPromotions || []).map(p => ({
+                id: p.id || null,
+                name: p.name || 'Promotion',
+                description: p.description || null,
+                type: p.type || null,
+                fixedAmount: p.fixedAmount || 0,
+                perHpAmount: p.perHpAmount || 0,
+                percentage: p.percentage || 0,
+                appliesTo: p.appliesTo || null,
+                source: p.source || null,
+                imageUrl: p.showImageOnQuote ? (p.imageUrl || null) : null,
+                pdfUrl: p.showPdfOnQuote ? (p.pdfUrl || null) : null,
+            })),
+            promotionDiscount: promotionDiscount || 0,
+
+            // Dealer Services
+            dealerServices: {
+                extendedWarranty: dealerServices?.extendedWarranty || false,
+                servicePlan: dealerServices?.servicePlan || false,
+            },
+
+            // Admin & Trade-In
+            adminDetails: adminDetails ? {
+                tradeIn: {
+                    description: adminDetails.tradeIn.description || '',
+                    value: adminDetails.tradeIn.value || 0,
+                },
+                insurance: {
+                    requested: adminDetails.insurance.requested || false,
+                    notes: adminDetails.insurance.notes || '',
+                },
+                finance: {
+                    requested: adminDetails.finance.requested || false,
+                    notes: adminDetails.finance.notes || '',
+                },
+                timing: {
+                    estimatedDeliveryDate: adminDetails.timing.estimatedDeliveryDate || null,
+                    notes: adminDetails.timing.notes || '',
+                },
+            } : null,
+
+            finalPriceExclGst: Math.max(0, (totalPrice || 0) - (promotionDiscount || 0)),
         };
     };
 
@@ -302,6 +364,25 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 // Save quote under user's quotes subcollection
                 const quoteRef = doc(firestoreCollection(firestore, `users/${user.uid}/quotes`));
                 await setDoc(quoteRef, { ...payload, id: quoteRef.id });
+
+                // Upload section PDFs if any attached
+                const sectionPdfs = quoteData.sectionPdfs;
+                if (sectionPdfs) {
+                    const sectionPdfUrls: Record<string, string> = {};
+                    const sections = Object.entries(sectionPdfs).filter(([, file]) => file != null) as [string, File][];
+                    for (const [section, file] of sections) {
+                        try {
+                            const url = await uploadFileToStorage(storage, file, `quotes/${quoteRef.id}/section-pdfs/${section}.pdf`);
+                            sectionPdfUrls[section] = url;
+                        } catch (err) {
+                            console.error(`Failed to upload ${section} PDF:`, err);
+                        }
+                    }
+                    if (Object.keys(sectionPdfUrls).length > 0) {
+                        await updateDoc(doc(firestore, `users/${user.uid}/quotes`, quoteRef.id), { sectionPdfUrls });
+                    }
+                }
+
                 toast({ title: 'Proposal Created', description: `Quote ${payload.quoteNumber} has been saved.` });
                 onOpenChange(false);
                 resetForm();
@@ -343,6 +424,24 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     coverImageUrl: payload.coverImageUrl || null,
                     variantImageUrl: payload.variant?.imageUrl || null,
                 });
+
+                // Upload section PDFs if any attached
+                const stockSectionPdfs = quoteData.sectionPdfs;
+                if (stockSectionPdfs) {
+                    const sectionPdfUrls: Record<string, string> = {};
+                    const sections = Object.entries(stockSectionPdfs).filter(([, file]) => file != null) as [string, File][];
+                    for (const [section, file] of sections) {
+                        try {
+                            const url = await uploadFileToStorage(storage, file, `quotes/${inventoryRef.id}/section-pdfs/${section}.pdf`);
+                            sectionPdfUrls[section] = url;
+                        } catch (err) {
+                            console.error(`Failed to upload ${section} PDF:`, err);
+                        }
+                    }
+                    if (Object.keys(sectionPdfUrls).length > 0) {
+                        await updateDoc(doc(firestore, 'inventory', inventoryRef.id), { sectionPdfUrls });
+                    }
+                }
 
                 // Generate and store PDF
                 try {

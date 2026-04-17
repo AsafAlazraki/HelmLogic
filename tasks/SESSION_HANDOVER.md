@@ -394,9 +394,10 @@ Key collections and access:
 
 ---
 
-## v1.2.1 "Pricing Precision" — READY FOR PUSH
+## v1.2.1 "Pricing Precision" — SHIPPED
 
 - **QA**: 7/7 tests passing
+- **Released**: 2026-04-10
 - **Focus**: Client pricing feedback — GST rounding, motor Trade Price for sub-dealers, dealer fit Act Sell field
 - **Key changes**:
   - Inc GST rounded UP to whole dollars (`Math.ceil`) per item row
@@ -404,7 +405,24 @@ Key collections and access:
   - Motor hero card and grid cards use `getPriceForLevel()` (not hardcoded sellPriceExclGst)
   - `resolvePrice()` in finalize dialog snapshots price-level-resolved values
   - Dealer audit section in stock detail panel (cost/sell/margin breakdown)
-- **Files changed**: 5 — highfield-pricing-workspace.tsx, highfield-quote-flow.tsx, finalize-quote-dialog.tsx, quote-financials.ts, stock-item-detail.tsx
+
+---
+
+## v1.3 — READY FOR PUSH (2026-04-15)
+
+- **20+ commits** on dev (`claude/app-overview-wKiZ1`)
+- **13 client requirements** addressed + customer feedback fixes + 3 critical bugs caught in static analysis
+- **Static analysis pass**: build clean, all 46 Playwright tests discoverable, icon imports verified, undefined refs clean
+- **Key features**: PDF upload per section, Engine/Trailer Specs buttons, Pre-Rig display, Yamaha rebate auto-apply, NSM Extended Warranty + Service Plan, Trailer enhancements (custom options + dealer fit), Admin/Trade-In section, multi-engine HP badges, currency format (whole dollars no .00)
+- **Customer fixes**: Photo save in catalog grid (modelOverrides merge), stock column order (Model first), Pending sub-tab, interactive location dropdown
+- **Pre-release static fixes**: stock-item-detail null safety, inventory-list and customer-list Firestore `in` 30-element slicing
+- **New testing infrastructure**: Playwright suite (46 tests), `testing/` folder with per-release subfolders, full handbook rewrite for new QA hire
+- **v1.4 in design**: `tasks/v1.4-trailers-module-design.md` — multi-brand Trailers module with per-boat-model trailer assignments and pre-configured dealer fit (mirrors Motor Options pattern)
+
+### Eve-of-release hotfixes (2026-04-16)
+- **Update Config now unblockable** — `highfieldModelSchema` rewritten with `optional().nullable().default()` on every field + `.passthrough()`. `model-configuration-editor.tsx` got an `onValidationError` handler that walks the nested errors object to log the deepest failing path, then calls `onSubmit(form.getValues())` directly so the save still happens. Validation is a safety net only.
+- **Replace cover image button** — switched from shadcn `<Input type="file">` in `<label>` to native `<input type="file" hidden>` + Button onClick triggering `nextElementSibling.click()`. Resets `e.target.value = ''` after upload so the same file can re-upload.
+- **Refresh restores page state** — `activeTab` / `view` / `selectedRangeId` / `selectedModelId` on `modules/[id]/page.tsx` now sync to URL search params (`?tab=`, `?view=`, `?range=`, `?model=`) via `window.history.replaceState`. Same pattern applied to `yamaha-motor-workspace.tsx` (`?motorTab=`) and `stock-management-workspace.tsx` (`?stockView=`).
 
 ---
 
@@ -412,7 +430,8 @@ Key collections and access:
 
 - **Dev branch**: `claude/app-overview-wKiZ1` — auto-deploys via Firebase App Hosting
 - **Main branch**: `main` — production, merge from dev
-- **v1.3 branch**: `claude/v1.3-dev` — next release (12 client requirements)
+- **v1.3 release branch**: `claude/v1.3-release` — features merged into dev
+- **v1.4 branch**: TBD — trailers module work starts after v1.3 ships
 - **Feature branches**: `claude/setup-agent-teams-NJq6l` etc
 - Push: `git push -u origin <branch>` with retry on 403
 - Always create new commits, never amend

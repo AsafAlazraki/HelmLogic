@@ -340,9 +340,41 @@ export default function ModuleDetailsPage() {
         return 'dashboard';
     });
     const [pricingSubTab, setPricingSubTab] = useState<'matrix' | 'pricelists'>('matrix');
-    const [view, setView] = useState<'ranges' | 'models' | 'bmt'>('ranges');
-    const [selectedRangeId, setSelectedRangeId] = useState<string | null>(null);
-    const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+    const [view, setView] = useState<'ranges' | 'models' | 'bmt'>(() => {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const v = params.get('view');
+            if (v === 'models' || v === 'bmt' || v === 'ranges') return v;
+        }
+        return 'ranges';
+    });
+    const [selectedRangeId, setSelectedRangeId] = useState<string | null>(() => {
+        if (typeof window !== 'undefined') {
+            return new URLSearchParams(window.location.search).get('range') || null;
+        }
+        return null;
+    });
+    const [selectedModelId, setSelectedModelId] = useState<string | null>(() => {
+        if (typeof window !== 'undefined') {
+            return new URLSearchParams(window.location.search).get('model') || null;
+        }
+        return null;
+    });
+
+    // Sync tab/view/range/model state to URL so refresh restores the current page
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const url = new URL(window.location.href);
+        const set = (key: string, value: string | null, defaultVal?: string) => {
+            if (!value || value === defaultVal) url.searchParams.delete(key);
+            else url.searchParams.set(key, value);
+        };
+        set('tab', activeTab, 'dashboard');
+        set('view', view, 'ranges');
+        set('range', selectedRangeId);
+        set('model', selectedModelId);
+        window.history.replaceState({}, '', url.toString());
+    }, [activeTab, view, selectedRangeId, selectedModelId]);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const [isQuoteInitializationOpen, setIsQuoteInitializationOpen] = useState(false);
     
@@ -1336,11 +1368,12 @@ export default function ModuleDetailsPage() {
                                         />
                                     )}
                                     {view === 'models' && selectedRangeId && (
-                                        <ModelsGrid 
-                                            rangeId={selectedRangeId} 
-                                            vendor={mainVendor as any} 
-                                            onModelSelect={handleModelSelect} 
-                                            selectedModelId={selectedModelId} 
+                                        <ModelsGrid
+                                            rangeId={selectedRangeId}
+                                            vendor={mainVendor as any}
+                                            onModelSelect={handleModelSelect}
+                                            selectedModelId={selectedModelId}
+                                            organisationId={currentMemberOrg?.id}
                                         />
                                     )}
                                     {view === 'bmt' && effectiveModel && (
@@ -1443,6 +1476,13 @@ export default function ModuleDetailsPage() {
                                     title="Motor Dealer Fit Categories"
                                     description="Define dealer fit categories for motors (e.g. Rigging, Propeller, General)"
                                 />
+                                <ModuleDealerFitManager
+                                    moduleId={moduleData.id}
+                                    categories={moduleData?.trailerDealerFitCategories || []}
+                                    fieldName="trailerDealerFitCategories"
+                                    title="Trailer Dealer Fit Categories"
+                                    description="Define dealer fit categories for trailers (e.g. Spare Wheel, Hold Down Straps, Registration)"
+                                />
                                 <ModuleRoleAssignment
                                     moduleId={moduleData.id}
                                     organisationId={currentMemberOrg.id}
@@ -1533,26 +1573,44 @@ function RangesGrid({ vendor, onRangeSelect, canEdit, selectedRangeId, onEdit }:
     );
 }
 
-function ModelsGrid({ 
-    rangeId, 
-    vendor, 
-    onModelSelect, 
-    selectedModelId
-}: { 
-    rangeId: string; 
-    vendor: Vendor; 
-    onModelSelect: (model: Model) => void; 
-    selectedModelId?: string | null
+function ModelsGrid({
+    rangeId,
+    vendor,
+    onModelSelect,
+    selectedModelId,
+    organisationId
+}: {
+    rangeId: string;
+    vendor: Vendor;
+    onModelSelect: (model: Model) => void;
+    selectedModelId?: string | null;
+    organisationId?: string;
 }) {
     const firestore = useFirestore();
     const modelsQuery = useMemoFirebase(() => vendor?.id && rangeId ? collection(firestore, `data-warehouse/${vendor.id}/ranges/${rangeId}/models`) : null, [firestore, vendor?.id, rangeId]);
     const { data: models, isLoading: modelsLoading } = useCollection<Model>(modelsQuery);
 
+    // Merge org-level model overrides (cover image changes, etc.) with master data
+    const overridesQuery = useMemoFirebase(() =>
+        organisationId ? collection(firestore, `organisations/${organisationId}/modelOverrides`) : null,
+    [firestore, organisationId]);
+    const { data: overrides } = useCollection<any>(overridesQuery);
+
+    const effectiveModels = useMemo(() => {
+        if (!models) return models;
+        if (!overrides || overrides.length === 0) return models;
+        const overrideMap = new Map(overrides.map((o: any) => [o.id, o]));
+        return models.map(m => {
+            const ov = overrideMap.get(m.id);
+            return ov ? { ...m, ...ov, id: m.id } : m;
+        });
+    }, [models, overrides]);
+
     if (modelsLoading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
     
     return (
         <div className="grid grid-cols-5 gap-6 py-4 px-1">
-            {models?.map(model => (
+            {effectiveModels?.map(model => (
                 <ModelCard 
                     key={model.id} 
                     model={model} 

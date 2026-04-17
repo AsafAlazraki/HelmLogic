@@ -62,15 +62,15 @@ type SortKey = 'dateIntoStock' | 'daysInStock' | 'status' | 'location' | 'soldBy
 type SortDir = 'asc' | 'desc';
 
 const COLUMNS: { key: SortKey; label: string; className?: string }[] = [
-    { key: 'dateIntoStock', label: 'Date into Stock / ETA' },
-    { key: 'daysInStock', label: 'Days in Stock', className: 'text-right' },
-    { key: 'status', label: 'Status' },
-    { key: 'location', label: 'Location' },
-    { key: 'soldBy', label: 'Sold By' },
-    { key: 'stockNumber', label: 'Stock Number' },
-    { key: 'label', label: 'Label' },
     { key: 'model', label: 'Model' },
     { key: 'colour', label: 'Colour' },
+    { key: 'stockNumber', label: 'Stock Number' },
+    { key: 'status', label: 'Status' },
+    { key: 'location', label: 'Location' },
+    { key: 'dateIntoStock', label: 'Date into Stock / ETA' },
+    { key: 'daysInStock', label: 'Days in Stock', className: 'text-right' },
+    { key: 'soldBy', label: 'Sold By' },
+    { key: 'label', label: 'Label' },
     { key: 'serialNumber', label: 'Serial Number' },
     { key: 'material', label: 'Material' },
     { key: 'notes', label: 'Notes' },
@@ -423,16 +423,19 @@ export function StockList({
                                                     />
                                                 </td>
                                             )}
-                                            {/* Date into Stock / ETA */}
-                                            {visibleColumnKeys.has('dateIntoStock') && (
-                                                <td className="px-3 py-2 whitespace-nowrap">{formatDate(item.dateIntoStock)}</td>
+                                            {/* Model */}
+                                            {visibleColumnKeys.has('model') && (
+                                                <td className="px-3 py-2 whitespace-nowrap font-semibold">{item.model || '—'}</td>
                                             )}
 
-                                            {/* Days in Stock */}
-                                            {visibleColumnKeys.has('daysInStock') && (
-                                                <td className={`px-3 py-2 text-right whitespace-nowrap ${days !== null && days > 365 ? 'font-bold' : ''}`}>
-                                                    {days !== null ? days : '—'}
-                                                </td>
+                                            {/* Colour */}
+                                            {visibleColumnKeys.has('colour') && (
+                                                <td className="px-3 py-2 whitespace-nowrap">{item.colour || '—'}</td>
+                                            )}
+
+                                            {/* Stock Number */}
+                                            {visibleColumnKeys.has('stockNumber') && (
+                                                <td className="px-3 py-2 whitespace-nowrap font-mono text-[10px]">{item.stockNumber || '—'}</td>
                                             )}
 
                                             {/* Status */}
@@ -452,29 +455,26 @@ export function StockList({
                                                 <td className="px-3 py-2 whitespace-nowrap">{item.location || '—'}</td>
                                             )}
 
+                                            {/* Date into Stock / ETA */}
+                                            {visibleColumnKeys.has('dateIntoStock') && (
+                                                <td className="px-3 py-2 whitespace-nowrap">{formatDate(item.dateIntoStock)}</td>
+                                            )}
+
+                                            {/* Days in Stock */}
+                                            {visibleColumnKeys.has('daysInStock') && (
+                                                <td className={`px-3 py-2 text-right whitespace-nowrap ${days !== null && days > 365 ? 'font-bold' : ''}`}>
+                                                    {days !== null ? days : '—'}
+                                                </td>
+                                            )}
+
                                             {/* Sold By */}
                                             {visibleColumnKeys.has('soldBy') && (
                                                 <td className="px-3 py-2 whitespace-nowrap">{item.soldBy || '—'}</td>
                                             )}
 
-                                            {/* Stock Number */}
-                                            {visibleColumnKeys.has('stockNumber') && (
-                                                <td className="px-3 py-2 whitespace-nowrap font-mono text-[10px]">{item.stockNumber || '—'}</td>
-                                            )}
-
                                             {/* Label */}
                                             {visibleColumnKeys.has('label') && (
                                                 <td className="px-3 py-2 whitespace-nowrap">{item.label || '—'}</td>
-                                            )}
-
-                                            {/* Model */}
-                                            {visibleColumnKeys.has('model') && (
-                                                <td className="px-3 py-2 whitespace-nowrap">{item.model || '—'}</td>
-                                            )}
-
-                                            {/* Colour */}
-                                            {visibleColumnKeys.has('colour') && (
-                                                <td className="px-3 py-2 whitespace-nowrap">{item.colour || '—'}</td>
                                             )}
 
                                             {/* Serial Number */}
@@ -582,6 +582,7 @@ export function StockList({
                 item={detailItem}
                 onClose={() => setDetailItem(null)}
                 readOnly={readOnly}
+                availableLocations={locations}
             />
             <StockItemForm
                 open={formOpen}
