@@ -190,6 +190,138 @@ test.describe('v1.3 Hotfixes — Regression Suite', () => {
   });
 
   // --------------------------------------------------------------------------
+  // HOTFIX 2.6 (v1.3.1 addition): Partial URL param combos must not stick the UI.
+  //
+  // Background: the v1.3.0 URL persistence stripped `view=ranges` as a "default"
+  // value, so a refresh left URLs like `?range=X&model=Y` (no view=). The page
+  // rehydrated with selectedModelId set but view='ranges', and the global
+  // loading overlay froze the entire page because it fired on masterModelLoading
+  // without regard for which view was active. v1.3.1 fixed both: view is now
+  // inferred from URL param depth, and the overlay is scoped to view='bmt'.
+  //
+  // These tests lock that fix in so a future regression can't reintroduce the
+  // same deadlock.
+  // --------------------------------------------------------------------------
+
+  test('HF-URL-partial-model-only: ?range+model (no view=) refresh lands in bmt without stuck overlay', async ({ page }) => {
+    await openHighfieldModule(page);
+    const opened = await openFirstModelEditor(page);
+    expect(opened).toBe(true);
+
+    const rangeParam = getUrlParam(page, 'range');
+    const modelParam = getUrlParam(page, 'model');
+    expect(rangeParam).toBeTruthy();
+    expect(modelParam).toBeTruthy();
+
+    // Simulate the "normalized URL" case by rewriting the URL to strip view=.
+    // This is exactly the state users end up in after the URL-sync effect
+    // deletes view=ranges when they return to the ranges grid and then re-enter.
+    await page.evaluate(({ r, m }) => {
+      const u = new URL(window.location.href);
+      u.searchParams.delete('view');
+      u.searchParams.delete('tab');
+      u.searchParams.set('range', r);
+      u.searchParams.set('model', m);
+      window.history.replaceState({}, '', u.toString());
+    }, { r: rangeParam!, m: modelParam! });
+
+    // Reload and verify: page renders, overlay clears, editor is visible.
+    // If the v1.3.1 fix regressed, the page freezes here and the editor never shows.
+    await reloadAndAssert(page, async () => {
+      const saveBtn = page.locator('button:has-text("Update Config"), button:has-text("Update Master")').first();
+      await expect(
+        saveBtn,
+        'With only range+model in URL (no view=) refresh must infer view=bmt and render the editor'
+      ).toBeVisible({ timeout: 15000 });
+
+      // The "Initializing Precision Build" overlay should NOT be visible at this point.
+      const overlayVisible = await page
+        .locator('text=/Initializing Precision Build|Synchronizing Maritime/i')
+        .first()
+        .isVisible({ timeout: 1000 })
+        .catch(() => false);
+      expect(overlayVisible, 'Loading overlay must clear after refresh — not stick').toBe(false);
+    });
+  });
+
+  test('HF-URL-partial-range-only: ?range only (no model=) refresh lands in models view without overlay', async ({ page }) => {
+    await openHighfieldModule(page);
+    await openTab(page, 'Catalog');
+    await page.waitForTimeout(1500);
+
+    const rangeCard = page.locator('text=/Classic|Sport|Roll[- ]?Up|Adventure|Patrol/i').first();
+    await expect(rangeCard).toBeVisible({ timeout: 10000 });
+    await rangeCard.click();
+    await page.waitForTimeout(2000);
+
+    const rangeParam = getUrlParam(page, 'range');
+    expect(rangeParam, 'range param must be set after clicking a range card').toBeTruthy();
+
+    // Force the partial-param state: keep range, strip view.
+    await page.evaluate((r) => {
+      const u = new URL(window.location.href);
+      u.searchParams.delete('view');
+      u.searchParams.delete('model');
+      u.searchParams.set('range', r);
+      window.history.replaceState({}, '', u.toString());
+    }, rangeParam!);
+
+    await reloadAndAssert(page, async () => {
+      // view should infer to 'models' — assert the Catalog tab is still active and
+      // no loading overlay blocks the UI.
+      const catalogTab = page.getByRole('tab', { name: 'Catalog' }).first();
+      await expect(catalogTab).toHaveAttribute('data-state', 'active', { timeout: 10000 });
+
+      const overlayVisible = await page
+        .locator('text=/Initializing Precision Build|Synchronizing Maritime/i')
+        .first()
+        .isVisible({ timeout: 1000 })
+        .catch(() => false);
+      expect(overlayVisible, 'Overlay must not block for a range-only URL').toBe(false);
+    });
+  });
+
+  test('HF-URL-bmt-bad-model: ?view=bmt&model=INVALID does not stick on overlay', async ({ page }) => {
+    await openHighfieldModule(page);
+    await openTab(page, 'Catalog');
+    await page.waitForTimeout(1500);
+
+    // Grab a real range ID so the Firestore path segment is valid, then pair it
+    // with a deliberately bad model ID. useDoc must still clear isLoading when
+    // the doc doesn't exist — if it doesn't, the overlay would stick forever.
+    const rangeCard = page.locator('text=/Classic|Sport|Roll[- ]?Up|Adventure|Patrol/i').first();
+    await rangeCard.click();
+    await page.waitForTimeout(2000);
+    const rangeParam = getUrlParam(page, 'range');
+    expect(rangeParam).toBeTruthy();
+
+    await page.evaluate((r) => {
+      const u = new URL(window.location.href);
+      u.searchParams.set('view', 'bmt');
+      u.searchParams.set('range', r);
+      u.searchParams.set('model', 'DOES_NOT_EXIST_IN_FIRESTORE');
+      window.history.replaceState({}, '', u.toString());
+    }, rangeParam!);
+
+    await reloadAndAssert(page, async () => {
+      // After Firestore reports the doc is missing, useDoc should clear
+      // isLoading and the overlay should disappear. Give it a generous window
+      // because Firebase init + snapshot-miss can take a few seconds.
+      await page.waitForTimeout(5000);
+
+      const overlayVisible = await page
+        .locator('text=/Initializing Precision Build|Synchronizing Maritime/i')
+        .first()
+        .isVisible({ timeout: 1000 })
+        .catch(() => false);
+      expect(
+        overlayVisible,
+        'Overlay must clear when model doc is missing — useDoc sets isLoading=false on non-existent docs'
+      ).toBe(false);
+    });
+  });
+
+  // --------------------------------------------------------------------------
   // HOTFIX 3: Replace cover image button fires the file picker.
   // --------------------------------------------------------------------------
 

@@ -143,6 +143,8 @@ The `/tests` folder contains Playwright E2E specs. As of v1.3 they cover:
 3. **Persistence > visibility.** Prefer a save → reload → re-read test over a "the input is visible" test. The former catches real bugs; the latter catches typos.
 4. **Use `openTab()` not `click()` on tabs.** `openTab` asserts the tab's `data-state="active"` after clicking so you know the tab actually switched.
 5. **Any new page-level state should sync to URL.** When you add a tab/view/selection, add it to the URL via `window.history.replaceState` and add a refresh test in `persistence.spec.ts`.
+6. **URL-synced state needs tests for every param combo, not just the happy path.** If state is serialized as `?a=X&b=Y&c=Z`, test refresh with: (a) no params, (b) `?a=X` only, (c) `?a=X&b=Y`, (d) all three, (e) params in a different order, (f) invalid values. The v1.3.1 hotfix existed because the happy-path refresh test passed (`?view=bmt&range=X&model=Y`) but the partial-param case (`?range=X&model=Y` with view stripped as default) wasn't covered, and that was the one real users hit.
+7. **Loading overlays must be scoped to the view that consumes the data.** Never render a page-root overlay keyed on a global loading flag — if URL-restored state triggers a Firestore query for data a different view doesn't need, the overlay will freeze the UI. Write it as `{view === 'target' && isLoading && <Overlay/>}`. Add a regression test for each overlay condition.
 
 ### Known gaps — on the roadmap
 - Sub-dealer login + quote flow (currently only parent org `billh@` is tested)

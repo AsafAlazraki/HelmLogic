@@ -76,6 +76,22 @@ MUST use a SINGLE `<Tabs>` component wrapping both `<TabsList>` and `<TabsConten
 
 ## Session History
 
+### Session: April 17, 2026 — v1.3.1 Production Hotfix (Loading Overlay Stuck)
+- **Severity**: PROD DOWN. Users refreshing on a module page with `?range=X&model=Y` in the URL (my v1.3 refresh persistence) got stuck behind the "Initializing Precision Build" overlay indefinitely. Module workspace totally unusable.
+- **Root cause**: Three bugs converged in one spot:
+  1. My URL-sync effect stripped `view=ranges` as a "default" value but kept `model=X` in the URL.
+  2. On refresh, `useState` init restored `selectedModelId` from URL but `view` defaulted to `'ranges'`.
+  3. The loading overlay condition was `{isTransitioning || masterModelLoading || overrideLoading}` — it didn't care which view was active, so the Firestore model query (triggered by the restored `selectedModelId`) blocked the UI even though `view='ranges'` didn't need that data.
+- **Fix** (be870f6, merged to main at 3333246):
+  1. Infer `view` from deeper URL params: `?model=X` → `view='bmt'`, `?range=X` → `view='models'`. Refresh now lands user in the same nesting they left.
+  2. Scope the loading overlay to `view === 'bmt'`. Ranges/models views don't need model data so their loading states can't block the UI.
+- **Why my test suite missed it**: `HF-2d` in `hotfixes-v1.3.spec.ts` refreshed IMMEDIATELY after opening the editor, so `?view=bmt` was still in the URL. The partial-param case (user refreshes later when URL has been normalized) wasn't covered. Need refresh-regression tests for every URL param combo, not just the happy-path snapshot.
+- **Permanent learnings added**:
+  - Loading overlays MUST be scoped to the view that consumes the data, never at page root keyed on a global flag
+  - URL persistence that strips "defaults" WILL produce partial-param refresh states — every state init must infer missing values inferentially from the deepest params present
+  - Every URL-synced state needs a refresh-regression test for every param combo
+- **Files**: `src/app/(app)/modules/[id]/page.tsx`
+
 ### Session: March 31, 2026 — v1.0.0 Release
 Complete stock management system, delivered deals, hold requests, sub-dealer experience, permissions, agent team infrastructure.
 
@@ -208,6 +224,9 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - Schemas validating LEGACY Firestore data must be fully permissive — every nested field `optional().nullable().default()`, every object `.passthrough()`. Strict enums and required ids on legacy fields cause silent save failures
 - shadcn `<Input type="file">` wrapped in `<label>` doesn't fire — the Input wrapper div breaks the binding. Use native `<input type="file" hidden>` + `Button onClick` triggering `nextElementSibling.click()`. Always reset `e.target.value = ''` after upload so the same file can be re-selected
 - UI state that the user expects to survive a refresh (active tab, view mode, selected entity) must sync to URL search params via `window.history.replaceState`. Initialise state from `window.location.search` in the `useState` initialiser. Component-only state evaporates on F5
+- Loading overlays MUST be scoped to the view that actually consumes the data — never gate an overlay on a global loading flag at page root. `{isLoading && <Overlay/>}` at the top of a multi-view page will block views that don't need the data. Use `{view === 'bmt' && modelLoading && <Overlay/>}` so a URL-restored state in a different view doesn't deadlock the UI. This rule is born from v1.3.1 — refresh with `?model=X` loaded model data while `view='ranges'`, the root-level overlay froze the whole module page
+- URL persistence that strips "default" values WILL produce partial param combos on refresh (e.g. you strip `view=ranges` but `model=X` stays). Every `useState` init must INFER missing state from the deepest params present — `?model=X` implies `view='bmt'`, `?range=X` implies `view='models'`. Don't assume all params come back together
+- Every URL-synced state needs a refresh-regression test for every param combo, not just the happy path. Test: no params, each param alone, pairs, triples. Happy-path-only tests missed the v1.3.1 bug because `?view=bmt` was always in the URL during the test; real users trigger the partial-param case by refreshing after the URL was normalized
 
 ## How to Proceed (For Future Agents)
 - **Read tasks/SESSION_HANDOVER.md** first for complete technical context

@@ -419,6 +419,18 @@ Key collections and access:
 - **New testing infrastructure**: Playwright suite (46 tests), `testing/` folder with per-release subfolders, full handbook rewrite for new QA hire
 - **v1.4 in design**: `tasks/v1.4-trailers-module-design.md` — multi-brand Trailers module with per-boat-model trailer assignments and pre-configured dealer fit (mirrors Motor Options pattern)
 
+### Same-day hotfix v1.3.1 (2026-04-17) — Loading overlay stuck on refresh
+- **Severity**: prod down for any user refreshing on a module URL with `?range=` / `?model=` params
+- **Root cause**: my v1.3 refresh persistence stripped `view=ranges` as a "default" but kept `model=X`. On refresh, view defaulted to 'ranges' while selectedModelId was restored — the loading overlay fired on `masterModelLoading` regardless of view and froze the UI
+- **Fix** (commits `be870f6` → main `3333246`):
+  1. View inferred from deepest URL param: `?model=X` → `'bmt'`, `?range=X` → `'models'`
+  2. Loading overlay now scoped to `view === 'bmt'` — ranges/models views can't be blocked by model data they don't render
+- **Why Playwright missed it**: the refresh tests reloaded within seconds of opening the editor so `?view=bmt` was explicitly in the URL. The partial-param case (URL normalized to `?range=X&model=Y` only) wasn't covered
+- **Permanent lessons** (in CLAUDE.md + evolution.md):
+  - Loading overlays MUST be scoped to the view that consumes the data
+  - URL persistence that strips defaults WILL produce partial param combos — init must infer from deepest param
+  - Every URL-synced state needs refresh tests for every param combo
+
 ### Eve-of-release hotfixes (2026-04-16)
 - **Update Config now unblockable** — `highfieldModelSchema` rewritten with `optional().nullable().default()` on every field + `.passthrough()`. `model-configuration-editor.tsx` got an `onValidationError` handler that walks the nested errors object to log the deepest failing path, then calls `onSubmit(form.getValues())` directly so the save still happens. Validation is a safety net only.
 - **Replace cover image button** — switched from shadcn `<Input type="file">` in `<label>` to native `<input type="file" hidden>` + Button onClick triggering `nextElementSibling.click()`. Resets `e.target.value = ''` after upload so the same file can re-upload.
