@@ -345,6 +345,10 @@ export default function ModuleDetailsPage() {
             const params = new URLSearchParams(window.location.search);
             const v = params.get('view');
             if (v === 'models' || v === 'bmt' || v === 'ranges') return v;
+            // Fallback: infer view from which deeper params exist, so a refresh
+            // lands the user in the same nesting they left.
+            if (params.get('model')) return 'bmt';
+            if (params.get('range')) return 'models';
         }
         return 'ranges';
     });
@@ -1093,10 +1097,10 @@ export default function ModuleDetailsPage() {
 
     return (
         <div className="flex flex-col h-screen overflow-hidden bg-background">
-            {(isTransitioning || masterModelLoading || overrideLoading) && (
-                <HelmLogicLoading 
-                    title={masterModel?.name || 'Loading Precision Build'} 
-                    organisation={currentMemberOrg as any} 
+            {(isTransitioning || (view === 'bmt' && (masterModelLoading || overrideLoading))) && (
+                <HelmLogicLoading
+                    title={masterModel?.name || 'Loading Precision Build'}
+                    organisation={currentMemberOrg as any}
                     label="Initializing Precision Build"
                 />
             )}
