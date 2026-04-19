@@ -1,6 +1,23 @@
 # HelmLogic — Session Handover Document
+> **Read `tasks/START_HERE.md` FIRST.** This file is deep technical context.
 > Give this file to a new Claude session along with the CLAUDE.md file.
-> Updated: 2026-04-10 (v1.2.0 shipped to production)
+> Updated: 2026-04-19 (v1.3.0 + v1.3.1 SHIPPED. v1.4 Trailers in build.)
+
+---
+
+## Release Status at a Glance
+
+| Release | Date | Status | Branch |
+|---|---|---|---|
+| v1.0 | 2026-03-31 | ✅ Shipped | main |
+| v1.1 | 2026-04-01 | ✅ Shipped | main |
+| v1.2.0 | 2026-04-10 | ✅ Shipped | main |
+| v1.2.1 | 2026-04-10 | ✅ Shipped (patch) | main |
+| v1.3.0 | 2026-04-17 | ✅ Shipped | main |
+| **v1.3.1** | **2026-04-17** | ✅ **Shipped (same-day hotfix)** | main |
+| **v1.4 Trailers** | **TBD** | 🏗️ **In design — data import pending** | `claude/app-overview-wKiZ1` |
+
+**Current work**: v1.4 Trailers Module. Design doc at `tasks/v1.4-trailers-module-design.md`, live status at `tasks/v1.4-trailers-module-status.md`. Blocked on user dropping Trailer Module Excel into `data-import/`.
 
 ---
 
@@ -408,16 +425,14 @@ Key collections and access:
 
 ---
 
-## v1.3 — READY FOR PUSH (2026-04-15)
+## v1.3.0 — SHIPPED 2026-04-17
 
-- **20+ commits** on dev (`claude/app-overview-wKiZ1`)
+- **20+ commits** on dev, merged to main
 - **13 client requirements** addressed + customer feedback fixes + 3 critical bugs caught in static analysis
-- **Static analysis pass**: build clean, all 46 Playwright tests discoverable, icon imports verified, undefined refs clean
 - **Key features**: PDF upload per section, Engine/Trailer Specs buttons, Pre-Rig display, Yamaha rebate auto-apply, NSM Extended Warranty + Service Plan, Trailer enhancements (custom options + dealer fit), Admin/Trade-In section, multi-engine HP badges, currency format (whole dollars no .00)
 - **Customer fixes**: Photo save in catalog grid (modelOverrides merge), stock column order (Model first), Pending sub-tab, interactive location dropdown
 - **Pre-release static fixes**: stock-item-detail null safety, inventory-list and customer-list Firestore `in` 30-element slicing
-- **New testing infrastructure**: Playwright suite (46 tests), `testing/` folder with per-release subfolders, full handbook rewrite for new QA hire
-- **v1.4 in design**: `tasks/v1.4-trailers-module-design.md` — multi-brand Trailers module with per-boat-model trailer assignments and pre-configured dealer fit (mirrors Motor Options pattern)
+- **New testing infrastructure**: Playwright suite (63 tests), `testing/` folder with per-release subfolders, full handbook rewrite for new QA hire
 
 ### Same-day hotfix v1.3.1 (2026-04-17) — Loading overlay stuck on refresh
 - **Severity**: prod down for any user refreshing on a module URL with `?range=` / `?model=` params
@@ -438,13 +453,39 @@ Key collections and access:
 
 ---
 
+## v1.4 Trailers Module — IN BUILD (2026-04-19+)
+
+- **Status**: Design approved, implementation blocked on user dropping Excel into `data-import/Trailer Module.xlsx`
+- **Design doc**: `tasks/v1.4-trailers-module-design.md`
+- **Live status**: `tasks/v1.4-trailers-module-status.md`
+- **Summary**: One `trailers` module type, many trailer brand vendors. Mirrors Yamaha motor workspace pattern. Each boat model gets `trailerAssignments[]` — per-model trailer list with pre-configured dealer fit. New "Trailer Options" tab in boat model editor (parallel to Motor Options). Quote Step 4 reads assignments instead of single `trailerConfig`.
+
+---
+
 ## Git Workflow
 
 - **Dev branch**: `claude/app-overview-wKiZ1` — auto-deploys via Firebase App Hosting
 - **Main branch**: `main` — production, merge from dev
-- **v1.3 release branch**: `claude/v1.3-release` — features merged into dev
-- **v1.4 branch**: TBD — trailers module work starts after v1.3 ships
-- **Feature branches**: `claude/setup-agent-teams-NJq6l` etc
-- Push: `git push -u origin <branch>` with retry on 403
+- **Feature branches**: spawned for isolated work, merged to dev
+- Push: `git push -u origin <branch>` with retry on 403 (2s, 4s, 8s, 16s)
 - Always create new commits, never amend
-- Conventional commits: `feat:`, `fix:`, `refactor:`, `docs:`
+- Conventional commits: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`
+
+## Deployment Workflow
+
+1. Commit to `claude/app-overview-wKiZ1` → Firebase App Hosting auto-deploys dev
+2. Manually verify on dev URL
+3. Run full Playwright smoke: `npm run test:e2e:smoke`
+4. When green, merge to `main`: `git checkout main && git merge claude/app-overview-wKiZ1 && git push origin main`
+5. Firebase deploys main → prod
+6. Verify on prod URL immediately
+7. Manually deploy Firestore rules if changed (Firebase Console → Firestore → Rules, paste from `firestore.rules`)
+
+## Hotfix Workflow (same-day prod fix, per v1.3.1)
+
+1. Fix on dev branch, commit with `fix(vX.Y.Z): ...` message
+2. Confirm test passes locally
+3. Merge to main immediately: `git checkout main && git merge claude/app-overview-wKiZ1 && git push origin main`
+4. Post-mortem in release notes: `tasks/RELEASE_NOTES_vX.Y.Z.md`
+5. Add regression tests (the class that should have caught it, not just the exact case)
+6. Update `CLAUDE.md` "Known Lessons" + `.agents/evolution.md`

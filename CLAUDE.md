@@ -1,5 +1,22 @@
 # HelmLogic — CLAUDE.md
 
+> **NEW SESSION? Read `tasks/START_HERE.md` FIRST.**
+> It gives you the full context bootstrap: release state, current work, required reading order.
+> Then come back here for workflow rules.
+
+---
+
+## Current State (2026-04-19)
+
+| Release | Status |
+|---|---|
+| v1.0 → v1.3.1 | ✅ Shipped to production |
+| v1.4 Trailers Module | 🏗️ In design — see `tasks/v1.4-trailers-module-status.md` |
+
+**Active dev branch**: `claude/app-overview-wKiZ1` (auto-deploys to dev URL)
+
+---
+
 ## Workflow Orchestration
 
 ### 1. Plan Mode Default
@@ -148,3 +165,26 @@ users/{userId}/quotes/{quoteId}
 - **Loading overlays MUST be scoped to the view that actually consumes the data** — never `{isLoading && <Overlay/>}` at the page root. A global loading flag tied to URL-restored state will block the UI in views that don't even need that data. Use `{view === 'bmt' && (modelLoading || overrideLoading) && <Overlay/>}`. This caused v1.3.1 prod hotfix — refresh with `?model=X` loaded model data while view was still 'ranges', overlay blocked entire page.
 - **URL persistence must handle PARTIAL param combos** — when you strip "default" values from the URL (e.g. delete `view=ranges`), a refresh produces a subset of the original params. If `selectedModelId` is in URL but `view` was stripped, state rehydrates inconsistently. Rules: (1) on `useState` init, INFER missing values from the deeper params present — `?model=X` implies `view='bmt'`, `?range=X` implies `view='models'`. (2) Never gate critical rendering decisions on a single URL param in isolation.
 - **Every URL-synced state needs a refresh-regression test for every param combo** — not just "refresh after happy path". Test: refresh with no params, each param alone, pairs, triples. A test that only covers the case where all params are present will miss the bug where the user refreshes mid-transition and only half the params are there.
+
+---
+
+## Documentation Index
+
+All docs live in `tasks/` and `.agents/`. Read in this order when starting a session:
+
+1. **`tasks/START_HERE.md`** — Bootstrap. Release state, current work, required reading order.
+2. **`CLAUDE.md`** (this file) — Workflow rules, core principles, known lessons.
+3. **`tasks/SESSION_HANDOVER.md`** — Deep technical context: data hierarchy, IDs, every subsystem.
+4. **`.agents/evolution.md`** — Session history + architectural "why we do X".
+5. **`tasks/CODEBASE_MAP.md`** — File index: what lives where.
+6. **`tasks/RELEASE_NOTES_vX.Y.Z.md`** — Per-release changelog (v1.0, v1.1, v1.2, v1.2.1, v1.3, v1.3.1).
+7. **`tasks/v1.4-trailers-module-status.md`** — Live state of current work.
+8. **`tasks/v1.4-trailers-module-design.md`** — Design doc for current release.
+9. **`testing/README.md`** + **`testing/HANDBOOK.md`** — Test philosophy, quality rules, QA onboarding.
+
+**Whenever you ship a release** (dev or main):
+- Append session entry to `.agents/evolution.md`
+- Update `tasks/SESSION_HANDOVER.md` release table
+- Update release status in this file's header table
+- Update `tasks/v1.X-*-status.md` if applicable
+- Create `tasks/RELEASE_NOTES_vX.Y.Z.md` (follow the layout — no pending-work checklists)
