@@ -1,7 +1,7 @@
 # HelmLogic — Session Handover Document
 > **Read `tasks/START_HERE.md` FIRST.** This file is deep technical context.
 > Give this file to a new Claude session along with the CLAUDE.md file.
-> Updated: 2026-04-20 (v1.4 trailers module in progress — branch `claude/app-overview-wKiZ1`)
+> Updated: 2026-04-20 (v1.4 trailers + rego modules complete on branch `claude/app-overview-wKiZ1` — PR pending)
 
 ---
 
@@ -53,12 +53,30 @@ data-warehouse/{vendorId}/
 modules/{moduleId}              <- Org's access point to a vendor
   Fields: stockLocations[], stockVisibleToSubDealers, subDealerVisibleColumns[],
           moduleDealerFitCategories[], motorDealerFitCategories[],
+          trailerDealerFitCategories[],   <- v1.4
+          trailerBrandVendorIds[],        <- v1.4 (on trailers modules)
+          regoVendorIds[],                <- v1.4 (on rego modules)
           brandCaptainUserId, brandCaptainUserName,
           moduleManagerUserId, moduleManagerUserName,
           moduleType, mainVendorId, associatedVendorIds[], coverImageUrl
 
+# v1.4 trailers data
+data-warehouse/{trailerBrandVendorId}/         <- vendorType: 'Trailer Brand'
+  series/{seriesId}/
+    trailers/{trailerId}        <- code, name, imageUrl, sellPriceExclGst,
+                                    specifications{}, pricingDetail{} (full
+                                    Dealer→Nett→CTD→Sell waterfall),
+                                    optionalFeatures[], leadTimes{}, supplier
+
+# v1.4 rego data
+data-warehouse/{regoVendorId}/                 <- vendorType: 'Rego Authority'
+  regoTypes/{regoTypeId}        <- name, sellExclGst,
+                                    appliesTo: 'boat'|'trailer'|'both',
+                                    description?, isActive?
+
 organisations/{orgId}/
-  modelOverrides/{modelId}      <- Org-specific pricing overrides
+  modelOverrides/{modelId}      <- Org-specific pricing overrides (boats)
+  trailerOverrides/{trailerId}  <- v1.4 org-specific sell overrides (trailers)
   dealerFitSelections/
   exchangeRates/{currencyCode}
   priceLists/{priceListId}      <- Sub-dealer price lists
@@ -157,8 +175,8 @@ Finalize saves ALL prices as snapshot (prices locked at save time)
 - `master-price-file` — editable data tables with Excel import/export
 - `used-boats` — placeholder module with cover image, coming-soon cards
 - `website-listings` — placeholder module with cover image, coming-soon cards
-- `trailers` (**v1.4 — in progress**) — multi-brand trailer catalog, see `tasks/v1.4-trailers-module-design.md`
-- `rego` (**v1.4 — in progress**) — shared registration-type catalog for boats + trailers
+- `trailers` (**v1.4**) — multi-brand trailer catalog with full pricing waterfall + org-level overrides. Workspace: `src/components/trailers-workspace.tsx`. Data: `data-warehouse/{brandVendorId}/series/{seriesId}/trailers/{trailerId}`. Picker: `TrailerCatalogPicker` used by the Highfield quote flow trailer step.
+- `rego` (**v1.4**) — shared registration-type catalog for boats + trailers. Workspace: `src/components/rego-workspace.tsx`. Data: `data-warehouse/{regoVendorId}/regoTypes/{regoTypeId}`. Picker: `RegoPicker` used by the boat + trailer rego steps.
 
 Non-catalog modules have `mainVendorId: null` — code must check before creating Firestore doc refs.
 
