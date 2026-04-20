@@ -66,6 +66,8 @@ interface FinalizeQuoteDialogProps {
         isTrailerRegoSelected: boolean;
         selectedTrailerId: string | null;
         catalogTrailerSnapshot?: any;
+        boatRegoSnapshot?: any;
+        trailerRegoSnapshot?: any;
         priceLevelUsed?: string;
         appliedPromotions?: any[];
         promotionDiscount?: number;
@@ -139,7 +141,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     };
 
     const buildQuotePayload = () => {
-        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, catalogTrailerSnapshot, priceLevelUsed, appliedPromotions, promotionDiscount, dealerServices, adminDetails } = quoteData;
+        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, catalogTrailerSnapshot, boatRegoSnapshot, trailerRegoSnapshot, priceLevelUsed, appliedPromotions, promotionDiscount, dealerServices, adminDetails } = quoteData;
 
         // Trailer data source: catalog snapshot wins over model's own trailerConfig.
         // The snapshot is frozen at selection time so quote totals never drift.
@@ -225,16 +227,22 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 description: opt.description || null,
             })),
 
-            // Registration
+            // Registration — snapshot (v1.4) wins over legacy toggles
             registration: {
-                boatRego: isRegoSelected || false,
-                boatRegoPrice: isRegoSelected ? (model?.registration?.price12Months || 0) : 0,
+                boatRego: !!boatRegoSnapshot || isRegoSelected || false,
+                boatRegoPrice: boatRegoSnapshot
+                    ? (boatRegoSnapshot.sellExclGst || 0)
+                    : (isRegoSelected ? (model?.registration?.price12Months || 0) : 0),
+                boatRegoSnapshot: boatRegoSnapshot || null,
                 sticker: isStickerSelected || false,
                 stickerPrice: isStickerSelected ? (model?.registration?.stickerPrice || 0) : 0,
                 tenderTo: isTenderToSelected || false,
                 tenderToPrice: isTenderToSelected ? (model?.registration?.tenderToStickerPrice || 0) : 0,
-                trailerRego: isTrailerRegoSelected || false,
-                trailerRegoPrice: isTrailerRegoSelected ? (model?.registration?.trailerPrice12Months || 0) : 0,
+                trailerRego: !!trailerRegoSnapshot || isTrailerRegoSelected || false,
+                trailerRegoPrice: trailerRegoSnapshot
+                    ? (trailerRegoSnapshot.sellExclGst || 0)
+                    : (isTrailerRegoSelected ? (model?.registration?.trailerPrice12Months || 0) : 0),
+                trailerRegoSnapshot: trailerRegoSnapshot || null,
             },
 
             // Motor
