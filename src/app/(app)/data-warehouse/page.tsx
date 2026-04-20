@@ -27,6 +27,7 @@ import {
     UploadCloud,
     Globe,
     FileText,
+    FileCheck,
     Paperclip
 } from "lucide-react";
 import Image from "next/image";
@@ -85,6 +86,7 @@ const vendorTypes = [
     'Boat Brand',
     'Motor Brand',
     'Trailer Brand',
+    'Rego Authority',
     'Electronics Brand',
     'Electronics Supplier',
     'Parts Wholesaler',
@@ -101,6 +103,8 @@ const getVendorTypeIcon = (vendorType?: string) => {
             return <Cog {...iconProps} />;
         case 'Trailer Brand':
             return <Truck {...iconProps} />;
+        case 'Rego Authority':
+            return <FileCheck {...iconProps} />;
         case 'Electronics Brand':
             return <CircuitBoard {...iconProps} />;
         case 'Electronics Supplier':
