@@ -111,11 +111,55 @@ The module detail page (`/modules/{id}`) now routes `moduleType === 'trailers'` 
 
 ---
 
+## Step 3 — `scripts/seed-trailers.ts` importer (dry-run + live)
+
+**Shipped:** A TypeScript importer that parses `Trailer Module.xlsx`, detects brand/series/trailer rows, and either writes a JSON plan (dry-run — default) or upserts the full hierarchy into Firestore (with `--live`). Parses all 455 trailers across 7 brands and 46 series, captures the full pricing waterfall into `pricingDetail`, pulls every factory option (234 trailers have ≥1), and attaches lead-time metadata.
+
+**Files touched:**
+- `scripts/seed-trailers.ts` — new. CLI flags: `--file=<path>` (defaults to `tasks/v1.4-trailers-source/Trailer Module.xlsx`), `--live` (triggers Firestore writes via firebase-admin).
+
+**How to run (dev machine):**
+
+```bash
+# Dry-run — writes /tmp/trailer-import-plan.json for review
+npx tsx scripts/seed-trailers.ts
+
+# Live — upserts to Firestore. Needs GOOGLE_APPLICATION_CREDENTIALS pointing
+# at a service-account JSON (or ADC already configured for the studio project).
+npx tsx scripts/seed-trailers.ts --live
+```
+
+The script is **idempotent** — brand vendors, series docs and trailer docs are keyed by slug/code and set with `{ merge: true }`, so re-running is safe.
+
+**Test matrix (dry-run):**
+- [ ] `npx tsx scripts/seed-trailers.ts --file=/tmp/trailer.xlsx` runs cleanly.
+- [ ] Console output reports: 7 brands, 46 series, 455 trailers, ~234 with factory options, 0 skipped, ≤5 warnings.
+- [ ] `/tmp/trailer-import-plan.json` exists and is valid JSON with `brands`, `totals`, `warnings`, `sample` keys.
+- [ ] Brand list includes REDCO/TINKA, GFAB, STACER, DUNBIER, DUNBIER/HAINES BMT, MACKAY, Obsolete.
+- [ ] `plan.sample[0]` has `vendorId: 'redco-tinka-trailers'`, `code: 'RE1213'`, full `pricingDetail` waterfall, ≥1 `optionalFeatures` entry.
+- [ ] `plan.sample[0].pricingDetail.sell` is within ±$1 of the Excel value (2520).
+- [ ] Trailers under "Obsolete Trailers" section have `isActive: false`.
+
+**Test matrix (live — staging/manual):**
+- [ ] `GOOGLE_APPLICATION_CREDENTIALS=/path/to/sa.json npx tsx scripts/seed-trailers.ts --live`
+  - [ ] Creates/updates 7 docs in `data-warehouse/` with `vendorType: 'Trailer Brand'`.
+  - [ ] Creates 46 series docs in `data-warehouse/{brand}/series/{seriesId}`.
+  - [ ] Creates 455 trailer docs in `…/trailers/{trailerId}` with `sellPriceExclGst`, `cost`, `pricingDetail`, `optionalFeatures`.
+  - [ ] Re-running the same command modifies no doc counts (idempotent).
+- [ ] After import, `/data-warehouse` page lists the 7 trailer-brand vendors.
+- [ ] Creating a new Trailers module (Step 2) and ticking the brands in Settings populates `trailerBrandVendorIds` correctly.
+
+**Known gotchas:**
+- The xlsx file is tracked via Git LFS (6.58 MB). On a fresh clone run `git lfs pull` first, or pass `--file=/path/to/local.xlsx`.
+- 3 "Unsorted" warnings are expected (orphan MACKAY/Obsolete rows with a code but no preceding series header). Fix by adding a proper series header in the source xlsx, or leave — they still import safely under an "Unsorted" series.
+- "REDCO" and "TINKA" trailers are combined into one vendor `redco-tinka-trailers` per client grouping. Historical references to a "TINKA Trailers" vendor should be migrated to this ID.
+
+---
+
 ## Upcoming steps
 
 See `tasks/v1.4-trailers-module-design.md` §11 "Implementation order". Each step below will get its own section here when it ships:
 
-3. `scripts/seed-trailers.ts` importer (with dry-run)
 4. Trailers Workspace — Catalog tab
 5. Trailer step integration in `HighfieldQuoteFlow`
 6. Rego module + types UI; Highfield rego picker migration
