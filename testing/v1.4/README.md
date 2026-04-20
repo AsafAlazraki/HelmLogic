@@ -156,6 +156,44 @@ The script is **idempotent** — brand vendors, series docs and trailer docs are
 
 ---
 
+## Step 4 — TrailersWorkspace Catalog tab
+
+**Shipped:** The Catalog tab is now fully functional — it loads series from every selected brand vendor, renders a clean grid of trailer cards grouped by series (with per-brand section headers), supports a single search box (matches code or name) and a brand filter dropdown, and opens a right-side detail sheet showing specs, features, factory options, and a read-only pricing-waterfall summary for any trailer.
+
+**Files touched:**
+- `src/components/trailers-workspace.tsx` — replaced the catalog placeholder with a real grid. Added `TrailerCard`, `SeriesSection`, `BrandSection`, `TrailerDetailSheet`, `WaterfallRow` sub-components. Each `BrandSection` loads its own series collection; each `SeriesSection` loads its own trailers collection (keeps the Firestore listener graph clean and avoids collection-group indexes).
+
+**Test matrix — Catalog tab:**
+
+### Empty state
+- [ ] A Trailers module with no brands selected shows a single card "No trailer brands selected — head to Settings…".
+
+### With brands selected (after running `seed-trailers.ts --live`)
+- [ ] Pick REDCO/TINKA + MACKAY in Settings. Return to Catalog. Both brand sections render with their own header + truck icon + shortCode.
+- [ ] Under each brand, every series renders as its own titled block with a count badge.
+- [ ] Each trailer card shows: image (or truck icon fallback), code, name, boat-size / length / ATM badges, `Sell ex GST` price, and a factory-options count if > 0.
+- [ ] Inactive trailers (Obsolete brand) render at 60% opacity with a red "Inactive" badge.
+- [ ] Click a card → detail sheet opens with specs grid, features list, factory-options list (priced), and pricing waterfall summary (Dealer → Nett → Freight → Landed → PD Charges → Total Nett CTD → RRP → Sell).
+- [ ] Pricing waterfall in the sheet shows a "Rego hint" footer if the source row has one (e.g., "Small Trailers - Up to 1.02t · $166").
+
+### Search & filter
+- [ ] Typing "RE12" filters every series down to matching trailers; empty series get hidden.
+- [ ] Brand filter only appears when ≥2 brands are selected.
+- [ ] Selecting a specific brand in the filter hides the other brands.
+- [ ] Clearing the search (and selecting "All brands") restores the full catalog.
+
+### Regression
+- [ ] Pricing tab still renders the "Ships in Step 8" placeholder (editable manager is Step 8 scope).
+- [ ] Settings tab unchanged from Step 2 — brand multi-select, dealer-fit categories, role assignment.
+- [ ] Tab switches still sync to `?trailerTab=…` in the URL.
+
+**Known gotchas:**
+- Each `<BrandSection>` + `<SeriesSection>` spins up its own Firestore subscription. For the seeded dataset (46 series) that's ~46 listeners per Catalog view — well under Firestore limits but keep an eye on CPU on lower-end devices. If it becomes a problem, migrate to a `collectionGroup('trailers')` query filtered by `vendorId` with an index.
+- Image hotlinking: trailer `imageUrl` values are external (e.g. `mayfairmarine.com.au`). Followed the project rule — native `<img>` is used, not Next.js `<Image>`.
+- The detail sheet shows the source-of-truth pricing waterfall from the xlsx import. Org-level overrides aren't possible yet — that's Step 8.
+
+---
+
 ## Upcoming steps
 
 See `tasks/v1.4-trailers-module-design.md` §11 "Implementation order". Each step below will get its own section here when it ships:
