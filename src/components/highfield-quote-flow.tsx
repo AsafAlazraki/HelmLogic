@@ -86,6 +86,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TrailerCatalogPicker, type TrailerSnapshot } from '@/components/trailer-catalog-picker';
+import { RegoPicker, type RegoTypeSnapshot } from '@/components/rego-picker';
 
 /** Normalize spacing, strip internal model-code suffixes, and extract first color from parenthetical */
 function formatOptionDisplayLabel(name: string): { base: string; color: string | null } {
@@ -154,6 +155,8 @@ interface DuplicateInitialState {
     isStickerSelected: boolean;
     isTenderToSelected: boolean;
     isTrailerRegoSelected: boolean;
+    boatRegoSnapshot?: RegoTypeSnapshot | null;
+    trailerRegoSnapshot?: RegoTypeSnapshot | null;
 }
 
 export function HighfieldQuoteFlow({
@@ -208,6 +211,10 @@ export function HighfieldQuoteFlow({
     const [isStickerSelected, setIsStickerSelected] = useState(initialState?.isStickerSelected ?? false);
     const [isTenderToSelected, setIsTenderToSelected] = useState(initialState?.isTenderToSelected ?? false);
     const [isTrailerRegoSelected, setIsTrailerRegoSelected] = useState(initialState?.isTrailerRegoSelected ?? false);
+    // Rego v1.4 — catalog-backed snapshots. When set, these supersede the legacy
+    // boolean toggles + model.registration.* prices.
+    const [boatRegoSnapshot, setBoatRegoSnapshot] = useState<RegoTypeSnapshot | null>(initialState?.boatRegoSnapshot ?? null);
+    const [trailerRegoSnapshot, setTrailerRegoSnapshot] = useState<RegoTypeSnapshot | null>(initialState?.trailerRegoSnapshot ?? null);
 
     const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>(initialState?.selectedOptionIds ?? []);
     const [customOptions, setCustomOptions] = useState<CustomOption[]>(initialState?.customOptions ?? []);
@@ -509,7 +516,12 @@ export function HighfieldQuoteFlow({
         let total = getPriceForLevel(activeVariant, priceLevel);
         selectedOptionsData.forEach(opt => { total += getPriceForLevel(opt, priceLevel); });
         customOptions.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
-        if (isRegoSelected) {
+        // Boat rego: snapshot (v1.4 rego module) wins over legacy toggle
+        if (boatRegoSnapshot) {
+            total += boatRegoSnapshot.sellExclGst || 0;
+            if (isStickerSelected) total += (model.registration?.stickerPrice || 0);
+            if (isTenderToSelected) total += (model.registration?.tenderToStickerPrice || 0);
+        } else if (isRegoSelected) {
             total += (model.registration?.price12Months || 0);
             if (isStickerSelected) total += (model.registration?.stickerPrice || 0);
             if (isTenderToSelected) total += (model.registration?.tenderToStickerPrice || 0);
@@ -522,13 +534,18 @@ export function HighfieldQuoteFlow({
             total += getPriceForLevel(effectiveTrailerConfig, priceLevel);
             selectedTrailerOptionsData.forEach((o: any) => { total += getPriceForLevel(o, priceLevel); });
             customTrailerOptions.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
-            if (isTrailerRegoSelected) total += (model.registration?.trailerPrice12Months || 0);
+            // Trailer rego: snapshot wins over legacy toggle
+            if (trailerRegoSnapshot) {
+                total += trailerRegoSnapshot.sellExclGst || 0;
+            } else if (isTrailerRegoSelected) {
+                total += (model.registration?.trailerPrice12Months || 0);
+            }
         }
         selectedDealerFitData.forEach(s => {
             s.items?.forEach((i: any) => { total += getPriceForLevel(i.data, priceLevel); });
         });
         return total;
-    }, [activeVariant, selectedOptionsData, customOptions, customTrailerOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, effectiveTrailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration, priceLevel]);
+    }, [activeVariant, selectedOptionsData, customOptions, customTrailerOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, effectiveTrailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, boatRegoSnapshot, trailerRegoSnapshot, model.registration, priceLevel]);
 
     // Promotions Derived Memos
     const appliedPromotions = useMemo(() => {
@@ -1135,14 +1152,23 @@ export function HighfieldQuoteFlow({
                                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Registration</h3>
                                             </div>
                                             <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white space-y-6">
+                                                {/* v1.4 Rego module picker — supersedes the legacy toggle when set */}
+                                                <RegoPicker
+                                                    filter="boat"
+                                                    value={boatRegoSnapshot}
+                                                    onChange={setBoatRegoSnapshot}
+                                                    label="Boat Registration (Rego Module)"
+                                                />
+                                                {!boatRegoSnapshot && (
                                                 <div className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", isRegoSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={handleRegoToggle}>
                                                     <div className="flex items-center gap-4">
                                                         <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center border-2", isRegoSelected ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-200 text-slate-300")}><Check className="h-4 w-4" /></div>
-                                                        <div><p className={cn("text-[10px] font-black uppercase tracking-widest", isRegoSelected ? "text-primary" : "text-slate-600")}>12 Months Registration</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Maritime Safety Compliance</p></div>
+                                                        <div><p className={cn("text-[10px] font-black uppercase tracking-widest", isRegoSelected ? "text-primary" : "text-slate-600")}>12 Months Registration (legacy)</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Maritime Safety Compliance</p></div>
                                                     </div>
                                                     <p className={cn("font-black text-xs", isRegoSelected ? "text-primary" : "text-slate-400")}>${(model.registration?.price12Months || 0).toLocaleString()}</p>
                                                 </div>
-                                                {isRegoSelected && (
+                                                )}
+                                                {(isRegoSelected || !!boatRegoSnapshot) && (
                                                     <div className="grid grid-cols-2 gap-3 pt-2 animate-in slide-in-from-top-2 duration-500">
                                                         {/* Registration Stickers */}
                                                         <div className={cn("flex flex-col gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer", isStickerSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={handleStickerToggle}>
@@ -1753,13 +1779,23 @@ export function HighfieldQuoteFlow({
                                                     <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Registration</h3>
                                                 </div>
-                                                <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", isTrailerRegoSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "border-transparent hover:border-primary/20")} onClick={() => setIsTrailerRegoSelected(!isTrailerRegoSelected)}>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", isTrailerRegoSelected ? "bg-primary border-primary text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Truck className="h-5 w-5" /></div>
-                                                        <div><p className={cn("text-[11px] font-black uppercase tracking-widest", isTrailerRegoSelected ? "text-primary" : "text-slate-600")}>12 Months Trailer Rego</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Government Compliance</p></div>
-                                                    </div>
-                                                    <p className={cn("font-black text-sm", isTrailerRegoSelected ? "text-primary" : "text-slate-400")}>${(model.registration?.trailerPrice12Months || 0).toLocaleString()}</p>
-                                                </div>
+                                                <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white space-y-4">
+                                                    <RegoPicker
+                                                        filter="trailer"
+                                                        value={trailerRegoSnapshot}
+                                                        onChange={setTrailerRegoSnapshot}
+                                                        label="Trailer Registration (Rego Module)"
+                                                    />
+                                                    {!trailerRegoSnapshot && (
+                                                        <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", isTrailerRegoSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "border-transparent hover:border-primary/20")} onClick={() => setIsTrailerRegoSelected(!isTrailerRegoSelected)}>
+                                                            <div className="flex items-center gap-4">
+                                                                <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", isTrailerRegoSelected ? "bg-primary border-primary text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Truck className="h-5 w-5" /></div>
+                                                                <div><p className={cn("text-[11px] font-black uppercase tracking-widest", isTrailerRegoSelected ? "text-primary" : "text-slate-600")}>12 Months Trailer Rego (legacy)</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Government Compliance</p></div>
+                                                            </div>
+                                                            <p className={cn("font-black text-sm", isTrailerRegoSelected ? "text-primary" : "text-slate-400")}>${(model.registration?.trailerPrice12Months || 0).toLocaleString()}</p>
+                                                        </div>
+                                                    )}
+                                                </Card>
                                             </div>
                                         </>
                                     )}
@@ -2311,6 +2347,8 @@ export function HighfieldQuoteFlow({
                     isTrailerRegoSelected,
                     selectedTrailerId,
                     catalogTrailerSnapshot,
+                    boatRegoSnapshot,
+                    trailerRegoSnapshot,
                     priceLevelUsed: priceLevel,
                     appliedPromotions,
                     promotionDiscount,

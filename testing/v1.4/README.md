@@ -264,11 +264,76 @@ The script is **idempotent** — brand vendors, series docs and trailer docs are
 
 ---
 
+## Step 6 — Rego module + types UI; Highfield rego picker migration
+
+**Shipped:** New `moduleType: 'rego'` is now a first-class module with its own workspace. Admins tick `Rego Authority` vendors under the Settings tab, then create `regoTypes` per vendor (e.g. "Small Trailers - Up to 1.02t, $151") under the Rego Types tab. Each rego type has `appliesTo: 'boat' | 'trailer' | 'both'`. A shared `<RegoPicker>` is wired into `HighfieldQuoteFlow` in two places: the Boat Registration card (filter='boat') and the Trailer Registration card (filter='trailer'). Picking a rego snapshots its id, vendor, name, price, appliesTo, and capturedAt into the quote — the total uses the snapshot; the legacy toggle disappears. When no snapshot is picked, the legacy flow (flat `model.registration` prices) still works so historical/unconfigured boats keep functioning.
+
+**Files touched:**
+- `src/components/rego-workspace.tsx` — new module workspace (Rego Types + Settings tabs, CRUD dialog, vendor multi-select, role assignment)
+- `src/components/rego-picker.tsx` — new shared picker with grouped select, upfront type loading, snapshot on change
+- `src/app/(app)/modules/[id]/page.tsx` — routes `moduleType === 'rego'` to the new workspace (with blue header banner)
+- `src/components/highfield-quote-flow.tsx` — imports `RegoPicker` + `RegoTypeSnapshot`; adds `boatRegoSnapshot` + `trailerRegoSnapshot` state (and to `DuplicateInitialState`); pricing calc: snapshot wins over legacy toggle; Boat Registration Card + Trailer Registration Card each render `<RegoPicker>` on top with the legacy toggle hidden when a snapshot is set; stickers + tender-to now show when either the toggle OR the snapshot is active; snapshots are passed into `FinalizeQuoteDialog.quoteData`
+- `src/components/finalize-quote-dialog.tsx` — accepts `boatRegoSnapshot`/`trailerRegoSnapshot`; `registration` payload now writes `boatRegoSnapshot`/`trailerRegoSnapshot` objects + uses snapshot prices when present
+
+**Test matrix:**
+
+### Setup (one-time, admin)
+- [ ] In `/data-warehouse/add`, create at least one `Rego Authority` vendor (e.g. "QLD Transport", `state: QLD`, `currency: AUD`).
+- [ ] In `/modules/add`, create a Rego module (Module Type = "Rego (Registration Authority)"). Confirm the Main Vendor dropdown is hidden. Tick your rego authority vendor under "Rego Authorities".
+- [ ] Open the Rego module from `/modules`. The header shows "REGO" kicker + blue banner.
+- [ ] On the "Rego Types" tab, each assigned authority renders as a card with an "Add Type" button. For non-admins, the buttons are hidden.
+- [ ] Click "Add Type", enter Name + Sell Ex GST + Applies To, save. The row appears instantly.
+- [ ] Edit and delete a type; both work with toast feedback.
+- [ ] Toggle "Active" off on a type — it renders dashed / reduced opacity in the list and is excluded from the picker.
+
+### Rego Workspace — Settings tab
+- [ ] The Rego Authorities card lists every `vendorType === 'Rego Authority'` vendor with a checkbox.
+- [ ] Un-ticking a vendor removes it from `modules/{id}.regoVendorIds`; re-ticking adds it back. (Check Firestore or refresh.)
+- [ ] URL updates: switching between tabs sets `?regoTab=types` or `?regoTab=settings`. Refresh restores the active tab.
+
+### Boat Rego Picker (Highfield quote flow)
+- [ ] Start a Highfield quote. On step 2 (Color) after selecting material + color, the Registration block appears.
+- [ ] A new dropdown "Boat Registration (Rego Module)" appears **above** the legacy "12 Months Registration (legacy)" toggle.
+- [ ] The dropdown lists every active rego type with `appliesTo ∈ {'boat', 'both'}`, grouped by vendor name.
+- [ ] Picking a rego hides the legacy toggle and shows a chip summarising the pick (vendor · name · price).
+- [ ] The total at the bottom increases by the snapshot's `sellExclGst` (independent of `model.registration.price12Months`).
+- [ ] Stickers + Tender-To decal cards still render and still contribute to the total (they're not rego-module-governed).
+- [ ] Clicking "Clear" on the picker reverts to the legacy toggle; total returns to the old calculation.
+- [ ] With **no rego module configured**, the picker shows "No rego types configured yet…" and is disabled; the legacy toggle works exactly as before.
+
+### Trailer Rego Picker (Highfield quote flow, trailer step)
+- [ ] Advance to step 4 (Trailer). After selecting a trailer (either model-default or catalog-pick from Step 5), the Trailer Registration card shows.
+- [ ] A dropdown "Trailer Registration (Rego Module)" lists every active rego type with `appliesTo ∈ {'trailer', 'both'}`.
+- [ ] Picking a rego supersedes the legacy "12 Months Trailer Rego" toggle and contributes `sellExclGst` to the total.
+- [ ] Clearing reverts to the legacy toggle.
+
+### Finalize + persistence
+- [ ] Finalize a quote with a boat rego snapshot.
+- [ ] Open the saved quote document: `registration.boatRego === true`, `registration.boatRegoPrice === snapshot.sellExclGst`, `registration.boatRegoSnapshot` contains `{ id, vendorId, vendorName, regoTypeId, name, sellExclGst, appliesTo, capturedAt }`.
+- [ ] Same for trailer: `registration.trailerRegoSnapshot` populated.
+- [ ] Legacy quotes without snapshots: `boatRegoSnapshot: null`, old fields unchanged — proposal renderer tolerates both.
+
+### Duplicate
+- [ ] Duplicate a quote with snapshots. The pickers show the original selection re-hydrated; the total matches.
+
+### Regression
+- [ ] Quotes with no rego modules configured at all still finalize, with legacy `isRegoSelected`/`isTrailerRegoSelected` behaviour and no `boatRegoSnapshot` field in the payload.
+- [ ] Sticker + Tender-To options unaffected.
+- [ ] Non-admin users see the rego workspace in read-only mode (no add/edit/delete buttons, no settings checkboxes).
+
+**Known gotchas:**
+- The picker loads `modules where moduleType == 'rego'` globally (not scoped to the user's org). If the test bench has multiple rego modules across orgs, types from all of them appear. This is consistent with how trailer modules are discovered and is fine for real deployments (one rego module per org).
+- Rego types aren't filtered by user state yet. If multiple states are configured, the picker shows all; narrowing by `vendor.state === userProfile.state` is a follow-up.
+- Snapshot freezes the price at pick-time. If the admin updates the type's `sellExclGst` later, open quotes keep the old number. Same pattern as motor + trailer snapshots.
+- The legacy sticker/tender-to prices still come from `model.registration` — they aren't yet migrated to the rego module (future work).
+- `useCollection` on a changing `vendorIds` array rebuilds the query only when the array's **JSON string** changes (done via `vendorIds.join(',')` in the workspace) — be careful if copying this pattern.
+
+---
+
 ## Upcoming steps
 
 See `tasks/v1.4-trailers-module-design.md` §11 "Implementation order". Each step below will get its own section here when it ships:
 
-6. Rego module + types UI; Highfield rego picker migration
 7. Dealer Fit merge — add `trailerDealerFitCategories`
 8. Pricing Manager tab — waterfall view
 9. Playwright smoke suite — seed → module → quote → finalize
