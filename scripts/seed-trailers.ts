@@ -239,6 +239,16 @@ function parseXlsx(filePath: string): { plan: ImportPlan; trailers: TrailerDoc[]
             continue;
         }
 
+        // Defensive: if the slug of the code is empty (e.g. the cell is just
+        // punctuation), we'd produce a path ending in "/trailers/" which
+        // Firestore rejects. Warn and skip.
+        const trailerIdSlug = slug(codeCell);
+        if (!trailerIdSlug) {
+            warnings.push(`Row ${r + 1}: trailer code "${codeCell}" slugs to empty string — skipped`);
+            skipped++;
+            continue;
+        }
+
         if (!currentSeries) {
             warnings.push(`Row ${r + 1}: trailer code "${codeCell}" with no preceding series header; assigned to "Unsorted" under ${currentBrand.name}`);
             currentSeries = { seriesId: 'unsorted', name: 'Unsorted', order: 0 };
@@ -388,24 +398,99 @@ function parseXlsx(filePath: string): { plan: ImportPlan; trailers: TrailerDoc[]
 }
 
 // ---------------------------------------------------------------------------
-// Firestore write (live mode only)
+// Firestore write (live mode)
+// ---------------------------------------------------------------------------
+//
+// Uses the Firestore REST API + anonymous auth (same pattern as
+// scripts/reseed-correct-vendor.py). This avoids needing a service-account
+// JSON in the sandbox. Rules allow any signed-in user to write to
+// `data-warehouse/**` and `/modules/{moduleId}`, so anonymous sign-in is
+// sufficient for a seed.
 // ---------------------------------------------------------------------------
 
-async function writeLive(trailers: TrailerDoc[], plan: ImportPlan) {
-    const { initializeApp, getApps, cert } = await import('firebase-admin/app');
-    const { getFirestore, FieldValue } = await import('firebase-admin/firestore');
+const PROJECT_ID = 'studio-2290360004-3b963';
+const API_KEY = 'AIzaSyDJ7b5G9zL2uTpDzgwTLvQtVUIyaVBpSBY';
+const FS_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
-    if (getApps().length === 0) {
-        initializeApp({ projectId: 'studio-2290360004-3b963' });
+// Convert JS value to a Firestore REST "Value" representation.
+function toFsVal(v: any): any {
+    if (v === null || v === undefined) return { nullValue: null };
+    if (typeof v === 'boolean') return { booleanValue: v };
+    if (typeof v === 'number') {
+        if (Number.isInteger(v)) return { integerValue: String(v) };
+        return { doubleValue: v };
     }
-    const db = getFirestore();
+    if (typeof v === 'string') return { stringValue: v };
+    if (Array.isArray(v)) {
+        return { arrayValue: { values: v.map(toFsVal) } };
+    }
+    if (v instanceof Date) return { timestampValue: v.toISOString() };
+    if (typeof v === 'object') {
+        const fields: Record<string, any> = {};
+        for (const [k, val] of Object.entries(v)) {
+            if (val !== undefined) fields[k] = toFsVal(val);
+        }
+        return { mapValue: { fields } };
+    }
+    return { stringValue: String(v) };
+}
 
-    console.log(`\nLIVE MODE — writing to Firestore (project: studio-2290360004-3b963)`);
+function toFsDoc(data: Record<string, any>): any {
+    const fields: Record<string, any> = {};
+    for (const [k, v] of Object.entries(data)) {
+        if (v !== undefined) fields[k] = toFsVal(v);
+    }
+    return { fields };
+}
+
+async function getAnonymousToken(): Promise<string> {
+    const resp = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ returnSecureToken: true }),
+        },
+    );
+    if (!resp.ok) {
+        throw new Error(`Auth failed: ${resp.status} ${await resp.text()}`);
+    }
+    const json: any = await resp.json();
+    return json.idToken;
+}
+
+async function fsPatch(token: string, path: string, data: Record<string, any>): Promise<void> {
+    // PATCH with no updateMask creates or fully replaces the doc.
+    // We add updateMask to only touch the keys in `data` (merge: true behaviour).
+    const maskParams = Object.keys(data)
+        .map(k => `updateMask.fieldPaths=${encodeURIComponent(k)}`)
+        .join('&');
+    const url = `${FS_BASE}/${path}?${maskParams}`;
+    const resp = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(toFsDoc(data)),
+    });
+    if (!resp.ok) {
+        throw new Error(`PATCH ${path} failed: ${resp.status} ${await resp.text()}`);
+    }
+}
+
+async function writeLive(trailers: TrailerDoc[], plan: ImportPlan) {
+    console.log(`\nLIVE MODE — writing to Firestore (project: ${PROJECT_ID}) via REST`);
+
+    const token = await getAnonymousToken();
+    console.log(`  Authenticated (anonymous) — idToken obtained`);
+
+    const now = new Date();
 
     // 1. Upsert brand vendors
     for (const brand of plan.brands) {
         console.log(`\nBrand: ${brand.name} (${brand.vendorId})`);
-        await db.doc(`data-warehouse/${brand.vendorId}`).set({
+        await fsPatch(token, `data-warehouse/${brand.vendorId}`, {
             name: brand.name,
             slug: brand.vendorId,
             shortCode: brand.shortCode,
@@ -413,42 +498,47 @@ async function writeLive(trailers: TrailerDoc[], plan: ImportPlan) {
             dataSource: 'Document Upload',
             currency: 'AUD',
             logoUrl: null,
-            createdAt: FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp(),
-        }, { merge: true });
+            updatedAt: now,
+        });
 
         // 2. Upsert series
         for (const series of brand.series) {
-            await db.doc(`data-warehouse/${brand.vendorId}/series/${series.seriesId}`).set({
+            await fsPatch(token, `data-warehouse/${brand.vendorId}/series/${series.seriesId}`, {
                 name: series.name,
                 slug: series.seriesId,
                 order: series.order,
                 isActive: true,
-                updatedAt: FieldValue.serverTimestamp(),
-            }, { merge: true });
+                updatedAt: now,
+            });
         }
         console.log(`  ${brand.seriesCount} series · ${brand.trailerCount} trailers`);
     }
 
-    // 3. Upsert trailers in batches of 500
+    // 3. Upsert trailers — REST has no true batch, so we parallelise in chunks
     console.log(`\nWriting ${trailers.length} trailer docs...`);
-    for (let i = 0; i < trailers.length; i += 500) {
-        const batch = db.batch();
-        const slice = trailers.slice(i, i + 500);
-        for (const t of slice) {
-            const ref = db.doc(`data-warehouse/${t.vendorId}/series/${t.seriesId}/trailers/${t.trailerId}`);
-            const { vendorId, seriesId, trailerId, ...data } = t;
-            batch.set(ref, {
-                ...data,
-                importedAt: FieldValue.serverTimestamp(),
-                importedFromFile: 'Trailer Module.xlsx',
-            }, { merge: true });
+    const CONCURRENCY = 8;
+    let done = 0;
+    for (let i = 0; i < trailers.length; i += CONCURRENCY) {
+        const chunk = trailers.slice(i, i + CONCURRENCY);
+        await Promise.all(
+            chunk.map(async (t) => {
+                const { vendorId, seriesId, trailerId, ...data } = t;
+                await fsPatch(
+                    token,
+                    `data-warehouse/${vendorId}/series/${seriesId}/trailers/${trailerId}`,
+                    { ...data, importedAt: now, importedFromFile: 'Trailer Module.xlsx' },
+                );
+            }),
+        );
+        done += chunk.length;
+        if (done % 40 === 0 || done === trailers.length) {
+            console.log(`  ${done}/${trailers.length} trailers written`);
         }
-        await batch.commit();
-        console.log(`  Batch ${Math.floor(i / 500) + 1}: wrote ${slice.length} trailer docs`);
     }
 
     console.log('\n✓ Live import complete.');
+    console.log(`\nNext step: create a Trailers module document referencing these brand vendor IDs:`);
+    console.log(`  ${plan.brands.map(b => b.vendorId).join('\n  ')}`);
 }
 
 // ---------------------------------------------------------------------------
