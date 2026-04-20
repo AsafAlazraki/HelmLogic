@@ -330,11 +330,54 @@ The script is **idempotent** — brand vendors, series docs and trailer docs are
 
 ---
 
+## Step 7 — Dealer Fit merge (trailer categories)
+
+**What changed.** `DealerFitOptions` now assembles the list of dealer fit categories from **four** sources:
+
+1. **Global** — `dealerFitCategories` collection (org- or admin-scoped).
+2. **Boat module** — `modules/{id}.moduleDealerFitCategories[]` (names).
+3. **Motor module** — `modules/{id}.motorDealerFitCategories[]` on the **boat** module (contextual to the boat being quoted).
+4. **Trailer module** — `modules/{id}.trailerDealerFitCategories[]` on the **boat** module (new in v1.4).
+
+The merge happens in `src/components/dealer-fit-options.tsx` at the `assignedCategories` memo (lines ~80-109). Synthetic IDs are used for the three module-level sources — `module-<name>`, `motor-<name>`, `trailer-<name>` — and `selectionsByCategory` looks them up by category **name** so that selections saved with just `category: "Spare Wheel"` still bind to the correct synthetic ID at render time.
+
+Settings UI lives on the catalog-module settings panel: `/modules/{id}?moduleType=catalog → settings tab`. Three `ModuleDealerFitManager` blocks let admins manage each category type side-by-side on the boat module.
+
+### Test matrix
+
+**Setup**
+- [ ] Sign in as an org admin (Bill Hull).
+- [ ] Open Highfield Boats module → Settings tab.
+- [ ] Confirm three "Dealer Fit Categories" managers are visible: Boat, Motor, Trailer.
+
+**Configure categories**
+- [ ] Add a boat category ("Electronics"), a motor category ("Prop Package"), a trailer category ("Spare Wheel") — one of each.
+- [ ] The three lists save independently; each persists on reload.
+
+**Merge behaviour in a live quote**
+- [ ] Open a Highfield quote and advance to the Dealer Fit step.
+- [ ] All four category sources appear in one list, de-duped by case-insensitive name (global wins).
+- [ ] Adding a selection under a trailer-scoped category saves with `category: "Spare Wheel"` and `categoryId: "trailer-Spare Wheel"` (synthetic ID).
+- [ ] Refreshing the page shows the selection under the same category tile.
+
+**Selection lookup by name**
+- [ ] Rename a module-level category (e.g. "Spare Wheel" → "Spare Wheel Kit") — existing selections **do not rebind** to the renamed category (they still read `category: "Spare Wheel"`). Expected behaviour; document for support.
+
+**Regression**
+- [ ] Quotes built before this step still show the Boat + Motor categories exactly as before.
+- [ ] `moduleOnly` / `isAdmin` behaviour unchanged.
+- [ ] Org-scoped `organisation.dealerFitCategories` filter (non-admin) still applies only to global categories — module-level categories are always visible to that org.
+
+**Known gotchas**
+- Selections are keyed by category **name** (not ID) for the synthetic module/motor/trailer IDs. Changing a category name orphans its selections. Keep names stable post-quote.
+- The three manager blocks live on the **boat module document**, not the motor/trailer module documents — `motorDealerFitCategories` and `trailerDealerFitCategories` are fields on the boat `modules/{id}`. This is intentional: dealer fit is always configured in the context of the boat being quoted.
+
+---
+
 ## Upcoming steps
 
 See `tasks/v1.4-trailers-module-design.md` §11 "Implementation order". Each step below will get its own section here when it ships:
 
-7. Dealer Fit merge — add `trailerDealerFitCategories`
 8. Pricing Manager tab — waterfall view
 9. Playwright smoke suite — seed → module → quote → finalize
 
