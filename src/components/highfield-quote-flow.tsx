@@ -983,7 +983,7 @@ export function HighfieldQuoteFlow({
 
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
-            <div className="sticky top-0 z-[100] px-12 h-20 border-b bg-card/90 backdrop-blur-xl shrink-0 flex items-center shadow-sm">
+            <div className="sticky top-0 z-[100] px-12 h-20 bg-card border-b border-slate-100 shrink-0 flex items-center">
                 <div className="w-full flex items-center justify-between">
                     <div className="flex-1 flex items-center justify-between mr-24">
                         {STEPS.map((step) => (
