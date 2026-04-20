@@ -58,11 +58,63 @@ Each section below tracks one shipped piece of work on v1.4. When a PR merges in
 
 ---
 
+## Step 2 — Trailers & Rego module types + `/modules/add`
+
+**Shipped:** Added two new module types — `trailers` and `rego` — to the `/modules/add` dropdown. When either is selected the form swaps in a filtered vendor picker (only `Trailer Brand` / `Rego Authority` vendors show up) and the "Main Vendor" field is hidden (not applicable). Selected vendor IDs are persisted to `trailerBrandVendorIds[]` / `regoVendorIds[]` on the module doc, plus `trailerDealerFitCategories: []` is seeded for the Trailers case.
+
+The module detail page (`/modules/{id}`) now routes `moduleType === 'trailers'` to a new `TrailersWorkspace` component with three tabs: **Catalog** (placeholder — real grid ships in Step 4), **Pricing Manager** (placeholder — waterfall ships in Step 8), and **Settings** (fully functional — multi-select of Trailer Brand vendors, trailer-specific dealer-fit category manager, and role assignment).
+
+**Files touched:**
+- `src/app/(app)/modules/add/page.tsx` — new `trailers` + `rego` SelectItems; conditional Main Vendor field; filtered Associated Vendors list; onSubmit writes `trailerBrandVendorIds` / `regoVendorIds` / `trailerDealerFitCategories`.
+- `src/app/(app)/modules/[id]/page.tsx` — new routing branch for `moduleType === 'trailers'` that renders the full-screen blue banner header + `TrailersWorkspace`.
+- `src/components/trailers-workspace.tsx` — new component: tabbed shell (catalog / pricing / settings); settings tab wires to `updateDoc(modules/{id}, { trailerBrandVendorIds })`, `ModuleDealerFitManager` (with `fieldName="trailerDealerFitCategories"`), and `ModuleRoleAssignment`.
+
+**Test matrix:**
+
+### Module creation (`/modules/add`)
+- [ ] Module Type dropdown lists 7 options: Catalog, Used Boats, Website Listings, Master Price File, Motor Brand, **Trailers**, **Rego (Registration Authority)**.
+- [ ] Selecting **Trailers**:
+  - [ ] Hides the "Main Vendor" field.
+  - [ ] Renames "Associated Vendors" → "Trailer Brands".
+  - [ ] Shows only vendors with `vendorType: 'Trailer Brand'`.
+  - [ ] Shows "No matching vendors…" message if no Trailer Brand vendors exist.
+  - [ ] Submitting saves a module doc with `moduleType: 'trailers'`, `mainVendorId: null`, `trailerBrandVendorIds: [...]`, `trailerDealerFitCategories: []`.
+- [ ] Selecting **Rego (Registration Authority)**:
+  - [ ] Hides the "Main Vendor" field.
+  - [ ] Renames "Associated Vendors" → "Rego Authorities".
+  - [ ] Shows only vendors with `vendorType: 'Rego Authority'`.
+  - [ ] Submitting saves `moduleType: 'rego'`, `mainVendorId: null`, `regoVendorIds: [...]`.
+- [ ] Switching back to Catalog re-shows Main Vendor and the full vendor list.
+
+### Trailers workspace (`/modules/{id}` for a `trailers` module)
+- [ ] Blue header banner renders with `TRAILERS` caption and the module name.
+- [ ] Three tabs render: **Catalog** (default), **Pricing Manager**, **Settings**.
+- [ ] Switching tabs updates `?trailerTab=` in the URL; a browser refresh lands on the same tab.
+- [ ] **Catalog tab** shows the "ships in Step 4" placeholder with a brand-count subtitle that updates when you change brand selections in Settings.
+- [ ] **Pricing Manager tab** shows the "ships in Step 8" placeholder.
+- [ ] **Settings tab**:
+  - [ ] **Trailer Brands** section lists every `Trailer Brand` vendor in `data-warehouse`. Checking/unchecking toast-confirms and persists to `modules/{id}.trailerBrandVendorIds[]`.
+  - [ ] **Trailer Dealer Fit Categories** section lets you add/rename/delete categories; writes to `modules/{id}.trailerDealerFitCategories[]`.
+  - [ ] **Role Assignment** section lets you set brand captain / module manager (existing `ModuleRoleAssignment` behaviour).
+  - [ ] Non-admin users see the brand checkboxes disabled.
+
+### Regression
+- [ ] Existing catalog modules (Highfield, etc.) still open correctly and show the pricing / quote flow — no routing changes for `moduleType === 'catalog'`.
+- [ ] Existing motor-brand modules (Yamaha) still open with `YamahaMotorWorkspace`.
+- [ ] Existing MPF modules still render `MasterPriceFileWorkspace`.
+- [ ] Existing used-boats / website-listings placeholders still render unchanged (they fall through the generic non-catalog branch).
+
+**Known gotchas:**
+- A Trailers module with **no** brands selected still opens fine — the Catalog tab explicitly tells the user to add brands in Settings.
+- Trailer Brand vendors and Rego Authority vendors are automatically excluded from the MPF browser (Step 1 behaviour) so dealer-fit selection on boat modules won't show them.
+- The Rego workspace isn't wired yet — creating a Rego module will currently fall through to the generic "non-catalog placeholder" until Step 6 ships it.
+
+---
+
 ## Upcoming steps
 
 See `tasks/v1.4-trailers-module-design.md` §11 "Implementation order". Each step below will get its own section here when it ships:
 
-2. Trailers module type + module creation UI
 3. `scripts/seed-trailers.ts` importer (with dry-run)
 4. Trailers Workspace — Catalog tab
 5. Trailer step integration in `HighfieldQuoteFlow`
