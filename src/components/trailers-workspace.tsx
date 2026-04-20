@@ -1,17 +1,20 @@
 'use client';
 
 import { useState, useEffect, useMemo, type ReactNode } from 'react';
-import { collection, doc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { useDoc } from '@/firebase/firestore/use-doc';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Truck, DollarSign, Settings as SettingsIcon, Building2, Search, Ruler, Weight, Info, Package } from 'lucide-react';
+import { Truck, DollarSign, Settings as SettingsIcon, Building2, Search, Ruler, Weight, Info, Package, Edit as EditIcon, RotateCcw, Save } from 'lucide-react';
 import { ModuleDealerFitManager } from '@/components/module-dealer-fit-manager';
 import { ModuleRoleAssignment } from '@/components/module-role-assignment';
 import { formatCurrency } from '@/lib/currency-utils';
@@ -354,6 +357,401 @@ function WaterfallRow({ label, value, bold }: { label: string; value: number; bo
 }
 
 // ---------------------------------------------------------------------------
+// Pricing Manager
+// ---------------------------------------------------------------------------
+//
+// Per-trailer waterfall view + org-level sellPriceExclGst override.
+// Overrides persist to `organisations/{orgId}/trailerOverrides/{trailerId}`
+// (mirroring `modelOverrides` for Highfield boats).
+//
+// Override shape: { sellPriceExclGst: number, note?: string, overrideAt: Timestamp }
+// - Overridden value feeds straight into the catalog card + picker via the
+//   subscription on the override doc in the row renderer.
+// - "Reset" deletes the override doc and the row snaps back to the imported
+//   `pricingDetail.sell` (or top-level `sellPriceExclGst` if no waterfall).
+// ---------------------------------------------------------------------------
+
+// Labels and source columns for audit (mapped to the xlsx column in the
+// comment so a dealer can cross-check the import without leaving the UI).
+const WATERFALL_ROWS: Array<{ key: string; label: string; col: string; bold?: boolean; accent?: boolean }> = [
+    { key: 'dealer',         label: 'Dealer',          col: 'AN' },
+    { key: 'discount',       label: 'Discount',        col: 'AO' },
+    { key: 'settlement',     label: 'Settlement',      col: 'AP' },
+    { key: 'nettPrice',      label: 'Nett Price',      col: 'AQ', bold: true },
+    { key: 'freight',        label: 'Freight',         col: 'AR' },
+    { key: 'landed',         label: 'Landed',          col: 'AS' },
+    { key: 'pdDollars',      label: 'PD ($)',          col: 'BD' },
+    { key: 'sundry',         label: 'Sundry',          col: 'BO' },
+    { key: 'detailing',      label: 'Detailing',       col: 'BP' },
+    { key: 'totalPdCharges', label: 'Total PD',        col: 'BQ' },
+    { key: 'totalNettCtd',   label: 'Total Nett CTD',  col: 'BS', bold: true },
+    { key: 'markupPercent',  label: 'Markup %',        col: 'BT' },
+    { key: 'grossProfit',    label: 'Gross Profit',    col: 'BU' },
+    { key: 'rrp',            label: 'RRP',             col: 'BV' },
+    { key: 'sell',           label: 'Sell (ex GST)',   col: 'BW', bold: true, accent: true },
+];
+
+function TrailerPricingRow({
+    trailer,
+    organisationId,
+    isAdmin,
+    brandName,
+    seriesName,
+}: {
+    trailer: Trailer;
+    organisationId: string;
+    isAdmin: boolean;
+    brandName: string;
+    seriesName: string;
+}) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const overrideRef = useMemoFirebase(
+        () => doc(firestore, `organisations/${organisationId}/trailerOverrides/${trailer.id}`),
+        [firestore, organisationId, trailer.id],
+    );
+    const { data: override } = useDoc<{ sellPriceExclGst?: number; note?: string }>(overrideRef);
+
+    const [expanded, setExpanded] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [draftPrice, setDraftPrice] = useState<string>('');
+    const [draftNote, setDraftNote] = useState<string>('');
+    const [saving, setSaving] = useState(false);
+
+    const pricing: Record<string, any> = trailer.pricingDetail || {};
+    const sourceSell = typeof pricing.sell === 'number' ? pricing.sell : (trailer.sellPriceExclGst || 0);
+    const effectiveSell = override?.sellPriceExclGst != null ? override.sellPriceExclGst : sourceSell;
+    const hasOverride = override?.sellPriceExclGst != null && override.sellPriceExclGst !== sourceSell;
+
+    function openEditor() {
+        setDraftPrice(String(effectiveSell || ''));
+        setDraftNote(override?.note || '');
+        setEditing(true);
+    }
+
+    async function handleSave() {
+        const parsed = parseFloat(draftPrice);
+        if (!Number.isFinite(parsed) || parsed < 0) {
+            toast({ variant: 'destructive', title: 'Enter a valid price' });
+            return;
+        }
+        setSaving(true);
+        try {
+            await setDoc(
+                overrideRef,
+                {
+                    sellPriceExclGst: parsed,
+                    note: draftNote || null,
+                    trailerId: trailer.id,
+                    brandVendorId: trailer.vendorId || null,
+                    seriesId: trailer.seriesId || null,
+                    overrideAt: serverTimestamp(),
+                },
+                { merge: true },
+            );
+            toast({ title: 'Override saved', description: `${trailer.code} → ${formatCurrency(parsed)} ex GST` });
+            setEditing(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function handleReset() {
+        setSaving(true);
+        try {
+            await deleteDoc(overrideRef);
+            toast({ title: 'Override cleared', description: `${trailer.code} reverted to source price` });
+            setEditing(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Reset failed', description: e.message });
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    const rowsWithValues = WATERFALL_ROWS.filter(r => typeof pricing[r.key] === 'number');
+    const hasWaterfall = rowsWithValues.length > 0;
+
+    return (
+        <>
+            <div className="border-2 rounded-2xl bg-white">
+                {/* Summary row — always visible */}
+                <button
+                    type="button"
+                    onClick={() => setExpanded(v => !v)}
+                    className="w-full flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors text-left"
+                >
+                    <div className="h-12 w-12 shrink-0 bg-slate-50 rounded-xl flex items-center justify-center overflow-hidden border">
+                        {trailer.imageUrl ? (
+                            <img src={trailer.imageUrl} alt={trailer.name} className="h-full w-full object-contain" />
+                        ) : (
+                            <Truck className="h-6 w-6 text-slate-300" />
+                        )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                            <h4 className="text-sm font-bold truncate">{trailer.code}</h4>
+                            {trailer.isActive === false && (
+                                <Badge variant="outline" className="text-[9px] border-red-400 text-red-600">Inactive</Badge>
+                            )}
+                            {hasOverride && (
+                                <Badge className="text-[9px] bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-100">
+                                    Org Override
+                                </Badge>
+                            )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 truncate">
+                            {brandName} · {seriesName} · {trailer.name}
+                        </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Sell ex GST</p>
+                        <p className={`text-sm font-black ${hasOverride ? 'text-amber-700' : 'text-primary'}`}>
+                            {formatCurrency(effectiveSell)}
+                        </p>
+                        {hasOverride && (
+                            <p className="text-[9px] text-slate-400 line-through">{formatCurrency(sourceSell)}</p>
+                        )}
+                    </div>
+                    {isAdmin && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="shrink-0 h-8"
+                            onClick={(e) => { e.stopPropagation(); openEditor(); }}
+                        >
+                            <EditIcon className="h-3 w-3 mr-1" /> Override
+                        </Button>
+                    )}
+                </button>
+
+                {/* Waterfall — expanded */}
+                {expanded && (
+                    <div className="border-t p-4 bg-slate-50 rounded-b-2xl">
+                        {!hasWaterfall && (
+                            <p className="text-xs text-slate-500 italic">
+                                No pricing waterfall imported for this trailer. Only the top-level{' '}
+                                <code className="px-1 py-0.5 rounded bg-white">sellPriceExclGst</code> is available.
+                            </p>
+                        )}
+                        {hasWaterfall && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+                                {rowsWithValues.map((r) => {
+                                    const val = pricing[r.key];
+                                    const isPct = r.key === 'markupPercent';
+                                    return (
+                                        <div
+                                            key={r.key}
+                                            className={`flex items-center justify-between py-1.5 text-xs border-b last:border-b-0 ${
+                                                r.accent ? 'font-bold text-primary border-primary/20' : r.bold ? 'font-semibold text-slate-800' : 'text-slate-600'
+                                            }`}
+                                        >
+                                            <span className="flex items-center gap-2">
+                                                {r.label}
+                                                <span className="text-[9px] text-slate-300 font-mono uppercase">{r.col}</span>
+                                            </span>
+                                            <span className="tabular-nums">
+                                                {isPct ? `${Number(val).toFixed(1)}%` : formatCurrency(val)}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* PD parts breakdown, if any */}
+                        {Array.isArray(pricing.pdParts) && pricing.pdParts.length > 0 && (
+                            <div className="mt-4">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">PD Parts</p>
+                                <div className="space-y-1">
+                                    {pricing.pdParts.map((p: any, i: number) => (
+                                        <div key={i} className="flex items-center justify-between text-[11px]">
+                                            <span className="text-slate-600 truncate">{p.name || `Part ${i + 1}`}</span>
+                                            <span className="tabular-nums text-slate-500">{formatCurrency(p.cost || 0)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {hasOverride && override?.note && (
+                            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-amber-700 mb-1">Override note</p>
+                                <p className="text-xs text-amber-900">{override.note}</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Edit dialog */}
+            <Dialog open={editing} onOpenChange={setEditing}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Override sell price · {trailer.code}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 block">
+                                Source sell (ex GST)
+                            </label>
+                            <p className="text-sm font-semibold text-slate-700">{formatCurrency(sourceSell)}</p>
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 block">
+                                Org price (ex GST)
+                            </label>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                value={draftPrice}
+                                onChange={(e) => setDraftPrice(e.target.value)}
+                                placeholder="e.g. 12500"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1 block">
+                                Note (optional)
+                            </label>
+                            <Input
+                                value={draftNote}
+                                onChange={(e) => setDraftNote(e.target.value)}
+                                placeholder="e.g. Q2 promo, trade-in package"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter className="gap-2">
+                        {hasOverride && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleReset}
+                                disabled={saving}
+                            >
+                                <RotateCcw className="h-3 w-3 mr-1" /> Reset to source
+                            </Button>
+                        )}
+                        <Button type="button" variant="ghost" onClick={() => setEditing(false)} disabled={saving}>
+                            Cancel
+                        </Button>
+                        <Button type="button" onClick={handleSave} disabled={saving}>
+                            <Save className="h-3 w-3 mr-1" /> {saving ? 'Saving…' : 'Save override'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
+    );
+}
+
+function PricingSeriesLoader({
+    vendor,
+    series,
+    search,
+    organisationId,
+    isAdmin,
+}: {
+    vendor: Vendor;
+    series: Series;
+    search: string;
+    organisationId: string;
+    isAdmin: boolean;
+}) {
+    const firestore = useFirestore();
+    const trailersQuery = useMemoFirebase(
+        () => collection(firestore, `data-warehouse/${vendor.id}/series/${series.id}/trailers`),
+        [firestore, vendor.id, series.id],
+    );
+    const { data: trailers } = useCollection<Trailer>(trailersQuery);
+
+    const filtered = useMemo(() => {
+        if (!trailers) return [];
+        const q = search.trim().toLowerCase();
+        return trailers
+            .filter(t => !q || (t.code || '').toLowerCase().includes(q) || (t.name || '').toLowerCase().includes(q))
+            .sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+    }, [trailers, search]);
+
+    if (filtered.length === 0) return null;
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center gap-2">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-600">{series.name}</h3>
+                <Badge variant="outline" className="text-[9px]">{filtered.length}</Badge>
+            </div>
+            <div className="space-y-3">
+                {filtered.map((t) => (
+                    <TrailerPricingRow
+                        key={t.id}
+                        trailer={{ ...t, vendorId: vendor.id, seriesId: series.id }}
+                        organisationId={organisationId}
+                        isAdmin={isAdmin}
+                        brandName={vendor.name}
+                        seriesName={series.name}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function PricingBrandSection({
+    vendor,
+    search,
+    organisationId,
+    isAdmin,
+}: {
+    vendor: Vendor;
+    search: string;
+    organisationId: string;
+    isAdmin: boolean;
+}) {
+    const firestore = useFirestore();
+    const seriesQuery = useMemoFirebase(
+        () => collection(firestore, `data-warehouse/${vendor.id}/series`),
+        [firestore, vendor.id],
+    );
+    const { data: seriesList } = useCollection<Series>(seriesQuery);
+
+    const sortedSeries = useMemo(() => {
+        if (!seriesList) return [];
+        return [...seriesList].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+    }, [seriesList]);
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center gap-3 pb-3 border-b-2 border-slate-100">
+                <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary border-2 border-primary/20">
+                    <DollarSign className="h-5 w-5" />
+                </div>
+                <div>
+                    <h2 className="text-lg font-black uppercase tracking-tight">{vendor.name}</h2>
+                    <p className="text-[9px] text-slate-400 uppercase tracking-widest">Pricing waterfall · per trailer</p>
+                </div>
+            </div>
+
+            <div className="space-y-8">
+                {sortedSeries.map((s) => (
+                    <PricingSeriesLoader
+                        key={s.id}
+                        vendor={vendor}
+                        series={s}
+                        search={search}
+                        organisationId={organisationId}
+                        isAdmin={isAdmin}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -500,18 +898,44 @@ export function TrailersWorkspace({ organisationId, isAdmin, moduleId, moduleDat
 
                 {activeTab === 'pricing' && (
                     <ScrollArea className="h-full">
-                        <div className="p-8 max-w-4xl mx-auto">
-                            <Card className="border-2 rounded-2xl">
-                                <CardHeader>
-                                    <CardTitle>Pricing Manager</CardTitle>
-                                    <CardDescription>Dealer → Nett → Landed → Total CTD → MU% → Sell waterfall. Ships in Step 8.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <p className="text-sm text-slate-500">
-                                        The full editable pricing waterfall view is coming. For now the read-only waterfall lives inside each trailer's detail sheet on the Catalog tab.
+                        <div className="p-8 max-w-6xl mx-auto space-y-8">
+                            <div className="flex items-center justify-between gap-4">
+                                <div>
+                                    <h1 className="text-lg font-black uppercase tracking-tight">Pricing Manager</h1>
+                                    <p className="text-xs text-slate-500">
+                                        Full Dealer → Nett → Landed → PD → CTD → MU% → RRP → Sell waterfall from the source import.
+                                        {isAdmin ? ' Click Override to set an org-specific sell price.' : ' Read-only view.'}
                                     </p>
-                                </CardContent>
-                            </Card>
+                                </div>
+                                <div className="relative min-w-[260px]">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                    <Input
+                                        placeholder="Search code or name…"
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        className="pl-9 rounded-xl"
+                                    />
+                                </div>
+                            </div>
+
+                            {selectedVendors.length === 0 && (
+                                <Card className="border-2 rounded-2xl">
+                                    <CardHeader>
+                                        <CardTitle>No trailer brands selected</CardTitle>
+                                        <CardDescription>Add brands in Settings before pricing loads.</CardDescription>
+                                    </CardHeader>
+                                </Card>
+                            )}
+
+                            {visibleVendors.map((v) => (
+                                <PricingBrandSection
+                                    key={v.id}
+                                    vendor={v}
+                                    search={search}
+                                    organisationId={organisationId}
+                                    isAdmin={isAdmin}
+                                />
+                            ))}
                         </div>
                     </ScrollArea>
                 )}

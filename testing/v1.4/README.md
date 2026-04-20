@@ -374,11 +374,73 @@ Settings UI lives on the catalog-module settings panel: `/modules/{id}?moduleTyp
 
 ---
 
+## Step 8 — Pricing Manager tab (waterfall + org override)
+
+**What changed.** The Trailers workspace **Pricing Manager** tab is now live (was a placeholder).
+
+- **Read-only waterfall** (from `pricingDetail`) rendered per trailer: Dealer (AN) → Discount (AO) → Settlement (AP) → **Nett Price (AQ)** → Freight (AR) → Landed (AS) → PD $ (BD) → Sundry (BO) → Detailing (BP) → Total PD (BQ) → **Total Nett CTD (BS)** → Markup % (BT) → Gross Profit (BU) → RRP (BV) → **Sell ex GST (BW)**.
+- Each row shows the source xlsx column code as a tiny monotype badge so dealers can cross-check the import without leaving the UI.
+- PD Parts breakdown (from `pricingDetail.pdParts[]`) renders when present.
+- Every row is collapsible — summary row (image, code, name, effective sell) → click expands the full waterfall.
+- **Org-level sell override** — admins click **Override** on any row to set a per-org `sellPriceExclGst`. Persists to `organisations/{orgId}/trailerOverrides/{trailerId}` with shape `{ sellPriceExclGst, note, trailerId, brandVendorId, seriesId, overrideAt: serverTimestamp }`. Mirrors the `modelOverrides` pattern for Highfield boats.
+- "Org Override" badge + strikethrough source price on overridden rows. **Reset to source** deletes the override doc and the row snaps back.
+- **Catalog picker merge** — `TrailerCatalogPicker` now subscribes to the full `trailerOverrides` collection at load time and merges the override price into every trailer card it displays. Selecting a trailer captures the **overridden** `sellPriceExclGst` into the snapshot, so quotes inherit the org's local pricing automatically.
+
+### Files touched
+- `src/components/trailers-workspace.tsx` — new `TrailerPricingRow`, `PricingSeriesLoader`, `PricingBrandSection`, `WATERFALL_ROWS` table; `pricing` tab rendered with brand sections + search.
+- `src/components/trailer-catalog-picker.tsx` — subscribes to `organisations/{orgId}/trailerOverrides`, merges via `overridesByTrailerId` map, passes down into `BrandTrailersLoader` → `SeriesTrailersLoader`. `trailerToSnapshot(t, brand, series, overridePrice?)` picks the override when present.
+
+### Test matrix
+
+**Setup**
+- [ ] Sign in as an org admin. Open Trailers module → **Pricing Manager** tab.
+- [ ] Confirm each brand section renders with its series sub-headers and trailer rows.
+- [ ] Search bar filters by code or name across all brands.
+
+**Waterfall rendering**
+- [ ] Click a trailer row — the waterfall expands in two columns (md+) with every `pricingDetail.*` numeric field labelled.
+- [ ] Column codes (AN/AO/AP/…) appear as tiny monotype badges next to each row.
+- [ ] Trailers with no `pricingDetail` show "No pricing waterfall imported" and still allow override on the top-level `sellPriceExclGst`.
+- [ ] Markup % renders as `12.5%`, all other rows format as currency.
+- [ ] `pdParts[]` — if present, renders under the waterfall with part name + cost per row.
+
+**Org override**
+- [ ] As admin, click **Override** on any row. Dialog shows source sell price.
+- [ ] Enter a new number + optional note. Save → row shows "Org Override" amber badge, amber-coloured price, source strikethrough.
+- [ ] Reload — override persists.
+- [ ] Non-admin users do **not** see the Override button.
+- [ ] As admin again, click Override → **Reset to source** → badge and amber styling disappear, row returns to the imported price.
+- [ ] Override dialog validates the input (rejects empty / negative / non-numeric).
+
+**Quote flow integration**
+- [ ] Create an override on e.g. `RE1213` at $14,500 (source is different).
+- [ ] Start a Highfield quote → Trailer step → open the Catalog Picker.
+- [ ] `RE1213` card shows the $14,500 price in amber with the "Org Price" label.
+- [ ] Pick the trailer. The pricing workspace shows $14,500 ex GST.
+- [ ] Finalize. The saved quote document's `trailer.sellPriceExclGst` is $14,500, not the source price. The `trailer.catalog` snapshot `id` points to the correct brand/series/trailer triple.
+
+**Price drift**
+- [ ] Finalize a quote with override active. Later, change the override to $15,500. The existing finalized quote **retains** $14,500 (snapshot captured at quote time). New quotes pick up $15,500.
+- [ ] Clear the override. New quotes pick up the source sell price; finalized quotes are unaffected.
+
+**Regression**
+- [ ] Organisations with no overrides ever set — all trailer cards render source prices, no amber styling anywhere.
+- [ ] Quote payloads and proposals unchanged in shape; only `trailer.sellPriceExclGst` updates (snapshot-on-select behaviour).
+- [ ] Catalog tab and Settings tab unaffected by the new Pricing Manager content.
+- [ ] Dealer Fit Categories still save on the trailers module Settings tab (Step 7 behaviour intact).
+
+**Known gotchas**
+- The override is keyed by **trailer ID only** — it's brand/series-agnostic. If the same trailer ID lived under two different series it would apply to both; this doesn't happen in practice because the importer guarantees trailer IDs are unique-per-vendor.
+- Overrides only touch the `sellPriceExclGst`. Editing the full waterfall (markup, margin, freight, etc.) isn't supported yet — those fields remain source-of-truth from the importer.
+- The override-merge in the picker uses the `orgId` prop. If the picker is ever rendered without one, overrides are ignored (defensive fallback to source pricing). The Highfield quote flow always passes the current org.
+- Subscribing to `/organisations/{orgId}/trailerOverrides` is an unbounded collection read. Scales fine to hundreds of overrides; if an org has thousands of trailers with bespoke prices, pagination is a future concern.
+
+---
+
 ## Upcoming steps
 
 See `tasks/v1.4-trailers-module-design.md` §11 "Implementation order". Each step below will get its own section here when it ships:
 
-8. Pricing Manager tab — waterfall view
 9. Playwright smoke suite — seed → module → quote → finalize
 
 ---
