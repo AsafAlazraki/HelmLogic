@@ -194,12 +194,80 @@ The script is **idempotent** — brand vendors, series docs and trailer docs are
 
 ---
 
+## Step 5 — Trailer step integration in `HighfieldQuoteFlow`
+
+**Shipped:** The Highfield quote flow's **Step 4 (Trailer)** now has a "Pick from Catalog" button beside the Trailer Base header. It opens a searchable, brand-grouped dialog listing every trailer from every brand assigned to any trailers module visible to the org. Selecting a trailer **snapshots** its full detail (id, code, name, image, sellPriceExclGst, priceLevels, pricingDetail, specifications, optional features) into state as `catalogTrailerSnapshot`; from that point the entire trailer section (base card, hardware options, summary, specs dialog, finalize payload) shadows `model.trailerConfig` with the snapshot via a single `effectiveTrailerConfig` memo. The snapshot is persisted in the quote document under `trailer.catalog` and re-hydrated on quote duplication.
+
+**Files touched:**
+- `src/components/trailer-catalog-picker.tsx` — new component (Dialog + search + brand/series lazy loaders + `TrailerSnapshot` type export)
+- `src/components/highfield-quote-flow.tsx` — added `catalogTrailerSnapshot` state, `effectiveTrailerConfig` memo, picker in the Trailer Base header, replaced 8+ references to `model.trailerConfig` with `effectiveTrailerConfig`, persisted snapshot in finalize payload
+- `src/components/finalize-quote-dialog.tsx` — extended `quoteData` type with optional `catalogTrailerSnapshot`; trailer payload now reads from `trailerSource = catalogTrailerSnapshot || model?.trailerConfig`, writes `trailer.catalog` provenance, prices via `resolvePrice(trailerSource)` so price levels flow through
+
+**Test matrix:**
+
+### Setup (once)
+- [ ] Step 3 live import has been run at least once so `data-warehouse/{brandId}/series/{seriesId}/trailers` is populated.
+- [ ] A trailers module exists at `/modules/add` with at least one brand ticked (step 2). Note its ID.
+- [ ] Highfield Boats module (`M1Yf3R9igpJDxJnOVr6f`) is still visible to the org (regression sanity).
+
+### Picker — open + search
+- [ ] Start a quote on a Highfield model that already has a `trailerConfig` defined. Advance to step 4 (Trailer).
+- [ ] **New button** "Pick from Catalog" renders inside the "Trailer Base" header strip.
+- [ ] Clicking it opens a Dialog titled "Trailer Catalog" with a search input and brand-grouped list.
+- [ ] The brands listed match the trailer module's `trailerBrandVendorIds`.
+- [ ] Each series group shows a count badge equal to the number of trailers inside that series.
+- [ ] Typing "RE12" in the search filters trailers to codes starting with RE12; empty series are hidden.
+- [ ] Clicking a trailer row closes the dialog and selects that trailer.
+
+### Snapshot behaviour
+- [ ] After picking, the "From [Brand] — [Series]" provenance chip appears below the header.
+- [ ] The Trailer Base card now shows the picked trailer's **image, code+name, and sellPriceExclGst** (shadowing the model's default).
+- [ ] If the picked trailer has `optionalFeatures`, a **Trailer Hardware** section renders those as selectable options with the snapshot's pricing.
+- [ ] The total price at the bottom of the flow includes the picked trailer's `sellPriceExclGst` (try a trailer with known price — e.g. RE1213 at $2,520).
+- [ ] Toggling selected hardware options updates the total accordingly.
+
+### Price levels
+- [ ] If the picked trailer has `priceLevels` and the price level selector is non-default (e.g. Trade, Sub-dealer), the trailer price changes accordingly in the card **and** the total.
+- [ ] If the picked trailer has no `priceLevels`, the price falls back to `sellPriceExclGst` at any level (no crashes).
+
+### Clear
+- [ ] Clicking "Clear" on the provenance chip reverts the Trailer Base card back to the model's default `trailerConfig` (or empty state if the model has none).
+- [ ] Selected hardware options are cleared when the snapshot is cleared.
+- [ ] Total recalculates correctly.
+
+### Model with no default trailer
+- [ ] On a Highfield model with `trailerConfig === undefined`, the empty-state message renders initially.
+- [ ] After picking from the catalog, the Trailer Base card is populated and selectable.
+- [ ] Clearing returns to the empty state.
+
+### Finalize + proposal
+- [ ] Finalize the quote with a catalog-picked trailer.
+- [ ] Open the saved quote from Firestore (`users/{uid}/quotes/{quoteId}` or the org proposals list).
+- [ ] `trailer.name`, `trailer.sellPriceExclGst`, `trailer.imageUrl` match the snapshot (not the model's default).
+- [ ] `trailer.catalog` contains `brandVendorId`, `brandName`, `seriesId`, `seriesName`, `trailerId`, `code`, `capturedAt`.
+- [ ] Proposal PDF (if `/modules/{id}/proposals/{quoteId}` renders) shows the correct trailer details.
+
+### Duplicate
+- [ ] From a finalized quote, duplicate/copy it (if the app has a duplicate flow) and verify the `catalogTrailerSnapshot` is restored into the Step 4 view, with the provenance chip showing the original brand/series.
+
+### Regression
+- [ ] Models with a `trailerConfig` but no catalog pick still show their default trailer, price correctly, and persist exactly as before (the catalog.catalog field should be `null`).
+- [ ] Custom trailer additions (the "Additional Factory Trailer Notes/Options" block) still work and still contribute to the total.
+- [ ] Motor, dealer fit, registration, promotions — all unchanged.
+
+**Known gotchas:**
+- The picker queries `modules where moduleType == 'trailers'` globally, then fetches vendor docs using `where('__name__', 'in', ...)` capped at 30 per Firestore rules. For orgs with >30 trailer brands across modules, only the first 30 will appear — not currently an issue (real data has 7 brands).
+- Each brand section in the picker creates one listener per series, and each series loads its own trailers. For the real dataset (7 brands × 46 series ≈ 46 listeners) this is fine but keep an eye on heavier deployments. A future `collectionGroup('trailers')` query would collapse this into one listener.
+- **Snapshot freezes pricing at select time.** If the trailer's pricing is later updated in the catalog (step 3 re-import), quotes created *before* the change keep the original numbers. This is intentional — same pattern as the motor `resolvePrice` snapshot. New quotes pick up new prices on next open.
+- The snapshot captures `priceLevels` straight from Firestore. If the admin hasn't populated them yet (step 8), the fallback to `sellPriceExclGst` is used regardless of the selector.
+- Legacy quotes (pre-v1.4) have no `trailer.catalog` field — proposal renderers must handle `trailer.catalog === null` gracefully. Already enforced via `?` chaining.
+
+---
+
 ## Upcoming steps
 
 See `tasks/v1.4-trailers-module-design.md` §11 "Implementation order". Each step below will get its own section here when it ships:
 
-4. Trailers Workspace — Catalog tab
-5. Trailer step integration in `HighfieldQuoteFlow`
 6. Rego module + types UI; Highfield rego picker migration
 7. Dealer Fit merge — add `trailerDealerFitCategories`
 8. Pricing Manager tab — waterfall view

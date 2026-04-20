@@ -65,6 +65,7 @@ interface FinalizeQuoteDialogProps {
         isTenderToSelected: boolean;
         isTrailerRegoSelected: boolean;
         selectedTrailerId: string | null;
+        catalogTrailerSnapshot?: any;
         priceLevelUsed?: string;
         appliedPromotions?: any[];
         promotionDiscount?: number;
@@ -138,7 +139,11 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     };
 
     const buildQuotePayload = () => {
-        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, priceLevelUsed, appliedPromotions, promotionDiscount, dealerServices, adminDetails } = quoteData;
+        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, catalogTrailerSnapshot, priceLevelUsed, appliedPromotions, promotionDiscount, dealerServices, adminDetails } = quoteData;
+
+        // Trailer data source: catalog snapshot wins over model's own trailerConfig.
+        // The snapshot is frozen at selection time so quote totals never drift.
+        const trailerSource = catalogTrailerSnapshot || model?.trailerConfig || null;
 
         /** Resolve price for an item based on the selected price level */
         const resolvePrice = (item: any): number => {
@@ -267,11 +272,20 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 }; })() : null,
 
             // Trailer
-            trailer: (selectedTrailerId && model?.trailerConfig) ? {
+            trailer: (selectedTrailerId && trailerSource) ? {
                 id: selectedTrailerId,
-                name: model.trailerConfig.name || 'Trailer Package',
-                sellPriceExclGst: model.trailerConfig.sellPriceExclGst || 0,
-                imageUrl: model.trailerConfig.imageUrl || null,
+                name: trailerSource.name || 'Trailer Package',
+                sellPriceExclGst: resolvePrice(trailerSource),
+                imageUrl: trailerSource.imageUrl || null,
+                catalog: catalogTrailerSnapshot ? {
+                    brandVendorId: catalogTrailerSnapshot.brandVendorId,
+                    brandName: catalogTrailerSnapshot.brandName,
+                    seriesId: catalogTrailerSnapshot.seriesId,
+                    seriesName: catalogTrailerSnapshot.seriesName,
+                    trailerId: catalogTrailerSnapshot.trailerId,
+                    code: catalogTrailerSnapshot.code,
+                    capturedAt: catalogTrailerSnapshot.capturedAt || null,
+                } : null,
                 options: (selectedTrailerOptionsData || []).map((o: any) => ({
                     id: o.id || null,
                     name: o.name || 'Trailer Option',

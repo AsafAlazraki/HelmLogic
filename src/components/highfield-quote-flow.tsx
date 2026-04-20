@@ -85,6 +85,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { TrailerCatalogPicker, type TrailerSnapshot } from '@/components/trailer-catalog-picker';
 
 /** Normalize spacing, strip internal model-code suffixes, and extract first color from parenthetical */
 function formatOptionDisplayLabel(name: string): { base: string; color: string | null } {
@@ -146,6 +147,7 @@ interface DuplicateInitialState {
     selectedMotorAccessoryIds: string[];
     selectedTrailerId: string | null;
     selectedTrailerOptionIds: string[];
+    catalogTrailerSnapshot?: TrailerSnapshot | null;
     customTrailerOptions?: CustomOption[];
     selectedDealerFitIds: string[];
     isRegoSelected: boolean;
@@ -213,6 +215,7 @@ export function HighfieldQuoteFlow({
     const [selectedMotorAccessoryIds, setSelectedMotorAccessoryIds] = useState<string[]>(initialState?.selectedMotorAccessoryIds ?? []);
     const [selectedTrailerId, setSelectedTrailerId] = useState<string | null>(initialState?.selectedTrailerId ?? null);
     const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>(initialState?.selectedTrailerOptionIds ?? []);
+    const [catalogTrailerSnapshot, setCatalogTrailerSnapshot] = useState<TrailerSnapshot | null>(initialState?.catalogTrailerSnapshot ?? null);
     const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>(initialState?.selectedDealerFitIds ?? []);
 
     // Custom Option Form State (Boat)
@@ -289,6 +292,32 @@ export function HighfieldQuoteFlow({
     const motorDetailRef = useRef<HTMLDivElement>(null);
 
     // 3. Derived Memos (CRITICAL: Order of initialization to prevent ReferenceErrors)
+
+    // When the user picks a trailer from the catalog, shadow model.trailerConfig with
+    // the snapshot so pricing/options/image all flow from the chosen trailer while
+    // leaving the original model doc untouched. Snapshot is frozen on select.
+    const effectiveTrailerConfig = useMemo<any>(() => {
+        if (catalogTrailerSnapshot) {
+            return {
+                id: catalogTrailerSnapshot.id,
+                name: `${catalogTrailerSnapshot.code} — ${catalogTrailerSnapshot.name}`,
+                imageUrl: catalogTrailerSnapshot.imageUrl,
+                sellPriceExclGst: catalogTrailerSnapshot.sellPriceExclGst,
+                priceLevels: catalogTrailerSnapshot.priceLevels,
+                options: catalogTrailerSnapshot.options,
+                __fromCatalog: true,
+                __catalogMeta: {
+                    brandVendorId: catalogTrailerSnapshot.brandVendorId,
+                    brandName: catalogTrailerSnapshot.brandName,
+                    seriesId: catalogTrailerSnapshot.seriesId,
+                    seriesName: catalogTrailerSnapshot.seriesName,
+                    code: catalogTrailerSnapshot.code,
+                },
+            };
+        }
+        return model.trailerConfig;
+    }, [catalogTrailerSnapshot, model.trailerConfig]);
+
     const availableMaterials = useMemo(() => {
         if (!variants) return [];
         return Array.from(new Set(variants.map(v => v.material).filter(Boolean)));
@@ -341,7 +370,7 @@ export function HighfieldQuoteFlow({
             const mUrl = resolveImageUrl(selectedMotor); 
             if (mUrl) slides.push({ type: 'motor', url: mUrl }); 
         }
-        if (selectedTrailerId && model.trailerConfig?.imageUrl) slides.push({ type: 'trailer', url: model.trailerConfig.imageUrl });
+        if (selectedTrailerId && effectiveTrailerConfig?.imageUrl) slides.push({ type: 'trailer', url: effectiveTrailerConfig.imageUrl });
         if (model.galleryImageUrls) model.galleryImageUrls.forEach((url: string) => { if (url !== model.coverImageUrl) slides.push({ type: 'gallery', url }); });
         return slides;
     }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId]);
@@ -405,8 +434,8 @@ export function HighfieldQuoteFlow({
     }, [selectedMotor]);
 
     const selectedTrailerOptionsData = useMemo(() => {
-        return model.trailerConfig?.options?.filter((o: any) => selectedTrailerOptionIds.includes(o.id)) || [];
-    }, [selectedTrailerOptionIds, model.trailerConfig]);
+        return effectiveTrailerConfig?.options?.filter((o: any) => selectedTrailerOptionIds.includes(o.id)) || [];
+    }, [selectedTrailerOptionIds, effectiveTrailerConfig]);
 
     const selectedDealerFitData = useMemo(() => {
         return dealerFitSelections?.filter(s => selectedDealerFitIds.includes(s.id)) || [];
@@ -489,8 +518,8 @@ export function HighfieldQuoteFlow({
             total += getPriceForLevel(selectedMotor, priceLevel);
             selectedMotorAccessories.forEach((a: any) => { total += getPriceForLevel(a, priceLevel); });
         }
-        if (selectedTrailerId && model.trailerConfig) {
-            total += getPriceForLevel(model.trailerConfig, priceLevel);
+        if (selectedTrailerId && effectiveTrailerConfig) {
+            total += getPriceForLevel(effectiveTrailerConfig, priceLevel);
             selectedTrailerOptionsData.forEach((o: any) => { total += getPriceForLevel(o, priceLevel); });
             customTrailerOptions.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
             if (isTrailerRegoSelected) total += (model.registration?.trailerPrice12Months || 0);
@@ -499,7 +528,7 @@ export function HighfieldQuoteFlow({
             s.items?.forEach((i: any) => { total += getPriceForLevel(i.data, priceLevel); });
         });
         return total;
-    }, [activeVariant, selectedOptionsData, customOptions, customTrailerOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration, priceLevel]);
+    }, [activeVariant, selectedOptionsData, customOptions, customTrailerOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, effectiveTrailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration, priceLevel]);
 
     // Promotions Derived Memos
     const appliedPromotions = useMemo(() => {
@@ -711,7 +740,7 @@ export function HighfieldQuoteFlow({
             if (viewport) viewport.scrollTop = 0;
         }, 50);
     };
-    const hasTrailer = !!model.trailerConfig;
+    const hasTrailer = !!effectiveTrailerConfig;
     const nextStep = () => {
         if (currentStep < STEPS.length) {
             // Skip trailer step (4) if this model has no trailer configured
@@ -1567,17 +1596,46 @@ export function HighfieldQuoteFlow({
                             {currentStep === 4 && (
                                 <div className="space-y-12 animate-in fade-in duration-1000 mt-4">
                                     <div className="space-y-6">
-                                        <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
-                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Base</h3>
+                                        <div className="flex items-center justify-between gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Base</h3>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <TrailerCatalogPicker
+                                                    orgId={orgId}
+                                                    value={catalogTrailerSnapshot}
+                                                    onChange={(snap) => {
+                                                        setCatalogTrailerSnapshot(snap);
+                                                        if (snap) {
+                                                            setSelectedTrailerId('primary-trailer');
+                                                            setSelectedTrailerOptionIds(
+                                                                (snap.options || [])
+                                                                    .filter(o => o.isStandard)
+                                                                    .map(o => o.id),
+                                                            );
+                                                        } else {
+                                                            setSelectedTrailerOptionIds([]);
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
                                         </div>
-                                        {model.trailerConfig ? (
+                                        {catalogTrailerSnapshot && (
+                                            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/20">
+                                                <Truck className="h-3.5 w-3.5 text-primary" />
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-primary">
+                                                    From {catalogTrailerSnapshot.brandName} — {catalogTrailerSnapshot.seriesName}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {effectiveTrailerConfig ? (
                                             <div className="grid grid-cols-2 gap-4">
-                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); if (!isSelected) setSelectedTrailerOptionIds((model.trailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                    <div className={cn("relative aspect-video w-full bg-white shrink-0", !model.trailerConfig.imageUrl && "hidden")}>{model.trailerConfig.imageUrl && <Image src={model.trailerConfig.imageUrl} alt="Trailer" fill className="object-contain mix-blend-multiply p-4" />}</div>
+                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); if (!isSelected) setSelectedTrailerOptionIds((effectiveTrailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                    <div className={cn("relative aspect-video w-full bg-white shrink-0", !effectiveTrailerConfig.imageUrl && "hidden")}>{effectiveTrailerConfig.imageUrl && <Image src={effectiveTrailerConfig.imageUrl} alt="Trailer" fill className="object-contain mix-blend-multiply p-4" />}</div>
                                                     <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
-                                                        <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", selectedTrailerId === 'primary-trailer' ? "text-primary" : "text-slate-900")}>{model.trailerConfig.name}</p>
-                                                        <p className={cn("text-[9px] font-black uppercase tracking-widest", selectedTrailerId === 'primary-trailer' ? "text-primary/70" : "text-slate-400")}>${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                        <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", selectedTrailerId === 'primary-trailer' ? "text-primary" : "text-slate-900")}>{effectiveTrailerConfig.name}</p>
+                                                        <p className={cn("text-[9px] font-black uppercase tracking-widest", selectedTrailerId === 'primary-trailer' ? "text-primary/70" : "text-slate-400")}>${(effectiveTrailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
                                                     </div>
                                                 </button>
                                             </div>
@@ -1585,14 +1643,14 @@ export function HighfieldQuoteFlow({
                                     </div>
                                     {selectedTrailerId && (
                                         <>
-                                            {model.trailerConfig?.options?.length > 0 && (
+                                            {effectiveTrailerConfig?.options?.length > 0 && (
                                                 <div ref={el => { categoryRefs.current['Trailer Hardware'] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
                                                     <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
                                                         <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Hardware</h3>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-4">
-                                                        {model.trailerConfig.options.map((opt: any) => (
+                                                        {effectiveTrailerConfig.options.map((opt: any) => (
                                                             <button key={opt.id} onClick={() => toggleTrailerOption(opt.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-md border-transparent h-full p-1", selectedTrailerOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-sm ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                                 <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
                                                                     {opt.isStandard && <Badge className="mb-1.5 bg-emerald-500 text-white border-none font-black text-[6px] uppercase h-3.5 px-1">STANDARD</Badge>}
@@ -1898,7 +1956,7 @@ export function HighfieldQuoteFlow({
                                             </Card>
                                         )}
 
-                                        {selectedTrailerId && model.trailerConfig && (
+                                        {selectedTrailerId && effectiveTrailerConfig && (
                                             <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
                                                 <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Towing Solution</CardTitle></div><div className="flex items-center gap-1.5"><input ref={trailerPdfRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setSectionPdfs(prev => ({ ...prev, trailer: f })); }} />{sectionPdfs.trailer ? (<span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><Paperclip className="h-2.5 w-2.5" />{sectionPdfs.trailer.name.length > 18 ? sectionPdfs.trailer.name.slice(0, 15) + '...' : sectionPdfs.trailer.name}<button type="button" className="ml-0.5 hover:text-destructive" onClick={() => { setSectionPdfs(prev => ({ ...prev, trailer: null })); if (trailerPdfRef.current) trailerPdfRef.current.value = ''; }}><X className="h-2.5 w-2.5" /></button></span>) : (<button type="button" onClick={() => trailerPdfRef.current?.click()} className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors"><Paperclip className="h-2.5 w-2.5" />Attach PDF</button>)}</div></div></CardHeader>
                                                 <CardContent className="p-0">
@@ -1908,9 +1966,9 @@ export function HighfieldQuoteFlow({
                                                                 <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
                                                                 <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => setSelectedTrailerId(null)}><X className="h-3 w-3" /></Button>
                                                             </div>
-                                                            <div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{model.trailerConfig.name}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">Precision Chassis</p></div>
+                                                            <div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{effectiveTrailerConfig.name}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">Precision Chassis</p></div>
                                                         </div>
-                                                        <p className="font-black text-primary italic text-sm">${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                        <p className="font-black text-primary italic text-sm">${(effectiveTrailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
                                                     </div>
                                                     {isTrailerRegoSelected && (
                                                         <div className="p-4 border-b flex items-center justify-between bg-slate-50/50">
@@ -2202,20 +2260,20 @@ export function HighfieldQuoteFlow({
                     <DialogHeader className="p-6 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Trailer Specs</DialogTitle></DialogHeader>
                     <ScrollArea className="max-h-[60vh]">
                         <div className="p-6 space-y-4">
-                            {model.trailerConfig?.imageUrl && (
+                            {effectiveTrailerConfig?.imageUrl && (
                                 <div className="relative aspect-video w-full bg-white rounded-2xl overflow-hidden border-2">
-                                    <img src={model.trailerConfig.imageUrl} alt={model.trailerConfig?.name || 'Trailer'} className="w-full h-full object-contain p-4 mix-blend-multiply" />
+                                    <img src={effectiveTrailerConfig.imageUrl} alt={effectiveTrailerConfig?.name || 'Trailer'} className="w-full h-full object-contain p-4 mix-blend-multiply" />
                                 </div>
                             )}
                             <Table><TableBody>
-                                {model.trailerConfig?.name && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Name</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{model.trailerConfig.name}</TableCell></TableRow>}
-                                {model.trailerConfig?.sellPriceExclGst != null && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Price (Excl. GST)</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">${model.trailerConfig.sellPriceExclGst.toLocaleString()}</TableCell></TableRow>}
+                                {effectiveTrailerConfig?.name && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Name</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{effectiveTrailerConfig.name}</TableCell></TableRow>}
+                                {effectiveTrailerConfig?.sellPriceExclGst != null && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Price (Excl. GST)</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">${effectiveTrailerConfig.sellPriceExclGst.toLocaleString()}</TableCell></TableRow>}
                             </TableBody></Table>
-                            {model.trailerConfig?.options?.length > 0 && (
+                            {effectiveTrailerConfig?.options?.length > 0 && (
                                 <div className="space-y-2">
                                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 px-2">Available Options</p>
                                     <Table><TableBody>
-                                        {model.trailerConfig.options.map((opt: any) => (
+                                        {effectiveTrailerConfig.options.map((opt: any) => (
                                             <TableRow key={opt.id} className="hover:bg-primary/5 border-b">
                                                 <TableCell className="font-black uppercase text-[10px] text-slate-900 pl-6 py-3">{opt.name}</TableCell>
                                                 <TableCell className="font-black uppercase text-[10px] text-primary pr-6 py-3 text-right">${(opt.sellPriceExclGst || 0).toLocaleString()}</TableCell>
@@ -2252,6 +2310,7 @@ export function HighfieldQuoteFlow({
                     isTenderToSelected,
                     isTrailerRegoSelected,
                     selectedTrailerId,
+                    catalogTrailerSnapshot,
                     priceLevelUsed: priceLevel,
                     appliedPromotions,
                     promotionDiscount,
