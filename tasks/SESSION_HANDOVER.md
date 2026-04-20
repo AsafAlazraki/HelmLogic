@@ -1,6 +1,6 @@
 # HelmLogic — Session Handover Document
 > Give this file to a new Claude session along with the CLAUDE.md file.
-> Updated: 2026-04-10 (v1.2.0 shipped to production)
+> Updated: 2026-04-20 (v1.4 trailers module in progress — branch `Dev`)
 
 ---
 
@@ -18,8 +18,9 @@ HelmLogic is a marine dealer management SaaS platform. It lets boat brands (vend
 - **Backend**: Firebase — Firestore (DB), Auth, Storage
 - **Deployment**: Firebase App Hosting (`studio--studio-2290360004-3b963.us-central1.hosted.app`)
 - **Firebase Project**: `studio-2290360004-3b963`
-- **Dev Branch**: `claude/app-overview-wKiZ1` — always push here for deployment
-- **Main Branch**: `main` — production, merge from dev when ready
+- **Dev Branch**: `Dev` — all active development (v1.4 trailers work) lands here
+- **Main Branch**: `main` — production, merge from `Dev` when ready
+- **Legacy branch**: `claude/app-overview-wKiZ1` — old v1.2/1.3 development branch (pre-Dev)
 - **Map Library**: Leaflet + OpenStreetMap (no API key needed, replaced Google Maps)
 
 ---
@@ -139,8 +140,30 @@ Finalize saves ALL prices as snapshot (prices locked at save time)
 - `master-price-file` — editable data tables with Excel import/export
 - `used-boats` — placeholder module with cover image, coming-soon cards
 - `website-listings` — placeholder module with cover image, coming-soon cards
+- `trailers` (**v1.4 — in progress**) — multi-brand trailer catalog, see `tasks/v1.4-trailers-module-design.md`
+- `rego` (**v1.4 — in progress**) — shared registration-type catalog for boats + trailers
 
 Non-catalog modules have `mainVendorId: null` — code must check before creating Firestore doc refs.
+
+---
+
+## Vendor Types
+
+Values stored as strings on `data-warehouse/{vendorId}.vendorType`. Full list maintained in four places (keep in sync):
+
+1. `vendorTypes` array in `src/app/(app)/data-warehouse/page.tsx`
+2. `getVendorTypeIcon` switch in the same file
+3. `SelectItem` list in `src/app/(app)/data-warehouse/add/page.tsx`
+4. `enum` in `src/docs/backend.json`
+
+Current values:
+- `Boat Brand` (e.g., Highfield)
+- `Motor Brand` (e.g., Yamaha)
+- `Trailer Brand` (**v1.4**) — REDCO, TINKA, STACER, DUNBIER, MACKAY, GFAB, NSM CUSTOM
+- `Rego Authority` (**v1.4**) — state-by-state registration price catalog (QLD, NSW, VIC…)
+- `Electronics Brand`, `Electronics Supplier`, `Parts Wholesaler`, `Master Price File`, `Other`
+
+The MPF browser (`src/components/master-data-browser-dialog.tsx`) excludes vendors with `vendorType` in `{Motor Brand, Trailer Brand, Rego Authority}` because those vendors are catalog/picker-only — they don't sell parts.
 
 ---
 

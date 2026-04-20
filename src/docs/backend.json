@@ -213,9 +213,11 @@
             "Boat Brand",
             "Motor Brand",
             "Trailer Brand",
+            "Rego Authority",
             "Electronics Brand",
             "Electronics Supplier",
             "Parts Wholesaler",
+            "Master Price File",
             "Other"
           ]
         },
