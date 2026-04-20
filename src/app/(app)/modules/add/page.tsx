@@ -34,6 +34,7 @@ interface Vendor {
     id: string;
     name: string;
     logoUrl?: string;
+    vendorType?: string;
 }
 
 const formSchema = z.object({
@@ -83,6 +84,20 @@ export default function AddModulePage() {
                 associatedVendorIds: values.associatedVendorIds,
                 logoUrl: mainVendor?.logoUrl || null,
             };
+
+            if (moduleType === 'trailers') {
+                dataToCreate.trailerBrandVendorIds = values.associatedVendorIds.filter(id =>
+                    vendors?.find(v => v.id === id && v.vendorType === 'Trailer Brand')
+                );
+                dataToCreate.trailerDealerFitCategories = [];
+                dataToCreate.mainVendorId = null;
+            }
+            if (moduleType === 'rego') {
+                dataToCreate.regoVendorIds = values.associatedVendorIds.filter(id =>
+                    vendors?.find(v => v.id === id && v.vendorType === 'Rego Authority')
+                );
+                dataToCreate.mainVendorId = null;
+            }
 
             await setDoc(newModuleRef, dataToCreate).catch((serverError) => {
                 const permissionError = new FirestorePermissionError({
@@ -162,48 +177,73 @@ export default function AddModulePage() {
                                             <SelectItem value="website-listings">Website Listings</SelectItem>
                                             <SelectItem value="master-price-file">Master Price File</SelectItem>
                                             <SelectItem value="motor-brand">Motor Brand</SelectItem>
+                                            <SelectItem value="trailers">Trailers</SelectItem>
+                                            <SelectItem value="rego">Rego (Registration Authority)</SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <p className="text-xs text-muted-foreground">Catalog modules have pricing, quoting, and stock management. Other types have custom functionality.</p>
                                 </div>
-                                <FormField
-                                    control={form.control}
-                                    name="mainVendorId"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Main Vendor</FormLabel>
-                                         <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger className="rounded-xl border-2">
-                                                    <SelectValue placeholder="Select the main vendor for this module" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {vendors ? vendors.map(vendor => (
-                                                    <SelectItem key={vendor.id} value={vendor.id}>{vendor.name}</SelectItem>
-                                                )) : <SelectItem value="loading" disabled>Loading vendors...</SelectItem>}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormDescription>
-                                            {moduleType === 'catalog'
-                                                ? "The module will use this vendor's logo and primary identity."
-                                                : "Not required for this module type."}
-                                        </FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
+                                {moduleType !== 'trailers' && moduleType !== 'rego' && (
+                                    <FormField
+                                        control={form.control}
+                                        name="mainVendorId"
+                                        render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Main Vendor</FormLabel>
+                                             <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger className="rounded-xl border-2">
+                                                        <SelectValue placeholder="Select the main vendor for this module" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {vendors ? vendors.map(vendor => (
+                                                        <SelectItem key={vendor.id} value={vendor.id}>{vendor.name}</SelectItem>
+                                                    )) : <SelectItem value="loading" disabled>Loading vendors...</SelectItem>}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormDescription>
+                                                {moduleType === 'catalog'
+                                                    ? "The module will use this vendor's logo and primary identity."
+                                                    : "Not required for this module type."}
+                                            </FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                )}
                                 <FormField
                                     control={form.control}
                                     name="associatedVendorIds"
-                                    render={() => (
+                                    render={() => {
+                                        const filteredVendors = vendors?.filter(v => {
+                                            if (moduleType === 'trailers') return v.vendorType === 'Trailer Brand';
+                                            if (moduleType === 'rego') return v.vendorType === 'Rego Authority';
+                                            return true;
+                                        });
+                                        const label = moduleType === 'trailers'
+                                            ? 'Trailer Brands'
+                                            : moduleType === 'rego'
+                                                ? 'Rego Authorities'
+                                                : 'Associated Vendors';
+                                        const description = moduleType === 'trailers'
+                                            ? 'Select the trailer brand vendors this module sources from (e.g. REDCO, TINKA). Only "Trailer Brand" vendors shown.'
+                                            : moduleType === 'rego'
+                                                ? 'Select the registration authority vendors (e.g. QLD Transport). Only "Rego Authority" vendors shown.'
+                                                : 'Select other vendors whose data might be used in this module.';
+                                        return (
                                         <FormItem>
                                             <div className="mb-4">
-                                                <FormLabel>Associated Vendors</FormLabel>
-                                                <FormDescription>Select other vendors whose data might be used in this module.</FormDescription>
+                                                <FormLabel>{label}</FormLabel>
+                                                <FormDescription>{description}</FormDescription>
                                             </div>
                                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                                {vendors ? vendors.map((vendor) => (
+                                                {filteredVendors && filteredVendors.length === 0 && (
+                                                    <p className="col-span-full text-xs text-slate-500 italic">
+                                                        No matching vendors. Create one at /data-warehouse/add first.
+                                                    </p>
+                                                )}
+                                                {filteredVendors ? filteredVendors.map((vendor) => (
                                                 <FormField
                                                     key={vendor.id}
                                                     control={form.control}
@@ -237,7 +277,8 @@ export default function AddModulePage() {
                                             </div>
                                             <FormMessage />
                                         </FormItem>
-                                    )}
+                                    );
+                                    }}
                                     />
                             </CardContent>
                          </Card>
