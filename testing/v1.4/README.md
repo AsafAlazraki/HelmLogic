@@ -437,11 +437,36 @@ Settings UI lives on the catalog-module settings panel: `/modules/{id}?moduleTyp
 
 ---
 
+## Step 9 — Playwright smoke suite
+
+**What changed.** Added `tests/v1.4-trailers.spec.ts` — a read-only smoke suite covering the v1.4 surface area.
+
+Scope:
+- **Trailers module** — Catalog tab loads without console errors, Pricing Manager header + waterfall copy render, Settings tab exposes brand + dealer-fit managers.
+- **Rego module** — Types + Settings tabs both render; Settings tab shows the Rego Authority multi-select.
+- **Highfield quote flow** — trailer step surfaces the `Pick from Catalog` / `Change Trailer` trigger.
+
+Specs are **read-only by design** — no Firestore writes, no overrides saved, no quotes finalised. Mutation behaviour is covered by the manual test matrices in steps 3-8 above.
+
+### Running
+```
+npx playwright test tests/v1.4-trailers.spec.ts --project=chromium
+```
+
+### Skipping logic
+Every spec uses `test.skip(...)` guards for missing data (no trailers module, no rego module, no Highfield model) — the suite is safe to run against any dev env where the v1.4 modules haven't been configured yet. A skipped spec is expected when the bench is empty; a **failed** spec means the v1.4 UI regressed.
+
+### Known gotchas
+- `networkidle` never fires (Firebase websockets); all waits use `domcontentloaded` + explicit selectors.
+- Sidebar items share text with dashboard cards — scoped via `[role="tab"]` and `a[href*="/modules/"]` filters.
+- Quote flow discovery is best-effort (finds any "Quote" CTA). If no variant has a trailer step configured, the quote-flow spec skips.
+- The suite intentionally does **not** exercise write paths (save, delete, finalise). Mutation coverage lives in the manual matrices. Add a dedicated mutation-smoke spec once the dev environment has sandboxed org fixtures.
+
+---
+
 ## Upcoming steps
 
-See `tasks/v1.4-trailers-module-design.md` §11 "Implementation order". Each step below will get its own section here when it ships:
-
-9. Playwright smoke suite — seed → module → quote → finalize
+All nine planned implementation steps are complete. Further work (registration & compliance module, per-trailer promotions, trailer variants, historical Highfield migration) is out of scope for v1.4 per the design doc §10.
 
 ---
 
