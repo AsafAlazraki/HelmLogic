@@ -97,7 +97,10 @@ function trailerToSnapshot(
     t: Trailer,
     brand: Vendor,
     series: Series,
+    overridePrice?: number | null,
 ): TrailerSnapshot {
+    const sourceSell = t.sellPriceExclGst ?? 0;
+    const effectiveSell = typeof overridePrice === 'number' ? overridePrice : sourceSell;
     return {
         id: `${brand.id}/${series.id}/${t.id}`,
         brandVendorId: brand.id,
@@ -108,7 +111,7 @@ function trailerToSnapshot(
         code: t.code,
         name: t.name,
         imageUrl: t.imageUrl,
-        sellPriceExclGst: t.sellPriceExclGst ?? 0,
+        sellPriceExclGst: effectiveSell,
         cost: t.cost,
         priceLevels: t.priceLevels,
         pricingDetail: t.pricingDetail,
@@ -131,12 +134,14 @@ function SeriesTrailersLoader({
     search,
     onPick,
     selectedKey,
+    overrides,
 }: {
     brand: Vendor;
     series: Series;
     search: string;
     onPick: (snap: TrailerSnapshot) => void;
     selectedKey?: string;
+    overrides: Record<string, number>;
 }) {
     const firestore = useFirestore();
     const q = useMemoFirebase(
@@ -167,11 +172,14 @@ function SeriesTrailersLoader({
                 {filtered.map(t => {
                     const key = `${brand.id}/${series.id}/${t.id}`;
                     const selected = selectedKey === key;
+                    const overridePrice = overrides[t.id];
+                    const effectiveSell = typeof overridePrice === 'number' ? overridePrice : (t.sellPriceExclGst ?? 0);
+                    const hasOverride = typeof overridePrice === 'number' && overridePrice !== (t.sellPriceExclGst ?? 0);
                     return (
                         <button
                             key={t.id}
                             type="button"
-                            onClick={() => onPick(trailerToSnapshot(t, brand, series))}
+                            onClick={() => onPick(trailerToSnapshot(t, brand, series, overridePrice))}
                             className={cn(
                                 'flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all',
                                 selected ? 'border-primary bg-primary/5 shadow-md' : 'border-slate-100 hover:border-primary/30 bg-white',
@@ -187,10 +195,13 @@ function SeriesTrailersLoader({
                                 <p className="text-[9px] font-semibold text-slate-500 truncate">{t.name}</p>
                             </div>
                             <div className="text-right shrink-0">
-                                <p className="text-[10px] font-black text-primary">
-                                    ${((t.sellPriceExclGst ?? 0)).toLocaleString()}
+                                <p className={cn('text-[10px] font-black', hasOverride ? 'text-amber-700' : 'text-primary')}>
+                                    ${effectiveSell.toLocaleString()}
                                 </p>
-                                {(t.optionalFeatures?.length ?? 0) > 0 && (
+                                {hasOverride && (
+                                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest">Org Price</p>
+                                )}
+                                {!hasOverride && (t.optionalFeatures?.length ?? 0) > 0 && (
                                     <p className="text-[8px] text-slate-400 font-bold">+{t.optionalFeatures!.length} opts</p>
                                 )}
                             </div>
@@ -207,11 +218,13 @@ function BrandTrailersLoader({
     search,
     onPick,
     selectedKey,
+    overrides,
 }: {
     brand: Vendor;
     search: string;
     onPick: (snap: TrailerSnapshot) => void;
     selectedKey?: string;
+    overrides: Record<string, number>;
 }) {
     const firestore = useFirestore();
     const q = useMemoFirebase(
@@ -243,6 +256,7 @@ function BrandTrailersLoader({
                         search={search}
                         onPick={onPick}
                         selectedKey={selectedKey}
+                        overrides={overrides}
                     />
                 ))}
             </div>
@@ -293,6 +307,20 @@ export function TrailerCatalogPicker({
         list.sort((a, b) => a.name.localeCompare(b.name));
         return list;
     }, [brands]);
+
+    // Org-level trailer price overrides — subscribed once and merged into picks
+    const overridesQuery = useMemoFirebase(
+        () => (orgId ? collection(firestore, `organisations/${orgId}/trailerOverrides`) : null),
+        [firestore, orgId],
+    );
+    const { data: overrideDocs } = useCollection<{ sellPriceExclGst?: number; trailerId?: string }>(overridesQuery);
+    const overridesByTrailerId = useMemo(() => {
+        const map: Record<string, number> = {};
+        (overrideDocs || []).forEach(d => {
+            if (typeof d.sellPriceExclGst === 'number') map[d.id] = d.sellPriceExclGst;
+        });
+        return map;
+    }, [overrideDocs]);
 
     const selectedKey = value?.id;
 
@@ -374,6 +402,7 @@ export function TrailerCatalogPicker({
                                         setOpen(false);
                                     }}
                                     selectedKey={selectedKey}
+                                    overrides={overridesByTrailerId}
                                 />
                             ))}
                         </div>
