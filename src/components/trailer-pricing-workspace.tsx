@@ -10,13 +10,31 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
+import * as XLSX from 'xlsx';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ChevronDown, ChevronRight, DollarSign, Loader2, RotateCcw, Search, Truck } from 'lucide-react';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    ChevronDown,
+    ChevronRight,
+    DollarSign,
+    Download,
+    FileSpreadsheet,
+    FileText,
+    Loader2,
+    RotateCcw,
+    Search,
+    Truck,
+} from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -345,6 +363,68 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
         }
     }, [firestore, organisationId, rows, toast]);
 
+    const buildExportRows = useCallback((source: FlatTrailerRow[]) => {
+        return source.map((r) => {
+            const p = r.pricing || {};
+            const override = overrideByTrailer.get(r.id);
+            const hasOverride = override != null && override !== r.sourceSell;
+            return {
+                Brand: r.vendorName,
+                Series: r.seriesName,
+                Code: r.code,
+                Name: r.name,
+                Supplier: r.supplier || '',
+                'Image URL': r.imageUrl || '',
+                Dealer: p.dealer ?? '',
+                Discount: p.discount ?? '',
+                Settlement: p.settlement ?? '',
+                'Nett Price': p.nettPrice ?? '',
+                Freight: p.freight ?? '',
+                Landed: p.landed ?? '',
+                'PD $': p.pdDollars ?? '',
+                Sundry: p.sundry ?? '',
+                Detailing: p.detailing ?? '',
+                'Total PD': p.totalPdCharges ?? '',
+                'Total Nett CTD': p.totalNettCtd ?? '',
+                'Markup %': p.markupPercent ?? '',
+                'Gross Profit': p.grossProfit ?? '',
+                RRP: p.rrp ?? '',
+                'Source Sell (ex GST)': r.sourceSell,
+                'Override Sell (ex GST)': hasOverride ? override : '',
+                'Effective Sell (ex GST)': hasOverride ? override : r.sourceSell,
+            };
+        });
+    }, [overrideByTrailer]);
+
+    const handleExport = useCallback((format: 'xlsx' | 'csv') => {
+        const source = filteredRows.length > 0 ? filteredRows : rows;
+        if (source.length === 0) {
+            toast({ variant: 'destructive', title: 'Nothing to export' });
+            return;
+        }
+        const data = buildExportRows(source);
+        const ws = XLSX.utils.json_to_sheet(data);
+        const stamp = new Date().toISOString().slice(0, 10);
+        const scopeLabel = brandFilter === 'all' ? 'all-brands' : (vendors.find(v => v.id === brandFilter)?.name || brandFilter).toLowerCase().replace(/\s+/g, '-');
+        const filename = `trailer-pricing_${scopeLabel}_${stamp}`;
+
+        if (format === 'xlsx') {
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Trailer Pricing');
+            XLSX.writeFile(wb, `${filename}.xlsx`);
+        } else {
+            const csv = XLSX.utils.sheet_to_csv(ws);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        toast({ title: 'Exported', description: `${data.length} trailer${data.length === 1 ? '' : 's'} exported.` });
+    }, [filteredRows, rows, buildExportRows, brandFilter, vendors, toast]);
+
     const resetOverride = useCallback(async (trailerId: string) => {
         try {
             await deleteDoc(doc(firestore, `organisations/${organisationId}/trailerOverrides/${trailerId}`));
@@ -444,9 +524,31 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                         </p>
                     </div>
                 </div>
-                <Badge variant="outline" className="text-[9px] font-black border-2">
-                    {filteredRows.length}{filteredRows.length !== rows.length ? ` of ${rows.length}` : ''} trailer{rows.length === 1 ? '' : 's'}
-                </Badge>
+                <div className="flex items-center gap-3">
+                    <Badge variant="outline" className="text-[9px] font-black border-2">
+                        {filteredRows.length}{filteredRows.length !== rows.length ? ` of ${rows.length}` : ''} trailer{rows.length === 1 ? '' : 's'}
+                    </Badge>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="outline"
+                                className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2"
+                                disabled={rows.length === 0}
+                            >
+                                <Download className="h-4 w-4" />
+                                Export
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="rounded-xl border-2 z-[10000]">
+                            <DropdownMenuItem onClick={() => handleExport('xlsx')} className="text-xs font-bold gap-2 cursor-pointer">
+                                <FileSpreadsheet className="h-4 w-4" /> Excel (.xlsx)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExport('csv')} className="text-xs font-bold gap-2 cursor-pointer">
+                                <FileText className="h-4 w-4" /> CSV
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
 
             {/* Filter bar */}
