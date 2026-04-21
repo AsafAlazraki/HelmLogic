@@ -19,6 +19,23 @@ import { ModuleDealerFitManager } from '@/components/module-dealer-fit-manager';
 import { ModuleRoleAssignment } from '@/components/module-role-assignment';
 import { formatCurrency } from '@/lib/currency-utils';
 
+function TrailerImage({
+    src,
+    alt,
+    fallback,
+    className,
+}: {
+    src?: string;
+    alt: string;
+    fallback: ReactNode;
+    className?: string;
+}) {
+    const [failed, setFailed] = useState(false);
+    useEffect(() => { setFailed(false); }, [src]);
+    if (!src || failed) return <>{fallback}</>;
+    return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} />;
+}
+
 interface Vendor {
     id: string;
     name: string;
@@ -97,11 +114,12 @@ function TrailerCard({ trailer, onClick }: { trailer: Trailer; onClick: () => vo
             onClick={onClick}
         >
             <CardHeader className="h-28 bg-slate-50 flex items-center justify-center p-3 border-b">
-                {trailer.imageUrl ? (
-                    <img src={trailer.imageUrl} alt={trailer.name} className="h-full object-contain" />
-                ) : (
-                    <Truck className="h-10 w-10 text-slate-300" />
-                )}
+                <TrailerImage
+                    src={trailer.imageUrl}
+                    alt={trailer.name}
+                    className="h-full object-contain"
+                    fallback={<Truck className="h-10 w-10 text-slate-300" />}
+                />
             </CardHeader>
             <CardContent className="p-4 space-y-2">
                 <div className="space-y-0.5">
@@ -245,11 +263,12 @@ function TrailerDetailSheet({
                 </SheetHeader>
 
                 <div className="h-40 bg-slate-50 rounded-xl flex items-center justify-center mb-6 overflow-hidden">
-                    {trailer.imageUrl ? (
-                        <img src={trailer.imageUrl} alt={trailer.name} className="h-full object-contain" />
-                    ) : (
-                        <Truck className="h-16 w-16 text-slate-300" />
-                    )}
+                    <TrailerImage
+                        src={trailer.imageUrl}
+                        alt={trailer.name}
+                        className="h-full object-contain"
+                        fallback={<Truck className="h-16 w-16 text-slate-300" />}
+                    />
                 </div>
 
                 <div className="flex gap-2 flex-wrap mb-6">
@@ -485,11 +504,12 @@ function TrailerPricingRow({
                     className="w-full flex items-center gap-4 p-4 hover:bg-slate-50 rounded-2xl transition-colors text-left"
                 >
                     <div className="h-12 w-12 shrink-0 bg-slate-50 rounded-xl flex items-center justify-center overflow-hidden border">
-                        {trailer.imageUrl ? (
-                            <img src={trailer.imageUrl} alt={trailer.name} className="h-full w-full object-contain" />
-                        ) : (
-                            <Truck className="h-6 w-6 text-slate-300" />
-                        )}
+                        <TrailerImage
+                            src={trailer.imageUrl}
+                            alt={trailer.name}
+                            className="h-full w-full object-contain"
+                            fallback={<Truck className="h-6 w-6 text-slate-300" />}
+                        />
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
