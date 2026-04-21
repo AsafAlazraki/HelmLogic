@@ -1,0 +1,649 @@
+'use client';
+
+import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
+import { useFirestore } from '@/firebase/provider';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    Truck,
+    Search,
+    ChevronDown,
+    ArrowUpDown,
+    Ruler,
+    Info,
+    Package,
+    DollarSign,
+    Layers,
+} from 'lucide-react';
+import { formatCurrency } from '@/lib/currency-utils';
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface Vendor {
+    id: string;
+    name: string;
+    vendorType?: string;
+    logoUrl?: string;
+    shortCode?: string;
+}
+
+interface TrailerRow {
+    id: string;
+    vendorId: string;
+    vendorName: string;
+    seriesId: string;
+    seriesName: string;
+    code: string;
+    name: string;
+    supplier?: string;
+    imageUrl?: string;
+    isActive?: boolean;
+    features?: string[];
+    cost?: number;
+    sellPriceExclGst?: number;
+    specifications?: {
+        boatSizeMtr?: number | null;
+        wheelSize?: string;
+        tareKg?: number | null;
+        atmKg?: number | null;
+        winch?: string;
+        betweenGuardsMm?: number | null;
+        lengthMtr?: number | null;
+        plug?: string;
+    };
+    pricingDetail?: Record<string, any>;
+    optionalFeatures?: Array<{ id: string; name: string; description: string; cost: number; sellExclGst: number }>;
+}
+
+interface TrailerDashboardProps {
+    vendors: Vendor[];
+    moduleName?: string;
+}
+
+type SortKey = 'code' | 'boat' | 'price';
+type SortDir = 'asc' | 'desc';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const BOAT_SIZE_RANGES = ['Under 4m', '4–5m', '5–6m', '6–7m', '7m+', 'Unknown'] as const;
+type BoatSizeRange = typeof BOAT_SIZE_RANGES[number];
+
+function getBoatSizeRange(mtr?: number | null): BoatSizeRange {
+    if (!mtr || mtr <= 0) return 'Unknown';
+    if (mtr < 4) return 'Under 4m';
+    if (mtr < 5) return '4–5m';
+    if (mtr < 6) return '5–6m';
+    if (mtr < 7) return '6–7m';
+    return '7m+';
+}
+
+// ---------------------------------------------------------------------------
+// Image subcomponent with onError fallback
+// ---------------------------------------------------------------------------
+
+function TrailerImage({
+    src,
+    alt,
+    fallback,
+    className,
+}: {
+    src?: string;
+    alt: string;
+    fallback: ReactNode;
+    className?: string;
+}) {
+    const [failed, setFailed] = useState(false);
+    useEffect(() => { setFailed(false); }, [src]);
+    if (!src || failed) return <>{fallback}</>;
+    return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} />;
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
+export function TrailerDashboard({ vendors, moduleName }: TrailerDashboardProps) {
+    const firestore = useFirestore();
+
+    // Flat trailer list aggregated across all selected brand vendors.
+    const [trailers, setTrailers] = useState<TrailerRow[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const vendorKey = useMemo(() => vendors.map(v => v.id).sort().join('|'), [vendors]);
+
+    const loadTrailers = useCallback(async () => {
+        if (vendors.length === 0) {
+            setTrailers([]);
+            setIsLoading(false);
+            return;
+        }
+        setIsLoading(true);
+        const all: TrailerRow[] = [];
+
+        for (const vendor of vendors) {
+            try {
+                const seriesSnap = await getDocs(collection(firestore, `data-warehouse/${vendor.id}/series`));
+                for (const seriesDoc of seriesSnap.docs) {
+                    const seriesName = (seriesDoc.data() as any).name || seriesDoc.id;
+                    const trailersSnap = await getDocs(
+                        collection(firestore, `data-warehouse/${vendor.id}/series/${seriesDoc.id}/trailers`)
+                    );
+                    for (const td of trailersSnap.docs) {
+                        const data = td.data() as any;
+                        all.push({
+                            id: td.id,
+                            vendorId: vendor.id,
+                            vendorName: vendor.name,
+                            seriesId: seriesDoc.id,
+                            seriesName,
+                            code: data.code || '',
+                            name: data.name || '',
+                            supplier: data.supplier,
+                            imageUrl: data.imageUrl,
+                            isActive: data.isActive,
+                            features: data.features,
+                            cost: data.cost,
+                            sellPriceExclGst: data.sellPriceExclGst,
+                            specifications: data.specifications,
+                            pricingDetail: data.pricingDetail,
+                            optionalFeatures: data.optionalFeatures,
+                        });
+                    }
+                }
+            } catch (e) {
+                // One flaky vendor shouldn't break the dashboard — skip.
+                console.warn(`[TrailerDashboard] Failed to load ${vendor.name}:`, e);
+            }
+        }
+
+        setTrailers(all);
+        setIsLoading(false);
+    }, [firestore, vendorKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => { loadTrailers(); }, [loadTrailers]);
+
+    // -----------------------------------------------------------------------
+    // Filters, sort
+    // -----------------------------------------------------------------------
+
+    const [search, setSearch] = useState('');
+    const [brandFilter, setBrandFilter] = useState<string>('all');
+    const [sizeFilter, setSizeFilter] = useState<BoatSizeRange | 'all'>('all');
+    const [sortKey, setSortKey] = useState<SortKey>('code');
+    const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+    const filtered = useMemo(() => {
+        let list = [...trailers];
+
+        if (search.trim()) {
+            const q = search.toLowerCase();
+            list = list.filter(t =>
+                t.code.toLowerCase().includes(q) ||
+                t.name.toLowerCase().includes(q) ||
+                t.vendorName.toLowerCase().includes(q) ||
+                t.seriesName.toLowerCase().includes(q)
+            );
+        }
+
+        if (brandFilter !== 'all') {
+            list = list.filter(t => t.vendorId === brandFilter);
+        }
+
+        if (sizeFilter !== 'all') {
+            list = list.filter(t => getBoatSizeRange(t.specifications?.boatSizeMtr) === sizeFilter);
+        }
+
+        list.sort((a, b) => {
+            let cmp = 0;
+            switch (sortKey) {
+                case 'code':
+                    cmp = a.code.localeCompare(b.code);
+                    break;
+                case 'boat':
+                    cmp = (a.specifications?.boatSizeMtr || 0) - (b.specifications?.boatSizeMtr || 0);
+                    break;
+                case 'price':
+                    cmp = (a.sellPriceExclGst || 0) - (b.sellPriceExclGst || 0);
+                    break;
+            }
+            return sortDir === 'asc' ? cmp : -cmp;
+        });
+
+        return list;
+    }, [trailers, search, brandFilter, sizeFilter, sortKey, sortDir]);
+
+    const grouped = useMemo(() => {
+        const g: Record<BoatSizeRange, TrailerRow[]> = {
+            'Under 4m': [], '4–5m': [], '5–6m': [], '6–7m': [], '7m+': [], 'Unknown': [],
+        };
+        for (const t of filtered) {
+            g[getBoatSizeRange(t.specifications?.boatSizeMtr)].push(t);
+        }
+        return g;
+    }, [filtered]);
+
+    const availableSizeRanges = useMemo(() => {
+        const found = new Set<BoatSizeRange>();
+        for (const t of trailers) found.add(getBoatSizeRange(t.specifications?.boatSizeMtr));
+        return BOAT_SIZE_RANGES.filter(r => found.has(r));
+    }, [trailers]);
+
+    const stats = useMemo(() => {
+        const brands = new Set(trailers.map(t => t.vendorId));
+        const series = new Set(trailers.map(t => `${t.vendorId}:${t.seriesId}`));
+        const active = trailers.filter(t => t.isActive !== false).length;
+        return {
+            total: trailers.length,
+            brands: brands.size,
+            series: series.size,
+            active,
+        };
+    }, [trailers]);
+
+    function toggleSort(k: SortKey) {
+        if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+        else { setSortKey(k); setSortDir('asc'); }
+    }
+
+    const [selected, setSelected] = useState<TrailerRow | null>(null);
+    const [detailOpen, setDetailOpen] = useState(false);
+    function openTrailer(t: TrailerRow) { setSelected(t); setDetailOpen(true); }
+
+    const clearFilters = () => { setSearch(''); setBrandFilter('all'); setSizeFilter('all'); };
+    const hasActiveFilters = search.trim() !== '' || brandFilter !== 'all' || sizeFilter !== 'all';
+
+    // -----------------------------------------------------------------------
+    // Render
+    // -----------------------------------------------------------------------
+
+    return (
+        <div className="flex flex-col h-full">
+            {/* Gradient header banner */}
+            <div className="bg-gradient-to-r from-orange-500 to-amber-600 text-white px-6 py-4">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                        <h1 className="text-xl font-bold">{moduleName || 'Trailers'}</h1>
+                        <p className="text-sm text-orange-50">
+                            {isLoading
+                                ? 'Loading catalog…'
+                                : `${stats.total} trailer${stats.total === 1 ? '' : 's'} · ${stats.brands} brand${stats.brands === 1 ? '' : 's'} · ${stats.series} series`}
+                        </p>
+                    </div>
+                    {!isLoading && stats.total > 0 && (
+                        <div className="flex gap-2 text-xs">
+                            <StatPill label="Total" value={stats.total.toString()} />
+                            <StatPill label="Active" value={stats.active.toString()} />
+                            <StatPill label="Brands" value={stats.brands.toString()} />
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Content */}
+            <ScrollArea className="flex-1">
+                <div className="p-6 space-y-6">
+                    {/* Filter bar */}
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="relative flex-1 min-w-[220px]">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input
+                                placeholder="Search by code, name, brand or series…"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-9"
+                            />
+                        </div>
+
+                        {vendors.length > 1 && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" size="sm" className="gap-1">
+                                        {brandFilter === 'all' ? 'All brands' : vendors.find(v => v.id === brandFilter)?.name || 'Brand'}
+                                        <ChevronDown className="h-3 w-3" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => setBrandFilter('all')}>
+                                        All brands ({vendors.length})
+                                    </DropdownMenuItem>
+                                    {vendors.map(v => (
+                                        <DropdownMenuItem key={v.id} onClick={() => setBrandFilter(v.id)}>
+                                            {v.name}
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="gap-1">
+                                    {sizeFilter === 'all' ? 'All sizes' : sizeFilter}
+                                    <ChevronDown className="h-3 w-3" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setSizeFilter('all')}>All sizes</DropdownMenuItem>
+                                {availableSizeRanges.map(r => (
+                                    <DropdownMenuItem key={r} onClick={() => setSizeFilter(r)}>
+                                        {r}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="gap-1">
+                                    <ArrowUpDown className="h-3 w-3" />
+                                    Sort: {sortKey} {sortDir === 'asc' ? '↑' : '↓'}
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => toggleSort('code')}>Code</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => toggleSort('boat')}>Boat size</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => toggleSort('price')}>Price</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        {hasActiveFilters && (
+                            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs">
+                                Clear
+                            </Button>
+                        )}
+                    </div>
+
+                    {/* Loading */}
+                    {isLoading && (
+                        <div className="flex items-center justify-center py-20 text-slate-400">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
+                        </div>
+                    )}
+
+                    {/* No brands selected */}
+                    {!isLoading && vendors.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-20 text-slate-400 space-y-2">
+                            <Truck className="h-12 w-12" />
+                            <p className="text-sm font-medium">No trailer brands selected</p>
+                            <p className="text-xs">Head to <b>Settings</b> and tick the brands this module sources from.</p>
+                        </div>
+                    )}
+
+                    {/* Empty state */}
+                    {!isLoading && vendors.length > 0 && filtered.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-20 text-slate-400 space-y-2">
+                            <Truck className="h-12 w-12" />
+                            <p className="text-sm font-medium">
+                                {trailers.length > 0 ? 'No trailers match your filters' : 'No trailer data found'}
+                            </p>
+                            {trailers.length > 0 && hasActiveFilters && (
+                                <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Grouped grid (no size filter active) */}
+                    {!isLoading && filtered.length > 0 && sizeFilter === 'all' && (
+                        <>
+                            {BOAT_SIZE_RANGES.map((range) => {
+                                const group = grouped[range];
+                                if (!group || group.length === 0) return null;
+                                return (
+                                    <div key={range}>
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <Layers className="h-3 w-3 text-slate-400" />
+                                            <h2 className="text-sm font-semibold text-slate-600">{range}</h2>
+                                            <Badge variant="outline" className="text-[9px]">{group.length}</Badge>
+                                        </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                            {group.map(t => (
+                                                <TrailerCard key={`${t.vendorId}-${t.id}`} trailer={t} onClick={() => openTrailer(t)} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </>
+                    )}
+
+                    {/* Flat grid when filter narrows */}
+                    {!isLoading && filtered.length > 0 && sizeFilter !== 'all' && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                            {filtered.map(t => (
+                                <TrailerCard key={`${t.vendorId}-${t.id}`} trailer={t} onClick={() => openTrailer(t)} />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </ScrollArea>
+
+            <TrailerDetailSheet
+                trailer={selected}
+                open={detailOpen}
+                onOpenChange={setDetailOpen}
+            />
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Stat pill
+// ---------------------------------------------------------------------------
+
+function StatPill({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/20">
+            <span className="text-[10px] uppercase tracking-wider text-orange-50 mr-2">{label}</span>
+            <span className="font-bold">{value}</span>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Trailer card
+// ---------------------------------------------------------------------------
+
+function TrailerCard({ trailer, onClick }: { trailer: TrailerRow; onClick: () => void }) {
+    const price = trailer.sellPriceExclGst || 0;
+    const atm = trailer.specifications?.atmKg;
+    const len = trailer.specifications?.lengthMtr;
+    const boat = trailer.specifications?.boatSizeMtr;
+    const inactive = trailer.isActive === false;
+
+    return (
+        <Card
+            className={`border-2 rounded-2xl overflow-hidden cursor-pointer hover:border-orange-400/60 hover:shadow-md transition-all ${inactive ? 'opacity-60' : ''}`}
+            onClick={onClick}
+        >
+            <CardHeader className="h-28 bg-slate-50 flex items-center justify-center p-3 border-b">
+                <TrailerImage
+                    src={trailer.imageUrl}
+                    alt={trailer.name}
+                    className="h-full object-contain"
+                    fallback={<Truck className="h-10 w-10 text-slate-300" />}
+                />
+            </CardHeader>
+            <CardContent className="p-4 space-y-2">
+                <div className="space-y-0.5">
+                    <h3 className="text-xs font-bold truncate" title={trailer.name}>{trailer.code}</h3>
+                    <p className="text-[10px] text-slate-500 truncate" title={trailer.name}>{trailer.name}</p>
+                </div>
+                <div className="flex items-center gap-1 text-[9px] text-slate-400">
+                    <span className="font-medium uppercase tracking-wider">{trailer.vendorName}</span>
+                    {trailer.seriesName && <span>· {trailer.seriesName}</span>}
+                </div>
+                <div className="flex gap-1 flex-wrap">
+                    {boat != null && <Badge variant="outline" className="text-[9px]">{boat}m boat</Badge>}
+                    {len != null && <Badge variant="outline" className="text-[9px]">{len}m</Badge>}
+                    {atm != null && <Badge variant="outline" className="text-[9px]">{atm} ATM</Badge>}
+                    {inactive && <Badge variant="outline" className="text-[9px] border-red-400 text-red-600">Inactive</Badge>}
+                </div>
+                {price > 0 && (
+                    <p className="text-xs font-bold text-orange-600">
+                        {formatCurrency(price)} <span className="text-[9px] font-normal text-slate-400">ex GST</span>
+                    </p>
+                )}
+                {(trailer.optionalFeatures?.length ?? 0) > 0 && (
+                    <p className="text-[9px] text-slate-400">{trailer.optionalFeatures!.length} factory option{trailer.optionalFeatures!.length === 1 ? '' : 's'}</p>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Detail sheet
+// ---------------------------------------------------------------------------
+
+function TrailerDetailSheet({
+    trailer,
+    open,
+    onOpenChange,
+}: {
+    trailer: TrailerRow | null;
+    open: boolean;
+    onOpenChange: (v: boolean) => void;
+}) {
+    if (!trailer) return null;
+    const specs = trailer.specifications || {};
+    const pricing = trailer.pricingDetail || {};
+    const options = trailer.optionalFeatures || [];
+
+    return (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent className="sm:max-w-lg overflow-y-auto">
+                <SheetHeader className="pb-4">
+                    <SheetTitle className="text-lg">{trailer.code}</SheetTitle>
+                    <p className="text-xs text-slate-500">{trailer.name}</p>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest">
+                        {trailer.vendorName}{trailer.seriesName ? ` · ${trailer.seriesName}` : ''}
+                    </p>
+                </SheetHeader>
+
+                <div className="h-40 bg-slate-50 rounded-xl flex items-center justify-center mb-6 overflow-hidden">
+                    <TrailerImage
+                        src={trailer.imageUrl}
+                        alt={trailer.name}
+                        className="h-full object-contain"
+                        fallback={<Truck className="h-16 w-16 text-slate-300" />}
+                    />
+                </div>
+
+                <div className="flex gap-2 flex-wrap mb-6">
+                    {trailer.sellPriceExclGst ? (
+                        <Badge variant="default">{formatCurrency(trailer.sellPriceExclGst)} ex GST</Badge>
+                    ) : null}
+                    {trailer.cost ? (
+                        <Badge variant="secondary">Cost {formatCurrency(trailer.cost)}</Badge>
+                    ) : null}
+                    {trailer.isActive === false && (
+                        <Badge variant="outline" className="border-red-400 text-red-600">Inactive</Badge>
+                    )}
+                </div>
+
+                {/* Specs */}
+                <div className="mb-6">
+                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">
+                        <Ruler className="h-3 w-3" /> Specifications
+                    </h4>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                        {specs.boatSizeMtr != null && <div><span className="text-slate-400">Boat size:</span> <span className="font-medium">{specs.boatSizeMtr}m</span></div>}
+                        {specs.lengthMtr != null && <div><span className="text-slate-400">Trailer length:</span> <span className="font-medium">{specs.lengthMtr}m</span></div>}
+                        {specs.tareKg != null && <div><span className="text-slate-400">Tare:</span> <span className="font-medium">{specs.tareKg} kg</span></div>}
+                        {specs.atmKg != null && <div><span className="text-slate-400">ATM:</span> <span className="font-medium">{specs.atmKg} kg</span></div>}
+                        {specs.wheelSize && <div><span className="text-slate-400">Wheels:</span> <span className="font-medium">{specs.wheelSize}</span></div>}
+                        {specs.winch && <div><span className="text-slate-400">Winch:</span> <span className="font-medium">{specs.winch}</span></div>}
+                        {specs.betweenGuardsMm != null && <div><span className="text-slate-400">Guards:</span> <span className="font-medium">{specs.betweenGuardsMm} mm</span></div>}
+                        {specs.plug && <div><span className="text-slate-400">Plug:</span> <span className="font-medium">{specs.plug}</span></div>}
+                        {trailer.supplier && <div className="col-span-2"><span className="text-slate-400">Supplier:</span> <span className="font-medium">{trailer.supplier}</span></div>}
+                    </div>
+                </div>
+
+                {/* Features */}
+                {trailer.features && trailer.features.length > 0 && (
+                    <div className="mb-6">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">
+                            <Info className="h-3 w-3" /> Features
+                        </h4>
+                        <ul className="text-xs space-y-1 list-disc pl-4 text-slate-600">
+                            {trailer.features.map((f, i) => (
+                                <li key={i}>{f}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
+
+                {/* Factory options */}
+                {options.length > 0 && (
+                    <div className="mb-6">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">
+                            <Package className="h-3 w-3" /> Factory Options ({options.length})
+                        </h4>
+                        <div className="space-y-2">
+                            {options.map((opt) => (
+                                <div key={opt.id} className="flex items-center justify-between gap-3 py-2 px-3 rounded-lg bg-slate-50 text-xs">
+                                    <div className="min-w-0">
+                                        <p className="font-semibold truncate">{opt.name}</p>
+                                        {opt.description && <p className="text-[10px] text-slate-500 truncate">{opt.description}</p>}
+                                    </div>
+                                    {opt.sellExclGst > 0 && (
+                                        <span className="font-medium shrink-0">{formatCurrency(opt.sellExclGst)}</span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Pricing summary */}
+                {Object.keys(pricing).length > 0 && (
+                    <div className="mb-6">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-2 flex items-center gap-2">
+                            <DollarSign className="h-3 w-3" /> Pricing Summary
+                        </h4>
+                        <div className="space-y-1 text-xs bg-slate-50 rounded-xl p-3">
+                            {pricing.dealer != null && <WaterfallRow label="Dealer" value={pricing.dealer} />}
+                            {pricing.nettPrice != null && <WaterfallRow label="Nett Price" value={pricing.nettPrice} />}
+                            {pricing.freight != null && <WaterfallRow label="Freight" value={pricing.freight} />}
+                            {pricing.landed != null && <WaterfallRow label="Landed" value={pricing.landed} />}
+                            {pricing.totalPdCharges != null && <WaterfallRow label="PD Charges" value={pricing.totalPdCharges} />}
+                            {pricing.totalNettCtd != null && <WaterfallRow label="Total Nett CTD" value={pricing.totalNettCtd} bold />}
+                            {pricing.rrp != null && <WaterfallRow label="RRP" value={pricing.rrp} />}
+                            {pricing.sell != null && <WaterfallRow label="Sell (ex GST)" value={pricing.sell} bold />}
+                            {pricing.regoTypeHint && (
+                                <div className="pt-1 mt-1 border-t text-[10px] text-slate-400">
+                                    Rego hint: {pricing.regoTypeHint}{pricing.regoDollarsHint ? ` · ${formatCurrency(pricing.regoDollarsHint)}` : ''}
+                                </div>
+                            )}
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-2">Full waterfall editable in Pricing Manager.</p>
+                    </div>
+                )}
+            </SheetContent>
+        </Sheet>
+    );
+}
+
+function WaterfallRow({ label, value, bold }: { label: string; value: number; bold?: boolean }) {
+    return (
+        <div className={`flex items-center justify-between ${bold ? 'font-bold text-slate-800' : 'text-slate-600'}`}>
+            <span>{label}</span>
+            <span>{formatCurrency(value)}</span>
+        </div>
+    );
+}
