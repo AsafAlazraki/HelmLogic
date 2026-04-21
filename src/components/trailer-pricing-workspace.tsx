@@ -15,7 +15,8 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, DollarSign, Loader2, RotateCcw, Truck } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ChevronDown, ChevronRight, DollarSign, Loader2, RotateCcw, Search, Truck } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -290,6 +291,23 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
     const [rows, setRows] = useState<FlatTrailerRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [search, setSearch] = useState('');
+    const [brandFilter, setBrandFilter] = useState<string>('all');
+
+    // Pre-compute search fields on each row for fast filter
+    const filteredRows = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        const brandOk = (r: FlatTrailerRow) => brandFilter === 'all' || r.vendorId === brandFilter;
+        if (!q) return rows.filter(brandOk);
+        return rows.filter(r =>
+            brandOk(r) && (
+                r.code.toLowerCase().includes(q) ||
+                r.name.toLowerCase().includes(q) ||
+                (r.supplier || '').toLowerCase().includes(q) ||
+                r.seriesName.toLowerCase().includes(q)
+            ),
+        );
+    }, [rows, search, brandFilter]);
 
     const vendorIds = useMemo(() => vendors.map(v => v.id).sort().join('|'), [vendors]);
 
@@ -427,8 +445,50 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                     </div>
                 </div>
                 <Badge variant="outline" className="text-[9px] font-black border-2">
-                    {rows.length} trailer{rows.length === 1 ? '' : 's'}
+                    {filteredRows.length}{filteredRows.length !== rows.length ? ` of ${rows.length}` : ''} trailer{rows.length === 1 ? '' : 's'}
                 </Badge>
+            </div>
+
+            {/* Filter bar */}
+            <div className="shrink-0 px-8 py-3 flex flex-wrap items-center gap-3 border-b-2 border-slate-200 bg-slate-50/50">
+                <div className="flex flex-col gap-1 flex-1 max-w-xs min-w-[220px]">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Search</span>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                        <Input
+                            placeholder="Code, name, supplier, series…"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9 h-9 rounded-xl border-2 text-xs"
+                        />
+                    </div>
+                </div>
+                {vendors.length > 1 && (
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Brand</span>
+                        <select
+                            value={brandFilter}
+                            onChange={(e) => setBrandFilter(e.target.value)}
+                            className="h-9 rounded-xl border-2 border-slate-200 bg-white px-3 text-xs font-semibold hover:bg-slate-50 focus:outline-none focus:border-primary"
+                        >
+                            <option value="all">All brands ({vendors.length})</option>
+                            {vendors.map(v => (
+                                <option key={v.id} value={v.id}>{v.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+                {(search || brandFilter !== 'all') && (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setSearch(''); setBrandFilter('all'); }}
+                        className="h-9 mt-4 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900"
+                    >
+                        Clear filters
+                    </Button>
+                )}
             </div>
 
             {/* Table */}
@@ -437,11 +497,11 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                     <div className="flex items-center justify-center h-full">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
-                ) : rows.length === 0 ? (
+                ) : filteredRows.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full gap-3">
                         <Truck className="h-12 w-12 text-slate-200" />
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            No trailers in the selected brands
+                            {rows.length === 0 ? 'No trailers in the selected brands' : 'No trailers match the current filters'}
                         </p>
                     </div>
                 ) : (
@@ -471,7 +531,7 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {rows.map((row, rowIdx) => {
+                                    {filteredRows.map((row, rowIdx) => {
                                         const isExpanded = expandedId === row.id;
                                         const overrideValue = overrideByTrailer.get(row.id);
                                         const effectiveSell = overrideValue != null ? overrideValue : row.sourceSell;
