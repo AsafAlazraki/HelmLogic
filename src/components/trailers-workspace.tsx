@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Truck, DollarSign, Settings as SettingsIcon, Building2, Search, Ruler, Weight, Info, Package, Edit as EditIcon, RotateCcw, Save } from 'lucide-react';
 import { ModuleDealerFitManager } from '@/components/module-dealer-fit-manager';
 import { ModuleRoleAssignment } from '@/components/module-role-assignment';
+import { TrailerPricingWorkspace } from '@/components/trailer-pricing-workspace';
 import { formatCurrency } from '@/lib/currency-utils';
 
 function TrailerImage({
@@ -917,47 +918,11 @@ export function TrailersWorkspace({ organisationId, isAdmin, moduleId, moduleDat
                 )}
 
                 {activeTab === 'pricing' && (
-                    <ScrollArea className="h-full">
-                        <div className="p-8 max-w-6xl mx-auto space-y-8">
-                            <div className="flex items-center justify-between gap-4">
-                                <div>
-                                    <h1 className="text-lg font-black uppercase tracking-tight">Pricing Manager</h1>
-                                    <p className="text-xs text-slate-500">
-                                        Full Dealer → Nett → Landed → PD → CTD → MU% → RRP → Sell waterfall from the source import.
-                                        {isAdmin ? ' Click Override to set an org-specific sell price.' : ' Read-only view.'}
-                                    </p>
-                                </div>
-                                <div className="relative min-w-[260px]">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                    <Input
-                                        placeholder="Search code or name…"
-                                        value={search}
-                                        onChange={(e) => setSearch(e.target.value)}
-                                        className="pl-9 rounded-xl"
-                                    />
-                                </div>
-                            </div>
-
-                            {selectedVendors.length === 0 && (
-                                <Card className="border-2 rounded-2xl">
-                                    <CardHeader>
-                                        <CardTitle>No trailer brands selected</CardTitle>
-                                        <CardDescription>Add brands in Settings before pricing loads.</CardDescription>
-                                    </CardHeader>
-                                </Card>
-                            )}
-
-                            {visibleVendors.map((v) => (
-                                <PricingBrandSection
-                                    key={v.id}
-                                    vendor={v}
-                                    search={search}
-                                    organisationId={organisationId}
-                                    isAdmin={isAdmin}
-                                />
-                            ))}
-                        </div>
-                    </ScrollArea>
+                    <TrailerPricingWorkspace
+                        vendors={selectedVendors}
+                        organisationId={organisationId}
+                        isAdmin={isAdmin}
+                    />
                 )}
 
                 {activeTab === 'settings' && (
