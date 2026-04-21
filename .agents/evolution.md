@@ -76,6 +76,22 @@ MUST use a SINGLE `<Tabs>` component wrapping both `<TabsList>` and `<TabsConten
 
 ## Session History
 
+### Session: April 21, 2026 — v1.4 Branch Rescue + LFS Drop
+- **Context**: v1.4 Trailers + Rego + testing-docs-restructure work had been committed to a local branch named `Dev` and pushed to `origin/Dev` over multiple sessions. User pointed out `origin/Dev` is not the real dev branch — `claude/app-overview-wKiZ1` is. 19 commits had to be moved across without losing work.
+- **What happened**:
+  1. Local `Dev` was behind `origin/claude/app-overview-wKiZ1` by 6 commits (bootstrap docs, v1.3.1 fix, Playwright cert trust, spec quality upgrades) and ahead by 19 (all of v1.4). Branches had genuinely diverged.
+  2. Rebase onto `origin/claude/app-overview-wKiZ1` failed mid-flight because the LFS backend returned HTTP 502 while trying to smudge the 6.6 MB `Trailer Module.xlsx` source file. `git rebase --abort` also failed for the same reason.
+  3. Escape hatch: `git config --local filter.lfs.smudge "git-lfs smudge --skip -- %f"` + matching `filter.lfs.process` override let checkout skip LFS entirely. `git reset --hard` cleared the half-done rebase, then the rebase was retried cleanly.
+  4. Three conflict points resolved during rebase — `.agents/evolution.md`, `tasks/SESSION_HANDOVER.md` (twice), `testing/README.md`. All three were "both sides added distinct content" — resolved by keeping both.
+  5. Push still failed: LFS 502 persisted across 4 retries with exponential backoff (2s/4s/8s/16s). Root cause was that the `.xlsx` LFS commit from earlier in v1.4 couldn't be re-verified against the broken batch endpoint.
+  6. Realisation (user prompt): the xlsx was a source artifact. The seed script had already imported 449 trailers to Firestore; the xlsx had zero operational value. Dropped it with `git rebase --onto 546d410^ 546d410 claude/app-overview-wKiZ1`, leaving the FINDINGS.md that captured the schema decisions. Push went through immediately.
+  7. Local `Dev` deleted, local branch now `claude/app-overview-wKiZ1` tracking origin. `origin/Dev` left alone on remote (per user).
+- **Permanent learnings added to CLAUDE.md**:
+  - Canonical dev branch is `claude/app-overview-wKiZ1` — never push to or create a `Dev` branch. Confirm `git rev-parse --abbrev-ref HEAD` before every push.
+  - Don't commit vendor source spreadsheets (`.xlsx`/`.xls`) — import to Firestore, keep a FINDINGS.md beside the seed, gitignore the source. The xlsx becomes dead weight and blocks pushes when LFS is flaky.
+  - LFS smudge failures block rebase and checkout too, not just clone. `filter.lfs.smudge --skip` via `git config --local` is the escape hatch. If a dead LFS commit is already in history, drop it with `git rebase --onto <commit>^ <commit> <branch>`.
+- **Files touched**: `CLAUDE.md`, `tasks/SESSION_HANDOVER.md`, `.agents/evolution.md` (this file), `.gitignore`. No app code changed.
+
 ### Session: April 17, 2026 — v1.3.1 Production Hotfix (Loading Overlay Stuck)
 - **Severity**: PROD DOWN. Users refreshing on a module page with `?range=X&model=Y` in the URL (my v1.3 refresh persistence) got stuck behind the "Initializing Precision Build" overlay indefinitely. Module workspace totally unusable.
 - **Root cause**: Three bugs converged in one spot:
