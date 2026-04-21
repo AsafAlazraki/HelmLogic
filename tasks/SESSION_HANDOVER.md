@@ -35,9 +35,9 @@ HelmLogic is a marine dealer management SaaS platform. It lets boat brands (vend
 - **Backend**: Firebase — Firestore (DB), Auth, Storage
 - **Deployment**: Firebase App Hosting (`studio--studio-2290360004-3b963.us-central1.hosted.app`)
 - **Firebase Project**: `studio-2290360004-3b963`
-- **Dev Branch**: `Dev` — all active development (v1.4 trailers work) lands here
-- **Main Branch**: `main` — production, merge from `Dev` when ready
-- **Legacy branch**: `claude/app-overview-wKiZ1` — old v1.2/1.3 development branch (pre-Dev)
+- **Dev Branch**: `claude/app-overview-wKiZ1` — all active development lands here. Auto-deploys to the dev URL via Firebase App Hosting.
+- **Main Branch**: `main` — production. Merge from `claude/app-overview-wKiZ1` when ready.
+- **Stale branch — do not use**: `origin/Dev`. An earlier session pushed v1.4 work there by mistake; the April 2026 rescue rebased everything back onto `claude/app-overview-wKiZ1`. Never push to `origin/Dev` and never create a local `Dev` branch tracking it — both fork history. See CLAUDE.md → Key Branch for the push-safety rule.
 - **Map Library**: Leaflet + OpenStreetMap (no API key needed, replaced Google Maps)
 
 ---
