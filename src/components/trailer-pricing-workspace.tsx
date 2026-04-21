@@ -8,13 +8,14 @@
  * search + filter (2d), export (2e) and import-with-dedupe (2f) follow.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { DollarSign, Loader2, Truck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronRight, DollarSign, Loader2, RotateCcw, Truck } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -68,6 +69,120 @@ interface TrailerOverride {
     id: string;
     sellPriceExclGst?: number;
     note?: string | null;
+}
+
+// Waterfall rows rendered when a trailer is expanded. Source-column letters are
+// kept for audit so a dealer can cross-check against the import spreadsheet.
+const WATERFALL_ROWS: Array<{ key: string; label: string; col: string; bold?: boolean; accent?: boolean }> = [
+    { key: 'dealer',         label: 'Dealer',          col: 'AN' },
+    { key: 'discount',       label: 'Discount',        col: 'AO' },
+    { key: 'settlement',     label: 'Settlement',      col: 'AP' },
+    { key: 'nettPrice',      label: 'Nett Price',      col: 'AQ', bold: true },
+    { key: 'freight',        label: 'Freight',         col: 'AR' },
+    { key: 'landed',         label: 'Landed',          col: 'AS' },
+    { key: 'pdDollars',      label: 'PD ($)',          col: 'BD' },
+    { key: 'sundry',         label: 'Sundry',          col: 'BO' },
+    { key: 'detailing',      label: 'Detailing',       col: 'BP' },
+    { key: 'totalPdCharges', label: 'Total PD',        col: 'BQ' },
+    { key: 'totalNettCtd',   label: 'Total Nett CTD',  col: 'BS', bold: true },
+    { key: 'markupPercent',  label: 'Markup %',        col: 'BT' },
+    { key: 'grossProfit',    label: 'Gross Profit',    col: 'BU' },
+    { key: 'rrp',            label: 'RRP',             col: 'BV' },
+    { key: 'sell',           label: 'Sell (ex GST)',   col: 'BW', bold: true, accent: true },
+];
+
+function WaterfallPanel({
+    row,
+    hasOverride,
+    effectiveSell,
+    onReset,
+    isAdmin,
+}: {
+    row: FlatTrailerRow;
+    hasOverride: boolean;
+    effectiveSell: number;
+    onReset: (trailerId: string) => Promise<void>;
+    isAdmin: boolean;
+}) {
+    const rowsWithValues = WATERFALL_ROWS.filter(r => typeof row.pricing?.[r.key] === 'number');
+    const hasWaterfall = rowsWithValues.length > 0;
+    const pdParts: Array<{ name?: string; cost?: number }> = Array.isArray(row.pricing?.pdParts) ? row.pricing.pdParts : [];
+
+    return (
+        <div className="p-5 bg-slate-50 border-y-2 border-slate-200">
+            {/* Summary row */}
+            <div className="flex flex-wrap items-center gap-4 mb-4 pb-3 border-b border-slate-200">
+                <div className="flex flex-col">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Source sell</span>
+                    <span className="text-sm font-mono tabular-nums text-slate-700">{formatCurrency(row.sourceSell)}</span>
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Effective sell</span>
+                    <span className={`text-sm font-mono tabular-nums font-semibold ${hasOverride ? 'text-amber-700' : 'text-primary'}`}>
+                        {formatCurrency(effectiveSell)}
+                    </span>
+                </div>
+                {hasOverride && isAdmin && (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="ml-auto h-8 text-[10px]"
+                        onClick={() => onReset(row.id)}
+                    >
+                        <RotateCcw className="h-3 w-3 mr-1" /> Reset override
+                    </Button>
+                )}
+            </div>
+
+            {!hasWaterfall && (
+                <p className="text-xs text-slate-500 italic">
+                    No pricing waterfall imported for this trailer — only the top-level Sell is available.
+                </p>
+            )}
+
+            {hasWaterfall && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+                    {rowsWithValues.map(r => {
+                        const val = row.pricing[r.key];
+                        const isPct = r.key === 'markupPercent';
+                        return (
+                            <div
+                                key={r.key}
+                                className={`flex items-center justify-between py-1.5 text-xs border-b last:border-b-0 ${
+                                    r.accent ? 'font-bold text-primary border-primary/20'
+                                        : r.bold ? 'font-semibold text-slate-800'
+                                        : 'text-slate-600'
+                                }`}
+                            >
+                                <span className="flex items-center gap-2">
+                                    {r.label}
+                                    <span className="text-[9px] text-slate-300 font-mono uppercase">{r.col}</span>
+                                </span>
+                                <span className="tabular-nums font-mono">
+                                    {isPct ? `${Number(val).toFixed(1)}%` : formatCurrency(val)}
+                                </span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {pdParts.length > 0 && (
+                <div className="mt-5">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">PD Parts</p>
+                    <div className="space-y-1">
+                        {pdParts.map((p, i) => (
+                            <div key={i} className="flex items-center justify-between text-[11px]">
+                                <span className="text-slate-600 truncate">{p.name || `Part ${i + 1}`}</span>
+                                <span className="tabular-nums font-mono text-slate-500">{formatCurrency(p.cost || 0)}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 }
 
 function SellCell({
@@ -174,6 +289,7 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
     const { toast } = useToast();
     const [rows, setRows] = useState<FlatTrailerRow[]>([]);
     const [loading, setLoading] = useState(true);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
 
     const vendorIds = useMemo(() => vendors.map(v => v.id).sort().join('|'), [vendors]);
 
@@ -334,7 +450,10 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                             <table className="border-separate border-spacing-0 w-max table-fixed">
                                 <thead className="sticky top-0 z-[100]">
                                     <tr>
-                                        <th className="w-[50px] sticky left-0 top-0 z-[120] bg-white border-r-2 border-b-2 border-slate-300 text-center text-[8px] font-black uppercase shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] py-2.5 px-2">
+                                        <th className="w-[36px] sticky left-0 top-0 z-[120] bg-white border-r border-b-2 border-slate-300 px-0 py-2.5">
+                                            <span className="sr-only">Expand</span>
+                                        </th>
+                                        <th className="w-[50px] sticky left-[36px] top-0 z-[120] bg-white border-r-2 border-b-2 border-slate-300 text-center text-[8px] font-black uppercase shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] py-2.5 px-2">
                                             #
                                         </th>
                                         {COLUMNS.map((col, idx) => (
@@ -342,7 +461,7 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                                 key={col.key as string}
                                                 className={`text-[8px] font-black uppercase tracking-widest text-slate-400 px-4 py-3 border-r border-b-2 border-slate-300 whitespace-nowrap text-left bg-slate-100 ${
                                                     col.numeric ? 'text-right' : ''
-                                                } ${col.width ?? ''} ${idx === 0 ? 'sticky left-[50px] z-[110] bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)]' : ''}`}
+                                                } ${col.width ?? ''} ${idx === 0 ? 'sticky left-[86px] z-[110] bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)]' : ''}`}
                                             >
                                                 <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-600">
                                                     {col.label}
@@ -352,14 +471,32 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {rows.map((row, rowIdx) => (
-                                        <tr key={row.id} className="group hover:bg-primary/5 transition-colors">
-                                            <td className="sticky left-0 z-[80] border-r-2 border-b border-slate-200 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)] text-center text-[9px] text-slate-400 font-mono px-2 py-1 group-hover:bg-primary/5">
+                                    {rows.map((row, rowIdx) => {
+                                        const isExpanded = expandedId === row.id;
+                                        const overrideValue = overrideByTrailer.get(row.id);
+                                        const effectiveSell = overrideValue != null ? overrideValue : row.sourceSell;
+                                        const hasOverride = overrideValue != null && overrideValue !== row.sourceSell;
+                                        return (
+                                            <Fragment key={row.id}>
+                                        <tr className="group hover:bg-primary/5 transition-colors">
+                                            <td className="sticky left-0 z-[80] border-r border-b border-slate-200 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.03)] px-0 py-0 group-hover:bg-primary/5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setExpandedId(isExpanded ? null : row.id)}
+                                                    className="h-full w-full flex items-center justify-center text-slate-400 hover:text-primary transition-colors"
+                                                    aria-label={isExpanded ? 'Collapse waterfall' : 'Expand waterfall'}
+                                                >
+                                                    {isExpanded
+                                                        ? <ChevronDown className="h-4 w-4" />
+                                                        : <ChevronRight className="h-4 w-4" />}
+                                                </button>
+                                            </td>
+                                            <td className="sticky left-[36px] z-[80] border-r-2 border-b border-slate-200 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)] text-center text-[9px] text-slate-400 font-mono px-2 py-1 group-hover:bg-primary/5">
                                                 {rowIdx + 1}
                                             </td>
                                             {COLUMNS.map((col, idx) => {
                                                 const base = `border-r border-b border-slate-200 text-xs group-hover:bg-primary/5 ${col.numeric ? 'text-right font-mono tabular-nums' : ''}`;
-                                                const sticky = idx === 0 ? 'sticky left-[50px] z-[70] bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.03)] group-hover:bg-primary/5 font-semibold' : '';
+                                                const sticky = idx === 0 ? 'sticky left-[86px] z-[70] bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.03)] group-hover:bg-primary/5 font-semibold' : '';
 
                                                 if (col.key === 'image') {
                                                     return (
@@ -405,7 +542,22 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                                 );
                                             })}
                                         </tr>
-                                    ))}
+                                        {isExpanded && (
+                                            <tr>
+                                                <td colSpan={COLUMNS.length + 2} className="p-0 border-b border-slate-200">
+                                                    <WaterfallPanel
+                                                        row={row}
+                                                        hasOverride={hasOverride}
+                                                        effectiveSell={effectiveSell}
+                                                        onReset={resetOverride}
+                                                        isAdmin={isAdmin}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        )}
+                                            </Fragment>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
