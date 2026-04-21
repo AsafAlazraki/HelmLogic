@@ -128,8 +128,10 @@ users/{userId}/quotes/{quoteId}
 - `cost` field stores buy price for margin tracking
 
 ### Key Branch
-- Development branch: `claude/app-overview-wKiZ1`
-- Always push to this branch
+- **Development branch: `claude/app-overview-wKiZ1`** — this is the ONLY active dev branch.
+- Always push here. Do not push to, create, or re-invent a branch called `Dev` / `dev` / `develop` — an old `origin/Dev` exists but is stale and must not be used.
+- Before any `git push`: confirm `git rev-parse --abbrev-ref HEAD` is `claude/app-overview-wKiZ1`. If you're on a different local branch for any reason, use `git push origin <local>:claude/app-overview-wKiZ1` — never invent a new remote branch name.
+- If a session handover or older doc refers to "branch Dev", treat that as a stale artifact — the canonical branch is still `claude/app-overview-wKiZ1`.
 
 ### Known Lessons
 - **Verify data is actually visible before telling user it's there** — always query Firestore to confirm docs exist at the correct path
@@ -165,6 +167,9 @@ users/{userId}/quotes/{quoteId}
 - **Loading overlays MUST be scoped to the view that actually consumes the data** — never `{isLoading && <Overlay/>}` at the page root. A global loading flag tied to URL-restored state will block the UI in views that don't even need that data. Use `{view === 'bmt' && (modelLoading || overrideLoading) && <Overlay/>}`. This caused v1.3.1 prod hotfix — refresh with `?model=X` loaded model data while view was still 'ranges', overlay blocked entire page.
 - **URL persistence must handle PARTIAL param combos** — when you strip "default" values from the URL (e.g. delete `view=ranges`), a refresh produces a subset of the original params. If `selectedModelId` is in URL but `view` was stripped, state rehydrates inconsistently. Rules: (1) on `useState` init, INFER missing values from the deeper params present — `?model=X` implies `view='bmt'`, `?range=X` implies `view='models'`. (2) Never gate critical rendering decisions on a single URL param in isolation.
 - **Every URL-synced state needs a refresh-regression test for every param combo** — not just "refresh after happy path". Test: refresh with no params, each param alone, pairs, triples. A test that only covers the case where all params are present will miss the bug where the user refreshes mid-transition and only half the params are there.
+- **The canonical dev branch is `claude/app-overview-wKiZ1` — never push to a different branch name** — an old `origin/Dev` exists on the remote but is stale; pushing there (or creating a local `Dev` branch that tracks it) silently forks history and forces a rebase rescue later. Before every push run `git rev-parse --abbrev-ref HEAD` and confirm the name. If the local branch name doesn't match the remote, use the explicit refspec form `git push origin <local>:claude/app-overview-wKiZ1` — do not let a new remote branch get auto-created.
+- **Don't commit vendor source spreadsheets (`.xlsx`, `.xls`) to the repo** — source data exists to be imported into Firestore by a seed script, and once imported the canonical copy is the database. The spreadsheet becomes dead weight: it bloats the repo, tempts Git LFS (6.6 MB Trailer Module xlsx is what kicked this off), and blocks pushes whenever the LFS backend is flaky. Pattern: keep the xlsx out of git, write a FINDINGS.md beside the seed script capturing schema decisions, and let Firestore be the source of truth. `tasks/*-source/*.xlsx` is gitignored for this reason.
+- **Git LFS smudge failures block rebase and checkout, not just clone** — when the LFS backend returns 502 (as it did during the April 2026 branch rescue), any checkout that would materialize an LFS-tracked file fails — including the intermediate checkouts git performs during `rebase`. Workaround: `git config --local filter.lfs.smudge "git-lfs smudge --skip -- %f"` + `filter.lfs.process "git-lfs filter-process --skip"` before the rebase, then restore after. But the real fix is rule above — don't commit the source file in the first place. If a dead LFS commit is already in history and blocking a push, drop it with `git rebase --onto <commit>^ <commit> <branch>` (the LFS object stays on the remote, but nothing in the new history references it).
 
 ---
 
