@@ -3,18 +3,20 @@
 /**
  * Trailer Pricing Workspace — table-style pricing manager.
  *
- * v1.4 Chunk 2a scaffold: flat read-only table across every selected vendor.
- * Follow-up chunks add inline editing (2b), expandable waterfall (2c),
- * search + brand filter (2d), export (2e) and import-with-dedupe (2f).
+ * Flat, Yamaha/MPF-style table. Inline Sell-override edit persists to
+ * `organisations/{orgId}/trailerOverrides/{trailerId}`. Waterfall (2c),
+ * search + filter (2d), export (2e) and import-with-dedupe (2f) follow.
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { useCollection } from '@/firebase/firestore/use-collection';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DollarSign, Loader2, Truck } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface Vendor {
     id: string;
@@ -59,8 +61,93 @@ const COLUMNS: Array<{ key: keyof FlatTrailerRow | string; label: string; numeri
     { key: 'totalNettCtd', label: 'CTD', numeric: true, width: 'min-w-[110px]' },
     { key: 'markupPercent', label: 'MU%', numeric: true, width: 'min-w-[80px]' },
     { key: 'rrp', label: 'RRP', numeric: true, width: 'min-w-[110px]' },
-    { key: 'sourceSell', label: 'Sell ex GST', numeric: true, width: 'min-w-[130px]' },
+    { key: 'sell', label: 'Sell ex GST', numeric: true, width: 'min-w-[140px]' },
 ];
+
+interface TrailerOverride {
+    id: string;
+    sellPriceExclGst?: number;
+    note?: string | null;
+}
+
+function SellCell({
+    row,
+    overrideValue,
+    isAdmin,
+    onSave,
+    onReset,
+}: {
+    row: FlatTrailerRow;
+    overrideValue?: number;
+    isAdmin: boolean;
+    onSave: (trailerId: string, price: number) => Promise<void>;
+    onReset: (trailerId: string) => Promise<void>;
+}) {
+    const effective = overrideValue != null ? overrideValue : row.sourceSell;
+    const hasOverride = overrideValue != null && overrideValue !== row.sourceSell;
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState('');
+
+    if (editing) {
+        const commit = async () => {
+            const trimmed = draft.trim();
+            setEditing(false);
+            if (trimmed === '') {
+                // Empty = reset to source
+                if (hasOverride) await onReset(row.id);
+                return;
+            }
+            const parsed = parseFloat(trimmed);
+            if (!Number.isFinite(parsed) || parsed < 0) return;
+            if (parsed === row.sourceSell) {
+                // Match source = clear override
+                if (hasOverride) await onReset(row.id);
+                return;
+            }
+            if (parsed !== effective) await onSave(row.id, parsed);
+        };
+        return (
+            <input
+                autoFocus
+                type="number"
+                step="0.01"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={commit}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') commit();
+                    if (e.key === 'Escape') setEditing(false);
+                }}
+                className="w-full h-full px-2 py-1 text-xs border-2 border-primary rounded-md outline-none bg-white text-right font-mono"
+            />
+        );
+    }
+
+    const wrapperClass = isAdmin
+        ? 'block w-full h-full px-3 py-2 cursor-pointer hover:bg-primary/10 text-right'
+        : 'block w-full h-full px-3 py-2 text-right';
+
+    return (
+        <span
+            onClick={() => {
+                if (!isAdmin) return;
+                setDraft(String(effective || ''));
+                setEditing(true);
+            }}
+            className={wrapperClass}
+            title={isAdmin ? (hasOverride ? 'Click to edit · leave blank to reset' : 'Click to set org override') : undefined}
+        >
+            <span className={hasOverride ? 'text-amber-700 font-semibold' : ''}>
+                {formatCurrency(effective)}
+            </span>
+            {hasOverride && (
+                <span className="block text-[9px] text-slate-400 line-through leading-tight">
+                    {formatCurrency(row.sourceSell)}
+                </span>
+            )}
+        </span>
+    );
+}
 
 function TrailerPricingImage({ src, alt }: { src?: string; alt: string }) {
     const [failed, setFailed] = useState(false);
@@ -84,10 +171,55 @@ function TrailerPricingImage({ src, alt }: { src?: string; alt: string }) {
 
 export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: TrailerPricingWorkspaceProps) {
     const firestore = useFirestore();
+    const { toast } = useToast();
     const [rows, setRows] = useState<FlatTrailerRow[]>([]);
     const [loading, setLoading] = useState(true);
 
     const vendorIds = useMemo(() => vendors.map(v => v.id).sort().join('|'), [vendors]);
+
+    // Live overrides — single subscription, Map keyed by trailerId
+    const overridesQuery = useMemoFirebase(
+        () => collection(firestore, `organisations/${organisationId}/trailerOverrides`),
+        [firestore, organisationId],
+    );
+    const { data: overrides } = useCollection<TrailerOverride>(overridesQuery);
+    const overrideByTrailer = useMemo(() => {
+        const m = new Map<string, number>();
+        (overrides || []).forEach(o => {
+            if (typeof o.sellPriceExclGst === 'number') m.set(o.id, o.sellPriceExclGst);
+        });
+        return m;
+    }, [overrides]);
+
+    const saveOverride = useCallback(async (trailerId: string, price: number) => {
+        try {
+            const row = rows.find(r => r.id === trailerId);
+            await setDoc(
+                doc(firestore, `organisations/${organisationId}/trailerOverrides/${trailerId}`),
+                {
+                    sellPriceExclGst: price,
+                    trailerId,
+                    brandVendorId: row?.vendorId || null,
+                    seriesId: row?.seriesId || null,
+                    overrideAt: serverTimestamp(),
+                },
+                { merge: true },
+            );
+            toast({ title: 'Override saved', description: `${row?.code ?? trailerId} → ${formatCurrency(price)} ex GST` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: e?.message });
+        }
+    }, [firestore, organisationId, rows, toast]);
+
+    const resetOverride = useCallback(async (trailerId: string) => {
+        try {
+            await deleteDoc(doc(firestore, `organisations/${organisationId}/trailerOverrides/${trailerId}`));
+            const row = rows.find(r => r.id === trailerId);
+            toast({ title: 'Override cleared', description: `${row?.code ?? trailerId} reverted to source price` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Reset failed', description: e?.message });
+        }
+    }, [firestore, organisationId, rows, toast]);
 
     useEffect(() => {
         let cancelled = false;
@@ -174,7 +306,7 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                             Trailer Pricing Manager
                         </h2>
                         <p className="text-[10px] text-slate-500 mt-1">
-                            {isAdmin ? 'Click a cell to edit (coming 2b). Row expands to show the waterfall (coming 2c).' : 'Read-only view.'}
+                            {isAdmin ? 'Click the Sell cell to set an org override. Leave blank (or match source) to reset.' : 'Read-only view.'}
                         </p>
                     </div>
                 </div>
@@ -233,6 +365,20 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                                     return (
                                                         <td key="image" className={`${base} ${sticky} px-2 py-1`}>
                                                             <TrailerPricingImage src={row.imageUrl} alt={row.code} />
+                                                        </td>
+                                                    );
+                                                }
+
+                                                if (col.key === 'sell') {
+                                                    return (
+                                                        <td key="sell" className={`${base} ${sticky} p-0`}>
+                                                            <SellCell
+                                                                row={row}
+                                                                overrideValue={overrideByTrailer.get(row.id)}
+                                                                isAdmin={isAdmin}
+                                                                onSave={saveOverride}
+                                                                onReset={resetOverride}
+                                                            />
                                                         </td>
                                                     );
                                                 }
