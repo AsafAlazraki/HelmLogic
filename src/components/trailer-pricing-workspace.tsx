@@ -9,7 +9,7 @@
  */
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -34,6 +34,7 @@ import {
     RotateCcw,
     Search,
     Truck,
+    Upload,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
 import { useToast } from '@/hooks/use-toast';
@@ -311,6 +312,7 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const [brandFilter, setBrandFilter] = useState<string>('all');
+    const [importing, setImporting] = useState(false);
 
     // Pre-compute search fields on each row for fast filter
     const filteredRows = useMemo(() => {
@@ -425,6 +427,214 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
         toast({ title: 'Exported', description: `${data.length} trailer${data.length === 1 ? '' : 's'} exported.` });
     }, [filteredRows, rows, buildExportRows, brandFilter, vendors, toast]);
 
+    const loadRows = useCallback(async (): Promise<FlatTrailerRow[]> => {
+        const flat: FlatTrailerRow[] = [];
+        for (const vendor of vendors) {
+            const seriesSnap = await getDocs(collection(firestore, `data-warehouse/${vendor.id}/series`));
+            for (const seriesDoc of seriesSnap.docs) {
+                const seriesId = seriesDoc.id;
+                const seriesName = (seriesDoc.data() as any).name || seriesId;
+                const trailersSnap = await getDocs(
+                    collection(firestore, `data-warehouse/${vendor.id}/series/${seriesId}/trailers`)
+                );
+                for (const t of trailersSnap.docs) {
+                    const data = t.data() as any;
+                    const pricing = data.pricingDetail || {};
+                    const sourceSell = typeof pricing.sell === 'number'
+                        ? pricing.sell
+                        : (typeof data.sellPriceExclGst === 'number' ? data.sellPriceExclGst : 0);
+                    flat.push({
+                        id: t.id,
+                        vendorId: vendor.id,
+                        vendorName: vendor.name,
+                        seriesId,
+                        seriesName,
+                        code: data.code || t.id,
+                        name: data.name || '',
+                        supplier: data.supplier || '',
+                        imageUrl: data.imageUrl || '',
+                        isActive: data.isActive,
+                        sourceSell,
+                        pricing,
+                    });
+                }
+            }
+        }
+        flat.sort((a, b) =>
+            a.vendorName.localeCompare(b.vendorName) ||
+            a.seriesName.localeCompare(b.seriesName) ||
+            a.code.localeCompare(b.code)
+        );
+        return flat;
+    }, [firestore, vendorIds]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = ''; // allow re-selecting same file
+        if (!file) return;
+        setImporting(true);
+
+        try {
+            const buf = await file.arrayBuffer();
+            const wb = XLSX.read(buf, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const parsed = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
+
+            if (parsed.length === 0) {
+                toast({ variant: 'destructive', title: 'Empty import', description: 'No rows found in the first sheet.' });
+                return;
+            }
+
+            // Build lookup maps
+            const vendorByName = new Map<string, { id: string; name: string }>();
+            vendors.forEach(v => vendorByName.set(v.name.toLowerCase().trim(), { id: v.id, name: v.name }));
+
+            const seriesByBrand = new Map<string, Map<string, string>>(); // brandId → loweredSeriesName → seriesId
+            for (const v of vendors) {
+                const seriesSnap = await getDocs(collection(firestore, `data-warehouse/${v.id}/series`));
+                const m = new Map<string, string>();
+                seriesSnap.docs.forEach(d => {
+                    const name = (d.data() as any).name || d.id;
+                    m.set(String(name).toLowerCase().trim(), d.id);
+                });
+                seriesByBrand.set(v.id, m);
+            }
+
+            const existingByKey = new Map<string, FlatTrailerRow>();
+            rows.forEach(r => existingByKey.set(`${r.vendorId}:${r.code.toLowerCase()}`, r));
+
+            // Pricing column mapping (header label → pricingDetail key)
+            const PRICING_COLS: Array<[string, string]> = [
+                ['Dealer', 'dealer'],
+                ['Discount', 'discount'],
+                ['Settlement', 'settlement'],
+                ['Nett Price', 'nettPrice'],
+                ['Freight', 'freight'],
+                ['Landed', 'landed'],
+                ['PD $', 'pdDollars'],
+                ['PD Dollars', 'pdDollars'],
+                ['Sundry', 'sundry'],
+                ['Detailing', 'detailing'],
+                ['Total PD', 'totalPdCharges'],
+                ['Total Nett CTD', 'totalNettCtd'],
+                ['Markup %', 'markupPercent'],
+                ['Gross Profit', 'grossProfit'],
+                ['RRP', 'rrp'],
+                ['Source Sell (ex GST)', 'sell'],
+                ['Sell', 'sell'],
+                ['Sell ex GST', 'sell'],
+            ];
+
+            const numOrNull = (v: any): number | null => {
+                if (v == null || v === '') return null;
+                const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/[$,]/g, ''));
+                return Number.isFinite(n) ? n : null;
+            };
+
+            let updated = 0;
+            let created = 0;
+            let skipped = 0;
+            const errors: string[] = [];
+            const skippedBrands = new Set<string>();
+
+            for (const raw of parsed) {
+                const brandRaw = String(raw.Brand ?? raw.brand ?? '').trim();
+                const codeRaw = String(raw.Code ?? raw.code ?? '').trim();
+                if (!brandRaw || !codeRaw) { skipped++; continue; }
+
+                const vendorHit = vendorByName.get(brandRaw.toLowerCase());
+                if (!vendorHit) {
+                    skipped++;
+                    skippedBrands.add(brandRaw);
+                    continue;
+                }
+
+                // Build pricingDetail from known columns
+                const pricingDetail: Record<string, number> = {};
+                for (const [col, key] of PRICING_COLS) {
+                    const v = numOrNull(raw[col]);
+                    if (v != null) pricingDetail[key] = v;
+                }
+
+                const nameRaw = String(raw.Name ?? raw.name ?? '').trim();
+                const supplierRaw = String(raw.Supplier ?? raw.supplier ?? '').trim();
+                const imageUrlRaw = String(raw['Image URL'] ?? raw.imageUrl ?? '').trim();
+                const seriesNameRaw = String(raw.Series ?? raw.series ?? 'Imported').trim() || 'Imported';
+
+                const key = `${vendorHit.id}:${codeRaw.toLowerCase()}`;
+                const existing = existingByKey.get(key);
+
+                const trailerPayload: Record<string, any> = {
+                    code: codeRaw,
+                    pricingDetail: { ...(existing?.pricing || {}), ...pricingDetail },
+                };
+                if (nameRaw) trailerPayload.name = nameRaw;
+                if (supplierRaw) trailerPayload.supplier = supplierRaw;
+                if (imageUrlRaw) trailerPayload.imageUrl = imageUrlRaw;
+                if (typeof pricingDetail.sell === 'number') trailerPayload.sellPriceExclGst = pricingDetail.sell;
+
+                try {
+                    if (existing) {
+                        await updateDoc(
+                            doc(firestore, `data-warehouse/${vendorHit.id}/series/${existing.seriesId}/trailers/${existing.id}`),
+                            { ...trailerPayload, updatedAt: serverTimestamp() },
+                        );
+                        updated++;
+                    } else {
+                        // Resolve or create series
+                        const brandSeries = seriesByBrand.get(vendorHit.id)!;
+                        let seriesId = brandSeries.get(seriesNameRaw.toLowerCase());
+                        if (!seriesId) {
+                            const newSeriesRef = doc(collection(firestore, `data-warehouse/${vendorHit.id}/series`));
+                            await setDoc(newSeriesRef, {
+                                name: seriesNameRaw,
+                                slug: seriesNameRaw.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                                isActive: true,
+                                createdAt: serverTimestamp(),
+                            });
+                            seriesId = newSeriesRef.id;
+                            brandSeries.set(seriesNameRaw.toLowerCase(), seriesId);
+                        }
+                        const trailerRef = doc(collection(firestore, `data-warehouse/${vendorHit.id}/series/${seriesId}/trailers`));
+                        await setDoc(trailerRef, {
+                            ...trailerPayload,
+                            name: trailerPayload.name || codeRaw,
+                            isActive: true,
+                            createdAt: serverTimestamp(),
+                        });
+                        created++;
+                    }
+                } catch (err: any) {
+                    errors.push(`${brandRaw}/${codeRaw}: ${err?.message || 'write failed'}`);
+                }
+            }
+
+            // Reload table to reflect new data
+            const reloaded = await loadRows();
+            setRows(reloaded);
+
+            const parts = [`${updated} updated`, `${created} created`];
+            if (skipped > 0) parts.push(`${skipped} skipped`);
+            const desc = parts.join(' · ') + (skippedBrands.size > 0 ? ` · unknown brand(s): ${[...skippedBrands].join(', ')}` : '');
+
+            if (errors.length > 0) {
+                console.error('Import errors:', errors);
+                toast({
+                    variant: 'destructive',
+                    title: 'Import partial',
+                    description: `${desc} · ${errors.length} write error(s) — see console.`,
+                });
+            } else {
+                toast({ title: 'Import complete', description: desc });
+            }
+        } catch (err: any) {
+            console.error('Import failed:', err);
+            toast({ variant: 'destructive', title: 'Import failed', description: err?.message });
+        } finally {
+            setImporting(false);
+        }
+    }, [firestore, vendors, rows, loadRows, toast]);
+
     const resetOverride = useCallback(async (trailerId: string) => {
         try {
             await deleteDoc(doc(firestore, `organisations/${organisationId}/trailerOverrides/${trailerId}`));
@@ -437,64 +647,17 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
 
     useEffect(() => {
         let cancelled = false;
-
-        async function load() {
-            setLoading(true);
-            const flat: FlatTrailerRow[] = [];
-            try {
-                for (const vendor of vendors) {
-                    const seriesSnap = await getDocs(collection(firestore, `data-warehouse/${vendor.id}/series`));
-                    for (const seriesDoc of seriesSnap.docs) {
-                        const seriesId = seriesDoc.id;
-                        const seriesName = (seriesDoc.data() as any).name || seriesId;
-                        const trailersSnap = await getDocs(
-                            collection(firestore, `data-warehouse/${vendor.id}/series/${seriesId}/trailers`)
-                        );
-                        for (const t of trailersSnap.docs) {
-                            const data = t.data() as any;
-                            const pricing = data.pricingDetail || {};
-                            const sourceSell = typeof pricing.sell === 'number'
-                                ? pricing.sell
-                                : (typeof data.sellPriceExclGst === 'number' ? data.sellPriceExclGst : 0);
-                            flat.push({
-                                id: t.id,
-                                vendorId: vendor.id,
-                                vendorName: vendor.name,
-                                seriesId,
-                                seriesName,
-                                code: data.code || t.id,
-                                name: data.name || '',
-                                supplier: data.supplier || '',
-                                imageUrl: data.imageUrl || '',
-                                isActive: data.isActive,
-                                sourceSell,
-                                pricing,
-                            });
-                        }
-                    }
-                }
-                if (!cancelled) {
-                    flat.sort((a, b) =>
-                        a.vendorName.localeCompare(b.vendorName) ||
-                        a.seriesName.localeCompare(b.seriesName) ||
-                        a.code.localeCompare(b.code)
-                    );
-                    setRows(flat);
-                }
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        }
-
         if (vendors.length === 0) {
             setRows([]);
             setLoading(false);
             return;
         }
-
-        load();
+        setLoading(true);
+        loadRows()
+            .then(flat => { if (!cancelled) setRows(flat); })
+            .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
-    }, [firestore, vendorIds]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [loadRows, vendorIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
     if (vendors.length === 0) {
         return (
@@ -548,6 +711,31 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
+                    {isAdmin && (
+                        <Button
+                            type="button"
+                            onClick={(e) => {
+                                const input = (e.currentTarget.nextElementSibling as HTMLInputElement | null);
+                                input?.click();
+                            }}
+                            className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2"
+                            disabled={importing}
+                        >
+                            {importing
+                                ? <Loader2 className="h-4 w-4 animate-spin" />
+                                : <Upload className="h-4 w-4" />}
+                            Import
+                        </Button>
+                    )}
+                    {isAdmin && (
+                        <input
+                            type="file"
+                            accept=".xlsx,.xls,.csv"
+                            hidden
+                            onChange={handleImport}
+                            disabled={importing}
+                        />
+                    )}
                 </div>
             </div>
 
