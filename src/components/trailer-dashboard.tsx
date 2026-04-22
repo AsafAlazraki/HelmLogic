@@ -38,6 +38,8 @@ import {
     Plus,
     X,
     Check,
+    LayoutGrid,
+    Rows3,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
 
@@ -203,6 +205,21 @@ export function TrailerDashboard({ vendors, moduleName, isAdmin }: TrailerDashbo
     const [sizeFilter, setSizeFilter] = useState<BoatSizeRange | 'all'>('all');
     const [sortKey, setSortKey] = useState<SortKey>('code');
     const [sortDir, setSortDir] = useState<SortDir>('asc');
+    const [viewMode, setViewMode] = useState<'cards' | 'table'>(() => {
+        if (typeof window !== 'undefined') {
+            const v = new URLSearchParams(window.location.search).get('trailerView');
+            if (v === 'table' || v === 'cards') return v;
+        }
+        return 'cards';
+    });
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const url = new URL(window.location.href);
+        if (viewMode === 'table') url.searchParams.set('trailerView', 'table');
+        else url.searchParams.delete('trailerView');
+        window.history.replaceState({}, '', url.toString());
+    }, [viewMode]);
 
     const filtered = useMemo(() => {
         let list = [...trailers];
@@ -213,7 +230,9 @@ export function TrailerDashboard({ vendors, moduleName, isAdmin }: TrailerDashbo
                 t.code.toLowerCase().includes(q) ||
                 t.name.toLowerCase().includes(q) ||
                 t.vendorName.toLowerCase().includes(q) ||
-                t.seriesName.toLowerCase().includes(q)
+                t.seriesName.toLowerCase().includes(q) ||
+                (t.supplier ? t.supplier.toLowerCase().includes(q) : false) ||
+                (t.features || []).some(f => f.toLowerCase().includes(q))
             );
         }
 
@@ -434,6 +453,35 @@ export function TrailerDashboard({ vendors, moduleName, isAdmin }: TrailerDashbo
                             </DropdownMenuContent>
                         </DropdownMenu>
 
+                        <div className="inline-flex rounded-md border bg-white ml-auto">
+                            <button
+                                type="button"
+                                aria-label="Card view"
+                                aria-pressed={viewMode === 'cards'}
+                                onClick={() => setViewMode('cards')}
+                                className={`px-2 py-1.5 rounded-l-md transition-colors ${
+                                    viewMode === 'cards'
+                                        ? 'bg-orange-500 text-white'
+                                        : 'text-slate-500 hover:bg-slate-50'
+                                }`}
+                            >
+                                <LayoutGrid className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                                type="button"
+                                aria-label="Table view"
+                                aria-pressed={viewMode === 'table'}
+                                onClick={() => setViewMode('table')}
+                                className={`px-2 py-1.5 rounded-r-md border-l transition-colors ${
+                                    viewMode === 'table'
+                                        ? 'bg-orange-500 text-white'
+                                        : 'text-slate-500 hover:bg-slate-50'
+                                }`}
+                            >
+                                <Rows3 className="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+
                         {hasActiveFilters && (
                             <Button variant="ghost" size="sm" onClick={clearFilters} className="text-xs">
                                 Clear
@@ -471,7 +519,7 @@ export function TrailerDashboard({ vendors, moduleName, isAdmin }: TrailerDashbo
                     )}
 
                     {/* Grouped grid (no size filter active) */}
-                    {!isLoading && filtered.length > 0 && sizeFilter === 'all' && (
+                    {!isLoading && filtered.length > 0 && viewMode === 'cards' && sizeFilter === 'all' && (
                         <>
                             {BOAT_SIZE_RANGES.map((range) => {
                                 const group = grouped[range];
@@ -495,12 +543,23 @@ export function TrailerDashboard({ vendors, moduleName, isAdmin }: TrailerDashbo
                     )}
 
                     {/* Flat grid when filter narrows */}
-                    {!isLoading && filtered.length > 0 && sizeFilter !== 'all' && (
+                    {!isLoading && filtered.length > 0 && viewMode === 'cards' && sizeFilter !== 'all' && (
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                             {filtered.map(t => (
                                 <TrailerCard key={`${t.vendorId}-${t.id}`} trailer={t} onClick={() => openTrailer(t)} />
                             ))}
                         </div>
+                    )}
+
+                    {/* Table view */}
+                    {!isLoading && filtered.length > 0 && viewMode === 'table' && (
+                        <TrailerTable
+                            trailers={filtered}
+                            onRowClick={openTrailer}
+                            sortKey={sortKey}
+                            sortDir={sortDir}
+                            onToggleSort={toggleSort}
+                        />
                     )}
                 </div>
             </ScrollArea>
@@ -580,6 +639,98 @@ function TrailerCard({ trailer, onClick }: { trailer: TrailerRow; onClick: () =>
                 )}
             </CardContent>
         </Card>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Table view
+// ---------------------------------------------------------------------------
+
+function TrailerTable({
+    trailers,
+    onRowClick,
+    sortKey,
+    sortDir,
+    onToggleSort,
+}: {
+    trailers: TrailerRow[];
+    onRowClick: (t: TrailerRow) => void;
+    sortKey: SortKey;
+    sortDir: SortDir;
+    onToggleSort: (k: SortKey) => void;
+}) {
+    const arrow = (k: SortKey) => sortKey === k ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '';
+    const Th = ({ children, onClick, className }: { children: ReactNode; onClick?: () => void; className?: string }) => (
+        <th
+            className={`text-left px-3 py-2 font-semibold text-[10px] uppercase tracking-wider text-slate-500 ${onClick ? 'cursor-pointer hover:text-slate-800' : ''} ${className || ''}`}
+            onClick={onClick}
+        >
+            {children}
+        </th>
+    );
+
+    return (
+        <div className="border rounded-xl overflow-hidden bg-white">
+            <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                    <thead className="bg-slate-50 border-b">
+                        <tr>
+                            <Th className="w-12">&nbsp;</Th>
+                            <Th onClick={() => onToggleSort('code')}>Code{arrow('code')}</Th>
+                            <Th>Name</Th>
+                            <Th>Brand · Series</Th>
+                            <Th onClick={() => onToggleSort('boat')}>Boat{arrow('boat')}</Th>
+                            <Th>Length</Th>
+                            <Th>ATM</Th>
+                            <Th onClick={() => onToggleSort('price')} className="text-right">Sell (ex GST){arrow('price')}</Th>
+                            <Th>Status</Th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {trailers.map(t => {
+                            const inactive = t.isActive === false;
+                            return (
+                                <tr
+                                    key={`${t.vendorId}-${t.id}`}
+                                    onClick={() => onRowClick(t)}
+                                    className={`border-b last:border-b-0 cursor-pointer hover:bg-orange-50/50 ${inactive ? 'opacity-60' : ''}`}
+                                >
+                                    <td className="px-3 py-2">
+                                        <div className="h-8 w-10 bg-slate-50 rounded flex items-center justify-center overflow-hidden">
+                                            <TrailerImage
+                                                src={t.imageUrl}
+                                                alt={t.name}
+                                                className="h-full object-contain"
+                                                fallback={<Truck className="h-4 w-4 text-slate-300" />}
+                                            />
+                                        </div>
+                                    </td>
+                                    <td className="px-3 py-2 font-semibold">{t.code}</td>
+                                    <td className="px-3 py-2 text-slate-700 max-w-[240px] truncate" title={t.name}>{t.name}</td>
+                                    <td className="px-3 py-2 text-[10px] text-slate-500 uppercase tracking-wider">
+                                        <span className="font-medium">{t.vendorName}</span>
+                                        {t.seriesName && <span className="text-slate-400"> · {t.seriesName}</span>}
+                                    </td>
+                                    <td className="px-3 py-2">{t.specifications?.boatSizeMtr != null ? `${t.specifications.boatSizeMtr}m` : '—'}</td>
+                                    <td className="px-3 py-2">{t.specifications?.lengthMtr != null ? `${t.specifications.lengthMtr}m` : '—'}</td>
+                                    <td className="px-3 py-2">{t.specifications?.atmKg != null ? `${t.specifications.atmKg} kg` : '—'}</td>
+                                    <td className="px-3 py-2 text-right font-semibold text-orange-600">
+                                        {t.sellPriceExclGst ? formatCurrency(t.sellPriceExclGst) : <span className="text-slate-300 font-normal">—</span>}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                        {inactive ? (
+                                            <Badge variant="outline" className="text-[9px] border-red-400 text-red-600">Inactive</Badge>
+                                        ) : (
+                                            <Badge variant="outline" className="text-[9px] border-green-400 text-green-600">Active</Badge>
+                                        )}
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     );
 }
 
