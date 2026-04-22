@@ -1,7 +1,7 @@
 # HelmLogic — Codebase Map
 
-> File-by-file index for fast orientation. Updated: 2026-04-19.
-> 81 components + 10 lib files + 9 test specs. Most important files are starred ★.
+> File-by-file index for fast orientation. Updated: 2026-04-22.
+> 85+ components + 10 lib files + 9 test specs. Most important files are starred ★.
 
 ---
 
@@ -29,13 +29,17 @@
 
 ## Components (`src/components/`)
 
-### Module Workspaces (The Big 4)
+### Module Workspaces (The Big 5)
 | File | Purpose |
 |------|---------|
 | `yamaha-motor-workspace.tsx` ★ | Motor module workspace — Catalog / Pricing Manager / Promotions / Settings tabs. Reference pattern for TrailersWorkspace. |
-| `master-price-file-workspace.tsx` ★ | Editable data tables, Excel import/export, per-sheet datasets. Reused inside other workspaces. |
+| `master-price-file-workspace.tsx` ★ | Editable data tables, Excel import/export, per-sheet datasets. **v1.4**: `handleImport` upserts by natural key (Part Number / Model Code / SKU fallback) instead of clear-and-replace, so operators can partial-import without wiping unrelated rows. |
 | `highfield-model-editor.tsx` ★ | Full boat model editor (opened from catalog). Tabs: Overview, Variants, Optional Features, Motor Options, Trailer Config (v1.4: + Trailer Options). |
 | `stock-management-workspace.tsx` ★ | Stock + delivered-deals + hold-requests + map + assignments. Sub-tab URL sync. |
+| `trailers-workspace.tsx` ★ (**v1.4**) | Trailer module workspace — Dashboard / Pricing Manager / Settings. Defaults to `?trailerTab=dashboard`; legacy `catalog` values remap. Settings leads with `ModuleImageEditor`, then brand multi-select, trailer dealer-fit category manager, role assignment. |
+| `trailer-dashboard.tsx` ★ (**v1.4**) | Yamaha-style trailer catalog dashboard. Aggregates all selected trailer brands with `getDocs`, groups by boat-size range (<4m / 4–5m / 5–6m / 6–7m / 7m+ / Unknown), card/table view toggle (URL-synced `?trailerView=`), search across code/name/brand/series/supplier/features, admin-only image + field editor on detail sheet. |
+| `trailer-pricing-workspace.tsx` (**v1.4**) | Per-brand pricing Manager — full dealer-audit waterfall with source xlsx column codes + per-org overrides. |
+| `rego-workspace.tsx` (**v1.4**) | Rego module workspace — Types + Settings tabs. Types are sub-docs on Rego Authority vendors. |
 
 ### Quote Builder
 | File | Purpose |
@@ -58,9 +62,10 @@
 ### Dealer Fit
 | File | Purpose |
 |------|---------|
-| `dealer-fit-options.tsx` | Merges 3 category sources (global + module + motor). Renders selector grids. |
+| `dealer-fit-options.tsx` | Merges **4** category sources (global + module + motor + trailer, v1.4). Renders selector grids. |
 | `module-dealer-fit-manager.tsx` | Per-module category CRUD. `fieldName` prop lets it handle standard / motor / trailer categories. |
 | `master-data-browser-dialog.tsx` | Search all MPF datasets → add dealer fit items. One-click add, staged items panel. |
+| `module-image-editor.tsx` (**v1.4**) | Reusable Settings-tab card for editing any module's `logoUrl` (upload / paste URL / remove). Used by Trailers settings; drop-in for any other module. |
 
 ### Stock
 | File | Purpose |
@@ -105,6 +110,7 @@
 | `FirebaseErrorListener.tsx` | Global Firestore error toast wrapper |
 | `admin-guard.tsx` | Admin-only route gate |
 | `breadcrumb-nav.tsx` | Breadcrumbs |
+| `sam-allen-uploader.tsx` | Sam Allen price-list uploader. **v1.4**: upserts by natural key (Part Number / Model Code / SKU) instead of delete-all-then-insert, preserving user edits across partial uploads. |
 | `sam-allen-*`, `yamaha-api-fetcher.tsx`, `json-data-visualizer.tsx` | Data import + inspection tools |
 | `mpf-parsers.ts` | Excel sheet parsers for MPF import |
 
@@ -196,12 +202,13 @@ Python seed + migration scripts. Note: `seed-highfield.py` writes to the WRONG p
 
 ## Data Import (`data-import/`)
 
-Excel source files used for module imports:
+Excel source files used for module imports. **v1.4 rule** — these are NOT committed to git; they're operator-side artifacts fed into seed scripts. The canonical copy once imported is Firestore.
+
 - `Dealer_Fit_Module.xlsx` — dealer fit items master
 - `Copy of Motor Module.xlsx` — Yamaha motor data
 - `Parts Module (1).xlsx`, `Parts Module (2).xlsx` — parts data
 - `Rigging Module.xlsx` — rigging kits
-- **`Trailer Module.xlsx`** — PENDING (user needs to drop this in from `C:\Users\AsafA\Downloads\`)
+- `Trailer Module.xlsx` — ingested into Firestore via `scripts/seed-trailers.ts`; source file is gitignored after import
 
 ---
 
@@ -211,7 +218,9 @@ Excel source files used for module imports:
 - `modules/[id]/page.tsx`: `?tab=`, `?view=`, `?range=`, `?model=` (v1.3)
 - `yamaha-motor-workspace.tsx`: `?motorTab=` (v1.3)
 - `stock-management-workspace.tsx`: `?stockView=` (v1.3)
-- **v1.4 additions**: Trailers workspace will need `?trailerBrand=`, `?trailerTab=`
+- `trailers-workspace.tsx`: `?trailerTab=` (v1.4 — `dashboard` | `pricing` | `settings`; legacy `catalog` remaps to `dashboard`)
+- `trailer-dashboard.tsx`: `?trailerView=` (v1.4 — `cards` default, `table` written explicitly)
+- `rego-workspace.tsx`: `?regoTab=` (v1.4)
 
 ### Loading overlays (MUST be scoped per v1.3.1)
 - `modules/[id]/page.tsx`: `{isTransitioning || (view === 'bmt' && (masterModelLoading || overrideLoading))}` — NOT page-root
