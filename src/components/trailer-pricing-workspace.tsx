@@ -87,8 +87,56 @@ const COLUMNS: Array<{ key: keyof FlatTrailerRow | string; label: string; numeri
 
 interface TrailerOverride {
     id: string;
+    // Legacy shape — early v1.4 overrides stored only the sell price.
     sellPriceExclGst?: number;
+    // New shape (stage 1a) — any subset of the waterfall keys can be
+    // overridden per-org. When `sell` is set, we also mirror it to the
+    // top-level `sellPriceExclGst` above so the catalog picker (which
+    // reads the legacy field directly) keeps working without changes.
+    pricingDetail?: Partial<Record<string, number>>;
     note?: string | null;
+}
+
+// Waterfall keys an org may override. Anything NOT in this set is a
+// computed/derived column we don't let users edit (e.g. grossProfit is
+// derived from margin%, we expose the raw drivers instead).
+const EDITABLE_KEYS = new Set<string>([
+    'dealer', 'discount', 'settlement', 'nettPrice', 'freight', 'landed',
+    'pdDollars', 'sundry', 'detailing', 'totalPdCharges', 'totalNettCtd',
+    'markupPercent', 'grossProfit', 'rrp', 'sell',
+]);
+
+// Effective pricing = source waterfall + per-field overrides on top.
+// Sell has a legacy fallback for overrides that predate stage 1a.
+function resolveEffectivePricing(
+    sourcePricing: Record<string, any>,
+    sourceSell: number,
+    override?: TrailerOverride,
+): Record<string, number> {
+    const result: Record<string, number> = {};
+    for (const k of Object.keys(sourcePricing || {})) {
+        const v = sourcePricing[k];
+        if (typeof v === 'number') result[k] = v;
+    }
+    if (override?.pricingDetail) {
+        for (const [k, v] of Object.entries(override.pricingDetail)) {
+            if (typeof v === 'number') result[k] = v;
+        }
+    }
+    const sellOverride =
+        override?.pricingDetail?.sell ??
+        override?.sellPriceExclGst ??
+        undefined;
+    result.sell = typeof sellOverride === 'number' ? sellOverride : sourceSell;
+    return result;
+}
+
+function hasFieldOverride(key: string, override?: TrailerOverride): boolean {
+    if (!override) return false;
+    const v = override.pricingDetail?.[key];
+    if (typeof v === 'number') return true;
+    if (key === 'sell' && typeof override.sellPriceExclGst === 'number') return true;
+    return false;
 }
 
 // Waterfall rows rendered when a trailer is expanded. Source-column letters are
@@ -337,13 +385,56 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
         [firestore, organisationId],
     );
     const { data: overrides } = useCollection<TrailerOverride>(overridesQuery);
+    // Full override docs keyed by trailerId — used by resolveEffectivePricing().
+    const overrideDocByTrailer = useMemo(() => {
+        const m = new Map<string, TrailerOverride>();
+        (overrides || []).forEach(o => m.set(o.id, o));
+        return m;
+    }, [overrides]);
+    // Legacy map kept for back-compat with existing render code in this
+    // component (SellCell reads this). Subsequent stages will migrate
+    // consumers to `overrideDocByTrailer` + `resolveEffectivePricing`.
     const overrideByTrailer = useMemo(() => {
         const m = new Map<string, number>();
         (overrides || []).forEach(o => {
-            if (typeof o.sellPriceExclGst === 'number') m.set(o.id, o.sellPriceExclGst);
+            const sellOverride =
+                o.pricingDetail?.sell ??
+                o.sellPriceExclGst ??
+                undefined;
+            if (typeof sellOverride === 'number') m.set(o.id, sellOverride);
         });
         return m;
     }, [overrides]);
+
+    // Save a per-field override. `key` must be in EDITABLE_KEYS. When
+    // `key === 'sell'` we also mirror to the top-level `sellPriceExclGst`
+    // field so the catalog picker (which still reads the legacy shape
+    // directly) continues to resolve the right sell price.
+    const saveOverrideField = useCallback(async (trailerId: string, key: string, value: number) => {
+        if (!EDITABLE_KEYS.has(key)) return;
+        try {
+            const row = rows.find(r => r.id === trailerId);
+            const payload: Record<string, any> = {
+                trailerId,
+                brandVendorId: row?.vendorId || null,
+                seriesId: row?.seriesId || null,
+                overrideAt: serverTimestamp(),
+                pricingDetail: { [key]: value },
+            };
+            if (key === 'sell') payload.sellPriceExclGst = value;
+            await setDoc(
+                doc(firestore, `organisations/${organisationId}/trailerOverrides/${trailerId}`),
+                payload,
+                { merge: true },
+            );
+            toast({
+                title: 'Override saved',
+                description: `${row?.code ?? trailerId} · ${key} → ${key === 'markupPercent' ? `${value}%` : formatCurrency(value)}`,
+            });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: e?.message });
+        }
+    }, [firestore, organisationId, rows, toast]);
 
     const saveOverride = useCallback(async (trailerId: string, price: number) => {
         try {
@@ -352,6 +443,7 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                 doc(firestore, `organisations/${organisationId}/trailerOverrides/${trailerId}`),
                 {
                     sellPriceExclGst: price,
+                    pricingDetail: { sell: price },
                     trailerId,
                     brandVendorId: row?.vendorId || null,
                     seriesId: row?.seriesId || null,
@@ -644,6 +736,48 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
             toast({ variant: 'destructive', title: 'Reset failed', description: e?.message });
         }
     }, [firestore, organisationId, rows, toast]);
+
+    // Clear a single overridden field on a trailer. If this was the last
+    // override on the row, the doc is deleted entirely. Also clears the
+    // legacy top-level `sellPriceExclGst` when `key === 'sell'`.
+    const resetOverrideField = useCallback(async (trailerId: string, key: string) => {
+        const existing = overrideDocByTrailer.get(trailerId);
+        if (!existing) return;
+        try {
+            const row = rows.find(r => r.id === trailerId);
+            const remainingPricing = { ...(existing.pricingDetail || {}) };
+            delete remainingPricing[key];
+            const stillHasSellLegacy =
+                key !== 'sell' && typeof existing.sellPriceExclGst === 'number';
+            const stillHasAny = Object.keys(remainingPricing).length > 0 || stillHasSellLegacy;
+
+            if (!stillHasAny) {
+                // Last override on this row — drop the doc entirely.
+                await deleteDoc(doc(firestore, `organisations/${organisationId}/trailerOverrides/${trailerId}`));
+            } else {
+                // Rewrite with the remaining pricingDetail. Clear the legacy
+                // top-level sellPriceExclGst only when the reset touches Sell.
+                await setDoc(
+                    doc(firestore, `organisations/${organisationId}/trailerOverrides/${trailerId}`),
+                    {
+                        trailerId,
+                        brandVendorId: row?.vendorId || null,
+                        seriesId: row?.seriesId || null,
+                        overrideAt: serverTimestamp(),
+                        pricingDetail: remainingPricing,
+                        ...(key === 'sell' ? { sellPriceExclGst: null } : {}),
+                    },
+                    { merge: true },
+                );
+            }
+            toast({
+                title: 'Override cleared',
+                description: `${row?.code ?? trailerId} · ${key} reverted to source`,
+            });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Reset failed', description: e?.message });
+        }
+    }, [firestore, organisationId, overrideDocByTrailer, rows, toast]);
 
     useEffect(() => {
         let cancelled = false;
