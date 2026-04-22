@@ -49,33 +49,60 @@ test.describe('v1.4 Trailers module', () => {
         await page.waitForSelector('text=Dashboard', { timeout: DASHBOARD_TIMEOUT }).catch(() => {});
     });
 
-    test('Catalog tab loads without console errors', async ({ page }) => {
+    test('Dashboard tab loads without console errors', async ({ page }) => {
         const errors: string[] = [];
         page.on('pageerror', (e) => errors.push(e.message));
 
         const opened = await openModuleByType(page, 'trailers');
         test.skip(!opened, 'No trailers module configured in this environment');
 
-        // Catalog is the default tab.
-        await expect(page.getByRole('tab', { name: /catalog/i }).first()).toBeVisible({ timeout: 15_000 });
+        // Dashboard is the default tab (renamed from Catalog in v1.4 chunk 4).
+        await expect(page.getByRole('tab', { name: /dashboard/i }).first()).toBeVisible({ timeout: 15_000 });
 
-        // The seeded module references 6 trailer brand vendors (DUNBIER,
-        // DUNBIER/HAINES BMT, GFAB, MACKAY, REDCO/TINKA, STACER). At least
-        // one should render as a brand section header. If none render, the
-        // workspace is in its empty state — also accepted, but recorded.
-        const brandNamePattern = /DUNBIER|MACKAY|GFAB|REDCO|TINKA|STACER|HAINES/i;
-        const brandSection = page.getByText(brandNamePattern).first();
+        // The gradient banner shows the module name + aggregate stats
+        // ("N trailers · M brands · K series"). If the module has no trailer
+        // brands selected, the dashboard falls back to an explicit empty card.
+        const searchInput = page.locator('[placeholder*="code" i]').first();
         const emptyState = page.locator('text=No trailer brands selected').first();
-        const searchInput = page.locator('[placeholder*="code or name" i]').first();
+        const anyBrand = page.getByText(/DUNBIER|MACKAY|GFAB|REDCO|TINKA|STACER|HAINES/i).first();
 
         const settled = await Promise.race([
-            brandSection.waitFor({ timeout: 12_000 }).then(() => 'brand'),
+            anyBrand.waitFor({ timeout: 12_000 }).then(() => 'brand'),
             emptyState.waitFor({ timeout: 12_000 }).then(() => 'empty'),
             searchInput.waitFor({ timeout: 12_000 }).then(() => 'search'),
         ]).catch(() => null);
-        expect(settled, 'Catalog must render a brand section, the search input, or the empty-state card').toBeTruthy();
+        expect(settled, 'Dashboard must render brand content, the search input, or the empty-state card').toBeTruthy();
 
         expect(errors, `Unexpected page errors: ${errors.join('\n')}`).toHaveLength(0);
+    });
+
+    test('Dashboard supports cards ↔ table view toggle', async ({ page }) => {
+        const opened = await openModuleByType(page, 'trailers');
+        test.skip(!opened, 'No trailers module configured in this environment');
+
+        await expect(page.getByRole('tab', { name: /dashboard/i }).first()).toBeVisible({ timeout: 15_000 });
+
+        // View toggle buttons are aria-labelled.
+        const cardBtn = page.getByRole('button', { name: /card view/i }).first();
+        const tableBtn = page.getByRole('button', { name: /table view/i }).first();
+
+        // The toggle is only visible once the dashboard content has loaded;
+        // skip if the module has no brands selected (empty state shown).
+        const toggleVisible = await tableBtn.isVisible({ timeout: 8_000 }).catch(() => false);
+        if (!toggleVisible) {
+            test.skip(true, 'Dashboard is empty — no trailers loaded to toggle over');
+        }
+
+        // Switch to table. A native <table> should appear.
+        await tableBtn.click();
+        await expect(page.locator('table').first()).toBeVisible({ timeout: 8_000 });
+        // The URL should record trailerView=table so a refresh restores it.
+        await expect(page).toHaveURL(/trailerView=table/);
+
+        // Switch back to cards. URL param should be dropped.
+        await cardBtn.click();
+        await page.waitForTimeout(400);
+        await expect(page).not.toHaveURL(/trailerView=table/);
     });
 
     test('Pricing Manager tab renders waterfall + column codes', async ({ page }) => {
@@ -102,12 +129,15 @@ test.describe('v1.4 Trailers module', () => {
         }
     });
 
-    test('Settings tab exposes brand + dealer-fit managers', async ({ page }) => {
+    test('Settings tab exposes module image, brand + dealer-fit managers', async ({ page }) => {
         const opened = await openModuleByType(page, 'trailers');
         test.skip(!opened, 'No trailers module configured in this environment');
 
         await page.getByRole('tab', { name: /settings/i }).first().click();
         await page.waitForTimeout(2500);
+
+        // v1.4 chunk 5b: Settings tab now leads with a Module Image editor.
+        await expect(page.getByText(/module image/i).first()).toBeVisible({ timeout: 10_000 });
 
         await expect(page.getByText(/trailer brands/i).first()).toBeVisible({ timeout: 10_000 });
         await expect(page.getByText(/trailer dealer fit categories/i).first()).toBeVisible({ timeout: 10_000 });
@@ -118,6 +148,37 @@ test.describe('v1.4 Trailers module', () => {
         const brandVisible = await brandLabel.isVisible({ timeout: 6_000 }).catch(() => false);
         if (!brandVisible) {
             test.info().annotations.push({ type: 'note', description: 'Trailer Brand vendors not surfaced in settings — env may lack seeded data' });
+        }
+    });
+
+    test('Trailer detail sheet opens with image + edit affordances', async ({ page }) => {
+        const opened = await openModuleByType(page, 'trailers');
+        test.skip(!opened, 'No trailers module configured in this environment');
+
+        // Wait for at least one trailer card to render. If none, skip.
+        const firstCard = page.locator('[class*="cursor-pointer"][class*="rounded-2xl"]').first();
+        const cardVisible = await firstCard.isVisible({ timeout: 12_000 }).catch(() => false);
+        if (!cardVisible) {
+            test.skip(true, 'No trailer cards rendered in this env — dashboard is empty');
+        }
+
+        await firstCard.click();
+
+        // Detail sheet should open — look for the Specifications heading that
+        // ships with every trailer detail view.
+        await expect(page.getByText(/^specifications$/i).first()).toBeVisible({ timeout: 8_000 });
+
+        // Admins see an Edit button; non-admins don't. Either is acceptable
+        // in this smoke test — but if the Edit button is present, clicking it
+        // must expose the form fields (Code, Name, Supplier) without crashing.
+        const editBtn = page.getByRole('button', { name: /^edit$/i }).first();
+        if (await editBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+            await editBtn.click();
+            await page.waitForTimeout(500);
+            await expect(page.getByText(/^code$/i).first()).toBeVisible({ timeout: 5_000 });
+            await expect(page.getByText(/basic info/i).first()).toBeVisible({ timeout: 5_000 });
+            // Leave edit mode cleanly.
+            await page.getByRole('button', { name: /cancel/i }).first().click().catch(() => {});
         }
     });
 });
