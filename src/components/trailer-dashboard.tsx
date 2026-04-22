@@ -11,6 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -31,6 +34,10 @@ import {
     Link2,
     Loader2,
     Trash2,
+    Pencil,
+    Plus,
+    X,
+    Check,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
 
@@ -301,6 +308,35 @@ export function TrailerDashboard({ vendors, moduleName, isAdmin }: TrailerDashbo
         }
     }, [firestore, toast]);
 
+    // Merge-update a trailer's editable fields (basic info, specs, features, options).
+    // Writes a flat patch to the master catalog doc and mirrors to in-memory state.
+    const updateTrailerFields = useCallback(async (trailer: TrailerRow, patchFields: Partial<TrailerRow>) => {
+        const ref = doc(
+            firestore,
+            'data-warehouse',
+            trailer.vendorId,
+            'series',
+            trailer.seriesId,
+            'trailers',
+            trailer.id,
+        );
+        // Strip fields that aren't part of the Firestore doc schema
+        const { id: _id, vendorId: _v, vendorName: _vn, seriesId: _s, seriesName: _sn, ...writable } = patchFields as any;
+        try {
+            await updateDoc(ref, writable);
+            const apply = (t: TrailerRow) =>
+                t.id === trailer.id && t.vendorId === trailer.vendorId
+                    ? { ...t, ...patchFields }
+                    : t;
+            setTrailers(list => list.map(apply));
+            setSelected(s => (s && s.id === trailer.id && s.vendorId === trailer.vendorId ? apply(s) : s));
+            toast({ title: 'Trailer updated' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Failed to save', description: e.message });
+            throw e;
+        }
+    }, [firestore, toast]);
+
     const clearFilters = () => { setSearch(''); setBrandFilter('all'); setSizeFilter('all'); };
     const hasActiveFilters = search.trim() !== '' || brandFilter !== 'all' || sizeFilter !== 'all';
 
@@ -476,6 +512,7 @@ export function TrailerDashboard({ vendors, moduleName, isAdmin }: TrailerDashbo
                 storage={storage}
                 isAdmin={!!isAdmin}
                 onUpdateImage={updateTrailerImage}
+                onUpdateFields={updateTrailerFields}
             />
         </div>
     );
@@ -557,6 +594,7 @@ function TrailerDetailSheet({
     storage,
     isAdmin,
     onUpdateImage,
+    onUpdateFields,
 }: {
     trailer: TrailerRow | null;
     open: boolean;
@@ -564,7 +602,12 @@ function TrailerDetailSheet({
     storage: ReturnType<typeof useStorage>;
     isAdmin: boolean;
     onUpdateImage: (trailer: TrailerRow, url: string | null) => Promise<void>;
+    onUpdateFields: (trailer: TrailerRow, patch: Partial<TrailerRow>) => Promise<void>;
 }) {
+    const [isEditing, setIsEditing] = useState(false);
+    // Reset edit mode whenever the selected trailer changes or sheet closes
+    useEffect(() => { setIsEditing(false); }, [trailer?.id, trailer?.vendorId, open]);
+
     if (!trailer) return null;
     const specs = trailer.specifications || {};
     const pricing = trailer.pricingDetail || {};
@@ -574,11 +617,20 @@ function TrailerDetailSheet({
         <Sheet open={open} onOpenChange={onOpenChange}>
             <SheetContent className="sm:max-w-lg overflow-y-auto">
                 <SheetHeader className="pb-4">
-                    <SheetTitle className="text-lg">{trailer.code}</SheetTitle>
-                    <p className="text-xs text-slate-500">{trailer.name}</p>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest">
-                        {trailer.vendorName}{trailer.seriesName ? ` · ${trailer.seriesName}` : ''}
-                    </p>
+                    <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                            <SheetTitle className="text-lg">{trailer.code}</SheetTitle>
+                            <p className="text-xs text-slate-500">{trailer.name}</p>
+                            <p className="text-[10px] text-slate-400 uppercase tracking-widest">
+                                {trailer.vendorName}{trailer.seriesName ? ` · ${trailer.seriesName}` : ''}
+                            </p>
+                        </div>
+                        {isAdmin && !isEditing && (
+                            <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={() => setIsEditing(true)}>
+                                <Pencil className="h-3 w-3" /> Edit
+                            </Button>
+                        )}
+                    </div>
                 </SheetHeader>
 
                 <TrailerImageEditor
@@ -587,6 +639,20 @@ function TrailerDetailSheet({
                     isAdmin={isAdmin}
                     onUpdateImage={onUpdateImage}
                 />
+
+                {isEditing && (
+                    <TrailerEditForm
+                        trailer={trailer}
+                        onCancel={() => setIsEditing(false)}
+                        onSave={async (patch) => {
+                            await onUpdateFields(trailer, patch);
+                            setIsEditing(false);
+                        }}
+                    />
+                )}
+
+                {!isEditing && (
+                    <>
 
                 <div className="flex gap-2 flex-wrap mb-6">
                     {trailer.sellPriceExclGst ? (
@@ -677,6 +743,8 @@ function TrailerDetailSheet({
                         </div>
                         <p className="text-[10px] text-slate-400 mt-2">Full waterfall editable in Pricing Manager.</p>
                     </div>
+                )}
+                </>
                 )}
             </SheetContent>
         </Sheet>
@@ -814,6 +882,328 @@ function TrailerImageEditor({
                     )}
                 </div>
             )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Trailer edit form — admin-only. Edits basic info, specs, features, options.
+// Pricing waterfall is NOT edited here — that lives in the Pricing Manager.
+// ---------------------------------------------------------------------------
+
+interface EditableTrailerFields {
+    code: string;
+    name: string;
+    supplier: string;
+    isActive: boolean;
+    features: string[];
+    specifications: {
+        boatSizeMtr: number | null;
+        lengthMtr: number | null;
+        tareKg: number | null;
+        atmKg: number | null;
+        wheelSize: string;
+        winch: string;
+        betweenGuardsMm: number | null;
+        plug: string;
+    };
+    optionalFeatures: Array<{
+        id: string;
+        name: string;
+        description: string;
+        cost: number;
+        sellExclGst: number;
+    }>;
+}
+
+function toEditable(t: TrailerRow): EditableTrailerFields {
+    const s = t.specifications || {};
+    return {
+        code: t.code || '',
+        name: t.name || '',
+        supplier: t.supplier || '',
+        isActive: t.isActive !== false,
+        features: t.features ? [...t.features] : [],
+        specifications: {
+            boatSizeMtr: s.boatSizeMtr ?? null,
+            lengthMtr: s.lengthMtr ?? null,
+            tareKg: s.tareKg ?? null,
+            atmKg: s.atmKg ?? null,
+            wheelSize: s.wheelSize || '',
+            winch: s.winch || '',
+            betweenGuardsMm: s.betweenGuardsMm ?? null,
+            plug: s.plug || '',
+        },
+        optionalFeatures: (t.optionalFeatures || []).map(o => ({
+            id: o.id || Math.random().toString(36).slice(2),
+            name: o.name || '',
+            description: o.description || '',
+            cost: o.cost || 0,
+            sellExclGst: o.sellExclGst || 0,
+        })),
+    };
+}
+
+function TrailerEditForm({
+    trailer,
+    onCancel,
+    onSave,
+}: {
+    trailer: TrailerRow;
+    onCancel: () => void;
+    onSave: (patch: Partial<TrailerRow>) => Promise<void>;
+}) {
+    const [form, setForm] = useState<EditableTrailerFields>(() => toEditable(trailer));
+    const [saving, setSaving] = useState(false);
+
+    // If the underlying trailer changes (e.g. new one selected), reset.
+    useEffect(() => { setForm(toEditable(trailer)); }, [trailer.id, trailer.vendorId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    function updateSpec<K extends keyof EditableTrailerFields['specifications']>(key: K, value: EditableTrailerFields['specifications'][K]) {
+        setForm(f => ({ ...f, specifications: { ...f.specifications, [key]: value } }));
+    }
+
+    function updateFeature(index: number, value: string) {
+        setForm(f => ({ ...f, features: f.features.map((x, i) => i === index ? value : x) }));
+    }
+    function addFeature() {
+        setForm(f => ({ ...f, features: [...f.features, ''] }));
+    }
+    function removeFeature(index: number) {
+        setForm(f => ({ ...f, features: f.features.filter((_, i) => i !== index) }));
+    }
+
+    function updateOption(index: number, patch: Partial<EditableTrailerFields['optionalFeatures'][number]>) {
+        setForm(f => ({ ...f, optionalFeatures: f.optionalFeatures.map((o, i) => i === index ? { ...o, ...patch } : o) }));
+    }
+    function addOption() {
+        setForm(f => ({
+            ...f,
+            optionalFeatures: [...f.optionalFeatures, {
+                id: Math.random().toString(36).slice(2),
+                name: '',
+                description: '',
+                cost: 0,
+                sellExclGst: 0,
+            }],
+        }));
+    }
+    function removeOption(index: number) {
+        setForm(f => ({ ...f, optionalFeatures: f.optionalFeatures.filter((_, i) => i !== index) }));
+    }
+
+    async function handleSave() {
+        setSaving(true);
+        try {
+            const cleanedFeatures = form.features.map(f => f.trim()).filter(f => f.length > 0);
+            const cleanedOptions = form.optionalFeatures
+                .filter(o => o.name.trim().length > 0)
+                .map(o => ({
+                    id: o.id,
+                    name: o.name.trim(),
+                    description: o.description.trim(),
+                    cost: Number(o.cost) || 0,
+                    sellExclGst: Number(o.sellExclGst) || 0,
+                }));
+            await onSave({
+                code: form.code.trim(),
+                name: form.name.trim(),
+                supplier: form.supplier.trim(),
+                isActive: form.isActive,
+                features: cleanedFeatures,
+                specifications: {
+                    ...(trailer.specifications || {}),
+                    ...form.specifications,
+                },
+                optionalFeatures: cleanedOptions,
+            });
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    return (
+        <div className="space-y-6">
+            {/* Action row — sticky at top of form for visibility */}
+            <div className="sticky top-0 z-10 -mx-6 px-6 py-2 bg-white border-b flex items-center justify-between gap-2">
+                <p className="text-xs text-slate-500">Editing trailer details. Pricing lives in Pricing Manager.</p>
+                <div className="flex gap-1 shrink-0">
+                    <Button variant="ghost" size="sm" onClick={onCancel} disabled={saving}>Cancel</Button>
+                    <Button size="sm" onClick={handleSave} disabled={saving} className="gap-1">
+                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                        Save
+                    </Button>
+                </div>
+            </div>
+
+            {/* Basic info */}
+            <section className="space-y-3">
+                <h4 className="text-xs font-black uppercase tracking-widest text-slate-500">Basic Info</h4>
+                <div className="grid grid-cols-2 gap-3">
+                    <FieldText label="Code" value={form.code} onChange={v => setForm(f => ({ ...f, code: v }))} />
+                    <FieldText label="Name" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} />
+                    <FieldText label="Supplier" value={form.supplier} onChange={v => setForm(f => ({ ...f, supplier: v }))} className="col-span-2" />
+                </div>
+                <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-slate-50">
+                    <Label htmlFor="trailer-active" className="text-xs">Active in catalog</Label>
+                    <Switch
+                        id="trailer-active"
+                        checked={form.isActive}
+                        onCheckedChange={(c) => setForm(f => ({ ...f, isActive: !!c }))}
+                    />
+                </div>
+            </section>
+
+            {/* Specifications */}
+            <section className="space-y-3">
+                <h4 className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                    <Ruler className="h-3 w-3" /> Specifications
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                    <FieldNumber label="Boat size (m)" value={form.specifications.boatSizeMtr} onChange={v => updateSpec('boatSizeMtr', v)} step={0.1} />
+                    <FieldNumber label="Trailer length (m)" value={form.specifications.lengthMtr} onChange={v => updateSpec('lengthMtr', v)} step={0.1} />
+                    <FieldNumber label="Tare (kg)" value={form.specifications.tareKg} onChange={v => updateSpec('tareKg', v)} />
+                    <FieldNumber label="ATM (kg)" value={form.specifications.atmKg} onChange={v => updateSpec('atmKg', v)} />
+                    <FieldText label="Wheel size" value={form.specifications.wheelSize} onChange={v => updateSpec('wheelSize', v)} />
+                    <FieldText label="Winch" value={form.specifications.winch} onChange={v => updateSpec('winch', v)} />
+                    <FieldNumber label="Between guards (mm)" value={form.specifications.betweenGuardsMm} onChange={v => updateSpec('betweenGuardsMm', v)} />
+                    <FieldText label="Plug" value={form.specifications.plug} onChange={v => updateSpec('plug', v)} />
+                </div>
+            </section>
+
+            {/* Features */}
+            <section className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                        <Info className="h-3 w-3" /> Features
+                    </h4>
+                    <Button variant="outline" size="sm" className="h-6 text-xs gap-1" onClick={addFeature}>
+                        <Plus className="h-3 w-3" /> Add
+                    </Button>
+                </div>
+                {form.features.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic">No features listed.</p>
+                ) : (
+                    <div className="space-y-1">
+                        {form.features.map((f, i) => (
+                            <div key={i} className="flex items-center gap-1">
+                                <Input
+                                    value={f}
+                                    onChange={(e) => updateFeature(i, e.target.value)}
+                                    placeholder="Feature description"
+                                    className="h-8 text-xs"
+                                />
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => removeFeature(i)}>
+                                    <X className="h-3 w-3" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </section>
+
+            {/* Factory Options */}
+            <section className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                        <Package className="h-3 w-3" /> Factory Options
+                    </h4>
+                    <Button variant="outline" size="sm" className="h-6 text-xs gap-1" onClick={addOption}>
+                        <Plus className="h-3 w-3" /> Add option
+                    </Button>
+                </div>
+                {form.optionalFeatures.length === 0 ? (
+                    <p className="text-xs text-slate-400 italic">No factory options defined.</p>
+                ) : (
+                    <div className="space-y-2">
+                        {form.optionalFeatures.map((opt, i) => (
+                            <div key={opt.id} className="p-3 rounded-xl bg-slate-50 border space-y-2">
+                                <div className="flex items-center gap-1">
+                                    <Input
+                                        value={opt.name}
+                                        onChange={(e) => updateOption(i, { name: e.target.value })}
+                                        placeholder="Option name"
+                                        className="h-8 text-xs font-medium"
+                                    />
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 shrink-0" onClick={() => removeOption(i)}>
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                                <Textarea
+                                    value={opt.description}
+                                    onChange={(e) => updateOption(i, { description: e.target.value })}
+                                    placeholder="Description (optional)"
+                                    className="text-xs min-h-[48px]"
+                                />
+                                <div className="grid grid-cols-2 gap-2">
+                                    <FieldNumber
+                                        label="Cost (ex GST)"
+                                        value={opt.cost}
+                                        onChange={(v) => updateOption(i, { cost: v ?? 0 })}
+                                        step={1}
+                                    />
+                                    <FieldNumber
+                                        label="Sell (ex GST)"
+                                        value={opt.sellExclGst}
+                                        onChange={(v) => updateOption(i, { sellExclGst: v ?? 0 })}
+                                        step={1}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </section>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Field primitives
+// ---------------------------------------------------------------------------
+
+function FieldText({ label, value, onChange, className }: {
+    label: string;
+    value: string;
+    onChange: (v: string) => void;
+    className?: string;
+}) {
+    return (
+        <div className={className}>
+            <Label className="text-[10px] text-slate-500 uppercase tracking-wider">{label}</Label>
+            <Input
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="h-8 text-xs mt-0.5"
+            />
+        </div>
+    );
+}
+
+function FieldNumber({ label, value, onChange, step = 1, className }: {
+    label: string;
+    value: number | null;
+    onChange: (v: number | null) => void;
+    step?: number;
+    className?: string;
+}) {
+    return (
+        <div className={className}>
+            <Label className="text-[10px] text-slate-500 uppercase tracking-wider">{label}</Label>
+            <Input
+                type="number"
+                step={step}
+                value={value ?? ''}
+                onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === '') onChange(null);
+                    else {
+                        const n = Number(raw);
+                        onChange(Number.isFinite(n) ? n : null);
+                    }
+                }}
+                className="h-8 text-xs mt-0.5"
+            />
         </div>
     );
 }
