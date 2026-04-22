@@ -215,7 +215,28 @@ export function MasterPriceFileWorkspace({ vendorId, organisationId, isAdmin }: 
         toast({ title: 'Exported', description: `${rows.length} rows exported.` });
     }, [rows, effectiveDataSet]);
 
-    // Import
+    // Pick a natural key column from the sheet's columns.
+    // Prefers canonical-looking IDs (Part Number, Model Code, SKU, Code, Model).
+    // Falls back to the first column when nothing matches.
+    const detectKeyColumn = useCallback((cols: string[]): string | null => {
+        const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const candidates = [
+            'partnumber', 'partno', 'part',
+            'modelcode', 'modelid',
+            'sku', 'code', 'id',
+            'model', 'modelname',
+        ];
+        for (const cand of candidates) {
+            const hit = cols.find(c => normalize(c) === cand);
+            if (hit) return hit;
+        }
+        // last resort: first non-empty column name
+        return cols[0] ?? null;
+    }, []);
+
+    // Import — merges by natural key. Existing rows matched by key are updated;
+    // new rows are inserted. Rows already in Firestore that aren't in the file
+    // are left untouched (no nuclear clear). Matches the trailer pricing pattern.
     const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file || !effectiveDataSet) return;
@@ -232,32 +253,57 @@ export function MasterPriceFileWorkspace({ vendorId, organisationId, isAdmin }: 
                 return;
             }
 
-            // Clear existing rows
-            const existingSnap = await getDocs(collection(firestore, `data-warehouse/${vendorId}/dataSets/${effectiveDataSet}/rows`));
-            const batch = writeBatch(firestore);
-            existingSnap.docs.forEach(d => batch.delete(d.ref));
-            await batch.commit();
+            const sheetCols = Object.keys(parsed[0] || {});
+            const keyCol = detectKeyColumn(sheetCols);
+            if (!keyCol) {
+                toast({ variant: 'destructive', title: 'Could not detect a key column' });
+                return;
+            }
 
-            // Write new rows in batches
-            let written = 0;
+            // Build existing-rows map keyed by the same column, lowercased
+            const existingSnap = await getDocs(collection(firestore, `data-warehouse/${vendorId}/dataSets/${effectiveDataSet}/rows`));
+            const existingByKey = new Map<string, string>(); // key → docId
+            for (const d of existingSnap.docs) {
+                const row = d.data() as Record<string, any>;
+                const k = String(row[keyCol] ?? '').trim().toLowerCase();
+                if (k) existingByKey.set(k, d.id);
+            }
+
+            let updated = 0;
+            let created = 0;
+            let skipped = 0;
+
             for (let i = 0; i < parsed.length; i += 500) {
                 const chunk = parsed.slice(i, i + 500);
                 const b = writeBatch(firestore);
                 for (const row of chunk) {
-                    const ref = doc(collection(firestore, `data-warehouse/${vendorId}/dataSets/${effectiveDataSet}/rows`));
-                    b.set(ref, row);
+                    const rawKey = String(row[keyCol] ?? '').trim();
+                    if (!rawKey) { skipped++; continue; }
+                    const k = rawKey.toLowerCase();
+                    const existingId = existingByKey.get(k);
+                    if (existingId) {
+                        b.update(doc(firestore, `data-warehouse/${vendorId}/dataSets/${effectiveDataSet}/rows`, existingId), row);
+                        updated++;
+                    } else {
+                        const ref = doc(collection(firestore, `data-warehouse/${vendorId}/dataSets/${effectiveDataSet}/rows`));
+                        b.set(ref, row);
+                        created++;
+                    }
                 }
                 await b.commit();
-                written += chunk.length;
             }
 
-            // Update dataset doc
+            // Update dataset doc with new row count
+            const newRowCount = existingByKey.size + created;
             await updateDoc(doc(firestore, `data-warehouse/${vendorId}/dataSets`, effectiveDataSet), {
-                rowCount: written,
+                rowCount: newRowCount,
                 lastImportAt: new Date(),
             });
 
-            toast({ title: 'Import Complete', description: `${written} rows imported.` });
+            toast({
+                title: 'Import Complete',
+                description: `Key: ${keyCol} · ${updated} updated · ${created} created${skipped ? ` · ${skipped} skipped (no key)` : ''}`,
+            });
         } catch (error) {
             console.error('Import failed:', error);
             toast({ variant: 'destructive', title: 'Import failed' });
@@ -265,7 +311,7 @@ export function MasterPriceFileWorkspace({ vendorId, organisationId, isAdmin }: 
             setImporting(false);
             e.target.value = '';
         }
-    }, [firestore, vendorId, effectiveDataSet]);
+    }, [firestore, vendorId, effectiveDataSet, detectKeyColumn]);
 
     // Import as NEW dataset (creates dataset from file)
     const handleImportNewDataset = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
