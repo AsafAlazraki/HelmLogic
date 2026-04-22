@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Truck, DollarSign, Settings as SettingsIcon, Building2 } from 'lucide-react';
 import { ModuleDealerFitManager } from '@/components/module-dealer-fit-manager';
 import { ModuleRoleAssignment } from '@/components/module-role-assignment';
+import { ModuleImageEditor } from '@/components/module-image-editor';
 import { TrailerPricingWorkspace } from '@/components/trailer-pricing-workspace';
 import { TrailerDashboard } from '@/components/trailer-dashboard';
 
@@ -127,6 +128,14 @@ export function TrailersWorkspace({ organisationId, isAdmin, moduleId, moduleDat
                 {activeTab === 'settings' && (
                     <ScrollArea className="h-full">
                         <div className="p-8 max-w-4xl mx-auto space-y-8">
+                            <ModuleImageEditor
+                                moduleId={moduleId}
+                                currentLogoUrl={moduleData?.logoUrl}
+                                isAdmin={isAdmin}
+                                title="Module Image"
+                                description="Logo shown on the Modules page card and throughout the trailer workspace."
+                            />
+
                             <Card className="border-2 rounded-2xl">
                                 <CardHeader>
                                     <div className="flex items-center gap-3">
