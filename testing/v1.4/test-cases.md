@@ -75,47 +75,84 @@ filtered vendor pickers and conditional field visibility.
 
 ---
 
-## Section C — Trailers workspace — Catalog tab
+## Section C — Trailers workspace — Dashboard tab (default)
+
+> **Renamed from "Catalog" in v1.4 remediation (2026-04-22).** Legacy bookmark
+> `?trailerTab=catalog` is auto-remapped to `dashboard` — do NOT log the rename as a bug.
 
 **Prereq:** live seed (already done) + `modules/trailers-module` (already exists).
 
 ### C.1 — Workspace shell
-- [ ] `/modules` list shows the Trailers module card with a blue truck icon.
-- [ ] Click in → URL becomes `/modules/trailers-module?trailerTab=catalog` (or similar).
-- [ ] Full-width blue header banner renders with "TRAILERS" caption + module name.
-- [ ] Three tabs render: **Catalog** (active), **Pricing Manager**, **Settings**.
-- [ ] Refresh the page — Catalog tab is still active (URL sync).
+- [ ] `/modules` list shows the Trailers module card (uses `modules/{id}.logoUrl` — falls back to truck icon).
+- [ ] Click in → URL is `/modules/trailers-module` with no tab param, or `?trailerTab=dashboard` after any navigation.
+- [ ] Three tabs render: **Dashboard** (active by default), **Pricing Manager**, **Settings**.
+- [ ] Refresh the page with each tab active — URL persistence restores the same tab.
+- [ ] Legacy URL `?trailerTab=catalog` lands on the Dashboard tab (backwards-compat remap).
 
-### C.2 — Catalog rendering
-- [ ] Brand sections render with their own header + truck icon + short code.
-- [ ] Each series shows as a titled block with a count badge.
-- [ ] Trailer cards show: image (or truck fallback), code, name, boat-size / length / ATM badges, `Sell ex GST` price, optional "N factory options" count.
+### C.2 — Dashboard rendering
+- [ ] Orange gradient banner at the top with module name + aggregate stats: "N trailers · M brands · K series" + pills for Total / Active / Brands.
+- [ ] Below the banner: search input, brand filter dropdown (if ≥2 brands), size-range dropdown, sort dropdown, **Cards/Table view toggle** (far right).
+- [ ] Dashboard in **Cards mode** groups trailers by **boat size range**: `Under 4m`, `4–5m`, `5–6m`, `6–7m`, `7m+`, `Unknown`. Each group has a layers-icon header + count badge. Empty groups are hidden.
+- [ ] Each card shows: image (or truck fallback), code, small-caps name, brand · series line, badges for `Xm boat` / `Ym length` / `Z ATM`, orange `Sell ex GST` price, optional "N factory option(s)" count.
 - [ ] Cards without `imageUrl` show the truck-icon fallback (don't 404).
 
-### C.3 — Detail sheet
-- [ ] Click any trailer card → right-side detail sheet opens.
-- [ ] Sheet sections: Specifications grid, Features list, Factory Options (with prices), Pricing Waterfall summary (Dealer → Nett → Freight → Landed → PD → Total Nett CTD → RRP → Sell).
-- [ ] If the source row has a rego hint, a footer shows it (e.g. "Small Trailers - Up to 1.02t · $166").
-- [ ] Close sheet via X or clicking outside — grid state preserved.
+### C.3 — Cards / Table view toggle (v1.4 remediation)
+- [ ] Click the **Table** icon (right of the sort dropdown). Grid switches to a single table.
+- [ ] Table columns: thumbnail, Code (sortable), Name, Brand · Series, Boat (sortable), Length, ATM, Sell ex GST (sortable, right-aligned), Status (Active / Inactive badge).
+- [ ] URL gains `?trailerView=table`. Refresh the page — table view is restored.
+- [ ] Click **Cards** icon to go back. URL `trailerView` param is dropped.
+- [ ] Clicking any row / card opens the same detail sheet (see C.4).
 
-### C.4 — Search + filter
-- [ ] Type `RE12` into the search input. Only matching trailers render; empty series are hidden.
+### C.4 — Detail sheet + admin edit surfaces (v1.4 remediation)
+- [ ] Click any trailer card or table row → right-side detail sheet opens.
+- [ ] Sheet sections: image at top, Specifications grid, Features list, Factory Options (with prices), Pricing Waterfall summary (Dealer → Nett → Freight → Landed → PD → Total Nett CTD → RRP → Sell).
+- [ ] If the source row has a rego hint, a footer shows it labelled **"Rego hint (info only):"** (e.g. "Rego hint (info only): Small Trailers - Up to 1.02t · $166"). This is informational — do NOT log as a quote-pricing bug (see `known-gotchas.md`).
+- [ ] As an **admin** user: an **Edit** button appears in the top-right of the sheet.
+- [ ] As an admin, three image controls appear below the image: **Replace/Upload**, **Paste URL**, **Remove** (only when an image exists).
+  - [ ] Click Upload → pick a local PNG → image replaces within 2s, toast "Image updated".
+  - [ ] Click Paste URL → paste a public https URL → Save → image updates, toast.
+  - [ ] Click Remove → image clears, truck fallback renders, toast "Image removed".
+- [ ] Click **Edit** → detail sheet switches to form mode with sticky Save/Cancel bar at the top.
+- [ ] Form sections: **Basic Info** (Code, Name, Supplier, Active toggle), **Specifications** (Boat size, Length, Tare, ATM, Wheel size, Winch, Between guards, Plug), **Features** (add/remove), **Factory Options** (add/remove, each has Name + Description + Cost + Sell).
+- [ ] Edit a spec field → Save → sheet returns to read-only, value reflected immediately on card and in the detail.
+- [ ] Cancel from edit mode → no changes persisted.
+- [ ] As a **non-admin**: no Edit button, no image edit buttons. Only read-only view.
+- [ ] Close sheet via X or clicking outside — grid/table state preserved.
+
+### C.5 — Search + filter
+- [ ] Type `RE12` into the search input. Only matching trailers render; empty boat-size groups are hidden.
+- [ ] Search now matches **supplier + feature text** too (v1.4 remediation) — try a feature keyword like `kayak` to confirm.
 - [ ] Clear search — full grid restored.
 - [ ] If ≥2 brands visible, a brand filter dropdown appears. Pick one brand — other brands hide.
-- [ ] Reset brand filter to "All brands" — full grid restored.
+- [ ] Pick a boat-size range → group-view switches to flat-grid view for just that range.
+- [ ] **Clear** button appears when any filter is active; clicking resets all three filters.
 
-### C.5 — Inactive / obsolete
-- [ ] Obsolete brand is NOT in the module's `trailerBrandVendorIds`, so it does **not** appear in the catalog by default. Confirm.
+### C.6 — Inactive / obsolete
+- [ ] Obsolete brand is NOT in the module's `trailerBrandVendorIds`, so it does **not** appear in the dashboard by default. Confirm.
 - [ ] If you add it via Settings (temporary), its trailers render at 60% opacity with a red "Inactive" badge. Remove it again after checking.
 
-### C.6 — Empty state
-- [ ] Temporarily uncheck every brand in Settings → return to Catalog.
+### C.7 — Empty state
+- [ ] Temporarily uncheck every brand in Settings → return to Dashboard.
 - [ ] Shows a single card "No trailer brands selected — head to Settings…".
 - [ ] Re-tick all 6 brands before moving on.
 
 **Known gotchas:**
-- The catalog spins up one Firestore listener per series (~46 total). High but under limits.
+- The dashboard aggregates via a single `getDocs` loop per vendor (no live subscription). Refresh to pull in changes made by another session during the test.
 - External image hotlinking means some images may load slower than native-CDN ones; that's expected.
+- Search is case-insensitive across code, name, brand, series, supplier, features.
+
+---
+
+## Section C+ — Trailer settings: Module Image editor (v1.4 remediation)
+
+### C+.1 — Module Image card
+- [ ] Navigate to Trailers → Settings.
+- [ ] **Module Image** is the top card on the Settings tab.
+- [ ] As an admin: Replace/Upload, Paste URL, Remove buttons (only the Remove button shows when a logo is present).
+- [ ] Upload a file → the preview updates within 2s → toast "Module image updated".
+- [ ] Refresh `/modules` — the module card in the list now shows the new logo.
+- [ ] Remove → preview clears → `/modules` list falls back to the icon.
+- [ ] As a non-admin: "Admin role required to edit the module image." — no buttons.
 
 ---
 
@@ -372,6 +409,62 @@ fit, proposals, PDFs) to prove v1.4 didn't break anything.
 
 ---
 
+## Section J+ — Imports upsert by natural key (v1.4 remediation)
+
+### J+.1 — Yamaha Master Price File
+- [ ] Open any Yamaha MPF dataset, note a row you'll keep untouched (e.g. row with Part Number `X-123`, current `Price` = 500).
+- [ ] Edit one cell on that row in-app (change `Price` to 555) → Save.
+- [ ] Export the current dataset.
+- [ ] Open the exported xlsx, delete row `X-123` entirely, change a different row's price, save.
+- [ ] Re-import the modified xlsx using "Replace Data".
+- [ ] Toast reports `N updated · M created · K skipped (no key)`.
+- [ ] Row `X-123` **still exists in Firestore** with your `555` edit intact (it wasn't in the upload).
+- [ ] The row you changed in the xlsx shows the new price.
+
+### J+.2 — Sam Allen uploader
+- [ ] Same pattern on the Sam Allen data uploader (Master Price List or Bulk MPL).
+- [ ] Upload a partial xlsx. Confirm unrelated rows survive and toast reports counts.
+- [ ] Use the explicit **Clear** button (not Save) when you actually want to wipe the dataset.
+
+**Known gotcha:** `import-upserts-nothing-is-deleted` in `known-gotchas.md`. Row preservation is the correct behaviour, not a bug.
+
+---
+
+## Section J++ — Trailer data on boat quote sheet (v1.4 remediation)
+
+Confirms that a trailer picked from the catalog carries through to the proposal PDF with the same detail as the motor.
+
+### J++.1 — Pick a trailer with full data
+- [ ] Open a fresh Highfield quote (any CL/SP/RU model that has a trailer step).
+- [ ] Advance to the Trailer step → click **Pick from Catalog**.
+- [ ] Pick any trailer that has: image, `sellPriceExclGst`, `cost`, `specifications.boatSizeMtr`, `specifications.atmKg`.
+- [ ] Back in the quote, confirm the trailer line shows the sell price ex GST.
+
+### J++.2 — Finalize + saved payload
+- [ ] Finalize the quote (do not change the trailer from catalog to freeform).
+- [ ] Open the saved quote's Firestore doc (Admin → raw) OR re-open the quote.
+- [ ] `quote.trailer.cost` should be set to the trailer's cost value (not 0 / missing).
+- [ ] `quote.trailer.catalog.specifications` should contain boat size, ATM, etc.
+- [ ] `quote.trailer.catalog.code` and `.brandName` should be set.
+
+### J++.3 — Proposal PDF
+- [ ] Generate the proposal PDF from the finalized quote.
+- [ ] Locate the **Trailer Package** block in the PDF.
+- [ ] Below the trailer name (small caps), a subtitle in the form `BRAND · CODE` renders (e.g. `REDCO/TINKA · RE12`).
+- [ ] Below the full trailer row, a specs strip renders with dot-separated entries: `Boat 4.5m · Length 5.8m · ATM 1200kg · Tare 480kg · Wheels 13" · Winch Manual` (values depend on the trailer).
+- [ ] Fields that are absent from the catalog are simply not printed — no "null" or "undefined" leakage.
+
+### J++.4 — Legacy quote fallback
+- [ ] Open an older quote (pre-v1.4) that used the freeform trailer name (no catalog pick).
+- [ ] PDF renders the legacy single-line `image + name + price`, no specs strip, no subtitle. That's correct — don't log as a bug.
+
+### J++.5 — Rego is not auto-driven by trailer hint
+- [ ] Pick a trailer that has a `regoTypeHint` (e.g. "NSW 12-month · $785").
+- [ ] The dashboard detail sheet shows "Rego hint (info only):" — this does NOT flow into the quote totals.
+- [ ] Confirm the quote's trailer rego is driven by either the Rego module pick OR the `isTrailerRegoSelected` toggle (legacy). Trailer's own hint is deliberately informational.
+
+---
+
 ## Section K — Automated smoke suite
 
 ### K.1 — Run the suite
@@ -380,7 +473,7 @@ npx playwright test tests/v1.4-trailers.spec.ts --project=chromium
 ```
 
 ### K.2 — Expected results
-- [ ] 5 tests total.
+- [ ] **7 tests total** (v1.4 remediation added Dashboard + view-toggle + detail-sheet specs).
 - [ ] Against the live Dev env, most should **pass** (since v1.4 data is seeded).
 - [ ] A skipped test is OK when the bench lacks a fixture; a **failed** test means a v1.4 regression — log a bug.
 - [ ] No test should error with an uncaught exception.

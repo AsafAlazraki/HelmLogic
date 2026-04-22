@@ -6,12 +6,12 @@
 
 ---
 
-## Current State (2026-04-19)
+## Current State (2026-04-22)
 
 | Release | Status |
 |---|---|
 | v1.0 → v1.3.1 | ✅ Shipped to production |
-| v1.4 Trailers Module | 🏗️ In design — see `tasks/v1.4-trailers-module-status.md` |
+| v1.4 Trailers + Rego | 🚢 Shipped on `claude/app-overview-wKiZ1` — draft PR pending. See `tasks/v1.4-trailers-module-status.md` |
 
 **Active dev branch**: `claude/app-overview-wKiZ1` (auto-deploys to dev URL)
 
@@ -170,6 +170,11 @@ users/{userId}/quotes/{quoteId}
 - **The canonical dev branch is `claude/app-overview-wKiZ1` — never push to a different branch name** — an old `origin/Dev` exists on the remote but is stale; pushing there (or creating a local `Dev` branch that tracks it) silently forks history and forces a rebase rescue later. Before every push run `git rev-parse --abbrev-ref HEAD` and confirm the name. If the local branch name doesn't match the remote, use the explicit refspec form `git push origin <local>:claude/app-overview-wKiZ1` — do not let a new remote branch get auto-created.
 - **Don't commit vendor source spreadsheets (`.xlsx`, `.xls`) to the repo** — source data exists to be imported into Firestore by a seed script, and once imported the canonical copy is the database. The spreadsheet becomes dead weight: it bloats the repo, tempts Git LFS (6.6 MB Trailer Module xlsx is what kicked this off), and blocks pushes whenever the LFS backend is flaky. Pattern: keep the xlsx out of git, write a FINDINGS.md beside the seed script capturing schema decisions, and let Firestore be the source of truth. `tasks/*-source/*.xlsx` is gitignored for this reason.
 - **Git LFS smudge failures block rebase and checkout, not just clone** — when the LFS backend returns 502 (as it did during the April 2026 branch rescue), any checkout that would materialize an LFS-tracked file fails — including the intermediate checkouts git performs during `rebase`. Workaround: `git config --local filter.lfs.smudge "git-lfs smudge --skip -- %f"` + `filter.lfs.process "git-lfs filter-process --skip"` before the rebase, then restore after. But the real fix is rule above — don't commit the source file in the first place. If a dead LFS commit is already in history and blocking a push, drop it with `git rebase --onto <commit>^ <commit> <branch>` (the LFS object stays on the remote, but nothing in the new history references it).
+- **Imports must upsert by natural key, never clear-and-replace** (v1.4 remediation) — every data-import surface (Yamaha MPF, Sam Allen, delivered-deals, stock, trailer pricing) detects a key column from a priority list (Part Number → Model Code → Model ID → SKU → Code → ID → Model → Model Name → first column) and patches existing rows / creates new ones / leaves untouched rows alone. Clear-and-replace destroys operator edits on every partial upload. Always toast `N updated · M created · K skipped (no key)`.
+- **Aggregate flat-list loaders use `getDocs`, not `useCollection`** (v1.4 remediation) — when the vendor/brand set is dynamic (trailer dashboard aggregates across every selected trailer brand), calling `useCollection` per vendor violates React's rules-of-hooks. Use a single `useEffect` that calls `getDocs` per vendor on mount + on a stable `vendorKey` (`vendors.map(v => v.id).sort().join('|')`). Trade live subscription for the correctness of a dynamic list.
+- **Pick-time snapshots must include every field the downstream renderer needs** (v1.4 remediation) — the finalize payload can silently drop snapshot fields without any TypeScript error, breaking PDF rendering. When extending a `TrailerSnapshot` / `MotorSnapshot` OR a proposal/PDF component, check BOTH ends of the pipeline. The v1.4 trailer review caught `cost` dropped at finalize and `specifications` never added to `quote.trailer.catalog` → specs invisible on PDF.
+- **Jurisdictional data comes from authoritative catalogs, not import hints** (v1.4 remediation) — rego, tax, registration, anything state-specific must be driven by a deliberate catalog system (v1.4 Rego module) with a named-legacy fallback (e.g. `model.registration.trailerPrice12Months`). Import-time hints on catalog docs (`pricingDetail.regoTypeHint`, `regoDollarsHint`) are operator notes, NOT state-aware pricing — auto-applying them would cross-state silently. Label them "info only" in the UI and leave an in-code comment at the render site explaining why they don't feed the quote flow.
+- **Admin-gating flows through prop threading, not top-level branching** (v1.4 remediation) — pass `isAdmin` down through the component tree and gate at the deepest point (`TrailersWorkspace` → `TrailerDashboard` → `TrailerDetailSheet` → `TrailerImageEditor` / `TrailerEditForm`). Branching at the top of a big component produces two near-duplicate trees that drift over time.
 
 ---
 

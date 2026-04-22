@@ -1,7 +1,7 @@
 # HelmLogic — Session Handover Document
 > **Read `tasks/START_HERE.md` FIRST.** This file is deep technical context.
 > Give this file to a new Claude session along with the CLAUDE.md file.
-> Updated: 2026-04-20 (v1.4 trailers + rego modules complete on branch `claude/app-overview-wKiZ1` — PR pending)
+> Updated: 2026-04-22 (v1.4 trailers + rego fully shipped on branch `claude/app-overview-wKiZ1` — chunks 3–8c applied, draft PR pending)
 
 ---
 
@@ -14,10 +14,10 @@
 | v1.2.0 | 2026-04-10 | ✅ Shipped | main |
 | v1.2.1 | 2026-04-10 | ✅ Shipped (patch) | main |
 | v1.3.0 | 2026-04-17 | ✅ Shipped | main |
-| **v1.3.1** | **2026-04-17** | ✅ **Shipped (same-day hotfix)** | main |
-| **v1.4 Trailers** | **TBD** | 🏗️ **In build — trailer vendor type + module shell added** | `claude/app-overview-wKiZ1` |
+| v1.3.1 | 2026-04-17 | ✅ Shipped (same-day hotfix) | main |
+| **v1.4** | **2026-04-22** | 🚢 **Ready on branch — draft PR pending** | `claude/app-overview-wKiZ1` |
 
-**Current work**: v1.4 Trailers Module. Design doc at `tasks/v1.4-trailers-module-design.md`, live status at `tasks/v1.4-trailers-module-status.md`.
+**Current work**: v1.4 Trailers Module. Design doc at `tasks/v1.4-trailers-module-design.md`, live status at `tasks/v1.4-trailers-module-status.md`, release notes at `tasks/RELEASE_NOTES_v1.4.md`.
 
 ---
 
@@ -494,12 +494,28 @@ Key collections and access:
 
 ---
 
-## v1.4 Trailers Module — IN BUILD (2026-04-19+)
+## v1.4 Trailers Module — READY ON BRANCH (2026-04-22)
 
-- **Status**: Design approved, implementation blocked on user dropping Excel into `data-import/Trailer Module.xlsx`
+- **Status**: All v1.4 work shipped on `claude/app-overview-wKiZ1`. Awaiting draft PR → main.
 - **Design doc**: `tasks/v1.4-trailers-module-design.md`
 - **Live status**: `tasks/v1.4-trailers-module-status.md`
-- **Summary**: One `trailers` module type, many trailer brand vendors. Mirrors Yamaha motor workspace pattern. Each boat model gets `trailerAssignments[]` — per-model trailer list with pre-configured dealer fit. New "Trailer Options" tab in boat model editor (parallel to Motor Options). Quote Step 4 reads assignments instead of single `trailerConfig`.
+- **Release notes**: `tasks/RELEASE_NOTES_v1.4.md`
+- **Summary**: One `trailers` module type, many trailer brand vendors. Mirrors Yamaha motor workspace pattern. Each boat model gets `trailerAssignments[]` — per-model trailer list with pre-configured dealer fit. Quote Step 4 reads assignments instead of single `trailerConfig`, via `TrailerCatalogPicker` + `effectiveTrailerConfig` shadow memo.
+
+### What's on the Branch Today
+- **`trailers-workspace.tsx`** — Dashboard (default) / Pricing Manager / Settings tabs. URL-synced via `?trailerTab=`. Legacy `catalog` value remaps to `dashboard`.
+- **`trailer-dashboard.tsx`** — Yamaha-style dashboard (~1,350 lines). Aggregate loader across selected trailer-brand vendors (flat `getDocs`, not `useCollection`, so brand list can grow/shrink without conditional hooks). Boat-size-range grouping, cards/table view toggle (`?trailerView=`), search across code/name/brand/series/supplier/features, admin-only image + field editors inline in the detail sheet.
+- **`module-image-editor.tsx`** — reusable `logoUrl` editor card; drop-in for any module's Settings tab. Currently wired into Trailers.
+- **`trailer-catalog-picker.tsx`** — shared picker dialog used by the Highfield quote flow; subscribes to org `trailerOverrides`; emits a frozen `TrailerSnapshot` on select.
+- **Pricing workspace** — full waterfall per trailer with xlsx column codes, per-org overrides at `organisations/{orgId}/trailerOverrides/{trailerId}`.
+- **Rego module** (`rego-workspace.tsx`) — Types + Settings tabs. `data-warehouse/{regoVendorId}/regoTypes/{id}` docs with `appliesTo: 'boat' | 'trailer' | 'both'`. Authoritative over trailer pricingDetail `regoTypeHint` fields.
+- **Imports** — Yamaha MPF and Sam Allen uploaders converted from clear-and-replace to upsert-by-natural-key. Detected key candidates: Part Number → Model Code → Model ID → SKU → Code → ID → Model → Model Name → first column fallback. Operators can partial-import without wiping unrelated rows.
+
+### Trailer-on-Boat-Quote Integration (verified 2026-04-22)
+- `quote.trailer.cost` persisted (mirrors motor's `costPrice`). Trailer margin visible in saved quotes.
+- `quote.trailer.catalog.specifications` snapshot at pick-time → proposal PDF renders specs strip (boat size / length / ATM / tare / wheel size / winch) plus `BRAND · CODE` subtitle.
+- `DealerFitOptions` four-source merge includes `trailerDealerFitCategories`. Trailer dealer-fit step is gated on trailer selection in `highfield-quote-flow.tsx`.
+- Rego on trailer: Rego module snapshot > legacy `isTrailerRegoSelected` + `model.registration.trailerPrice12Months`. `pricingDetail.regoTypeHint` / `regoDollarsHint` are informational only (xlsx import notes) and deliberately NOT auto-applied — they'd cross-state silently.
 
 ---
 

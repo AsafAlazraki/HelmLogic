@@ -42,9 +42,10 @@ and NOT use the rego module dropdowns.
 ## R3. Proposals + PDFs
 
 - [ ] Open `/modules/{id}/proposals` for the Highfield module — list renders.
-- [ ] Open a pre-v1.4 finalized quote's proposal page. PDF renders without crashing on missing `trailer.catalog` or `*RegoSnapshot`.
-- [ ] Open a v1.4 finalized quote's proposal page (from Section G.4 or H.9). Trailer image + code + name + price match the snapshot. Rego lines show the snapshot vendor + type + price.
+- [ ] Open a pre-v1.4 finalized quote's proposal page. PDF renders without crashing on missing `trailer.catalog`, missing `trailer.cost`, or missing `catalog.specifications`. Falls back to legacy single-line trailer render (image + name + price, no subtitle, no specs strip).
+- [ ] Open a v1.4-finalized quote that picked a trailer from the catalog. Trailer block renders image + name + **`BRAND · CODE` subtitle** + **specs strip** (boat size / length / ATM / tare / wheel size / winch — only fields present on the snapshot).
 - [ ] **Inc GST** rounding: every item's inc-GST value = `Math.ceil(exGst × 1.1)`. No stray `.5` or `.99` in whole-dollar rows.
+- [ ] Trailer margin: the saved quote's `trailer.cost` is set for v1.4 quotes with a catalog pick; dealer audit panels that compute trailer margin show real values, not 100%.
 
 ---
 
@@ -92,7 +93,25 @@ npm run test:e2e:smoke
 
 ---
 
-## R9. Login + auth
+## R9a. Imports — upsert preserves untouched rows (v1.4 remediation)
+
+- [ ] Yamaha MPF "Replace Data" — partial upload leaves rows not in the file intact. Toast shows `N updated · M created · K skipped (no key)`.
+- [ ] Sam Allen Save — same upsert behaviour.
+- [ ] Explicit Clear button still wipes the dataset (not replaced by import).
+- [ ] delivered-deals-import and stock-import unchanged from prior releases — both already dedupe.
+
+---
+
+## R9b. Trailer edit surfaces (v1.4 remediation)
+
+- [ ] Admin: upload + paste URL + remove trailer image (detail sheet) persists to `data-warehouse/{vendor}/series/{s}/trailers/{t}.imageUrl`.
+- [ ] Admin: save trailer field edits (basic / specs / features / factory options) persists. No lost data on refresh.
+- [ ] Admin: save module image in Settings → `modules/{id}.logoUrl` updates; `/modules` list reflects immediately.
+- [ ] Non-admin: none of the above edit affordances are visible.
+
+---
+
+## R10. Login + auth
 
 - [ ] Bill Hull can log in.
 - [ ] A non-admin user (if provisioned) can log in and sees restricted UI (hidden Override, hidden Add/Edit in Rego workspace, etc.).

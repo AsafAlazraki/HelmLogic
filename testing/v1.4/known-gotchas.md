@@ -9,6 +9,29 @@ not a bug.
 
 ## Trailers
 
+### `trailer-rego-hint-is-info-only`
+The trailer detail sheet in the dashboard shows a **"Rego hint (info only)"** line at the bottom of the Pricing Summary (e.g. `Rego hint (info only): NSW 12-month · $785`). That value comes from the source xlsx import (`pricingDetail.regoTypeHint` / `regoDollarsHint`). It is **NOT** added to the quote total.
+
+**Why:** rego is state-specific and dealer-specific. The Rego module (v1.4) is the authoritative source — operators attach a `Rego Authority` vendor + a Rego Type to each quote. The trailer doc's hint is just the note the operator made on the source sheet when the xlsx was built — it may reference a different state entirely. Auto-applying it would cross-state silently. Legacy fallback if the Rego module isn't configured: `model.registration.trailerPrice12Months` on the boat model, gated by the `isTrailerRegoSelected` toggle on the quote. Do NOT log "trailer rego hint is $785 but quote shows $0" as a bug.
+
+---
+
+### `trailer-pdf-specs-only-for-picked-trailers`
+The proposal PDF renders the trailer with a `BRAND · CODE` subtitle and a specs strip (boat size / length / ATM / tare / wheel size / winch) **only when** the quote has a frozen `catalog` snapshot — i.e. the user clicked "Pick from Catalog" and chose a trailer from the dashboard. Quotes built with the legacy freeform trailer name (no catalog pick) still render as single image + name + price.
+
+**Why:** the specs live on the trailer catalog doc; legacy flow never captured them. We fall back to the simple rendering rather than leaving a blank strip.
+
+---
+
+### `import-upserts-nothing-is-deleted`
+Both the Yamaha Master Price File import ("Replace Data") and the Sam Allen uploader **upsert** by natural key. A row in the upload with a matching key **updates** the existing Firestore doc; a new row **creates** one; a row already in Firestore but NOT in the upload is **left untouched**. Toast shows `N updated · M created · K skipped (no key)`.
+
+**Why:** testers (and operators) often reported "I uploaded a fresh xlsx and all my edits are gone". Clear-and-replace was the cause. To fully clear a dataset, use the explicit Clear button, then re-import.
+
+**How to test "row preservation"**: note an existing row, upload an xlsx that doesn't include it, confirm the row survives. This is the correct behaviour now.
+
+---
+
 ### `trailer-dealerfit-dead-write`
 The **Trailers workspace Settings tab has a "Trailer Dealer Fit Categories"
 manager** that writes to `modules/{trailersModuleId}.trailerDealerFitCategories[]`.

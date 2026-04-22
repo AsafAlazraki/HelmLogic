@@ -2,7 +2,7 @@
 
 > **You are a Claude agent joining the HelmLogic project mid-flight.**
 > Read this file FIRST. Then read the files listed in order. Do not skip any.
-> Last updated: 2026-04-19 (post v1.3.1 hotfix, beginning v1.4 Trailers)
+> Last updated: 2026-04-22 (v1.4 Trailers + Rego shipped on branch, draft PR pending)
 
 ---
 
@@ -17,8 +17,8 @@ Boat brands → dealerships. Dealerships build quotes, manage stock, distribute 
 - **Main branch**: `main` → production
 - **Primary customer in-app**: Northside Marine (orgId `AcFZVEFA5UDJG2hyetWT`) — a Highfield Boats dealer
 - **Primary test user**: Bill Hull `billh@nsmarine.com.au` / `Bill2026!`
-- **Today's date**: 2026-04-19
-- **Current release state**: **v1.3.1 SHIPPED** (2026-04-17) — same-day hotfix merged to main. Now beginning **v1.4 Trailers Module**.
+- **Today's date**: 2026-04-22
+- **Current release state**: **v1.4 Trailers + Rego fully on dev branch, draft PR pending**. v1.3.1 is the most recent in-production release (2026-04-17 same-day hotfix).
 
 ---
 
@@ -39,20 +39,22 @@ Boat brands → dealerships. Dealerships build quotes, manage stock, distribute 
 
 ---
 
-## Current Active Work — v1.4 Trailers Module
+## Current Active Work — v1.4 Trailers + Rego
 
-**Status**: Design approved, implementation pending data import.
+**Status**: Everything the v1.4 design called for is shipped on `claude/app-overview-wKiZ1`. Awaiting draft PR → main. No blockers.
 
-**Blocker**: Need the user's Trailer Module Excel file dropped into `data-import/Trailer Module.xlsx`. User has it locally at `C:\Users\AsafA\Downloads\Trailer Module.xlsx` but the sandbox can't reach Windows paths.
+**What's shipped**:
+- Trailer + Rego module types, `Trailer Brand` + `Rego Authority` vendor types
+- Trailer workspace with **Dashboard** (Yamaha-style, boat-size-range grouping, cards/table toggle) / Pricing Manager (waterfall with org overrides) / Settings (module image editor + brand picker + dealer fit + roles)
+- Admin edit surfaces inside the trailer detail sheet — image upload/paste-URL/remove + basic/specs/features/factory-options editor
+- Rego workspace with Types + Settings tabs
+- Highfield quote flow fully integrated: trailer catalog picker → `TrailerSnapshot` → finalize payload → proposal PDF now renders **brand · code subtitle + specs strip** (boat size / length / ATM / tare / wheel size / winch) and persists `cost` for margin
+- Four-source dealer-fit merge (global + boat module + motor module + trailer module)
+- Upsert-by-natural-key on every import surface (Yamaha MPF, Sam Allen, delivered deals, stock, trailer pricing). No more clear-and-replace destroying operator edits.
+- 7-test Playwright smoke suite for v1.4 (dashboard, view toggle, pricing, settings, detail sheet, Rego, quote trailer step)
 
-**Design summary** (full doc: `tasks/v1.4-trailers-module-design.md`):
-- One `trailers` module type, many trailer brand vendors (Mackay, Dunbier, Easytow, etc.)
-- Mirrors Yamaha motor workspace pattern (Catalog / Pricing Manager / Settings — no Promotions tab)
-- Each boat model gets a `trailerAssignments[]` field assigning specific trailers + pre-set dealer fit
-- New "Trailer Options" tab in boat model editor (parallel to Motor Options)
-- Quote Step 4 reads `model.trailerAssignments[]` instead of single `trailerConfig`
-
-**See `tasks/v1.4-trailers-module-status.md` for the live implementation state.**
+**See `tasks/v1.4-trailers-module-status.md` for the per-chunk commit table, files touched, and post-merge follow-ups.**
+**See `tasks/RELEASE_NOTES_v1.4.md` for the customer-facing change summary.**
 
 ---
 
@@ -110,7 +112,7 @@ npx playwright test -g "name" # single test by name
 npx playwright show-report    # last HTML report w/ screenshots
 ```
 
-63 tests across 8 spec files. See `tests/helpers/utils.ts` for shared helpers (`waitForToast`, `reloadAndAssert`, `openTab`, `assertNoCrash`).
+70 tests across 9 spec files (v1.4 added `v1.4-trailers.spec.ts`, 7 specs). See `tests/helpers/utils.ts` for shared helpers (`waitForToast`, `reloadAndAssert`, `openTab`, `assertNoCrash`).
 
 ---
 

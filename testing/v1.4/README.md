@@ -1,6 +1,6 @@
 # v1.4 — Trailers & Rego Module (Test Folder)
 
-> **Release:** v1.4.0  •  **Ship date:** 2026-04-20  •  **Branch:** `Dev`
+> **Release:** v1.4.0  •  **Ship date:** 2026-04-22 (on branch, draft PR pending)  •  **Branch:** `claude/app-overview-wKiZ1`
 > **Audience:** the QA tester. Read the files below in order.
 
 This folder contains **everything you need** to test v1.4 end to end. If you have
@@ -31,16 +31,27 @@ below from top to bottom — don't skip.
 ## TL;DR — What's new in v1.4
 
 1. **Trailers module** — `/modules/{trailersModuleId}` — new workspace with
-   Catalog (449 trailers across 6 brands), Pricing Manager (full 15-row pricing
+   **Dashboard** (Yamaha-style, 449 trailers across 6 brands grouped by boat
+   size range, cards ↔ table toggle), Pricing Manager (full 15-row pricing
    waterfall per trailer with per-org sell-price overrides), and Settings.
 2. **Rego module** — new `moduleType: 'rego'` for boat + trailer registration
    fees, replacing ad-hoc `registration` fields on boat docs.
 3. **Highfield quote flow** — trailer step adds **Pick from Catalog** button;
    trailer + rego selections freeze a snapshot into the quote so prices don't
-   drift if the catalog changes later.
+   drift if the catalog changes later. Proposal PDF renders trailer with
+   `BRAND · CODE` subtitle and a specs strip (boat size / length / ATM / tare /
+   wheel size / winch) — parity with motor rendering.
 4. **Dealer Fit four-source merge** — categories now combine global +
-   boat-module + motor-module + trailer-module sources.
-5. **Data importer** — `scripts/seed-trailers.ts` parses the 20-column dealer
+   boat-module + motor-module + trailer-module sources. Trailer dealer-fit
+   step is gated on trailer selection.
+5. **Admin edit surfaces** (v1.4 remediation) — trailer image + trailer model
+   fields (basic / specs / features / factory options) editable inline in the
+   detail sheet; reusable module-logo editor card in every trailer Settings tab.
+6. **Upsert-by-natural-key imports** (v1.4 remediation) — Yamaha MPF and
+   Sam Allen uploaders no longer clear-and-replace. Partial imports preserve
+   operator edits on rows not in the file. Toast reports `N updated · M created
+   · K skipped (no key)`.
+7. **Data importer** — `scripts/seed-trailers.ts` parses the 20-column dealer
    xlsx into Firestore. Already run for Northside Marine.
 
 ---

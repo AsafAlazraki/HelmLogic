@@ -5,7 +5,7 @@ The authoritative release notes live at
 mirrors the headline content so testers have everything in one place without
 jumping folders.
 
-> **Release Date:** 2026-04-20  •  **Branch:** `Dev` → `main`  •  **Prior version:** v1.3.0
+> **Release Date:** 2026-04-22 (on branch)  •  **Branch:** `claude/app-overview-wKiZ1` → `main`  •  **Prior version:** v1.3.1
 
 ---
 
@@ -14,7 +14,7 @@ jumping folders.
 - **2 new module types** added: `trailers` and `rego`
 - **1 new vendor type**: `Rego Authority`; one existing type promoted: `Trailer Brand`
 - **9 implementation steps** per `tasks/v1.4-trailers-module-design.md` §11 — all complete
-- **14 commits** on the `Dev` branch from design lock through seed import
+- **8 additional remediation chunks** (2026-04-22) — Yamaha-style dashboard, admin edit surfaces (trailer image + module image + trailer model fields), cards/table view toggle, upsert-by-natural-key imports, trailer-on-boat-quote parity (cost + specs on PDF)
 - **Live data:** 7 trailer brand vendors, 46 series, 449 trailer docs, 1 trailers module doc
 
 ---
