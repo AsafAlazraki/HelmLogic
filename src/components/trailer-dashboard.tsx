@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
+import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
+import { useFirestore, useStorage } from '@/firebase/provider';
+import { uploadFileToStorage } from '@/firebase/storage';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,6 +27,10 @@ import {
     Package,
     DollarSign,
     Layers,
+    ImagePlus,
+    Link2,
+    Loader2,
+    Trash2,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
 
@@ -71,6 +77,8 @@ interface TrailerRow {
 interface TrailerDashboardProps {
     vendors: Vendor[];
     moduleName?: string;
+    organisationId?: string;
+    isAdmin?: boolean;
 }
 
 type SortKey = 'code' | 'boat' | 'price';
@@ -117,8 +125,10 @@ function TrailerImage({
 // Main component
 // ---------------------------------------------------------------------------
 
-export function TrailerDashboard({ vendors, moduleName }: TrailerDashboardProps) {
+export function TrailerDashboard({ vendors, moduleName, isAdmin }: TrailerDashboardProps) {
     const firestore = useFirestore();
+    const storage = useStorage();
+    const { toast } = useToast();
 
     // Flat trailer list aggregated across all selected brand vendors.
     const [trailers, setTrailers] = useState<TrailerRow[]>([]);
@@ -263,6 +273,33 @@ export function TrailerDashboard({ vendors, moduleName }: TrailerDashboardProps)
     const [selected, setSelected] = useState<TrailerRow | null>(null);
     const [detailOpen, setDetailOpen] = useState(false);
     function openTrailer(t: TrailerRow) { setSelected(t); setDetailOpen(true); }
+
+    // Update one trailer's imageUrl (or clear it) — writes to the master catalog doc
+    // and patches the in-memory list so the new image renders immediately.
+    const updateTrailerImage = useCallback(async (trailer: TrailerRow, imageUrl: string | null) => {
+        const ref = doc(
+            firestore,
+            'data-warehouse',
+            trailer.vendorId,
+            'series',
+            trailer.seriesId,
+            'trailers',
+            trailer.id,
+        );
+        try {
+            await updateDoc(ref, { imageUrl: imageUrl ?? '' });
+            const patch = (t: TrailerRow) =>
+                t.id === trailer.id && t.vendorId === trailer.vendorId
+                    ? { ...t, imageUrl: imageUrl ?? undefined }
+                    : t;
+            setTrailers(list => list.map(patch));
+            setSelected(s => (s && s.id === trailer.id && s.vendorId === trailer.vendorId ? patch(s) : s));
+            toast({ title: imageUrl ? 'Image updated' : 'Image removed' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Failed to update image', description: e.message });
+            throw e;
+        }
+    }, [firestore, toast]);
 
     const clearFilters = () => { setSearch(''); setBrandFilter('all'); setSizeFilter('all'); };
     const hasActiveFilters = search.trim() !== '' || brandFilter !== 'all' || sizeFilter !== 'all';
@@ -436,6 +473,9 @@ export function TrailerDashboard({ vendors, moduleName }: TrailerDashboardProps)
                 trailer={selected}
                 open={detailOpen}
                 onOpenChange={setDetailOpen}
+                storage={storage}
+                isAdmin={!!isAdmin}
+                onUpdateImage={updateTrailerImage}
             />
         </div>
     );
@@ -514,10 +554,16 @@ function TrailerDetailSheet({
     trailer,
     open,
     onOpenChange,
+    storage,
+    isAdmin,
+    onUpdateImage,
 }: {
     trailer: TrailerRow | null;
     open: boolean;
     onOpenChange: (v: boolean) => void;
+    storage: ReturnType<typeof useStorage>;
+    isAdmin: boolean;
+    onUpdateImage: (trailer: TrailerRow, url: string | null) => Promise<void>;
 }) {
     if (!trailer) return null;
     const specs = trailer.specifications || {};
@@ -535,14 +581,12 @@ function TrailerDetailSheet({
                     </p>
                 </SheetHeader>
 
-                <div className="h-40 bg-slate-50 rounded-xl flex items-center justify-center mb-6 overflow-hidden">
-                    <TrailerImage
-                        src={trailer.imageUrl}
-                        alt={trailer.name}
-                        className="h-full object-contain"
-                        fallback={<Truck className="h-16 w-16 text-slate-300" />}
-                    />
-                </div>
+                <TrailerImageEditor
+                    trailer={trailer}
+                    storage={storage}
+                    isAdmin={isAdmin}
+                    onUpdateImage={onUpdateImage}
+                />
 
                 <div className="flex gap-2 flex-wrap mb-6">
                     {trailer.sellPriceExclGst ? (
@@ -644,6 +688,132 @@ function WaterfallRow({ label, value, bold }: { label: string; value: number; bo
         <div className={`flex items-center justify-between ${bold ? 'font-bold text-slate-800' : 'text-slate-600'}`}>
             <span>{label}</span>
             <span>{formatCurrency(value)}</span>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Trailer image editor — admin-only. Upload or paste URL.
+// ---------------------------------------------------------------------------
+
+function TrailerImageEditor({
+    trailer,
+    storage,
+    isAdmin,
+    onUpdateImage,
+}: {
+    trailer: TrailerRow;
+    storage: ReturnType<typeof useStorage>;
+    isAdmin: boolean;
+    onUpdateImage: (t: TrailerRow, url: string | null) => Promise<void>;
+}) {
+    const [busy, setBusy] = useState(false);
+    const [mode, setMode] = useState<'idle' | 'url'>('idle');
+    const [urlInput, setUrlInput] = useState('');
+
+    async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+        setBusy(true);
+        try {
+            const path = `trailers/${trailer.vendorId}/${trailer.id}/${Date.now()}-${file.name}`;
+            const url = await uploadFileToStorage(storage, file, path);
+            await onUpdateImage(trailer, url);
+        } catch {
+            // Toast is shown by onUpdateImage
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function handleSaveUrl() {
+        const trimmed = urlInput.trim();
+        if (!trimmed) return;
+        setBusy(true);
+        try {
+            await onUpdateImage(trailer, trimmed);
+            setMode('idle');
+            setUrlInput('');
+        } catch {
+            // Toast is shown by onUpdateImage
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    async function handleRemove() {
+        setBusy(true);
+        try {
+            await onUpdateImage(trailer, null);
+        } catch {
+            // Toast is shown by onUpdateImage
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    return (
+        <div className="mb-6">
+            <div className="relative h-40 bg-slate-50 rounded-xl flex items-center justify-center overflow-hidden group">
+                <TrailerImage
+                    src={trailer.imageUrl}
+                    alt={trailer.name}
+                    className="h-full object-contain"
+                    fallback={<Truck className="h-16 w-16 text-slate-300" />}
+                />
+                {busy && (
+                    <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+                        <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
+                    </div>
+                )}
+            </div>
+
+            {isAdmin && (
+                <div className="mt-2">
+                    {mode === 'idle' ? (
+                        <div className="flex gap-1 flex-wrap">
+                            <Button variant="outline" size="sm" className="text-xs h-7 gap-1" disabled={busy}
+                                onClick={(e) => (e.currentTarget.nextElementSibling as HTMLInputElement | null)?.click()}>
+                                <ImagePlus className="h-3 w-3" />
+                                {trailer.imageUrl ? 'Replace' : 'Upload'}
+                            </Button>
+                            <input type="file" accept="image/*" hidden onChange={handleFile} />
+                            <Button variant="outline" size="sm" className="text-xs h-7 gap-1" disabled={busy}
+                                onClick={() => { setMode('url'); setUrlInput(trailer.imageUrl || ''); }}>
+                                <Link2 className="h-3 w-3" /> Paste URL
+                            </Button>
+                            {trailer.imageUrl && (
+                                <Button variant="outline" size="sm"
+                                    className="text-xs h-7 gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    disabled={busy} onClick={handleRemove}>
+                                    <Trash2 className="h-3 w-3" /> Remove
+                                </Button>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="flex gap-1">
+                            <Input
+                                autoFocus
+                                className="h-7 text-xs"
+                                placeholder="https://example.com/image.jpg"
+                                value={urlInput}
+                                onChange={(e) => setUrlInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveUrl();
+                                    else if (e.key === 'Escape') { setMode('idle'); setUrlInput(''); }
+                                }}
+                            />
+                            <Button size="sm" className="h-7 text-xs" disabled={busy || !urlInput.trim()} onClick={handleSaveUrl}>
+                                Save
+                            </Button>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setMode('idle'); setUrlInput(''); }}>
+                                Cancel
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

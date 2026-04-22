@@ -111,6 +111,8 @@ export function TrailersWorkspace({ organisationId, isAdmin, moduleId, moduleDat
                     <TrailerDashboard
                         vendors={selectedVendors}
                         moduleName={moduleData?.name}
+                        organisationId={organisationId}
+                        isAdmin={isAdmin}
                     />
                 )}
 
