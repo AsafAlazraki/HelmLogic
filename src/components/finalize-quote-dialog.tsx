@@ -284,6 +284,9 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 id: selectedTrailerId,
                 name: trailerSource.name || 'Trailer Package',
                 sellPriceExclGst: resolvePrice(trailerSource),
+                // Buy-side. Mirrors motor's `costPrice` so trailer margin is
+                // visible in saved quotes / dealer-audit / stock roll-up.
+                cost: trailerSource.cost || 0,
                 imageUrl: trailerSource.imageUrl || null,
                 catalog: catalogTrailerSnapshot ? {
                     brandVendorId: catalogTrailerSnapshot.brandVendorId,
@@ -293,6 +296,11 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     trailerId: catalogTrailerSnapshot.trailerId,
                     code: catalogTrailerSnapshot.code,
                     capturedAt: catalogTrailerSnapshot.capturedAt || null,
+                    // Specs snapshot so the proposal PDF can render
+                    // boat size / ATM / tare / length without re-fetching
+                    // the catalog doc (which may have changed by quote
+                    // re-open time).
+                    specifications: catalogTrailerSnapshot.specifications || null,
                 } : null,
                 options: (selectedTrailerOptionsData || []).map((o: any) => ({
                     id: o.id || null,

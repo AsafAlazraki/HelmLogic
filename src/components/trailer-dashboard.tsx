@@ -886,9 +886,16 @@ function TrailerDetailSheet({
                             {pricing.totalNettCtd != null && <WaterfallRow label="Total Nett CTD" value={pricing.totalNettCtd} bold />}
                             {pricing.rrp != null && <WaterfallRow label="RRP" value={pricing.rrp} />}
                             {pricing.sell != null && <WaterfallRow label="Sell (ex GST)" value={pricing.sell} bold />}
+                            {/* Informational only. Rego on the quote is driven
+                                by the Rego module (per-state, per-authority)
+                                with `trailerPrice12Months` as the legacy
+                                fallback. These xlsx-imported hints are
+                                operator notes and are deliberately NOT wired
+                                into the quote flow — they'd cross-state
+                                silently otherwise. */}
                             {pricing.regoTypeHint && (
                                 <div className="pt-1 mt-1 border-t text-[10px] text-slate-400">
-                                    Rego hint: {pricing.regoTypeHint}{pricing.regoDollarsHint ? ` · ${formatCurrency(pricing.regoDollarsHint)}` : ''}
+                                    Rego hint (info only): {pricing.regoTypeHint}{pricing.regoDollarsHint ? ` · ${formatCurrency(pricing.regoDollarsHint)}` : ''}
                                 </div>
                             )}
                         </div>
