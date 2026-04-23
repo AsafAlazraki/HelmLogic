@@ -19,6 +19,7 @@ import {
     DollarSign, Ship, Check, Search, ListChecks, ExternalLink, RefreshCw, FileText, Zap, ListCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TrailerCatalogPicker } from '@/components/trailer-catalog-picker';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from './ui/separator';
 import { Label } from './ui/label';
@@ -92,6 +93,19 @@ export const highfieldModelSchema = z.object({
         imageUrl: z.string().nullable().optional(),
         options: z.array(z.any()).optional().default([]),
     }).passthrough().optional(),
+    // v1.4 Chunk C — per-model trailer assignments. The quote flow prefers
+    // the first assignment as the default trailer. If the user wants to
+    // browse beyond these, the catalog picker is still available.
+    trailerAssignments: z.array(z.object({
+        id: z.string().optional().default(() => `ta-${Date.now()}-${Math.random().toString(36).slice(2)}`),
+        brandVendorId: z.string().nullable().optional().default(null),
+        seriesId: z.string().nullable().optional().default(null),
+        trailerId: z.string().min(1),
+        code: z.string().nullable().optional().default(''),
+        name: z.string().nullable().optional().default(''),
+        imageUrl: z.string().nullable().optional().default(null),
+        isDefault: z.boolean().optional().default(false),
+    }).passthrough()).optional().default([]),
 }).passthrough();
 
 type ModelFormData = z.infer<typeof highfieldModelSchema>;
@@ -724,6 +738,120 @@ function MotorConfigurationsSection() {
     );
 }
 
+// ── Trailer Assignments (v1.4 Chunk C) ────────────────────────────────────────
+// Per-boat-model trailer picks. The quote flow prefers the first assignment
+// as the default trailer; users can still browse the catalog for other
+// trailers via the picker on Step 4.
+function TrailerAssignmentsSection() {
+    const { control } = useFormContext<ModelFormData>();
+    // Zod `.passthrough()` widens ModelFormData in ways that confuse RHF's
+    // FieldArrayPath narrowing for this field. Casting the result keeps the
+    // runtime behaviour identical but avoids the bogus `never` inference.
+    const { fields, append, remove, update } = useFieldArray({
+        control: control as any,
+        name: 'trailerAssignments' as never,
+    }) as unknown as {
+        fields: any[];
+        append: (value: any) => void;
+        remove: (index: number) => void;
+        update: (index: number, value: any) => void;
+    };
+
+    return (
+        <Collapsible className="group/config overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
+            <CollapsibleCardHeader title="Trailer Options" count={fields.length} />
+            <CollapsibleContent>
+                <div className="p-6 space-y-4 text-left">
+                    <p className="text-[11px] text-slate-500">
+                        Trailers assigned to this model. The quote flow will default to the
+                        <b> first assignment marked as default</b> (or the first in the list
+                        if none are). Users can still browse the full catalog from the quote.
+                    </p>
+                    {fields.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic py-2">
+                            No trailers assigned yet. Use the picker below to attach one from the catalog.
+                        </p>
+                    ) : (
+                        <div className="space-y-2">
+                            {fields.map((field: any, idx) => (
+                                <div key={field.id} className="flex items-center gap-3 p-3 rounded-xl border-2 border-slate-100 hover:border-primary/30 transition-colors">
+                                    <div className="h-12 w-16 bg-slate-50 rounded-md border flex items-center justify-center overflow-hidden shrink-0">
+                                        {field.imageUrl ? (
+                                            <img src={field.imageUrl} alt={field.code || ''} className="h-full w-full object-contain" />
+                                        ) : (
+                                            <span className="text-[9px] text-slate-400 uppercase tracking-widest">No image</span>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-xs font-black tracking-tight truncate">{field.code || field.trailerId}</p>
+                                            {field.isDefault && (
+                                                <Badge className="bg-primary/10 text-primary border-none font-black text-[7px] h-4 px-1.5">DEFAULT</Badge>
+                                            )}
+                                        </div>
+                                        {field.name && (
+                                            <p className="text-[10px] text-slate-500 truncate">{field.name}</p>
+                                        )}
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-[10px] font-black uppercase tracking-widest"
+                                        onClick={() => {
+                                            // Flip this one to default, clear the flag on every other assignment.
+                                            fields.forEach((f: any, i) => {
+                                                if (i === idx) update(i, { ...f, isDefault: true });
+                                                else if (f.isDefault) update(i, { ...f, isDefault: false });
+                                            });
+                                        }}
+                                        disabled={field.isDefault}
+                                    >
+                                        Make default
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => remove(idx)}
+                                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                    >
+                                        <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="pt-3 border-t">
+                        <TrailerCatalogPicker
+                            orgId={null}
+                            value={null}
+                            triggerLabel="Assign a trailer from catalog"
+                            onChange={(snap) => {
+                                if (!snap) return;
+                                // Skip if already assigned.
+                                if (fields.some((f: any) => f.trailerId === snap.trailerId)) return;
+                                append({
+                                    id: `ta-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                                    brandVendorId: snap.brandVendorId ?? null,
+                                    seriesId: snap.seriesId ?? null,
+                                    trailerId: snap.trailerId,
+                                    code: snap.code ?? '',
+                                    name: snap.name ?? '',
+                                    imageUrl: snap.imageUrl ?? null,
+                                    // The first assignment is the default; subsequent ones aren't.
+                                    isDefault: fields.length === 0,
+                                });
+                            }}
+                        />
+                    </div>
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
+    );
+}
+
 // ── Technical Documents ───────────────────────────────────────────────────────
 export function DocumentsSection() {
     const { control } = useFormContext<ModelFormData>();
@@ -939,6 +1067,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                     <StandardFeaturesSection />
                     <SpecsSection />
                     <MotorConfigurationsSection />
+                    <TrailerAssignmentsSection />
                 </div>
                 <div className="lg:col-span-3 space-y-8 min-w-0 text-left">
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />

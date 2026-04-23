@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, orderBy, doc, where, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, doc, where, getDoc, getDocs } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -324,6 +324,71 @@ export function HighfieldQuoteFlow({
         }
         return model.trailerConfig;
     }, [catalogTrailerSnapshot, model.trailerConfig]);
+
+    // v1.4 Chunk C — if the boat model has `trailerAssignments[]`, prefer
+    // the default assignment (or the first one) as the initial trailer.
+    // We fetch the trailer doc once on mount and hydrate
+    // `catalogTrailerSnapshot` so the rest of the quote flow reads the
+    // chosen trailer as if the user had manually picked it. Users can
+    // still click "Pick from Catalog" to switch.
+    useEffect(() => {
+        if (catalogTrailerSnapshot) return; // user picked; don't override
+        if (selectedTrailerId) return;       // something already selected
+        const assignments = (model?.trailerAssignments || []) as any[];
+        if (assignments.length === 0) return;
+        const def = assignments.find(a => a?.isDefault) || assignments[0];
+        if (!def?.trailerId || !def?.brandVendorId || !def?.seriesId) return;
+
+        let cancelled = false;
+        (async () => {
+            try {
+                const ref = doc(
+                    firestore,
+                    'data-warehouse',
+                    def.brandVendorId,
+                    'series',
+                    def.seriesId,
+                    'trailers',
+                    def.trailerId,
+                );
+                const snap = await getDoc(ref);
+                if (cancelled || !snap.exists()) return;
+                const data = snap.data() as any;
+                setCatalogTrailerSnapshot({
+                    id: `${def.brandVendorId}/${def.seriesId}/${snap.id}`,
+                    brandVendorId: def.brandVendorId,
+                    brandName: data.brandName || '',
+                    seriesId: def.seriesId,
+                    seriesName: data.seriesName || '',
+                    trailerId: snap.id,
+                    code: data.code || def.code || '',
+                    name: data.name || def.name || '',
+                    imageUrl: data.imageUrl || def.imageUrl || '',
+                    sellPriceExclGst: data.sellPriceExclGst || 0,
+                    cost: data.cost || 0,
+                    priceLevels: data.priceLevels || {},
+                    pricingDetail: data.pricingDetail || {},
+                    specifications: data.specifications || {},
+                    options: (data.optionalFeatures || []).map((f: any) => ({
+                        id: f.id,
+                        name: f.name,
+                        description: f.description || '',
+                        sellPriceExclGst: f.sellExclGst || f.sellPriceExclGst || 0,
+                        cost: f.cost || 0,
+                        isStandard: !!f.isStandard,
+                    })),
+                    capturedAt: Date.now(),
+                });
+                setSelectedTrailerId('primary-trailer');
+            } catch (err) {
+                console.warn('[trailer-assignments] failed to load default trailer', err);
+            }
+        })();
+        return () => { cancelled = true; };
+        // Only re-run when the underlying model changes (e.g. different boat
+        // model loaded) — not on every selection change.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [model?.id]);
 
     const availableMaterials = useMemo(() => {
         if (!variants) return [];
