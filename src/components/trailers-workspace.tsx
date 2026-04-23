@@ -9,9 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Truck, DollarSign, Settings as SettingsIcon, Building2 } from 'lucide-react';
-import { ModuleDealerFitManager } from '@/components/module-dealer-fit-manager';
-import { ModuleRoleAssignment } from '@/components/module-role-assignment';
-import { ModuleImageEditor } from '@/components/module-image-editor';
+import { ModuleSettingsPanel } from '@/components/module-settings-panel';
 import { TrailerPricingWorkspace } from '@/components/trailer-pricing-workspace';
 import { TrailerDashboard } from '@/components/trailer-dashboard';
 
@@ -127,73 +125,59 @@ export function TrailersWorkspace({ organisationId, isAdmin, moduleId, moduleDat
 
                 {activeTab === 'settings' && (
                     <ScrollArea className="h-full">
-                        <div className="p-8 max-w-4xl mx-auto space-y-8">
-                            <ModuleImageEditor
-                                moduleId={moduleId}
-                                currentLogoUrl={moduleData?.logoUrl}
-                                isAdmin={isAdmin}
-                                title="Module Image"
-                                description="Logo shown on the Modules page card and throughout the trailer workspace."
-                            />
-
-                            <Card className="border-2 rounded-2xl">
-                                <CardHeader>
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary border-2 border-primary/20">
-                                            <Building2 className="h-5 w-5" />
+                        <ModuleSettingsPanel
+                            moduleId={moduleId}
+                            moduleData={moduleData}
+                            organisationId={organisationId}
+                            isAdmin={isAdmin}
+                            dealerFitFieldName="trailerDealerFitCategories"
+                            dealerFitTitle="Trailer Dealer Fit Categories"
+                            dealerFitDescription="Categories for dealer-fit options attached to trailers (e.g. Spare Wheel, Wheel Chocks)."
+                            preCards={
+                                <Card className="border-2 rounded-2xl">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary border-2 border-primary/20">
+                                                <Building2 className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <CardTitle>Trailer Brands</CardTitle>
+                                                <CardDescription>Select which Trailer Brand vendors this module sources from.</CardDescription>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <CardTitle>Trailer Brands</CardTitle>
-                                            <CardDescription>Select which Trailer Brand vendors this module sources from.</CardDescription>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    {trailerBrandVendors.length === 0 ? (
-                                        <p className="text-sm text-slate-500 italic">
-                                            No Trailer Brand vendors exist yet. Create one at{' '}
-                                            <code className="px-1 py-0.5 rounded bg-slate-100">/data-warehouse/add</code>{' '}
-                                            with <code className="px-1 py-0.5 rounded bg-slate-100">vendorType: 'Trailer Brand'</code>, or run{' '}
-                                            <code className="px-1 py-0.5 rounded bg-slate-100">scripts/seed-trailers.ts --live</code>.
-                                        </p>
-                                    ) : (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {trailerBrandVendors.map((v) => {
-                                                const checked = selectedBrandIds.includes(v.id);
-                                                return (
-                                                    <label
-                                                        key={v.id}
-                                                        className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition-colors"
-                                                    >
-                                                        <Checkbox
-                                                            checked={checked}
-                                                            disabled={!isAdmin}
-                                                            onCheckedChange={(c) => toggleBrand(v.id, !!c)}
-                                                        />
-                                                        <span className="text-sm font-medium">{v.name}</span>
-                                                    </label>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-
-                            <ModuleDealerFitManager
-                                moduleId={moduleId}
-                                categories={moduleData?.trailerDealerFitCategories || []}
-                                fieldName="trailerDealerFitCategories"
-                                title="Trailer Dealer Fit Categories"
-                                description="Categories for dealer-fit options attached to trailers (e.g. Spare Wheel, Wheel Chocks)."
-                            />
-
-                            <ModuleRoleAssignment
-                                moduleId={moduleId}
-                                organisationId={organisationId}
-                                currentBrandCaptain={moduleData?.brandCaptainUserId ? { userId: moduleData.brandCaptainUserId, userName: moduleData.brandCaptainUserName || '' } : null}
-                                currentModuleManager={moduleData?.moduleManagerUserId ? { userId: moduleData.moduleManagerUserId, userName: moduleData.moduleManagerUserName || '' } : null}
-                            />
-                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {trailerBrandVendors.length === 0 ? (
+                                            <p className="text-sm text-slate-500 italic">
+                                                No Trailer Brand vendors exist yet. Create one at{' '}
+                                                <code className="px-1 py-0.5 rounded bg-slate-100">/data-warehouse/add</code>{' '}
+                                                with <code className="px-1 py-0.5 rounded bg-slate-100">vendorType: 'Trailer Brand'</code>, or run{' '}
+                                                <code className="px-1 py-0.5 rounded bg-slate-100">scripts/seed-trailers.ts --live</code>.
+                                            </p>
+                                        ) : (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                {trailerBrandVendors.map((v) => {
+                                                    const checked = selectedBrandIds.includes(v.id);
+                                                    return (
+                                                        <label
+                                                            key={v.id}
+                                                            className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition-colors"
+                                                        >
+                                                            <Checkbox
+                                                                checked={checked}
+                                                                disabled={!isAdmin}
+                                                                onCheckedChange={(c) => toggleBrand(v.id, !!c)}
+                                                            />
+                                                            <span className="text-sm font-medium">{v.name}</span>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            }
+                        />
                     </ScrollArea>
                 )}
             </div>

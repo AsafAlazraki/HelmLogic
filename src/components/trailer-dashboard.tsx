@@ -767,7 +767,7 @@ function TrailerDetailSheet({
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="sm:max-w-lg overflow-y-auto">
+            <SheetContent className="w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl overflow-y-auto">
                 <SheetHeader className="pb-4">
                     <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">

@@ -38,7 +38,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { FileCheck, Settings as SettingsIcon, Plus, Pencil, Trash2, Ship, Truck } from 'lucide-react';
-import { ModuleRoleAssignment } from '@/components/module-role-assignment';
+import { ModuleSettingsPanel } from '@/components/module-settings-panel';
 import { formatCurrency } from '@/lib/currency-utils';
 
 interface RegoVendor {
@@ -398,56 +398,55 @@ export function RegoWorkspace({ organisationId, isAdmin, moduleId, moduleData }:
                         </div>
                     )}
                     {activeTab === 'settings' && (
-                        <div className="space-y-6 max-w-4xl mx-auto">
-                            <Card className="rounded-2xl border-2">
-                                <CardHeader>
-                                    <CardTitle className="text-base font-black uppercase">Rego Authorities</CardTitle>
-                                    <CardDescription>
-                                        Tick the registration authorities this module uses (e.g. QLD Transport).
-                                        Only vendors with <code>vendorType = &quot;Rego Authority&quot;</code> appear here.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    {(!allRegoAuthorities || allRegoAuthorities.length === 0) && (
-                                        <p className="text-xs text-slate-400 italic">
-                                            No rego authority vendors exist. Create one at <code>/data-warehouse/add</code>.
-                                        </p>
-                                    )}
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                        {(allRegoAuthorities || []).map(v => {
-                                            const checked = regoVendorIds.includes(v.id);
-                                            return (
-                                                <label
-                                                    key={v.id}
-                                                    className={`flex items-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                                                        checked ? 'border-primary bg-primary/5' : 'border-slate-100 hover:border-primary/30'
-                                                    }`}
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={checked}
-                                                        onChange={e => isAdmin && toggleVendor(v.id, e.target.checked)}
-                                                        disabled={!isAdmin}
-                                                    />
-                                                    <div className="min-w-0">
-                                                        <p className="text-[11px] font-black uppercase tracking-tight truncate">{v.name}</p>
-                                                        {v.state && <p className="text-[9px] text-slate-400 uppercase tracking-widest">{v.state}</p>}
-                                                    </div>
-                                                </label>
-                                            );
-                                        })}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            {isAdmin && (
-                                <ModuleRoleAssignment
-                                    moduleId={moduleId}
-                                    organisationId={organisationId}
-                                    currentBrandCaptain={moduleData?.brandCaptain ?? null}
-                                    currentModuleManager={moduleData?.moduleManager ?? null}
-                                />
-                            )}
-                        </div>
+                        <ModuleSettingsPanel
+                            moduleId={moduleId}
+                            moduleData={moduleData}
+                            organisationId={organisationId}
+                            isAdmin={isAdmin}
+                            showDealerFit={false}
+                            preCards={
+                                <Card className="rounded-2xl border-2">
+                                    <CardHeader>
+                                        <CardTitle className="text-base font-black uppercase">Rego Authorities</CardTitle>
+                                        <CardDescription>
+                                            Tick the registration authorities this module uses (e.g. QLD Transport).
+                                            Only vendors with <code>vendorType = &quot;Rego Authority&quot;</code> appear here.
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {(!allRegoAuthorities || allRegoAuthorities.length === 0) && (
+                                            <p className="text-xs text-slate-400 italic">
+                                                No rego authority vendors exist. Create one at <code>/data-warehouse/add</code>.
+                                            </p>
+                                        )}
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                                            {(allRegoAuthorities || []).map(v => {
+                                                const checked = regoVendorIds.includes(v.id);
+                                                return (
+                                                    <label
+                                                        key={v.id}
+                                                        className={`flex items-center gap-2 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                                                            checked ? 'border-primary bg-primary/5' : 'border-slate-100 hover:border-primary/30'
+                                                        }`}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={checked}
+                                                            onChange={e => isAdmin && toggleVendor(v.id, e.target.checked)}
+                                                            disabled={!isAdmin}
+                                                        />
+                                                        <div className="min-w-0">
+                                                            <p className="text-[11px] font-black uppercase tracking-tight truncate">{v.name}</p>
+                                                            {v.state && <p className="text-[9px] text-slate-400 uppercase tracking-widest">{v.state}</p>}
+                                                        </div>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            }
+                        />
                     )}
                 </div>
             </ScrollArea>

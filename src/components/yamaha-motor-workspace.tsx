@@ -14,8 +14,7 @@ import { Ship, Search, Package, Settings as SettingsIcon, DollarSign, ChevronDow
 import { ModulePromotions } from '@/components/module-promotions';
 import { MasterPriceFileWorkspace } from '@/components/master-price-file-workspace';
 import { OrganisationModuleConfig } from '@/components/organisation-module-config';
-import { ModuleDealerFitManager } from '@/components/module-dealer-fit-manager';
-import { ModuleRoleAssignment } from '@/components/module-role-assignment';
+import { ModuleSettingsPanel } from '@/components/module-settings-panel';
 import { DealerFitOptions } from '@/components/dealer-fit-options';
 import {
     DropdownMenu,
@@ -619,27 +618,19 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
 
                 {activeTab === 'settings' && (
                     <ScrollArea className="h-full">
-                        <div className="p-8 space-y-8">
-                            {moduleData ? (
-                                <>
-                                    <ModuleDealerFitManager
-                                        moduleId={moduleId}
-                                        categories={moduleData?.moduleDealerFitCategories || []}
-                                    />
-                                    <ModuleRoleAssignment
-                                        moduleId={moduleId}
-                                        organisationId={organisationId}
-                                        currentBrandCaptain={moduleData?.brandCaptainUserId ? { userId: moduleData.brandCaptainUserId, userName: moduleData.brandCaptainUserName || '' } : null}
-                                        currentModuleManager={moduleData?.moduleManagerUserId ? { userId: moduleData.moduleManagerUserId, userName: moduleData.moduleManagerUserName || '' } : null}
-                                    />
-                                </>
-                            ) : (
-                                <div className="space-y-1">
-                                    <h2 className="text-lg font-semibold">Module Settings</h2>
-                                    <p className="text-sm text-slate-400 italic">Loading settings...</p>
-                                </div>
-                            )}
-                        </div>
+                        {moduleData ? (
+                            <ModuleSettingsPanel
+                                moduleId={moduleId}
+                                moduleData={moduleData}
+                                organisationId={organisationId}
+                                isAdmin={isAdmin}
+                            />
+                        ) : (
+                            <div className="p-8 space-y-1">
+                                <h2 className="text-lg font-semibold">Module Settings</h2>
+                                <p className="text-sm text-slate-400 italic">Loading settings…</p>
+                            </div>
+                        )}
                     </ScrollArea>
                 )}
             </div>
