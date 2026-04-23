@@ -4,8 +4,8 @@
 > Major release since v1.3.0
 
 ### Release Stats
-- **68 commits** since divergence from `main`
-- **65 files changed** · **+11,529 / −817 lines** (~10.7K net new code)
+- **70 commits** since divergence from `main`
+- **65 files changed** · **+11,594 / −825 lines** (~10.8K net new code)
 - **2 new module types** added: `trailers` and `rego`
 - **1 new vendor type**: `Rego Authority`; one existing type promoted: `Trailer Brand`
 - **9 implementation steps** per `tasks/v1.4-trailers-module-design.md` §11 — all complete
@@ -254,7 +254,16 @@ Each commit referenced below is on `claude/app-overview-wKiZ1`.
 | 15 | Trailer Specs modal too sparse | Matches Engine Specs row pattern | `ad941bc` |
 | 16 | **Critical:** pricing-manager overrides bypassed on auto-loaded trailers | Quote flow subscribes to `organisations/{orgId}/trailerOverrides` and applies both `sellPriceExclGst` and `pricingDetail` overrides inside `loadAssignmentSnapshot` | `3f3b07e` |
 | 17 | Silent failure if assigned trailer's Firestore doc was deleted | Destructive toast names the missing trailer + prompts operator to update Trailer Options | `3f3b07e` |
+| 18 | Sub-dealer trailer overrides ignored parent org's pricing-manager edits | Quote flow subscribes to BOTH the sub-dealer's and parent org's `trailerOverrides`, sub-dealer wins on conflicts | `bd3773a` |
+| 19 | Saved quotes couldn't distinguish override vs source pricing for dealer audit | `TrailerSnapshot` + `quote.trailer.catalog` carry `pricingSource: 'source' \| 'override'` and `sourceSellPriceExclGst` | `bd3773a` |
 
-**Release prep outstanding:**
+**Pre-release verification done:**
 
-- None — release candidate branch is `claude/app-overview-wKiZ1`. Awaiting user's green-light for PR → main.
+- ✅ `npm run build` — clean production build, all 28 routes compile
+- ✅ `npx tsc --noEmit` — 86 pre-existing errors, zero new from v1.4
+- ✅ Playwright suite parses: 70 tests across 9 files
+- ✅ End-to-end audit + sibling-bug audit — every finding fixed
+- ⚠️ Playwright run-against-dev: blocked by sandbox DNS limitation; needs to run from a normal CI or local environment before final sign-off
+- ⏳ Tester walkthrough of `testing/v1.4/test-cases.md` Sections L + M (especially M.9 + R9c/d/e regression guards)
+
+**Release status:** awaiting user's green-light for PR → main.
