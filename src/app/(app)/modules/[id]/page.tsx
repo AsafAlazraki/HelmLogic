@@ -1354,13 +1354,13 @@ export default function ModuleDetailsPage() {
                                                                 onClick={() => router.push(`/modules/${moduleData.id}/proposals/${q.id}`)}
                                                                 className="group flex flex-col rounded-xl border bg-white hover:border-primary/40 hover:shadow-md cursor-pointer transition-all overflow-hidden"
                                                             >
-                                                                {/* Image */}
-                                                                <div className="relative h-28 bg-slate-50 border-b overflow-hidden shrink-0">
+                                                                {/* Image — full-width hero (no padding, cover fit) */}
+                                                                <div className="relative h-36 bg-slate-100 border-b overflow-hidden shrink-0">
                                                                     {q.coverImageUrl ? (
-                                                                        <img src={q.coverImageUrl} alt={q.modelName} className="absolute inset-0 h-full w-full object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />
+                                                                        <img src={q.coverImageUrl} alt={q.modelName} className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-105" />
                                                                     ) : (
                                                                         <div className="flex items-center justify-center h-full">
-                                                                            <Anchor className="h-8 w-8 text-slate-200" />
+                                                                            <Anchor className="h-8 w-8 text-slate-300" />
                                                                         </div>
                                                                     )}
                                                                 </div>
