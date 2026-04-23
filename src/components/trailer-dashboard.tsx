@@ -792,7 +792,14 @@ function TrailerDetailSheet({
                             </p>
                         </div>
                         {isAdmin && !isEditing && (
-                            <Button variant="outline" size="sm" className="gap-1 shrink-0" onClick={() => setIsEditing(true)}>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                /* mr-8 keeps this clear of the Sheet's built-in X close button
+                                   which is absolute-positioned at top-4 right-4. */
+                                className="gap-1 shrink-0 mr-8"
+                                onClick={() => setIsEditing(true)}
+                            >
                                 <Pencil className="h-3 w-3" /> Edit
                             </Button>
                         )}
