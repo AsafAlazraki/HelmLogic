@@ -16,6 +16,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
     DropdownMenu,
@@ -426,6 +427,8 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
     // collide.
     const [collapsedBrands, setCollapsedBrands] = useState<Set<string>>(() => new Set());
     const [collapsedSeries, setCollapsedSeries] = useState<Set<string>>(() => new Set());
+    // Stage 2a — multi-select state for bulk actions.
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
 
     // Pre-compute search fields on each row for fast filter
     const filteredRows = useMemo(() => {
@@ -494,6 +497,38 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
         for (const g of groupedRows) brands.add(g.vendorId);
         setCollapsedBrands(brands);
     }, [groupedRows]);
+
+    // Stage 2a — selection helpers. Selection is scoped to `filteredRows` so
+    // bulk actions never accidentally touch trailers the operator can't see.
+    const toggleRowSelected = useCallback((id: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }, []);
+    const setManySelected = useCallback((ids: string[], selected: boolean) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            for (const id of ids) {
+                if (selected) next.add(id);
+                else next.delete(id);
+            }
+            return next;
+        });
+    }, []);
+    const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+    // Tri-state helper: 'all' | 'some' | 'none' given a list of ids.
+    function selectionStateFor(ids: string[], sel: Set<string>): 'all' | 'some' | 'none' {
+        if (ids.length === 0) return 'none';
+        let hit = 0;
+        for (const id of ids) if (sel.has(id)) hit++;
+        if (hit === 0) return 'none';
+        if (hit === ids.length) return 'all';
+        return 'some';
+    }
 
     const vendorIds = useMemo(() => vendors.map(v => v.id).sort().join('|'), [vendors]);
 
@@ -897,6 +932,39 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
         }
     }, [firestore, organisationId, overrideDocByTrailer, rows, toast]);
 
+    // Stage 2a — bulk reset: drops `trailerOverrides/{id}` docs for every
+    // selected trailer that currently has an override. Rows with no override
+    // are skipped silently (not counted as work done).
+    const bulkResetOverrides = useCallback(async () => {
+        const targets: string[] = [];
+        for (const id of selectedIds) {
+            if (overrideDocByTrailer.has(id)) targets.push(id);
+        }
+        if (targets.length === 0) {
+            toast({ title: 'Nothing to reset', description: 'No overrides on the selected rows.' });
+            return;
+        }
+        const results = await Promise.allSettled(
+            targets.map(id =>
+                deleteDoc(doc(firestore, `organisations/${organisationId}/trailerOverrides/${id}`)),
+            ),
+        );
+        const failed = results.filter(r => r.status === 'rejected').length;
+        const cleared = targets.length - failed;
+        if (failed > 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Partial reset',
+                description: `${cleared} cleared · ${failed} failed — see console.`,
+            });
+            console.error('Bulk reset failures:',
+                results.filter(r => r.status === 'rejected').map(r => (r as PromiseRejectedResult).reason));
+        } else {
+            toast({ title: 'Overrides cleared', description: `${cleared} row${cleared === 1 ? '' : 's'} reverted to source.` });
+        }
+        clearSelection();
+    }, [selectedIds, overrideDocByTrailer, firestore, organisationId, toast, clearSelection]);
+
     useEffect(() => {
         let cancelled = false;
         if (vendors.length === 0) {
@@ -1055,6 +1123,33 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                 </div>
             </div>
 
+            {/* Selection action bar — only visible when at least one row is selected */}
+            {selectedIds.size > 0 && isAdmin && (
+                <div className="shrink-0 px-8 py-2 flex items-center gap-3 border-b-2 border-primary/30 bg-primary/5">
+                    <span className="text-[11px] font-black uppercase tracking-widest text-primary">
+                        {selectedIds.size} selected
+                    </span>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={bulkResetOverrides}
+                        className="h-8 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest gap-1"
+                    >
+                        <RotateCcw className="h-3 w-3" /> Reset overrides
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearSelection}
+                        className="h-8 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 ml-auto"
+                    >
+                        Clear selection
+                    </Button>
+                </div>
+            )}
+
             {/* Table */}
             <div className="flex-1 min-h-0 overflow-hidden">
                 {loading ? (
@@ -1075,9 +1170,26 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                 <thead className="sticky top-0 z-[100]">
                                     <tr>
                                         <th className="w-[36px] sticky left-0 top-0 z-[120] bg-white border-r border-b-2 border-slate-300 px-0 py-2.5">
+                                            {/* Select-all-filtered tri-state */}
+                                            {(() => {
+                                                const allIds = filteredRows.map(r => r.id);
+                                                const state = selectionStateFor(allIds, selectedIds);
+                                                return (
+                                                    <div className="flex items-center justify-center">
+                                                        <Checkbox
+                                                            aria-label="Select all filtered trailers"
+                                                            disabled={!isAdmin || allIds.length === 0}
+                                                            checked={state === 'all' ? true : state === 'some' ? 'indeterminate' : false}
+                                                            onCheckedChange={(c) => setManySelected(allIds, !!c)}
+                                                        />
+                                                    </div>
+                                                );
+                                            })()}
+                                        </th>
+                                        <th className="w-[36px] sticky left-[36px] top-0 z-[120] bg-white border-r border-b-2 border-slate-300 px-0 py-2.5">
                                             <span className="sr-only">Expand</span>
                                         </th>
-                                        <th className="w-[50px] sticky left-[36px] top-0 z-[120] bg-white border-r-2 border-b-2 border-slate-300 text-center text-[8px] font-black uppercase shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] py-2.5 px-2">
+                                        <th className="w-[50px] sticky left-[72px] top-0 z-[120] bg-white border-r-2 border-b-2 border-slate-300 text-center text-[8px] font-black uppercase shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] py-2.5 px-2">
                                             #
                                         </th>
                                         {COLUMNS.map((col, idx) => (
@@ -1085,7 +1197,7 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                                 key={col.key as string}
                                                 className={`text-[8px] font-black uppercase tracking-widest text-slate-400 px-4 py-3 border-r border-b-2 border-slate-300 whitespace-nowrap text-left bg-slate-100 ${
                                                     col.numeric ? 'text-right' : ''
-                                                } ${col.width ?? ''} ${idx === 0 ? 'sticky left-[86px] z-[110] bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)]' : ''}`}
+                                                } ${col.width ?? ''} ${idx === 0 ? 'sticky left-[122px] z-[110] bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)]' : ''}`}
                                             >
                                                 <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-600">
                                                     {col.label}
@@ -1100,13 +1212,25 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                         return groupedRows.map((brand) => {
                                             const isBrandCollapsed = collapsedBrands.has(brand.vendorId);
                                             const brandTrailerCount = brand.series.reduce((sum, s) => sum + s.trailers.length, 0);
+                                            const brandTrailerIds = brand.series.flatMap(s => s.trailers.map(t => t.id));
+                                            const brandSelState = selectionStateFor(brandTrailerIds, selectedIds);
                                             return (
                                                 <Fragment key={`brand-${brand.vendorId}`}>
                                                     {/* Brand section header */}
                                                     <tr className="bg-slate-100 hover:bg-slate-200/70 transition-colors">
+                                                        <td className="w-[36px] sticky left-0 z-[90] bg-slate-100 hover:bg-slate-200/70 border-b-2 border-slate-300 px-0 py-2.5">
+                                                            <div className="flex items-center justify-center">
+                                                                <Checkbox
+                                                                    aria-label={`Select all trailers in ${brand.vendorName}`}
+                                                                    disabled={!isAdmin || brandTrailerIds.length === 0}
+                                                                    checked={brandSelState === 'all' ? true : brandSelState === 'some' ? 'indeterminate' : false}
+                                                                    onCheckedChange={(c) => setManySelected(brandTrailerIds, !!c)}
+                                                                />
+                                                            </div>
+                                                        </td>
                                                         <td
                                                             colSpan={COLUMNS.length + 2}
-                                                            className="sticky left-0 z-[90] bg-slate-100 hover:bg-slate-200/70 border-b-2 border-slate-300 px-4 py-2.5"
+                                                            className="sticky left-[36px] z-[90] bg-slate-100 hover:bg-slate-200/70 border-b-2 border-slate-300 px-4 py-2.5"
                                                         >
                                                             <button
                                                                 type="button"
@@ -1128,13 +1252,25 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                                     {!isBrandCollapsed && brand.series.map((series) => {
                                                         const seriesKey = `${brand.vendorId}:${series.seriesId}`;
                                                         const isSeriesCollapsed = collapsedSeries.has(seriesKey);
+                                                        const seriesTrailerIds = series.trailers.map(t => t.id);
+                                                        const seriesSelState = selectionStateFor(seriesTrailerIds, selectedIds);
                                                         return (
                                                             <Fragment key={`series-${seriesKey}`}>
                                                                 {/* Series section header */}
                                                                 <tr className="bg-slate-50 hover:bg-slate-100 transition-colors">
+                                                                    <td className="w-[36px] sticky left-0 z-[85] bg-slate-50 hover:bg-slate-100 border-b border-slate-200 px-0 py-1.5">
+                                                                        <div className="flex items-center justify-center">
+                                                                            <Checkbox
+                                                                                aria-label={`Select all trailers in ${series.seriesName}`}
+                                                                                disabled={!isAdmin || seriesTrailerIds.length === 0}
+                                                                                checked={seriesSelState === 'all' ? true : seriesSelState === 'some' ? 'indeterminate' : false}
+                                                                                onCheckedChange={(c) => setManySelected(seriesTrailerIds, !!c)}
+                                                                            />
+                                                                        </div>
+                                                                    </td>
                                                                     <td
                                                                         colSpan={COLUMNS.length + 2}
-                                                                        className="sticky left-0 z-[85] bg-slate-50 hover:bg-slate-100 border-b border-slate-200 pl-10 pr-4 py-1.5"
+                                                                        className="sticky left-[36px] z-[85] bg-slate-50 hover:bg-slate-100 border-b border-slate-200 pl-10 pr-4 py-1.5"
                                                                     >
                                                                         <button
                                                                             type="button"
@@ -1164,8 +1300,18 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                                                     );
                                                                     return (
                                                                         <Fragment key={row.id}>
-                                                                            <tr className="group hover:bg-primary/5 transition-colors">
-                                                                                <td className="sticky left-0 z-[80] border-r border-b border-slate-200 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.03)] px-0 py-0 group-hover:bg-primary/5">
+                                                                            <tr className={`group hover:bg-primary/5 transition-colors ${selectedIds.has(row.id) ? 'bg-primary/5' : ''}`}>
+                                                                                <td className="sticky left-0 z-[80] border-r border-b border-slate-200 bg-white px-0 py-0 group-hover:bg-primary/5">
+                                                                                    <div className="flex items-center justify-center h-full">
+                                                                                        <Checkbox
+                                                                                            aria-label={`Select ${row.code}`}
+                                                                                            disabled={!isAdmin}
+                                                                                            checked={selectedIds.has(row.id)}
+                                                                                            onCheckedChange={() => toggleRowSelected(row.id)}
+                                                                                        />
+                                                                                    </div>
+                                                                                </td>
+                                                                                <td className="sticky left-[36px] z-[80] border-r border-b border-slate-200 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.03)] px-0 py-0 group-hover:bg-primary/5">
                                                                                     {/* Subtle indent guide for the tree */}
                                                                                     <div className="relative h-full">
                                                                                         <span className="absolute inset-y-0 left-5 border-l border-slate-200" aria-hidden="true" />
@@ -1181,12 +1327,12 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                                                                         </button>
                                                                                     </div>
                                                                                 </td>
-                                                                                <td className="sticky left-[36px] z-[80] border-r-2 border-b border-slate-200 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)] text-center text-[9px] text-slate-400 font-mono px-2 py-1 group-hover:bg-primary/5">
+                                                                                <td className="sticky left-[72px] z-[80] border-r-2 border-b border-slate-200 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)] text-center text-[9px] text-slate-400 font-mono px-2 py-1 group-hover:bg-primary/5">
                                                                                     {rowNumber}
                                                                                 </td>
                                                                                 {COLUMNS.map((col, idx) => {
                                                                                     const base = `border-r border-b border-slate-200 text-xs group-hover:bg-primary/5 ${col.numeric ? 'text-right font-mono tabular-nums' : ''}`;
-                                                                                    const sticky = idx === 0 ? 'sticky left-[86px] z-[70] bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.03)] group-hover:bg-primary/5 font-semibold' : '';
+                                                                                    const sticky = idx === 0 ? 'sticky left-[122px] z-[70] bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.03)] group-hover:bg-primary/5 font-semibold' : '';
 
                                                                                     if (col.key === 'image') {
                                                                                         return (
@@ -1255,7 +1401,7 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                                                             </tr>
                                                                             {isExpanded && (
                                                                                 <tr>
-                                                                                    <td colSpan={COLUMNS.length + 2} className="p-0 border-b border-slate-200">
+                                                                                    <td colSpan={COLUMNS.length + 3} className="p-0 border-b border-slate-200">
                                                                                         <WaterfallPanel
                                                                                             row={row}
                                                                                             overrideDoc={overrideDoc}

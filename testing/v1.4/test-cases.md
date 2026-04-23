@@ -559,6 +559,27 @@ Every group is independently collapsible.
 - [ ] Sticky behaviour: the top-of-table column headers stay pinned when scrolling. The left-side Expand and # columns stay pinned when scrolling horizontally.
 - [ ] Non-admin: every banner is still clickable for collapse/expand; cell values stay read-only.
 
+### L.6 — Stage 2a: multi-select + bulk reset overrides
+
+First piece of Chunk 2. Adds a checkbox column on the left of every
+trailer row, tri-state checkboxes on brand and series banners, and a
+"Reset overrides" action bar that appears when anything is selected.
+
+- [ ] A new leftmost **checkbox column** is visible, sticky when scrolling horizontally.
+- [ ] Table header shows a tri-state "select all filtered" checkbox.
+- [ ] Per-trailer checkboxes: clicking toggles selection. Selected row gets a subtle primary-colour tint background.
+- [ ] **Brand banner** has a tri-state checkbox on the left. Ticking it selects every trailer in that brand; unticking clears them.
+- [ ] **Series banner** has the same tri-state checkbox; ticking selects every trailer in that series.
+- [ ] Tri-state: when some (but not all) trailers in a brand are selected, the brand's checkbox shows an "indeterminate" mark (horizontal bar instead of tick). Same for series.
+- [ ] Selecting trailers across multiple brands: each brand banner shows indeterminate independently.
+- [ ] A **selection action bar** appears under the filter bar once selection is non-empty. Shows "N selected", a **Reset overrides** button, and a **Clear selection** ghost button on the right.
+- [ ] Click **Reset overrides** with only rows that have no override selected → toast "Nothing to reset" and selection clears.
+- [ ] Set some overrides on 3 rows, select all 3 plus 2 unrelated rows, click Reset overrides → toast "Overrides cleared · 3 rows reverted to source" and selection clears. The unrelated rows are untouched.
+- [ ] Selection survives search + brand filter toggling as long as the selected rows remain visible. Rows that drop out of the filter are silently deselected (intentional — bulk actions only touch visible rows).
+- [ ] Clear selection → action bar disappears.
+- [ ] As a **non-admin** user: every checkbox is disabled. Action bar never appears.
+- [ ] Firestore: after a bulk reset, the `organisations/{orgId}/trailerOverrides/{id}` docs for the cleared rows are deleted (verify in Firebase Console if needed).
+
 ---
 
 ## Section K — Automated smoke suite
