@@ -42,6 +42,7 @@ import {
     Rows3,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
+import { DealerFitOptions } from '@/components/dealer-fit-options';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -88,6 +89,13 @@ interface TrailerDashboardProps {
     moduleName?: string;
     organisationId?: string;
     isAdmin?: boolean;
+    /**
+     * Full module doc for the trailer module. Threaded down to the detail
+     * sheet so the DealerFitOptions render (matching the Yamaha motor
+     * detail sheet) can read `trailerDealerFitCategories` + the org's
+     * selections.
+     */
+    moduleData?: any;
 }
 
 type SortKey = 'code' | 'boat' | 'price';
@@ -134,7 +142,7 @@ function TrailerImage({
 // Main component
 // ---------------------------------------------------------------------------
 
-export function TrailerDashboard({ vendors, moduleName, isAdmin }: TrailerDashboardProps) {
+export function TrailerDashboard({ vendors, moduleName, organisationId, isAdmin, moduleData }: TrailerDashboardProps) {
     const firestore = useFirestore();
     const storage = useStorage();
     const { toast } = useToast();
@@ -571,6 +579,8 @@ export function TrailerDashboard({ vendors, moduleName, isAdmin }: TrailerDashbo
                 onOpenChange={setDetailOpen}
                 storage={storage}
                 isAdmin={!!isAdmin}
+                moduleData={moduleData}
+                organisationId={organisationId}
                 onUpdateImage={updateTrailerImage}
                 onUpdateFields={updateTrailerFields}
             />
@@ -745,6 +755,8 @@ function TrailerDetailSheet({
     onOpenChange,
     storage,
     isAdmin,
+    moduleData,
+    organisationId,
     onUpdateImage,
     onUpdateFields,
 }: {
@@ -753,6 +765,8 @@ function TrailerDetailSheet({
     onOpenChange: (v: boolean) => void;
     storage: ReturnType<typeof useStorage>;
     isAdmin: boolean;
+    moduleData?: any;
+    organisationId?: string;
     onUpdateImage: (trailer: TrailerRow, url: string | null) => Promise<void>;
     onUpdateFields: (trailer: TrailerRow, patch: Partial<TrailerRow>) => Promise<void>;
 }) {
@@ -901,6 +915,25 @@ function TrailerDetailSheet({
                             )}
                         </div>
                         <p className="text-[10px] text-slate-400 mt-2">Full waterfall editable in Pricing Manager.</p>
+                    </div>
+                )}
+
+                {/* Dealer Fit Options — same Master Data Browser as Yamaha.
+                    Shown in module-only mode so only the trailer module's
+                    own categories (`trailerDealerFitCategories`) appear. */}
+                {moduleData && organisationId && (
+                    <div className="mt-8 pt-6 border-t">
+                        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Dealer Fit Options</h4>
+                        <DealerFitOptions
+                            module={{
+                                ...moduleData,
+                                moduleDealerFitCategories:
+                                    moduleData?.trailerDealerFitCategories || [],
+                            }}
+                            organisationId={organisationId}
+                            isAdmin={isAdmin}
+                            moduleOnly
+                        />
                     </div>
                 )}
                 </>

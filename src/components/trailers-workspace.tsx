@@ -112,6 +112,7 @@ export function TrailersWorkspace({ organisationId, isAdmin, moduleId, moduleDat
                         moduleName={moduleData?.name}
                         organisationId={organisationId}
                         isAdmin={isAdmin}
+                        moduleData={{ ...moduleData, id: moduleId }}
                     />
                 )}
 
