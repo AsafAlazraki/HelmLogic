@@ -738,6 +738,45 @@ below has its own check-list. Run in order — some build on each other.
 
 - [ ] Edit button in the trailer detail sheet no longer overlaps the Sheet's built-in close X. ~32px clearance between them.
 
+### M.9 — CRITICAL: end-to-end trailer on boat quote (commit 0b83ead)
+
+The flow you actually need working for v1.4 to ship. Run this
+end-to-end after every deploy. If it breaks, the release stops.
+
+**Setup (once):**
+
+- [ ] Trailer module Settings → set `trailerDealerFitCategories` to include "Spares" (add more if you want).
+- [ ] Trailer Dashboard → click any Dunbier trailer (e.g. `AS5.3M-13TB`). In the detail sheet's Dealer Fit Options section, create a selection "Spare Wheel Kit" under Spares. Save.
+- [ ] Boat (Highfield) module Settings → Associated Modules → tick the Trailer module. Save.
+- [ ] Open CL260 in either the Catalog Explorer TRAILER OPTIONS tab OR the Highfield model editor. TrailerAssignmentsSection → Assign a trailer from catalog → pick `Dunbier AS5.3M-13TB`. Confirm it gets the DEFAULT badge. Save.
+
+**Verify — quote flow:**
+
+- [ ] Start a new Highfield quote for CL260. Advance to Step 4 (Trailer).
+- [ ] Step 4 shows `Dunbier AS5.3M-13TB` pre-selected with its catalog image, pricing, and brand subtitle. You did NOT click "Pick from Catalog".
+- [ ] The Pick from Catalog button is still there; clicking it narrows to the linked Trailer module's brands only.
+- [ ] Step 5 (Dealer Fit): the **Trailer Dealer Fit** sub-section renders the category "Spares" pulled from the Trailer module (via the Associated Modules link).
+- [ ] "Spare Wheel Kit" appears as a pickable card under Spares.
+- [ ] Tick "Spare Wheel Kit" → it adds to the quote total.
+- [ ] Advance to review step → totals include trailer sell + the ticked spare wheel kit.
+- [ ] Finalize the quote.
+
+**Verify — proposal PDF:**
+
+- [ ] Open the proposal for the finalized quote. PDF renders:
+  - Trailer block with image + name + "**DUNBIER TRAILERS · AS5.3M-13TB**" subtitle (brand · code).
+  - Specs strip below: boat size / length / ATM / tare / wheel size / winch (only fields that exist on the snapshot).
+  - Dealer Accessories & Preparation section contains "Spare Wheel Kit".
+- [ ] `quote.trailer.cost` is persisted (check Firestore doc — trailer margin will show on dealer audit panels).
+- [ ] `quote.trailer.catalog.specifications` carries the full specs dictionary.
+
+**Known gotchas for this flow:**
+
+- If the boat module does NOT have the Trailer module linked via Associated Modules, Step 5's trailer DF categories will be empty (unless you also configure `trailerDealerFitCategories` directly on the boat module). That's the fix from commit `0b83ead` — linking pulls the categories through automatically.
+- The trailer's own DF selections (built via the detail sheet) do NOT auto-tick on quote. The user must manually tick them in Step 5. Per-trailer auto-tick is explicitly out of scope for v1.4 (tracked for v1.4.1).
+
+---
+
 ### M.8 — Recent Proposals hero image (commit 404869b)
 
 - [ ] Boat module Dashboard → Recent Proposals cards now show the cover image edge-to-edge at ~144px tall (`object-cover`, no padding, no mix-blend-multiply).
