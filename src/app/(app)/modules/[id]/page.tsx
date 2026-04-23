@@ -706,9 +706,13 @@ export default function ModuleDetailsPage() {
                     </div>
                 </div>
                 <main className="flex-1 min-h-0 overflow-hidden">
+                    {/* v1.4: editing surfaces (trailer image, fields, pricing
+                        overrides, Publish) are open to any signed-in user.
+                        Platform-level `isAdmin` still controls *visibility* of
+                        sensitive tabs / reads elsewhere in the app. */}
                     <TrailersWorkspace
                         organisationId={currentMemberOrg.id}
-                        isAdmin={isAdmin}
+                        isAdmin={true}
                         moduleId={moduleData.id}
                         moduleData={moduleData}
                     />
@@ -744,9 +748,10 @@ export default function ModuleDetailsPage() {
                     </div>
                 </div>
                 <main className="flex-1 min-h-0 overflow-hidden">
+                    {/* v1.4: editing surfaces open to any signed-in user. */}
                     <RegoWorkspace
                         organisationId={currentMemberOrg.id}
-                        isAdmin={isAdmin}
+                        isAdmin={true}
                         moduleId={moduleData.id}
                         moduleData={moduleData}
                     />
