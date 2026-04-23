@@ -13,7 +13,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Ship, Search, Package, Settings as SettingsIcon, DollarSign, ChevronDown, ArrowUpDown, Tag } from 'lucide-react';
 import { ModulePromotions } from '@/components/module-promotions';
 import { MasterPriceFileWorkspace } from '@/components/master-price-file-workspace';
-import { OrganisationModuleConfig } from '@/components/organisation-module-config';
 import { ModuleSettingsPanel } from '@/components/module-settings-panel';
 import { DealerFitOptions } from '@/components/dealer-fit-options';
 import {

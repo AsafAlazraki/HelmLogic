@@ -1,5 +1,5 @@
 # HelmLogic — Release Notes v1.4.0
-> Release Date: 2026-04-22
+> Release Date: 2026-04-23
 > Branch: `claude/app-overview-wKiZ1` → main
 > Major release since v1.3.0
 
@@ -7,10 +7,15 @@
 - **2 new module types** added: `trailers` and `rego`
 - **1 new vendor type**: `Rego Authority`; one existing type promoted: `Trailer Brand`
 - **9 implementation steps** per `tasks/v1.4-trailers-module-design.md` §11 — all complete
-- **8 remediation chunks** on top of the original ship, covering operator ergonomics (dashboard, edit UI, upsert imports) and trailer-on-quote parity (cost, specs on PDF)
+- **Pricing Manager uplift** — 8-stage rebuild matching Highfield's depth: Brand→Series→Trailer tree, full waterfall inline editing on every row + expanded panel, row/brand/series multi-select, bulk reset, Global Update dialog, staged-Publish workflow
+- **Settings parity** — new reusable `<ModuleSettingsPanel>` ensures every module's Settings tab has the same card set (Module Image, Associated Vendors, **Associated Modules** [new v1.4 concept], Dealer Fit Categories, Sub Dealers, Module Roles)
+- **Associated Modules** — boat module can link the Trailer module and auto-inherit its brand list + DF categories + associated vendors, no duplicate wiring
+- **Per-boat-model trailer assignments** — design doc §5 shipped. Models carry `trailerAssignments[]`; quote flow auto-pre-selects the default assignment; available in both the Highfield model editor and the Catalog Explorer's TRAILER OPTIONS tab
+- **Dealer Fit Options inside trailer detail sheet** — same Master Data Browser as Yamaha motor detail sheet, scoped to the trailer module's own categories
 - Full pricing waterfall ingested column-for-column from the client's xlsx source
 - Snapshot-on-select pattern extended to trailers + rego for price stability across catalog edits
 - Trailer quotes now carry cost, specs, and brand provenance through to the proposal PDF — parity with motor quote rendering
+- Editing surfaces open to any signed-in user (not just platform admins) so dealer-level admins like Bill Hull can edit images / fields / pricing overrides on v1.4 modules
 
 ### Source of Requirements
 Client (Northside Marine) supplied `Trailer Module.xlsx` — a 20-column dealer pricing sheet covering Dealer → Discount → Settlement → Nett → Freight → Landed → PD → CTD → MU% → GP → RRP → Sell plus PD parts, factory options, lead times, and rego hints. v1.4 ingests the full sheet and exposes it on a new Trailers workspace. A parallel new Rego module consolidates boat + trailer registration fees previously hard-coded on Highfield model documents.
@@ -21,8 +26,9 @@ Client (Northside Marine) supplied `Trailer Module.xlsx` — a 20-column dealer 
 
 ### Trailers module
 - New `moduleType: 'trailers'` with dedicated workspace at `/modules/{id}`.
-- Three tabs: **Catalog**, **Pricing Manager**, **Settings**.
+- Three tabs: **Dashboard** (Yamaha-style, boat-size-range grouped, Cards/Table view toggle), **Pricing Manager** (Brand→Series tree, waterfall inline editing, staged Publish), **Settings** (uniform across all modules).
 - One module can source from multiple trailer brand vendors (REDCO, TINKA, STACER, DUNBIER, MACKAY, GFAB, NSM CUSTOM).
+- Trailer detail sheet is wide (lg:max-w-4xl) and renders: image (admin-editable), specs, features, factory options, pricing summary, and the Dealer Fit Options Master Data Browser.
 
 ### Rego module
 - New `moduleType: 'rego'` — shared between boats and trailers.
