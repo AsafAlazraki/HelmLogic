@@ -630,6 +630,57 @@ rows. Useful for annual price increases, margin resets, etc.
 
 - [ ] As a **non-admin** user: no bulk action bar, no Global Update button.
 
+### L.8 — Stage 2c: staged edits + Publish / Discard
+
+The headline behavioural change. Every edit — inline cell, waterfall
+row, whole-row reset, bulk reset, Global Update — now accumulates in
+a local draft buffer instead of writing to Firestore immediately.
+A header bar "Publish N staged changes" button flushes the whole
+buffer in one batched commit. Discard throws the buffer away.
+
+**Staging inline edits**
+
+- [ ] Edit a Sell cell → value changes in the table but the toast now says nothing fires in Firestore. Cell renders with a **subtle primary-colour left border** (the dirty indicator) and amber override text.
+- [ ] Header bar shows "1 staged change" badge + **Publish** + **Discard** buttons.
+- [ ] Edit a Dealer cell on a different row → badge bumps to "2 staged changes". Each dirty cell has its own left-border indicator.
+- [ ] Multiple edits on the same row → badge counts the row once (1 row = 1 dirty entry), even if 3 cells were edited.
+
+**Staging resets**
+
+- [ ] Blank-then-Enter on an overridden cell stages a reset → the cell returns to the source value, still with the dirty indicator (the reset is pending).
+- [ ] In the waterfall panel, "Reset all overrides on this row" → every overridden cell on that row goes back to source + dirty indicator on each.
+
+**Staging bulk actions**
+
+- [ ] Select some rows, click "Reset overrides" → toast "N reset staged" (not "cleared"). Cells revert but still show dirty indicators.
+- [ ] Global Update: pick +5% Sell, Apply → toast "N rows queued". Every scoped row shows the new Sell value amber with the dirty indicator.
+
+**Publish**
+
+- [ ] Click **Publish** → loading spinner on the button → toast "Published · N saved · M reset" (numbers reflect the buffer content) → dirty indicators disappear → badge + Publish/Discard buttons disappear.
+- [ ] Refresh the page: staged changes that were published are persisted; any that weren't published are gone.
+- [ ] Firestore verification: rows published with new values have a `pricingDetail` entry for each field. Rows whose overrides were fully reset have their `trailerOverrides/{id}` doc **deleted** from Firestore.
+- [ ] Sell overrides also mirror `sellPriceExclGst` at the top level of the override doc (so the catalog picker keeps resolving).
+
+**Discard**
+
+- [ ] Stage several edits → click **Discard** → toast "Staged changes discarded" → cells revert to pre-edit state → badge and buttons disappear.
+- [ ] Firestore is untouched — no writes were made.
+
+**Interaction with filters & navigation**
+
+- [ ] Edit a cell, then change the search term → the edit is preserved in the dirty map even if its row drops out of the filter. Clear the search → dirty indicator still there.
+- [ ] Edit a cell, then collapse the brand banner → dirty count unchanged.
+- [ ] Edit a cell, then navigate away from the Pricing Manager tab → buffer is in component state only, NOT persisted. On return, drafts are gone. (Intentional — prevents accidental stale drafts.)
+
+**Combined flow**
+
+- [ ] Select 10 rows → Global Update +3% on Sell → 10 dirty rows. Then Reset overrides on 5 of them → those 5 now stage null on Sell (cancelling the staged +3%). Publish → Firestore has 5 rows with the new Sell, 5 rows with no override doc. Confirm counts on the toast.
+
+**Gating**
+
+- [ ] Non-admin: no dirty indicators ever appear because edits are disabled. Publish/Discard buttons never render.
+
 ---
 
 ## Section K — Automated smoke suite

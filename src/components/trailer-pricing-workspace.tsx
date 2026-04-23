@@ -9,7 +9,7 @@
  */
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDocs, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -143,12 +143,19 @@ const EDITABLE_FIELDS: Array<{ key: string; label: string; format: 'currency' | 
     { key: 'sell',           label: 'Sell (ex GST)',  format: 'currency' },
 ];
 
-// Effective pricing = source waterfall + per-field overrides on top.
+// Stage 2c — staged patch. `number` stages an override; `null` stages a
+// reset (clear existing override back to source). Undefined = no change.
+type StagedPatch = Partial<Record<string, number | null>>;
+
+// Effective pricing = source waterfall + persisted override + staged patch.
 // Sell has a legacy fallback for overrides that predate stage 1a.
+// Staged null values for a key revert that key to its source value —
+// overrides it would have had from `override.pricingDetail` are ignored.
 function resolveEffectivePricing(
     sourcePricing: Record<string, any>,
     sourceSell: number,
     override?: TrailerOverride,
+    staged?: StagedPatch,
 ): Record<string, number> {
     const result: Record<string, number> = {};
     for (const k of Object.keys(sourcePricing || {})) {
@@ -160,20 +167,50 @@ function resolveEffectivePricing(
             if (typeof v === 'number') result[k] = v;
         }
     }
-    const sellOverride =
-        override?.pricingDetail?.sell ??
-        override?.sellPriceExclGst ??
-        undefined;
-    result.sell = typeof sellOverride === 'number' ? sellOverride : sourceSell;
+    if (staged) {
+        for (const [k, v] of Object.entries(staged)) {
+            if (typeof v === 'number') result[k] = v;
+            else if (v === null) {
+                // Revert to source: remove override, fall back to source value if any.
+                delete result[k];
+                if (typeof sourcePricing?.[k] === 'number') result[k] = sourcePricing[k];
+            }
+        }
+    }
+    // Sell resolution with same staging logic.
+    if (staged && 'sell' in staged) {
+        const s = staged.sell;
+        if (typeof s === 'number') result.sell = s;
+        else result.sell = sourceSell;
+    } else {
+        const sellOverride =
+            override?.pricingDetail?.sell ??
+            override?.sellPriceExclGst ??
+            undefined;
+        result.sell = typeof sellOverride === 'number' ? sellOverride : sourceSell;
+    }
     return result;
 }
 
-function hasFieldOverride(key: string, override?: TrailerOverride): boolean {
+// Has a persisted OR staged override for this field? Used to paint amber.
+function hasFieldOverride(key: string, override?: TrailerOverride, staged?: StagedPatch): boolean {
+    if (staged && key in staged) {
+        const v = staged[key];
+        if (typeof v === 'number') return true;
+        if (v === null) return false; // staged reset wins
+    }
     if (!override) return false;
     const v = override.pricingDetail?.[key];
     if (typeof v === 'number') return true;
     if (key === 'sell' && typeof override.sellPriceExclGst === 'number') return true;
     return false;
+}
+
+// Is this field *staged* (pending publish) vs merely persisted? Used to
+// paint the dirty-cell indicator independently from the amber override.
+function isFieldStaged(key: string, staged?: StagedPatch): boolean {
+    if (!staged) return false;
+    return key in staged;
 }
 
 // Waterfall rows rendered when a trailer is expanded. Source-column letters are
@@ -199,6 +236,7 @@ const WATERFALL_ROWS: Array<{ key: string; label: string; col: string; bold?: bo
 function WaterfallPanel({
     row,
     overrideDoc,
+    stagedPatch,
     effectivePricing,
     hasOverride,
     isAdmin,
@@ -208,19 +246,19 @@ function WaterfallPanel({
 }: {
     row: FlatTrailerRow;
     overrideDoc?: TrailerOverride;
+    stagedPatch?: StagedPatch;
     effectivePricing: Record<string, number>;
     hasOverride: boolean;
     isAdmin: boolean;
-    onSaveField: (trailerId: string, key: string, value: number) => Promise<void>;
-    onResetField: (trailerId: string, key: string) => Promise<void>;
-    onResetRow: (trailerId: string) => Promise<void>;
+    onSaveField: (trailerId: string, key: string, value: number) => void | Promise<void>;
+    onResetField: (trailerId: string, key: string) => void | Promise<void>;
+    onResetRow: (trailerId: string) => void | Promise<void>;
 }) {
     // A waterfall row is shown if the trailer has a source value OR an override
-    // for that key — lets operators see (and clear) overrides even on keys the
-    // source xlsx didn't populate.
+    // (persisted or staged) for that key.
     const rowsWithValues = WATERFALL_ROWS.filter(r => {
         const hasSource = typeof row.pricing?.[r.key] === 'number';
-        const hasOverrideForKey = hasFieldOverride(r.key, overrideDoc);
+        const hasOverrideForKey = hasFieldOverride(r.key, overrideDoc, stagedPatch);
         return hasSource || hasOverrideForKey;
     });
     const hasWaterfall = rowsWithValues.length > 0;
@@ -236,7 +274,7 @@ function WaterfallPanel({
                 </div>
                 <div className="flex flex-col">
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Effective sell</span>
-                    <span className={`text-sm font-mono tabular-nums font-semibold ${hasFieldOverride('sell', overrideDoc) ? 'text-amber-700' : 'text-primary'}`}>
+                    <span className={`text-sm font-mono tabular-nums font-semibold ${hasFieldOverride('sell', overrideDoc, stagedPatch) ? 'text-amber-700' : 'text-primary'}`}>
                         {formatCurrency(effectivePricing.sell ?? row.sourceSell)}
                     </span>
                 </div>
@@ -286,7 +324,8 @@ function WaterfallPanel({
                                             fieldKey={r.key}
                                             sourceValue={sourceValue}
                                             effectiveValue={effectiveValue}
-                                            hasOverride={hasFieldOverride(r.key, overrideDoc)}
+                                            hasOverride={hasFieldOverride(r.key, overrideDoc, stagedPatch)}
+                                            isStaged={isFieldStaged(r.key, stagedPatch)}
                                             format={isPct ? 'percent' : 'currency'}
                                             isAdmin={isAdmin}
                                             onSave={onSaveField}
@@ -339,6 +378,7 @@ function EditableCell({
     sourceValue,
     effectiveValue,
     hasOverride,
+    isStaged = false,
     format,
     isAdmin,
     onSave,
@@ -349,10 +389,11 @@ function EditableCell({
     sourceValue: number | null;
     effectiveValue: number | null;
     hasOverride: boolean;
+    isStaged?: boolean;
     format: 'currency' | 'percent';
     isAdmin: boolean;
-    onSave: (trailerId: string, key: string, value: number) => Promise<void>;
-    onReset: (trailerId: string, key: string) => Promise<void>;
+    onSave: (trailerId: string, key: string, value: number) => void | Promise<void>;
+    onReset: (trailerId: string, key: string) => void | Promise<void>;
 }) {
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState('');
@@ -397,7 +438,7 @@ function EditableCell({
     }
 
     const wrapperClass = isAdmin
-        ? 'block w-full h-full px-3 py-2 cursor-pointer hover:bg-primary/10 text-right'
+        ? `relative block w-full h-full px-3 py-2 cursor-pointer hover:bg-primary/10 text-right${isStaged ? ' bg-primary/5 border-l-2 border-primary' : ''}`
         : 'block w-full h-full px-3 py-2 text-right';
 
     return (
@@ -410,9 +451,11 @@ function EditableCell({
             className={wrapperClass}
             title={
                 isAdmin
-                    ? (hasOverride
-                        ? 'Click to edit · leave blank or match source to reset'
-                        : 'Click to set org override')
+                    ? (isStaged
+                        ? 'Staged change — press Publish to commit, or click to edit'
+                        : hasOverride
+                            ? 'Click to edit · leave blank or match source to reset'
+                            : 'Click to set org override')
                     : undefined
             }
         >
@@ -471,6 +514,11 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
     const [guOp, setGuOp] = useState<'set' | 'addAmount' | 'subAmount' | 'addPercent' | 'subPercent'>('addPercent');
     const [guValue, setGuValue] = useState<string>('');
     const [guBusy, setGuBusy] = useState(false);
+    // Stage 2c — staged edits. Each inline edit / bulk reset / global update
+    // populates this map. A "Publish" button in the header flushes everything
+    // to Firestore in one batched commit; "Discard" clears the map.
+    const [dirty, setDirty] = useState<Map<string, StagedPatch>>(() => new Map());
+    const [publishing, setPublishing] = useState(false);
 
     // Pre-compute search fields on each row for fast filter
     const filteredRows = useMemo(() => {
@@ -601,56 +649,17 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
         return m;
     }, [overrides]);
 
-    // Save a per-field override. `key` must be in EDITABLE_KEYS. When
-    // `key === 'sell'` we also mirror to the top-level `sellPriceExclGst`
-    // field so the catalog picker (which still reads the legacy shape
-    // directly) continues to resolve the right sell price.
-    const saveOverrideField = useCallback(async (trailerId: string, key: string, value: number) => {
+    // Stage 2c — stage a per-field edit. `key` must be in EDITABLE_KEYS.
+    // Nothing hits Firestore until the operator presses Publish.
+    const saveOverrideField = useCallback((trailerId: string, key: string, value: number) => {
         if (!EDITABLE_KEYS.has(key)) return;
-        try {
-            const row = rows.find(r => r.id === trailerId);
-            const payload: Record<string, any> = {
-                trailerId,
-                brandVendorId: row?.vendorId || null,
-                seriesId: row?.seriesId || null,
-                overrideAt: serverTimestamp(),
-                pricingDetail: { [key]: value },
-            };
-            if (key === 'sell') payload.sellPriceExclGst = value;
-            await setDoc(
-                doc(firestore, `organisations/${organisationId}/trailerOverrides/${trailerId}`),
-                payload,
-                { merge: true },
-            );
-            toast({
-                title: 'Override saved',
-                description: `${row?.code ?? trailerId} · ${key} → ${key === 'markupPercent' ? `${value}%` : formatCurrency(value)}`,
-            });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Save failed', description: e?.message });
-        }
-    }, [firestore, organisationId, rows, toast]);
-
-    const saveOverride = useCallback(async (trailerId: string, price: number) => {
-        try {
-            const row = rows.find(r => r.id === trailerId);
-            await setDoc(
-                doc(firestore, `organisations/${organisationId}/trailerOverrides/${trailerId}`),
-                {
-                    sellPriceExclGst: price,
-                    pricingDetail: { sell: price },
-                    trailerId,
-                    brandVendorId: row?.vendorId || null,
-                    seriesId: row?.seriesId || null,
-                    overrideAt: serverTimestamp(),
-                },
-                { merge: true },
-            );
-            toast({ title: 'Override saved', description: `${row?.code ?? trailerId} → ${formatCurrency(price)} ex GST` });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Save failed', description: e?.message });
-        }
-    }, [firestore, organisationId, rows, toast]);
+        setDirty(prev => {
+            const next = new Map(prev);
+            const current = next.get(trailerId) ?? {};
+            next.set(trailerId, { ...current, [key]: value });
+            return next;
+        });
+    }, []);
 
     const buildExportRows = useCallback((source: FlatTrailerRow[]) => {
         return source.map((r) => {
@@ -922,62 +931,39 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
         }
     }, [firestore, vendors, rows, loadRows, toast]);
 
-    const resetOverride = useCallback(async (trailerId: string) => {
-        try {
-            await deleteDoc(doc(firestore, `organisations/${organisationId}/trailerOverrides/${trailerId}`));
-            const row = rows.find(r => r.id === trailerId);
-            toast({ title: 'Override cleared', description: `${row?.code ?? trailerId} reverted to source price` });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Reset failed', description: e?.message });
-        }
-    }, [firestore, organisationId, rows, toast]);
+    // Stage 2c — whole-row reset: stage nulls for every currently-overridden
+    // field on the row. Publish commits the whole-doc delete (see publishChanges).
+    const resetOverride = useCallback((trailerId: string) => {
+        const od = overrideDocByTrailer.get(trailerId);
+        if (!od) return;
+        setDirty(prev => {
+            const next = new Map(prev);
+            const patch: StagedPatch = { ...(next.get(trailerId) ?? {}) };
+            for (const k of Object.keys(od.pricingDetail || {})) patch[k] = null;
+            if (typeof od.sellPriceExclGst === 'number') patch['sell'] = null;
+            next.set(trailerId, patch);
+            return next;
+        });
+        toast({ title: 'Row reset staged', description: 'Press Publish to commit.' });
+    }, [overrideDocByTrailer, toast]);
 
-    // Clear a single overridden field on a trailer. If this was the last
-    // override on the row, the doc is deleted entirely. Also clears the
-    // legacy top-level `sellPriceExclGst` when `key === 'sell'`.
-    const resetOverrideField = useCallback(async (trailerId: string, key: string) => {
-        const existing = overrideDocByTrailer.get(trailerId);
-        if (!existing) return;
-        try {
-            const row = rows.find(r => r.id === trailerId);
-            const remainingPricing = { ...(existing.pricingDetail || {}) };
-            delete remainingPricing[key];
-            const stillHasSellLegacy =
-                key !== 'sell' && typeof existing.sellPriceExclGst === 'number';
-            const stillHasAny = Object.keys(remainingPricing).length > 0 || stillHasSellLegacy;
+    // Stage 2c — stage a per-field reset. Puts `null` in the dirty map so
+    // Publish knows to clear that field from the persisted override. If
+    // the staged reset matches a field that was never persisted (pure
+    // noise), we drop it from the patch instead of holding a no-op.
+    const resetOverrideField = useCallback((trailerId: string, key: string) => {
+        setDirty(prev => {
+            const next = new Map(prev);
+            const current = next.get(trailerId) ?? {};
+            const patched: StagedPatch = { ...current, [key]: null };
+            next.set(trailerId, patched);
+            return next;
+        });
+    }, []);
 
-            if (!stillHasAny) {
-                // Last override on this row — drop the doc entirely.
-                await deleteDoc(doc(firestore, `organisations/${organisationId}/trailerOverrides/${trailerId}`));
-            } else {
-                // Rewrite with the remaining pricingDetail. Clear the legacy
-                // top-level sellPriceExclGst only when the reset touches Sell.
-                await setDoc(
-                    doc(firestore, `organisations/${organisationId}/trailerOverrides/${trailerId}`),
-                    {
-                        trailerId,
-                        brandVendorId: row?.vendorId || null,
-                        seriesId: row?.seriesId || null,
-                        overrideAt: serverTimestamp(),
-                        pricingDetail: remainingPricing,
-                        ...(key === 'sell' ? { sellPriceExclGst: null } : {}),
-                    },
-                    { merge: true },
-                );
-            }
-            toast({
-                title: 'Override cleared',
-                description: `${row?.code ?? trailerId} · ${key} reverted to source`,
-            });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Reset failed', description: e?.message });
-        }
-    }, [firestore, organisationId, overrideDocByTrailer, rows, toast]);
-
-    // Stage 2a — bulk reset: drops `trailerOverrides/{id}` docs for every
-    // selected trailer that currently has an override. Rows with no override
-    // are skipped silently (not counted as work done).
-    const bulkResetOverrides = useCallback(async () => {
+    // Stage 2c — bulk reset: stages null entries for every currently-overridden
+    // field on each selected row. Nothing hits Firestore until Publish.
+    const bulkResetOverrides = useCallback(() => {
         const targets: string[] = [];
         for (const id of selectedIds) {
             if (overrideDocByTrailer.has(id)) targets.push(id);
@@ -986,39 +972,34 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
             toast({ title: 'Nothing to reset', description: 'No overrides on the selected rows.' });
             return;
         }
-        const results = await Promise.allSettled(
-            targets.map(id =>
-                deleteDoc(doc(firestore, `organisations/${organisationId}/trailerOverrides/${id}`)),
-            ),
-        );
-        const failed = results.filter(r => r.status === 'rejected').length;
-        const cleared = targets.length - failed;
-        if (failed > 0) {
-            toast({
-                variant: 'destructive',
-                title: 'Partial reset',
-                description: `${cleared} cleared · ${failed} failed — see console.`,
-            });
-            console.error('Bulk reset failures:',
-                results.filter(r => r.status === 'rejected').map(r => (r as PromiseRejectedResult).reason));
-        } else {
-            toast({ title: 'Overrides cleared', description: `${cleared} row${cleared === 1 ? '' : 's'} reverted to source.` });
-        }
+        setDirty(prev => {
+            const next = new Map(prev);
+            for (const id of targets) {
+                const od = overrideDocByTrailer.get(id);
+                if (!od) continue;
+                const patch: StagedPatch = { ...(next.get(id) ?? {}) };
+                for (const k of Object.keys(od.pricingDetail || {})) patch[k] = null;
+                if (typeof od.sellPriceExclGst === 'number') patch['sell'] = null;
+                next.set(id, patch);
+            }
+            return next;
+        });
+        toast({ title: `${targets.length} reset${targets.length === 1 ? '' : 's'} staged`, description: 'Press Publish to commit.' });
         clearSelection();
-    }, [selectedIds, overrideDocByTrailer, firestore, organisationId, toast, clearSelection]);
+    }, [selectedIds, overrideDocByTrailer, toast, clearSelection]);
 
-    // Stage 2b — Global Update: apply a single-field operation across
-    // either the currently-selected rows or all filtered rows. Writes go
-    // to `organisations/{orgId}/trailerOverrides/{trailerId}` in batches
-    // of 500 via writeBatch. The new value is derived from the row's
-    // effective (post-override) value — so re-running "+5%" twice compounds.
-    const applyGlobalUpdate = useCallback(async () => {
+    // Stage 2c — Global Update now stages entries into the dirty map
+    // instead of writing immediately. The operator reviews cells in the
+    // table (every affected row shows the dirty indicator) then presses
+    // Publish to commit. Operates on selected rows if any, else every
+    // filtered row. Operations compose with the current effective value,
+    // which includes earlier staged edits — so "+5%" twice compounds.
+    const applyGlobalUpdate = useCallback(() => {
         const raw = guValue.trim();
         if (raw === '') return;
         const parsed = parseFloat(raw);
         if (!Number.isFinite(parsed)) return;
 
-        // Scope: selected rows if any, else every filtered row.
         const scopeIds = selectedIds.size > 0
             ? filteredRows.filter(r => selectedIds.has(r.id)).map(r => r.id)
             : filteredRows.map(r => r.id);
@@ -1030,7 +1011,7 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
 
         const computeNext = (current: number | null): number | null => {
             if (guOp === 'set') return parsed;
-            if (current == null) return null; // can't %-bump a missing value
+            if (current == null) return null;
             switch (guOp) {
                 case 'addAmount':  return current + parsed;
                 case 'subAmount':  return current - parsed;
@@ -1041,40 +1022,28 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
 
         setGuBusy(true);
         try {
-            let updated = 0;
+            let staged = 0;
             let skipped = 0;
-            // Commit in batches of 500 per Firestore limits.
-            for (let i = 0; i < scopeRows.length; i += 500) {
-                const chunk = scopeRows.slice(i, i + 500);
-                const batch = writeBatch(firestore);
-                for (const row of chunk) {
+            setDirty(prev => {
+                const next = new Map(prev);
+                for (const row of scopeRows) {
                     const overrideDoc = overrideDocByTrailer.get(row.id);
-                    const effective = resolveEffectivePricing(row.pricing, row.sourceSell, overrideDoc);
+                    const currentStaged = next.get(row.id);
+                    const effective = resolveEffectivePricing(row.pricing, row.sourceSell, overrideDoc, currentStaged);
                     const currentValue = typeof effective[guField] === 'number' ? effective[guField] : null;
-                    const next = computeNext(currentValue);
-                    if (next == null || !Number.isFinite(next) || next < 0) { skipped++; continue; }
-                    const rounded = Math.round(next * 100) / 100;
-                    const payload: Record<string, any> = {
-                        trailerId: row.id,
-                        brandVendorId: row.vendorId,
-                        seriesId: row.seriesId,
-                        overrideAt: serverTimestamp(),
-                        pricingDetail: { [guField]: rounded },
-                    };
-                    if (guField === 'sell') payload.sellPriceExclGst = rounded;
-                    batch.set(
-                        doc(firestore, `organisations/${organisationId}/trailerOverrides/${row.id}`),
-                        payload,
-                        { merge: true },
-                    );
-                    updated++;
+                    const computed = computeNext(currentValue);
+                    if (computed == null || !Number.isFinite(computed) || computed < 0) { skipped++; continue; }
+                    const rounded = Math.round(computed * 100) / 100;
+                    const patch: StagedPatch = { ...(currentStaged ?? {}), [guField]: rounded };
+                    next.set(row.id, patch);
+                    staged++;
                 }
-                await batch.commit();
-            }
+                return next;
+            });
             toast({
-                title: 'Global update applied',
+                title: 'Global update staged',
                 description:
-                    `${updated} updated${skipped ? ` · ${skipped} skipped (missing source)` : ''}`,
+                    `${staged} row${staged === 1 ? '' : 's'} queued${skipped ? ` · ${skipped} skipped (missing source)` : ''}. Press Publish to commit.`,
             });
             setGlobalUpdateOpen(false);
             setGuValue('');
@@ -1083,7 +1052,105 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
         } finally {
             setGuBusy(false);
         }
-    }, [guField, guOp, guValue, selectedIds, filteredRows, overrideDocByTrailer, firestore, organisationId, toast]);
+    }, [guField, guOp, guValue, selectedIds, filteredRows, overrideDocByTrailer, toast]);
+
+    // Stage 2c — Discard every staged change.
+    const discardChanges = useCallback(() => {
+        setDirty(new Map());
+        toast({ title: 'Staged changes discarded' });
+    }, [toast]);
+
+    // Stage 2c — Publish every staged patch to Firestore in one pass.
+    // For each dirty trailer: merge persisted override + staged patch,
+    // then setDoc (or deleteDoc if the merged result is empty).
+    const publishChanges = useCallback(async () => {
+        if (dirty.size === 0) return;
+        setPublishing(true);
+        try {
+            const ids = Array.from(dirty.keys());
+            let committed = 0;
+            let cleared = 0;
+            let failed = 0;
+
+            for (let i = 0; i < ids.length; i += 500) {
+                const chunk = ids.slice(i, i + 500);
+                const batch = writeBatch(firestore);
+                for (const id of chunk) {
+                    const patch = dirty.get(id) ?? {};
+                    const persisted = overrideDocByTrailer.get(id);
+                    const row = rows.find(r => r.id === id);
+                    if (!row) continue;
+
+                    // Start with the persisted pricingDetail, apply the patch.
+                    const merged: Record<string, number> = {};
+                    if (persisted?.pricingDetail) {
+                        for (const [k, v] of Object.entries(persisted.pricingDetail)) {
+                            if (typeof v === 'number') merged[k] = v;
+                        }
+                    }
+                    for (const [k, v] of Object.entries(patch)) {
+                        if (typeof v === 'number') merged[k] = v;
+                        else if (v === null) delete merged[k];
+                    }
+
+                    // Determine whether top-level sellPriceExclGst should survive.
+                    const sellStagedToNull = patch['sell'] === null;
+                    const sellStagedToValue = typeof patch['sell'] === 'number';
+                    const legacySellWasPresent = typeof persisted?.sellPriceExclGst === 'number';
+                    const willHaveSellLegacy =
+                        sellStagedToValue ? true
+                        : sellStagedToNull ? false
+                        : legacySellWasPresent;
+
+                    const hasAnyOverride = Object.keys(merged).length > 0 || willHaveSellLegacy;
+                    const ref = doc(firestore, `organisations/${organisationId}/trailerOverrides/${id}`);
+
+                    if (!hasAnyOverride) {
+                        batch.delete(ref);
+                        cleared++;
+                    } else {
+                        const payload: Record<string, any> = {
+                            trailerId: id,
+                            brandVendorId: row.vendorId,
+                            seriesId: row.seriesId,
+                            overrideAt: serverTimestamp(),
+                            pricingDetail: merged,
+                        };
+                        if (sellStagedToValue) payload.sellPriceExclGst = patch['sell'];
+                        else if (sellStagedToNull) payload.sellPriceExclGst = null;
+                        batch.set(ref, payload, { merge: true });
+                        committed++;
+                    }
+                }
+                try { await batch.commit(); } catch (e) {
+                    console.error('Publish batch failed:', e);
+                    failed += chunk.length;
+                    committed -= Math.min(committed, chunk.length);
+                }
+            }
+
+            if (failed > 0) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Partial publish',
+                    description: `${committed} committed · ${cleared} cleared · ${failed} failed — see console.`,
+                });
+            } else {
+                const parts: string[] = [];
+                if (committed > 0) parts.push(`${committed} saved`);
+                if (cleared > 0) parts.push(`${cleared} reset`);
+                toast({
+                    title: 'Published',
+                    description: parts.length > 0 ? parts.join(' · ') : 'No changes to publish.',
+                });
+                setDirty(new Map());
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Publish failed', description: e?.message });
+        } finally {
+            setPublishing(false);
+        }
+    }, [dirty, overrideDocByTrailer, rows, firestore, organisationId, toast]);
 
     useEffect(() => {
         let cancelled = false;
@@ -1123,11 +1190,39 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                             Trailer Pricing Manager
                         </h2>
                         <p className="text-[10px] text-slate-500 mt-1">
-                            {isAdmin ? 'Click any numeric cell to set an org override. Leave blank (or match the source value) to reset.' : 'Read-only view.'}
+                            {isAdmin ? 'Click any numeric cell to stage an org override. Press Publish when ready to commit all staged changes.' : 'Read-only view.'}
                         </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
+                    {/* Stage 2c — Publish / Discard for the staged-edit buffer */}
+                    {isAdmin && dirty.size > 0 && (
+                        <>
+                            <Badge className="text-[9px] font-black border-2 bg-primary/10 text-primary border-primary/30">
+                                {dirty.size} staged change{dirty.size === 1 ? '' : 's'}
+                            </Badge>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={discardChanges}
+                                disabled={publishing}
+                                className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-4"
+                            >
+                                Discard
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={publishChanges}
+                                disabled={publishing || dirty.size === 0}
+                                className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2"
+                            >
+                                {publishing
+                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                    : null}
+                                Publish
+                            </Button>
+                        </>
+                    )}
                     <Badge variant="outline" className="text-[9px] font-black border-2">
                         {filteredRows.length}{filteredRows.length !== rows.length ? ` of ${rows.length}` : ''} trailer{rows.length === 1 ? '' : 's'}
                     </Badge>
@@ -1549,11 +1644,14 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                                                     const rowNumber = ++globalRowIdx;
                                                                     const isExpanded = expandedId === row.id;
                                                                     const overrideDoc = overrideDocByTrailer.get(row.id);
-                                                                    const effectivePricing = resolveEffectivePricing(row.pricing, row.sourceSell, overrideDoc);
-                                                                    const hasOverride = overrideDoc != null && (
+                                                                    const stagedPatch = dirty.get(row.id);
+                                                                    const effectivePricing = resolveEffectivePricing(row.pricing, row.sourceSell, overrideDoc, stagedPatch);
+                                                                    const hasPersistedOverride = overrideDoc != null && (
                                                                         (overrideDoc.pricingDetail && Object.keys(overrideDoc.pricingDetail).length > 0) ||
                                                                         typeof overrideDoc.sellPriceExclGst === 'number'
                                                                     );
+                                                                    const hasStagedPatch = stagedPatch != null && Object.keys(stagedPatch).length > 0;
+                                                                    const hasOverride = hasPersistedOverride || hasStagedPatch;
                                                                     return (
                                                                         <Fragment key={row.id}>
                                                                             <tr className={`group hover:bg-primary/5 transition-colors ${selectedIds.has(row.id) ? 'bg-primary/5' : ''}`}>
@@ -1616,7 +1714,8 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                                                                                     fieldKey={fieldKey}
                                                                                                     sourceValue={sourceValue}
                                                                                                     effectiveValue={effectiveValue}
-                                                                                                    hasOverride={hasFieldOverride(fieldKey, overrideDoc)}
+                                                                                                    hasOverride={hasFieldOverride(fieldKey, overrideDoc, stagedPatch)}
+                                                                                                    isStaged={isFieldStaged(fieldKey, stagedPatch)}
                                                                                                     format={fieldKey === 'markupPercent' ? 'percent' : 'currency'}
                                                                                                     isAdmin={isAdmin}
                                                                                                     onSave={saveOverrideField}
@@ -1661,6 +1760,7 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                                                                         <WaterfallPanel
                                                                                             row={row}
                                                                                             overrideDoc={overrideDoc}
+                                                                                            stagedPatch={stagedPatch}
                                                                                             effectivePricing={effectivePricing}
                                                                                             hasOverride={hasOverride}
                                                                                             isAdmin={isAdmin}
