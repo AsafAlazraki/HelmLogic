@@ -390,40 +390,41 @@ export function HighfieldQuoteFlow({
     // We fetch the trailer doc once on mount and hydrate
     // `catalogTrailerSnapshot` so the rest of the quote flow reads the
     // chosen trailer as if the user had manually picked it. Users can
-    // still click "Pick from Catalog" to switch.
-    useEffect(() => {
-        if (catalogTrailerSnapshot) return; // user picked; don't override
-        if (selectedTrailerId) return;       // something already selected
-        const assignments = (model?.trailerAssignments || []) as any[];
-        if (assignments.length === 0) return;
-        const def = assignments.find(a => a?.isDefault) || assignments[0];
-        if (!def?.trailerId || !def?.brandVendorId || !def?.seriesId) return;
+    // still click another assignment tile to switch between them.
+    const trailerAssignments = useMemo<any[]>(
+        () => (Array.isArray(model?.trailerAssignments) ? model.trailerAssignments : []),
+        [model?.trailerAssignments],
+    );
 
-        let cancelled = false;
-        (async () => {
+    // Reusable: load the full trailer doc for an assignment and shadow it
+    // into `catalogTrailerSnapshot`. Used both on mount (auto-select default)
+    // and when the user clicks a different assignment tile in Step 4.
+    const loadAssignmentSnapshot = useMemo(() => {
+        return async (assignment: any) => {
+            if (!assignment?.trailerId || !assignment?.brandVendorId || !assignment?.seriesId) return;
             try {
                 const ref = doc(
                     firestore,
                     'data-warehouse',
-                    def.brandVendorId,
+                    assignment.brandVendorId,
                     'series',
-                    def.seriesId,
+                    assignment.seriesId,
                     'trailers',
-                    def.trailerId,
+                    assignment.trailerId,
                 );
                 const snap = await getDoc(ref);
-                if (cancelled || !snap.exists()) return;
+                if (!snap.exists()) return;
                 const data = snap.data() as any;
                 setCatalogTrailerSnapshot({
-                    id: `${def.brandVendorId}/${def.seriesId}/${snap.id}`,
-                    brandVendorId: def.brandVendorId,
+                    id: `${assignment.brandVendorId}/${assignment.seriesId}/${snap.id}`,
+                    brandVendorId: assignment.brandVendorId,
                     brandName: data.brandName || '',
-                    seriesId: def.seriesId,
+                    seriesId: assignment.seriesId,
                     seriesName: data.seriesName || '',
                     trailerId: snap.id,
-                    code: data.code || def.code || '',
-                    name: data.name || def.name || '',
-                    imageUrl: data.imageUrl || def.imageUrl || '',
+                    code: data.code || assignment.code || '',
+                    name: data.name || assignment.name || '',
+                    imageUrl: data.imageUrl || assignment.imageUrl || '',
                     sellPriceExclGst: data.sellPriceExclGst || 0,
                     cost: data.cost || 0,
                     priceLevels: data.priceLevels || {},
@@ -440,13 +441,24 @@ export function HighfieldQuoteFlow({
                     capturedAt: Date.now(),
                 });
                 setSelectedTrailerId('primary-trailer');
+                // Pre-tick standard trailer options on the freshly-loaded trailer.
+                setSelectedTrailerOptionIds(
+                    (data.optionalFeatures || [])
+                        .filter((f: any) => f.isStandard)
+                        .map((f: any) => f.id),
+                );
             } catch (err) {
-                console.warn('[trailer-assignments] failed to load default trailer', err);
+                console.warn('[trailer-assignments] failed to load trailer', err);
             }
-        })();
-        return () => { cancelled = true; };
-        // Only re-run when the underlying model changes (e.g. different boat
-        // model loaded) — not on every selection change.
+        };
+    }, [firestore]);
+
+    useEffect(() => {
+        if (catalogTrailerSnapshot) return; // user picked; don't override
+        if (selectedTrailerId) return;       // something already selected
+        if (trailerAssignments.length === 0) return;
+        const def = trailerAssignments.find(a => a?.isDefault) || trailerAssignments[0];
+        loadAssignmentSnapshot(def);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [model?.id]);
 
@@ -495,17 +507,24 @@ export function HighfieldQuoteFlow({
 
     const carouselSlides = useMemo(() => {
         const slides: { type: string; url?: string; content?: React.ReactNode }[] = [];
-        slides.push({ type: 'boat', url: model.coverImageUrl || '' });
+        // Only push slides that actually have a renderable URL — empty
+        // strings used to push a "broken Build Preview" tile into the
+        // carousel.
+        if (model.coverImageUrl) slides.push({ type: 'boat', url: model.coverImageUrl });
         if (activeVariant?.imageUrl) slides.push({ type: 'variant', url: activeVariant.imageUrl });
         if (buildPreviewSlide) slides.push({ type: 'build', content: buildPreviewSlide });
-        if (selectedMotor) { 
-            const mUrl = resolveImageUrl(selectedMotor); 
-            if (mUrl) slides.push({ type: 'motor', url: mUrl }); 
+        if (selectedMotor) {
+            const mUrl = resolveImageUrl(selectedMotor);
+            if (mUrl) slides.push({ type: 'motor', url: mUrl });
         }
         if (selectedTrailerId && effectiveTrailerConfig?.imageUrl) slides.push({ type: 'trailer', url: effectiveTrailerConfig.imageUrl });
-        if (model.galleryImageUrls) model.galleryImageUrls.forEach((url: string) => { if (url !== model.coverImageUrl) slides.push({ type: 'gallery', url }); });
+        if (model.galleryImageUrls) {
+            model.galleryImageUrls.forEach((url: string) => {
+                if (url && url !== model.coverImageUrl) slides.push({ type: 'gallery', url });
+            });
+        }
         return slides;
-    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId]);
+    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId, effectiveTrailerConfig?.imageUrl]);
 
     const selectedOptionsData = useMemo(() => {
         return model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id)) || [];
@@ -1752,46 +1771,103 @@ export function HighfieldQuoteFlow({
                                                 <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Base</h3>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <TrailerCatalogPicker
-                                                    orgId={orgId}
-                                                    value={catalogTrailerSnapshot}
-                                                    associatedModuleIds={module?.associatedModuleIds}
-                                                    onChange={(snap) => {
-                                                        setCatalogTrailerSnapshot(snap);
-                                                        if (snap) {
-                                                            setSelectedTrailerId('primary-trailer');
-                                                            setSelectedTrailerOptionIds(
-                                                                (snap.options || [])
-                                                                    .filter(o => o.isStandard)
-                                                                    .map(o => o.id),
-                                                            );
-                                                        } else {
-                                                            setSelectedTrailerOptionIds([]);
-                                                        }
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-                                        {catalogTrailerSnapshot && (
-                                            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 border border-primary/20">
-                                                <Truck className="h-3.5 w-3.5 text-primary" />
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-primary">
-                                                    From {catalogTrailerSnapshot.brandName} — {catalogTrailerSnapshot.seriesName}
+                                            {trailerAssignments.length > 0 && (
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-white/70">
+                                                    {trailerAssignments.length} option{trailerAssignments.length === 1 ? '' : 's'}
                                                 </span>
+                                            )}
+                                        </div>
+
+                                        {/* v1.4 day-1 redesign: trailer cards come from `model.trailerAssignments`
+                                            only. No catalog browse button — operators assign trailers in the
+                                            boat model editor. Tick to switch the active trailer (only one
+                                            selected at a time). Untick clears the selection entirely. */}
+                                        {trailerAssignments.length > 0 ? (
+                                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                                {trailerAssignments.map((a: any) => {
+                                                    const isActive = catalogTrailerSnapshot?.trailerId === a.trailerId
+                                                        && catalogTrailerSnapshot?.brandVendorId === a.brandVendorId
+                                                        && selectedTrailerId === 'primary-trailer';
+                                                    return (
+                                                        <button
+                                                            key={a.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (isActive) {
+                                                                    // Untick — clear the active trailer.
+                                                                    setSelectedTrailerId(null);
+                                                                    setCatalogTrailerSnapshot(null);
+                                                                    setSelectedTrailerOptionIds([]);
+                                                                } else {
+                                                                    loadAssignmentSnapshot(a);
+                                                                }
+                                                            }}
+                                                            className={cn(
+                                                                "flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl p-1 h-full text-left",
+                                                                isActive
+                                                                    ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20"
+                                                                    : "border-transparent hover:border-primary/20",
+                                                            )}
+                                                        >
+                                                            {/* Image only renders when an imageUrl exists — no
+                                                                broken-img placeholder, no empty grey box. */}
+                                                            {a.imageUrl ? (
+                                                                <div className="relative aspect-video w-full bg-slate-50 shrink-0">
+                                                                    <Image
+                                                                        src={a.imageUrl}
+                                                                        alt={a.code || a.name || 'Trailer'}
+                                                                        fill
+                                                                        className="object-contain p-3"
+                                                                        unoptimized
+                                                                    />
+                                                                </div>
+                                                            ) : null}
+                                                            <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
+                                                                {a.isDefault && (
+                                                                    <Badge className="bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-3.5 px-1 mb-1">DEFAULT</Badge>
+                                                                )}
+                                                                <p className={cn(
+                                                                    "text-[10px] font-black uppercase tracking-tight leading-tight",
+                                                                    isActive ? "text-primary" : "text-slate-900",
+                                                                )}>
+                                                                    {a.code || a.name}
+                                                                </p>
+                                                                {a.name && a.code && (
+                                                                    <p className="text-[8px] text-slate-400 leading-tight">{a.name}</p>
+                                                                )}
+                                                                {isActive && catalogTrailerSnapshot?.sellPriceExclGst != null && (
+                                                                    <p className={cn("text-[9px] font-black uppercase tracking-widest text-primary/70")}>
+                                                                        ${(catalogTrailerSnapshot.sellPriceExclGst || 0).toLocaleString()}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
-                                        )}
-                                        {effectiveTrailerConfig ? (
+                                        ) : effectiveTrailerConfig ? (
+                                            // Legacy: model has no assignments but has a `trailerConfig`.
+                                            // Render the legacy single-trailer card so old data still works.
                                             <div className="grid grid-cols-2 gap-4">
                                                 <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); if (!isSelected) setSelectedTrailerOptionIds((effectiveTrailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                    <div className={cn("relative aspect-video w-full bg-white shrink-0", !effectiveTrailerConfig.imageUrl && "hidden")}>{effectiveTrailerConfig.imageUrl && <Image src={effectiveTrailerConfig.imageUrl} alt="Trailer" fill className="object-contain mix-blend-multiply p-4" />}</div>
+                                                    {effectiveTrailerConfig.imageUrl ? (
+                                                        <div className="relative aspect-video w-full bg-slate-50 shrink-0">
+                                                            <Image src={effectiveTrailerConfig.imageUrl} alt="Trailer" fill className="object-contain p-4" unoptimized />
+                                                        </div>
+                                                    ) : null}
                                                     <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
                                                         <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", selectedTrailerId === 'primary-trailer' ? "text-primary" : "text-slate-900")}>{effectiveTrailerConfig.name}</p>
                                                         <p className={cn("text-[9px] font-black uppercase tracking-widest", selectedTrailerId === 'primary-trailer' ? "text-primary/70" : "text-slate-400")}>${(effectiveTrailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
                                                     </div>
                                                 </button>
                                             </div>
-                                        ) : <div className="py-16 text-center border-2 border-dashed rounded-xl opacity-20"><Truck className="h-10 w-10 mx-auto mb-3" /><p className="text-[9px] font-black uppercase tracking-widest">No primary trailer defined.</p></div>}
+                                        ) : (
+                                            <div className="py-16 text-center border-2 border-dashed rounded-xl opacity-50">
+                                                <Truck className="h-10 w-10 mx-auto mb-3 text-slate-300" />
+                                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">No trailers assigned to this boat.</p>
+                                                <p className="text-[8px] text-slate-300 mt-1">Assign trailers in the boat model editor to make them available here.</p>
+                                            </div>
+                                        )}
                                     </div>
                                     {selectedTrailerId && (
                                         <>
