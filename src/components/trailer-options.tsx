@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { TrailerAssignmentsSection } from '@/components/highfield-model-editor';
 
 export function TrailerOptions({ model }: { model: any }) {
     const { control, setValue } = useFormContext();
@@ -51,6 +52,13 @@ export function TrailerOptions({ model }: { model: any }) {
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500 text-left">
+            {/* v1.4 — catalog-backed trailer assignments. Admin can attach
+                one or more trailers from the Trailers module catalog; the
+                default one auto-loads on the quote flow. The legacy
+                freeform Primary Trailer fields below still persist to
+                `trailerConfig.*` for backwards compatibility. */}
+            <TrailerAssignmentsSection />
+
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start text-left">
                 {/* Main Trailer Identity */}
                 <div className="lg:col-span-3 space-y-6 text-left">

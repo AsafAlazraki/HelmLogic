@@ -742,7 +742,7 @@ function MotorConfigurationsSection() {
 // Per-boat-model trailer picks. The quote flow prefers the first assignment
 // as the default trailer; users can still browse the catalog for other
 // trailers via the picker on Step 4.
-function TrailerAssignmentsSection() {
+export function TrailerAssignmentsSection() {
     const { control } = useFormContext<ModelFormData>();
     // Zod `.passthrough()` widens ModelFormData in ways that confuse RHF's
     // FieldArrayPath narrowing for this field. Casting the result keeps the
