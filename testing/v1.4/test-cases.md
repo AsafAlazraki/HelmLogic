@@ -516,6 +516,26 @@ New capability: every numeric column in the main row is now click-to-edit, not j
 - [ ] **Back-compat check:** any override created before this stage still shows as amber on Sell column; editing it through the new UI migrates it to the new `pricingDetail.sell` shape transparently. The catalog picker in the quote flow still sees the override (it reads top-level `sellPriceExclGst` which is mirrored on Sell writes).
 - [ ] Non-admin: none of the numeric cells open an edit input on click. Hover doesn't show a pointer cursor.
 
+### L.4 — Stage 1d: waterfall expansion rows editable
+
+Every row inside the expanded waterfall panel is now click-to-edit.
+Full cost-component audit editing, matching the depth Highfield
+offers. Fields not in EDITABLE_KEYS (e.g. the grossProfit row) stay
+read-only in case they need derivation logic later.
+
+- [ ] Expand any trailer with a full waterfall. The rows you see are: Dealer, Discount, Settlement, Nett Price, Freight, Landed, PD ($), Sundry, Detailing, Total PD, Total Nett CTD, Markup %, Gross Profit, RRP, Sell (ex GST).
+- [ ] Click the **Discount** row's value → type a number → Enter. Toast "Override saved · discount → $X". Value turns amber, source strikes through.
+- [ ] Click the **Settlement** row → override. Same pattern.
+- [ ] Click the **Freight** row → override. Same pattern.
+- [ ] Click the **PD ($)** row → override. Same pattern.
+- [ ] Click the **Sundry** row → override. Same pattern.
+- [ ] Click the **Detailing** row → override. Same pattern.
+- [ ] Summary strip at the top: **Source sell** stays at the imported xlsx value; **Effective sell** flips amber whenever there's an override on ANY field (not just Sell).
+- [ ] "Reset all overrides on this row" button appears in the summary strip when any override is set. Clicking it clears every override in one go.
+- [ ] Override a field that was empty in the source xlsx (e.g. a trailer with no Discount imported): the override value renders in amber, no strikethrough (source is "—"). Blank-then-Enter clears the override and the row disappears again.
+- [ ] Orphan overrides (fields overridden that don't exist in the source) still show as a waterfall row inside the panel so operators can find + clear them.
+- [ ] Non-admin user: every row value renders read-only. No click-to-edit cursor on any row.
+
 ---
 
 ## Section K — Automated smoke suite

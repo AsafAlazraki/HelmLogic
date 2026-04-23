@@ -161,18 +161,31 @@ const WATERFALL_ROWS: Array<{ key: string; label: string; col: string; bold?: bo
 
 function WaterfallPanel({
     row,
+    overrideDoc,
+    effectivePricing,
     hasOverride,
-    effectiveSell,
-    onReset,
     isAdmin,
+    onSaveField,
+    onResetField,
+    onResetRow,
 }: {
     row: FlatTrailerRow;
+    overrideDoc?: TrailerOverride;
+    effectivePricing: Record<string, number>;
     hasOverride: boolean;
-    effectiveSell: number;
-    onReset: (trailerId: string) => Promise<void>;
     isAdmin: boolean;
+    onSaveField: (trailerId: string, key: string, value: number) => Promise<void>;
+    onResetField: (trailerId: string, key: string) => Promise<void>;
+    onResetRow: (trailerId: string) => Promise<void>;
 }) {
-    const rowsWithValues = WATERFALL_ROWS.filter(r => typeof row.pricing?.[r.key] === 'number');
+    // A waterfall row is shown if the trailer has a source value OR an override
+    // for that key — lets operators see (and clear) overrides even on keys the
+    // source xlsx didn't populate.
+    const rowsWithValues = WATERFALL_ROWS.filter(r => {
+        const hasSource = typeof row.pricing?.[r.key] === 'number';
+        const hasOverrideForKey = hasFieldOverride(r.key, overrideDoc);
+        return hasSource || hasOverrideForKey;
+    });
     const hasWaterfall = rowsWithValues.length > 0;
     const pdParts: Array<{ name?: string; cost?: number }> = Array.isArray(row.pricing?.pdParts) ? row.pricing.pdParts : [];
 
@@ -186,8 +199,8 @@ function WaterfallPanel({
                 </div>
                 <div className="flex flex-col">
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Effective sell</span>
-                    <span className={`text-sm font-mono tabular-nums font-semibold ${hasOverride ? 'text-amber-700' : 'text-primary'}`}>
-                        {formatCurrency(effectiveSell)}
+                    <span className={`text-sm font-mono tabular-nums font-semibold ${hasFieldOverride('sell', overrideDoc) ? 'text-amber-700' : 'text-primary'}`}>
+                        {formatCurrency(effectivePricing.sell ?? row.sourceSell)}
                     </span>
                 </div>
                 {hasOverride && isAdmin && (
@@ -196,9 +209,9 @@ function WaterfallPanel({
                         variant="outline"
                         size="sm"
                         className="ml-auto h-8 text-[10px]"
-                        onClick={() => onReset(row.id)}
+                        onClick={() => onResetRow(row.id)}
                     >
-                        <RotateCcw className="h-3 w-3 mr-1" /> Reset override
+                        <RotateCcw className="h-3 w-3 mr-1" /> Reset all overrides on this row
                     </Button>
                 )}
             </div>
@@ -212,8 +225,10 @@ function WaterfallPanel({
             {hasWaterfall && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
                     {rowsWithValues.map(r => {
-                        const val = row.pricing[r.key];
+                        const sourceValue = typeof row.pricing?.[r.key] === 'number' ? row.pricing[r.key] : null;
+                        const effectiveValue = typeof effectivePricing[r.key] === 'number' ? effectivePricing[r.key] : null;
                         const isPct = r.key === 'markupPercent';
+                        const isEditable = isAdmin && EDITABLE_KEYS.has(r.key);
                         return (
                             <div
                                 key={r.key}
@@ -227,9 +242,29 @@ function WaterfallPanel({
                                     {r.label}
                                     <span className="text-[9px] text-slate-300 font-mono uppercase">{r.col}</span>
                                 </span>
-                                <span className="tabular-nums font-mono">
-                                    {isPct ? `${Number(val).toFixed(1)}%` : formatCurrency(val)}
-                                </span>
+                                {isEditable ? (
+                                    <span className="min-w-[110px] text-right">
+                                        <EditableCell
+                                            trailerId={row.id}
+                                            fieldKey={r.key}
+                                            sourceValue={sourceValue}
+                                            effectiveValue={effectiveValue}
+                                            hasOverride={hasFieldOverride(r.key, overrideDoc)}
+                                            format={isPct ? 'percent' : 'currency'}
+                                            isAdmin={isAdmin}
+                                            onSave={onSaveField}
+                                            onReset={onResetField}
+                                        />
+                                    </span>
+                                ) : (
+                                    <span className="tabular-nums font-mono">
+                                        {effectiveValue == null
+                                            ? '—'
+                                            : isPct
+                                                ? `${Number(effectiveValue).toFixed(1)}%`
+                                                : formatCurrency(effectiveValue)}
+                                    </span>
+                                )}
                             </div>
                         );
                     })}
@@ -983,7 +1018,6 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                         const isExpanded = expandedId === row.id;
                                         const overrideDoc = overrideDocByTrailer.get(row.id);
                                         const effectivePricing = resolveEffectivePricing(row.pricing, row.sourceSell, overrideDoc);
-                                        const effectiveSell = effectivePricing.sell;
                                         const hasOverride = overrideDoc != null && (
                                             (overrideDoc.pricingDetail && Object.keys(overrideDoc.pricingDetail).length > 0) ||
                                             typeof overrideDoc.sellPriceExclGst === 'number'
@@ -1073,10 +1107,13 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                                 <td colSpan={COLUMNS.length + 2} className="p-0 border-b border-slate-200">
                                                     <WaterfallPanel
                                                         row={row}
+                                                        overrideDoc={overrideDoc}
+                                                        effectivePricing={effectivePricing}
                                                         hasOverride={hasOverride}
-                                                        effectiveSell={effectiveSell}
-                                                        onReset={resetOverride}
                                                         isAdmin={isAdmin}
+                                                        onSaveField={saveOverrideField}
+                                                        onResetField={resetOverrideField}
+                                                        onResetRow={resetOverride}
                                                     />
                                                 </td>
                                             </tr>
