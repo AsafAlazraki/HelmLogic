@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, doc, where, getDoc, getDocs } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -179,6 +180,7 @@ export function HighfieldQuoteFlow({
     const firestore = useFirestore();
     const router = useRouter();
     const { user } = useUser();
+    const { toast } = useToast();
     
     // Price Level State
     const [priceLevel, setPriceLevel] = useState<string>('hull_cash');
@@ -396,9 +398,35 @@ export function HighfieldQuoteFlow({
         [model?.trailerAssignments],
     );
 
+    // Subscribe to org-level trailer overrides so auto-loaded assignments
+    // honour them the same way the catalog picker does. Without this the
+    // auto-load path reads raw source pricing and dealer audits drift from
+    // the pricing manager's overrides.
+    const trailerOverridesQuery = useMemoFirebase(
+        () => (orgId ? collection(firestore, `organisations/${orgId}/trailerOverrides`) : null),
+        [firestore, orgId],
+    );
+    const { data: trailerOverrideDocs } = useCollection<{
+        sellPriceExclGst?: number;
+        trailerId?: string;
+        pricingDetail?: Record<string, number>;
+    }>(trailerOverridesQuery);
+    const trailerOverrideByTrailerId = useMemo(() => {
+        const map: Record<string, { sell?: number; pricingDetail?: Record<string, number> }> = {};
+        (trailerOverrideDocs || []).forEach(d => {
+            const entry: { sell?: number; pricingDetail?: Record<string, number> } = {};
+            if (typeof d.sellPriceExclGst === 'number') entry.sell = d.sellPriceExclGst;
+            if (d.pricingDetail) entry.pricingDetail = d.pricingDetail;
+            if (entry.sell != null || entry.pricingDetail) map[d.id] = entry;
+        });
+        return map;
+    }, [trailerOverrideDocs]);
+
     // Reusable: load the full trailer doc for an assignment and shadow it
     // into `catalogTrailerSnapshot`. Used both on mount (auto-select default)
-    // and when the user clicks a different assignment tile in Step 4.
+    // and when the user clicks a different assignment tile in Step 4. Merges
+    // any org-level override in `trailerOverrides/{id}` so dealer audits
+    // match the pricing manager.
     const loadAssignmentSnapshot = useMemo(() => {
         return async (assignment: any) => {
             if (!assignment?.trailerId || !assignment?.brandVendorId || !assignment?.seriesId) return;
@@ -413,8 +441,28 @@ export function HighfieldQuoteFlow({
                     assignment.trailerId,
                 );
                 const snap = await getDoc(ref);
-                if (!snap.exists()) return;
+                if (!snap.exists()) {
+                    // Assigned trailer doc was deleted after being attached to the
+                    // boat model. Surface a warning so the user notices — quote
+                    // totals would otherwise silently drop the trailer.
+                    toast({
+                        variant: 'destructive',
+                        title: 'Assigned trailer missing',
+                        description: `${assignment.code || assignment.name || assignment.trailerId} could not be loaded from the catalog. Update the boat model's Trailer Options.`,
+                    });
+                    return;
+                }
                 const data = snap.data() as any;
+
+                // Apply the org-level override (if any) so auto-loaded
+                // trailers respect the pricing-manager edits operators
+                // made. Mirrors what the catalog picker already does.
+                const override = trailerOverrideByTrailerId[snap.id];
+                const effectiveSell = override?.sell ?? (data.sellPriceExclGst || 0);
+                const effectivePricingDetail = override?.pricingDetail
+                    ? { ...(data.pricingDetail || {}), ...override.pricingDetail }
+                    : (data.pricingDetail || {});
+
                 setCatalogTrailerSnapshot({
                     id: `${assignment.brandVendorId}/${assignment.seriesId}/${snap.id}`,
                     brandVendorId: assignment.brandVendorId,
@@ -425,10 +473,10 @@ export function HighfieldQuoteFlow({
                     code: data.code || assignment.code || '',
                     name: data.name || assignment.name || '',
                     imageUrl: data.imageUrl || assignment.imageUrl || '',
-                    sellPriceExclGst: data.sellPriceExclGst || 0,
+                    sellPriceExclGst: effectiveSell,
                     cost: data.cost || 0,
                     priceLevels: data.priceLevels || {},
-                    pricingDetail: data.pricingDetail || {},
+                    pricingDetail: effectivePricingDetail,
                     specifications: data.specifications || {},
                     options: (data.optionalFeatures || []).map((f: any) => ({
                         id: f.id,
@@ -449,9 +497,14 @@ export function HighfieldQuoteFlow({
                 );
             } catch (err) {
                 console.warn('[trailer-assignments] failed to load trailer', err);
+                toast({
+                    variant: 'destructive',
+                    title: 'Failed to load assigned trailer',
+                    description: (err as any)?.message ?? 'Check console for details.',
+                });
             }
         };
-    }, [firestore]);
+    }, [firestore, toast, trailerOverrideByTrailerId]);
 
     useEffect(() => {
         if (catalogTrailerSnapshot) return; // user picked; don't override

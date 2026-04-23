@@ -773,7 +773,12 @@ end-to-end after every deploy. If it breaks, the release stops.
 **Known gotchas for this flow:**
 
 - If the boat module does NOT have the Trailer module linked via Associated Modules, Step 5's trailer DF categories will be empty (unless you also configure `trailerDealerFitCategories` directly on the boat module). That's the fix from commit `0b83ead` — linking pulls the categories through automatically.
-- The trailer's own DF selections (built via the detail sheet) do NOT auto-tick on quote. The user must manually tick them in Step 5. Per-trailer auto-tick is explicitly out of scope for v1.4 (tracked for v1.4.1).
+- The trailer's own DF selections (built via the detail sheet) do NOT auto-tick on quote. The user must manually tick them in Step 5. Per-trailer auto-tick is explicitly out of scope for v1.4 (tracked for v1.5).
+
+**Extra verify after fixes landed 2026-04-23:**
+
+- [ ] Override flows through on auto-load: open the Trailer Pricing Manager, set an override on `AS5.3M-13TB` Sell price (e.g. from `$9,722` to `$10,500`), Publish. Open CL260 (which has that trailer assigned as default). Start a new quote → Step 4 auto-loads the trailer and its displayed price is **$10,500**, not $9,722. (Pre-fix bug: auto-load showed source price, only manual picker honoured the override.)
+- [ ] Missing trailer doc is surfaced: if you manually delete an assigned trailer's Firestore doc (or un-assign its brand from the Trailer module), opening a quote on that boat model fires a destructive toast "Assigned trailer missing — update the boat model's Trailer Options". Quote continues without a trailer rather than silently dropping totals.
 
 ---
 
