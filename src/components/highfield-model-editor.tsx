@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
     Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, Hash, Tag, PlusCircle, ShieldCheck, Star, ChevronDown,
-    DollarSign, Ship, Check, Search, ListChecks, ExternalLink, RefreshCw, FileText, Zap, ListCheck
+    DollarSign, Ship, Check, Search, ListChecks, ExternalLink, RefreshCw, FileText, Zap, ListCheck, Truck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TrailerCatalogPicker } from '@/components/trailer-catalog-picker';
@@ -105,6 +105,11 @@ export const highfieldModelSchema = z.object({
         name: z.string().nullable().optional().default(''),
         imageUrl: z.string().nullable().optional().default(null),
         isDefault: z.boolean().optional().default(false),
+        // v1.4 day-1: snapshot the trailer's specs + factory options on the
+        // assignment so the card in the editor can show them inline without
+        // re-fetching. Kept loose so future catalog additions flow through.
+        specifications: z.any().optional().nullable(),
+        options: z.array(z.any()).optional().default([]),
     }).passthrough()).optional().default([]),
 }).passthrough();
 
@@ -763,62 +768,26 @@ export function TrailerAssignmentsSection() {
             <CollapsibleContent>
                 <div className="p-6 space-y-4 text-left">
                     <p className="text-[11px] text-slate-500">
-                        Trailers assigned to this model. The quote flow will default to the
-                        <b> first assignment marked as default</b> (or the first in the list
-                        if none are). Users can still browse the full catalog from the quote.
+                        Trailers assigned to this model. The quote flow defaults to the <b>first assignment marked as default</b>.
                     </p>
                     {fields.length === 0 ? (
-                        <p className="text-xs text-slate-400 italic py-2">
+                        <p className="text-xs text-slate-400 italic py-4 text-center">
                             No trailers assigned yet. Use the picker below to attach one from the catalog.
                         </p>
                     ) : (
-                        <div className="space-y-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {fields.map((field: any, idx) => (
-                                <div key={field.id} className="flex items-center gap-3 p-3 rounded-xl border-2 border-slate-100 hover:border-primary/30 transition-colors">
-                                    <div className="h-12 w-16 bg-slate-50 rounded-md border flex items-center justify-center overflow-hidden shrink-0">
-                                        {field.imageUrl ? (
-                                            <img src={field.imageUrl} alt={field.code || ''} className="h-full w-full object-contain" />
-                                        ) : (
-                                            <span className="text-[9px] text-slate-400 uppercase tracking-widest">No image</span>
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <p className="text-xs font-black tracking-tight truncate">{field.code || field.trailerId}</p>
-                                            {field.isDefault && (
-                                                <Badge className="bg-primary/10 text-primary border-none font-black text-[7px] h-4 px-1.5">DEFAULT</Badge>
-                                            )}
-                                        </div>
-                                        {field.name && (
-                                            <p className="text-[10px] text-slate-500 truncate">{field.name}</p>
-                                        )}
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 text-[10px] font-black uppercase tracking-widest"
-                                        onClick={() => {
-                                            // Flip this one to default, clear the flag on every other assignment.
-                                            fields.forEach((f: any, i) => {
-                                                if (i === idx) update(i, { ...f, isDefault: true });
-                                                else if (f.isDefault) update(i, { ...f, isDefault: false });
-                                            });
-                                        }}
-                                        disabled={field.isDefault}
-                                    >
-                                        Make default
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => remove(idx)}
-                                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                    >
-                                        <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                </div>
+                                <TrailerAssignmentCard
+                                    key={field.id}
+                                    field={field}
+                                    onMakeDefault={() => {
+                                        fields.forEach((f: any, i) => {
+                                            if (i === idx) update(i, { ...f, isDefault: true });
+                                            else if (f.isDefault) update(i, { ...f, isDefault: false });
+                                        });
+                                    }}
+                                    onRemove={() => remove(idx)}
+                                />
                             ))}
                         </div>
                     )}
@@ -830,7 +799,6 @@ export function TrailerAssignmentsSection() {
                             triggerLabel="Assign a trailer from catalog"
                             onChange={(snap) => {
                                 if (!snap) return;
-                                // Skip if already assigned.
                                 if (fields.some((f: any) => f.trailerId === snap.trailerId)) return;
                                 append({
                                     id: `ta-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -840,8 +808,11 @@ export function TrailerAssignmentsSection() {
                                     code: snap.code ?? '',
                                     name: snap.name ?? '',
                                     imageUrl: snap.imageUrl ?? null,
-                                    // The first assignment is the default; subsequent ones aren't.
                                     isDefault: fields.length === 0,
+                                    // v1.4 day-1: snapshot specs + options so the card can
+                                    // display them inline without re-fetching the trailer doc.
+                                    specifications: (snap as any).specifications ?? null,
+                                    options: Array.isArray((snap as any).options) ? (snap as any).options : [],
                                 });
                             }}
                         />
@@ -849,6 +820,150 @@ export function TrailerAssignmentsSection() {
                 </div>
             </CollapsibleContent>
         </Collapsible>
+    );
+}
+
+// TrailerAssignmentCard — motor-style card in the boat model editor's
+// Trailer Options tab. Shows image (with onError fallback), code, DEFAULT
+// badge, and expands to reveal the trailer's factory options + specs.
+function TrailerAssignmentCard({
+    field,
+    onMakeDefault,
+    onRemove,
+}: {
+    field: any;
+    onMakeDefault: () => void;
+    onRemove: () => void;
+}) {
+    const [expanded, setExpanded] = useState(false);
+    const [imageFailed, setImageFailed] = useState(false);
+    const options: any[] = Array.isArray(field.options) ? field.options : [];
+    const specs = field.specifications || {};
+    const hasSpecs = Object.values(specs).some(v => v != null && v !== '');
+    const showImage = !!field.imageUrl && !imageFailed;
+
+    return (
+        <div className={cn(
+            'group/trailer rounded-2xl border-2 bg-white shadow-sm overflow-hidden transition-all',
+            field.isDefault ? 'border-primary/40 ring-2 ring-primary/10' : 'border-slate-100 hover:border-primary/30',
+        )}>
+            <button
+                type="button"
+                onClick={() => setExpanded(e => !e)}
+                className="w-full text-left"
+            >
+                <div className="relative aspect-[16/9] bg-slate-50 border-b overflow-hidden">
+                    {showImage ? (
+                        <img
+                            src={field.imageUrl}
+                            alt={field.code || field.name || 'Trailer'}
+                            className="w-full h-full object-contain p-3"
+                            onError={() => setImageFailed(true)}
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                            <Truck className="h-10 w-10 text-slate-200" />
+                        </div>
+                    )}
+                    {field.isDefault && (
+                        <Badge className="absolute bottom-2 left-2 bg-primary text-white border-none font-black text-[8px] uppercase tracking-widest px-2 py-0.5">
+                            Default
+                        </Badge>
+                    )}
+                </div>
+                <div className="p-4 bg-background flex items-center justify-between gap-3 min-h-[56px]">
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[11px] font-black uppercase leading-tight tracking-tight truncate italic">
+                            {field.code || field.trailerId}
+                        </p>
+                        {field.name && (
+                            <p className="text-[9px] font-semibold text-slate-500 truncate mt-0.5">{field.name}</p>
+                        )}
+                    </div>
+                    <ChevronDown className={cn('h-4 w-4 text-muted-foreground shrink-0 transition-transform', expanded && 'rotate-180')} />
+                </div>
+            </button>
+
+            {expanded && (
+                <div className="p-4 space-y-4 border-t bg-slate-50/30 animate-in slide-in-from-top-2 duration-200">
+                    {hasSpecs && (
+                        <div className="space-y-1.5">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Specifications</p>
+                            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                                {specs.boatSizeMtr != null && <SpecRow label="Boat size" value={`${specs.boatSizeMtr}m`} />}
+                                {specs.lengthMtr != null && <SpecRow label="Length" value={`${specs.lengthMtr}m`} />}
+                                {specs.atmKg != null && <SpecRow label="ATM" value={`${specs.atmKg} kg`} />}
+                                {specs.tareKg != null && <SpecRow label="Tare" value={`${specs.tareKg} kg`} />}
+                                {specs.wheelSize && <SpecRow label="Wheels" value={String(specs.wheelSize)} />}
+                                {specs.winch && <SpecRow label="Winch" value={String(specs.winch)} />}
+                                {specs.betweenGuardsMm != null && <SpecRow label="Guards" value={`${specs.betweenGuardsMm} mm`} />}
+                                {specs.plug && <SpecRow label="Plug" value={String(specs.plug)} />}
+                            </div>
+                        </div>
+                    )}
+
+                    {options.length > 0 ? (
+                        <div className="space-y-1.5">
+                            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Factory Options ({options.length})</p>
+                            <div className="space-y-1">
+                                {options.map((opt: any, i: number) => (
+                                    <div key={opt.id || i} className="flex items-center justify-between gap-3 py-1.5 px-2 rounded-lg bg-white border border-slate-100 text-[10px]">
+                                        <div className="min-w-0">
+                                            <p className="font-semibold truncate">{opt.name || 'Option'}</p>
+                                            {opt.description && <p className="text-[9px] text-slate-400 truncate">{opt.description}</p>}
+                                        </div>
+                                        {opt.sellPriceExclGst != null && opt.sellPriceExclGst > 0 && (
+                                            <span className="font-mono tabular-nums text-slate-600 shrink-0">
+                                                ${Number(opt.sellPriceExclGst).toLocaleString()}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="text-[10px] text-slate-400 italic">No factory options on this trailer.</p>
+                    )}
+
+                    <div className="text-[10px] text-slate-400 italic border-t pt-3">
+                        Dealer Fit options for this trailer come from the Trailer module's Dealer Fit
+                        categories at quote time. Manage them in the Trailer module → Settings → Trailer
+                        Dealer Fit Categories, then add selections from any trailer's detail sheet.
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2 border-t">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-[10px] font-black uppercase tracking-widest"
+                            onClick={onMakeDefault}
+                            disabled={field.isDefault}
+                        >
+                            {field.isDefault ? 'Default' : 'Make default'}
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={onRemove}
+                            className="text-red-500 hover:text-red-600 hover:bg-red-50 ml-auto"
+                        >
+                            <Trash2 className="h-3 w-3 mr-1" /> Remove
+                        </Button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function SpecRow({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="flex items-center justify-between gap-2 py-0.5">
+            <span className="text-slate-400">{label}</span>
+            <span className="font-medium text-slate-700 tabular-nums">{value}</span>
+        </div>
     );
 }
 
