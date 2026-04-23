@@ -9,7 +9,7 @@
  */
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -17,7 +17,23 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -106,6 +122,26 @@ const EDITABLE_KEYS = new Set<string>([
     'pdDollars', 'sundry', 'detailing', 'totalPdCharges', 'totalNettCtd',
     'markupPercent', 'grossProfit', 'rrp', 'sell',
 ]);
+
+// Human-friendly labels for the Global Update dropdown. Order matches
+// the waterfall so operators see Dealer → Nett → Landed → Sell.
+const EDITABLE_FIELDS: Array<{ key: string; label: string; format: 'currency' | 'percent' }> = [
+    { key: 'dealer',         label: 'Dealer',         format: 'currency' },
+    { key: 'discount',       label: 'Discount',       format: 'currency' },
+    { key: 'settlement',     label: 'Settlement',     format: 'currency' },
+    { key: 'nettPrice',      label: 'Nett Price',     format: 'currency' },
+    { key: 'freight',        label: 'Freight',        format: 'currency' },
+    { key: 'landed',         label: 'Landed',         format: 'currency' },
+    { key: 'pdDollars',      label: 'PD ($)',         format: 'currency' },
+    { key: 'sundry',         label: 'Sundry',         format: 'currency' },
+    { key: 'detailing',      label: 'Detailing',      format: 'currency' },
+    { key: 'totalPdCharges', label: 'Total PD',       format: 'currency' },
+    { key: 'totalNettCtd',   label: 'Total Nett CTD', format: 'currency' },
+    { key: 'markupPercent',  label: 'Markup %',       format: 'percent' },
+    { key: 'grossProfit',    label: 'Gross Profit',   format: 'currency' },
+    { key: 'rrp',            label: 'RRP',            format: 'currency' },
+    { key: 'sell',           label: 'Sell (ex GST)',  format: 'currency' },
+];
 
 // Effective pricing = source waterfall + per-field overrides on top.
 // Sell has a legacy fallback for overrides that predate stage 1a.
@@ -429,6 +465,12 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
     const [collapsedSeries, setCollapsedSeries] = useState<Set<string>>(() => new Set());
     // Stage 2a — multi-select state for bulk actions.
     const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+    // Stage 2b — Global Update dialog state.
+    const [globalUpdateOpen, setGlobalUpdateOpen] = useState(false);
+    const [guField, setGuField] = useState<string>('sell');
+    const [guOp, setGuOp] = useState<'set' | 'addAmount' | 'subAmount' | 'addPercent' | 'subPercent'>('addPercent');
+    const [guValue, setGuValue] = useState<string>('');
+    const [guBusy, setGuBusy] = useState(false);
 
     // Pre-compute search fields on each row for fast filter
     const filteredRows = useMemo(() => {
@@ -965,6 +1007,84 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
         clearSelection();
     }, [selectedIds, overrideDocByTrailer, firestore, organisationId, toast, clearSelection]);
 
+    // Stage 2b — Global Update: apply a single-field operation across
+    // either the currently-selected rows or all filtered rows. Writes go
+    // to `organisations/{orgId}/trailerOverrides/{trailerId}` in batches
+    // of 500 via writeBatch. The new value is derived from the row's
+    // effective (post-override) value — so re-running "+5%" twice compounds.
+    const applyGlobalUpdate = useCallback(async () => {
+        const raw = guValue.trim();
+        if (raw === '') return;
+        const parsed = parseFloat(raw);
+        if (!Number.isFinite(parsed)) return;
+
+        // Scope: selected rows if any, else every filtered row.
+        const scopeIds = selectedIds.size > 0
+            ? filteredRows.filter(r => selectedIds.has(r.id)).map(r => r.id)
+            : filteredRows.map(r => r.id);
+        if (scopeIds.length === 0) {
+            toast({ variant: 'destructive', title: 'No rows to update' });
+            return;
+        }
+        const scopeRows = filteredRows.filter(r => scopeIds.includes(r.id));
+
+        const computeNext = (current: number | null): number | null => {
+            if (guOp === 'set') return parsed;
+            if (current == null) return null; // can't %-bump a missing value
+            switch (guOp) {
+                case 'addAmount':  return current + parsed;
+                case 'subAmount':  return current - parsed;
+                case 'addPercent': return current * (1 + parsed / 100);
+                case 'subPercent': return current * (1 - parsed / 100);
+            }
+        };
+
+        setGuBusy(true);
+        try {
+            let updated = 0;
+            let skipped = 0;
+            // Commit in batches of 500 per Firestore limits.
+            for (let i = 0; i < scopeRows.length; i += 500) {
+                const chunk = scopeRows.slice(i, i + 500);
+                const batch = writeBatch(firestore);
+                for (const row of chunk) {
+                    const overrideDoc = overrideDocByTrailer.get(row.id);
+                    const effective = resolveEffectivePricing(row.pricing, row.sourceSell, overrideDoc);
+                    const currentValue = typeof effective[guField] === 'number' ? effective[guField] : null;
+                    const next = computeNext(currentValue);
+                    if (next == null || !Number.isFinite(next) || next < 0) { skipped++; continue; }
+                    const rounded = Math.round(next * 100) / 100;
+                    const payload: Record<string, any> = {
+                        trailerId: row.id,
+                        brandVendorId: row.vendorId,
+                        seriesId: row.seriesId,
+                        overrideAt: serverTimestamp(),
+                        pricingDetail: { [guField]: rounded },
+                    };
+                    if (guField === 'sell') payload.sellPriceExclGst = rounded;
+                    batch.set(
+                        doc(firestore, `organisations/${organisationId}/trailerOverrides/${row.id}`),
+                        payload,
+                        { merge: true },
+                    );
+                    updated++;
+                }
+                await batch.commit();
+            }
+            toast({
+                title: 'Global update applied',
+                description:
+                    `${updated} updated${skipped ? ` · ${skipped} skipped (missing source)` : ''}`,
+            });
+            setGlobalUpdateOpen(false);
+            setGuValue('');
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Global update failed', description: e?.message });
+        } finally {
+            setGuBusy(false);
+        }
+    }, [guField, guOp, guValue, selectedIds, filteredRows, overrideDocByTrailer, firestore, organisationId, toast]);
+
     useEffect(() => {
         let cancelled = false;
         if (vendors.length === 0) {
@@ -1123,32 +1243,168 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                 </div>
             </div>
 
-            {/* Selection action bar — only visible when at least one row is selected */}
-            {selectedIds.size > 0 && isAdmin && (
+            {/* Action bar — visible when selection non-empty OR when filter is non-trivial so admins can Global Update all filtered rows */}
+            {isAdmin && (selectedIds.size > 0 || filteredRows.length !== rows.length || rows.length > 0) && (
                 <div className="shrink-0 px-8 py-2 flex items-center gap-3 border-b-2 border-primary/30 bg-primary/5">
-                    <span className="text-[11px] font-black uppercase tracking-widest text-primary">
-                        {selectedIds.size} selected
-                    </span>
+                    {selectedIds.size > 0 ? (
+                        <span className="text-[11px] font-black uppercase tracking-widest text-primary">
+                            {selectedIds.size} selected
+                        </span>
+                    ) : (
+                        <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
+                            Bulk actions · {filteredRows.length} filtered
+                        </span>
+                    )}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setGlobalUpdateOpen(true)}
+                        className="h-8 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest gap-1"
+                        disabled={filteredRows.length === 0}
+                    >
+                        Global Update
+                    </Button>
                     <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={bulkResetOverrides}
                         className="h-8 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest gap-1"
+                        disabled={selectedIds.size === 0}
                     >
                         <RotateCcw className="h-3 w-3" /> Reset overrides
                     </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={clearSelection}
-                        className="h-8 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 ml-auto"
-                    >
-                        Clear selection
-                    </Button>
+                    {selectedIds.size > 0 && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearSelection}
+                            className="h-8 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 ml-auto"
+                        >
+                            Clear selection
+                        </Button>
+                    )}
                 </div>
             )}
+
+            {/* Global Update dialog */}
+            {isAdmin && (() => {
+                const fieldMeta = EDITABLE_FIELDS.find(f => f.key === guField) ?? EDITABLE_FIELDS[0];
+                const isPct = fieldMeta.format === 'percent';
+                const valueSuffix = guOp === 'addPercent' || guOp === 'subPercent'
+                    ? '%'
+                    : isPct ? ' %' : '';
+                const scopeCount = selectedIds.size > 0 ? selectedIds.size : filteredRows.length;
+                const scopeLabel = selectedIds.size > 0
+                    ? `${selectedIds.size} selected row${selectedIds.size === 1 ? '' : 's'}`
+                    : `${filteredRows.length} filtered row${filteredRows.length === 1 ? '' : 's'}`;
+
+                // Preview from the first scoped row (not authoritative, just a sanity
+                // check for the operator before they press Apply).
+                const previewRow = selectedIds.size > 0
+                    ? filteredRows.find(r => selectedIds.has(r.id))
+                    : filteredRows[0];
+                let previewLine: string | null = null;
+                if (previewRow && guValue.trim() !== '') {
+                    const parsed = parseFloat(guValue);
+                    if (Number.isFinite(parsed)) {
+                        const overrideDoc = overrideDocByTrailer.get(previewRow.id);
+                        const effective = resolveEffectivePricing(previewRow.pricing, previewRow.sourceSell, overrideDoc);
+                        const cur = typeof effective[guField] === 'number' ? effective[guField] : null;
+                        if (cur != null) {
+                            const next =
+                                guOp === 'set' ? parsed
+                                : guOp === 'addAmount' ? cur + parsed
+                                : guOp === 'subAmount' ? cur - parsed
+                                : guOp === 'addPercent' ? cur * (1 + parsed / 100)
+                                : cur * (1 - parsed / 100);
+                            if (Number.isFinite(next) && next >= 0) {
+                                const fmt = (n: number) => isPct ? `${n.toFixed(1)}%` : formatCurrency(Math.round(n * 100) / 100);
+                                previewLine = `Example (${previewRow.code}): ${fmt(cur)} → ${fmt(next)}`;
+                            }
+                        }
+                    }
+                }
+
+                return (
+                    <Dialog open={globalUpdateOpen} onOpenChange={setGlobalUpdateOpen}>
+                        <DialogContent className="max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>Global Update</DialogTitle>
+                                <DialogDescription>
+                                    Apply one operation to a field across {scopeLabel}. Writes org-level overrides; the source xlsx data is not modified.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-2">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Field</Label>
+                                    <Select value={guField} onValueChange={setGuField}>
+                                        <SelectTrigger className="h-9 rounded-xl border-2 text-xs">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-[10000]">
+                                            {EDITABLE_FIELDS.map(f => (
+                                                <SelectItem key={f.key} value={f.key} className="text-xs">{f.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Operation</Label>
+                                    <Select value={guOp} onValueChange={(v) => setGuOp(v as typeof guOp)}>
+                                        <SelectTrigger className="h-9 rounded-xl border-2 text-xs">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-[10000]">
+                                            <SelectItem value="set" className="text-xs">Set to</SelectItem>
+                                            <SelectItem value="addAmount" className="text-xs">+ Amount</SelectItem>
+                                            <SelectItem value="subAmount" className="text-xs">− Amount</SelectItem>
+                                            <SelectItem value="addPercent" className="text-xs">+ Percent</SelectItem>
+                                            <SelectItem value="subPercent" className="text-xs">− Percent</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Value{valueSuffix ? ` (${valueSuffix.trim()})` : ''}</Label>
+                                    <Input
+                                        type="number"
+                                        step={guOp === 'addPercent' || guOp === 'subPercent' || isPct ? '0.1' : '0.01'}
+                                        value={guValue}
+                                        onChange={(e) => setGuValue(e.target.value)}
+                                        placeholder={guOp === 'addPercent' ? 'e.g. 5 (for +5%)' : guOp === 'set' ? (isPct ? '22.5' : '14995') : 'Numeric value'}
+                                        className="h-9 rounded-xl border-2 text-xs"
+                                    />
+                                </div>
+                                {previewLine ? (
+                                    <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                                        {previewLine}
+                                    </div>
+                                ) : (
+                                    <div className="text-[11px] text-slate-400 italic">
+                                        Will write to {scopeCount} row{scopeCount === 1 ? '' : 's'}.
+                                    </div>
+                                )}
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" variant="ghost" onClick={() => setGlobalUpdateOpen(false)} disabled={guBusy}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={applyGlobalUpdate}
+                                    disabled={guBusy || guValue.trim() === ''}
+                                    className="gap-2"
+                                >
+                                    {guBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                                    Apply to {scopeCount}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                );
+            })()}
 
             {/* Table */}
             <div className="flex-1 min-h-0 overflow-hidden">

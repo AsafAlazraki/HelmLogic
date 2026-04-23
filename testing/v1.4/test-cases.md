@@ -580,6 +580,56 @@ trailer row, tri-state checkboxes on brand and series banners, and a
 - [ ] As a **non-admin** user: every checkbox is disabled. Action bar never appears.
 - [ ] Firestore: after a bulk reset, the `organisations/{orgId}/trailerOverrides/{id}` docs for the cleared rows are deleted (verify in Firebase Console if needed).
 
+### L.7 — Stage 2b: Global Update dialog
+
+One-shot batched operation that applies an adjustment to a single
+waterfall field across either the current selection or all filtered
+rows. Useful for annual price increases, margin resets, etc.
+
+**Opening the dialog**
+
+- [ ] When no rows are selected but at least one brand is loaded, the bulk action bar shows "Bulk actions · N filtered" and a **Global Update** button.
+- [ ] Clicking **Global Update** opens a modal with three dropdowns + a value input + a preview line.
+- [ ] The title reads "Global Update" and the description says it targets either "N selected rows" or "N filtered rows" depending on scope.
+
+**Scope**
+
+- [ ] With zero selection: scope = every visible filtered row.
+- [ ] With selection: scope = just the selected rows (dialog description reflects this).
+- [ ] Narrow the filter to a single brand then open Global Update: scope = only that brand's rows.
+
+**Fields**
+
+- [ ] Field dropdown lists every editable waterfall column: Dealer, Discount, Settlement, Nett Price, Freight, Landed, PD ($), Sundry, Detailing, Total PD, Total Nett CTD, Markup %, Gross Profit, RRP, Sell (ex GST).
+- [ ] Selecting Markup % changes the value input's units to a percent (shown in the label) and the operation makes contextual sense.
+
+**Operations**
+
+- [ ] **Set to**: writes the literal value to every scoped row.
+- [ ] **+ Amount**: adds the value to the effective current value.
+- [ ] **− Amount**: subtracts.
+- [ ] **+ Percent**: multiplies by `(1 + X/100)`. E.g. `+5` = 5% increase.
+- [ ] **− Percent**: multiplies by `(1 − X/100)`.
+- [ ] For non-Set operations, rows whose field is absent in the source xlsx are **skipped** (can't bump a missing number). Toast reports `N updated · M skipped (missing source)`.
+
+**Preview**
+
+- [ ] The dialog previews the operation on the first scoped row: "Example (CODE): $10,000 → $10,500".
+- [ ] Preview updates as you change Field / Operation / Value.
+- [ ] With an empty value input, preview reads "Will write to N rows." instead of the example line.
+
+**Apply**
+
+- [ ] Enter a positive value, click **Apply to N** → toast "Global update applied · N updated" → dialog closes → affected cells all turn amber with the new value.
+- [ ] Firestore: each target trailer now has a `trailerOverrides/{id}.pricingDetail.{field}` set to the new rounded value (`Math.round(x * 100) / 100`).
+- [ ] Applying Set-to-$14995 to Sell mirrors `sellPriceExclGst: 14995` at the doc top level (so the catalog picker sees it).
+- [ ] Cancel leaves state unchanged.
+- [ ] Running "+5%" twice compounds (10000 → 10500 → 11025), because each run reads the current effective value.
+
+**Gating**
+
+- [ ] As a **non-admin** user: no bulk action bar, no Global Update button.
+
 ---
 
 ## Section K — Automated smoke suite
