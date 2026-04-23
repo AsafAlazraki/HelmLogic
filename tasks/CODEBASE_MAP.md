@@ -1,7 +1,7 @@
 # HelmLogic — Codebase Map
 
-> File-by-file index for fast orientation. Updated: 2026-04-22.
-> 85+ components + 10 lib files + 9 test specs. Most important files are starred ★.
+> File-by-file index for fast orientation. Updated: 2026-04-23 (post v1.4 day-1 remediation).
+> 90+ components + 10 lib files + 9 test specs. Most important files are starred ★.
 
 ---
 
@@ -44,16 +44,18 @@
 ### Quote Builder
 | File | Purpose |
 |------|---------|
-| `highfield-quote-flow.tsx` ★ | 6-step quote wizard (Variant → Motor → Dealer Fit → Trailer → Accessories → Review). Most actively edited file. |
-| `finalize-quote-dialog.tsx` | Snapshot all prices at save time. `buildQuotePayload()` locks pricing. |
-| `proposal-view.tsx`, `proposal-pdf.tsx`, `proposal-print.tsx` | Read finalized quote → render HTML/PDF/print |
+| `highfield-quote-flow.tsx` ★ | 6-step quote wizard (Variant → Motor → Dealer Fit → Trailer → Accessories → Review). Most actively edited file. v1.4: Step 4 auto-pre-selects the boat model's default trailer assignment, honours org trailer overrides, and tiles switch between assigned trailers (no full catalog browse at quote time). |
+| `finalize-quote-dialog.tsx` | Snapshot all prices at save time. `buildQuotePayload()` locks pricing. v1.4 persists `trailer.cost` + `trailer.catalog.specifications`. |
+| `proposal-view.tsx`, `proposal-pdf.tsx`, `proposal-print.tsx` | Read finalized quote → render HTML/PDF/print. v1.4 trailer block renders BRAND · CODE subtitle + specs strip. |
 | `motor-options.tsx`, `motor-module-browser.tsx`, `motor-configuration-details.tsx` | Motor selection components |
-| `trailer-options.tsx` | Current trailer picker (v1.3 — gets rewritten in v1.4) |
+| `trailer-options.tsx` | Catalog Explorer TRAILER OPTIONS tab. v1.4 day-1 stripped legacy freeform cards; now renders only `TrailerAssignmentsSection`. |
+| `trailer-catalog-picker.tsx` (**v1.4**) | Shared picker dialog. Narrows to associated trailer modules when `associatedModuleIds` is passed. Merges org trailer overrides from `organisations/{orgId}/trailerOverrides`. |
 
 ### Pricing
 | File | Purpose |
 |------|---------|
 | `highfield-pricing-workspace.tsx` | Per-vendor pricing workspace with margin calc + price levels |
+| `trailer-pricing-workspace.tsx` ★ (**v1.4 uplift**) | Full Highfield-style Pricing Manager for trailers. Brand→Series→Trailer tree (collapsible), waterfall inline editing on every row AND inside the expanded panel, multi-select with tri-state banners, bulk reset, Global Update dialog (+%, −%, +$, set to, etc.), staged Publish/Discard buffer. Org overrides at `organisations/{orgId}/trailerOverrides/{trailerId}` carry `sellPriceExclGst` + arbitrary `pricingDetail` fields. |
 | `module-pricing-dashboard.tsx` | Entry from module settings |
 | `price-book-table.tsx` | Published price book display |
 | `price-list-manager.tsx`, `price-list-viewer.tsx` | Sub-dealer price list mgmt + view |
@@ -62,10 +64,19 @@
 ### Dealer Fit
 | File | Purpose |
 |------|---------|
-| `dealer-fit-options.tsx` | Merges **4** category sources (global + module + motor + trailer, v1.4). Renders selector grids. |
+| `dealer-fit-options.tsx` | Merges **5** category sources (global + module + motor + trailer + **linked associated-modules**, v1.4 Stage B.2). Also unions `associatedVendorIds` from linked modules so their MPF items show up in the Master Browser. |
 | `module-dealer-fit-manager.tsx` | Per-module category CRUD. `fieldName` prop lets it handle standard / motor / trailer categories. |
 | `master-data-browser-dialog.tsx` | Search all MPF datasets → add dealer fit items. One-click add, staged items panel. |
 | `module-image-editor.tsx` (**v1.4**) | Reusable Settings-tab card for editing any module's `logoUrl` (upload / paste URL / remove). Used by Trailers settings; drop-in for any other module. |
+
+### Module Settings + Workspaces (v1.4)
+| File | Purpose |
+|------|---------|
+| `module-settings-panel.tsx` ★ (**v1.4**) | Reusable Settings panel rendered on every module workspace's Settings tab. Card set: Module Image + module-specific `preCards` slot + Associated Vendors + **Associated Modules** (new v1.4, `modules/{id}.associatedModuleIds[]`) + Dealer Fit Categories + `midCards` slot + Sub Dealers + Module Roles. Used by Trailer / Yamaha / Rego workspaces. |
+| `trailers-workspace.tsx` (**v1.4**) | Trailer module workspace with Dashboard / Pricing Manager / Settings tabs. URL-synced via `?trailerTab=`. |
+| `trailer-dashboard.tsx` ★ (**v1.4**) | Yamaha-style trailer dashboard (~1,400 lines). Aggregates trailers from every selected brand vendor via flat `getDocs`, groups by boat-size range, Cards/Table view toggle (URL-synced `?trailerView=`), search across code/name/brand/series/supplier/features. Detail sheet contains image editor + field editor + `<DealerFitOptions moduleOnly>` per v1.4 Chunk D. |
+| `rego-workspace.tsx` (**v1.4**) | Rego module workspace — Types (per-authority CRUD) + Settings. |
+| `rego-picker.tsx` (**v1.4**) | Shared dropdown for picking a rego type — used by both boat and trailer rego steps on the Highfield quote flow. |
 
 ### Stock
 | File | Purpose |

@@ -4,8 +4,8 @@
 > Major release since v1.3.0
 
 ### Release Stats
-- **66 commits** since divergence from `main`
-- **65 files changed** · **+11,411 / −817 lines** (~10.6K net new code)
+- **68 commits** since divergence from `main`
+- **65 files changed** · **+11,529 / −817 lines** (~10.7K net new code)
 - **2 new module types** added: `trailers` and `rego`
 - **1 new vendor type**: `Rego Authority`; one existing type promoted: `Trailer Brand`
 - **9 implementation steps** per `tasks/v1.4-trailers-module-design.md` §11 — all complete
@@ -252,6 +252,8 @@ Each commit referenced below is on `claude/app-overview-wKiZ1`.
 | 13 | Broken "Build Preview" image tile on quote carousel | Carousel slides only push when `coverImageUrl` is truthy; same for gallery | `3502153` |
 | 14 | Null "FROM —" pill on quote trailer step | Gone with the catalog picker | `3502153` |
 | 15 | Trailer Specs modal too sparse | Matches Engine Specs row pattern | `ad941bc` |
+| 16 | **Critical:** pricing-manager overrides bypassed on auto-loaded trailers | Quote flow subscribes to `organisations/{orgId}/trailerOverrides` and applies both `sellPriceExclGst` and `pricingDetail` overrides inside `loadAssignmentSnapshot` | `3f3b07e` |
+| 17 | Silent failure if assigned trailer's Firestore doc was deleted | Destructive toast names the missing trailer + prompts operator to update Trailer Options | `3f3b07e` |
 
 **Release prep outstanding:**
 

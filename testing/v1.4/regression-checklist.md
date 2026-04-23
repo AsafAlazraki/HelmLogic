@@ -111,6 +111,35 @@ npm run test:e2e:smoke
 
 ---
 
+## R9c. Trailer assignment on boat model round-trips (day-1 fix, commit 3502153)
+
+Regression guard for the "poof" bug — the form previously didn't
+persist `trailerAssignments` back into its defaultValues, so reloads
+showed empty despite Firestore having the data.
+
+- [ ] Open any Highfield model (CL260 is easiest) in either the Catalog Explorer TRAILER OPTIONS tab or the Highfield model editor.
+- [ ] Use the TrailerAssignmentsSection → Assign a trailer from catalog → pick one → confirm it appears in the list with the DEFAULT badge.
+- [ ] Save the model.
+- [ ] **Close the editor entirely and re-open it.** The assignment must still be visible. (Pre-fix bug: it vanished.)
+- [ ] Firestore (optional): `data-warehouse/.../models/{modelId}.trailerAssignments` has the array with at least one entry.
+
+## R9d. Auto-loaded trailer honours pricing-manager override (day-1 audit fix, commit 3f3b07e)
+
+Regression guard for the override-bypass bug — prior to this fix,
+only manual catalog-picker trailer selection merged org overrides;
+auto-loaded assigned trailers used the raw source price.
+
+- [ ] Open Trailer Pricing Manager. Pick any trailer assigned as a default on a boat model. Override its Sell price (e.g. from `$9,722` to `$10,500`). Publish.
+- [ ] Start a new Highfield quote on that boat model. Let Step 4 auto-load the default trailer.
+- [ ] **Step 4 trailer tile must show $10,500, not $9,722.** The quote total reflects the override.
+- [ ] Clear the override in the Pricing Manager. Re-open a fresh quote. Trailer price reverts to source ($9,722).
+
+## R9e. Missing assigned trailer is surfaced (day-1 audit fix, commit 3f3b07e)
+
+- [ ] On a boat model with a trailer assignment, manually delete the assigned trailer's Firestore doc at `data-warehouse/{vendor}/series/{s}/trailers/{id}` OR remove the trailer's brand from the Trailer module's `trailerBrandVendorIds` so the aggregator can't find it.
+- [ ] Start a quote on that boat → quote loads but a destructive toast appears: `Assigned trailer missing — update the boat model's Trailer Options`.
+- [ ] Quote Step 4 has nothing selected. Totals exclude trailer. No silent failure.
+
 ## R10. Login + auth
 
 - [ ] Bill Hull can log in.

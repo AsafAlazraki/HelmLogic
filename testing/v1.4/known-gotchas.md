@@ -9,6 +9,19 @@ not a bug.
 
 ## Trailers
 
+### `trailer-df-not-auto-ticked-per-trailer`
+When a trailer is selected on a quote, its Dealer Fit items do **NOT** auto-tick on Step 5 of the quote flow — the operator must tick them manually. Motors have `masterAccessories[].isStandard` which DOES auto-tick, but the trailer equivalent (`trailer.defaultDealerFitSelectionIds[]`) was explicitly deferred to v1.5.
+
+**Why:** the per-trailer DF auto-tick mechanism was scoped out of v1.4. Adding the schema + detail-sheet picker + quote-flow merge is a contained v1.5 unit of work. For v1.4, trailers follow the v1.3 behaviour: DF is selected at quote time from the module-level categories pool (now including categories pulled through from linked associated modules).
+
+### `trailer-override-now-flows-on-auto-load`
+**This was a bug, now fixed.** Before commit `3f3b07e` (2026-04-23): a pricing-manager override on a trailer was ignored if the trailer was auto-loaded onto a quote via the boat model's default `trailerAssignments`. Only the manual catalog-picker path merged overrides. Fixed: quote flow now subscribes to `organisations/{orgId}/trailerOverrides` and applies `sellPriceExclGst` + `pricingDetail` overrides inside `loadAssignmentSnapshot`.
+
+**Why it matters to testers:** if you set a trailer override, Publish, and then start a quote on a boat that has that trailer as its default assignment, the quote trailer price should equal the override (not the source price). Previously it silently used source. This is now the correct behaviour — if you see the source price on an auto-loaded assignment, that's a regression, log it.
+
+### `trailer-doc-missing-toast`
+Added in commit `3f3b07e`: if a boat model has a trailer assignment whose Firestore doc has been deleted (or the trailer's brand has been un-assigned from the Trailer module), the quote flow shows a destructive toast `Assigned trailer missing — update the boat model's Trailer Options` instead of silently dropping the trailer from the quote totals. Operators should treat this as a signal to fix the model's Trailer Options.
+
 ### `trailer-rego-hint-is-info-only`
 The trailer detail sheet in the dashboard shows a **"Rego hint (info only)"** line at the bottom of the Pricing Summary (e.g. `Rego hint (info only): NSW 12-month · $785`). That value comes from the source xlsx import (`pricingDetail.regoTypeHint` / `regoDollarsHint`). It is **NOT** added to the quote total.
 

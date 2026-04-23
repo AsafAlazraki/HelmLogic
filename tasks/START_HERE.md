@@ -2,7 +2,7 @@
 
 > **You are a Claude agent joining the HelmLogic project mid-flight.**
 > Read this file FIRST. Then read the files listed in order. Do not skip any.
-> Last updated: 2026-04-22 (v1.4 Trailers + Rego shipped on branch, draft PR pending)
+> Last updated: 2026-04-23 PM — v1.4 Trailers + Rego + Pricing Manager Highfield-style uplift + 17-item day-1 remediation fully on branch. 68 commits, +11,529 / −817 lines. Awaiting user green-light for PR.
 
 ---
 
