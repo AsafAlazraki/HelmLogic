@@ -253,47 +253,65 @@ function WaterfallPanel({
     );
 }
 
-function SellCell({
-    row,
-    overrideValue,
+/**
+ * Generic inline-editable numeric cell. Works for currency fields and
+ * percent fields (e.g. markupPercent). Click to edit, Enter to commit,
+ * Escape to cancel. Leaving the draft empty clears the per-field override.
+ *
+ * Stage 1b — introduced to replace the single-purpose SellCell. Stage 1c
+ * will start using this for the other visible numeric columns.
+ */
+function EditableCell({
+    trailerId,
+    fieldKey,
+    sourceValue,
+    effectiveValue,
+    hasOverride,
+    format,
     isAdmin,
     onSave,
     onReset,
 }: {
-    row: FlatTrailerRow;
-    overrideValue?: number;
+    trailerId: string;
+    fieldKey: string;
+    sourceValue: number | null;
+    effectiveValue: number | null;
+    hasOverride: boolean;
+    format: 'currency' | 'percent';
     isAdmin: boolean;
-    onSave: (trailerId: string, price: number) => Promise<void>;
-    onReset: (trailerId: string) => Promise<void>;
+    onSave: (trailerId: string, key: string, value: number) => Promise<void>;
+    onReset: (trailerId: string, key: string) => Promise<void>;
 }) {
-    const effective = overrideValue != null ? overrideValue : row.sourceSell;
-    const hasOverride = overrideValue != null && overrideValue !== row.sourceSell;
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState('');
+
+    const display = (v: number | null): string => {
+        if (v == null) return '—';
+        return format === 'percent' ? `${Number(v).toFixed(1)}%` : formatCurrency(v);
+    };
 
     if (editing) {
         const commit = async () => {
             const trimmed = draft.trim();
             setEditing(false);
             if (trimmed === '') {
-                // Empty = reset to source
-                if (hasOverride) await onReset(row.id);
+                if (hasOverride) await onReset(trailerId, fieldKey);
                 return;
             }
             const parsed = parseFloat(trimmed);
             if (!Number.isFinite(parsed) || parsed < 0) return;
-            if (parsed === row.sourceSell) {
-                // Match source = clear override
-                if (hasOverride) await onReset(row.id);
+            // If the new value matches source exactly, clear the override.
+            if (sourceValue != null && parsed === sourceValue) {
+                if (hasOverride) await onReset(trailerId, fieldKey);
                 return;
             }
-            if (parsed !== effective) await onSave(row.id, parsed);
+            if (parsed !== effectiveValue) await onSave(trailerId, fieldKey, parsed);
         };
         return (
             <input
                 autoFocus
                 type="number"
-                step="0.01"
+                step={format === 'percent' ? '0.1' : '0.01'}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onBlur={commit}
@@ -314,18 +332,24 @@ function SellCell({
         <span
             onClick={() => {
                 if (!isAdmin) return;
-                setDraft(String(effective || ''));
+                setDraft(effectiveValue != null ? String(effectiveValue) : '');
                 setEditing(true);
             }}
             className={wrapperClass}
-            title={isAdmin ? (hasOverride ? 'Click to edit · leave blank to reset' : 'Click to set org override') : undefined}
+            title={
+                isAdmin
+                    ? (hasOverride
+                        ? 'Click to edit · leave blank or match source to reset'
+                        : 'Click to set org override')
+                    : undefined
+            }
         >
             <span className={hasOverride ? 'text-amber-700 font-semibold' : ''}>
-                {formatCurrency(effective)}
+                {display(effectiveValue)}
             </span>
-            {hasOverride && (
+            {hasOverride && sourceValue != null && sourceValue !== effectiveValue && (
                 <span className="block text-[9px] text-slate-400 line-through leading-tight">
-                    {formatCurrency(row.sourceSell)}
+                    {display(sourceValue)}
                 </span>
             )}
         </span>
@@ -991,14 +1015,20 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                                 }
 
                                                 if (col.key === 'sell') {
+                                                    const overrideDoc = overrideDocByTrailer.get(row.id);
+                                                    const effective = resolveEffectivePricing(row.pricing, row.sourceSell, overrideDoc);
                                                     return (
                                                         <td key="sell" className={`${base} ${sticky} p-0`}>
-                                                            <SellCell
-                                                                row={row}
-                                                                overrideValue={overrideByTrailer.get(row.id)}
+                                                            <EditableCell
+                                                                trailerId={row.id}
+                                                                fieldKey="sell"
+                                                                sourceValue={row.sourceSell}
+                                                                effectiveValue={effective.sell ?? null}
+                                                                hasOverride={hasFieldOverride('sell', overrideDoc)}
+                                                                format="currency"
                                                                 isAdmin={isAdmin}
-                                                                onSave={saveOverride}
-                                                                onReset={resetOverride}
+                                                                onSave={saveOverrideField}
+                                                                onReset={resetOverrideField}
                                                             />
                                                         </td>
                                                     );

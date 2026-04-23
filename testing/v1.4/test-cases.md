@@ -465,6 +465,39 @@ Confirms that a trailer picked from the catalog carries through to the proposal 
 
 ---
 
+## Section L — Trailer Pricing Manager — Highfield-style uplift (in progress)
+
+> **Status:** being rolled out in stages on `claude/app-overview-wKiZ1`.
+> Each subsection is added in the same commit that ships the matching stage.
+> Stages build on each other — run earlier subsections before a later stage
+> lands, and the Sell override flow must continue to work after every stage.
+
+### L.1 — Stage 1a: widen override schema (invisible infrastructure)
+
+Nothing visible changed. These are regression checks to confirm the
+existing Sell override pathway still works after the schema widen.
+
+- [ ] Trailers → Pricing Manager tab loads without the "Something went wrong" card.
+- [ ] An existing Sell override from before the deploy still displays as amber with its source price struck-through.
+- [ ] Creating a new Sell override on a fresh row: click Sell cell → type `9999` → press Enter → toast "Override saved" → cell goes amber.
+- [ ] Refresh the page — the override persists.
+- [ ] Expand the row → click "Reset override" → toast "Override cleared" → cell returns to source price, no strikethrough.
+- [ ] Highfield quote flow → Trailer step → "Pick from Catalog" → the overridden trailer shows the override price (amber badge / "Org Price" label) — confirming the catalog picker still resolves overrides via the legacy `sellPriceExclGst` top-level field.
+
+### L.2 — Stage 1b: `EditableCell` replaces `SellCell` (same UX)
+
+Pure refactor — the Sell cell should behave identically to before.
+This is the substrate stages 1c–1d will reuse.
+
+- [ ] Every behaviour in L.1 still works (run the full L.1 list once).
+- [ ] Click Sell cell, leave the input blank, press Enter → toast "Override cleared" → cell reverts to source.
+- [ ] Click Sell cell, type a value identical to the source price, press Enter → toast "Override cleared" (matching source treated as a reset).
+- [ ] Click Sell cell, press Escape mid-edit → input closes without a toast, value unchanged.
+- [ ] As a **non-admin** user: clicking the Sell cell does NOT open an editor. Hover does not show a pointer cursor.
+- [ ] On a trailer with no pricing waterfall (`pricingDetail` empty), Sell editing still works — the source sell price comes from `sellPriceExclGst` on the trailer doc.
+
+---
+
 ## Section K — Automated smoke suite
 
 ### K.1 — Run the suite
