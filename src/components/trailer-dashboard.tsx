@@ -365,12 +365,13 @@ export function TrailerDashboard({ vendors, moduleName, isAdmin }: TrailerDashbo
 
     return (
         <div className="flex flex-col h-full">
-            {/* Gradient header banner */}
-            <div className="bg-gradient-to-r from-orange-500 to-amber-600 text-white px-6 py-4">
+            {/* Gradient header banner — matches the Yamaha workspace pattern
+                so trailer / motor module banners share a consistent tone. */}
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4">
                 <div className="flex items-center justify-between flex-wrap gap-3">
                     <div>
                         <h1 className="text-xl font-bold">{moduleName || 'Trailers'}</h1>
-                        <p className="text-sm text-orange-50">
+                        <p className="text-sm text-blue-50">
                             {isLoading
                                 ? 'Loading catalog…'
                                 : `${stats.total} trailer${stats.total === 1 ? '' : 's'} · ${stats.brands} brand${stats.brands === 1 ? '' : 's'} · ${stats.series} series`}
@@ -461,7 +462,7 @@ export function TrailerDashboard({ vendors, moduleName, isAdmin }: TrailerDashbo
                                 onClick={() => setViewMode('cards')}
                                 className={`px-2 py-1.5 rounded-l-md transition-colors ${
                                     viewMode === 'cards'
-                                        ? 'bg-orange-500 text-white'
+                                        ? 'bg-blue-600 text-white'
                                         : 'text-slate-500 hover:bg-slate-50'
                                 }`}
                             >
@@ -474,7 +475,7 @@ export function TrailerDashboard({ vendors, moduleName, isAdmin }: TrailerDashbo
                                 onClick={() => setViewMode('table')}
                                 className={`px-2 py-1.5 rounded-r-md border-l transition-colors ${
                                     viewMode === 'table'
-                                        ? 'bg-orange-500 text-white'
+                                        ? 'bg-blue-600 text-white'
                                         : 'text-slate-500 hover:bg-slate-50'
                                 }`}
                             >
@@ -492,7 +493,7 @@ export function TrailerDashboard({ vendors, moduleName, isAdmin }: TrailerDashbo
                     {/* Loading */}
                     {isLoading && (
                         <div className="flex items-center justify-center py-20 text-slate-400">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
                         </div>
                     )}
 
@@ -584,7 +585,7 @@ export function TrailerDashboard({ vendors, moduleName, isAdmin }: TrailerDashbo
 function StatPill({ label, value }: { label: string; value: string }) {
     return (
         <div className="bg-white/20 backdrop-blur-sm rounded-lg px-3 py-1.5 border border-white/20">
-            <span className="text-[10px] uppercase tracking-wider text-orange-50 mr-2">{label}</span>
+            <span className="text-[10px] uppercase tracking-wider text-blue-50 mr-2">{label}</span>
             <span className="font-bold">{value}</span>
         </div>
     );
@@ -603,7 +604,7 @@ function TrailerCard({ trailer, onClick }: { trailer: TrailerRow; onClick: () =>
 
     return (
         <Card
-            className={`border-2 rounded-2xl overflow-hidden cursor-pointer hover:border-orange-400/60 hover:shadow-md transition-all ${inactive ? 'opacity-60' : ''}`}
+            className={`border-2 rounded-2xl overflow-hidden cursor-pointer hover:border-blue-400/60 hover:shadow-md transition-all ${inactive ? 'opacity-60' : ''}`}
             onClick={onClick}
         >
             <CardHeader className="h-28 bg-slate-50 flex items-center justify-center p-3 border-b">
@@ -630,7 +631,7 @@ function TrailerCard({ trailer, onClick }: { trailer: TrailerRow; onClick: () =>
                     {inactive && <Badge variant="outline" className="text-[9px] border-red-400 text-red-600">Inactive</Badge>}
                 </div>
                 {price > 0 && (
-                    <p className="text-xs font-bold text-orange-600">
+                    <p className="text-xs font-bold text-blue-700">
                         {formatCurrency(price)} <span className="text-[9px] font-normal text-slate-400">ex GST</span>
                     </p>
                 )}
@@ -693,7 +694,7 @@ function TrailerTable({
                                 <tr
                                     key={`${t.vendorId}-${t.id}`}
                                     onClick={() => onRowClick(t)}
-                                    className={`border-b last:border-b-0 cursor-pointer hover:bg-orange-50/50 ${inactive ? 'opacity-60' : ''}`}
+                                    className={`border-b last:border-b-0 cursor-pointer hover:bg-blue-50/50 ${inactive ? 'opacity-60' : ''}`}
                                 >
                                     <td className="px-3 py-2">
                                         <div className="h-8 w-10 bg-slate-50 rounded flex items-center justify-center overflow-hidden">
@@ -714,7 +715,7 @@ function TrailerTable({
                                     <td className="px-3 py-2">{t.specifications?.boatSizeMtr != null ? `${t.specifications.boatSizeMtr}m` : '—'}</td>
                                     <td className="px-3 py-2">{t.specifications?.lengthMtr != null ? `${t.specifications.lengthMtr}m` : '—'}</td>
                                     <td className="px-3 py-2">{t.specifications?.atmKg != null ? `${t.specifications.atmKg} kg` : '—'}</td>
-                                    <td className="px-3 py-2 text-right font-semibold text-orange-600">
+                                    <td className="px-3 py-2 text-right font-semibold text-blue-700">
                                         {t.sellPriceExclGst ? formatCurrency(t.sellPriceExclGst) : <span className="text-slate-300 font-normal">—</span>}
                                     </td>
                                     <td className="px-3 py-2">

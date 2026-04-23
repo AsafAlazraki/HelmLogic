@@ -1180,7 +1180,7 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
     return (
         <div className="flex flex-col h-full">
             {/* Header */}
-            <div className="shrink-0 flex items-center justify-between py-4 px-8 bg-white border-b-2 border-slate-300">
+            <div className="shrink-0 flex items-center justify-between py-5 px-10 bg-white border-b-2 border-slate-300">
                 <div className="flex items-center gap-3">
                     <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
                         <DollarSign className="h-5 w-5" />
@@ -1275,7 +1275,7 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
             </div>
 
             {/* Filter bar */}
-            <div className="shrink-0 px-8 py-3 flex flex-wrap items-center gap-3 border-b-2 border-slate-200 bg-slate-50/50">
+            <div className="shrink-0 px-10 py-4 flex flex-wrap items-center gap-3 border-b-2 border-slate-200 bg-slate-50/50">
                 <div className="flex flex-col gap-1 flex-1 max-w-xs min-w-[220px]">
                     <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Search</span>
                     <div className="relative">
@@ -1340,7 +1340,7 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
 
             {/* Action bar — visible when selection non-empty OR when filter is non-trivial so admins can Global Update all filtered rows */}
             {isAdmin && (selectedIds.size > 0 || filteredRows.length !== rows.length || rows.length > 0) && (
-                <div className="shrink-0 px-8 py-2 flex items-center gap-3 border-b-2 border-primary/30 bg-primary/5">
+                <div className="shrink-0 px-10 py-3 flex items-center gap-3 border-b-2 border-primary/30 bg-primary/5">
                     {selectedIds.size > 0 ? (
                         <span className="text-[11px] font-black uppercase tracking-widest text-primary">
                             {selectedIds.size} selected
