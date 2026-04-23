@@ -2495,31 +2495,77 @@ export function HighfieldQuoteFlow({
 
             <Dialog open={showTrailerSpecs} onOpenChange={setShowTrailerSpecs}>
                 <DialogContent className="sm:max-w-lg rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-6 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Trailer Specs</DialogTitle></DialogHeader>
+                    <DialogHeader className="p-6 border-b bg-muted/5">
+                        <DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Trailer Specs</DialogTitle>
+                    </DialogHeader>
                     <ScrollArea className="max-h-[60vh]">
-                        <div className="p-6 space-y-4">
-                            {effectiveTrailerConfig?.imageUrl && (
-                                <div className="relative aspect-video w-full bg-white rounded-2xl overflow-hidden border-2">
-                                    <img src={effectiveTrailerConfig.imageUrl} alt={effectiveTrailerConfig?.name || 'Trailer'} className="w-full h-full object-contain p-4 mix-blend-multiply" />
-                                </div>
-                            )}
-                            <Table><TableBody>
-                                {effectiveTrailerConfig?.name && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Name</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{effectiveTrailerConfig.name}</TableCell></TableRow>}
-                                {effectiveTrailerConfig?.sellPriceExclGst != null && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Price (Excl. GST)</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">${effectiveTrailerConfig.sellPriceExclGst.toLocaleString()}</TableCell></TableRow>}
-                            </TableBody></Table>
-                            {effectiveTrailerConfig?.options?.length > 0 && (
-                                <div className="space-y-2">
-                                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 px-2">Available Options</p>
-                                    <Table><TableBody>
-                                        {effectiveTrailerConfig.options.map((opt: any) => (
-                                            <TableRow key={opt.id} className="hover:bg-primary/5 border-b">
-                                                <TableCell className="font-black uppercase text-[10px] text-slate-900 pl-6 py-3">{opt.name}</TableCell>
-                                                <TableCell className="font-black uppercase text-[10px] text-primary pr-6 py-3 text-right">${(opt.sellPriceExclGst || 0).toLocaleString()}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody></Table>
-                                </div>
-                            )}
+                        <div className="p-0">
+                            {/* v1.4 day-1 redesign — match the Engine Specs modal styling.
+                                Dense scrollable row list. Image (when present) sits in a
+                                small bordered tile up top, not stretched edge-to-edge. */}
+                            {(() => {
+                                const t = catalogTrailerSnapshot;
+                                const cfg = effectiveTrailerConfig;
+                                const specs = t?.specifications || {};
+                                const code = t?.code || cfg?.name?.split(' ')[0] || '';
+                                const brand = t?.brandName || '';
+                                const series = t?.seriesName || '';
+                                const sell = (t?.sellPriceExclGst ?? cfg?.sellPriceExclGst) ?? null;
+                                const imageUrl = t?.imageUrl || cfg?.imageUrl || '';
+
+                                const rows: Array<{ label: string; value: any }> = [];
+                                if (code) rows.push({ label: 'Code', value: code });
+                                if (cfg?.name && cfg.name !== code) rows.push({ label: 'Name', value: cfg.name });
+                                if (brand) rows.push({ label: 'Brand', value: brand });
+                                if (series) rows.push({ label: 'Series', value: series });
+                                if (specs.boatSizeMtr != null) rows.push({ label: 'Boat Size', value: `${specs.boatSizeMtr}m` });
+                                if (specs.lengthMtr != null) rows.push({ label: 'Trailer Length', value: `${specs.lengthMtr}m` });
+                                if (specs.atmKg != null) rows.push({ label: 'ATM', value: `${specs.atmKg} kg` });
+                                if (specs.tareKg != null) rows.push({ label: 'Tare', value: `${specs.tareKg} kg` });
+                                if (specs.wheelSize) rows.push({ label: 'Wheel Size', value: specs.wheelSize });
+                                if (specs.winch) rows.push({ label: 'Winch', value: specs.winch });
+                                if (specs.betweenGuardsMm != null) rows.push({ label: 'Between Guards', value: `${specs.betweenGuardsMm} mm` });
+                                if (specs.plug) rows.push({ label: 'Plug', value: specs.plug });
+                                if (t?.cost != null && t.cost > 0) rows.push({ label: 'Cost (Excl. GST)', value: `$${t.cost.toLocaleString()}` });
+                                if (sell != null) rows.push({ label: 'Sell (Excl. GST)', value: `$${Number(sell).toLocaleString()}` });
+
+                                return (
+                                    <>
+                                        {imageUrl && (
+                                            <div className="px-6 pt-6">
+                                                <div className="relative h-40 w-full bg-slate-50 rounded-2xl overflow-hidden border-2 border-slate-100">
+                                                    <img src={imageUrl} alt={cfg?.name || 'Trailer'} className="w-full h-full object-contain p-4" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        <Table>
+                                            <TableBody>
+                                                {rows.map(r => (
+                                                    <TableRow key={r.label} className="hover:bg-primary/5 border-b">
+                                                        <TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">{r.label}</TableCell>
+                                                        <TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{r.value}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                        {cfg?.options?.length > 0 && (
+                                            <div className="border-t-2 mt-2">
+                                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 px-6 pt-4 pb-2">Available Options</p>
+                                                <Table>
+                                                    <TableBody>
+                                                        {cfg.options.map((opt: any) => (
+                                                            <TableRow key={opt.id} className="hover:bg-primary/5 border-b">
+                                                                <TableCell className="font-black uppercase text-[10px] text-slate-900 pl-6 py-3">{opt.name}</TableCell>
+                                                                <TableCell className="font-black uppercase text-[10px] text-primary pr-6 py-3 text-right">${(opt.sellPriceExclGst || 0).toLocaleString()}</TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        )}
+                                    </>
+                                );
+                            })()}
                         </div>
                     </ScrollArea>
                 </DialogContent>
