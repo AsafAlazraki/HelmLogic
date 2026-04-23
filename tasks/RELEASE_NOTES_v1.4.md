@@ -4,18 +4,22 @@
 > Major release since v1.3.0
 
 ### Release Stats
+- **66 commits** since divergence from `main`
+- **65 files changed** · **+11,411 / −817 lines** (~10.6K net new code)
 - **2 new module types** added: `trailers` and `rego`
 - **1 new vendor type**: `Rego Authority`; one existing type promoted: `Trailer Brand`
 - **9 implementation steps** per `tasks/v1.4-trailers-module-design.md` §11 — all complete
 - **Pricing Manager uplift** — 8-stage rebuild matching Highfield's depth: Brand→Series→Trailer tree, full waterfall inline editing on every row + expanded panel, row/brand/series multi-select, bulk reset, Global Update dialog, staged-Publish workflow
 - **Settings parity** — new reusable `<ModuleSettingsPanel>` ensures every module's Settings tab has the same card set (Module Image, Associated Vendors, **Associated Modules** [new v1.4 concept], Dealer Fit Categories, Sub Dealers, Module Roles)
-- **Associated Modules** — boat module can link the Trailer module and auto-inherit its brand list + DF categories + associated vendors, no duplicate wiring
-- **Per-boat-model trailer assignments** — design doc §5 shipped. Models carry `trailerAssignments[]`; quote flow auto-pre-selects the default assignment; available in both the Highfield model editor and the Catalog Explorer's TRAILER OPTIONS tab
+- **Associated Modules** — boat module can link the Trailer module and auto-inherit its brand list + DF categories + associated vendors, no duplicate wiring. Quote flow honors the link: Step 4 narrows to linked trailer modules; Step 5 merges their DF categories (critical fix in commit `0b83ead`).
+- **Per-boat-model trailer assignments** — design doc §5 shipped. Models carry `trailerAssignments[]`; quote flow auto-pre-selects the default; users click a tile to switch between assigned trailers (no full-catalog browse at quote time). Available in both the Highfield model editor and the Catalog Explorer's TRAILER OPTIONS tab.
 - **Dealer Fit Options inside trailer detail sheet** — same Master Data Browser as Yamaha motor detail sheet, scoped to the trailer module's own categories
+- **Trailer Specs modal** — dense row list matching Engine Specs styling: Code, Brand, Series, Boat Size, Length, ATM, Tare, Wheel Size, Winch, Between Guards, Plug, Cost, Sell + Available Options
 - Full pricing waterfall ingested column-for-column from the client's xlsx source
 - Snapshot-on-select pattern extended to trailers + rego for price stability across catalog edits
 - Trailer quotes now carry cost, specs, and brand provenance through to the proposal PDF — parity with motor quote rendering
 - Editing surfaces open to any signed-in user (not just platform admins) so dealer-level admins like Bill Hull can edit images / fields / pricing overrides on v1.4 modules
+- Day-1 tester-flagged polish round: banner colour uniformity, detail sheet sizing, Edit/X button overlap, broken-image gracefully hidden instead of rendering "Build Preview" placeholder, null "FROM —" pill removed, Recent Proposals hero image
 
 ### Source of Requirements
 Client (Northside Marine) supplied `Trailer Module.xlsx` — a 20-column dealer pricing sheet covering Dealer → Discount → Settlement → Nett → Freight → Landed → PD → CTD → MU% → GP → RRP → Sell plus PD parts, factory options, lead times, and rego hints. v1.4 ingests the full sheet and exposes it on a new Trailers workspace. A parallel new Rego module consolidates boat + trailer registration fees previously hard-coded on Highfield model documents.
@@ -197,9 +201,11 @@ Deferred per design doc §10:
 ## Files Changed (Key Components)
 
 **New files**
-- `src/components/trailer-catalog-picker.tsx` — shared dialog-based picker with overrides merge
-- `src/components/trailer-dashboard.tsx` — Yamaha-style dashboard with boat-size grouping, card/table toggle, admin edit surfaces for image + model fields (~1,350 lines)
+- `src/components/trailer-catalog-picker.tsx` — shared dialog-based picker with overrides merge + `associatedModuleIds` narrowing
+- `src/components/trailer-dashboard.tsx` — Yamaha-style dashboard with boat-size grouping, card/table toggle, admin edit surfaces for image + model fields, inline DealerFitOptions Master Browser (~1,400 lines)
+- `src/components/trailer-pricing-workspace.tsx` — full Pricing Manager uplift: Brand→Series tree, waterfall inline editing, multi-select, Global Update, staged Publish (~2,000 lines)
 - `src/components/module-image-editor.tsx` — reusable `logoUrl` editor card for module Settings tabs
+- `src/components/module-settings-panel.tsx` — reusable Settings panel used by Trailer / Yamaha / Rego workspaces (Module Image + Associated Vendors + Associated Modules + Dealer Fit + Sub Dealers + Module Roles)
 - `src/components/rego-picker.tsx` — shared boat/trailer rego dropdown
 - `src/components/rego-workspace.tsx` — Rego module workspace (Types + Settings)
 - `scripts/seed-trailers.ts` — xlsx importer with dry-run flag
@@ -207,13 +213,46 @@ Deferred per design doc §10:
 - `testing/v1.4/README.md` — per-step test matrices
 
 **Modified**
-- `src/components/trailers-workspace.tsx` — full Pricing Manager tab with waterfall + overrides; Dashboard replaces Catalog as the default tab; Settings wires `ModuleImageEditor` as the first card
-- `src/components/highfield-quote-flow.tsx` — `effectiveTrailerConfig` shadow memo, boat/trailer rego snapshots, `Pick from Catalog` CTA
-- `src/components/finalize-quote-dialog.tsx` — payload writes `trailer.catalog` (now including `specifications`) + `trailer.cost`, `registration.boatRegoSnapshot`, `registration.trailerRegoSnapshot`
-- `src/components/proposal-pdf.tsx` — trailer block renders `BRAND · CODE` subtitle + specs strip (boat size / length / ATM / tare / wheel size / winch) when the snapshot is present
+- `src/components/trailers-workspace.tsx` — Dashboard default tab, ModuleSettingsPanel-backed Settings tab
+- `src/components/yamaha-motor-workspace.tsx` — Settings tab now uses ModuleSettingsPanel for full card parity
+- `src/components/highfield-quote-flow.tsx` — Step 4 rewrite: trailer tiles come from `model.trailerAssignments` only (no catalog browse); auto-pre-selects default assignment; click to switch, click again to untick. Step 5 now merges trailer DF categories from `associatedModuleIds`. Trailer Specs modal restyled dense row list. Carousel skips empty image URLs.
+- `src/components/highfield-model-editor.tsx` — schema adds `trailerAssignments: z.array(...)`; new exported `TrailerAssignmentsSection` used by both the model editor and the Catalog Explorer TRAILER OPTIONS tab
+- `src/components/trailer-options.tsx` — legacy Primary Trailer + Sub-Options cards removed; only TrailerAssignmentsSection renders
+- `src/components/model-configuration-editor.tsx` — `getSafeDefaultValues` carries `trailerAssignments` so the form round-trips correctly (fixes the "poof" bug where assignments reset on editor reload)
+- `src/components/finalize-quote-dialog.tsx` — payload writes `trailer.catalog.specifications` + `trailer.cost`, plus `registration.boatRegoSnapshot` / `trailerRegoSnapshot`
+- `src/components/proposal-pdf.tsx` — trailer block renders `BRAND · CODE` subtitle + specs strip when the snapshot is present
 - `src/components/master-price-file-workspace.tsx` — `handleImport` upserts by natural key instead of clear-and-replace
 - `src/components/sam-allen-uploader.tsx` — `handleSave` upserts by natural key
-- `src/components/dealer-fit-options.tsx` — four-source merge
-- `src/app/(app)/modules/[id]/page.tsx` — routing branches for `moduleType === 'trailers'` and `moduleType === 'rego'`
+- `src/components/dealer-fit-options.tsx` — five-source merge: global + boat-module + motor + trailer + **linked associated-module categories**
+- `src/app/(app)/modules/[id]/page.tsx` — routing branches for `moduleType === 'trailers'` and `moduleType === 'rego'`; `isAdmin={true}` at v1.4 workspace call sites so dealer-admins can edit; Recent Proposals full-width hero image
 - `src/app/(app)/data-warehouse/add/page.tsx` — adds `Trailer Brand` + `Rego Authority` vendor types
 - `tasks/v1.4-trailers-module-design.md` — full design spec
+
+---
+
+## Day-1 Remediation Log (2026-04-23)
+
+Tester-flagged issues caught during dev testing before release sign-off.
+Each commit referenced below is on `claude/app-overview-wKiZ1`.
+
+| # | Issue | Resolution | Commit |
+|---|---|---|---|
+| 1 | Trailer banner was orange, jarred against Yamaha/Highfield blue | Matched app-wide blue gradient; muted card hover/price-text accents | `3477bf5` |
+| 2 | Bill (dealer admin) couldn't see v1.4 editing controls | Dropped `isAdmin` gate on v1.4 editing surfaces only | `d7dd058` |
+| 3 | Every module's Settings tab had a different card set | New reusable `ModuleSettingsPanel` with full card parity | `a1f2e63` |
+| 4 | Linking trailer module didn't pull its data into the boat quote | Stage B.2: picker narrowing + DealerFitOptions 5-source merge | `190ede0` |
+| 5 | No way to attach a trailer to a boat model | `model.trailerAssignments[]` schema + `TrailerAssignmentsSection` in both editors; quote flow auto-pre-selects default | `0cf9300` + `f023fbb` |
+| 6 | No per-trailer dealer-fit browser in the trailer detail sheet | Ported the Yamaha `<DealerFitOptions moduleOnly>` pattern into the trailer detail sheet | `60b21e5` |
+| 7 | Edit button overlapped the Sheet's built-in close X | `mr-8` clearance | `297aacd` |
+| 8 | Recent Proposals cards showed a cramped thumbnail | Full-width hero image, object-cover, 144px tall | `404869b` |
+| 9 | **Critical:** Step 5 trailer DF empty even when trailer module linked | Merged `associatedModuleIds` → linked modules' trailer DF categories into the quote flow's own memos | `0b83ead` |
+| 10 | Trailer assignments "poofed" when re-opening the editor | `getSafeDefaultValues` now carries `trailerAssignments`; round-trip fixed | `3502153` |
+| 11 | "Pick from Catalog" / "Change Trailer" at quote time confused operators | Step 4 now only shows assigned trailer tiles; click to switch, click again to untick | `3502153` |
+| 12 | Catalog Explorer TRAILER OPTIONS tab had two legacy freeform cards below the catalog picker | Removed. Only `TrailerAssignmentsSection` renders. | `3502153` |
+| 13 | Broken "Build Preview" image tile on quote carousel | Carousel slides only push when `coverImageUrl` is truthy; same for gallery | `3502153` |
+| 14 | Null "FROM —" pill on quote trailer step | Gone with the catalog picker | `3502153` |
+| 15 | Trailer Specs modal too sparse | Matches Engine Specs row pattern | `ad941bc` |
+
+**Release prep outstanding:**
+
+- None — release candidate branch is `claude/app-overview-wKiZ1`. Awaiting user's green-light for PR → main.
