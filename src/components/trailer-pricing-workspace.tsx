@@ -420,6 +420,12 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
     const [search, setSearch] = useState('');
     const [brandFilter, setBrandFilter] = useState<string>('all');
     const [importing, setImporting] = useState(false);
+    // Stage 1e — Brand → Series → Trailer tree with collapse/expand.
+    // Keyed by `${vendorId}` for brands and `${vendorId}:${seriesId}`
+    // for series so cross-brand series names (e.g. "Fishing") can't
+    // collide.
+    const [collapsedBrands, setCollapsedBrands] = useState<Set<string>>(() => new Set());
+    const [collapsedSeries, setCollapsedSeries] = useState<Set<string>>(() => new Set());
 
     // Pre-compute search fields on each row for fast filter
     const filteredRows = useMemo(() => {
@@ -435,6 +441,59 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
             ),
         );
     }, [rows, search, brandFilter]);
+
+    // Stage 1e — group filtered rows by brand then by series. `rows` is already
+    // sorted (brand → series → code) by loadRows(), so a single-pass group
+    // preserves ordering inside each bucket.
+    interface SeriesGroup { seriesId: string; seriesName: string; trailers: FlatTrailerRow[]; }
+    interface BrandGroup { vendorId: string; vendorName: string; seriesById: Map<string, SeriesGroup>; }
+    const groupedRows = useMemo(() => {
+        const byBrand = new Map<string, BrandGroup>();
+        for (const r of filteredRows) {
+            let brand = byBrand.get(r.vendorId);
+            if (!brand) {
+                brand = { vendorId: r.vendorId, vendorName: r.vendorName, seriesById: new Map() };
+                byBrand.set(r.vendorId, brand);
+            }
+            let series = brand.seriesById.get(r.seriesId);
+            if (!series) {
+                series = { seriesId: r.seriesId, seriesName: r.seriesName, trailers: [] };
+                brand.seriesById.set(r.seriesId, series);
+            }
+            series.trailers.push(r);
+        }
+        return Array.from(byBrand.values()).map(b => ({
+            ...b,
+            series: Array.from(b.seriesById.values()),
+        }));
+    }, [filteredRows]);
+
+    const toggleBrand = useCallback((vendorId: string) => {
+        setCollapsedBrands(prev => {
+            const next = new Set(prev);
+            if (next.has(vendorId)) next.delete(vendorId);
+            else next.add(vendorId);
+            return next;
+        });
+    }, []);
+    const toggleSeries = useCallback((vendorId: string, seriesId: string) => {
+        const key = `${vendorId}:${seriesId}`;
+        setCollapsedSeries(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
+    }, []);
+    const expandAll = useCallback(() => {
+        setCollapsedBrands(new Set());
+        setCollapsedSeries(new Set());
+    }, []);
+    const collapseAllBrands = useCallback(() => {
+        const brands = new Set<string>();
+        for (const g of groupedRows) brands.add(g.vendorId);
+        setCollapsedBrands(brands);
+    }, [groupedRows]);
 
     const vendorIds = useMemo(() => vendors.map(v => v.id).sort().join('|'), [vendors]);
 
@@ -972,6 +1031,28 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                         Clear filters
                     </Button>
                 )}
+                <div className="ml-auto flex items-center gap-2 mt-4">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={expandAll}
+                        className="h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest gap-1"
+                        disabled={groupedRows.length === 0}
+                    >
+                        <ChevronDown className="h-3 w-3" /> Expand all
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={collapseAllBrands}
+                        className="h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest gap-1"
+                        disabled={groupedRows.length === 0}
+                    >
+                        <ChevronRight className="h-3 w-3" /> Collapse all
+                    </Button>
+                </div>
             </div>
 
             {/* Table */}
@@ -1014,113 +1095,190 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredRows.map((row, rowIdx) => {
-                                        const isExpanded = expandedId === row.id;
-                                        const overrideDoc = overrideDocByTrailer.get(row.id);
-                                        const effectivePricing = resolveEffectivePricing(row.pricing, row.sourceSell, overrideDoc);
-                                        const hasOverride = overrideDoc != null && (
-                                            (overrideDoc.pricingDetail && Object.keys(overrideDoc.pricingDetail).length > 0) ||
-                                            typeof overrideDoc.sellPriceExclGst === 'number'
-                                        );
-                                        return (
-                                            <Fragment key={row.id}>
-                                        <tr className="group hover:bg-primary/5 transition-colors">
-                                            <td className="sticky left-0 z-[80] border-r border-b border-slate-200 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.03)] px-0 py-0 group-hover:bg-primary/5">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setExpandedId(isExpanded ? null : row.id)}
-                                                    className="h-full w-full flex items-center justify-center text-slate-400 hover:text-primary transition-colors"
-                                                    aria-label={isExpanded ? 'Collapse waterfall' : 'Expand waterfall'}
-                                                >
-                                                    {isExpanded
-                                                        ? <ChevronDown className="h-4 w-4" />
-                                                        : <ChevronRight className="h-4 w-4" />}
-                                                </button>
-                                            </td>
-                                            <td className="sticky left-[36px] z-[80] border-r-2 border-b border-slate-200 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)] text-center text-[9px] text-slate-400 font-mono px-2 py-1 group-hover:bg-primary/5">
-                                                {rowIdx + 1}
-                                            </td>
-                                            {COLUMNS.map((col, idx) => {
-                                                const base = `border-r border-b border-slate-200 text-xs group-hover:bg-primary/5 ${col.numeric ? 'text-right font-mono tabular-nums' : ''}`;
-                                                const sticky = idx === 0 ? 'sticky left-[86px] z-[70] bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.03)] group-hover:bg-primary/5 font-semibold' : '';
-
-                                                if (col.key === 'image') {
-                                                    return (
-                                                        <td key="image" className={`${base} ${sticky} px-2 py-1`}>
-                                                            <TrailerPricingImage src={row.imageUrl} alt={row.code} />
+                                    {(() => {
+                                        let globalRowIdx = 0;
+                                        return groupedRows.map((brand) => {
+                                            const isBrandCollapsed = collapsedBrands.has(brand.vendorId);
+                                            const brandTrailerCount = brand.series.reduce((sum, s) => sum + s.trailers.length, 0);
+                                            return (
+                                                <Fragment key={`brand-${brand.vendorId}`}>
+                                                    {/* Brand section header */}
+                                                    <tr className="bg-slate-100 hover:bg-slate-200/70 transition-colors">
+                                                        <td
+                                                            colSpan={COLUMNS.length + 2}
+                                                            className="sticky left-0 z-[90] bg-slate-100 hover:bg-slate-200/70 border-b-2 border-slate-300 px-4 py-2.5"
+                                                        >
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => toggleBrand(brand.vendorId)}
+                                                                className="w-full flex items-center gap-3 text-left"
+                                                            >
+                                                                {isBrandCollapsed
+                                                                    ? <ChevronRight className="h-4 w-4 text-slate-500" />
+                                                                    : <ChevronDown className="h-4 w-4 text-slate-500" />}
+                                                                <span className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-800">
+                                                                    {brand.vendorName}
+                                                                </span>
+                                                                <Badge variant="outline" className="text-[9px] font-black border-2">
+                                                                    {brand.series.length} {brand.series.length === 1 ? 'series' : 'series'} · {brandTrailerCount} {brandTrailerCount === 1 ? 'trailer' : 'trailers'}
+                                                                </Badge>
+                                                            </button>
                                                         </td>
-                                                    );
-                                                }
+                                                    </tr>
+                                                    {!isBrandCollapsed && brand.series.map((series) => {
+                                                        const seriesKey = `${brand.vendorId}:${series.seriesId}`;
+                                                        const isSeriesCollapsed = collapsedSeries.has(seriesKey);
+                                                        return (
+                                                            <Fragment key={`series-${seriesKey}`}>
+                                                                {/* Series section header */}
+                                                                <tr className="bg-slate-50 hover:bg-slate-100 transition-colors">
+                                                                    <td
+                                                                        colSpan={COLUMNS.length + 2}
+                                                                        className="sticky left-0 z-[85] bg-slate-50 hover:bg-slate-100 border-b border-slate-200 pl-10 pr-4 py-1.5"
+                                                                    >
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => toggleSeries(brand.vendorId, series.seriesId)}
+                                                                            className="w-full flex items-center gap-2 text-left"
+                                                                        >
+                                                                            {isSeriesCollapsed
+                                                                                ? <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                                                                                : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />}
+                                                                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
+                                                                                {series.seriesName}
+                                                                            </span>
+                                                                            <span className="text-[9px] text-slate-400 font-mono">
+                                                                                {series.trailers.length} {series.trailers.length === 1 ? 'trailer' : 'trailers'}
+                                                                            </span>
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                                {!isSeriesCollapsed && series.trailers.map((row) => {
+                                                                    const rowNumber = ++globalRowIdx;
+                                                                    const isExpanded = expandedId === row.id;
+                                                                    const overrideDoc = overrideDocByTrailer.get(row.id);
+                                                                    const effectivePricing = resolveEffectivePricing(row.pricing, row.sourceSell, overrideDoc);
+                                                                    const hasOverride = overrideDoc != null && (
+                                                                        (overrideDoc.pricingDetail && Object.keys(overrideDoc.pricingDetail).length > 0) ||
+                                                                        typeof overrideDoc.sellPriceExclGst === 'number'
+                                                                    );
+                                                                    return (
+                                                                        <Fragment key={row.id}>
+                                                                            <tr className="group hover:bg-primary/5 transition-colors">
+                                                                                <td className="sticky left-0 z-[80] border-r border-b border-slate-200 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.03)] px-0 py-0 group-hover:bg-primary/5">
+                                                                                    {/* Subtle indent guide for the tree */}
+                                                                                    <div className="relative h-full">
+                                                                                        <span className="absolute inset-y-0 left-5 border-l border-slate-200" aria-hidden="true" />
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => setExpandedId(isExpanded ? null : row.id)}
+                                                                                            className="relative h-full w-full flex items-center justify-center text-slate-400 hover:text-primary transition-colors"
+                                                                                            aria-label={isExpanded ? 'Collapse waterfall' : 'Expand waterfall'}
+                                                                                        >
+                                                                                            {isExpanded
+                                                                                                ? <ChevronDown className="h-4 w-4" />
+                                                                                                : <ChevronRight className="h-4 w-4" />}
+                                                                                        </button>
+                                                                                    </div>
+                                                                                </td>
+                                                                                <td className="sticky left-[36px] z-[80] border-r-2 border-b border-slate-200 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)] text-center text-[9px] text-slate-400 font-mono px-2 py-1 group-hover:bg-primary/5">
+                                                                                    {rowNumber}
+                                                                                </td>
+                                                                                {COLUMNS.map((col, idx) => {
+                                                                                    const base = `border-r border-b border-slate-200 text-xs group-hover:bg-primary/5 ${col.numeric ? 'text-right font-mono tabular-nums' : ''}`;
+                                                                                    const sticky = idx === 0 ? 'sticky left-[86px] z-[70] bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.03)] group-hover:bg-primary/5 font-semibold' : '';
 
-                                                // Editable numeric columns — every key in EDITABLE_KEYS renders
-                                                // as an inline EditableCell, so admins can override Dealer,
-                                                // Nett, Landed, Total PD, CTD, MU%, RRP, and Sell.
-                                                if (col.numeric && EDITABLE_KEYS.has(col.key as string)) {
-                                                    const fieldKey = col.key as string;
-                                                    const sourceValue = typeof row.pricing?.[fieldKey] === 'number'
-                                                        ? row.pricing[fieldKey]
-                                                        : (fieldKey === 'sell' ? row.sourceSell : null);
-                                                    const effectiveValue = typeof effectivePricing[fieldKey] === 'number'
-                                                        ? effectivePricing[fieldKey]
-                                                        : null;
-                                                    return (
-                                                        <td key={fieldKey} className={`${base} ${sticky} p-0`}>
-                                                            <EditableCell
-                                                                trailerId={row.id}
-                                                                fieldKey={fieldKey}
-                                                                sourceValue={sourceValue}
-                                                                effectiveValue={effectiveValue}
-                                                                hasOverride={hasFieldOverride(fieldKey, overrideDoc)}
-                                                                format={fieldKey === 'markupPercent' ? 'percent' : 'currency'}
-                                                                isAdmin={isAdmin}
-                                                                onSave={saveOverrideField}
-                                                                onReset={resetOverrideField}
-                                                            />
-                                                        </td>
-                                                    );
-                                                }
+                                                                                    if (col.key === 'image') {
+                                                                                        return (
+                                                                                            <td key="image" className={`${base} ${sticky} px-2 py-1`}>
+                                                                                                <TrailerPricingImage src={row.imageUrl} alt={row.code} />
+                                                                                            </td>
+                                                                                        );
+                                                                                    }
 
-                                                const value = col.numeric
-                                                    ? (row.pricing?.[col.key as string] ?? (row as any)[col.key])
-                                                    : (row as any)[col.key];
+                                                                                    // Editable numeric columns — every key in EDITABLE_KEYS renders
+                                                                                    // as an inline EditableCell, so admins can override Dealer,
+                                                                                    // Nett, Landed, Total PD, CTD, MU%, RRP, and Sell.
+                                                                                    if (col.numeric && EDITABLE_KEYS.has(col.key as string)) {
+                                                                                        const fieldKey = col.key as string;
+                                                                                        const sourceValue = typeof row.pricing?.[fieldKey] === 'number'
+                                                                                            ? row.pricing[fieldKey]
+                                                                                            : (fieldKey === 'sell' ? row.sourceSell : null);
+                                                                                        const effectiveValue = typeof effectivePricing[fieldKey] === 'number'
+                                                                                            ? effectivePricing[fieldKey]
+                                                                                            : null;
+                                                                                        return (
+                                                                                            <td key={fieldKey} className={`${base} ${sticky} p-0`}>
+                                                                                                <EditableCell
+                                                                                                    trailerId={row.id}
+                                                                                                    fieldKey={fieldKey}
+                                                                                                    sourceValue={sourceValue}
+                                                                                                    effectiveValue={effectiveValue}
+                                                                                                    hasOverride={hasFieldOverride(fieldKey, overrideDoc)}
+                                                                                                    format={fieldKey === 'markupPercent' ? 'percent' : 'currency'}
+                                                                                                    isAdmin={isAdmin}
+                                                                                                    onSave={saveOverrideField}
+                                                                                                    onReset={resetOverrideField}
+                                                                                                />
+                                                                                            </td>
+                                                                                        );
+                                                                                    }
 
-                                                let display: string;
-                                                if (value == null || value === '') {
-                                                    display = '—';
-                                                } else if (col.numeric) {
-                                                    display = col.key === 'markupPercent'
-                                                        ? `${Number(value).toFixed(1)}%`
-                                                        : formatCurrency(Number(value));
-                                                } else {
-                                                    display = String(value);
-                                                }
+                                                                                    const value = col.numeric
+                                                                                        ? (row.pricing?.[col.key as string] ?? (row as any)[col.key])
+                                                                                        : (row as any)[col.key];
 
-                                                return (
-                                                    <td key={col.key as string} className={`${base} ${sticky} px-3 py-2 whitespace-nowrap`}>
-                                                        {display}
-                                                    </td>
-                                                );
-                                            })}
-                                        </tr>
-                                        {isExpanded && (
-                                            <tr>
-                                                <td colSpan={COLUMNS.length + 2} className="p-0 border-b border-slate-200">
-                                                    <WaterfallPanel
-                                                        row={row}
-                                                        overrideDoc={overrideDoc}
-                                                        effectivePricing={effectivePricing}
-                                                        hasOverride={hasOverride}
-                                                        isAdmin={isAdmin}
-                                                        onSaveField={saveOverrideField}
-                                                        onResetField={resetOverrideField}
-                                                        onResetRow={resetOverride}
-                                                    />
-                                                </td>
-                                            </tr>
-                                        )}
-                                            </Fragment>
-                                        );
-                                    })}
+                                                                                    let display: string;
+                                                                                    if (value == null || value === '') {
+                                                                                        display = '—';
+                                                                                    } else if (col.numeric) {
+                                                                                        display = col.key === 'markupPercent'
+                                                                                            ? `${Number(value).toFixed(1)}%`
+                                                                                            : formatCurrency(Number(value));
+                                                                                    } else {
+                                                                                        display = String(value);
+                                                                                    }
+
+                                                                                    // Mute brand + series cells in trailer rows — the group
+                                                                                    // headers already surface that context, so leaving them
+                                                                                    // at full weight would feel redundant.
+                                                                                    const mutedIfGroupCol = (col.key === 'vendorName' || col.key === 'seriesName')
+                                                                                        ? 'text-slate-400'
+                                                                                        : '';
+
+                                                                                    return (
+                                                                                        <td key={col.key as string} className={`${base} ${sticky} ${mutedIfGroupCol} px-3 py-2 whitespace-nowrap`}>
+                                                                                            {display}
+                                                                                        </td>
+                                                                                    );
+                                                                                })}
+                                                                            </tr>
+                                                                            {isExpanded && (
+                                                                                <tr>
+                                                                                    <td colSpan={COLUMNS.length + 2} className="p-0 border-b border-slate-200">
+                                                                                        <WaterfallPanel
+                                                                                            row={row}
+                                                                                            overrideDoc={overrideDoc}
+                                                                                            effectivePricing={effectivePricing}
+                                                                                            hasOverride={hasOverride}
+                                                                                            isAdmin={isAdmin}
+                                                                                            onSaveField={saveOverrideField}
+                                                                                            onResetField={resetOverrideField}
+                                                                                            onResetRow={resetOverride}
+                                                                                        />
+                                                                                    </td>
+                                                                                </tr>
+                                                                            )}
+                                                                        </Fragment>
+                                                                    );
+                                                                })}
+                                                            </Fragment>
+                                                        );
+                                                    })}
+                                                </Fragment>
+                                            );
+                                        });
+                                    })()}
                                 </tbody>
                             </table>
                         </div>

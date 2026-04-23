@@ -536,6 +536,29 @@ read-only in case they need derivation logic later.
 - [ ] Orphan overrides (fields overridden that don't exist in the source) still show as a waterfall row inside the panel so operators can find + clear them.
 - [ ] Non-admin user: every row value renders read-only. No click-to-edit cursor on any row.
 
+### L.5 — Stage 1e: Brand → Series → Trailer tree layout
+
+Biggest visible change in Chunk 1. Flat 449-row table is now grouped
+hierarchically: the brand name becomes a section banner, each series
+inside it gets a sub-header, and trailer rows sit indented below.
+Every group is independently collapsible.
+
+- [ ] First load: every brand expanded, every series expanded. Visually it's the same rows as before, just with banner rows above each group.
+- [ ] Brand header row renders as a darker-grey banner spanning every column. Text: `DUNBIER TRAILERS · 5 series · 65 trailers` (counts should match what you see below).
+- [ ] Series header row renders as a lighter-grey banner, indented further, with `Bow Rider Series  · 14 trailers`.
+- [ ] Click a brand banner → the entire brand collapses (both series banners and their trailer rows disappear). Chevron flips right → down accordingly.
+- [ ] Click a series banner → only that series collapses; sibling series in the same brand stay expanded.
+- [ ] Brand chevron icon: right-pointing when collapsed, down-pointing when expanded. Same for series.
+- [ ] **Expand all** button: restores everything to fully expanded.
+- [ ] **Collapse all** button: collapses every brand banner (series state within is preserved but hidden).
+- [ ] Row counter (leftmost numeric column): still counts 1..N across visible trailer rows, ignoring banners. So hiding a brand via collapse doesn't leave gaps in the counter.
+- [ ] Brand and Series columns on trailer rows render in muted grey (since the banner already shows that context).
+- [ ] Expand a trailer's waterfall (chevron on its own row): the waterfall panel still opens inside the series group, does not break layout.
+- [ ] Search across brands (e.g. search `SRW5`): only brands with matching rows render their banners. Empty brands drop out entirely.
+- [ ] Brand filter dropdown narrows to one brand: only that brand's banner renders.
+- [ ] Sticky behaviour: the top-of-table column headers stay pinned when scrolling. The left-side Expand and # columns stay pinned when scrolling horizontally.
+- [ ] Non-admin: every banner is still clickable for collapse/expand; cell values stay read-only.
+
 ---
 
 ## Section K — Automated smoke suite
