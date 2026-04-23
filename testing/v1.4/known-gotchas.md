@@ -22,6 +22,14 @@ When a trailer is selected on a quote, its Dealer Fit items do **NOT** auto-tick
 ### `trailer-doc-missing-toast`
 Added in commit `3f3b07e`: if a boat model has a trailer assignment whose Firestore doc has been deleted (or the trailer's brand has been un-assigned from the Trailer module), the quote flow shows a destructive toast `Assigned trailer missing — update the boat model's Trailer Options` instead of silently dropping the trailer from the quote totals. Operators should treat this as a signal to fix the model's Trailer Options.
 
+### `sub-dealer-inherits-parent-trailer-overrides`
+Added in commit `bd3773a`: when a sub-dealer (org with `parentOrganisationId` set) opens the quote flow, the trailer override merge now subscribes to BOTH the sub-dealer's own `organisations/{subId}/trailerOverrides` AND the parent org's `organisations/{parentId}/trailerOverrides`. Sub-dealer overrides win on conflicts. Pattern: parent org sets a trailer override → all its sub-dealers inherit unless a sub-dealer has set its own override on the same trailer. Mirrors how motor pricing inherits via `defaultPriceLevel`.
+
+**To verify:** sign in as a sub-dealer, start a quote on a boat with a trailer assigned. The trailer's price should reflect any override set on the parent org's pricing manager.
+
+### `quote-trailer-pricing-source-flag`
+Added in commit `bd3773a`: every saved trailer on a quote (`quote.trailer.catalog`) now carries `pricingSource: 'source' | 'override'` and `sourceSellPriceExclGst` (the catalog price BEFORE any override). Dealer-audit reports can subtract `sourceSellPriceExclGst` from `sellPriceExclGst` to compute the override delta. **Legacy quotes** (saved before this commit) won't have these fields; treat absent as `'source'`.
+
 ### `trailer-rego-hint-is-info-only`
 The trailer detail sheet in the dashboard shows a **"Rego hint (info only)"** line at the bottom of the Pricing Summary (e.g. `Rego hint (info only): NSW 12-month · $785`). That value comes from the source xlsx import (`pricingDetail.regoTypeHint` / `regoDollarsHint`). It is **NOT** added to the quote total.
 

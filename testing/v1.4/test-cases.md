@@ -779,6 +779,8 @@ end-to-end after every deploy. If it breaks, the release stops.
 
 - [ ] Override flows through on auto-load: open the Trailer Pricing Manager, set an override on `AS5.3M-13TB` Sell price (e.g. from `$9,722` to `$10,500`), Publish. Open CL260 (which has that trailer assigned as default). Start a new quote → Step 4 auto-loads the trailer and its displayed price is **$10,500**, not $9,722. (Pre-fix bug: auto-load showed source price, only manual picker honoured the override.)
 - [ ] Missing trailer doc is surfaced: if you manually delete an assigned trailer's Firestore doc (or un-assign its brand from the Trailer module), opening a quote on that boat model fires a destructive toast "Assigned trailer missing — update the boat model's Trailer Options". Quote continues without a trailer rather than silently dropping totals.
+- [ ] Sub-dealer parent-walk-up: sign in as a sub-dealer of Northside, start a quote on a boat with a trailer that has a Northside override → the sub-dealer's quote shows the parent's override price. (See R9f for the full walkthrough.)
+- [ ] Audit-trail flag: finalize the override quote, inspect Firestore → `quote.trailer.catalog.pricingSource === 'override'` and `sourceSellPriceExclGst === 9722`. (See R9g.)
 
 ---
 

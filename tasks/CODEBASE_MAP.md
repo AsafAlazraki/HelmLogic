@@ -1,6 +1,6 @@
 # HelmLogic — Codebase Map
 
-> File-by-file index for fast orientation. Updated: 2026-04-23 (post v1.4 day-1 remediation).
+> File-by-file index for fast orientation. Updated: 2026-04-23 EOD (post v1.4 day-1 remediation + sibling-bug audit fixes).
 > 90+ components + 10 lib files + 9 test specs. Most important files are starred ★.
 
 ---

@@ -140,6 +140,22 @@ auto-loaded assigned trailers used the raw source price.
 - [ ] Start a quote on that boat → quote loads but a destructive toast appears: `Assigned trailer missing — update the boat model's Trailer Options`.
 - [ ] Quote Step 4 has nothing selected. Totals exclude trailer. No silent failure.
 
+## R9f. Sub-dealer trailer override inherits from parent (audit fix, commit bd3773a)
+
+Regression guard for the sub-dealer parent-walk-up bug. Pre-fix:
+sub-dealers couldn't see parent-org trailer overrides on their quotes.
+
+- [ ] Sign in as a parent-org admin (Bill / Northside). Open Trailer Pricing Manager. Override a trailer's Sell price. Publish.
+- [ ] Sign out. Sign in as a sub-dealer of Northside.
+- [ ] Start a Highfield quote on a boat with that trailer assigned as default.
+- [ ] **Sub-dealer's quote MUST show the override price**, not the source. (Pre-fix: sub-dealer saw source.)
+- [ ] As the sub-dealer, set a different override on the same trailer in their own pricing manager. Re-quote → sub-dealer's own override wins over the parent's.
+
+## R9g. Saved quote carries pricingSource flag (audit fix, commit bd3773a)
+
+- [ ] Finalize a quote with a trailer where the price came from an override. In Firestore: `users/{uid}/quotes/{quoteId}.trailer.catalog.pricingSource` should be `'override'`, and `sourceSellPriceExclGst` should be the pre-override price.
+- [ ] Finalize another quote where the trailer price came straight from the catalog (no override active). `pricingSource` should be `'source'`, `sourceSellPriceExclGst` matches `sellPriceExclGst`.
+
 ## R10. Login + auth
 
 - [ ] Bill Hull can log in.

@@ -17,14 +17,15 @@
 | v1.3.1 | 2026-04-17 | ✅ Shipped (same-day hotfix) | main |
 | **v1.4** | **2026-04-23** | 🚢 **Ready on branch — awaiting user's PR green-light** | `claude/app-overview-wKiZ1` |
 
-**Scoreboard (v1.4 as of 2026-04-23 PM):** 68 commits since `main` diverged · 65 files changed · +11,529 / −817 lines.
+**Scoreboard (v1.4 as of 2026-04-23 EOD):** 70 commits since `main` diverged · 65 files changed · +11,594 / −825 lines · `npm run build` clean · TS 86 pre-existing / 0 new.
 
 **Current work**: v1.4 Trailers + Rego + Pricing Manager uplift. Design doc at `tasks/v1.4-trailers-module-design.md`, live status at `tasks/v1.4-trailers-module-status.md`, release notes at `tasks/RELEASE_NOTES_v1.4.md`.
 
 **Key v1.4 concepts for new sessions:**
 - `modules/{id}.associatedModuleIds[]` — a module can link other modules; the Trailer Catalog Picker + DealerFitOptions + quote flow all respect the link.
 - `model.trailerAssignments[]` — per-boat-model trailer assignments. Quote flow Step 4 auto-selects the default (`isDefault: true`) assignment; clicking a tile switches it; untick to clear.
-- `organisations/{orgId}/trailerOverrides/{trailerId}` — per-org override of `sellPriceExclGst` + any `pricingDetail` field. Picker + auto-loader both merge these now (audit fix `3f3b07e`).
+- `organisations/{orgId}/trailerOverrides/{trailerId}` — per-org override of `sellPriceExclGst` + any `pricingDetail` field. Picker + auto-loader both merge these (audit fix `3f3b07e`). For sub-dealer quotes, the auto-loader ALSO subscribes to the parent org's overrides and merges them in, sub-dealer winning on conflicts (commit `bd3773a`).
+- `TrailerSnapshot.pricingSource` (v1.4) — `'source' | 'override'`. Set on every snapshot path. Surfaced on saved `quote.trailer.catalog.pricingSource` + `sourceSellPriceExclGst` so dealer-audit reports can compute the override delta forever without re-resolving overrides.
 - Pricing Manager staged-publish buffer — `dirty: Map<trailerId, StagedPatch>` in `trailer-pricing-workspace.tsx`. Every edit (inline, waterfall, bulk reset, Global Update) is staged locally until the operator clicks Publish.
 - `ModuleSettingsPanel` in `module-settings-panel.tsx` — single source of truth for every module's Settings tab card set.
 
