@@ -301,6 +301,14 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     // the catalog doc (which may have changed by quote
                     // re-open time).
                     specifications: catalogTrailerSnapshot.specifications || null,
+                    // Audit-trail flag so dealer-audit reports later can
+                    // distinguish whether the trailer price came from the
+                    // source catalog (`'source'`) or an org-level override
+                    // (`'override'`). `sourceSellPriceExclGst` captures the
+                    // pre-override price so the override delta is computable
+                    // without re-resolving overrides at read time.
+                    pricingSource: (catalogTrailerSnapshot as any).pricingSource ?? null,
+                    sourceSellPriceExclGst: (catalogTrailerSnapshot as any).sourceSellPriceExclGst ?? null,
                 } : null,
                 options: (selectedTrailerOptionsData || []).map((o: any) => ({
                     id: o.id || null,

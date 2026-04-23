@@ -402,6 +402,19 @@ export function HighfieldQuoteFlow({
     // honour them the same way the catalog picker does. Without this the
     // auto-load path reads raw source pricing and dealer audits drift from
     // the pricing manager's overrides.
+    //
+    // Sub-dealer parent walk-up: if `orgId` belongs to a sub-dealer
+    // (parentOrganisationId set on the org doc), also subscribe to the
+    // parent org's overrides. Sub-dealer's own overrides win where both
+    // exist; otherwise the parent's override applies. Mirrors how motor
+    // sub-dealer pricing inherits via `defaultPriceLevel`.
+    const orgDocRef = useMemoFirebase(
+        () => (orgId ? doc(firestore, 'organisations', orgId) : null),
+        [firestore, orgId],
+    );
+    const { data: orgDoc } = useDoc<{ parentOrganisationId?: string }>(orgDocRef);
+    const parentOrgId = orgDoc?.parentOrganisationId || null;
+
     const trailerOverridesQuery = useMemoFirebase(
         () => (orgId ? collection(firestore, `organisations/${orgId}/trailerOverrides`) : null),
         [firestore, orgId],
@@ -411,16 +424,33 @@ export function HighfieldQuoteFlow({
         trailerId?: string;
         pricingDetail?: Record<string, number>;
     }>(trailerOverridesQuery);
+
+    const parentTrailerOverridesQuery = useMemoFirebase(
+        () => (parentOrgId ? collection(firestore, `organisations/${parentOrgId}/trailerOverrides`) : null),
+        [firestore, parentOrgId],
+    );
+    const { data: parentTrailerOverrideDocs } = useCollection<{
+        sellPriceExclGst?: number;
+        trailerId?: string;
+        pricingDetail?: Record<string, number>;
+    }>(parentTrailerOverridesQuery);
+
     const trailerOverrideByTrailerId = useMemo(() => {
         const map: Record<string, { sell?: number; pricingDetail?: Record<string, number> }> = {};
-        (trailerOverrideDocs || []).forEach(d => {
-            const entry: { sell?: number; pricingDetail?: Record<string, number> } = {};
-            if (typeof d.sellPriceExclGst === 'number') entry.sell = d.sellPriceExclGst;
-            if (d.pricingDetail) entry.pricingDetail = d.pricingDetail;
-            if (entry.sell != null || entry.pricingDetail) map[d.id] = entry;
-        });
+        // Parent first so sub-dealer overrides can win on top.
+        const layer = (docs: typeof trailerOverrideDocs) => {
+            (docs || []).forEach(d => {
+                const existing = map[d.id] ?? {};
+                const next: { sell?: number; pricingDetail?: Record<string, number> } = { ...existing };
+                if (typeof d.sellPriceExclGst === 'number') next.sell = d.sellPriceExclGst;
+                if (d.pricingDetail) next.pricingDetail = { ...(next.pricingDetail || {}), ...d.pricingDetail };
+                if (next.sell != null || next.pricingDetail) map[d.id] = next;
+            });
+        };
+        layer(parentTrailerOverrideDocs);
+        layer(trailerOverrideDocs);
         return map;
-    }, [trailerOverrideDocs]);
+    }, [trailerOverrideDocs, parentTrailerOverrideDocs]);
 
     // Reusable: load the full trailer doc for an assignment and shadow it
     // into `catalogTrailerSnapshot`. Used both on mount (auto-select default)
@@ -458,10 +488,14 @@ export function HighfieldQuoteFlow({
                 // trailers respect the pricing-manager edits operators
                 // made. Mirrors what the catalog picker already does.
                 const override = trailerOverrideByTrailerId[snap.id];
-                const effectiveSell = override?.sell ?? (data.sellPriceExclGst || 0);
+                const sourceSell = data.sellPriceExclGst || 0;
+                const effectiveSell = override?.sell ?? sourceSell;
                 const effectivePricingDetail = override?.pricingDetail
                     ? { ...(data.pricingDetail || {}), ...override.pricingDetail }
                     : (data.pricingDetail || {});
+                const hasOverride =
+                    (override?.sell != null && override.sell !== sourceSell) ||
+                    (override?.pricingDetail != null && Object.keys(override.pricingDetail).length > 0);
 
                 setCatalogTrailerSnapshot({
                     id: `${assignment.brandVendorId}/${assignment.seriesId}/${snap.id}`,
@@ -487,6 +521,8 @@ export function HighfieldQuoteFlow({
                         isStandard: !!f.isStandard,
                     })),
                     capturedAt: Date.now(),
+                    pricingSource: hasOverride ? 'override' : 'source',
+                    sourceSellPriceExclGst: sourceSell,
                 });
                 setSelectedTrailerId('primary-trailer');
                 // Pre-tick standard trailer options on the freshly-loaded trailer.

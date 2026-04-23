@@ -52,6 +52,16 @@ export interface TrailerSnapshot {
         isStandard?: boolean;
     }>;
     capturedAt: number;
+    /**
+     * v1.4 audit-trail flag. `'override'` when an org-level
+     * `trailerOverrides/{id}` was applied at snapshot time;
+     * `'source'` when the catalog price flowed through unchanged.
+     * Lets dealer-audit reports later distinguish override vs source
+     * without re-resolving the override state at read time.
+     */
+    pricingSource?: 'source' | 'override';
+    /** Source sell price BEFORE any override, when known. */
+    sourceSellPriceExclGst?: number;
 }
 
 interface Vendor {
@@ -100,6 +110,7 @@ function trailerToSnapshot(
     overridePrice?: number | null,
 ): TrailerSnapshot {
     const sourceSell = t.sellPriceExclGst ?? 0;
+    const hasOverride = typeof overridePrice === 'number' && overridePrice !== sourceSell;
     const effectiveSell = typeof overridePrice === 'number' ? overridePrice : sourceSell;
     return {
         id: `${brand.id}/${series.id}/${t.id}`,
@@ -125,6 +136,8 @@ function trailerToSnapshot(
             isStandard: false,
         })),
         capturedAt: Date.now(),
+        pricingSource: hasOverride ? 'override' : 'source',
+        sourceSellPriceExclGst: sourceSell,
     };
 }
 
