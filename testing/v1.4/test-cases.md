@@ -683,6 +683,69 @@ buffer in one batched commit. Discard throws the buffer away.
 
 ---
 
+## Section M — Day-1 tester remediation (polish + functional)
+
+Collected fixes made on day-1 after dev testing started. Each commit
+below has its own check-list. Run in order — some build on each other.
+
+### M.1 — Polish: banner colour + uniform padding (commit 3477bf5)
+
+- [ ] Trailer workspace banner (Dashboard + Pricing Manager + Settings tabs) now uses the same blue gradient as the Yamaha workspace — no more orange.
+- [ ] Tab indicator on trailer workspace active tab is blue.
+- [ ] Trailer Pricing Manager header/filter bar padding matches Yamaha's (`px-8 py-3 / py-4`).
+
+### M.2 — Admin gate dropped on v1.4 editing (commit d7dd058)
+
+- [ ] Bill Hull (Dealer Admin role) can now see the Upload / Replace / Paste URL / Remove buttons on a trailer's image in the detail sheet.
+- [ ] Bill can see the Edit button top-right of the detail sheet and open the trailer-field editor.
+- [ ] Bill can click numeric cells in the Trailer Pricing Manager to stage overrides, see the Publish + Discard buttons, run Global Update + bulk reset.
+- [ ] Everything else in the app still respects the usual permission system (stock / pricing / model-edit rights on non-trailer modules didn't change).
+
+### M.3 — Unified ModuleSettingsPanel across every module (commit a1f2e63)
+
+- [ ] **Trailer Settings tab** shows, top-to-bottom: Module Image · Trailer Brands · Associated Vendors · Associated Modules · Trailer Dealer Fit Categories · Sub Dealers (only if parent org has sub-dealers enabled) · Module Roles.
+- [ ] **Yamaha Settings tab** shows: Module Image · Associated Vendors · Associated Modules · Module Dealer Fit Categories · Sub Dealers · Module Roles.
+- [ ] **Rego Settings tab** shows: Module Image · Rego Authorities · Associated Vendors · Associated Modules · (no DF card) · Sub Dealers · Module Roles.
+- [ ] Associated Vendors dialog lists every data-warehouse vendor except the module's main one; ticking/unticking persists immediately to `modules/{id}.associatedVendorIds`.
+- [ ] Associated Modules dialog lists every OTHER module in the org; ticking persists to `modules/{id}.associatedModuleIds`.
+- [ ] Trailer detail sheet is now wider (`lg:max-w-4xl`) — Edit form fields have room on a standard monitor.
+
+### M.4 — Associated Modules actually pull data (commit 190ede0)
+
+- [ ] On the Highfield boat module, open Settings → link the Trailer module via Associated Modules. Start a new quote → Step 4 "Pick from Catalog" only shows brands from that linked trailer module.
+- [ ] Unlink → Pick from Catalog shows every trailer module's brands (legacy fallback).
+- [ ] Dealer Fit Options in the quote flow now merges DF categories from associated modules. Link the Trailer module and its `trailerDealerFitCategories` appear inside DealerFitOptions for boat quotes (category IDs prefixed `linked-`).
+- [ ] Any `associatedVendorIds` on the linked module also feed `allowedVendorIds` — dealer-fit items from those vendors show up in the Master Data Browser when creating selections on the boat module.
+
+### M.5 — Trailer assignments on boat models (commit 0cf9300 + f023fbb)
+
+- [ ] **Both** the Highfield model editor and the Catalog Explorer's TRAILER OPTIONS tab now have a "Trailer Options" card with an "Assign a trailer from catalog" button.
+- [ ] Clicking the button opens the catalog picker, narrowed to the boat module's associated trailer modules (if any).
+- [ ] Picking a trailer appends it to the list with image, code, name, DEFAULT badge, Make Default button, and remove button.
+- [ ] First assignment added is automatically marked default. Clicking Make Default on another clears the flag on the first.
+- [ ] Save the model. Start a quote → Step 4 pre-selects the default trailer without the user having to open the picker. Brand / code / specs / pricing match the assigned trailer.
+- [ ] Opening Pick from Catalog still works and switches the trailer.
+- [ ] Legacy: a model with no `trailerAssignments` and a legacy `trailerConfig` still falls through to showing the legacy trailer on the quote.
+
+### M.6 — Dealer Fit Options inside trailer detail sheet (commit 60b21e5)
+
+- [ ] Click a trailer in the dashboard → detail sheet opens wider, with a new "Dealer Fit Options" section at the bottom.
+- [ ] The section uses the same Master Data Browser as Yamaha motor detail sheet.
+- [ ] Only the trailer module's own `trailerDealerFitCategories` appear (not the boat module's or motor's).
+- [ ] Creating a selection saves to `organisations/{orgId}/dealerFitSelections` as usual.
+
+### M.7 — Edit button clear of Sheet X (commit 297aacd)
+
+- [ ] Edit button in the trailer detail sheet no longer overlaps the Sheet's built-in close X. ~32px clearance between them.
+
+### M.8 — Recent Proposals hero image (commit 404869b)
+
+- [ ] Boat module Dashboard → Recent Proposals cards now show the cover image edge-to-edge at ~144px tall (`object-cover`, no padding, no mix-blend-multiply).
+- [ ] Cards without a cover image render the Anchor icon centered.
+- [ ] Note to tester: this layout change is pre-existing polish, unrelated to v1.4 — flagged during day-1 testing, fixed now.
+
+---
+
 ## Section K — Automated smoke suite
 
 ### K.1 — Run the suite
