@@ -841,7 +841,7 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                             Trailer Pricing Manager
                         </h2>
                         <p className="text-[10px] text-slate-500 mt-1">
-                            {isAdmin ? 'Click the Sell cell to set an org override. Leave blank (or match source) to reset.' : 'Read-only view.'}
+                            {isAdmin ? 'Click any numeric cell to set an org override. Leave blank (or match the source value) to reset.' : 'Read-only view.'}
                         </p>
                     </div>
                 </div>
@@ -981,9 +981,13 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                 <tbody>
                                     {filteredRows.map((row, rowIdx) => {
                                         const isExpanded = expandedId === row.id;
-                                        const overrideValue = overrideByTrailer.get(row.id);
-                                        const effectiveSell = overrideValue != null ? overrideValue : row.sourceSell;
-                                        const hasOverride = overrideValue != null && overrideValue !== row.sourceSell;
+                                        const overrideDoc = overrideDocByTrailer.get(row.id);
+                                        const effectivePricing = resolveEffectivePricing(row.pricing, row.sourceSell, overrideDoc);
+                                        const effectiveSell = effectivePricing.sell;
+                                        const hasOverride = overrideDoc != null && (
+                                            (overrideDoc.pricingDetail && Object.keys(overrideDoc.pricingDetail).length > 0) ||
+                                            typeof overrideDoc.sellPriceExclGst === 'number'
+                                        );
                                         return (
                                             <Fragment key={row.id}>
                                         <tr className="group hover:bg-primary/5 transition-colors">
@@ -1014,18 +1018,26 @@ export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: Tr
                                                     );
                                                 }
 
-                                                if (col.key === 'sell') {
-                                                    const overrideDoc = overrideDocByTrailer.get(row.id);
-                                                    const effective = resolveEffectivePricing(row.pricing, row.sourceSell, overrideDoc);
+                                                // Editable numeric columns — every key in EDITABLE_KEYS renders
+                                                // as an inline EditableCell, so admins can override Dealer,
+                                                // Nett, Landed, Total PD, CTD, MU%, RRP, and Sell.
+                                                if (col.numeric && EDITABLE_KEYS.has(col.key as string)) {
+                                                    const fieldKey = col.key as string;
+                                                    const sourceValue = typeof row.pricing?.[fieldKey] === 'number'
+                                                        ? row.pricing[fieldKey]
+                                                        : (fieldKey === 'sell' ? row.sourceSell : null);
+                                                    const effectiveValue = typeof effectivePricing[fieldKey] === 'number'
+                                                        ? effectivePricing[fieldKey]
+                                                        : null;
                                                     return (
-                                                        <td key="sell" className={`${base} ${sticky} p-0`}>
+                                                        <td key={fieldKey} className={`${base} ${sticky} p-0`}>
                                                             <EditableCell
                                                                 trailerId={row.id}
-                                                                fieldKey="sell"
-                                                                sourceValue={row.sourceSell}
-                                                                effectiveValue={effective.sell ?? null}
-                                                                hasOverride={hasFieldOverride('sell', overrideDoc)}
-                                                                format="currency"
+                                                                fieldKey={fieldKey}
+                                                                sourceValue={sourceValue}
+                                                                effectiveValue={effectiveValue}
+                                                                hasOverride={hasFieldOverride(fieldKey, overrideDoc)}
+                                                                format={fieldKey === 'markupPercent' ? 'percent' : 'currency'}
                                                                 isAdmin={isAdmin}
                                                                 onSave={saveOverrideField}
                                                                 onReset={resetOverrideField}

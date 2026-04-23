@@ -496,6 +496,26 @@ This is the substrate stages 1c–1d will reuse.
 - [ ] As a **non-admin** user: clicking the Sell cell does NOT open an editor. Hover does not show a pointer cursor.
 - [ ] On a trailer with no pricing waterfall (`pricingDetail` empty), Sell editing still works — the source sell price comes from `sellPriceExclGst` on the trailer doc.
 
+### L.3 — Stage 1c: visible row cells editable (Dealer, Nett, Landed, Total PD, CTD, MU%, RRP, Sell)
+
+New capability: every numeric column in the main row is now click-to-edit, not just Sell. The header subtitle reflects this ("Click any numeric cell to set an org override").
+
+- [ ] Pick any trailer with a full waterfall (most Dunbier / GFAB / Mackay rows).
+- [ ] Click the **Dealer** cell → type a new price → Enter. Toast "Override saved · dealer → $X". Cell goes amber, source price strikes through below.
+- [ ] Click the **Nett** cell → override it to a non-source value. Amber display. Source value strikes through.
+- [ ] Click the **Landed** cell → override. Same pattern.
+- [ ] Click the **Total PD** cell → override. Same pattern.
+- [ ] Click the **CTD** (Total Nett CTD) cell → override. Same pattern.
+- [ ] Click the **MU%** cell → type `27.5` → Enter. Cell shows `27.5%` in amber, strikethrough shows the source percentage. Step is 0.1 (percent format).
+- [ ] Click the **RRP** cell → override. Same pattern.
+- [ ] Click the **Sell** cell → override. Same pattern (already covered by L.2).
+- [ ] Reloading the page, all overrides on all columns persist.
+- [ ] Multiple columns overridden on the same row: expand the row → waterfall panel shows the effective values including every override. Clicking "Reset override" in the panel clears ALL overrides on that row (whole-doc delete).
+- [ ] Resetting a single column via "blank-then-Enter": type nothing → Enter. Toast "Override cleared · {field} reverted to source". Only that field reverts; other overrides on the same row stay in place.
+- [ ] Resetting the last single override on a row via blank-Enter drops the whole override doc from Firestore (no `trailerOverrides/{id}` doc left behind — can be verified via Firestore console).
+- [ ] **Back-compat check:** any override created before this stage still shows as amber on Sell column; editing it through the new UI migrates it to the new `pricingDetail.sell` shape transparently. The catalog picker in the quote flow still sees the override (it reads top-level `sellPriceExclGst` which is mirrored on Sell writes).
+- [ ] Non-admin: none of the numeric cells open an edit input on click. Hover doesn't show a pointer cursor.
+
 ---
 
 ## Section K — Automated smoke suite
