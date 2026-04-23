@@ -269,11 +269,20 @@ export function TrailerCatalogPicker({
     value,
     onChange,
     triggerLabel = 'Pick from Catalog',
+    associatedModuleIds,
 }: {
     orgId: string | null | undefined;
     value: TrailerSnapshot | null;
     onChange: (snap: TrailerSnapshot | null) => void;
     triggerLabel?: string;
+    /**
+     * When the calling module (e.g. a boat module) has specific
+     * trailer modules linked via `associatedModuleIds`, pass them here
+     * and the picker will narrow its catalog to those modules only.
+     * When empty / undefined the picker shows every trailer module
+     * in the org (legacy behaviour).
+     */
+    associatedModuleIds?: string[];
 }) {
     const firestore = useFirestore();
     const [open, setOpen] = useState(false);
@@ -283,7 +292,20 @@ export function TrailerCatalogPicker({
         () => query(collection(firestore, 'modules'), where('moduleType', '==', 'trailers')),
         [firestore],
     );
-    const { data: trailerModules } = useCollection<TrailersModule>(trailerModulesQuery);
+    const { data: allTrailerModules } = useCollection<TrailersModule>(trailerModulesQuery);
+
+    // Narrow to associated trailer modules when the caller supplied them,
+    // otherwise fall back to every trailer module in the org.
+    const trailerModules = useMemo(() => {
+        if (!allTrailerModules) return [];
+        if (!associatedModuleIds || associatedModuleIds.length === 0) return allTrailerModules;
+        const allow = new Set(associatedModuleIds);
+        const narrowed = allTrailerModules.filter(m => allow.has(m.id));
+        // If the associated list doesn't actually reference any trailers
+        // module (e.g. links point at rego / motor modules only), fall
+        // back to showing everything so the picker is never empty.
+        return narrowed.length > 0 ? narrowed : allTrailerModules;
+    }, [allTrailerModules, associatedModuleIds]);
 
     // Collect unique brand vendor IDs across visible trailer modules
     const brandVendorIds = useMemo(() => {

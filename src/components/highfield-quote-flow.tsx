@@ -1631,6 +1631,7 @@ export function HighfieldQuoteFlow({
                                                 <TrailerCatalogPicker
                                                     orgId={orgId}
                                                     value={catalogTrailerSnapshot}
+                                                    associatedModuleIds={module?.associatedModuleIds}
                                                     onChange={(snap) => {
                                                         setCatalogTrailerSnapshot(snap);
                                                         if (snap) {

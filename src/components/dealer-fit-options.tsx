@@ -69,6 +69,26 @@ export function DealerFitOptions({
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
   const [isSeeding, setIsSeeding] = useState<string | null>(null);
 
+  // v1.4 Stage B.2 — resolve modules linked via `associatedModuleIds`.
+  // DF categories and associated vendors defined on those linked modules
+  // get unioned into the current module's pool, so a boat module that
+  // links the Trailer module instantly inherits every trailer brand +
+  // trailer DF category without duplicate wiring.
+  const associatedModuleIds = useMemo<string[]>(
+    () => Array.isArray(module?.associatedModuleIds) ? module.associatedModuleIds : [],
+    [module?.associatedModuleIds],
+  );
+  const modulesQuery = useMemoFirebase(
+    () => (associatedModuleIds.length > 0 ? collection(firestore, 'modules') : null),
+    [firestore, associatedModuleIds.length],
+  );
+  const { data: allModules } = useCollection<any>(modulesQuery);
+  const linkedModules = useMemo(() => {
+    if (!allModules || associatedModuleIds.length === 0) return [];
+    const allow = new Set(associatedModuleIds);
+    return allModules.filter((m: any) => allow.has(m.id));
+  }, [allModules, associatedModuleIds]);
+
   const assignedCategories = useMemo(() => {
     // moduleOnly mode: only show this module's own categories in defined order
     if (moduleOnly) {
@@ -105,8 +125,22 @@ export function DealerFitOptions({
         cats.push({ id: `trailer-${name}`, name } as DealerFitCategory);
       }
     });
+    // v1.4 Stage B.2 — categories from associated modules. Every DF field on
+    // every linked module is merged in (deduped by case-insensitive name).
+    for (const lm of linkedModules) {
+      for (const src of ['moduleDealerFitCategories', 'motorDealerFitCategories', 'trailerDealerFitCategories'] as const) {
+        const names: string[] = lm?.[src] || [];
+        for (const name of names) {
+          if (!cats.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+            // Prefix with `linked-` so the synthetic category IDs don't
+            // collide with local module ones on re-bind.
+            cats.push({ id: `linked-${name}`, name } as DealerFitCategory);
+          }
+        }
+      }
+    }
     return cats;
-  }, [allCategories, organisation, isAdmin, module, moduleOnly]);
+  }, [allCategories, organisation, isAdmin, module, moduleOnly, linkedModules]);
 
   const activeCategory = useMemo(() => {
     return assignedCategories.find(c => c.id === activeCategoryId);
@@ -114,8 +148,23 @@ export function DealerFitOptions({
 
   const allowedVendorIds = useMemo(() => {
     if (!module) return [];
-    return (module.associatedVendorIds || []).filter((id: string) => id !== module.mainVendorId);
-  }, [module]);
+    const ids = new Set<string>();
+    (module.associatedVendorIds || []).forEach((id: string) => {
+      if (id !== module.mainVendorId) ids.add(id);
+    });
+    // v1.4 Stage B.2 — also include associated vendors from every linked
+    // module, minus the current module's main vendor. Lets dealer-fit items
+    // flow in from vendors that are only wired up on the linked module.
+    for (const lm of linkedModules) {
+      (lm?.associatedVendorIds || []).forEach((id: string) => {
+        if (id !== module.mainVendorId) ids.add(id);
+      });
+      if (lm?.mainVendorId && lm.mainVendorId !== module.mainVendorId) {
+        ids.add(lm.mainVendorId);
+      }
+    }
+    return Array.from(ids);
+  }, [module, linkedModules]);
 
   const selectionsByCategory = useMemo(() => {
     if (!selections) return new Map<string, DealerFitSelection[]>();
