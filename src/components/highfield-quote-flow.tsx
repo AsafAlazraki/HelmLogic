@@ -284,8 +284,68 @@ export function HighfieldQuoteFlow({
 
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
-    const motorModuleCategories = useMemo(() => module?.motorDealerFitCategories || [], [module?.motorDealerFitCategories]);
-    const trailerModuleCategories = useMemo(() => module?.trailerDealerFitCategories || [], [module?.trailerDealerFitCategories]);
+
+    // v1.4 Stage B.2 / day-1 fix — when the boat module links other modules via
+    // `associatedModuleIds`, their motor / trailer / module DF categories feed
+    // the boat quote flow. Without this merge, linking the Trailer module gave
+    // you the catalog narrow-down + DealerFitOptions merge but NOT the quote
+    // flow's Step 5 trailer DF step (which reads these memos directly).
+    const allModulesQuery = useMemoFirebase(
+        () => (Array.isArray(module?.associatedModuleIds) && module.associatedModuleIds.length > 0
+            ? collection(firestore, 'modules')
+            : null),
+        [firestore, module?.associatedModuleIds?.length],
+    );
+    const { data: allModulesForLink } = useCollection<any>(allModulesQuery);
+    const linkedModules = useMemo(() => {
+        if (!allModulesForLink || !Array.isArray(module?.associatedModuleIds)) return [];
+        const allow = new Set<string>(module.associatedModuleIds);
+        return allModulesForLink.filter((m: any) => allow.has(m.id));
+    }, [allModulesForLink, module?.associatedModuleIds]);
+
+    function mergeCatsFromLinked(key: 'motorDealerFitCategories' | 'trailerDealerFitCategories' | 'moduleDealerFitCategories'): string[] {
+        const seen = new Set<string>();
+        const out: string[] = [];
+        for (const lm of linkedModules) {
+            const names: string[] = Array.isArray(lm?.[key]) ? lm[key] : [];
+            for (const n of names) {
+                const k = String(n).toLowerCase();
+                if (seen.has(k)) continue;
+                seen.add(k);
+                out.push(n);
+            }
+        }
+        return out;
+    }
+
+    const motorModuleCategories = useMemo(() => {
+        const local: string[] = module?.motorDealerFitCategories || [];
+        const linkedCats = mergeCatsFromLinked('motorDealerFitCategories');
+        if (linkedCats.length === 0) return local;
+        // Dedupe preserving local order first, then append new from linked modules.
+        const seen = new Set<string>(local.map(n => String(n).toLowerCase()));
+        const merged = [...local];
+        for (const n of linkedCats) {
+            const k = String(n).toLowerCase();
+            if (!seen.has(k)) { merged.push(n); seen.add(k); }
+        }
+        return merged;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [module?.motorDealerFitCategories, linkedModules]);
+
+    const trailerModuleCategories = useMemo(() => {
+        const local: string[] = module?.trailerDealerFitCategories || [];
+        const linkedCats = mergeCatsFromLinked('trailerDealerFitCategories');
+        if (linkedCats.length === 0) return local;
+        const seen = new Set<string>(local.map(n => String(n).toLowerCase()));
+        const merged = [...local];
+        for (const n of linkedCats) {
+            const k = String(n).toLowerCase();
+            if (!seen.has(k)) { merged.push(n); seen.add(k); }
+        }
+        return merged;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [module?.trailerDealerFitCategories, linkedModules]);
     const [propComesStandard, setPropComesStandard] = useState(false);
     const [extendedWarranty, setExtendedWarranty] = useState(false);
     const [servicePlan, setServicePlan] = useState(false);
