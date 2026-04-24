@@ -72,7 +72,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
     Sheet,
     SheetContent,
@@ -133,6 +132,24 @@ export type FeaturePriority =
 export type FeatureType = 'feature' | 'bug' | 'improvement';
 
 export type SortMode = 'manual' | 'votes' | 'date';
+
+/**
+ * Preset target-release picks. Start at v1.5 (this release) and go to
+ * v2.0 so the board stays agile without users having to invent strings.
+ * `Unscheduled` = "we want this but no release is committed yet."
+ * Legacy free-text values (e.g. "Q3 2026") still render via the
+ * "current-value fallback" item injected at the top of the dropdown
+ * in <ReleasePicker>.
+ */
+const RELEASE_OPTIONS = [
+    'v1.5',
+    'v1.6',
+    'v1.7',
+    'v1.8',
+    'v1.9',
+    'v2.0',
+    'Unscheduled',
+] as const;
 
 const SORT_MODES: Array<{ key: SortMode; label: string; icon: React.ComponentType<any> }> = [
     { key: 'manual', label: 'Manual (drag)', icon: GripVertical },
@@ -210,6 +227,49 @@ const PRIORITY_STYLES: Record<FeaturePriority, { label: string; className: strin
     low:            { label: 'Low',          className: 'bg-slate-100 text-slate-600 border-slate-200' },
     'nice-to-have': { label: 'Nice to have', className: 'bg-slate-50 text-slate-500 border-slate-100' },
 };
+
+/**
+ * Shared release Select — used by both the create dialog and the detail
+ * sheet so the list stays consistent. Preserves legacy free-text values
+ * (e.g. a feature saved under "v1.4" before this refactor) by injecting
+ * them as an extra item at the top of the list.
+ */
+function ReleasePicker({
+    value,
+    onChange,
+    triggerClassName,
+}: {
+    value: string | null | undefined;
+    onChange: (next: string | null) => void;
+    triggerClassName?: string;
+}) {
+    const current = value ?? '';
+    const isLegacy = current !== '' && !(RELEASE_OPTIONS as readonly string[]).includes(current);
+    const effective = current === '' ? '__none__' : current;
+    return (
+        <Select
+            value={effective}
+            onValueChange={(v) => onChange(v === '__none__' ? null : v)}
+        >
+            <SelectTrigger className={cn('h-9 text-sm', triggerClassName)}>
+                <SelectValue placeholder="Pick a release" />
+            </SelectTrigger>
+            <SelectContent className="z-[10000]">
+                <SelectItem value="__none__" className="text-xs text-slate-400 italic">
+                    No release picked
+                </SelectItem>
+                {isLegacy && (
+                    <SelectItem value={current} className="text-xs">
+                        {current} <span className="text-slate-400">(current)</span>
+                    </SelectItem>
+                )}
+                {RELEASE_OPTIONS.map(r => (
+                    <SelectItem key={r} value={r} className="text-xs">{r}</SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
+}
 
 function TypeIcon({ type }: { type?: FeatureType }) {
     switch (type) {
@@ -440,16 +500,20 @@ export function FeatureTrackingBoard() {
                 </div>
             </div>
 
-            {/* Board */}
-            <div className="flex-1 min-h-0 overflow-auto">
-                <div className="p-6 h-full">
+            {/* Board — outer div is NOT scrollable on lg+; each column
+                scrolls internally so no single column can blow up the
+                whole page. On narrow screens where columns stack (below
+                lg) we fall back to page-level overflow-y-auto so the
+                user can still reach every column. */}
+            <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden">
+                <div className="p-6 h-full flex flex-col">
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCorners}
                         onDragStart={onDragStart}
                         onDragEnd={onDragEnd}
                     >
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 min-h-full">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 lg:auto-rows-fr gap-4 flex-1 min-h-0">
                             {COLUMNS.map(col => (
                                 <ColumnView
                                     key={col.key}
@@ -538,9 +602,9 @@ function ColumnView({
     const ActiveSortIcon = activeSortMeta.icon;
 
     return (
-        <div className="flex flex-col min-h-0">
+        <div className="flex flex-col min-h-0 lg:h-full">
             <div className={cn(
-                'sticky top-0 z-10 rounded-t-xl border-t-2 border-x border-b bg-white',
+                'rounded-t-xl border-t-2 border-x border-b bg-white shrink-0',
                 'flex items-center justify-between gap-2 px-3 py-2.5',
                 column.accent,
             )}>
@@ -582,7 +646,7 @@ function ColumnView({
             <div
                 ref={setNodeRef}
                 className={cn(
-                    'flex-1 space-y-2 border-x border-b rounded-b-xl bg-slate-50/70 p-2 min-h-[200px] transition-colors',
+                    'feature-scroll flex-1 min-h-[200px] lg:min-h-0 space-y-2 border-x border-b rounded-b-xl bg-slate-50/70 p-2 overflow-y-auto transition-colors',
                     isOver && 'bg-blue-50/60 ring-2 ring-blue-300 ring-inset',
                 )}
             >
@@ -875,7 +939,7 @@ function CreateFeatureDialog({
                     </DialogDescription>
                 </DialogHeader>
 
-                <ScrollArea className="max-h-[calc(100vh-220px)]">
+                <div className="feature-scroll overflow-y-auto max-h-[calc(100vh-220px)]">
                     <div className="px-6 py-2 space-y-4">
                         {/* Title */}
                         <div className="space-y-1.5">
@@ -917,55 +981,53 @@ function CreateFeatureDialog({
                             </div>
                         </div>
 
-                        {/* Description */}
-                        <div className="space-y-1.5">
+                        {/* Description + Acceptance Criteria (same section) */}
+                        <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</Label>
                             <FeatureRichTextEditor
                                 value={description}
                                 onChange={setDescription}
                                 placeholder="What is it? Why does it matter? Who benefits? Use headings + lists to structure it."
                             />
-                        </div>
-
-                        {/* Acceptance Criteria */}
-                        <div className="space-y-1.5">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                Acceptance Criteria
-                            </Label>
-                            <p className="text-[10px] text-slate-400">How will we know it's done? Add bullets.</p>
-                            {acceptance.length > 0 && (
-                                <ul className="space-y-1">
-                                    {acceptance.map((a, i) => (
-                                        <li
-                                            key={i}
-                                            className="flex items-start gap-2 text-sm text-slate-700 bg-slate-50 border border-slate-100 rounded-md px-2 py-1.5"
-                                        >
-                                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                                            <span className="flex-1">{a}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => removeAcceptance(i)}
-                                                className="text-slate-400 hover:text-red-500"
+                            <div className="pt-1 space-y-1.5">
+                                <p className="text-[11px] font-semibold text-slate-600">
+                                    Acceptance criteria
+                                    <span className="text-slate-400 font-normal"> — how will we know it's done?</span>
+                                </p>
+                                {acceptance.length > 0 && (
+                                    <ul className="space-y-1">
+                                        {acceptance.map((a, i) => (
+                                            <li
+                                                key={i}
+                                                className="flex items-start gap-2 text-sm text-slate-700 bg-slate-50 border border-slate-100 rounded-md px-2 py-1.5"
                                             >
-                                                <X className="h-3 w-3" />
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                            <div className="flex items-center gap-1">
-                                <Input
-                                    value={acceptanceDraft}
-                                    onChange={(e) => setAcceptanceDraft(e.target.value)}
-                                    placeholder="e.g. Trailer card shows brand + code on the quote PDF"
-                                    className="h-8 text-xs"
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') { e.preventDefault(); addAcceptance(); }
-                                    }}
-                                />
-                                <Button size="sm" className="h-8" onClick={addAcceptance} disabled={!acceptanceDraft.trim()}>
-                                    Add
-                                </Button>
+                                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                                <span className="flex-1">{a}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeAcceptance(i)}
+                                                    className="text-slate-400 hover:text-red-500"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                                <div className="flex items-center gap-1">
+                                    <Input
+                                        value={acceptanceDraft}
+                                        onChange={(e) => setAcceptanceDraft(e.target.value)}
+                                        placeholder="e.g. Trailer card shows brand + code on the quote PDF"
+                                        className="h-8 text-xs"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') { e.preventDefault(); addAcceptance(); }
+                                        }}
+                                    />
+                                    <Button size="sm" className="h-8" onClick={addAcceptance} disabled={!acceptanceDraft.trim()}>
+                                        Add
+                                    </Button>
+                                </div>
                             </div>
                         </div>
 
@@ -1012,11 +1074,9 @@ function CreateFeatureDialog({
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                                 Target Release <span className="text-slate-400 normal-case">(optional)</span>
                             </Label>
-                            <Input
-                                value={targetRelease}
-                                onChange={(e) => setTargetRelease(e.target.value)}
-                                placeholder="e.g. v1.5, v1.6, Unscheduled"
-                                className="h-9 text-sm"
+                            <ReleasePicker
+                                value={targetRelease || null}
+                                onChange={(v) => setTargetRelease(v ?? '')}
                             />
                         </div>
 
@@ -1032,7 +1092,7 @@ function CreateFeatureDialog({
                             />
                         </div>
                     </div>
-                </ScrollArea>
+                </div>
 
                 <DialogFooter className="px-6 py-3 bg-slate-50 border-t">
                     <Button
@@ -1286,7 +1346,7 @@ function FeatureDetailBody({
                 </div>
             </SheetHeader>
 
-            <ScrollArea className="flex-1 min-h-0">
+            <div className="feature-scroll flex-1 min-h-0 overflow-y-auto">
                 <div className="px-6 py-4 space-y-6">
                     {/* Status / Type / Priority */}
                     <div className="grid grid-cols-3 gap-3">
@@ -1330,17 +1390,14 @@ function FeatureDetailBody({
                     {/* Target Release */}
                     <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Target Release</Label>
-                        <Input
-                            defaultValue={feature.targetRelease ?? ''}
-                            onBlur={(e) => {
-                                const v = e.target.value.trim();
-                                const next = v === '' ? null : v;
+                        <ReleasePicker
+                            value={feature.targetRelease}
+                            onChange={(next) => {
                                 if (next !== (feature.targetRelease ?? null)) {
                                     patch({ targetRelease: next });
                                 }
                             }}
-                            placeholder="e.g. v1.5, v1.6, Unscheduled"
-                            className="h-8 text-xs"
+                            triggerClassName="h-8 text-xs"
                         />
                     </div>
 
@@ -1361,8 +1418,8 @@ function FeatureDetailBody({
                         </span>
                     </div>
 
-                    {/* Description */}
-                    <div className="space-y-1.5">
+                    {/* Description + Acceptance Criteria (same section) */}
+                    <div className="space-y-2">
                         <div className="flex items-center justify-between">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</Label>
                             {!editingDesc ? (
@@ -1409,46 +1466,47 @@ function FeatureDetailBody({
                                 <FeatureDescriptionView html={feature.description ?? ''} />
                             </div>
                         )}
-                    </div>
 
-                    {/* Acceptance criteria */}
-                    <div className="space-y-1.5">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                            Acceptance Criteria
-                        </Label>
-                        {acceptance.length > 0 && (
-                            <ul className="space-y-1">
-                                {acceptance.map((a, i) => (
-                                    <li
-                                        key={i}
-                                        className="flex items-start gap-2 text-sm text-slate-700 bg-slate-50 border border-slate-100 rounded-md px-2 py-1.5"
-                                    >
-                                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                                        <span className="flex-1">{a}</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => removeAcceptance(i)}
-                                            className="text-slate-400 hover:text-red-500"
+                        {/* Acceptance criteria — folded into the same section */}
+                        <div className="pt-1 space-y-1.5">
+                            <p className="text-[11px] font-semibold text-slate-600">
+                                Acceptance criteria
+                                <span className="text-slate-400 font-normal"> — how will we know it's done?</span>
+                            </p>
+                            {acceptance.length > 0 && (
+                                <ul className="space-y-1">
+                                    {acceptance.map((a, i) => (
+                                        <li
+                                            key={i}
+                                            className="flex items-start gap-2 text-sm text-slate-700 bg-slate-50 border border-slate-100 rounded-md px-2 py-1.5"
                                         >
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                        <div className="flex items-center gap-1">
-                            <Input
-                                value={acceptanceDraft}
-                                onChange={(e) => setAcceptanceDraft(e.target.value)}
-                                placeholder="Add a checkable criterion"
-                                className="h-8 text-xs"
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') { e.preventDefault(); addAcceptance(); }
-                                }}
-                            />
-                            <Button size="sm" className="h-8" onClick={addAcceptance} disabled={!acceptanceDraft.trim()}>
-                                Add
-                            </Button>
+                                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                            <span className="flex-1">{a}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeAcceptance(i)}
+                                                className="text-slate-400 hover:text-red-500"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            <div className="flex items-center gap-1">
+                                <Input
+                                    value={acceptanceDraft}
+                                    onChange={(e) => setAcceptanceDraft(e.target.value)}
+                                    placeholder="Add a checkable criterion"
+                                    className="h-8 text-xs"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') { e.preventDefault(); addAcceptance(); }
+                                    }}
+                                />
+                                <Button size="sm" className="h-8" onClick={addAcceptance} disabled={!acceptanceDraft.trim()}>
+                                    Add
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
@@ -1565,7 +1623,7 @@ function FeatureDetailBody({
                         </div>
                     </div>
                 </div>
-            </ScrollArea>
+            </div>
 
             <div className="px-6 py-3 border-t bg-slate-50 flex items-center justify-between shrink-0">
                 <Button

@@ -103,4 +103,24 @@
   .pricing-matrix-container ::-webkit-scrollbar-track {
     @apply bg-slate-100 rounded-full;
   }
+
+  /* v1.5 Feature Tracking — always-visible scrollbar for Kanban columns
+     and the Create / Detail surfaces, so users can see there's more
+     content below without guessing. */
+  .feature-scroll {
+    scrollbar-gutter: stable;
+  }
+  .feature-scroll::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .feature-scroll::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full border-[2px] border-transparent bg-clip-padding;
+  }
+  .feature-scroll::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
+  .feature-scroll::-webkit-scrollbar-track {
+    @apply bg-slate-100/60 rounded-full;
+  }
 }
