@@ -182,6 +182,7 @@ export default function AddVendorPage() {
                                                         <SelectItem value="Boat Brand">Boat Brand</SelectItem>
                                                         <SelectItem value="Motor Brand">Motor Brand</SelectItem>
                                                         <SelectItem value="Trailer Brand">Trailer Brand</SelectItem>
+                                                        <SelectItem value="Rego Authority">Rego Authority</SelectItem>
                                                         <SelectItem value="Electronics Brand">Electronics Brand</SelectItem>
                                                         <SelectItem value="Electronics Supplier">Electronics Supplier</SelectItem>
                                                         <SelectItem value="Parts Wholesaler">Parts Wholesaler</SelectItem>

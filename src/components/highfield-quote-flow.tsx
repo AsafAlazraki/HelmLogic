@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, orderBy, doc, where, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, doc, where, getDoc, getDocs } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -85,6 +86,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { TrailerCatalogPicker, type TrailerSnapshot } from '@/components/trailer-catalog-picker';
+import { RegoPicker, type RegoTypeSnapshot } from '@/components/rego-picker';
 
 /** Normalize spacing, strip internal model-code suffixes, and extract first color from parenthetical */
 function formatOptionDisplayLabel(name: string): { base: string; color: string | null } {
@@ -146,12 +149,15 @@ interface DuplicateInitialState {
     selectedMotorAccessoryIds: string[];
     selectedTrailerId: string | null;
     selectedTrailerOptionIds: string[];
+    catalogTrailerSnapshot?: TrailerSnapshot | null;
     customTrailerOptions?: CustomOption[];
     selectedDealerFitIds: string[];
     isRegoSelected: boolean;
     isStickerSelected: boolean;
     isTenderToSelected: boolean;
     isTrailerRegoSelected: boolean;
+    boatRegoSnapshot?: RegoTypeSnapshot | null;
+    trailerRegoSnapshot?: RegoTypeSnapshot | null;
 }
 
 export function HighfieldQuoteFlow({
@@ -174,6 +180,7 @@ export function HighfieldQuoteFlow({
     const firestore = useFirestore();
     const router = useRouter();
     const { user } = useUser();
+    const { toast } = useToast();
     
     // Price Level State
     const [priceLevel, setPriceLevel] = useState<string>('hull_cash');
@@ -206,6 +213,10 @@ export function HighfieldQuoteFlow({
     const [isStickerSelected, setIsStickerSelected] = useState(initialState?.isStickerSelected ?? false);
     const [isTenderToSelected, setIsTenderToSelected] = useState(initialState?.isTenderToSelected ?? false);
     const [isTrailerRegoSelected, setIsTrailerRegoSelected] = useState(initialState?.isTrailerRegoSelected ?? false);
+    // Rego v1.4 — catalog-backed snapshots. When set, these supersede the legacy
+    // boolean toggles + model.registration.* prices.
+    const [boatRegoSnapshot, setBoatRegoSnapshot] = useState<RegoTypeSnapshot | null>(initialState?.boatRegoSnapshot ?? null);
+    const [trailerRegoSnapshot, setTrailerRegoSnapshot] = useState<RegoTypeSnapshot | null>(initialState?.trailerRegoSnapshot ?? null);
 
     const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>(initialState?.selectedOptionIds ?? []);
     const [customOptions, setCustomOptions] = useState<CustomOption[]>(initialState?.customOptions ?? []);
@@ -213,6 +224,7 @@ export function HighfieldQuoteFlow({
     const [selectedMotorAccessoryIds, setSelectedMotorAccessoryIds] = useState<string[]>(initialState?.selectedMotorAccessoryIds ?? []);
     const [selectedTrailerId, setSelectedTrailerId] = useState<string | null>(initialState?.selectedTrailerId ?? null);
     const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>(initialState?.selectedTrailerOptionIds ?? []);
+    const [catalogTrailerSnapshot, setCatalogTrailerSnapshot] = useState<TrailerSnapshot | null>(initialState?.catalogTrailerSnapshot ?? null);
     const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>(initialState?.selectedDealerFitIds ?? []);
 
     // Custom Option Form State (Boat)
@@ -274,8 +286,68 @@ export function HighfieldQuoteFlow({
 
     const [motors, setMotors] = useState<any[]>([]);
     const [motorsLoading, setMotorsLoading] = useState(false);
-    const motorModuleCategories = useMemo(() => module?.motorDealerFitCategories || [], [module?.motorDealerFitCategories]);
-    const trailerModuleCategories = useMemo(() => module?.trailerDealerFitCategories || [], [module?.trailerDealerFitCategories]);
+
+    // v1.4 Stage B.2 / day-1 fix — when the boat module links other modules via
+    // `associatedModuleIds`, their motor / trailer / module DF categories feed
+    // the boat quote flow. Without this merge, linking the Trailer module gave
+    // you the catalog narrow-down + DealerFitOptions merge but NOT the quote
+    // flow's Step 5 trailer DF step (which reads these memos directly).
+    const allModulesQuery = useMemoFirebase(
+        () => (Array.isArray(module?.associatedModuleIds) && module.associatedModuleIds.length > 0
+            ? collection(firestore, 'modules')
+            : null),
+        [firestore, module?.associatedModuleIds?.length],
+    );
+    const { data: allModulesForLink } = useCollection<any>(allModulesQuery);
+    const linkedModules = useMemo(() => {
+        if (!allModulesForLink || !Array.isArray(module?.associatedModuleIds)) return [];
+        const allow = new Set<string>(module.associatedModuleIds);
+        return allModulesForLink.filter((m: any) => allow.has(m.id));
+    }, [allModulesForLink, module?.associatedModuleIds]);
+
+    function mergeCatsFromLinked(key: 'motorDealerFitCategories' | 'trailerDealerFitCategories' | 'moduleDealerFitCategories'): string[] {
+        const seen = new Set<string>();
+        const out: string[] = [];
+        for (const lm of linkedModules) {
+            const names: string[] = Array.isArray(lm?.[key]) ? lm[key] : [];
+            for (const n of names) {
+                const k = String(n).toLowerCase();
+                if (seen.has(k)) continue;
+                seen.add(k);
+                out.push(n);
+            }
+        }
+        return out;
+    }
+
+    const motorModuleCategories = useMemo(() => {
+        const local: string[] = module?.motorDealerFitCategories || [];
+        const linkedCats = mergeCatsFromLinked('motorDealerFitCategories');
+        if (linkedCats.length === 0) return local;
+        // Dedupe preserving local order first, then append new from linked modules.
+        const seen = new Set<string>(local.map(n => String(n).toLowerCase()));
+        const merged = [...local];
+        for (const n of linkedCats) {
+            const k = String(n).toLowerCase();
+            if (!seen.has(k)) { merged.push(n); seen.add(k); }
+        }
+        return merged;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [module?.motorDealerFitCategories, linkedModules]);
+
+    const trailerModuleCategories = useMemo(() => {
+        const local: string[] = module?.trailerDealerFitCategories || [];
+        const linkedCats = mergeCatsFromLinked('trailerDealerFitCategories');
+        if (linkedCats.length === 0) return local;
+        const seen = new Set<string>(local.map(n => String(n).toLowerCase()));
+        const merged = [...local];
+        for (const n of linkedCats) {
+            const k = String(n).toLowerCase();
+            if (!seen.has(k)) { merged.push(n); seen.add(k); }
+        }
+        return merged;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [module?.trailerDealerFitCategories, linkedModules]);
     const [propComesStandard, setPropComesStandard] = useState(false);
     const [extendedWarranty, setExtendedWarranty] = useState(false);
     const [servicePlan, setServicePlan] = useState(false);
@@ -289,6 +361,196 @@ export function HighfieldQuoteFlow({
     const motorDetailRef = useRef<HTMLDivElement>(null);
 
     // 3. Derived Memos (CRITICAL: Order of initialization to prevent ReferenceErrors)
+
+    // When the user picks a trailer from the catalog, shadow model.trailerConfig with
+    // the snapshot so pricing/options/image all flow from the chosen trailer while
+    // leaving the original model doc untouched. Snapshot is frozen on select.
+    const effectiveTrailerConfig = useMemo<any>(() => {
+        if (catalogTrailerSnapshot) {
+            return {
+                id: catalogTrailerSnapshot.id,
+                name: `${catalogTrailerSnapshot.code} — ${catalogTrailerSnapshot.name}`,
+                imageUrl: catalogTrailerSnapshot.imageUrl,
+                sellPriceExclGst: catalogTrailerSnapshot.sellPriceExclGst,
+                priceLevels: catalogTrailerSnapshot.priceLevels,
+                options: catalogTrailerSnapshot.options,
+                __fromCatalog: true,
+                __catalogMeta: {
+                    brandVendorId: catalogTrailerSnapshot.brandVendorId,
+                    brandName: catalogTrailerSnapshot.brandName,
+                    seriesId: catalogTrailerSnapshot.seriesId,
+                    seriesName: catalogTrailerSnapshot.seriesName,
+                    code: catalogTrailerSnapshot.code,
+                },
+            };
+        }
+        return model.trailerConfig;
+    }, [catalogTrailerSnapshot, model.trailerConfig]);
+
+    // v1.4 Chunk C — if the boat model has `trailerAssignments[]`, prefer
+    // the default assignment (or the first one) as the initial trailer.
+    // We fetch the trailer doc once on mount and hydrate
+    // `catalogTrailerSnapshot` so the rest of the quote flow reads the
+    // chosen trailer as if the user had manually picked it. Users can
+    // still click another assignment tile to switch between them.
+    const trailerAssignments = useMemo<any[]>(
+        () => (Array.isArray(model?.trailerAssignments) ? model.trailerAssignments : []),
+        [model?.trailerAssignments],
+    );
+
+    // Subscribe to org-level trailer overrides so auto-loaded assignments
+    // honour them the same way the catalog picker does. Without this the
+    // auto-load path reads raw source pricing and dealer audits drift from
+    // the pricing manager's overrides.
+    //
+    // Sub-dealer parent walk-up: if `orgId` belongs to a sub-dealer
+    // (parentOrganisationId set on the org doc), also subscribe to the
+    // parent org's overrides. Sub-dealer's own overrides win where both
+    // exist; otherwise the parent's override applies. Mirrors how motor
+    // sub-dealer pricing inherits via `defaultPriceLevel`.
+    const orgDocRef = useMemoFirebase(
+        () => (orgId ? doc(firestore, 'organisations', orgId) : null),
+        [firestore, orgId],
+    );
+    const { data: orgDoc } = useDoc<{ parentOrganisationId?: string }>(orgDocRef);
+    const parentOrgId = orgDoc?.parentOrganisationId || null;
+
+    const trailerOverridesQuery = useMemoFirebase(
+        () => (orgId ? collection(firestore, `organisations/${orgId}/trailerOverrides`) : null),
+        [firestore, orgId],
+    );
+    const { data: trailerOverrideDocs } = useCollection<{
+        sellPriceExclGst?: number;
+        trailerId?: string;
+        pricingDetail?: Record<string, number>;
+    }>(trailerOverridesQuery);
+
+    const parentTrailerOverridesQuery = useMemoFirebase(
+        () => (parentOrgId ? collection(firestore, `organisations/${parentOrgId}/trailerOverrides`) : null),
+        [firestore, parentOrgId],
+    );
+    const { data: parentTrailerOverrideDocs } = useCollection<{
+        sellPriceExclGst?: number;
+        trailerId?: string;
+        pricingDetail?: Record<string, number>;
+    }>(parentTrailerOverridesQuery);
+
+    const trailerOverrideByTrailerId = useMemo(() => {
+        const map: Record<string, { sell?: number; pricingDetail?: Record<string, number> }> = {};
+        // Parent first so sub-dealer overrides can win on top.
+        const layer = (docs: typeof trailerOverrideDocs) => {
+            (docs || []).forEach(d => {
+                const existing = map[d.id] ?? {};
+                const next: { sell?: number; pricingDetail?: Record<string, number> } = { ...existing };
+                if (typeof d.sellPriceExclGst === 'number') next.sell = d.sellPriceExclGst;
+                if (d.pricingDetail) next.pricingDetail = { ...(next.pricingDetail || {}), ...d.pricingDetail };
+                if (next.sell != null || next.pricingDetail) map[d.id] = next;
+            });
+        };
+        layer(parentTrailerOverrideDocs);
+        layer(trailerOverrideDocs);
+        return map;
+    }, [trailerOverrideDocs, parentTrailerOverrideDocs]);
+
+    // Reusable: load the full trailer doc for an assignment and shadow it
+    // into `catalogTrailerSnapshot`. Used both on mount (auto-select default)
+    // and when the user clicks a different assignment tile in Step 4. Merges
+    // any org-level override in `trailerOverrides/{id}` so dealer audits
+    // match the pricing manager.
+    const loadAssignmentSnapshot = useMemo(() => {
+        return async (assignment: any) => {
+            if (!assignment?.trailerId || !assignment?.brandVendorId || !assignment?.seriesId) return;
+            try {
+                const ref = doc(
+                    firestore,
+                    'data-warehouse',
+                    assignment.brandVendorId,
+                    'series',
+                    assignment.seriesId,
+                    'trailers',
+                    assignment.trailerId,
+                );
+                const snap = await getDoc(ref);
+                if (!snap.exists()) {
+                    // Assigned trailer doc was deleted after being attached to the
+                    // boat model. Surface a warning so the user notices — quote
+                    // totals would otherwise silently drop the trailer.
+                    toast({
+                        variant: 'destructive',
+                        title: 'Assigned trailer missing',
+                        description: `${assignment.code || assignment.name || assignment.trailerId} could not be loaded from the catalog. Update the boat model's Trailer Options.`,
+                    });
+                    return;
+                }
+                const data = snap.data() as any;
+
+                // Apply the org-level override (if any) so auto-loaded
+                // trailers respect the pricing-manager edits operators
+                // made. Mirrors what the catalog picker already does.
+                const override = trailerOverrideByTrailerId[snap.id];
+                const sourceSell = data.sellPriceExclGst || 0;
+                const effectiveSell = override?.sell ?? sourceSell;
+                const effectivePricingDetail = override?.pricingDetail
+                    ? { ...(data.pricingDetail || {}), ...override.pricingDetail }
+                    : (data.pricingDetail || {});
+                const hasOverride =
+                    (override?.sell != null && override.sell !== sourceSell) ||
+                    (override?.pricingDetail != null && Object.keys(override.pricingDetail).length > 0);
+
+                setCatalogTrailerSnapshot({
+                    id: `${assignment.brandVendorId}/${assignment.seriesId}/${snap.id}`,
+                    brandVendorId: assignment.brandVendorId,
+                    brandName: data.brandName || '',
+                    seriesId: assignment.seriesId,
+                    seriesName: data.seriesName || '',
+                    trailerId: snap.id,
+                    code: data.code || assignment.code || '',
+                    name: data.name || assignment.name || '',
+                    imageUrl: data.imageUrl || assignment.imageUrl || '',
+                    sellPriceExclGst: effectiveSell,
+                    cost: data.cost || 0,
+                    priceLevels: data.priceLevels || {},
+                    pricingDetail: effectivePricingDetail,
+                    specifications: data.specifications || {},
+                    options: (data.optionalFeatures || []).map((f: any) => ({
+                        id: f.id,
+                        name: f.name,
+                        description: f.description || '',
+                        sellPriceExclGst: f.sellExclGst || f.sellPriceExclGst || 0,
+                        cost: f.cost || 0,
+                        isStandard: !!f.isStandard,
+                    })),
+                    capturedAt: Date.now(),
+                    pricingSource: hasOverride ? 'override' : 'source',
+                    sourceSellPriceExclGst: sourceSell,
+                });
+                setSelectedTrailerId('primary-trailer');
+                // Pre-tick standard trailer options on the freshly-loaded trailer.
+                setSelectedTrailerOptionIds(
+                    (data.optionalFeatures || [])
+                        .filter((f: any) => f.isStandard)
+                        .map((f: any) => f.id),
+                );
+            } catch (err) {
+                console.warn('[trailer-assignments] failed to load trailer', err);
+                toast({
+                    variant: 'destructive',
+                    title: 'Failed to load assigned trailer',
+                    description: (err as any)?.message ?? 'Check console for details.',
+                });
+            }
+        };
+    }, [firestore, toast, trailerOverrideByTrailerId]);
+
+    useEffect(() => {
+        if (catalogTrailerSnapshot) return; // user picked; don't override
+        if (selectedTrailerId) return;       // something already selected
+        if (trailerAssignments.length === 0) return;
+        const def = trailerAssignments.find(a => a?.isDefault) || trailerAssignments[0];
+        loadAssignmentSnapshot(def);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [model?.id]);
+
     const availableMaterials = useMemo(() => {
         if (!variants) return [];
         return Array.from(new Set(variants.map(v => v.material).filter(Boolean)));
@@ -334,17 +596,24 @@ export function HighfieldQuoteFlow({
 
     const carouselSlides = useMemo(() => {
         const slides: { type: string; url?: string; content?: React.ReactNode }[] = [];
-        slides.push({ type: 'boat', url: model.coverImageUrl || '' });
+        // Only push slides that actually have a renderable URL — empty
+        // strings used to push a "broken Build Preview" tile into the
+        // carousel.
+        if (model.coverImageUrl) slides.push({ type: 'boat', url: model.coverImageUrl });
         if (activeVariant?.imageUrl) slides.push({ type: 'variant', url: activeVariant.imageUrl });
         if (buildPreviewSlide) slides.push({ type: 'build', content: buildPreviewSlide });
-        if (selectedMotor) { 
-            const mUrl = resolveImageUrl(selectedMotor); 
-            if (mUrl) slides.push({ type: 'motor', url: mUrl }); 
+        if (selectedMotor) {
+            const mUrl = resolveImageUrl(selectedMotor);
+            if (mUrl) slides.push({ type: 'motor', url: mUrl });
         }
-        if (selectedTrailerId && model.trailerConfig?.imageUrl) slides.push({ type: 'trailer', url: model.trailerConfig.imageUrl });
-        if (model.galleryImageUrls) model.galleryImageUrls.forEach((url: string) => { if (url !== model.coverImageUrl) slides.push({ type: 'gallery', url }); });
+        if (selectedTrailerId && effectiveTrailerConfig?.imageUrl) slides.push({ type: 'trailer', url: effectiveTrailerConfig.imageUrl });
+        if (model.galleryImageUrls) {
+            model.galleryImageUrls.forEach((url: string) => {
+                if (url && url !== model.coverImageUrl) slides.push({ type: 'gallery', url });
+            });
+        }
         return slides;
-    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId]);
+    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId, effectiveTrailerConfig?.imageUrl]);
 
     const selectedOptionsData = useMemo(() => {
         return model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id)) || [];
@@ -405,8 +674,8 @@ export function HighfieldQuoteFlow({
     }, [selectedMotor]);
 
     const selectedTrailerOptionsData = useMemo(() => {
-        return model.trailerConfig?.options?.filter((o: any) => selectedTrailerOptionIds.includes(o.id)) || [];
-    }, [selectedTrailerOptionIds, model.trailerConfig]);
+        return effectiveTrailerConfig?.options?.filter((o: any) => selectedTrailerOptionIds.includes(o.id)) || [];
+    }, [selectedTrailerOptionIds, effectiveTrailerConfig]);
 
     const selectedDealerFitData = useMemo(() => {
         return dealerFitSelections?.filter(s => selectedDealerFitIds.includes(s.id)) || [];
@@ -480,7 +749,12 @@ export function HighfieldQuoteFlow({
         let total = getPriceForLevel(activeVariant, priceLevel);
         selectedOptionsData.forEach(opt => { total += getPriceForLevel(opt, priceLevel); });
         customOptions.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
-        if (isRegoSelected) {
+        // Boat rego: snapshot (v1.4 rego module) wins over legacy toggle
+        if (boatRegoSnapshot) {
+            total += boatRegoSnapshot.sellExclGst || 0;
+            if (isStickerSelected) total += (model.registration?.stickerPrice || 0);
+            if (isTenderToSelected) total += (model.registration?.tenderToStickerPrice || 0);
+        } else if (isRegoSelected) {
             total += (model.registration?.price12Months || 0);
             if (isStickerSelected) total += (model.registration?.stickerPrice || 0);
             if (isTenderToSelected) total += (model.registration?.tenderToStickerPrice || 0);
@@ -489,17 +763,22 @@ export function HighfieldQuoteFlow({
             total += getPriceForLevel(selectedMotor, priceLevel);
             selectedMotorAccessories.forEach((a: any) => { total += getPriceForLevel(a, priceLevel); });
         }
-        if (selectedTrailerId && model.trailerConfig) {
-            total += getPriceForLevel(model.trailerConfig, priceLevel);
+        if (selectedTrailerId && effectiveTrailerConfig) {
+            total += getPriceForLevel(effectiveTrailerConfig, priceLevel);
             selectedTrailerOptionsData.forEach((o: any) => { total += getPriceForLevel(o, priceLevel); });
             customTrailerOptions.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
-            if (isTrailerRegoSelected) total += (model.registration?.trailerPrice12Months || 0);
+            // Trailer rego: snapshot wins over legacy toggle
+            if (trailerRegoSnapshot) {
+                total += trailerRegoSnapshot.sellExclGst || 0;
+            } else if (isTrailerRegoSelected) {
+                total += (model.registration?.trailerPrice12Months || 0);
+            }
         }
         selectedDealerFitData.forEach(s => {
             s.items?.forEach((i: any) => { total += getPriceForLevel(i.data, priceLevel); });
         });
         return total;
-    }, [activeVariant, selectedOptionsData, customOptions, customTrailerOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, model.trailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, model.registration, priceLevel]);
+    }, [activeVariant, selectedOptionsData, customOptions, customTrailerOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, effectiveTrailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, boatRegoSnapshot, trailerRegoSnapshot, model.registration, priceLevel]);
 
     // Promotions Derived Memos
     const appliedPromotions = useMemo(() => {
@@ -711,7 +990,7 @@ export function HighfieldQuoteFlow({
             if (viewport) viewport.scrollTop = 0;
         }, 50);
     };
-    const hasTrailer = !!model.trailerConfig;
+    const hasTrailer = !!effectiveTrailerConfig;
     const nextStep = () => {
         if (currentStep < STEPS.length) {
             // Skip trailer step (4) if this model has no trailer configured
@@ -1106,14 +1385,23 @@ export function HighfieldQuoteFlow({
                                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Registration</h3>
                                             </div>
                                             <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white space-y-6">
+                                                {/* v1.4 Rego module picker — supersedes the legacy toggle when set */}
+                                                <RegoPicker
+                                                    filter="boat"
+                                                    value={boatRegoSnapshot}
+                                                    onChange={setBoatRegoSnapshot}
+                                                    label="Boat Registration (Rego Module)"
+                                                />
+                                                {!boatRegoSnapshot && (
                                                 <div className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", isRegoSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={handleRegoToggle}>
                                                     <div className="flex items-center gap-4">
                                                         <div className={cn("h-8 w-8 rounded-xl flex items-center justify-center border-2", isRegoSelected ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-slate-200 text-slate-300")}><Check className="h-4 w-4" /></div>
-                                                        <div><p className={cn("text-[10px] font-black uppercase tracking-widest", isRegoSelected ? "text-primary" : "text-slate-600")}>12 Months Registration</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Maritime Safety Compliance</p></div>
+                                                        <div><p className={cn("text-[10px] font-black uppercase tracking-widest", isRegoSelected ? "text-primary" : "text-slate-600")}>12 Months Registration (legacy)</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Maritime Safety Compliance</p></div>
                                                     </div>
                                                     <p className={cn("font-black text-xs", isRegoSelected ? "text-primary" : "text-slate-400")}>${(model.registration?.price12Months || 0).toLocaleString()}</p>
                                                 </div>
-                                                {isRegoSelected && (
+                                                )}
+                                                {(isRegoSelected || !!boatRegoSnapshot) && (
                                                     <div className="grid grid-cols-2 gap-3 pt-2 animate-in slide-in-from-top-2 duration-500">
                                                         {/* Registration Stickers */}
                                                         <div className={cn("flex flex-col gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer", isStickerSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={handleStickerToggle}>
@@ -1567,32 +1855,119 @@ export function HighfieldQuoteFlow({
                             {currentStep === 4 && (
                                 <div className="space-y-12 animate-in fade-in duration-1000 mt-4">
                                     <div className="space-y-6">
-                                        <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
-                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Base</h3>
+                                        <div className="flex items-center justify-between gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Base</h3>
+                                            </div>
+                                            {trailerAssignments.length > 0 && (
+                                                <span className="text-[9px] font-black uppercase tracking-widest text-white/70">
+                                                    {trailerAssignments.length} option{trailerAssignments.length === 1 ? '' : 's'}
+                                                </span>
+                                            )}
                                         </div>
-                                        {model.trailerConfig ? (
+
+                                        {/* v1.4 day-1 redesign: trailer cards come from `model.trailerAssignments`
+                                            only. No catalog browse button — operators assign trailers in the
+                                            boat model editor. Tick to switch the active trailer (only one
+                                            selected at a time). Untick clears the selection entirely. */}
+                                        {trailerAssignments.length > 0 ? (
+                                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                                {trailerAssignments.map((a: any) => {
+                                                    const isActive = catalogTrailerSnapshot?.trailerId === a.trailerId
+                                                        && catalogTrailerSnapshot?.brandVendorId === a.brandVendorId
+                                                        && selectedTrailerId === 'primary-trailer';
+                                                    return (
+                                                        <button
+                                                            key={a.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (isActive) {
+                                                                    // Untick — clear the active trailer.
+                                                                    setSelectedTrailerId(null);
+                                                                    setCatalogTrailerSnapshot(null);
+                                                                    setSelectedTrailerOptionIds([]);
+                                                                } else {
+                                                                    loadAssignmentSnapshot(a);
+                                                                }
+                                                            }}
+                                                            className={cn(
+                                                                "flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl p-1 h-full text-left",
+                                                                isActive
+                                                                    ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20"
+                                                                    : "border-transparent hover:border-primary/20",
+                                                            )}
+                                                        >
+                                                            {/* Image only renders when an imageUrl exists — no
+                                                                broken-img placeholder, no empty grey box. */}
+                                                            {a.imageUrl ? (
+                                                                <div className="relative aspect-video w-full bg-slate-50 shrink-0">
+                                                                    <Image
+                                                                        src={a.imageUrl}
+                                                                        alt={a.code || a.name || 'Trailer'}
+                                                                        fill
+                                                                        className="object-contain p-3"
+                                                                        unoptimized
+                                                                    />
+                                                                </div>
+                                                            ) : null}
+                                                            <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
+                                                                {a.isDefault && (
+                                                                    <Badge className="bg-emerald-500 text-white border-none font-black text-[7px] uppercase h-3.5 px-1 mb-1">DEFAULT</Badge>
+                                                                )}
+                                                                <p className={cn(
+                                                                    "text-[10px] font-black uppercase tracking-tight leading-tight",
+                                                                    isActive ? "text-primary" : "text-slate-900",
+                                                                )}>
+                                                                    {a.code || a.name}
+                                                                </p>
+                                                                {a.name && a.code && (
+                                                                    <p className="text-[8px] text-slate-400 leading-tight">{a.name}</p>
+                                                                )}
+                                                                {isActive && catalogTrailerSnapshot?.sellPriceExclGst != null && (
+                                                                    <p className={cn("text-[9px] font-black uppercase tracking-widest text-primary/70")}>
+                                                                        ${(catalogTrailerSnapshot.sellPriceExclGst || 0).toLocaleString()}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : effectiveTrailerConfig ? (
+                                            // Legacy: model has no assignments but has a `trailerConfig`.
+                                            // Render the legacy single-trailer card so old data still works.
                                             <div className="grid grid-cols-2 gap-4">
-                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); if (!isSelected) setSelectedTrailerOptionIds((model.trailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                    <div className={cn("relative aspect-video w-full bg-white shrink-0", !model.trailerConfig.imageUrl && "hidden")}>{model.trailerConfig.imageUrl && <Image src={model.trailerConfig.imageUrl} alt="Trailer" fill className="object-contain mix-blend-multiply p-4" />}</div>
+                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); if (!isSelected) setSelectedTrailerOptionIds((effectiveTrailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                    {effectiveTrailerConfig.imageUrl ? (
+                                                        <div className="relative aspect-video w-full bg-slate-50 shrink-0">
+                                                            <Image src={effectiveTrailerConfig.imageUrl} alt="Trailer" fill className="object-contain p-4" unoptimized />
+                                                        </div>
+                                                    ) : null}
                                                     <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
-                                                        <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", selectedTrailerId === 'primary-trailer' ? "text-primary" : "text-slate-900")}>{model.trailerConfig.name}</p>
-                                                        <p className={cn("text-[9px] font-black uppercase tracking-widest", selectedTrailerId === 'primary-trailer' ? "text-primary/70" : "text-slate-400")}>${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                        <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", selectedTrailerId === 'primary-trailer' ? "text-primary" : "text-slate-900")}>{effectiveTrailerConfig.name}</p>
+                                                        <p className={cn("text-[9px] font-black uppercase tracking-widest", selectedTrailerId === 'primary-trailer' ? "text-primary/70" : "text-slate-400")}>${(effectiveTrailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
                                                     </div>
                                                 </button>
                                             </div>
-                                        ) : <div className="py-16 text-center border-2 border-dashed rounded-xl opacity-20"><Truck className="h-10 w-10 mx-auto mb-3" /><p className="text-[9px] font-black uppercase tracking-widest">No primary trailer defined.</p></div>}
+                                        ) : (
+                                            <div className="py-16 text-center border-2 border-dashed rounded-xl opacity-50">
+                                                <Truck className="h-10 w-10 mx-auto mb-3 text-slate-300" />
+                                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">No trailers assigned to this boat.</p>
+                                                <p className="text-[8px] text-slate-300 mt-1">Assign trailers in the boat model editor to make them available here.</p>
+                                            </div>
+                                        )}
                                     </div>
                                     {selectedTrailerId && (
                                         <>
-                                            {model.trailerConfig?.options?.length > 0 && (
+                                            {effectiveTrailerConfig?.options?.length > 0 && (
                                                 <div ref={el => { categoryRefs.current['Trailer Hardware'] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
                                                     <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
                                                         <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Hardware</h3>
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-4">
-                                                        {model.trailerConfig.options.map((opt: any) => (
+                                                        {effectiveTrailerConfig.options.map((opt: any) => (
                                                             <button key={opt.id} onClick={() => toggleTrailerOption(opt.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-md border-transparent h-full p-1", selectedTrailerOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-sm ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                                 <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
                                                                     {opt.isStandard && <Badge className="mb-1.5 bg-emerald-500 text-white border-none font-black text-[6px] uppercase h-3.5 px-1">STANDARD</Badge>}
@@ -1695,13 +2070,23 @@ export function HighfieldQuoteFlow({
                                                     <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Registration</h3>
                                                 </div>
-                                                <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", isTrailerRegoSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "border-transparent hover:border-primary/20")} onClick={() => setIsTrailerRegoSelected(!isTrailerRegoSelected)}>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", isTrailerRegoSelected ? "bg-primary border-primary text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Truck className="h-5 w-5" /></div>
-                                                        <div><p className={cn("text-[11px] font-black uppercase tracking-widest", isTrailerRegoSelected ? "text-primary" : "text-slate-600")}>12 Months Trailer Rego</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Government Compliance</p></div>
-                                                    </div>
-                                                    <p className={cn("font-black text-sm", isTrailerRegoSelected ? "text-primary" : "text-slate-400")}>${(model.registration?.trailerPrice12Months || 0).toLocaleString()}</p>
-                                                </div>
+                                                <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white space-y-4">
+                                                    <RegoPicker
+                                                        filter="trailer"
+                                                        value={trailerRegoSnapshot}
+                                                        onChange={setTrailerRegoSnapshot}
+                                                        label="Trailer Registration (Rego Module)"
+                                                    />
+                                                    {!trailerRegoSnapshot && (
+                                                        <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", isTrailerRegoSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "border-transparent hover:border-primary/20")} onClick={() => setIsTrailerRegoSelected(!isTrailerRegoSelected)}>
+                                                            <div className="flex items-center gap-4">
+                                                                <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", isTrailerRegoSelected ? "bg-primary border-primary text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Truck className="h-5 w-5" /></div>
+                                                                <div><p className={cn("text-[11px] font-black uppercase tracking-widest", isTrailerRegoSelected ? "text-primary" : "text-slate-600")}>12 Months Trailer Rego (legacy)</p><p className="text-[9px] font-bold text-muted-foreground mt-0.5">Government Compliance</p></div>
+                                                            </div>
+                                                            <p className={cn("font-black text-sm", isTrailerRegoSelected ? "text-primary" : "text-slate-400")}>${(model.registration?.trailerPrice12Months || 0).toLocaleString()}</p>
+                                                        </div>
+                                                    )}
+                                                </Card>
                                             </div>
                                         </>
                                     )}
@@ -1898,7 +2283,7 @@ export function HighfieldQuoteFlow({
                                             </Card>
                                         )}
 
-                                        {selectedTrailerId && model.trailerConfig && (
+                                        {selectedTrailerId && effectiveTrailerConfig && (
                                             <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
                                                 <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Truck className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Towing Solution</CardTitle></div><div className="flex items-center gap-1.5"><input ref={trailerPdfRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setSectionPdfs(prev => ({ ...prev, trailer: f })); }} />{sectionPdfs.trailer ? (<span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><Paperclip className="h-2.5 w-2.5" />{sectionPdfs.trailer.name.length > 18 ? sectionPdfs.trailer.name.slice(0, 15) + '...' : sectionPdfs.trailer.name}<button type="button" className="ml-0.5 hover:text-destructive" onClick={() => { setSectionPdfs(prev => ({ ...prev, trailer: null })); if (trailerPdfRef.current) trailerPdfRef.current.value = ''; }}><X className="h-2.5 w-2.5" /></button></span>) : (<button type="button" onClick={() => trailerPdfRef.current?.click()} className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors"><Paperclip className="h-2.5 w-2.5" />Attach PDF</button>)}</div></div></CardHeader>
                                                 <CardContent className="p-0">
@@ -1908,9 +2293,9 @@ export function HighfieldQuoteFlow({
                                                                 <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
                                                                 <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => setSelectedTrailerId(null)}><X className="h-3 w-3" /></Button>
                                                             </div>
-                                                            <div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{model.trailerConfig.name}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">Precision Chassis</p></div>
+                                                            <div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{effectiveTrailerConfig.name}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">Precision Chassis</p></div>
                                                         </div>
-                                                        <p className="font-black text-primary italic text-sm">${(model.trailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                        <p className="font-black text-primary italic text-sm">${(effectiveTrailerConfig.sellPriceExclGst || 0).toLocaleString()}</p>
                                                     </div>
                                                     {isTrailerRegoSelected && (
                                                         <div className="p-4 border-b flex items-center justify-between bg-slate-50/50">
@@ -2199,31 +2584,77 @@ export function HighfieldQuoteFlow({
 
             <Dialog open={showTrailerSpecs} onOpenChange={setShowTrailerSpecs}>
                 <DialogContent className="sm:max-w-lg rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-6 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Trailer Specs</DialogTitle></DialogHeader>
+                    <DialogHeader className="p-6 border-b bg-muted/5">
+                        <DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Trailer Specs</DialogTitle>
+                    </DialogHeader>
                     <ScrollArea className="max-h-[60vh]">
-                        <div className="p-6 space-y-4">
-                            {model.trailerConfig?.imageUrl && (
-                                <div className="relative aspect-video w-full bg-white rounded-2xl overflow-hidden border-2">
-                                    <img src={model.trailerConfig.imageUrl} alt={model.trailerConfig?.name || 'Trailer'} className="w-full h-full object-contain p-4 mix-blend-multiply" />
-                                </div>
-                            )}
-                            <Table><TableBody>
-                                {model.trailerConfig?.name && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Name</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{model.trailerConfig.name}</TableCell></TableRow>}
-                                {model.trailerConfig?.sellPriceExclGst != null && <TableRow className="hover:bg-primary/5 border-b"><TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">Price (Excl. GST)</TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">${model.trailerConfig.sellPriceExclGst.toLocaleString()}</TableCell></TableRow>}
-                            </TableBody></Table>
-                            {model.trailerConfig?.options?.length > 0 && (
-                                <div className="space-y-2">
-                                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 px-2">Available Options</p>
-                                    <Table><TableBody>
-                                        {model.trailerConfig.options.map((opt: any) => (
-                                            <TableRow key={opt.id} className="hover:bg-primary/5 border-b">
-                                                <TableCell className="font-black uppercase text-[10px] text-slate-900 pl-6 py-3">{opt.name}</TableCell>
-                                                <TableCell className="font-black uppercase text-[10px] text-primary pr-6 py-3 text-right">${(opt.sellPriceExclGst || 0).toLocaleString()}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody></Table>
-                                </div>
-                            )}
+                        <div className="p-0">
+                            {/* v1.4 day-1 redesign — match the Engine Specs modal styling.
+                                Dense scrollable row list. Image (when present) sits in a
+                                small bordered tile up top, not stretched edge-to-edge. */}
+                            {(() => {
+                                const t = catalogTrailerSnapshot;
+                                const cfg = effectiveTrailerConfig;
+                                const specs = t?.specifications || {};
+                                const code = t?.code || cfg?.name?.split(' ')[0] || '';
+                                const brand = t?.brandName || '';
+                                const series = t?.seriesName || '';
+                                const sell = (t?.sellPriceExclGst ?? cfg?.sellPriceExclGst) ?? null;
+                                const imageUrl = t?.imageUrl || cfg?.imageUrl || '';
+
+                                const rows: Array<{ label: string; value: any }> = [];
+                                if (code) rows.push({ label: 'Code', value: code });
+                                if (cfg?.name && cfg.name !== code) rows.push({ label: 'Name', value: cfg.name });
+                                if (brand) rows.push({ label: 'Brand', value: brand });
+                                if (series) rows.push({ label: 'Series', value: series });
+                                if (specs.boatSizeMtr != null) rows.push({ label: 'Boat Size', value: `${specs.boatSizeMtr}m` });
+                                if (specs.lengthMtr != null) rows.push({ label: 'Trailer Length', value: `${specs.lengthMtr}m` });
+                                if (specs.atmKg != null) rows.push({ label: 'ATM', value: `${specs.atmKg} kg` });
+                                if (specs.tareKg != null) rows.push({ label: 'Tare', value: `${specs.tareKg} kg` });
+                                if (specs.wheelSize) rows.push({ label: 'Wheel Size', value: specs.wheelSize });
+                                if (specs.winch) rows.push({ label: 'Winch', value: specs.winch });
+                                if (specs.betweenGuardsMm != null) rows.push({ label: 'Between Guards', value: `${specs.betweenGuardsMm} mm` });
+                                if (specs.plug) rows.push({ label: 'Plug', value: specs.plug });
+                                if (t?.cost != null && t.cost > 0) rows.push({ label: 'Cost (Excl. GST)', value: `$${t.cost.toLocaleString()}` });
+                                if (sell != null) rows.push({ label: 'Sell (Excl. GST)', value: `$${Number(sell).toLocaleString()}` });
+
+                                return (
+                                    <>
+                                        {imageUrl && (
+                                            <div className="px-6 pt-6">
+                                                <div className="relative h-40 w-full bg-slate-50 rounded-2xl overflow-hidden border-2 border-slate-100">
+                                                    <img src={imageUrl} alt={cfg?.name || 'Trailer'} className="w-full h-full object-contain p-4" />
+                                                </div>
+                                            </div>
+                                        )}
+                                        <Table>
+                                            <TableBody>
+                                                {rows.map(r => (
+                                                    <TableRow key={r.label} className="hover:bg-primary/5 border-b">
+                                                        <TableCell className="font-black uppercase text-[10px] text-muted-foreground w-1/2 pl-6 py-3">{r.label}</TableCell>
+                                                        <TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{r.value}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                        {cfg?.options?.length > 0 && (
+                                            <div className="border-t-2 mt-2">
+                                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 px-6 pt-4 pb-2">Available Options</p>
+                                                <Table>
+                                                    <TableBody>
+                                                        {cfg.options.map((opt: any) => (
+                                                            <TableRow key={opt.id} className="hover:bg-primary/5 border-b">
+                                                                <TableCell className="font-black uppercase text-[10px] text-slate-900 pl-6 py-3">{opt.name}</TableCell>
+                                                                <TableCell className="font-black uppercase text-[10px] text-primary pr-6 py-3 text-right">${(opt.sellPriceExclGst || 0).toLocaleString()}</TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
+                                        )}
+                                    </>
+                                );
+                            })()}
                         </div>
                     </ScrollArea>
                 </DialogContent>
@@ -2252,6 +2683,9 @@ export function HighfieldQuoteFlow({
                     isTenderToSelected,
                     isTrailerRegoSelected,
                     selectedTrailerId,
+                    catalogTrailerSnapshot,
+                    boatRegoSnapshot,
+                    trailerRegoSnapshot,
                     priceLevelUsed: priceLevel,
                     appliedPromotions,
                     promotionDiscount,

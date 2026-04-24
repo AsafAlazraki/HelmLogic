@@ -121,6 +121,11 @@ const getSafeDefaultValues = (modelData: any, vendorSlug?: string): any => {
         standardFeatures: data.standardFeatures ?? [],
         documents: (data.documents || []).map((d: any) => ({ ...d, id: d.id || `doc-${Math.random()}` })),
         trailerConfig: data.trailerConfig ?? { name: '', imageUrl: null, options: [] },
+        // v1.4: per-model trailer assignments (catalog-backed). Without this
+        // line useFieldArray initialises empty on reload even when Firestore
+        // already has the value — a tester reported the assignment "poofed"
+        // after re-opening the editor.
+        trailerAssignments: Array.isArray(data.trailerAssignments) ? data.trailerAssignments : [],
     };
 
     if (vendorSlug === 'highfield') {

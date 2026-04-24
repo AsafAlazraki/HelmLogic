@@ -1,0 +1,246 @@
+# HelmLogic — Codebase Map
+
+> File-by-file index for fast orientation. Updated: 2026-04-23 EOD (post v1.4 day-1 remediation + sibling-bug audit fixes).
+> 90+ components + 10 lib files + 9 test specs. Most important files are starred ★.
+
+---
+
+## App Routes (`src/app/(app)/`)
+
+| Path | Purpose |
+|------|---------|
+| `layout.tsx` | Top-level app shell (sidebar, header, auth gate) |
+| `dashboard/` | Home dashboard after login |
+| `modules/[id]/page.tsx` ★ | **Module workspace — ~1400 lines, most complex file.** Routes by moduleType: catalog → default tabs, motor-brand → YamahaMotorWorkspace, master-price-file → MasterPriceFileWorkspace, placeholders → placeholder view, sub-dealer → separate tabs. |
+| `modules/add/page.tsx` | New module creation form (moduleType selector) |
+| `modules/dealer-fit-options/` | Admin: global dealer fit categories |
+| `modules/page.tsx` | Module list / picker |
+| `admin/` | Admin-only pages (user list, organisations, agent-team, global dealer fit) |
+| `organisations/` | Org management |
+| `manage/` | Org settings (permissions, roles, dealer fit selections) |
+| `[orgSlug]/` | Dynamic org-scoped routes |
+| `highfield/`, `data-warehouse/`, `vendor-data/` | Data explorers |
+| `proposals/` | Proposal preview routes |
+| `pricing-manager/` | Global pricing workspace route |
+| `price-book/` | Published price book view |
+| `reporting/`, `real-time-tracking/`, `route-optimization/`, `sub-dealers/`, `data-connect/` | Feature pages |
+
+---
+
+## Components (`src/components/`)
+
+### Module Workspaces (The Big 5)
+| File | Purpose |
+|------|---------|
+| `yamaha-motor-workspace.tsx` ★ | Motor module workspace — Catalog / Pricing Manager / Promotions / Settings tabs. Reference pattern for TrailersWorkspace. |
+| `master-price-file-workspace.tsx` ★ | Editable data tables, Excel import/export, per-sheet datasets. **v1.4**: `handleImport` upserts by natural key (Part Number / Model Code / SKU fallback) instead of clear-and-replace, so operators can partial-import without wiping unrelated rows. |
+| `highfield-model-editor.tsx` ★ | Full boat model editor (opened from catalog). Tabs: Overview, Variants, Optional Features, Motor Options, Trailer Config (v1.4: + Trailer Options). |
+| `stock-management-workspace.tsx` ★ | Stock + delivered-deals + hold-requests + map + assignments. Sub-tab URL sync. |
+| `trailers-workspace.tsx` ★ (**v1.4**) | Trailer module workspace — Dashboard / Pricing Manager / Settings. Defaults to `?trailerTab=dashboard`; legacy `catalog` values remap. Settings leads with `ModuleImageEditor`, then brand multi-select, trailer dealer-fit category manager, role assignment. |
+| `trailer-dashboard.tsx` ★ (**v1.4**) | Yamaha-style trailer catalog dashboard. Aggregates all selected trailer brands with `getDocs`, groups by boat-size range (<4m / 4–5m / 5–6m / 6–7m / 7m+ / Unknown), card/table view toggle (URL-synced `?trailerView=`), search across code/name/brand/series/supplier/features, admin-only image + field editor on detail sheet. |
+| `trailer-pricing-workspace.tsx` (**v1.4**) | Per-brand pricing Manager — full dealer-audit waterfall with source xlsx column codes + per-org overrides. |
+| `rego-workspace.tsx` (**v1.4**) | Rego module workspace — Types + Settings tabs. Types are sub-docs on Rego Authority vendors. |
+
+### Quote Builder
+| File | Purpose |
+|------|---------|
+| `highfield-quote-flow.tsx` ★ | 6-step quote wizard (Variant → Motor → Dealer Fit → Trailer → Accessories → Review). Most actively edited file. v1.4: Step 4 auto-pre-selects the boat model's default trailer assignment, honours org trailer overrides, and tiles switch between assigned trailers (no full catalog browse at quote time). |
+| `finalize-quote-dialog.tsx` | Snapshot all prices at save time. `buildQuotePayload()` locks pricing. v1.4 persists `trailer.cost` + `trailer.catalog.specifications`. |
+| `proposal-view.tsx`, `proposal-pdf.tsx`, `proposal-print.tsx` | Read finalized quote → render HTML/PDF/print. v1.4 trailer block renders BRAND · CODE subtitle + specs strip. |
+| `motor-options.tsx`, `motor-module-browser.tsx`, `motor-configuration-details.tsx` | Motor selection components |
+| `trailer-options.tsx` | Catalog Explorer TRAILER OPTIONS tab. v1.4 day-1 stripped legacy freeform cards; now renders only `TrailerAssignmentsSection`. |
+| `trailer-catalog-picker.tsx` (**v1.4**) | Shared picker dialog. Narrows to associated trailer modules when `associatedModuleIds` is passed. Merges org trailer overrides from `organisations/{orgId}/trailerOverrides`. |
+
+### Pricing
+| File | Purpose |
+|------|---------|
+| `highfield-pricing-workspace.tsx` | Per-vendor pricing workspace with margin calc + price levels |
+| `trailer-pricing-workspace.tsx` ★ (**v1.4 uplift**) | Full Highfield-style Pricing Manager for trailers. Brand→Series→Trailer tree (collapsible), waterfall inline editing on every row AND inside the expanded panel, multi-select with tri-state banners, bulk reset, Global Update dialog (+%, −%, +$, set to, etc.), staged Publish/Discard buffer. Org overrides at `organisations/{orgId}/trailerOverrides/{trailerId}` carry `sellPriceExclGst` + arbitrary `pricingDetail` fields. |
+| `module-pricing-dashboard.tsx` | Entry from module settings |
+| `price-book-table.tsx` | Published price book display |
+| `price-list-manager.tsx`, `price-list-viewer.tsx` | Sub-dealer price list mgmt + view |
+| `exchange-rate-manager.tsx` | USD → AUD conversion config |
+
+### Dealer Fit
+| File | Purpose |
+|------|---------|
+| `dealer-fit-options.tsx` | Merges **5** category sources (global + module + motor + trailer + **linked associated-modules**, v1.4 Stage B.2). Also unions `associatedVendorIds` from linked modules so their MPF items show up in the Master Browser. |
+| `module-dealer-fit-manager.tsx` | Per-module category CRUD. `fieldName` prop lets it handle standard / motor / trailer categories. |
+| `master-data-browser-dialog.tsx` | Search all MPF datasets → add dealer fit items. One-click add, staged items panel. |
+| `module-image-editor.tsx` (**v1.4**) | Reusable Settings-tab card for editing any module's `logoUrl` (upload / paste URL / remove). Used by Trailers settings; drop-in for any other module. |
+
+### Module Settings + Workspaces (v1.4)
+| File | Purpose |
+|------|---------|
+| `module-settings-panel.tsx` ★ (**v1.4**) | Reusable Settings panel rendered on every module workspace's Settings tab. Card set: Module Image + module-specific `preCards` slot + Associated Vendors + **Associated Modules** (new v1.4, `modules/{id}.associatedModuleIds[]`) + Dealer Fit Categories + `midCards` slot + Sub Dealers + Module Roles. Used by Trailer / Yamaha / Rego workspaces. |
+| `trailers-workspace.tsx` (**v1.4**) | Trailer module workspace with Dashboard / Pricing Manager / Settings tabs. URL-synced via `?trailerTab=`. |
+| `trailer-dashboard.tsx` ★ (**v1.4**) | Yamaha-style trailer dashboard (~1,400 lines). Aggregates trailers from every selected brand vendor via flat `getDocs`, groups by boat-size range, Cards/Table view toggle (URL-synced `?trailerView=`), search across code/name/brand/series/supplier/features. Detail sheet contains image editor + field editor + `<DealerFitOptions moduleOnly>` per v1.4 Chunk D. |
+| `rego-workspace.tsx` (**v1.4**) | Rego module workspace — Types (per-authority CRUD) + Settings. |
+| `rego-picker.tsx` (**v1.4**) | Shared dropdown for picking a rego type — used by both boat and trailer rego steps on the Highfield quote flow. |
+
+### Stock
+| File | Purpose |
+|------|---------|
+| `inventory-list.tsx`, `stock-list.tsx` | Stock tables. Firestore `in` query capped at 30 (sliced). |
+| `stock-item-detail.tsx` | Full stock detail panel (mini-proposal, dealer audit, cost breakdown) |
+| `stock-item-form.tsx` | Add/edit stock item |
+| `stock-import.tsx`, `stock-export.tsx` | Excel import/export with multi-field dedupe |
+| `stock-assignment-view.tsx` | Sub-dealer stock distribution |
+| `stock-location-manager.tsx`, `stock-location-map.tsx`, `stock-location-map-leaflet.tsx` | Location mgmt + map views |
+| `delivered-deals.tsx`, `delivered-deal-detail.tsx`, `delivered-deals-import.tsx`, `delivered-deals-export.tsx` | Delivered deals workflow |
+| `move-to-delivered.tsx` | In Stock - Sold → Delivered transition |
+| `hold-requests-dashboard.tsx`, `hold-request-dialog.tsx` | Sub-dealer → parent org hold request workflow |
+| `vessel-on-order-list.tsx` | On Order sub-view |
+
+### Customer + Module Settings
+| File | Purpose |
+|------|---------|
+| `customer-list.tsx`, `customer-picker.tsx` | Customer CRUD + picker for sold stock |
+| `organisation-module-config.tsx` | Full module settings form |
+| `module-role-assignment.tsx` | Brand Captain + Module Manager pickers |
+| `module-promotions.tsx` | Promotion CRUD (fixed/per-hp/percentage/category-discount) |
+| `module-vendor-access-dialog.tsx` | Associate vendors to module |
+| `manage-organisation-page.tsx` | Org-level permissions + role mgmt |
+
+### Brand-Specific (Legacy / Placeholder)
+| File | Purpose |
+|------|---------|
+| `jeanneau-*`, `stabicraft-*`, `stacer-*`, `surtees-*` | Non-Highfield brand stubs — present but unused in active flow |
+| `highfield-data-structure.tsx` | Highfield data tree explorer |
+
+### UI + Misc
+| File | Purpose |
+|------|---------|
+| `ui/` | shadcn/ui primitives (Button, Input, Dialog, Tabs, etc.) |
+| `header.tsx`, `app-sidebar.tsx`, `user-menu.tsx`, `notification-bell.tsx` | App chrome |
+| `helmlogic-loading.tsx` | "Initializing Precision Build" loading component (MUST be scoped, see v1.3.1) |
+| `logo.tsx`, `sidebar-skeleton.tsx`, `dashboard-chart.tsx` | Visuals |
+| `chat-bot.tsx` | Genkit AI chatbot |
+| `route-optimization-form.tsx`, `map.tsx` | Delivery route planning |
+| `agent-team-dashboard.tsx`, `org-chart-node.tsx`, `role-hierarchy-chart.tsx` | Agent team / org chart visualizers |
+| `FirebaseErrorListener.tsx` | Global Firestore error toast wrapper |
+| `admin-guard.tsx` | Admin-only route gate |
+| `breadcrumb-nav.tsx` | Breadcrumbs |
+| `sam-allen-uploader.tsx` | Sam Allen price-list uploader. **v1.4**: upserts by natural key (Part Number / Model Code / SKU) instead of delete-all-then-insert, preserving user edits across partial uploads. |
+| `sam-allen-*`, `yamaha-api-fetcher.tsx`, `json-data-visualizer.tsx` | Data import + inspection tools |
+| `mpf-parsers.ts` | Excel sheet parsers for MPF import |
+
+---
+
+## Libs (`src/lib/`)
+
+| File | Purpose |
+|------|---------|
+| `quote-financials.ts` ★ | `buildQuoteFinancials()` — MUST be passed to `ProposalPDFDocument`. Single source of truth for totals, GST, margins. |
+| `currency-utils.ts` | `formatCurrency()` (auto-drops .00 for whole dollars), `getPriceForLevel()`, `resolvePrice()` |
+| `hold-request-types.ts` | Hold request enum + type helpers |
+| `layout-utils.ts` | Shared layout constants |
+| `nav-links.ts` | Sidebar nav definitions |
+| `notifications.ts` | Toast wrappers |
+| `placeholder-images.json/.ts` | Image fallbacks |
+| `utils.ts` | `cn()` classname helper + misc |
+
+---
+
+## Hooks (`src/hooks/`)
+
+| File | Purpose |
+|------|---------|
+| `use-mobile.tsx` | Mobile breakpoint detection |
+| `use-toast.ts` | Toast system |
+
+**Not here but used heavily**: `useDoc`, `useCollection`, `useMemoFirebase` — these come from the Firebase firebase-kit package. `useMemoFirebase` is REQUIRED for memoizing Firestore refs — `useMemo` causes infinite re-renders.
+
+---
+
+## Tests (`tests/`)
+
+| File | Purpose |
+|------|---------|
+| `critical-paths.spec.ts` ★ | Smoke tests. MUST pass for any deploy. |
+| `hotfixes-v1.3.spec.ts` ★ | Regression tests for v1.3 eve-of-release bugs + v1.3.1 URL partial-param bugs |
+| `persistence.spec.ts` ★ | Save-then-reload roundtrips. Most valuable file — catches "UI appears to succeed but nothing persisted" class of bugs. |
+| `quote-builder.spec.ts` | 6-step quote flow |
+| `stock-management.spec.ts` | Stock workspace sub-tabs |
+| `settings.spec.ts` | Module settings CRUD |
+| `yamaha-motors.spec.ts` | Yamaha workspace |
+| `v1.2-features.spec.ts` | v1.2 regression |
+| `helpers/utils.ts` ★ | `waitForToast`, `reloadAndAssert`, `openTab`, `assertNoCrash`, `openFirstModelEditor`, `waitForFirestoreSettle`, `getUrlParam` |
+
+---
+
+## Configs (root)
+
+| File | Purpose |
+|------|---------|
+| `CLAUDE.md` | Workflow rules + known lessons |
+| `apphosting.yaml` | Firebase App Hosting config |
+| `firebase.json`, `firestore.rules`, `firestore.indexes.json`, `storage.rules` | Firebase config — rules need manual deploy |
+| `playwright.config.ts` | Playwright config (`ignoreHTTPSErrors: true` for sandboxed runs) |
+| `next.config.ts`, `tsconfig.json`, `tailwind.config.ts`, `postcss.config.mjs` | Next.js + TS + Tailwind |
+| `components.json` | shadcn/ui config |
+| `package.json` | Scripts: `dev`, `build`, `test:e2e`, `test:e2e:smoke`, `test:e2e:list` |
+
+---
+
+## Docs (`tasks/` + `.agents/` + `testing/`)
+
+| File | Purpose |
+|------|---------|
+| `tasks/START_HERE.md` ★ | NEW SESSION ENTRY POINT. Read this first. |
+| `tasks/SESSION_HANDOVER.md` ★ | Deep technical context: data hierarchy, IDs, architecture. |
+| `.agents/evolution.md` ★ | Session history + architectural reasoning across releases. |
+| `tasks/CODEBASE_MAP.md` | This file. |
+| `tasks/v1.4-trailers-module-status.md` | Live state of current release work. |
+| `tasks/v1.4-trailers-module-design.md` | Design doc for v1.4. |
+| `tasks/v1.3-backlog.md` | v1.3 client requirements (shipped). |
+| `tasks/RELEASE_NOTES_v*.md` | Per-release changelogs (v1, v1.1, v1.2, v1.2.1, v1.3, v1.3.1). |
+| `tasks/release-notes.md` | Currently stale — superseded by per-version files. |
+| `tasks/sprint.md` | Sprint planning (may be stale). |
+| `tasks/TEST_CASES.md`, `TEST_RESULTS_LOG.md` | Legacy test docs (superseded by `testing/` folder). |
+| `testing/README.md` ★ | Test philosophy + quality rules. |
+| `testing/HANDBOOK.md` | Full QA onboarding doc (~42KB, 11 parts). |
+| `testing/v1.2/`, `testing/v1.3/` etc | Per-release test plans + cases + results. |
+| `testing/shared/bug-report-template.md`, `test-case-template.md` | Templates. |
+
+---
+
+## Scripts (`scripts/`)
+
+Python seed + migration scripts. Note: `seed-highfield.py` writes to the WRONG path (`data-warehouse/highfield`) — use `reseed-correct-vendor.py` which targets `LafOLpLb6QIFE856TiD4`.
+
+---
+
+## Data Import (`data-import/`)
+
+Excel source files used for module imports. **v1.4 rule** — these are NOT committed to git; they're operator-side artifacts fed into seed scripts. The canonical copy once imported is Firestore.
+
+- `Dealer_Fit_Module.xlsx` — dealer fit items master
+- `Copy of Motor Module.xlsx` — Yamaha motor data
+- `Parts Module (1).xlsx`, `Parts Module (2).xlsx` — parts data
+- `Rigging Module.xlsx` — rigging kits
+- `Trailer Module.xlsx` — ingested into Firestore via `scripts/seed-trailers.ts`; source file is gitignored after import
+
+---
+
+## Key Cross-Cutting Concerns
+
+### State that must sync to URL (via `window.history.replaceState`)
+- `modules/[id]/page.tsx`: `?tab=`, `?view=`, `?range=`, `?model=` (v1.3)
+- `yamaha-motor-workspace.tsx`: `?motorTab=` (v1.3)
+- `stock-management-workspace.tsx`: `?stockView=` (v1.3)
+- `trailers-workspace.tsx`: `?trailerTab=` (v1.4 — `dashboard` | `pricing` | `settings`; legacy `catalog` remaps to `dashboard`)
+- `trailer-dashboard.tsx`: `?trailerView=` (v1.4 — `cards` default, `table` written explicitly)
+- `rego-workspace.tsx`: `?regoTab=` (v1.4)
+
+### Loading overlays (MUST be scoped per v1.3.1)
+- `modules/[id]/page.tsx`: `{isTransitioning || (view === 'bmt' && (masterModelLoading || overrideLoading))}` — NOT page-root
+- Apply same pattern to TrailersWorkspace when built
+
+### Zod schemas (MUST be permissive for legacy data)
+- `highfield-model-editor.tsx` / `model-configuration-editor.tsx`: every field `optional().nullable().default()`, every object `.passthrough()`
+- Same for any new trailer schemas in v1.4
+
+---
+
+**Keep this map current. When you add/remove/rename components, update this doc in the same commit.**

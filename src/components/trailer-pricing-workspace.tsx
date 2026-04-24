@@ -1,0 +1,1792 @@
+'use client';
+
+/**
+ * Trailer Pricing Workspace — table-style pricing manager.
+ *
+ * Flat, Yamaha/MPF-style table. Inline Sell-override edit persists to
+ * `organisations/{orgId}/trailerOverrides/{trailerId}`. Waterfall (2c),
+ * search + filter (2d), export (2e) and import-with-dedupe (2f) follow.
+ */
+
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { collection, doc, getDocs, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import * as XLSX from 'xlsx';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    ChevronDown,
+    ChevronRight,
+    DollarSign,
+    Download,
+    FileSpreadsheet,
+    FileText,
+    Loader2,
+    RotateCcw,
+    Search,
+    Truck,
+    Upload,
+} from 'lucide-react';
+import { formatCurrency } from '@/lib/currency-utils';
+import { useToast } from '@/hooks/use-toast';
+
+interface Vendor {
+    id: string;
+    name: string;
+    vendorType?: string;
+    logoUrl?: string;
+    shortCode?: string;
+}
+
+interface FlatTrailerRow {
+    id: string;
+    vendorId: string;
+    vendorName: string;
+    seriesId: string;
+    seriesName: string;
+    code: string;
+    name: string;
+    supplier?: string;
+    imageUrl?: string;
+    isActive?: boolean;
+    sourceSell: number;
+    pricing: Record<string, any>;
+}
+
+interface TrailerPricingWorkspaceProps {
+    vendors: Vendor[];
+    organisationId: string;
+    isAdmin: boolean;
+}
+
+const COLUMNS: Array<{ key: keyof FlatTrailerRow | string; label: string; numeric?: boolean; width?: string }> = [
+    { key: 'image', label: '', width: 'w-[56px]' },
+    { key: 'code', label: 'Code', width: 'min-w-[120px]' },
+    { key: 'name', label: 'Name', width: 'min-w-[240px]' },
+    { key: 'vendorName', label: 'Brand', width: 'min-w-[140px]' },
+    { key: 'seriesName', label: 'Series', width: 'min-w-[140px]' },
+    { key: 'supplier', label: 'Supplier', width: 'min-w-[120px]' },
+    { key: 'dealer', label: 'Dealer', numeric: true, width: 'min-w-[110px]' },
+    { key: 'nettPrice', label: 'Nett', numeric: true, width: 'min-w-[110px]' },
+    { key: 'landed', label: 'Landed', numeric: true, width: 'min-w-[110px]' },
+    { key: 'totalPdCharges', label: 'Total PD', numeric: true, width: 'min-w-[110px]' },
+    { key: 'totalNettCtd', label: 'CTD', numeric: true, width: 'min-w-[110px]' },
+    { key: 'markupPercent', label: 'MU%', numeric: true, width: 'min-w-[80px]' },
+    { key: 'rrp', label: 'RRP', numeric: true, width: 'min-w-[110px]' },
+    { key: 'sell', label: 'Sell ex GST', numeric: true, width: 'min-w-[140px]' },
+];
+
+interface TrailerOverride {
+    id: string;
+    // Legacy shape — early v1.4 overrides stored only the sell price.
+    sellPriceExclGst?: number;
+    // New shape (stage 1a) — any subset of the waterfall keys can be
+    // overridden per-org. When `sell` is set, we also mirror it to the
+    // top-level `sellPriceExclGst` above so the catalog picker (which
+    // reads the legacy field directly) keeps working without changes.
+    pricingDetail?: Partial<Record<string, number>>;
+    note?: string | null;
+}
+
+// Waterfall keys an org may override. Anything NOT in this set is a
+// computed/derived column we don't let users edit (e.g. grossProfit is
+// derived from margin%, we expose the raw drivers instead).
+const EDITABLE_KEYS = new Set<string>([
+    'dealer', 'discount', 'settlement', 'nettPrice', 'freight', 'landed',
+    'pdDollars', 'sundry', 'detailing', 'totalPdCharges', 'totalNettCtd',
+    'markupPercent', 'grossProfit', 'rrp', 'sell',
+]);
+
+// Human-friendly labels for the Global Update dropdown. Order matches
+// the waterfall so operators see Dealer → Nett → Landed → Sell.
+const EDITABLE_FIELDS: Array<{ key: string; label: string; format: 'currency' | 'percent' }> = [
+    { key: 'dealer',         label: 'Dealer',         format: 'currency' },
+    { key: 'discount',       label: 'Discount',       format: 'currency' },
+    { key: 'settlement',     label: 'Settlement',     format: 'currency' },
+    { key: 'nettPrice',      label: 'Nett Price',     format: 'currency' },
+    { key: 'freight',        label: 'Freight',        format: 'currency' },
+    { key: 'landed',         label: 'Landed',         format: 'currency' },
+    { key: 'pdDollars',      label: 'PD ($)',         format: 'currency' },
+    { key: 'sundry',         label: 'Sundry',         format: 'currency' },
+    { key: 'detailing',      label: 'Detailing',      format: 'currency' },
+    { key: 'totalPdCharges', label: 'Total PD',       format: 'currency' },
+    { key: 'totalNettCtd',   label: 'Total Nett CTD', format: 'currency' },
+    { key: 'markupPercent',  label: 'Markup %',       format: 'percent' },
+    { key: 'grossProfit',    label: 'Gross Profit',   format: 'currency' },
+    { key: 'rrp',            label: 'RRP',            format: 'currency' },
+    { key: 'sell',           label: 'Sell (ex GST)',  format: 'currency' },
+];
+
+// Stage 2c — staged patch. `number` stages an override; `null` stages a
+// reset (clear existing override back to source). Undefined = no change.
+type StagedPatch = Partial<Record<string, number | null>>;
+
+// Effective pricing = source waterfall + persisted override + staged patch.
+// Sell has a legacy fallback for overrides that predate stage 1a.
+// Staged null values for a key revert that key to its source value —
+// overrides it would have had from `override.pricingDetail` are ignored.
+function resolveEffectivePricing(
+    sourcePricing: Record<string, any>,
+    sourceSell: number,
+    override?: TrailerOverride,
+    staged?: StagedPatch,
+): Record<string, number> {
+    const result: Record<string, number> = {};
+    for (const k of Object.keys(sourcePricing || {})) {
+        const v = sourcePricing[k];
+        if (typeof v === 'number') result[k] = v;
+    }
+    if (override?.pricingDetail) {
+        for (const [k, v] of Object.entries(override.pricingDetail)) {
+            if (typeof v === 'number') result[k] = v;
+        }
+    }
+    if (staged) {
+        for (const [k, v] of Object.entries(staged)) {
+            if (typeof v === 'number') result[k] = v;
+            else if (v === null) {
+                // Revert to source: remove override, fall back to source value if any.
+                delete result[k];
+                if (typeof sourcePricing?.[k] === 'number') result[k] = sourcePricing[k];
+            }
+        }
+    }
+    // Sell resolution with same staging logic.
+    if (staged && 'sell' in staged) {
+        const s = staged.sell;
+        if (typeof s === 'number') result.sell = s;
+        else result.sell = sourceSell;
+    } else {
+        const sellOverride =
+            override?.pricingDetail?.sell ??
+            override?.sellPriceExclGst ??
+            undefined;
+        result.sell = typeof sellOverride === 'number' ? sellOverride : sourceSell;
+    }
+    return result;
+}
+
+// Has a persisted OR staged override for this field? Used to paint amber.
+function hasFieldOverride(key: string, override?: TrailerOverride, staged?: StagedPatch): boolean {
+    if (staged && key in staged) {
+        const v = staged[key];
+        if (typeof v === 'number') return true;
+        if (v === null) return false; // staged reset wins
+    }
+    if (!override) return false;
+    const v = override.pricingDetail?.[key];
+    if (typeof v === 'number') return true;
+    if (key === 'sell' && typeof override.sellPriceExclGst === 'number') return true;
+    return false;
+}
+
+// Is this field *staged* (pending publish) vs merely persisted? Used to
+// paint the dirty-cell indicator independently from the amber override.
+function isFieldStaged(key: string, staged?: StagedPatch): boolean {
+    if (!staged) return false;
+    return key in staged;
+}
+
+// Waterfall rows rendered when a trailer is expanded. Source-column letters are
+// kept for audit so a dealer can cross-check against the import spreadsheet.
+const WATERFALL_ROWS: Array<{ key: string; label: string; col: string; bold?: boolean; accent?: boolean }> = [
+    { key: 'dealer',         label: 'Dealer',          col: 'AN' },
+    { key: 'discount',       label: 'Discount',        col: 'AO' },
+    { key: 'settlement',     label: 'Settlement',      col: 'AP' },
+    { key: 'nettPrice',      label: 'Nett Price',      col: 'AQ', bold: true },
+    { key: 'freight',        label: 'Freight',         col: 'AR' },
+    { key: 'landed',         label: 'Landed',          col: 'AS' },
+    { key: 'pdDollars',      label: 'PD ($)',          col: 'BD' },
+    { key: 'sundry',         label: 'Sundry',          col: 'BO' },
+    { key: 'detailing',      label: 'Detailing',       col: 'BP' },
+    { key: 'totalPdCharges', label: 'Total PD',        col: 'BQ' },
+    { key: 'totalNettCtd',   label: 'Total Nett CTD',  col: 'BS', bold: true },
+    { key: 'markupPercent',  label: 'Markup %',        col: 'BT' },
+    { key: 'grossProfit',    label: 'Gross Profit',    col: 'BU' },
+    { key: 'rrp',            label: 'RRP',             col: 'BV' },
+    { key: 'sell',           label: 'Sell (ex GST)',   col: 'BW', bold: true, accent: true },
+];
+
+function WaterfallPanel({
+    row,
+    overrideDoc,
+    stagedPatch,
+    effectivePricing,
+    hasOverride,
+    isAdmin,
+    onSaveField,
+    onResetField,
+    onResetRow,
+}: {
+    row: FlatTrailerRow;
+    overrideDoc?: TrailerOverride;
+    stagedPatch?: StagedPatch;
+    effectivePricing: Record<string, number>;
+    hasOverride: boolean;
+    isAdmin: boolean;
+    onSaveField: (trailerId: string, key: string, value: number) => void | Promise<void>;
+    onResetField: (trailerId: string, key: string) => void | Promise<void>;
+    onResetRow: (trailerId: string) => void | Promise<void>;
+}) {
+    // A waterfall row is shown if the trailer has a source value OR an override
+    // (persisted or staged) for that key.
+    const rowsWithValues = WATERFALL_ROWS.filter(r => {
+        const hasSource = typeof row.pricing?.[r.key] === 'number';
+        const hasOverrideForKey = hasFieldOverride(r.key, overrideDoc, stagedPatch);
+        return hasSource || hasOverrideForKey;
+    });
+    const hasWaterfall = rowsWithValues.length > 0;
+    const pdParts: Array<{ name?: string; cost?: number }> = Array.isArray(row.pricing?.pdParts) ? row.pricing.pdParts : [];
+
+    return (
+        <div className="p-5 bg-slate-50 border-y-2 border-slate-200">
+            {/* Summary row */}
+            <div className="flex flex-wrap items-center gap-4 mb-4 pb-3 border-b border-slate-200">
+                <div className="flex flex-col">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Source sell</span>
+                    <span className="text-sm font-mono tabular-nums text-slate-700">{formatCurrency(row.sourceSell)}</span>
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Effective sell</span>
+                    <span className={`text-sm font-mono tabular-nums font-semibold ${hasFieldOverride('sell', overrideDoc, stagedPatch) ? 'text-amber-700' : 'text-primary'}`}>
+                        {formatCurrency(effectivePricing.sell ?? row.sourceSell)}
+                    </span>
+                </div>
+                {hasOverride && isAdmin && (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="ml-auto h-8 text-[10px]"
+                        onClick={() => onResetRow(row.id)}
+                    >
+                        <RotateCcw className="h-3 w-3 mr-1" /> Reset all overrides on this row
+                    </Button>
+                )}
+            </div>
+
+            {!hasWaterfall && (
+                <p className="text-xs text-slate-500 italic">
+                    No pricing waterfall imported for this trailer — only the top-level Sell is available.
+                </p>
+            )}
+
+            {hasWaterfall && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+                    {rowsWithValues.map(r => {
+                        const sourceValue = typeof row.pricing?.[r.key] === 'number' ? row.pricing[r.key] : null;
+                        const effectiveValue = typeof effectivePricing[r.key] === 'number' ? effectivePricing[r.key] : null;
+                        const isPct = r.key === 'markupPercent';
+                        const isEditable = isAdmin && EDITABLE_KEYS.has(r.key);
+                        return (
+                            <div
+                                key={r.key}
+                                className={`flex items-center justify-between py-1.5 text-xs border-b last:border-b-0 ${
+                                    r.accent ? 'font-bold text-primary border-primary/20'
+                                        : r.bold ? 'font-semibold text-slate-800'
+                                        : 'text-slate-600'
+                                }`}
+                            >
+                                <span className="flex items-center gap-2">
+                                    {r.label}
+                                    <span className="text-[9px] text-slate-300 font-mono uppercase">{r.col}</span>
+                                </span>
+                                {isEditable ? (
+                                    <span className="min-w-[110px] text-right">
+                                        <EditableCell
+                                            trailerId={row.id}
+                                            fieldKey={r.key}
+                                            sourceValue={sourceValue}
+                                            effectiveValue={effectiveValue}
+                                            hasOverride={hasFieldOverride(r.key, overrideDoc, stagedPatch)}
+                                            isStaged={isFieldStaged(r.key, stagedPatch)}
+                                            format={isPct ? 'percent' : 'currency'}
+                                            isAdmin={isAdmin}
+                                            onSave={onSaveField}
+                                            onReset={onResetField}
+                                        />
+                                    </span>
+                                ) : (
+                                    <span className="tabular-nums font-mono">
+                                        {effectiveValue == null
+                                            ? '—'
+                                            : isPct
+                                                ? `${Number(effectiveValue).toFixed(1)}%`
+                                                : formatCurrency(effectiveValue)}
+                                    </span>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {pdParts.length > 0 && (
+                <div className="mt-5">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">PD Parts</p>
+                    <div className="space-y-1">
+                        {pdParts.map((p, i) => (
+                            <div key={i} className="flex items-center justify-between text-[11px]">
+                                <span className="text-slate-600 truncate">{p.name || `Part ${i + 1}`}</span>
+                                <span className="tabular-nums font-mono text-slate-500">{formatCurrency(p.cost || 0)}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/**
+ * Generic inline-editable numeric cell. Works for currency fields and
+ * percent fields (e.g. markupPercent). Click to edit, Enter to commit,
+ * Escape to cancel. Leaving the draft empty clears the per-field override.
+ *
+ * Stage 1b — introduced to replace the single-purpose SellCell. Stage 1c
+ * will start using this for the other visible numeric columns.
+ */
+function EditableCell({
+    trailerId,
+    fieldKey,
+    sourceValue,
+    effectiveValue,
+    hasOverride,
+    isStaged = false,
+    format,
+    isAdmin,
+    onSave,
+    onReset,
+}: {
+    trailerId: string;
+    fieldKey: string;
+    sourceValue: number | null;
+    effectiveValue: number | null;
+    hasOverride: boolean;
+    isStaged?: boolean;
+    format: 'currency' | 'percent';
+    isAdmin: boolean;
+    onSave: (trailerId: string, key: string, value: number) => void | Promise<void>;
+    onReset: (trailerId: string, key: string) => void | Promise<void>;
+}) {
+    const [editing, setEditing] = useState(false);
+    const [draft, setDraft] = useState('');
+
+    const display = (v: number | null): string => {
+        if (v == null) return '—';
+        return format === 'percent' ? `${Number(v).toFixed(1)}%` : formatCurrency(v);
+    };
+
+    if (editing) {
+        const commit = async () => {
+            const trimmed = draft.trim();
+            setEditing(false);
+            if (trimmed === '') {
+                if (hasOverride) await onReset(trailerId, fieldKey);
+                return;
+            }
+            const parsed = parseFloat(trimmed);
+            if (!Number.isFinite(parsed) || parsed < 0) return;
+            // If the new value matches source exactly, clear the override.
+            if (sourceValue != null && parsed === sourceValue) {
+                if (hasOverride) await onReset(trailerId, fieldKey);
+                return;
+            }
+            if (parsed !== effectiveValue) await onSave(trailerId, fieldKey, parsed);
+        };
+        return (
+            <input
+                autoFocus
+                type="number"
+                step={format === 'percent' ? '0.1' : '0.01'}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={commit}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') commit();
+                    if (e.key === 'Escape') setEditing(false);
+                }}
+                className="w-full h-full px-2 py-1 text-xs border-2 border-primary rounded-md outline-none bg-white text-right font-mono"
+            />
+        );
+    }
+
+    const wrapperClass = isAdmin
+        ? `relative block w-full h-full px-3 py-2 cursor-pointer hover:bg-primary/10 text-right${isStaged ? ' bg-primary/5 border-l-2 border-primary' : ''}`
+        : 'block w-full h-full px-3 py-2 text-right';
+
+    return (
+        <span
+            onClick={() => {
+                if (!isAdmin) return;
+                setDraft(effectiveValue != null ? String(effectiveValue) : '');
+                setEditing(true);
+            }}
+            className={wrapperClass}
+            title={
+                isAdmin
+                    ? (isStaged
+                        ? 'Staged change — press Publish to commit, or click to edit'
+                        : hasOverride
+                            ? 'Click to edit · leave blank or match source to reset'
+                            : 'Click to set org override')
+                    : undefined
+            }
+        >
+            <span className={hasOverride ? 'text-amber-700 font-semibold' : ''}>
+                {display(effectiveValue)}
+            </span>
+            {hasOverride && sourceValue != null && sourceValue !== effectiveValue && (
+                <span className="block text-[9px] text-slate-400 line-through leading-tight">
+                    {display(sourceValue)}
+                </span>
+            )}
+        </span>
+    );
+}
+
+function TrailerPricingImage({ src, alt }: { src?: string; alt: string }) {
+    const [failed, setFailed] = useState(false);
+    useEffect(() => { setFailed(false); }, [src]);
+    if (!src || failed) {
+        return (
+            <div className="h-8 w-8 rounded-md bg-slate-50 border border-slate-200 flex items-center justify-center">
+                <Truck className="h-4 w-4 text-slate-300" />
+            </div>
+        );
+    }
+    return (
+        <img
+            src={src}
+            alt={alt}
+            className="h-8 w-8 rounded-md object-contain border border-slate-200 bg-white"
+            onError={() => setFailed(true)}
+        />
+    );
+}
+
+export function TrailerPricingWorkspace({ vendors, organisationId, isAdmin }: TrailerPricingWorkspaceProps) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [rows, setRows] = useState<FlatTrailerRow[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [search, setSearch] = useState('');
+    const [brandFilter, setBrandFilter] = useState<string>('all');
+    const [importing, setImporting] = useState(false);
+    // Stage 1e — Brand → Series → Trailer tree with collapse/expand.
+    // Keyed by `${vendorId}` for brands and `${vendorId}:${seriesId}`
+    // for series so cross-brand series names (e.g. "Fishing") can't
+    // collide.
+    const [collapsedBrands, setCollapsedBrands] = useState<Set<string>>(() => new Set());
+    const [collapsedSeries, setCollapsedSeries] = useState<Set<string>>(() => new Set());
+    // Stage 2a — multi-select state for bulk actions.
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+    // Stage 2b — Global Update dialog state.
+    const [globalUpdateOpen, setGlobalUpdateOpen] = useState(false);
+    const [guField, setGuField] = useState<string>('sell');
+    const [guOp, setGuOp] = useState<'set' | 'addAmount' | 'subAmount' | 'addPercent' | 'subPercent'>('addPercent');
+    const [guValue, setGuValue] = useState<string>('');
+    const [guBusy, setGuBusy] = useState(false);
+    // Stage 2c — staged edits. Each inline edit / bulk reset / global update
+    // populates this map. A "Publish" button in the header flushes everything
+    // to Firestore in one batched commit; "Discard" clears the map.
+    const [dirty, setDirty] = useState<Map<string, StagedPatch>>(() => new Map());
+    const [publishing, setPublishing] = useState(false);
+
+    // Pre-compute search fields on each row for fast filter
+    const filteredRows = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        const brandOk = (r: FlatTrailerRow) => brandFilter === 'all' || r.vendorId === brandFilter;
+        if (!q) return rows.filter(brandOk);
+        return rows.filter(r =>
+            brandOk(r) && (
+                r.code.toLowerCase().includes(q) ||
+                r.name.toLowerCase().includes(q) ||
+                (r.supplier || '').toLowerCase().includes(q) ||
+                r.seriesName.toLowerCase().includes(q)
+            ),
+        );
+    }, [rows, search, brandFilter]);
+
+    // Stage 1e — group filtered rows by brand then by series. `rows` is already
+    // sorted (brand → series → code) by loadRows(), so a single-pass group
+    // preserves ordering inside each bucket.
+    interface SeriesGroup { seriesId: string; seriesName: string; trailers: FlatTrailerRow[]; }
+    interface BrandGroup { vendorId: string; vendorName: string; seriesById: Map<string, SeriesGroup>; }
+    const groupedRows = useMemo(() => {
+        const byBrand = new Map<string, BrandGroup>();
+        for (const r of filteredRows) {
+            let brand = byBrand.get(r.vendorId);
+            if (!brand) {
+                brand = { vendorId: r.vendorId, vendorName: r.vendorName, seriesById: new Map() };
+                byBrand.set(r.vendorId, brand);
+            }
+            let series = brand.seriesById.get(r.seriesId);
+            if (!series) {
+                series = { seriesId: r.seriesId, seriesName: r.seriesName, trailers: [] };
+                brand.seriesById.set(r.seriesId, series);
+            }
+            series.trailers.push(r);
+        }
+        return Array.from(byBrand.values()).map(b => ({
+            ...b,
+            series: Array.from(b.seriesById.values()),
+        }));
+    }, [filteredRows]);
+
+    const toggleBrand = useCallback((vendorId: string) => {
+        setCollapsedBrands(prev => {
+            const next = new Set(prev);
+            if (next.has(vendorId)) next.delete(vendorId);
+            else next.add(vendorId);
+            return next;
+        });
+    }, []);
+    const toggleSeries = useCallback((vendorId: string, seriesId: string) => {
+        const key = `${vendorId}:${seriesId}`;
+        setCollapsedSeries(prev => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            return next;
+        });
+    }, []);
+    const expandAll = useCallback(() => {
+        setCollapsedBrands(new Set());
+        setCollapsedSeries(new Set());
+    }, []);
+    const collapseAllBrands = useCallback(() => {
+        const brands = new Set<string>();
+        for (const g of groupedRows) brands.add(g.vendorId);
+        setCollapsedBrands(brands);
+    }, [groupedRows]);
+
+    // Stage 2a — selection helpers. Selection is scoped to `filteredRows` so
+    // bulk actions never accidentally touch trailers the operator can't see.
+    const toggleRowSelected = useCallback((id: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }, []);
+    const setManySelected = useCallback((ids: string[], selected: boolean) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            for (const id of ids) {
+                if (selected) next.add(id);
+                else next.delete(id);
+            }
+            return next;
+        });
+    }, []);
+    const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+    // Tri-state helper: 'all' | 'some' | 'none' given a list of ids.
+    function selectionStateFor(ids: string[], sel: Set<string>): 'all' | 'some' | 'none' {
+        if (ids.length === 0) return 'none';
+        let hit = 0;
+        for (const id of ids) if (sel.has(id)) hit++;
+        if (hit === 0) return 'none';
+        if (hit === ids.length) return 'all';
+        return 'some';
+    }
+
+    const vendorIds = useMemo(() => vendors.map(v => v.id).sort().join('|'), [vendors]);
+
+    // Live overrides — single subscription, Map keyed by trailerId
+    const overridesQuery = useMemoFirebase(
+        () => collection(firestore, `organisations/${organisationId}/trailerOverrides`),
+        [firestore, organisationId],
+    );
+    const { data: overrides } = useCollection<TrailerOverride>(overridesQuery);
+    // Full override docs keyed by trailerId — used by resolveEffectivePricing().
+    const overrideDocByTrailer = useMemo(() => {
+        const m = new Map<string, TrailerOverride>();
+        (overrides || []).forEach(o => m.set(o.id, o));
+        return m;
+    }, [overrides]);
+    // Legacy map kept for back-compat with existing render code in this
+    // component (SellCell reads this). Subsequent stages will migrate
+    // consumers to `overrideDocByTrailer` + `resolveEffectivePricing`.
+    const overrideByTrailer = useMemo(() => {
+        const m = new Map<string, number>();
+        (overrides || []).forEach(o => {
+            const sellOverride =
+                o.pricingDetail?.sell ??
+                o.sellPriceExclGst ??
+                undefined;
+            if (typeof sellOverride === 'number') m.set(o.id, sellOverride);
+        });
+        return m;
+    }, [overrides]);
+
+    // Stage 2c — stage a per-field edit. `key` must be in EDITABLE_KEYS.
+    // Nothing hits Firestore until the operator presses Publish.
+    const saveOverrideField = useCallback((trailerId: string, key: string, value: number) => {
+        if (!EDITABLE_KEYS.has(key)) return;
+        setDirty(prev => {
+            const next = new Map(prev);
+            const current = next.get(trailerId) ?? {};
+            next.set(trailerId, { ...current, [key]: value });
+            return next;
+        });
+    }, []);
+
+    const buildExportRows = useCallback((source: FlatTrailerRow[]) => {
+        return source.map((r) => {
+            const p = r.pricing || {};
+            const override = overrideByTrailer.get(r.id);
+            const hasOverride = override != null && override !== r.sourceSell;
+            return {
+                Brand: r.vendorName,
+                Series: r.seriesName,
+                Code: r.code,
+                Name: r.name,
+                Supplier: r.supplier || '',
+                'Image URL': r.imageUrl || '',
+                Dealer: p.dealer ?? '',
+                Discount: p.discount ?? '',
+                Settlement: p.settlement ?? '',
+                'Nett Price': p.nettPrice ?? '',
+                Freight: p.freight ?? '',
+                Landed: p.landed ?? '',
+                'PD $': p.pdDollars ?? '',
+                Sundry: p.sundry ?? '',
+                Detailing: p.detailing ?? '',
+                'Total PD': p.totalPdCharges ?? '',
+                'Total Nett CTD': p.totalNettCtd ?? '',
+                'Markup %': p.markupPercent ?? '',
+                'Gross Profit': p.grossProfit ?? '',
+                RRP: p.rrp ?? '',
+                'Source Sell (ex GST)': r.sourceSell,
+                'Override Sell (ex GST)': hasOverride ? override : '',
+                'Effective Sell (ex GST)': hasOverride ? override : r.sourceSell,
+            };
+        });
+    }, [overrideByTrailer]);
+
+    const handleExport = useCallback((format: 'xlsx' | 'csv') => {
+        const source = filteredRows.length > 0 ? filteredRows : rows;
+        if (source.length === 0) {
+            toast({ variant: 'destructive', title: 'Nothing to export' });
+            return;
+        }
+        const data = buildExportRows(source);
+        const ws = XLSX.utils.json_to_sheet(data);
+        const stamp = new Date().toISOString().slice(0, 10);
+        const scopeLabel = brandFilter === 'all' ? 'all-brands' : (vendors.find(v => v.id === brandFilter)?.name || brandFilter).toLowerCase().replace(/\s+/g, '-');
+        const filename = `trailer-pricing_${scopeLabel}_${stamp}`;
+
+        if (format === 'xlsx') {
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Trailer Pricing');
+            XLSX.writeFile(wb, `${filename}.xlsx`);
+        } else {
+            const csv = XLSX.utils.sheet_to_csv(ws);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        toast({ title: 'Exported', description: `${data.length} trailer${data.length === 1 ? '' : 's'} exported.` });
+    }, [filteredRows, rows, buildExportRows, brandFilter, vendors, toast]);
+
+    const loadRows = useCallback(async (): Promise<FlatTrailerRow[]> => {
+        const flat: FlatTrailerRow[] = [];
+        for (const vendor of vendors) {
+            const seriesSnap = await getDocs(collection(firestore, `data-warehouse/${vendor.id}/series`));
+            for (const seriesDoc of seriesSnap.docs) {
+                const seriesId = seriesDoc.id;
+                const seriesName = (seriesDoc.data() as any).name || seriesId;
+                const trailersSnap = await getDocs(
+                    collection(firestore, `data-warehouse/${vendor.id}/series/${seriesId}/trailers`)
+                );
+                for (const t of trailersSnap.docs) {
+                    const data = t.data() as any;
+                    const pricing = data.pricingDetail || {};
+                    const sourceSell = typeof pricing.sell === 'number'
+                        ? pricing.sell
+                        : (typeof data.sellPriceExclGst === 'number' ? data.sellPriceExclGst : 0);
+                    flat.push({
+                        id: t.id,
+                        vendorId: vendor.id,
+                        vendorName: vendor.name,
+                        seriesId,
+                        seriesName,
+                        code: data.code || t.id,
+                        name: data.name || '',
+                        supplier: data.supplier || '',
+                        imageUrl: data.imageUrl || '',
+                        isActive: data.isActive,
+                        sourceSell,
+                        pricing,
+                    });
+                }
+            }
+        }
+        flat.sort((a, b) =>
+            a.vendorName.localeCompare(b.vendorName) ||
+            a.seriesName.localeCompare(b.seriesName) ||
+            a.code.localeCompare(b.code)
+        );
+        return flat;
+    }, [firestore, vendorIds]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = ''; // allow re-selecting same file
+        if (!file) return;
+        setImporting(true);
+
+        try {
+            const buf = await file.arrayBuffer();
+            const wb = XLSX.read(buf, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const parsed = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
+
+            if (parsed.length === 0) {
+                toast({ variant: 'destructive', title: 'Empty import', description: 'No rows found in the first sheet.' });
+                return;
+            }
+
+            // Build lookup maps
+            const vendorByName = new Map<string, { id: string; name: string }>();
+            vendors.forEach(v => vendorByName.set(v.name.toLowerCase().trim(), { id: v.id, name: v.name }));
+
+            const seriesByBrand = new Map<string, Map<string, string>>(); // brandId → loweredSeriesName → seriesId
+            for (const v of vendors) {
+                const seriesSnap = await getDocs(collection(firestore, `data-warehouse/${v.id}/series`));
+                const m = new Map<string, string>();
+                seriesSnap.docs.forEach(d => {
+                    const name = (d.data() as any).name || d.id;
+                    m.set(String(name).toLowerCase().trim(), d.id);
+                });
+                seriesByBrand.set(v.id, m);
+            }
+
+            const existingByKey = new Map<string, FlatTrailerRow>();
+            rows.forEach(r => existingByKey.set(`${r.vendorId}:${r.code.toLowerCase()}`, r));
+
+            // Pricing column mapping (header label → pricingDetail key)
+            const PRICING_COLS: Array<[string, string]> = [
+                ['Dealer', 'dealer'],
+                ['Discount', 'discount'],
+                ['Settlement', 'settlement'],
+                ['Nett Price', 'nettPrice'],
+                ['Freight', 'freight'],
+                ['Landed', 'landed'],
+                ['PD $', 'pdDollars'],
+                ['PD Dollars', 'pdDollars'],
+                ['Sundry', 'sundry'],
+                ['Detailing', 'detailing'],
+                ['Total PD', 'totalPdCharges'],
+                ['Total Nett CTD', 'totalNettCtd'],
+                ['Markup %', 'markupPercent'],
+                ['Gross Profit', 'grossProfit'],
+                ['RRP', 'rrp'],
+                ['Source Sell (ex GST)', 'sell'],
+                ['Sell', 'sell'],
+                ['Sell ex GST', 'sell'],
+            ];
+
+            const numOrNull = (v: any): number | null => {
+                if (v == null || v === '') return null;
+                const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/[$,]/g, ''));
+                return Number.isFinite(n) ? n : null;
+            };
+
+            let updated = 0;
+            let created = 0;
+            let skipped = 0;
+            const errors: string[] = [];
+            const skippedBrands = new Set<string>();
+
+            for (const raw of parsed) {
+                const brandRaw = String(raw.Brand ?? raw.brand ?? '').trim();
+                const codeRaw = String(raw.Code ?? raw.code ?? '').trim();
+                if (!brandRaw || !codeRaw) { skipped++; continue; }
+
+                const vendorHit = vendorByName.get(brandRaw.toLowerCase());
+                if (!vendorHit) {
+                    skipped++;
+                    skippedBrands.add(brandRaw);
+                    continue;
+                }
+
+                // Build pricingDetail from known columns
+                const pricingDetail: Record<string, number> = {};
+                for (const [col, key] of PRICING_COLS) {
+                    const v = numOrNull(raw[col]);
+                    if (v != null) pricingDetail[key] = v;
+                }
+
+                const nameRaw = String(raw.Name ?? raw.name ?? '').trim();
+                const supplierRaw = String(raw.Supplier ?? raw.supplier ?? '').trim();
+                const imageUrlRaw = String(raw['Image URL'] ?? raw.imageUrl ?? '').trim();
+                const seriesNameRaw = String(raw.Series ?? raw.series ?? 'Imported').trim() || 'Imported';
+
+                const key = `${vendorHit.id}:${codeRaw.toLowerCase()}`;
+                const existing = existingByKey.get(key);
+
+                const trailerPayload: Record<string, any> = {
+                    code: codeRaw,
+                    pricingDetail: { ...(existing?.pricing || {}), ...pricingDetail },
+                };
+                if (nameRaw) trailerPayload.name = nameRaw;
+                if (supplierRaw) trailerPayload.supplier = supplierRaw;
+                if (imageUrlRaw) trailerPayload.imageUrl = imageUrlRaw;
+                if (typeof pricingDetail.sell === 'number') trailerPayload.sellPriceExclGst = pricingDetail.sell;
+
+                try {
+                    if (existing) {
+                        await updateDoc(
+                            doc(firestore, `data-warehouse/${vendorHit.id}/series/${existing.seriesId}/trailers/${existing.id}`),
+                            { ...trailerPayload, updatedAt: serverTimestamp() },
+                        );
+                        updated++;
+                    } else {
+                        // Resolve or create series
+                        const brandSeries = seriesByBrand.get(vendorHit.id)!;
+                        let seriesId = brandSeries.get(seriesNameRaw.toLowerCase());
+                        if (!seriesId) {
+                            const newSeriesRef = doc(collection(firestore, `data-warehouse/${vendorHit.id}/series`));
+                            await setDoc(newSeriesRef, {
+                                name: seriesNameRaw,
+                                slug: seriesNameRaw.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                                isActive: true,
+                                createdAt: serverTimestamp(),
+                            });
+                            seriesId = newSeriesRef.id;
+                            brandSeries.set(seriesNameRaw.toLowerCase(), seriesId);
+                        }
+                        const trailerRef = doc(collection(firestore, `data-warehouse/${vendorHit.id}/series/${seriesId}/trailers`));
+                        await setDoc(trailerRef, {
+                            ...trailerPayload,
+                            name: trailerPayload.name || codeRaw,
+                            isActive: true,
+                            createdAt: serverTimestamp(),
+                        });
+                        created++;
+                    }
+                } catch (err: any) {
+                    errors.push(`${brandRaw}/${codeRaw}: ${err?.message || 'write failed'}`);
+                }
+            }
+
+            // Reload table to reflect new data
+            const reloaded = await loadRows();
+            setRows(reloaded);
+
+            const parts = [`${updated} updated`, `${created} created`];
+            if (skipped > 0) parts.push(`${skipped} skipped`);
+            const desc = parts.join(' · ') + (skippedBrands.size > 0 ? ` · unknown brand(s): ${[...skippedBrands].join(', ')}` : '');
+
+            if (errors.length > 0) {
+                console.error('Import errors:', errors);
+                toast({
+                    variant: 'destructive',
+                    title: 'Import partial',
+                    description: `${desc} · ${errors.length} write error(s) — see console.`,
+                });
+            } else {
+                toast({ title: 'Import complete', description: desc });
+            }
+        } catch (err: any) {
+            console.error('Import failed:', err);
+            toast({ variant: 'destructive', title: 'Import failed', description: err?.message });
+        } finally {
+            setImporting(false);
+        }
+    }, [firestore, vendors, rows, loadRows, toast]);
+
+    // Stage 2c — whole-row reset: stage nulls for every currently-overridden
+    // field on the row. Publish commits the whole-doc delete (see publishChanges).
+    const resetOverride = useCallback((trailerId: string) => {
+        const od = overrideDocByTrailer.get(trailerId);
+        if (!od) return;
+        setDirty(prev => {
+            const next = new Map(prev);
+            const patch: StagedPatch = { ...(next.get(trailerId) ?? {}) };
+            for (const k of Object.keys(od.pricingDetail || {})) patch[k] = null;
+            if (typeof od.sellPriceExclGst === 'number') patch['sell'] = null;
+            next.set(trailerId, patch);
+            return next;
+        });
+        toast({ title: 'Row reset staged', description: 'Press Publish to commit.' });
+    }, [overrideDocByTrailer, toast]);
+
+    // Stage 2c — stage a per-field reset. Puts `null` in the dirty map so
+    // Publish knows to clear that field from the persisted override. If
+    // the staged reset matches a field that was never persisted (pure
+    // noise), we drop it from the patch instead of holding a no-op.
+    const resetOverrideField = useCallback((trailerId: string, key: string) => {
+        setDirty(prev => {
+            const next = new Map(prev);
+            const current = next.get(trailerId) ?? {};
+            const patched: StagedPatch = { ...current, [key]: null };
+            next.set(trailerId, patched);
+            return next;
+        });
+    }, []);
+
+    // Stage 2c — bulk reset: stages null entries for every currently-overridden
+    // field on each selected row. Nothing hits Firestore until Publish.
+    const bulkResetOverrides = useCallback(() => {
+        const targets: string[] = [];
+        for (const id of selectedIds) {
+            if (overrideDocByTrailer.has(id)) targets.push(id);
+        }
+        if (targets.length === 0) {
+            toast({ title: 'Nothing to reset', description: 'No overrides on the selected rows.' });
+            return;
+        }
+        setDirty(prev => {
+            const next = new Map(prev);
+            for (const id of targets) {
+                const od = overrideDocByTrailer.get(id);
+                if (!od) continue;
+                const patch: StagedPatch = { ...(next.get(id) ?? {}) };
+                for (const k of Object.keys(od.pricingDetail || {})) patch[k] = null;
+                if (typeof od.sellPriceExclGst === 'number') patch['sell'] = null;
+                next.set(id, patch);
+            }
+            return next;
+        });
+        toast({ title: `${targets.length} reset${targets.length === 1 ? '' : 's'} staged`, description: 'Press Publish to commit.' });
+        clearSelection();
+    }, [selectedIds, overrideDocByTrailer, toast, clearSelection]);
+
+    // Stage 2c — Global Update now stages entries into the dirty map
+    // instead of writing immediately. The operator reviews cells in the
+    // table (every affected row shows the dirty indicator) then presses
+    // Publish to commit. Operates on selected rows if any, else every
+    // filtered row. Operations compose with the current effective value,
+    // which includes earlier staged edits — so "+5%" twice compounds.
+    const applyGlobalUpdate = useCallback(() => {
+        const raw = guValue.trim();
+        if (raw === '') return;
+        const parsed = parseFloat(raw);
+        if (!Number.isFinite(parsed)) return;
+
+        const scopeIds = selectedIds.size > 0
+            ? filteredRows.filter(r => selectedIds.has(r.id)).map(r => r.id)
+            : filteredRows.map(r => r.id);
+        if (scopeIds.length === 0) {
+            toast({ variant: 'destructive', title: 'No rows to update' });
+            return;
+        }
+        const scopeRows = filteredRows.filter(r => scopeIds.includes(r.id));
+
+        const computeNext = (current: number | null): number | null => {
+            if (guOp === 'set') return parsed;
+            if (current == null) return null;
+            switch (guOp) {
+                case 'addAmount':  return current + parsed;
+                case 'subAmount':  return current - parsed;
+                case 'addPercent': return current * (1 + parsed / 100);
+                case 'subPercent': return current * (1 - parsed / 100);
+            }
+        };
+
+        setGuBusy(true);
+        try {
+            let staged = 0;
+            let skipped = 0;
+            setDirty(prev => {
+                const next = new Map(prev);
+                for (const row of scopeRows) {
+                    const overrideDoc = overrideDocByTrailer.get(row.id);
+                    const currentStaged = next.get(row.id);
+                    const effective = resolveEffectivePricing(row.pricing, row.sourceSell, overrideDoc, currentStaged);
+                    const currentValue = typeof effective[guField] === 'number' ? effective[guField] : null;
+                    const computed = computeNext(currentValue);
+                    if (computed == null || !Number.isFinite(computed) || computed < 0) { skipped++; continue; }
+                    const rounded = Math.round(computed * 100) / 100;
+                    const patch: StagedPatch = { ...(currentStaged ?? {}), [guField]: rounded };
+                    next.set(row.id, patch);
+                    staged++;
+                }
+                return next;
+            });
+            toast({
+                title: 'Global update staged',
+                description:
+                    `${staged} row${staged === 1 ? '' : 's'} queued${skipped ? ` · ${skipped} skipped (missing source)` : ''}. Press Publish to commit.`,
+            });
+            setGlobalUpdateOpen(false);
+            setGuValue('');
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Global update failed', description: e?.message });
+        } finally {
+            setGuBusy(false);
+        }
+    }, [guField, guOp, guValue, selectedIds, filteredRows, overrideDocByTrailer, toast]);
+
+    // Stage 2c — Discard every staged change.
+    const discardChanges = useCallback(() => {
+        setDirty(new Map());
+        toast({ title: 'Staged changes discarded' });
+    }, [toast]);
+
+    // Stage 2c — Publish every staged patch to Firestore in one pass.
+    // For each dirty trailer: merge persisted override + staged patch,
+    // then setDoc (or deleteDoc if the merged result is empty).
+    const publishChanges = useCallback(async () => {
+        if (dirty.size === 0) return;
+        setPublishing(true);
+        try {
+            const ids = Array.from(dirty.keys());
+            let committed = 0;
+            let cleared = 0;
+            let failed = 0;
+
+            for (let i = 0; i < ids.length; i += 500) {
+                const chunk = ids.slice(i, i + 500);
+                const batch = writeBatch(firestore);
+                for (const id of chunk) {
+                    const patch = dirty.get(id) ?? {};
+                    const persisted = overrideDocByTrailer.get(id);
+                    const row = rows.find(r => r.id === id);
+                    if (!row) continue;
+
+                    // Start with the persisted pricingDetail, apply the patch.
+                    const merged: Record<string, number> = {};
+                    if (persisted?.pricingDetail) {
+                        for (const [k, v] of Object.entries(persisted.pricingDetail)) {
+                            if (typeof v === 'number') merged[k] = v;
+                        }
+                    }
+                    for (const [k, v] of Object.entries(patch)) {
+                        if (typeof v === 'number') merged[k] = v;
+                        else if (v === null) delete merged[k];
+                    }
+
+                    // Determine whether top-level sellPriceExclGst should survive.
+                    const sellStagedToNull = patch['sell'] === null;
+                    const sellStagedToValue = typeof patch['sell'] === 'number';
+                    const legacySellWasPresent = typeof persisted?.sellPriceExclGst === 'number';
+                    const willHaveSellLegacy =
+                        sellStagedToValue ? true
+                        : sellStagedToNull ? false
+                        : legacySellWasPresent;
+
+                    const hasAnyOverride = Object.keys(merged).length > 0 || willHaveSellLegacy;
+                    const ref = doc(firestore, `organisations/${organisationId}/trailerOverrides/${id}`);
+
+                    if (!hasAnyOverride) {
+                        batch.delete(ref);
+                        cleared++;
+                    } else {
+                        const payload: Record<string, any> = {
+                            trailerId: id,
+                            brandVendorId: row.vendorId,
+                            seriesId: row.seriesId,
+                            overrideAt: serverTimestamp(),
+                            pricingDetail: merged,
+                        };
+                        if (sellStagedToValue) payload.sellPriceExclGst = patch['sell'];
+                        else if (sellStagedToNull) payload.sellPriceExclGst = null;
+                        batch.set(ref, payload, { merge: true });
+                        committed++;
+                    }
+                }
+                try { await batch.commit(); } catch (e) {
+                    console.error('Publish batch failed:', e);
+                    failed += chunk.length;
+                    committed -= Math.min(committed, chunk.length);
+                }
+            }
+
+            if (failed > 0) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Partial publish',
+                    description: `${committed} committed · ${cleared} cleared · ${failed} failed — see console.`,
+                });
+            } else {
+                const parts: string[] = [];
+                if (committed > 0) parts.push(`${committed} saved`);
+                if (cleared > 0) parts.push(`${cleared} reset`);
+                toast({
+                    title: 'Published',
+                    description: parts.length > 0 ? parts.join(' · ') : 'No changes to publish.',
+                });
+                setDirty(new Map());
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Publish failed', description: e?.message });
+        } finally {
+            setPublishing(false);
+        }
+    }, [dirty, overrideDocByTrailer, rows, firestore, organisationId, toast]);
+
+    useEffect(() => {
+        let cancelled = false;
+        if (vendors.length === 0) {
+            setRows([]);
+            setLoading(false);
+            return;
+        }
+        setLoading(true);
+        loadRows()
+            .then(flat => { if (!cancelled) setRows(flat); })
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, [loadRows, vendorIds]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    if (vendors.length === 0) {
+        return (
+            <Card className="border-2 rounded-2xl">
+                <CardHeader>
+                    <CardTitle>No trailer brands selected</CardTitle>
+                    <CardDescription>Add brands in Settings before pricing loads.</CardDescription>
+                </CardHeader>
+            </Card>
+        );
+    }
+
+    return (
+        <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="shrink-0 flex items-center justify-between py-4 px-8 bg-white border-b-2 border-slate-300">
+                <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm border-2 border-primary/20">
+                        <DollarSign className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <h2 className="text-base font-black uppercase tracking-widest text-slate-950 leading-none">
+                            Trailer Pricing Manager
+                        </h2>
+                        <p className="text-[10px] text-slate-500 mt-1">
+                            {isAdmin ? 'Click any numeric cell to stage an org override. Press Publish when ready to commit all staged changes.' : 'Read-only view.'}
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-3">
+                    {/* Stage 2c — Publish / Discard for the staged-edit buffer */}
+                    {isAdmin && dirty.size > 0 && (
+                        <>
+                            <Badge className="text-[9px] font-black border-2 bg-primary/10 text-primary border-primary/30">
+                                {dirty.size} staged change{dirty.size === 1 ? '' : 's'}
+                            </Badge>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={discardChanges}
+                                disabled={publishing}
+                                className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-4"
+                            >
+                                Discard
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={publishChanges}
+                                disabled={publishing || dirty.size === 0}
+                                className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2"
+                            >
+                                {publishing
+                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                    : null}
+                                Publish
+                            </Button>
+                        </>
+                    )}
+                    <Badge variant="outline" className="text-[9px] font-black border-2">
+                        {filteredRows.length}{filteredRows.length !== rows.length ? ` of ${rows.length}` : ''} trailer{rows.length === 1 ? '' : 's'}
+                    </Badge>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="outline"
+                                className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2"
+                                disabled={rows.length === 0}
+                            >
+                                <Download className="h-4 w-4" />
+                                Export
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="rounded-xl border-2 z-[10000]">
+                            <DropdownMenuItem onClick={() => handleExport('xlsx')} className="text-xs font-bold gap-2 cursor-pointer">
+                                <FileSpreadsheet className="h-4 w-4" /> Excel (.xlsx)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExport('csv')} className="text-xs font-bold gap-2 cursor-pointer">
+                                <FileText className="h-4 w-4" /> CSV
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    {isAdmin && (
+                        <Button
+                            type="button"
+                            onClick={(e) => {
+                                const input = (e.currentTarget.nextElementSibling as HTMLInputElement | null);
+                                input?.click();
+                            }}
+                            className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-5 gap-2"
+                            disabled={importing}
+                        >
+                            {importing
+                                ? <Loader2 className="h-4 w-4 animate-spin" />
+                                : <Upload className="h-4 w-4" />}
+                            Import
+                        </Button>
+                    )}
+                    {isAdmin && (
+                        <input
+                            type="file"
+                            accept=".xlsx,.xls,.csv"
+                            hidden
+                            onChange={handleImport}
+                            disabled={importing}
+                        />
+                    )}
+                </div>
+            </div>
+
+            {/* Filter bar */}
+            <div className="shrink-0 px-8 py-3 flex flex-wrap items-center gap-3 border-b-2 border-slate-200 bg-slate-50/50">
+                <div className="flex flex-col gap-1 flex-1 max-w-xs min-w-[220px]">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Search</span>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                        <Input
+                            placeholder="Code, name, supplier, series…"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-9 h-9 rounded-xl border-2 text-xs"
+                        />
+                    </div>
+                </div>
+                {vendors.length > 1 && (
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Brand</span>
+                        <select
+                            value={brandFilter}
+                            onChange={(e) => setBrandFilter(e.target.value)}
+                            className="h-9 rounded-xl border-2 border-slate-200 bg-white px-3 text-xs font-semibold hover:bg-slate-50 focus:outline-none focus:border-primary"
+                        >
+                            <option value="all">All brands ({vendors.length})</option>
+                            {vendors.map(v => (
+                                <option key={v.id} value={v.id}>{v.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+                {(search || brandFilter !== 'all') && (
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setSearch(''); setBrandFilter('all'); }}
+                        className="h-9 mt-4 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900"
+                    >
+                        Clear filters
+                    </Button>
+                )}
+                <div className="ml-auto flex items-center gap-2 mt-4">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={expandAll}
+                        className="h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest gap-1"
+                        disabled={groupedRows.length === 0}
+                    >
+                        <ChevronDown className="h-3 w-3" /> Expand all
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={collapseAllBrands}
+                        className="h-9 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest gap-1"
+                        disabled={groupedRows.length === 0}
+                    >
+                        <ChevronRight className="h-3 w-3" /> Collapse all
+                    </Button>
+                </div>
+            </div>
+
+            {/* Action bar — visible when selection non-empty OR when filter is non-trivial so admins can Global Update all filtered rows */}
+            {isAdmin && (selectedIds.size > 0 || filteredRows.length !== rows.length || rows.length > 0) && (
+                <div className="shrink-0 px-8 py-2 flex items-center gap-3 border-b-2 border-primary/30 bg-primary/5">
+                    {selectedIds.size > 0 ? (
+                        <span className="text-[11px] font-black uppercase tracking-widest text-primary">
+                            {selectedIds.size} selected
+                        </span>
+                    ) : (
+                        <span className="text-[11px] font-black uppercase tracking-widest text-slate-500">
+                            Bulk actions · {filteredRows.length} filtered
+                        </span>
+                    )}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setGlobalUpdateOpen(true)}
+                        className="h-8 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest gap-1"
+                        disabled={filteredRows.length === 0}
+                    >
+                        Global Update
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={bulkResetOverrides}
+                        className="h-8 rounded-xl border-2 text-[10px] font-black uppercase tracking-widest gap-1"
+                        disabled={selectedIds.size === 0}
+                    >
+                        <RotateCcw className="h-3 w-3" /> Reset overrides
+                    </Button>
+                    {selectedIds.size > 0 && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearSelection}
+                            className="h-8 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 ml-auto"
+                        >
+                            Clear selection
+                        </Button>
+                    )}
+                </div>
+            )}
+
+            {/* Global Update dialog */}
+            {isAdmin && (() => {
+                const fieldMeta = EDITABLE_FIELDS.find(f => f.key === guField) ?? EDITABLE_FIELDS[0];
+                const isPct = fieldMeta.format === 'percent';
+                const valueSuffix = guOp === 'addPercent' || guOp === 'subPercent'
+                    ? '%'
+                    : isPct ? ' %' : '';
+                const scopeCount = selectedIds.size > 0 ? selectedIds.size : filteredRows.length;
+                const scopeLabel = selectedIds.size > 0
+                    ? `${selectedIds.size} selected row${selectedIds.size === 1 ? '' : 's'}`
+                    : `${filteredRows.length} filtered row${filteredRows.length === 1 ? '' : 's'}`;
+
+                // Preview from the first scoped row (not authoritative, just a sanity
+                // check for the operator before they press Apply).
+                const previewRow = selectedIds.size > 0
+                    ? filteredRows.find(r => selectedIds.has(r.id))
+                    : filteredRows[0];
+                let previewLine: string | null = null;
+                if (previewRow && guValue.trim() !== '') {
+                    const parsed = parseFloat(guValue);
+                    if (Number.isFinite(parsed)) {
+                        const overrideDoc = overrideDocByTrailer.get(previewRow.id);
+                        const effective = resolveEffectivePricing(previewRow.pricing, previewRow.sourceSell, overrideDoc);
+                        const cur = typeof effective[guField] === 'number' ? effective[guField] : null;
+                        if (cur != null) {
+                            const next =
+                                guOp === 'set' ? parsed
+                                : guOp === 'addAmount' ? cur + parsed
+                                : guOp === 'subAmount' ? cur - parsed
+                                : guOp === 'addPercent' ? cur * (1 + parsed / 100)
+                                : cur * (1 - parsed / 100);
+                            if (Number.isFinite(next) && next >= 0) {
+                                const fmt = (n: number) => isPct ? `${n.toFixed(1)}%` : formatCurrency(Math.round(n * 100) / 100);
+                                previewLine = `Example (${previewRow.code}): ${fmt(cur)} → ${fmt(next)}`;
+                            }
+                        }
+                    }
+                }
+
+                return (
+                    <Dialog open={globalUpdateOpen} onOpenChange={setGlobalUpdateOpen}>
+                        <DialogContent className="max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>Global Update</DialogTitle>
+                                <DialogDescription>
+                                    Apply one operation to a field across {scopeLabel}. Writes org-level overrides; the source xlsx data is not modified.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="space-y-4 py-2">
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Field</Label>
+                                    <Select value={guField} onValueChange={setGuField}>
+                                        <SelectTrigger className="h-9 rounded-xl border-2 text-xs">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-[10000]">
+                                            {EDITABLE_FIELDS.map(f => (
+                                                <SelectItem key={f.key} value={f.key} className="text-xs">{f.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Operation</Label>
+                                    <Select value={guOp} onValueChange={(v) => setGuOp(v as typeof guOp)}>
+                                        <SelectTrigger className="h-9 rounded-xl border-2 text-xs">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-[10000]">
+                                            <SelectItem value="set" className="text-xs">Set to</SelectItem>
+                                            <SelectItem value="addAmount" className="text-xs">+ Amount</SelectItem>
+                                            <SelectItem value="subAmount" className="text-xs">− Amount</SelectItem>
+                                            <SelectItem value="addPercent" className="text-xs">+ Percent</SelectItem>
+                                            <SelectItem value="subPercent" className="text-xs">− Percent</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Value{valueSuffix ? ` (${valueSuffix.trim()})` : ''}</Label>
+                                    <Input
+                                        type="number"
+                                        step={guOp === 'addPercent' || guOp === 'subPercent' || isPct ? '0.1' : '0.01'}
+                                        value={guValue}
+                                        onChange={(e) => setGuValue(e.target.value)}
+                                        placeholder={guOp === 'addPercent' ? 'e.g. 5 (for +5%)' : guOp === 'set' ? (isPct ? '22.5' : '14995') : 'Numeric value'}
+                                        className="h-9 rounded-xl border-2 text-xs"
+                                    />
+                                </div>
+                                {previewLine ? (
+                                    <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                                        {previewLine}
+                                    </div>
+                                ) : (
+                                    <div className="text-[11px] text-slate-400 italic">
+                                        Will write to {scopeCount} row{scopeCount === 1 ? '' : 's'}.
+                                    </div>
+                                )}
+                            </div>
+                            <DialogFooter>
+                                <Button type="button" variant="ghost" onClick={() => setGlobalUpdateOpen(false)} disabled={guBusy}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={applyGlobalUpdate}
+                                    disabled={guBusy || guValue.trim() === ''}
+                                    className="gap-2"
+                                >
+                                    {guBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                                    Apply to {scopeCount}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                );
+            })()}
+
+            {/* Table */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+                {loading ? (
+                    <div className="flex items-center justify-center h-full">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                ) : filteredRows.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-3">
+                        <Truck className="h-12 w-12 text-slate-200" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            {rows.length === 0 ? 'No trailers in the selected brands' : 'No trailers match the current filters'}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="flex-1 w-full overflow-hidden flex flex-col bg-white relative border-t">
+                        <div className="flex-1 overflow-auto scrollbar-thin" style={{ overflowX: 'auto', overflowY: 'auto' }}>
+                            <table className="border-separate border-spacing-0 w-max table-fixed">
+                                <thead className="sticky top-0 z-[100]">
+                                    <tr>
+                                        <th className="w-[36px] sticky left-0 top-0 z-[120] bg-white border-r border-b-2 border-slate-300 px-0 py-2.5">
+                                            {/* Select-all-filtered tri-state */}
+                                            {(() => {
+                                                const allIds = filteredRows.map(r => r.id);
+                                                const state = selectionStateFor(allIds, selectedIds);
+                                                return (
+                                                    <div className="flex items-center justify-center">
+                                                        <Checkbox
+                                                            aria-label="Select all filtered trailers"
+                                                            disabled={!isAdmin || allIds.length === 0}
+                                                            checked={state === 'all' ? true : state === 'some' ? 'indeterminate' : false}
+                                                            onCheckedChange={(c) => setManySelected(allIds, !!c)}
+                                                        />
+                                                    </div>
+                                                );
+                                            })()}
+                                        </th>
+                                        <th className="w-[36px] sticky left-[36px] top-0 z-[120] bg-white border-r border-b-2 border-slate-300 px-0 py-2.5">
+                                            <span className="sr-only">Expand</span>
+                                        </th>
+                                        <th className="w-[50px] sticky left-[72px] top-0 z-[120] bg-white border-r-2 border-b-2 border-slate-300 text-center text-[8px] font-black uppercase shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] py-2.5 px-2">
+                                            #
+                                        </th>
+                                        {COLUMNS.map((col, idx) => (
+                                            <th
+                                                key={col.key as string}
+                                                className={`text-[8px] font-black uppercase tracking-widest text-slate-400 px-4 py-3 border-r border-b-2 border-slate-300 whitespace-nowrap text-left bg-slate-100 ${
+                                                    col.numeric ? 'text-right' : ''
+                                                } ${col.width ?? ''} ${idx === 0 ? 'sticky left-[122px] z-[110] bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)]' : ''}`}
+                                            >
+                                                <span className="text-[9px] font-black uppercase tracking-[0.15em] text-slate-600">
+                                                    {col.label}
+                                                </span>
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(() => {
+                                        let globalRowIdx = 0;
+                                        return groupedRows.map((brand) => {
+                                            const isBrandCollapsed = collapsedBrands.has(brand.vendorId);
+                                            const brandTrailerCount = brand.series.reduce((sum, s) => sum + s.trailers.length, 0);
+                                            const brandTrailerIds = brand.series.flatMap(s => s.trailers.map(t => t.id));
+                                            const brandSelState = selectionStateFor(brandTrailerIds, selectedIds);
+                                            return (
+                                                <Fragment key={`brand-${brand.vendorId}`}>
+                                                    {/* Brand section header */}
+                                                    <tr className="bg-slate-100 hover:bg-slate-200/70 transition-colors">
+                                                        <td className="w-[36px] sticky left-0 z-[90] bg-slate-100 hover:bg-slate-200/70 border-b-2 border-slate-300 px-0 py-2.5">
+                                                            <div className="flex items-center justify-center">
+                                                                <Checkbox
+                                                                    aria-label={`Select all trailers in ${brand.vendorName}`}
+                                                                    disabled={!isAdmin || brandTrailerIds.length === 0}
+                                                                    checked={brandSelState === 'all' ? true : brandSelState === 'some' ? 'indeterminate' : false}
+                                                                    onCheckedChange={(c) => setManySelected(brandTrailerIds, !!c)}
+                                                                />
+                                                            </div>
+                                                        </td>
+                                                        <td
+                                                            colSpan={COLUMNS.length + 2}
+                                                            className="sticky left-[36px] z-[90] bg-slate-100 hover:bg-slate-200/70 border-b-2 border-slate-300 px-4 py-2.5"
+                                                        >
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => toggleBrand(brand.vendorId)}
+                                                                className="w-full flex items-center gap-3 text-left"
+                                                            >
+                                                                {isBrandCollapsed
+                                                                    ? <ChevronRight className="h-4 w-4 text-slate-500" />
+                                                                    : <ChevronDown className="h-4 w-4 text-slate-500" />}
+                                                                <span className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-800">
+                                                                    {brand.vendorName}
+                                                                </span>
+                                                                <Badge variant="outline" className="text-[9px] font-black border-2">
+                                                                    {brand.series.length} {brand.series.length === 1 ? 'series' : 'series'} · {brandTrailerCount} {brandTrailerCount === 1 ? 'trailer' : 'trailers'}
+                                                                </Badge>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                    {!isBrandCollapsed && brand.series.map((series) => {
+                                                        const seriesKey = `${brand.vendorId}:${series.seriesId}`;
+                                                        const isSeriesCollapsed = collapsedSeries.has(seriesKey);
+                                                        const seriesTrailerIds = series.trailers.map(t => t.id);
+                                                        const seriesSelState = selectionStateFor(seriesTrailerIds, selectedIds);
+                                                        return (
+                                                            <Fragment key={`series-${seriesKey}`}>
+                                                                {/* Series section header */}
+                                                                <tr className="bg-slate-50 hover:bg-slate-100 transition-colors">
+                                                                    <td className="w-[36px] sticky left-0 z-[85] bg-slate-50 hover:bg-slate-100 border-b border-slate-200 px-0 py-1.5">
+                                                                        <div className="flex items-center justify-center">
+                                                                            <Checkbox
+                                                                                aria-label={`Select all trailers in ${series.seriesName}`}
+                                                                                disabled={!isAdmin || seriesTrailerIds.length === 0}
+                                                                                checked={seriesSelState === 'all' ? true : seriesSelState === 'some' ? 'indeterminate' : false}
+                                                                                onCheckedChange={(c) => setManySelected(seriesTrailerIds, !!c)}
+                                                                            />
+                                                                        </div>
+                                                                    </td>
+                                                                    <td
+                                                                        colSpan={COLUMNS.length + 2}
+                                                                        className="sticky left-[36px] z-[85] bg-slate-50 hover:bg-slate-100 border-b border-slate-200 pl-10 pr-4 py-1.5"
+                                                                    >
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => toggleSeries(brand.vendorId, series.seriesId)}
+                                                                            className="w-full flex items-center gap-2 text-left"
+                                                                        >
+                                                                            {isSeriesCollapsed
+                                                                                ? <ChevronRight className="h-3.5 w-3.5 text-slate-400" />
+                                                                                : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />}
+                                                                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
+                                                                                {series.seriesName}
+                                                                            </span>
+                                                                            <span className="text-[9px] text-slate-400 font-mono">
+                                                                                {series.trailers.length} {series.trailers.length === 1 ? 'trailer' : 'trailers'}
+                                                                            </span>
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                                {!isSeriesCollapsed && series.trailers.map((row) => {
+                                                                    const rowNumber = ++globalRowIdx;
+                                                                    const isExpanded = expandedId === row.id;
+                                                                    const overrideDoc = overrideDocByTrailer.get(row.id);
+                                                                    const stagedPatch = dirty.get(row.id);
+                                                                    const effectivePricing = resolveEffectivePricing(row.pricing, row.sourceSell, overrideDoc, stagedPatch);
+                                                                    const hasPersistedOverride = overrideDoc != null && (
+                                                                        (overrideDoc.pricingDetail && Object.keys(overrideDoc.pricingDetail).length > 0) ||
+                                                                        typeof overrideDoc.sellPriceExclGst === 'number'
+                                                                    );
+                                                                    const hasStagedPatch = stagedPatch != null && Object.keys(stagedPatch).length > 0;
+                                                                    const hasOverride = hasPersistedOverride || hasStagedPatch;
+                                                                    return (
+                                                                        <Fragment key={row.id}>
+                                                                            <tr className={`group hover:bg-primary/5 transition-colors ${selectedIds.has(row.id) ? 'bg-primary/5' : ''}`}>
+                                                                                <td className="sticky left-0 z-[80] border-r border-b border-slate-200 bg-white px-0 py-0 group-hover:bg-primary/5">
+                                                                                    <div className="flex items-center justify-center h-full">
+                                                                                        <Checkbox
+                                                                                            aria-label={`Select ${row.code}`}
+                                                                                            disabled={!isAdmin}
+                                                                                            checked={selectedIds.has(row.id)}
+                                                                                            onCheckedChange={() => toggleRowSelected(row.id)}
+                                                                                        />
+                                                                                    </div>
+                                                                                </td>
+                                                                                <td className="sticky left-[36px] z-[80] border-r border-b border-slate-200 bg-white shadow-[2px_0_4px_-2px_rgba(0,0,0,0.03)] px-0 py-0 group-hover:bg-primary/5">
+                                                                                    {/* Subtle indent guide for the tree */}
+                                                                                    <div className="relative h-full">
+                                                                                        <span className="absolute inset-y-0 left-5 border-l border-slate-200" aria-hidden="true" />
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => setExpandedId(isExpanded ? null : row.id)}
+                                                                                            className="relative h-full w-full flex items-center justify-center text-slate-400 hover:text-primary transition-colors"
+                                                                                            aria-label={isExpanded ? 'Collapse waterfall' : 'Expand waterfall'}
+                                                                                        >
+                                                                                            {isExpanded
+                                                                                                ? <ChevronDown className="h-4 w-4" />
+                                                                                                : <ChevronRight className="h-4 w-4" />}
+                                                                                        </button>
+                                                                                    </div>
+                                                                                </td>
+                                                                                <td className="sticky left-[72px] z-[80] border-r-2 border-b border-slate-200 bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)] text-center text-[9px] text-slate-400 font-mono px-2 py-1 group-hover:bg-primary/5">
+                                                                                    {rowNumber}
+                                                                                </td>
+                                                                                {COLUMNS.map((col, idx) => {
+                                                                                    const base = `border-r border-b border-slate-200 text-xs group-hover:bg-primary/5 ${col.numeric ? 'text-right font-mono tabular-nums' : ''}`;
+                                                                                    const sticky = idx === 0 ? 'sticky left-[122px] z-[70] bg-white shadow-[4px_0_10px_-2px_rgba(0,0,0,0.03)] group-hover:bg-primary/5 font-semibold' : '';
+
+                                                                                    if (col.key === 'image') {
+                                                                                        return (
+                                                                                            <td key="image" className={`${base} ${sticky} px-2 py-1`}>
+                                                                                                <TrailerPricingImage src={row.imageUrl} alt={row.code} />
+                                                                                            </td>
+                                                                                        );
+                                                                                    }
+
+                                                                                    // Editable numeric columns — every key in EDITABLE_KEYS renders
+                                                                                    // as an inline EditableCell, so admins can override Dealer,
+                                                                                    // Nett, Landed, Total PD, CTD, MU%, RRP, and Sell.
+                                                                                    if (col.numeric && EDITABLE_KEYS.has(col.key as string)) {
+                                                                                        const fieldKey = col.key as string;
+                                                                                        const sourceValue = typeof row.pricing?.[fieldKey] === 'number'
+                                                                                            ? row.pricing[fieldKey]
+                                                                                            : (fieldKey === 'sell' ? row.sourceSell : null);
+                                                                                        const effectiveValue = typeof effectivePricing[fieldKey] === 'number'
+                                                                                            ? effectivePricing[fieldKey]
+                                                                                            : null;
+                                                                                        return (
+                                                                                            <td key={fieldKey} className={`${base} ${sticky} p-0`}>
+                                                                                                <EditableCell
+                                                                                                    trailerId={row.id}
+                                                                                                    fieldKey={fieldKey}
+                                                                                                    sourceValue={sourceValue}
+                                                                                                    effectiveValue={effectiveValue}
+                                                                                                    hasOverride={hasFieldOverride(fieldKey, overrideDoc, stagedPatch)}
+                                                                                                    isStaged={isFieldStaged(fieldKey, stagedPatch)}
+                                                                                                    format={fieldKey === 'markupPercent' ? 'percent' : 'currency'}
+                                                                                                    isAdmin={isAdmin}
+                                                                                                    onSave={saveOverrideField}
+                                                                                                    onReset={resetOverrideField}
+                                                                                                />
+                                                                                            </td>
+                                                                                        );
+                                                                                    }
+
+                                                                                    const value = col.numeric
+                                                                                        ? (row.pricing?.[col.key as string] ?? (row as any)[col.key])
+                                                                                        : (row as any)[col.key];
+
+                                                                                    let display: string;
+                                                                                    if (value == null || value === '') {
+                                                                                        display = '—';
+                                                                                    } else if (col.numeric) {
+                                                                                        display = col.key === 'markupPercent'
+                                                                                            ? `${Number(value).toFixed(1)}%`
+                                                                                            : formatCurrency(Number(value));
+                                                                                    } else {
+                                                                                        display = String(value);
+                                                                                    }
+
+                                                                                    // Mute brand + series cells in trailer rows — the group
+                                                                                    // headers already surface that context, so leaving them
+                                                                                    // at full weight would feel redundant.
+                                                                                    const mutedIfGroupCol = (col.key === 'vendorName' || col.key === 'seriesName')
+                                                                                        ? 'text-slate-400'
+                                                                                        : '';
+
+                                                                                    return (
+                                                                                        <td key={col.key as string} className={`${base} ${sticky} ${mutedIfGroupCol} px-3 py-2 whitespace-nowrap`}>
+                                                                                            {display}
+                                                                                        </td>
+                                                                                    );
+                                                                                })}
+                                                                            </tr>
+                                                                            {isExpanded && (
+                                                                                <tr>
+                                                                                    <td colSpan={COLUMNS.length + 3} className="p-0 border-b border-slate-200">
+                                                                                        <WaterfallPanel
+                                                                                            row={row}
+                                                                                            overrideDoc={overrideDoc}
+                                                                                            stagedPatch={stagedPatch}
+                                                                                            effectivePricing={effectivePricing}
+                                                                                            hasOverride={hasOverride}
+                                                                                            isAdmin={isAdmin}
+                                                                                            onSaveField={saveOverrideField}
+                                                                                            onResetField={resetOverrideField}
+                                                                                            onResetRow={resetOverride}
+                                                                                        />
+                                                                                    </td>
+                                                                                </tr>
+                                                                            )}
+                                                                        </Fragment>
+                                                                    );
+                                                                })}
+                                                            </Fragment>
+                                                        );
+                                                    })}
+                                                </Fragment>
+                                            );
+                                        });
+                                    })()}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}

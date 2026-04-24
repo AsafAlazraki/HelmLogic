@@ -82,6 +82,9 @@ service cloud.firestore {
       match /modelOverrides/{modelId} {
         allow read, write: if isSignedIn();
       }
+      match /trailerOverrides/{trailerId} {
+        allow read, write: if isSignedIn();
+      }
       match /exchangeRates/{code} {
         allow read, write: if isSignedIn();
         match /changeLog/{logId} {

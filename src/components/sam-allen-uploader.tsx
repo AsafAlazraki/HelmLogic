@@ -61,39 +61,65 @@ function DataUploader({ title, vendorId, collectionName }: { title: string, vend
     };
 
     const handleSave = async () => {
-        if (!parsedData) {
+        if (!parsedData || parsedData.length === 0) {
             toast({ variant: 'destructive', title: 'No data to save', description: 'Please upload and parse a document.' });
             return;
         }
         setIsSaving(true);
         try {
             const subcollectionRef = collection(firestore, `data-warehouse/${vendorId}/${collectionName}`);
-            
-            // Batch delete old documents
-            const oldDocsSnapshot = await getDocs(query(subcollectionRef));
-            if (!oldDocsSnapshot.empty) {
-                const deleteBatchSize = 500;
-                for (let i = 0; i < oldDocsSnapshot.docs.length; i += deleteBatchSize) {
-                    const chunk = oldDocsSnapshot.docs.slice(i, i + deleteBatchSize);
-                    const deleteBatch = writeBatch(firestore);
-                    chunk.forEach(doc => deleteBatch.delete(doc.ref));
-                    await deleteBatch.commit();
-                }
-            }
 
-            // Batch write new documents
+            // Detect a natural-key column so we can upsert instead of wiping.
+            const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const candidates = ['partnumber', 'partno', 'part', 'modelcode', 'modelid', 'sku', 'code', 'id', 'model', 'modelname'];
+            const firstRowCols = Object.keys(parsedData[0] ?? {});
+            let keyCol: string | null = null;
+            for (const cand of candidates) {
+                const hit = firstRowCols.find(c => normalize(c) === cand);
+                if (hit) { keyCol = hit; break; }
+            }
+            if (!keyCol && firstRowCols.length > 0) keyCol = firstRowCols[0];
+
+            // Build a map of existing docs by key value so we can decide
+            // update-vs-create per row. Rows that are not in the upload are
+            // left untouched — operators can edit a subset safely.
+            const existingSnap = await getDocs(query(subcollectionRef));
+            const existingByKey = new Map<string, string>(); // keyValue -> docId
+            existingSnap.docs.forEach(d => {
+                const v = (d.data() as any)[keyCol || ''];
+                if (v != null) existingByKey.set(String(v).toLowerCase().trim(), d.id);
+            });
+
+            let updated = 0;
+            let created = 0;
+            let skipped = 0;
             const writeBatchSize = 500;
+
             for (let i = 0; i < parsedData.length; i += writeBatchSize) {
                 const chunk = parsedData.slice(i, i + writeBatchSize);
-                const writeBatchInstance = writeBatch(firestore);
+                const b = writeBatch(firestore);
                 chunk.forEach(row => {
-                    const newRowRef = doc(subcollectionRef);
-                    writeBatchInstance.set(newRowRef, row);
+                    const raw = keyCol ? (row as any)[keyCol] : null;
+                    if (raw == null || String(raw).trim() === '') { skipped++; return; }
+                    const k = String(raw).toLowerCase().trim();
+                    const existingId = existingByKey.get(k);
+                    if (existingId) {
+                        b.update(doc(subcollectionRef, existingId), row);
+                        updated++;
+                    } else {
+                        const newRef = doc(subcollectionRef);
+                        b.set(newRef, row);
+                        existingByKey.set(k, newRef.id);
+                        created++;
+                    }
                 });
-                await writeBatchInstance.commit();
+                await b.commit();
             }
 
-            toast({ title: 'Success', description: `${title} has been updated.` });
+            toast({
+                title: 'Success',
+                description: `${title}: ${updated} updated · ${created} created${skipped ? ` · ${skipped} skipped (no ${keyCol ?? 'key'})` : ''}`,
+            });
             setFile(null);
             setParsedData(null);
         } catch (e: any) {

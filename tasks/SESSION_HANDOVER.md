@@ -1,6 +1,33 @@
 # HelmLogic — Session Handover Document
+> **Read `tasks/START_HERE.md` FIRST.** This file is deep technical context.
 > Give this file to a new Claude session along with the CLAUDE.md file.
-> Updated: 2026-04-10 (v1.2.0 shipped to production)
+> Updated: 2026-04-23 PM (v1.4 trailers + rego + Pricing Manager uplift + 17-item day-1 remediation fully shipped on `claude/app-overview-wKiZ1` — awaiting user green-light for PR)
+
+---
+
+## Release Status at a Glance
+
+| Release | Date | Status | Branch |
+|---|---|---|---|
+| v1.0 | 2026-03-31 | ✅ Shipped | main |
+| v1.1 | 2026-04-01 | ✅ Shipped | main |
+| v1.2.0 | 2026-04-10 | ✅ Shipped | main |
+| v1.2.1 | 2026-04-10 | ✅ Shipped (patch) | main |
+| v1.3.0 | 2026-04-17 | ✅ Shipped | main |
+| v1.3.1 | 2026-04-17 | ✅ Shipped (same-day hotfix) | main |
+| **v1.4** | **2026-04-23** | 🚢 **Ready on branch — awaiting user's PR green-light** | `claude/app-overview-wKiZ1` |
+
+**Scoreboard (v1.4 as of 2026-04-23 EOD):** 70 commits since `main` diverged · 65 files changed · +11,594 / −825 lines · `npm run build` clean · TS 86 pre-existing / 0 new.
+
+**Current work**: v1.4 Trailers + Rego + Pricing Manager uplift. Design doc at `tasks/v1.4-trailers-module-design.md`, live status at `tasks/v1.4-trailers-module-status.md`, release notes at `tasks/RELEASE_NOTES_v1.4.md`.
+
+**Key v1.4 concepts for new sessions:**
+- `modules/{id}.associatedModuleIds[]` — a module can link other modules; the Trailer Catalog Picker + DealerFitOptions + quote flow all respect the link.
+- `model.trailerAssignments[]` — per-boat-model trailer assignments. Quote flow Step 4 auto-selects the default (`isDefault: true`) assignment; clicking a tile switches it; untick to clear.
+- `organisations/{orgId}/trailerOverrides/{trailerId}` — per-org override of `sellPriceExclGst` + any `pricingDetail` field. Picker + auto-loader both merge these (audit fix `3f3b07e`). For sub-dealer quotes, the auto-loader ALSO subscribes to the parent org's overrides and merges them in, sub-dealer winning on conflicts (commit `bd3773a`).
+- `TrailerSnapshot.pricingSource` (v1.4) — `'source' | 'override'`. Set on every snapshot path. Surfaced on saved `quote.trailer.catalog.pricingSource` + `sourceSellPriceExclGst` so dealer-audit reports can compute the override delta forever without re-resolving overrides.
+- Pricing Manager staged-publish buffer — `dirty: Map<trailerId, StagedPatch>` in `trailer-pricing-workspace.tsx`. Every edit (inline, waterfall, bulk reset, Global Update) is staged locally until the operator clicks Publish.
+- `ModuleSettingsPanel` in `module-settings-panel.tsx` — single source of truth for every module's Settings tab card set.
 
 ---
 
@@ -18,8 +45,9 @@ HelmLogic is a marine dealer management SaaS platform. It lets boat brands (vend
 - **Backend**: Firebase — Firestore (DB), Auth, Storage
 - **Deployment**: Firebase App Hosting (`studio--studio-2290360004-3b963.us-central1.hosted.app`)
 - **Firebase Project**: `studio-2290360004-3b963`
-- **Dev Branch**: `claude/app-overview-wKiZ1` — always push here for deployment
-- **Main Branch**: `main` — production, merge from dev when ready
+- **Dev Branch**: `claude/app-overview-wKiZ1` — all active development lands here. Auto-deploys to the dev URL via Firebase App Hosting.
+- **Main Branch**: `main` — production. Merge from `claude/app-overview-wKiZ1` when ready.
+- **Stale branch — do not use**: `origin/Dev`. An earlier session pushed v1.4 work there by mistake; the April 2026 rescue rebased everything back onto `claude/app-overview-wKiZ1`. Never push to `origin/Dev` and never create a local `Dev` branch tracking it — both fork history. See CLAUDE.md → Key Branch for the push-safety rule.
 - **Map Library**: Leaflet + OpenStreetMap (no API key needed, replaced Google Maps)
 
 ---
@@ -35,12 +63,30 @@ data-warehouse/{vendorId}/
 modules/{moduleId}              <- Org's access point to a vendor
   Fields: stockLocations[], stockVisibleToSubDealers, subDealerVisibleColumns[],
           moduleDealerFitCategories[], motorDealerFitCategories[],
+          trailerDealerFitCategories[],   <- v1.4
+          trailerBrandVendorIds[],        <- v1.4 (on trailers modules)
+          regoVendorIds[],                <- v1.4 (on rego modules)
           brandCaptainUserId, brandCaptainUserName,
           moduleManagerUserId, moduleManagerUserName,
           moduleType, mainVendorId, associatedVendorIds[], coverImageUrl
 
+# v1.4 trailers data
+data-warehouse/{trailerBrandVendorId}/         <- vendorType: 'Trailer Brand'
+  series/{seriesId}/
+    trailers/{trailerId}        <- code, name, imageUrl, sellPriceExclGst,
+                                    specifications{}, pricingDetail{} (full
+                                    Dealer→Nett→CTD→Sell waterfall),
+                                    optionalFeatures[], leadTimes{}, supplier
+
+# v1.4 rego data
+data-warehouse/{regoVendorId}/                 <- vendorType: 'Rego Authority'
+  regoTypes/{regoTypeId}        <- name, sellExclGst,
+                                    appliesTo: 'boat'|'trailer'|'both',
+                                    description?, isActive?
+
 organisations/{orgId}/
-  modelOverrides/{modelId}      <- Org-specific pricing overrides
+  modelOverrides/{modelId}      <- Org-specific pricing overrides (boats)
+  trailerOverrides/{trailerId}  <- v1.4 org-specific sell overrides (trailers)
   dealerFitSelections/
   exchangeRates/{currencyCode}
   priceLists/{priceListId}      <- Sub-dealer price lists
@@ -139,8 +185,30 @@ Finalize saves ALL prices as snapshot (prices locked at save time)
 - `master-price-file` — editable data tables with Excel import/export
 - `used-boats` — placeholder module with cover image, coming-soon cards
 - `website-listings` — placeholder module with cover image, coming-soon cards
+- `trailers` (**v1.4**) — multi-brand trailer catalog with full pricing waterfall + org-level overrides. Workspace: `src/components/trailers-workspace.tsx`. Data: `data-warehouse/{brandVendorId}/series/{seriesId}/trailers/{trailerId}`. Picker: `TrailerCatalogPicker` used by the Highfield quote flow trailer step.
+- `rego` (**v1.4**) — shared registration-type catalog for boats + trailers. Workspace: `src/components/rego-workspace.tsx`. Data: `data-warehouse/{regoVendorId}/regoTypes/{regoTypeId}`. Picker: `RegoPicker` used by the boat + trailer rego steps.
 
 Non-catalog modules have `mainVendorId: null` — code must check before creating Firestore doc refs.
+
+---
+
+## Vendor Types
+
+Values stored as strings on `data-warehouse/{vendorId}.vendorType`. Full list maintained in four places (keep in sync):
+
+1. `vendorTypes` array in `src/app/(app)/data-warehouse/page.tsx`
+2. `getVendorTypeIcon` switch in the same file
+3. `SelectItem` list in `src/app/(app)/data-warehouse/add/page.tsx`
+4. `enum` in `src/docs/backend.json`
+
+Current values:
+- `Boat Brand` (e.g., Highfield)
+- `Motor Brand` (e.g., Yamaha)
+- `Trailer Brand` (**v1.4**) — REDCO, TINKA, STACER, DUNBIER, MACKAY, GFAB, NSM CUSTOM
+- `Rego Authority` (**v1.4**) — state-by-state registration price catalog (QLD, NSW, VIC…)
+- `Electronics Brand`, `Electronics Supplier`, `Parts Wholesaler`, `Master Price File`, `Other`
+
+The MPF browser (`src/components/master-data-browser-dialog.tsx`) excludes vendors with `vendorType` in `{Motor Brand, Trailer Brand, Rego Authority}` because those vendors are catalog/picker-only — they don't sell parts.
 
 ---
 
@@ -408,16 +476,26 @@ Key collections and access:
 
 ---
 
-## v1.3 — READY FOR PUSH (2026-04-15)
+## v1.3.0 — SHIPPED 2026-04-17
 
-- **20+ commits** on dev (`claude/app-overview-wKiZ1`)
+- **20+ commits** on dev, merged to main
 - **13 client requirements** addressed + customer feedback fixes + 3 critical bugs caught in static analysis
-- **Static analysis pass**: build clean, all 46 Playwright tests discoverable, icon imports verified, undefined refs clean
 - **Key features**: PDF upload per section, Engine/Trailer Specs buttons, Pre-Rig display, Yamaha rebate auto-apply, NSM Extended Warranty + Service Plan, Trailer enhancements (custom options + dealer fit), Admin/Trade-In section, multi-engine HP badges, currency format (whole dollars no .00)
 - **Customer fixes**: Photo save in catalog grid (modelOverrides merge), stock column order (Model first), Pending sub-tab, interactive location dropdown
 - **Pre-release static fixes**: stock-item-detail null safety, inventory-list and customer-list Firestore `in` 30-element slicing
-- **New testing infrastructure**: Playwright suite (46 tests), `testing/` folder with per-release subfolders, full handbook rewrite for new QA hire
-- **v1.4 in design**: `tasks/v1.4-trailers-module-design.md` — multi-brand Trailers module with per-boat-model trailer assignments and pre-configured dealer fit (mirrors Motor Options pattern)
+- **New testing infrastructure**: Playwright suite (63 tests), `testing/` folder with per-release subfolders, full handbook rewrite for new QA hire
+
+### Same-day hotfix v1.3.1 (2026-04-17) — Loading overlay stuck on refresh
+- **Severity**: prod down for any user refreshing on a module URL with `?range=` / `?model=` params
+- **Root cause**: my v1.3 refresh persistence stripped `view=ranges` as a "default" but kept `model=X`. On refresh, view defaulted to 'ranges' while selectedModelId was restored — the loading overlay fired on `masterModelLoading` regardless of view and froze the UI
+- **Fix** (commits `be870f6` → main `3333246`):
+  1. View inferred from deepest URL param: `?model=X` → `'bmt'`, `?range=X` → `'models'`
+  2. Loading overlay now scoped to `view === 'bmt'` — ranges/models views can't be blocked by model data they don't render
+- **Why Playwright missed it**: the refresh tests reloaded within seconds of opening the editor so `?view=bmt` was explicitly in the URL. The partial-param case (URL normalized to `?range=X&model=Y` only) wasn't covered
+- **Permanent lessons** (in CLAUDE.md + evolution.md):
+  - Loading overlays MUST be scoped to the view that consumes the data
+  - URL persistence that strips defaults WILL produce partial param combos — init must infer from deepest param
+  - Every URL-synced state needs refresh tests for every param combo
 
 ### Eve-of-release hotfixes (2026-04-16)
 - **Update Config now unblockable** — `highfieldModelSchema` rewritten with `optional().nullable().default()` on every field + `.passthrough()`. `model-configuration-editor.tsx` got an `onValidationError` handler that walks the nested errors object to log the deepest failing path, then calls `onSubmit(form.getValues())` directly so the save still happens. Validation is a safety net only.
@@ -426,13 +504,55 @@ Key collections and access:
 
 ---
 
+## v1.4 Trailers Module — READY ON BRANCH (2026-04-22)
+
+- **Status**: All v1.4 work shipped on `claude/app-overview-wKiZ1`. Awaiting draft PR → main.
+- **Design doc**: `tasks/v1.4-trailers-module-design.md`
+- **Live status**: `tasks/v1.4-trailers-module-status.md`
+- **Release notes**: `tasks/RELEASE_NOTES_v1.4.md`
+- **Summary**: One `trailers` module type, many trailer brand vendors. Mirrors Yamaha motor workspace pattern. Each boat model gets `trailerAssignments[]` — per-model trailer list with pre-configured dealer fit. Quote Step 4 reads assignments instead of single `trailerConfig`, via `TrailerCatalogPicker` + `effectiveTrailerConfig` shadow memo.
+
+### What's on the Branch Today
+- **`trailers-workspace.tsx`** — Dashboard (default) / Pricing Manager / Settings tabs. URL-synced via `?trailerTab=`. Legacy `catalog` value remaps to `dashboard`.
+- **`trailer-dashboard.tsx`** — Yamaha-style dashboard (~1,350 lines). Aggregate loader across selected trailer-brand vendors (flat `getDocs`, not `useCollection`, so brand list can grow/shrink without conditional hooks). Boat-size-range grouping, cards/table view toggle (`?trailerView=`), search across code/name/brand/series/supplier/features, admin-only image + field editors inline in the detail sheet.
+- **`module-image-editor.tsx`** — reusable `logoUrl` editor card; drop-in for any module's Settings tab. Currently wired into Trailers.
+- **`trailer-catalog-picker.tsx`** — shared picker dialog used by the Highfield quote flow; subscribes to org `trailerOverrides`; emits a frozen `TrailerSnapshot` on select.
+- **Pricing workspace** — full waterfall per trailer with xlsx column codes, per-org overrides at `organisations/{orgId}/trailerOverrides/{trailerId}`.
+- **Rego module** (`rego-workspace.tsx`) — Types + Settings tabs. `data-warehouse/{regoVendorId}/regoTypes/{id}` docs with `appliesTo: 'boat' | 'trailer' | 'both'`. Authoritative over trailer pricingDetail `regoTypeHint` fields.
+- **Imports** — Yamaha MPF and Sam Allen uploaders converted from clear-and-replace to upsert-by-natural-key. Detected key candidates: Part Number → Model Code → Model ID → SKU → Code → ID → Model → Model Name → first column fallback. Operators can partial-import without wiping unrelated rows.
+
+### Trailer-on-Boat-Quote Integration (verified 2026-04-22)
+- `quote.trailer.cost` persisted (mirrors motor's `costPrice`). Trailer margin visible in saved quotes.
+- `quote.trailer.catalog.specifications` snapshot at pick-time → proposal PDF renders specs strip (boat size / length / ATM / tare / wheel size / winch) plus `BRAND · CODE` subtitle.
+- `DealerFitOptions` four-source merge includes `trailerDealerFitCategories`. Trailer dealer-fit step is gated on trailer selection in `highfield-quote-flow.tsx`.
+- Rego on trailer: Rego module snapshot > legacy `isTrailerRegoSelected` + `model.registration.trailerPrice12Months`. `pricingDetail.regoTypeHint` / `regoDollarsHint` are informational only (xlsx import notes) and deliberately NOT auto-applied — they'd cross-state silently.
+
+---
+
 ## Git Workflow
 
 - **Dev branch**: `claude/app-overview-wKiZ1` — auto-deploys via Firebase App Hosting
 - **Main branch**: `main` — production, merge from dev
-- **v1.3 release branch**: `claude/v1.3-release` — features merged into dev
-- **v1.4 branch**: TBD — trailers module work starts after v1.3 ships
-- **Feature branches**: `claude/setup-agent-teams-NJq6l` etc
-- Push: `git push -u origin <branch>` with retry on 403
+- **Feature branches**: spawned for isolated work, merged to dev
+- Push: `git push -u origin <branch>` with retry on 403 (2s, 4s, 8s, 16s)
 - Always create new commits, never amend
-- Conventional commits: `feat:`, `fix:`, `refactor:`, `docs:`
+- Conventional commits: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`
+
+## Deployment Workflow
+
+1. Commit to `claude/app-overview-wKiZ1` → Firebase App Hosting auto-deploys dev
+2. Manually verify on dev URL
+3. Run full Playwright smoke: `npm run test:e2e:smoke`
+4. When green, merge to `main`: `git checkout main && git merge claude/app-overview-wKiZ1 && git push origin main`
+5. Firebase deploys main → prod
+6. Verify on prod URL immediately
+7. Manually deploy Firestore rules if changed (Firebase Console → Firestore → Rules, paste from `firestore.rules`)
+
+## Hotfix Workflow (same-day prod fix, per v1.3.1)
+
+1. Fix on dev branch, commit with `fix(vX.Y.Z): ...` message
+2. Confirm test passes locally
+3. Merge to main immediately: `git checkout main && git merge claude/app-overview-wKiZ1 && git push origin main`
+4. Post-mortem in release notes: `tasks/RELEASE_NOTES_vX.Y.Z.md`
+5. Add regression tests (the class that should have caught it, not just the exact case)
+6. Update `CLAUDE.md` "Known Lessons" + `.agents/evolution.md`

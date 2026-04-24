@@ -51,3 +51,22 @@ __pycache__/
 # Claude Code worktrees
 .claude/worktrees/
 test-results/
+
+# secrets
+service-account*.json
+*-service-account.json
+firebase-adminsdk*.json
+
+# local scratch data
+tmp/
+/tmp/
+oms_data/
+
+# vendor source spreadsheets — import to Firestore once, then keep only FINDINGS.md
+# (see CLAUDE.md "Don't commit vendor source spreadsheets")
+tasks/*-source/*.xlsx
+tasks/*-source/*.xls
+tasks/*-source/*.xlsm
+data-import/*.xlsx
+data-import/*.xls
+data-import/*.xlsm

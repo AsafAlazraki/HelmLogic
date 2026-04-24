@@ -110,7 +110,8 @@ export function MasterDataBrowserDialog({
   const subscribedVendors = useMemo(() => {
     if (!allVendors) return [];
     const effectiveAllowedIds = allowedVendorIds || organisation?.dataWarehouseSubscriptions || [];
-    return allVendors.filter(v => effectiveAllowedIds.includes(v.id) && v.vendorType !== 'Motor Brand');
+    const catalogVendorTypes = new Set(['Motor Brand', 'Trailer Brand', 'Rego Authority']);
+    return allVendors.filter(v => effectiveAllowedIds.includes(v.id) && !catalogVendorTypes.has(v.vendorType ?? ''));
   }, [allVendors, organisation?.dataWarehouseSubscriptions, allowedVendorIds]);
 
   // Reset state on open

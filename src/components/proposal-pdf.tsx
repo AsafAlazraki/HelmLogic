@@ -469,22 +469,50 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                 })()}
 
                 {/* Trailer */}
-                {quote.trailer && (
-                    <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: '10 14', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            {quote.trailer.imageUrl && (
-                                <Image src={quote.trailer.imageUrl} style={{ width: 36, height: 36, objectFit: 'contain', marginRight: 12, borderRadius: 3 }} />
-                            )}
-                            <View>
-                                <Text style={[S.sectionLabel, { marginBottom: 3 }]}>Trailer Package</Text>
-                                <Text style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', color: NAVY }}>
-                                    {quote.trailer.name || 'Trailer'}
-                                </Text>
+                {quote.trailer && (() => {
+                    const catalog = (quote.trailer as any).catalog || null;
+                    const specs = catalog?.specifications || null;
+                    const subtitleParts: string[] = [];
+                    if (catalog?.brandName) subtitleParts.push(String(catalog.brandName).toUpperCase());
+                    if (catalog?.code) subtitleParts.push(String(catalog.code));
+                    else if (catalog?.seriesName) subtitleParts.push(String(catalog.seriesName));
+                    const subtitle = subtitleParts.join(' · ');
+
+                    const specBadges: string[] = [];
+                    if (specs?.boatSizeMtr != null) specBadges.push(`Boat ${specs.boatSizeMtr}m`);
+                    if (specs?.lengthMtr != null) specBadges.push(`Length ${specs.lengthMtr}m`);
+                    if (specs?.atmKg != null) specBadges.push(`ATM ${specs.atmKg}kg`);
+                    if (specs?.tareKg != null) specBadges.push(`Tare ${specs.tareKg}kg`);
+                    if (specs?.wheelSize) specBadges.push(`Wheels ${specs.wheelSize}`);
+                    if (specs?.winch) specBadges.push(`Winch ${specs.winch}`);
+
+                    return (
+                        <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: '10 14', marginBottom: 14 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    {quote.trailer.imageUrl && (
+                                        <Image src={quote.trailer.imageUrl} style={{ width: 36, height: 36, objectFit: 'contain', marginRight: 12, borderRadius: 3 }} />
+                                    )}
+                                    <View>
+                                        <Text style={[S.sectionLabel, { marginBottom: 3 }]}>Trailer Package</Text>
+                                        <Text style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', color: NAVY }}>
+                                            {quote.trailer.name || 'Trailer'}
+                                        </Text>
+                                        {subtitle ? (
+                                            <Text style={{ fontSize: 8, color: '#888', marginTop: 1 }}>{subtitle}</Text>
+                                        ) : null}
+                                    </View>
+                                </View>
+                                <Text style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(f.trailerTotal)}</Text>
                             </View>
+                            {specBadges.length > 0 && (
+                                <Text style={{ fontSize: 8, color: '#666', marginTop: 6, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: BORDER }}>
+                                    {specBadges.join('   ·   ')}
+                                </Text>
+                            )}
                         </View>
-                        <Text style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(f.trailerTotal)}</Text>
-                    </View>
-                )}
+                    );
+                })()}
 
                 {/* Dealer Fit */}
                 {quote.dealerFit?.length > 0 && (

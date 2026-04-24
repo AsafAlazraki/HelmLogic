@@ -65,6 +65,9 @@ interface FinalizeQuoteDialogProps {
         isTenderToSelected: boolean;
         isTrailerRegoSelected: boolean;
         selectedTrailerId: string | null;
+        catalogTrailerSnapshot?: any;
+        boatRegoSnapshot?: any;
+        trailerRegoSnapshot?: any;
         priceLevelUsed?: string;
         appliedPromotions?: any[];
         promotionDiscount?: number;
@@ -138,7 +141,11 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     };
 
     const buildQuotePayload = () => {
-        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, priceLevelUsed, appliedPromotions, promotionDiscount, dealerServices, adminDetails } = quoteData;
+        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, catalogTrailerSnapshot, boatRegoSnapshot, trailerRegoSnapshot, priceLevelUsed, appliedPromotions, promotionDiscount, dealerServices, adminDetails } = quoteData;
+
+        // Trailer data source: catalog snapshot wins over model's own trailerConfig.
+        // The snapshot is frozen at selection time so quote totals never drift.
+        const trailerSource = catalogTrailerSnapshot || model?.trailerConfig || null;
 
         /** Resolve price for an item based on the selected price level */
         const resolvePrice = (item: any): number => {
@@ -220,16 +227,22 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 description: opt.description || null,
             })),
 
-            // Registration
+            // Registration — snapshot (v1.4) wins over legacy toggles
             registration: {
-                boatRego: isRegoSelected || false,
-                boatRegoPrice: isRegoSelected ? (model?.registration?.price12Months || 0) : 0,
+                boatRego: !!boatRegoSnapshot || isRegoSelected || false,
+                boatRegoPrice: boatRegoSnapshot
+                    ? (boatRegoSnapshot.sellExclGst || 0)
+                    : (isRegoSelected ? (model?.registration?.price12Months || 0) : 0),
+                boatRegoSnapshot: boatRegoSnapshot || null,
                 sticker: isStickerSelected || false,
                 stickerPrice: isStickerSelected ? (model?.registration?.stickerPrice || 0) : 0,
                 tenderTo: isTenderToSelected || false,
                 tenderToPrice: isTenderToSelected ? (model?.registration?.tenderToStickerPrice || 0) : 0,
-                trailerRego: isTrailerRegoSelected || false,
-                trailerRegoPrice: isTrailerRegoSelected ? (model?.registration?.trailerPrice12Months || 0) : 0,
+                trailerRego: !!trailerRegoSnapshot || isTrailerRegoSelected || false,
+                trailerRegoPrice: trailerRegoSnapshot
+                    ? (trailerRegoSnapshot.sellExclGst || 0)
+                    : (isTrailerRegoSelected ? (model?.registration?.trailerPrice12Months || 0) : 0),
+                trailerRegoSnapshot: trailerRegoSnapshot || null,
             },
 
             // Motor
@@ -267,11 +280,36 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 }; })() : null,
 
             // Trailer
-            trailer: (selectedTrailerId && model?.trailerConfig) ? {
+            trailer: (selectedTrailerId && trailerSource) ? {
                 id: selectedTrailerId,
-                name: model.trailerConfig.name || 'Trailer Package',
-                sellPriceExclGst: model.trailerConfig.sellPriceExclGst || 0,
-                imageUrl: model.trailerConfig.imageUrl || null,
+                name: trailerSource.name || 'Trailer Package',
+                sellPriceExclGst: resolvePrice(trailerSource),
+                // Buy-side. Mirrors motor's `costPrice` so trailer margin is
+                // visible in saved quotes / dealer-audit / stock roll-up.
+                cost: trailerSource.cost || 0,
+                imageUrl: trailerSource.imageUrl || null,
+                catalog: catalogTrailerSnapshot ? {
+                    brandVendorId: catalogTrailerSnapshot.brandVendorId,
+                    brandName: catalogTrailerSnapshot.brandName,
+                    seriesId: catalogTrailerSnapshot.seriesId,
+                    seriesName: catalogTrailerSnapshot.seriesName,
+                    trailerId: catalogTrailerSnapshot.trailerId,
+                    code: catalogTrailerSnapshot.code,
+                    capturedAt: catalogTrailerSnapshot.capturedAt || null,
+                    // Specs snapshot so the proposal PDF can render
+                    // boat size / ATM / tare / length without re-fetching
+                    // the catalog doc (which may have changed by quote
+                    // re-open time).
+                    specifications: catalogTrailerSnapshot.specifications || null,
+                    // Audit-trail flag so dealer-audit reports later can
+                    // distinguish whether the trailer price came from the
+                    // source catalog (`'source'`) or an org-level override
+                    // (`'override'`). `sourceSellPriceExclGst` captures the
+                    // pre-override price so the override delta is computable
+                    // without re-resolving overrides at read time.
+                    pricingSource: (catalogTrailerSnapshot as any).pricingSource ?? null,
+                    sourceSellPriceExclGst: (catalogTrailerSnapshot as any).sourceSellPriceExclGst ?? null,
+                } : null,
                 options: (selectedTrailerOptionsData || []).map((o: any) => ({
                     id: o.id || null,
                     name: o.name || 'Trailer Option',
