@@ -15,7 +15,26 @@
  */
 
 import { useMemo, useState } from 'react';
-import { collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import {
+    DndContext,
+    DragOverlay,
+    PointerSensor,
+    KeyboardSensor,
+    useSensor,
+    useSensors,
+    useDroppable,
+    closestCorners,
+    type DragEndEvent,
+    type DragStartEvent,
+} from '@dnd-kit/core';
+import {
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useUser } from '@/firebase/provider';
@@ -168,13 +187,50 @@ function TypeIcon({ type }: { type?: FeatureType }) {
 export function FeatureTrackingBoard() {
     const firestore = useFirestore();
     const { user } = useUser();
+    const { toast } = useToast();
     const [createOpen, setCreateOpen] = useState(false);
+    const [activeId, setActiveId] = useState<string | null>(null);
+    /**
+     * Optimistic overrides keyed by feature id. When a drop writes to
+     * Firestore we record the target { status, order } here so the UI
+     * reflects the new position immediately, even before the Firestore
+     * listener echoes the change back. An override is cleared once the
+     * live snapshot matches (i.e. the server state caught up).
+     */
+    const [optimistic, setOptimistic] = useState<
+        Record<string, { status: FeatureStatus; order: number }>
+    >({});
 
     const featuresQuery = useMemoFirebase(
         () => collection(firestore, 'features'),
         [firestore],
     );
     const { data: features, isLoading } = useCollection<FeatureDoc>(featuresQuery);
+
+    /** Apply any pending optimistic moves over the live snapshot. */
+    const mergedFeatures = useMemo(() => {
+        if (!features) return features;
+        if (Object.keys(optimistic).length === 0) return features;
+        return features.map(f => {
+            const o = optimistic[f.id];
+            return o ? { ...f, status: o.status, order: o.order } : f;
+        });
+    }, [features, optimistic]);
+
+    // Drop optimistic entries once the server catches up.
+    useMemo(() => {
+        if (!features || Object.keys(optimistic).length === 0) return;
+        const next = { ...optimistic };
+        let changed = false;
+        for (const f of features) {
+            const o = optimistic[f.id];
+            if (o && f.status === o.status && f.order === o.order) {
+                delete next[f.id];
+                changed = true;
+            }
+        }
+        if (changed) setOptimistic(next);
+    }, [features, optimistic]);
 
     const byStatus = useMemo(() => {
         const groups: Record<FeatureStatus, FeatureDoc[]> = {
@@ -184,14 +240,14 @@ export function FeatureTrackingBoard() {
             'in-progress': [],
             shipped: [],
         };
-        for (const f of features || []) {
+        for (const f of mergedFeatures || []) {
             const s = (f.status || 'submitted') as FeatureStatus;
             if (groups[s]) groups[s].push(f);
             else groups.submitted.push(f);
         }
         // Sort each column by order ASC (manual drag position).
-        // `order` is written by drag-drop (stage 3); until then we fall
-        // back to createdAt DESC so the newest bubbles to the top.
+        // `order` is written by drag-drop; fall back to createdAt DESC
+        // for any doc that predates drag (no order field yet).
         for (const key of Object.keys(groups) as FeatureStatus[]) {
             groups[key].sort((a, b) => {
                 if (a.order != null && b.order != null) return a.order - b.order;
@@ -201,9 +257,99 @@ export function FeatureTrackingBoard() {
             });
         }
         return groups;
-    }, [features]);
+    }, [mergedFeatures]);
 
     const total = features?.length ?? 0;
+
+    const sensors = useSensors(
+        // distance:5 means a plain click on a card doesn't trigger drag —
+        // only a 5px move does. Lets the whole card stay clickable for
+        // the detail sheet (stage 5) while still being draggable.
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    );
+
+    const featureById = useMemo(() => {
+        const m = new Map<string, FeatureDoc>();
+        for (const f of mergedFeatures || []) m.set(f.id, f);
+        return m;
+    }, [mergedFeatures]);
+
+    const activeFeature = activeId ? featureById.get(activeId) : null;
+
+    function onDragStart(e: DragStartEvent) {
+        setActiveId(String(e.active.id));
+    }
+
+    async function onDragEnd(e: DragEndEvent) {
+        setActiveId(null);
+        const { active, over } = e;
+        if (!over) return;
+        const activeKey = String(active.id);
+        const overKey = String(over.id);
+        const moving = featureById.get(activeKey);
+        if (!moving) return;
+
+        // over.id is either a column key or a card id. Resolve target column.
+        const isColumnDrop = (COLUMNS as ReadonlyArray<{ key: FeatureStatus }>).some(c => c.key === overKey);
+        const targetStatus: FeatureStatus = isColumnDrop
+            ? (overKey as FeatureStatus)
+            : ((featureById.get(overKey)?.status as FeatureStatus) || 'submitted');
+
+        // Target list (exclude the dragged card so indexes line up).
+        const targetList = byStatus[targetStatus].filter(f => f.id !== activeKey);
+        let targetIndex: number;
+        if (isColumnDrop) {
+            // Dropped on the column body itself → append to end.
+            targetIndex = targetList.length;
+        } else {
+            const idx = targetList.findIndex(f => f.id === overKey);
+            targetIndex = idx < 0 ? targetList.length : idx;
+        }
+
+        // No-op: same column AND same position.
+        if (moving.status === targetStatus) {
+            const currentIndex = byStatus[targetStatus]
+                .filter(f => f.id !== activeKey)
+                .findIndex(f => f.id === activeKey);
+            if (currentIndex === targetIndex) return;
+        }
+
+        // Fractional-index reorder: midpoint between neighbours.
+        const prev = targetList[targetIndex - 1];
+        const next = targetList[targetIndex];
+        let newOrder: number;
+        if (prev && next) newOrder = ((prev.order ?? 0) + (next.order ?? 0)) / 2;
+        else if (prev) newOrder = (prev.order ?? 0) + 10;
+        else if (next) newOrder = (next.order ?? 0) - 10;
+        else newOrder = 0;
+
+        // Optimistic: show the move immediately.
+        setOptimistic(prevMap => ({
+            ...prevMap,
+            [activeKey]: { status: targetStatus, order: newOrder },
+        }));
+
+        try {
+            await updateDoc(doc(firestore, 'features', activeKey), {
+                status: targetStatus,
+                order: newOrder,
+                updatedAt: serverTimestamp(),
+            });
+        } catch (err: any) {
+            // Roll the optimistic entry back on failure.
+            setOptimistic(prevMap => {
+                const copy = { ...prevMap };
+                delete copy[activeKey];
+                return copy;
+            });
+            toast({
+                variant: 'destructive',
+                title: 'Move failed',
+                description: err?.message ?? 'See console.',
+            });
+        }
+    }
 
     return (
         <div className="flex flex-col h-full bg-slate-50/50">
@@ -239,16 +385,32 @@ export function FeatureTrackingBoard() {
             {/* Board */}
             <div className="flex-1 min-h-0 overflow-auto">
                 <div className="p-6 h-full">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 min-h-full">
-                        {COLUMNS.map(col => (
-                            <ColumnView
-                                key={col.key}
-                                column={col}
-                                features={byStatus[col.key]}
-                                currentUserId={user?.uid}
-                            />
-                        ))}
-                    </div>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCorners}
+                        onDragStart={onDragStart}
+                        onDragEnd={onDragEnd}
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 min-h-full">
+                            {COLUMNS.map(col => (
+                                <ColumnView
+                                    key={col.key}
+                                    column={col}
+                                    features={byStatus[col.key]}
+                                    currentUserId={user?.uid}
+                                />
+                            ))}
+                        </div>
+                        <DragOverlay>
+                            {activeFeature ? (
+                                <FeatureCard
+                                    feature={activeFeature}
+                                    currentUserId={user?.uid}
+                                    isOverlay
+                                />
+                            ) : null}
+                        </DragOverlay>
+                    </DndContext>
                 </div>
             </div>
 
@@ -274,6 +436,11 @@ function ColumnView({
     features: FeatureDoc[];
     currentUserId?: string;
 }) {
+    // Column body acts as a drop target so an empty column can still
+    // receive cards (dropping anywhere inside appends to the end).
+    const { setNodeRef, isOver } = useDroppable({ id: column.key });
+    const itemIds = useMemo(() => features.map(f => f.id), [features]);
+
     return (
         <div className="flex flex-col min-h-0">
             <div className={cn(
@@ -288,20 +455,28 @@ function ColumnView({
                     {features.length}
                 </span>
             </div>
-            <div className="flex-1 space-y-2 border-x border-b rounded-b-xl bg-slate-50/70 p-2 min-h-[200px]">
-                {features.length === 0 ? (
-                    <p className="text-[10px] text-slate-400 italic text-center py-4">
-                        Nothing here yet.
-                    </p>
-                ) : (
-                    features.map(f => (
-                        <FeatureCard
-                            key={f.id}
-                            feature={f}
-                            currentUserId={currentUserId}
-                        />
-                    ))
+            <div
+                ref={setNodeRef}
+                className={cn(
+                    'flex-1 space-y-2 border-x border-b rounded-b-xl bg-slate-50/70 p-2 min-h-[200px] transition-colors',
+                    isOver && 'bg-blue-50/60 ring-2 ring-blue-300 ring-inset',
                 )}
+            >
+                <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                    {features.length === 0 ? (
+                        <p className="text-[10px] text-slate-400 italic text-center py-4">
+                            Drop here.
+                        </p>
+                    ) : (
+                        features.map(f => (
+                            <FeatureCard
+                                key={f.id}
+                                feature={f}
+                                currentUserId={currentUserId}
+                            />
+                        ))
+                    )}
+                </SortableContext>
             </div>
         </div>
     );
@@ -314,9 +489,12 @@ function ColumnView({
 function FeatureCard({
     feature,
     currentUserId,
+    isOverlay = false,
 }: {
     feature: FeatureDoc;
     currentUserId?: string;
+    /** Rendered inside <DragOverlay>? If so skip useSortable wiring. */
+    isOverlay?: boolean;
 }) {
     const voteIds = feature.voteIds ?? [];
     const voteCount = voteIds.length;
@@ -327,12 +505,30 @@ function FeatureCard({
     const hiddenTagCount = Math.max(0, tags.length - visibleTags.length);
     const commentCount = feature.commentCount ?? 0;
 
+    // Hook is always called (rules-of-hooks) — values are unused for the
+    // overlay clone, which just renders static visuals above everything.
+    const sortable = useSortable({ id: feature.id, disabled: isOverlay });
+    const style: React.CSSProperties = isOverlay
+        ? { cursor: 'grabbing' }
+        : {
+            transform: CSS.Transform.toString(sortable.transform),
+            transition: sortable.transition,
+            opacity: sortable.isDragging ? 0.3 : 1,
+        };
+
     return (
         <div
+            ref={isOverlay ? undefined : sortable.setNodeRef}
+            style={style}
+            {...(isOverlay ? {} : sortable.attributes)}
+            {...(isOverlay ? {} : sortable.listeners)}
             role="button"
             tabIndex={0}
-            className="bg-white rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-sm transition-all p-3 space-y-2 cursor-pointer"
-            title="Open detail (stage 5)"
+            className={cn(
+                'bg-white rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-sm transition-all p-3 space-y-2 cursor-grab active:cursor-grabbing',
+                isOverlay && 'shadow-xl ring-2 ring-blue-300',
+            )}
+            title="Drag to reorder or move between columns"
         >
             <div className="flex items-start gap-2">
                 <TypeIcon type={feature.type} />
