@@ -24,6 +24,7 @@
 | `pricing-manager/` | Global pricing workspace route |
 | `price-book/` | Published price book view |
 | `reporting/`, `real-time-tracking/`, `route-optimization/`, `sub-dealers/`, `data-connect/` | Feature pages |
+| `feature-tracking/page.tsx` (**v1.5**) | Team-wide Feature Tracking board — thin route that renders `<FeatureTrackingBoard />`. |
 
 ---
 
@@ -124,6 +125,13 @@
 | `sam-allen-uploader.tsx` | Sam Allen price-list uploader. **v1.4**: upserts by natural key (Part Number / Model Code / SKU) instead of delete-all-then-insert, preserving user edits across partial uploads. |
 | `sam-allen-*`, `yamaha-api-fetcher.tsx`, `json-data-visualizer.tsx` | Data import + inspection tools |
 | `mpf-parsers.ts` | Excel sheet parsers for MPF import |
+
+### Feature Tracking (**v1.5**)
+| File | Purpose |
+|------|---------|
+| `feature-tracking-board.tsx` ★ | Whole Feature Tracking experience. `FeatureTrackingBoard` (DndContext + DragOverlay + optimistic reorder state), `ColumnView` (per-column sort toggle + useDroppable), `FeatureCard` (useSortable + click-to-open + live vote), `CreateFeatureDialog` (TipTap + image upload + acceptance criteria + tags), `FeatureDetailSheet` / `FeatureDetailBody` (live comments, metadata editors, delete). Fractional-index reorder, optimistic drag UI, 5px drag activation so clicks still open the detail sheet. |
+| `feature-rich-text-editor.tsx` | TipTap wrapper (StarterKit + Placeholder + Link) — H2/H3, bold, italic, bullet/numbered lists, link, undo/redo. Exports `FeatureDescriptionView` for the read-only render in the detail sheet. |
+| `feature-image-uploader.tsx` | Multi-file upload to `features/{featureId}/` in Firebase Storage + paste-URL mode. Max 10 images. |
 
 ---
 

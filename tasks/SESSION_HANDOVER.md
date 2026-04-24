@@ -120,6 +120,15 @@ holdRequests/{requestId}        <- Sub-dealer hold requests
 customers/{customerId}          <- Customer records (org-scoped)
   Fields: name, email, phone, company, address, notes, organisationId,
           createdByUserId, createdByUserName
+
+# v1.5 feature tracking data (board is shared across all signed-in users)
+features/{featureId}            <- Feature request / bug / improvement
+  Fields: title, description (HTML), type, status, priority, targetRelease,
+          tags[], voteIds[], order (fractional-index for drag-drop),
+          acceptanceCriteria[], imageUrls[], commentCount, submitterId,
+          submitterName, createdAt, updatedAt
+  comments/{commentId}          <- Threaded discussion
+    Fields: body, authorId, authorName, createdAt
 ```
 
 ---
@@ -526,6 +535,31 @@ Key collections and access:
 - `quote.trailer.catalog.specifications` snapshot at pick-time → proposal PDF renders specs strip (boat size / length / ATM / tare / wheel size / winch) plus `BRAND · CODE` subtitle.
 - `DealerFitOptions` four-source merge includes `trailerDealerFitCategories`. Trailer dealer-fit step is gated on trailer selection in `highfield-quote-flow.tsx`.
 - Rego on trailer: Rego module snapshot > legacy `isTrailerRegoSelected` + `model.registration.trailerPrice12Months`. `pricingDetail.regoTypeHint` / `regoDollarsHint` are informational only (xlsx import notes) and deliberately NOT auto-applied — they'd cross-state silently.
+
+---
+
+## v1.5 Feature Tracking — ON BRANCH (2026-04-24)
+
+- **Status**: All 7 build stages shipped on `claude/app-overview-wKiZ1`.
+- **Design doc**: `tasks/v1.5-feature-tracking-design.md`
+- **Live status**: `tasks/v1.5-feature-tracking-status.md`
+- **Summary**: New `/feature-tracking` route. Team-wide Kanban (5 columns: Submitted → Under Review → Planned → In Progress → Shipped). Every signed-in user can create, vote, comment, drag, and delete. Fully open Firestore rules per spec.
+
+### What's on the Branch Today
+- **`src/components/feature-tracking-board.tsx`** — single file, ~1,600 lines. Hosts FeatureTrackingBoard (DndContext + DragOverlay + optimistic reorder state), ColumnView (per-column sort mode + useDroppable), FeatureCard (useSortable + click-to-open + live vote), CreateFeatureDialog (TipTap + image upload + acceptance criteria + tags), FeatureDetailSheet / FeatureDetailBody (live comments subscription, metadata editors, description edit flow, delete).
+- **`src/components/feature-rich-text-editor.tsx`** — TipTap wrapper (StarterKit + Placeholder + Link). Toolbar: H2/H3, bold, italic, bullet/numbered lists, link, undo/redo. Exports `FeatureRichTextEditor` + `FeatureDescriptionView` (read-only render for the detail sheet).
+- **`src/components/feature-image-uploader.tsx`** — multi-file upload to `features/{featureId}/` in Firebase Storage, plus paste-URL mode. Max 10 images.
+- **`src/app/(app)/feature-tracking/page.tsx`** — thin route.
+- **`src/lib/nav-links.ts`** — Lightbulb entry between Pricing Manager and Settings.
+- **`firestore.rules`** — `match /features/{id}` and nested `comments` subcollection, both fully open to signed-in users.
+
+### Patterns worth remembering
+- **Fractional-index reorder** for drag-drop: `newOrder = (prev.order + next.order) / 2`, or `±10` at edges. No bulk renumber; concurrent drags don't fight.
+- **Optimistic drag UI** via a board-level `optimistic: Record<id, { status, order }>` overlay that's cleared once the Firestore snapshot catches up or rolled back on write failure.
+- **Drag vs click coexist** via `PointerSensor({ activationConstraint: { distance: 5 } })`. A plain click opens the detail sheet; moving 5px starts a drag.
+- **Client-side doc ID before save** — `doc(collection(firestore, 'features')).id` in the create dialog so the image uploader has a path to write to before the feature doc exists.
+- **Per-column sort disables drag** when non-manual — otherwise a drop would stomp `order` and the sort criterion would snap it back visually.
+- **commentCount denorm** — card badge reads `feature.commentCount`; add/delete comment also calls `increment(±1)` on the parent doc so we don't subscribe to the subcollection from the card.
 
 ---
 
