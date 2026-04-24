@@ -1,7 +1,7 @@
-'use client';
-
-import { FeatureTrackingBoard } from '@/components/feature-tracking-board';
+import { FeatureTrackingView } from '@/components/feature-tracking-view';
+import { loadReleaseNotes } from '@/lib/release-notes-loader';
 
 export default function FeatureTrackingPage() {
-    return <FeatureTrackingBoard />;
+    const releaseNotes = loadReleaseNotes();
+    return <FeatureTrackingView releaseNotes={releaseNotes} />;
 }
