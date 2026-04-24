@@ -104,6 +104,16 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    // Feature Tracking (v1.5) — fully open to any signed-in user per spec:
+    // anyone can create / vote / comment / drag / move status / set release
+    // / delete. See tasks/v1.5-feature-tracking-design.md.
+    match /features/{featureId} {
+      allow read, write: if isSignedIn();
+      match /comments/{commentId} {
+        allow read, write: if isSignedIn();
+      }
+    }
+
     match /dealerFitCategories/{catId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
