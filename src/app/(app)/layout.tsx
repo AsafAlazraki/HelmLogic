@@ -34,11 +34,12 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
     return <HelmLogicLoading />;
   }
 
-  // Module and Blueprint pages manage their own full-bleed layout
-  // but proposals/quotes need their own scroll so exclude them
+  // Module, Blueprint and Quote pages manage their own full-bleed layout
+  // (the Highfield quote flow uses fixed inset-0 and its own ScrollArea, so
+  // the parent <main> must not impose padding/scroll). Proposals are the
+  // only /modules/* sub-route that still needs the default padded layout.
   const isImmersivePage = (pathname?.includes('/modules/') || pathname?.includes('/blueprint/'))
-    && !pathname?.includes('/proposals/')
-    && !pathname?.includes('/quote/');
+    && !pathname?.includes('/proposals/');
   
   return (
       <SidebarProvider defaultOpen={false}>

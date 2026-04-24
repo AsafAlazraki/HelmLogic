@@ -1262,7 +1262,7 @@ export function HighfieldQuoteFlow({
 
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
-            <div className="sticky top-0 z-[100] px-12 h-20 border-b bg-card/90 backdrop-blur-xl shrink-0 flex items-center shadow-sm">
+            <div className="sticky top-0 z-[100] px-12 h-20 bg-card border-b border-slate-100 shrink-0 flex items-center">
                 <div className="w-full flex items-center justify-between">
                     <div className="flex-1 flex items-center justify-between mr-24">
                         {STEPS.map((step) => (
@@ -1287,7 +1287,7 @@ export function HighfieldQuoteFlow({
                                         <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
                                             {slide.type === 'build' ? slide.content : (
                                                 <>
-                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill className={cn("transition-all", slide.type === 'gallery' ? "object-cover" : "object-contain p-6")} priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
+                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill className={cn("transition-all", (slide.type === 'motor' || slide.type === 'trailer') ? "object-contain p-6" : "object-cover")} priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
                                                     <Button variant="ghost" size="icon" className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20" onClick={() => setLightboxUrl(slide.url || null)}><Maximize2 className="h-5 w-5" /></Button>
                                                 </>
                                             )}

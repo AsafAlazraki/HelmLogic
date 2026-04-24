@@ -330,6 +330,8 @@ export default function ModuleDetailsPage() {
     const router = useRouter();
     const params = useParams();
     const slugOrId = params.id as string;
+    const orgSlug = (params as any).orgSlug as string | undefined;
+    const navPrefix = orgSlug ? `/${orgSlug}` : '';
     const { toast } = useToast();
     const firestore = useFirestore();
     const storage = useStorage();
@@ -517,11 +519,12 @@ export default function ModuleDetailsPage() {
     };
 
     const handleQuoteInitialization = (model: Model, range: Range) => {
-        setSelectedModelId(model.id);
-        setSelectedRangeId(range.id);
+        // Navigate first — mutating module-page state (selectedModelId/RangeId) before
+        // router.push causes the URL-sync effect to replaceState on the module URL,
+        // racing with the navigation and leaving the user on the module page with
+        // isTransitioning stuck true. Also preserve the orgSlug prefix.
+        router.push(`${navPrefix}/modules/${moduleData.id}/quote/${model.id}?range=${range.id}&vendor=${mainVendor?.id}`);
         setIsQuoteInitializationOpen(false);
-        setIsTransitioning(true);
-        router.push(`/modules/${moduleData.id}/quote/${model.id}?range=${range.id}&vendor=${mainVendor?.id}`);
     };
 
     const handleBackToCatalog = () => {
@@ -1122,7 +1125,7 @@ export default function ModuleDetailsPage() {
                                             <Card
                                                 key={q.id}
                                                 className="border-2 rounded-2xl p-4 cursor-pointer hover:border-primary/40 hover:shadow-md transition-all"
-                                                onClick={() => router.push(`/modules/${moduleData.id}/quote/${q.modelId}?range=${q.rangeId}&vendor=${mainVendor?.id}&quoteId=${q.id}`)}
+                                                onClick={() => router.push(`${navPrefix}/modules/${moduleData.id}/quote/${q.modelId}?range=${q.rangeId}&vendor=${mainVendor?.id}&quoteId=${q.id}`)}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary border-2 border-primary/20">
