@@ -95,7 +95,16 @@ import {
     Trash2,
     Send,
     Pencil,
+    GripVertical,
+    Clock,
+    ArrowDownUp,
 } from 'lucide-react';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import {
     FeatureRichTextEditor,
@@ -122,6 +131,14 @@ export type FeaturePriority =
     | 'nice-to-have';
 
 export type FeatureType = 'feature' | 'bug' | 'improvement';
+
+export type SortMode = 'manual' | 'votes' | 'date';
+
+const SORT_MODES: Array<{ key: SortMode; label: string; icon: React.ComponentType<any> }> = [
+    { key: 'manual', label: 'Manual (drag)', icon: GripVertical },
+    { key: 'votes',  label: 'Most votes',    icon: ThumbsUp },
+    { key: 'date',   label: 'Newest first',  icon: Clock },
+];
 
 export interface FeatureDoc {
     id: string;
@@ -217,6 +234,17 @@ export function FeatureTrackingBoard() {
     const [createOpen, setCreateOpen] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [activeId, setActiveId] = useState<string | null>(null);
+    // Per-column sort mode. Defaults to 'manual' (drag order). When a
+    // non-manual mode is active the column disables drag to avoid the
+    // jarring "card snaps back after drop" that happens when the sort
+    // criterion overrides the manual `order` on re-render.
+    const [sortModes, setSortModes] = useState<Record<FeatureStatus, SortMode>>({
+        submitted: 'manual',
+        'under-review': 'manual',
+        planned: 'manual',
+        'in-progress': 'manual',
+        shipped: 'manual',
+    });
     /**
      * Optimistic overrides keyed by feature id. When a drop writes to
      * Firestore we record the target { status, order } here so the UI
@@ -429,6 +457,10 @@ export function FeatureTrackingBoard() {
                                     features={byStatus[col.key]}
                                     currentUserId={user?.uid}
                                     onOpen={id => setSelectedId(id)}
+                                    sortMode={sortModes[col.key]}
+                                    onSortModeChange={(m) =>
+                                        setSortModes(prev => ({ ...prev, [col.key]: m }))
+                                    }
                                 />
                             ))}
                         </div>
@@ -469,16 +501,41 @@ function ColumnView({
     features,
     currentUserId,
     onOpen,
+    sortMode,
+    onSortModeChange,
 }: {
     column: typeof COLUMNS[number];
     features: FeatureDoc[];
     currentUserId?: string;
     onOpen: (id: string) => void;
+    sortMode: SortMode;
+    onSortModeChange: (m: SortMode) => void;
 }) {
     // Column body acts as a drop target so an empty column can still
     // receive cards (dropping anywhere inside appends to the end).
     const { setNodeRef, isOver } = useDroppable({ id: column.key });
-    const itemIds = useMemo(() => features.map(f => f.id), [features]);
+
+    // `features` arrives sorted by `order` ASC. Re-sort here when the
+    // display mode is votes/date. The dnd-kit onDragEnd math still
+    // works against `order` — display sort doesn't write back.
+    const displayFeatures = useMemo(() => {
+        if (sortMode === 'manual') return features;
+        const copy = [...features];
+        if (sortMode === 'votes') {
+            copy.sort((a, b) => (b.voteIds?.length ?? 0) - (a.voteIds?.length ?? 0));
+        } else if (sortMode === 'date') {
+            copy.sort((a, b) => {
+                const bt = b.createdAt?.toMillis?.() ?? 0;
+                const at = a.createdAt?.toMillis?.() ?? 0;
+                return bt - at;
+            });
+        }
+        return copy;
+    }, [features, sortMode]);
+    const itemIds = useMemo(() => displayFeatures.map(f => f.id), [displayFeatures]);
+    const dragDisabled = sortMode !== 'manual';
+    const activeSortMeta = SORT_MODES.find(s => s.key === sortMode) ?? SORT_MODES[0];
+    const ActiveSortIcon = activeSortMeta.icon;
 
     return (
         <div className="flex flex-col min-h-0">
@@ -490,9 +547,37 @@ function ColumnView({
                 <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-700">
                     {column.label}
                 </h3>
-                <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', column.badge)}>
-                    {features.length}
-                </span>
+                <div className="flex items-center gap-1.5">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger
+                            className="text-slate-400 hover:text-slate-700 rounded p-0.5"
+                            title={`Sort: ${activeSortMeta.label}`}
+                        >
+                            <ActiveSortIcon className="h-3 w-3" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="z-[10000]">
+                            {SORT_MODES.map(s => {
+                                const Icon = s.icon;
+                                return (
+                                    <DropdownMenuItem
+                                        key={s.key}
+                                        onClick={() => onSortModeChange(s.key)}
+                                        className={cn(
+                                            'text-xs gap-2',
+                                            sortMode === s.key && 'font-semibold bg-slate-100',
+                                        )}
+                                    >
+                                        <Icon className="h-3 w-3" />
+                                        {s.label}
+                                    </DropdownMenuItem>
+                                );
+                            })}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                    <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', column.badge)}>
+                        {features.length}
+                    </span>
+                </div>
             </div>
             <div
                 ref={setNodeRef}
@@ -502,17 +587,18 @@ function ColumnView({
                 )}
             >
                 <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                    {features.length === 0 ? (
+                    {displayFeatures.length === 0 ? (
                         <p className="text-[10px] text-slate-400 italic text-center py-4">
                             Drop here.
                         </p>
                     ) : (
-                        features.map(f => (
+                        displayFeatures.map(f => (
                             <FeatureCard
                                 key={f.id}
                                 feature={f}
                                 currentUserId={currentUserId}
                                 onOpen={onOpen}
+                                dragDisabled={dragDisabled}
                             />
                         ))
                     )}
@@ -531,12 +617,15 @@ function FeatureCard({
     currentUserId,
     onOpen,
     isOverlay = false,
+    dragDisabled = false,
 }: {
     feature: FeatureDoc;
     currentUserId?: string;
     onOpen?: (id: string) => void;
     /** Rendered inside <DragOverlay>? If so skip useSortable wiring. */
     isOverlay?: boolean;
+    /** Disable drag handle (used when the column sort is not 'manual'). */
+    dragDisabled?: boolean;
 }) {
     const firestore = useFirestore();
     const voteIds = feature.voteIds ?? [];
@@ -560,7 +649,10 @@ function FeatureCard({
 
     // Hook is always called (rules-of-hooks) — values are unused for the
     // overlay clone, which just renders static visuals above everything.
-    const sortable = useSortable({ id: feature.id, disabled: isOverlay });
+    const sortable = useSortable({
+        id: feature.id,
+        disabled: isOverlay || dragDisabled,
+    });
     const style: React.CSSProperties = isOverlay
         ? { cursor: 'grabbing' }
         : {
@@ -586,10 +678,11 @@ function FeatureCard({
                 }
             }}
             className={cn(
-                'bg-white rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-sm transition-all p-3 space-y-2 cursor-grab active:cursor-grabbing',
+                'bg-white rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-sm transition-all p-3 space-y-2',
                 isOverlay && 'shadow-xl ring-2 ring-blue-300',
+                dragDisabled ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
             )}
-            title="Click to open · drag to move"
+            title={dragDisabled ? 'Click to open' : 'Click to open · drag to move'}
         >
             <div className="flex items-start gap-2">
                 <TypeIcon type={feature.type} />
