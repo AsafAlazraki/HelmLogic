@@ -15,7 +15,20 @@
  */
 
 import { useMemo, useState } from 'react';
-import { collection, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import {
+    addDoc,
+    arrayRemove,
+    arrayUnion,
+    collection,
+    deleteDoc,
+    doc,
+    increment,
+    orderBy,
+    query,
+    serverTimestamp,
+    setDoc,
+    updateDoc,
+} from 'firebase/firestore';
 import {
     DndContext,
     DragOverlay,
@@ -61,6 +74,13 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetDescription,
+} from '@/components/ui/sheet';
+import {
     Lightbulb,
     Plus,
     Bug,
@@ -72,9 +92,15 @@ import {
     X,
     Loader2,
     CheckCircle2,
+    Trash2,
+    Send,
+    Pencil,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { FeatureRichTextEditor } from '@/components/feature-rich-text-editor';
+import {
+    FeatureRichTextEditor,
+    FeatureDescriptionView,
+} from '@/components/feature-rich-text-editor';
 import { FeatureImageUploader } from '@/components/feature-image-uploader';
 
 // ---------------------------------------------------------------------------
@@ -189,6 +215,7 @@ export function FeatureTrackingBoard() {
     const { user } = useUser();
     const { toast } = useToast();
     const [createOpen, setCreateOpen] = useState(false);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
     const [activeId, setActiveId] = useState<string | null>(null);
     /**
      * Optimistic overrides keyed by feature id. When a drop writes to
@@ -276,6 +303,9 @@ export function FeatureTrackingBoard() {
     }, [mergedFeatures]);
 
     const activeFeature = activeId ? featureById.get(activeId) : null;
+    // Re-derive `selectedFeature` from the live map on every render so
+    // edits made through the sheet reflect immediately.
+    const selectedFeature = selectedId ? featureById.get(selectedId) ?? null : null;
 
     function onDragStart(e: DragStartEvent) {
         setActiveId(String(e.active.id));
@@ -398,6 +428,7 @@ export function FeatureTrackingBoard() {
                                     column={col}
                                     features={byStatus[col.key]}
                                     currentUserId={user?.uid}
+                                    onOpen={id => setSelectedId(id)}
                                 />
                             ))}
                         </div>
@@ -419,6 +450,12 @@ export function FeatureTrackingBoard() {
                 onOpenChange={setCreateOpen}
                 defaultOrderForColumn={(byStatus.submitted[0]?.order ?? 0) - 10}
             />
+
+            <FeatureDetailSheet
+                feature={selectedFeature}
+                open={selectedFeature !== null}
+                onOpenChange={(v) => { if (!v) setSelectedId(null); }}
+            />
         </div>
     );
 }
@@ -431,10 +468,12 @@ function ColumnView({
     column,
     features,
     currentUserId,
+    onOpen,
 }: {
     column: typeof COLUMNS[number];
     features: FeatureDoc[];
     currentUserId?: string;
+    onOpen: (id: string) => void;
 }) {
     // Column body acts as a drop target so an empty column can still
     // receive cards (dropping anywhere inside appends to the end).
@@ -473,6 +512,7 @@ function ColumnView({
                                 key={f.id}
                                 feature={f}
                                 currentUserId={currentUserId}
+                                onOpen={onOpen}
                             />
                         ))
                     )}
@@ -489,16 +529,29 @@ function ColumnView({
 function FeatureCard({
     feature,
     currentUserId,
+    onOpen,
     isOverlay = false,
 }: {
     feature: FeatureDoc;
     currentUserId?: string;
+    onOpen?: (id: string) => void;
     /** Rendered inside <DragOverlay>? If so skip useSortable wiring. */
     isOverlay?: boolean;
 }) {
+    const firestore = useFirestore();
     const voteIds = feature.voteIds ?? [];
     const voteCount = voteIds.length;
     const userVoted = currentUserId ? voteIds.includes(currentUserId) : false;
+
+    async function toggleVote(e: React.MouseEvent) {
+        e.stopPropagation();
+        if (!currentUserId) return;
+        const ref = doc(firestore, 'features', feature.id);
+        await updateDoc(ref, {
+            voteIds: userVoted ? arrayRemove(currentUserId) : arrayUnion(currentUserId),
+            updatedAt: serverTimestamp(),
+        });
+    }
     const priority = feature.priority ? PRIORITY_STYLES[feature.priority] : null;
     const tags = feature.tags ?? [];
     const visibleTags = tags.slice(0, 3);
@@ -524,11 +577,19 @@ function FeatureCard({
             {...(isOverlay ? {} : sortable.listeners)}
             role="button"
             tabIndex={0}
+            onClick={() => { if (!isOverlay) onOpen?.(feature.id); }}
+            onKeyDown={(e) => {
+                if (isOverlay) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onOpen?.(feature.id);
+                }
+            }}
             className={cn(
                 'bg-white rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-sm transition-all p-3 space-y-2 cursor-grab active:cursor-grabbing',
                 isOverlay && 'shadow-xl ring-2 ring-blue-300',
             )}
-            title="Drag to reorder or move between columns"
+            title="Click to open · drag to move"
         >
             <div className="flex items-start gap-2">
                 <TypeIcon type={feature.type} />
@@ -564,14 +625,16 @@ function FeatureCard({
             <div className="flex items-center justify-between pt-1.5 border-t">
                 <button
                     type="button"
+                    onClick={toggleVote}
+                    onPointerDown={(e) => e.stopPropagation()}
                     className={cn(
-                        'flex items-center gap-1 text-[10px] font-semibold transition-colors',
+                        'flex items-center gap-1 text-[10px] font-semibold transition-colors cursor-pointer',
                         userVoted
                             ? 'text-blue-600'
                             : 'text-slate-500 hover:text-blue-600',
                     )}
-                    title="Voting arrives in stage 5"
-                    disabled
+                    title={userVoted ? 'Remove your vote' : 'Vote for this feature'}
+                    disabled={!currentUserId}
                 >
                     <ThumbsUp className={cn('h-3 w-3', userVoted && 'fill-blue-600')} />
                     {voteCount}
@@ -897,5 +960,539 @@ function CreateFeatureDialog({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Feature Detail Sheet
+// ---------------------------------------------------------------------------
+
+interface CommentDoc {
+    id: string;
+    body: string;
+    authorId: string;
+    authorName?: string;
+    createdAt?: any;
+}
+
+function FeatureDetailSheet({
+    feature,
+    open,
+    onOpenChange,
+}: {
+    feature: FeatureDoc | null;
+    open: boolean;
+    onOpenChange: (v: boolean) => void;
+}) {
+    // Key the sheet body by feature id so local drafts reset when a
+    // different feature is opened — without this, drafts leak across
+    // features.
+    return (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent
+                side="right"
+                className="w-full sm:max-w-xl p-0 flex flex-col overflow-hidden"
+            >
+                {feature ? (
+                    <FeatureDetailBody
+                        key={feature.id}
+                        feature={feature}
+                        onClose={() => onOpenChange(false)}
+                    />
+                ) : null}
+            </SheetContent>
+        </Sheet>
+    );
+}
+
+function FeatureDetailBody({
+    feature,
+    onClose,
+}: {
+    feature: FeatureDoc;
+    onClose: () => void;
+}) {
+    const firestore = useFirestore();
+    const { user } = useUser();
+    const { toast } = useToast();
+    const userProfileRef = useMemoFirebase(
+        () => (user ? doc(firestore, 'users', user.uid) : null),
+        [firestore, user?.uid],
+    );
+    const { data: userProfile } = useDoc<any>(userProfileRef);
+
+    // Live comments subscription, ordered oldest → newest.
+    const commentsRef = useMemoFirebase(
+        () => query(
+            collection(firestore, 'features', feature.id, 'comments'),
+            orderBy('createdAt', 'asc'),
+        ),
+        [firestore, feature.id],
+    );
+    const { data: comments } = useCollection<CommentDoc>(commentsRef);
+
+    // Title + description are edited via local draft + Save button to
+    // avoid firing a Firestore write on every keystroke and racing with
+    // the live snapshot. Everything else (selects, tags, acceptance,
+    // images) saves immediately because those are atomic operations.
+    const [titleDraft, setTitleDraft] = useState(feature.title ?? '');
+    const [descDraft, setDescDraft] = useState(feature.description ?? '');
+    const [editingDesc, setEditingDesc] = useState(false);
+    const [savingText, setSavingText] = useState(false);
+
+    const [tagDraft, setTagDraft] = useState('');
+    const [acceptanceDraft, setAcceptanceDraft] = useState('');
+    const [commentDraft, setCommentDraft] = useState('');
+    const [postingComment, setPostingComment] = useState(false);
+
+    const featureRef = doc(firestore, 'features', feature.id);
+    const voteIds = feature.voteIds ?? [];
+    const userVoted = user ? voteIds.includes(user.uid) : false;
+    const tags = feature.tags ?? [];
+    const acceptance = feature.acceptanceCriteria ?? [];
+    const images = feature.imageUrls ?? [];
+    const priority = feature.priority ?? 'medium';
+    const type = feature.type ?? 'feature';
+    const status = feature.status ?? 'submitted';
+
+    const titleDirty = titleDraft.trim() !== (feature.title ?? '').trim();
+    const descDirty = descDraft !== (feature.description ?? '');
+
+    async function patch(data: Record<string, any>) {
+        await updateDoc(featureRef, { ...data, updatedAt: serverTimestamp() });
+    }
+
+    async function saveText() {
+        if (!titleDirty && !descDirty) return;
+        if (titleDraft.trim().length < 3) {
+            toast({ variant: 'destructive', title: 'Title required', description: 'Min 3 characters.' });
+            return;
+        }
+        setSavingText(true);
+        try {
+            await patch({ title: titleDraft.trim(), description: descDraft });
+            setEditingDesc(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: e?.message ?? 'See console.' });
+        } finally {
+            setSavingText(false);
+        }
+    }
+
+    async function toggleVote() {
+        if (!user) return;
+        try {
+            await patch({
+                voteIds: userVoted ? arrayRemove(user.uid) : arrayUnion(user.uid),
+            });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Vote failed', description: e?.message ?? 'See console.' });
+        }
+    }
+
+    async function addTag() {
+        const t = tagDraft.trim().toLowerCase();
+        if (!t || tags.includes(t)) { setTagDraft(''); return; }
+        await patch({ tags: [...tags, t] });
+        setTagDraft('');
+    }
+    async function removeTag(t: string) {
+        await patch({ tags: tags.filter(x => x !== t) });
+    }
+
+    async function addAcceptance() {
+        const a = acceptanceDraft.trim();
+        if (!a) return;
+        await patch({ acceptanceCriteria: [...acceptance, a] });
+        setAcceptanceDraft('');
+    }
+    async function removeAcceptance(i: number) {
+        await patch({ acceptanceCriteria: acceptance.filter((_, idx) => idx !== i) });
+    }
+
+    async function setImages(next: string[]) {
+        await patch({ imageUrls: next });
+    }
+
+    async function postComment() {
+        const body = commentDraft.trim();
+        if (!body || !user) return;
+        setPostingComment(true);
+        try {
+            await addDoc(collection(firestore, 'features', feature.id, 'comments'), {
+                body,
+                authorId: user.uid,
+                authorName: userProfile?.displayName || userProfile?.email || user.email || 'Someone',
+                createdAt: serverTimestamp(),
+            });
+            // Keep commentCount in sync so the card badge is accurate
+            // even without a live comments subscription.
+            await updateDoc(featureRef, {
+                commentCount: increment(1),
+                updatedAt: serverTimestamp(),
+            });
+            setCommentDraft('');
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Comment failed', description: e?.message ?? 'See console.' });
+        } finally {
+            setPostingComment(false);
+        }
+    }
+
+    async function removeComment(c: CommentDoc) {
+        if (!confirm('Delete this comment?')) return;
+        try {
+            await deleteDoc(doc(firestore, 'features', feature.id, 'comments', c.id));
+            await updateDoc(featureRef, {
+                commentCount: increment(-1),
+                updatedAt: serverTimestamp(),
+            });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Delete failed', description: e?.message ?? 'See console.' });
+        }
+    }
+
+    async function deleteFeature() {
+        if (!confirm(`Delete "${feature.title}"? This cannot be undone.`)) return;
+        try {
+            await deleteDoc(featureRef);
+            toast({ title: 'Feature deleted' });
+            onClose();
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Delete failed', description: e?.message ?? 'See console.' });
+        }
+    }
+
+    const currentColumn = COLUMNS.find(c => c.key === status);
+
+    return (
+        <>
+            <SheetHeader className="px-6 pt-6 pb-3 border-b shrink-0">
+                <div className="flex items-start gap-2">
+                    <TypeIcon type={type} />
+                    <div className="flex-1 min-w-0 space-y-1">
+                        <Input
+                            value={titleDraft}
+                            onChange={(e) => setTitleDraft(e.target.value)}
+                            onBlur={saveText}
+                            className="border-0 px-0 h-auto text-base font-bold focus-visible:ring-0 shadow-none"
+                            placeholder="Feature title"
+                        />
+                        <SheetDescription className="text-[10px] text-slate-400 flex items-center gap-2 flex-wrap">
+                            {currentColumn && (
+                                <Badge variant="outline" className={cn('text-[9px] font-bold border', currentColumn.badge)}>
+                                    {currentColumn.label}
+                                </Badge>
+                            )}
+                            {feature.submitterName && (
+                                <span>Submitted by {feature.submitterName}</span>
+                            )}
+                        </SheetDescription>
+                    </div>
+                    <SheetTitle className="sr-only">{feature.title}</SheetTitle>
+                </div>
+            </SheetHeader>
+
+            <ScrollArea className="flex-1 min-h-0">
+                <div className="px-6 py-4 space-y-6">
+                    {/* Status / Type / Priority */}
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Status</Label>
+                            <Select value={status} onValueChange={(v) => patch({ status: v })}>
+                                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent className="z-[10000]">
+                                    {COLUMNS.map(c => (
+                                        <SelectItem key={c.key} value={c.key} className="text-xs">{c.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Type</Label>
+                            <Select value={type} onValueChange={(v) => patch({ type: v })}>
+                                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent className="z-[10000]">
+                                    <SelectItem value="feature" className="text-xs">✨ Feature</SelectItem>
+                                    <SelectItem value="bug" className="text-xs">🐛 Bug</SelectItem>
+                                    <SelectItem value="improvement" className="text-xs">🔧 Improvement</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Priority</Label>
+                            <Select value={priority} onValueChange={(v) => patch({ priority: v })}>
+                                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent className="z-[10000]">
+                                    <SelectItem value="critical" className="text-xs">Critical</SelectItem>
+                                    <SelectItem value="high" className="text-xs">High</SelectItem>
+                                    <SelectItem value="medium" className="text-xs">Medium</SelectItem>
+                                    <SelectItem value="low" className="text-xs">Low</SelectItem>
+                                    <SelectItem value="nice-to-have" className="text-xs">Nice to have</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    {/* Target Release */}
+                    <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Target Release</Label>
+                        <Input
+                            defaultValue={feature.targetRelease ?? ''}
+                            onBlur={(e) => {
+                                const v = e.target.value.trim();
+                                const next = v === '' ? null : v;
+                                if (next !== (feature.targetRelease ?? null)) {
+                                    patch({ targetRelease: next });
+                                }
+                            }}
+                            placeholder="e.g. v1.5, v1.6, Unscheduled"
+                            className="h-8 text-xs"
+                        />
+                    </div>
+
+                    {/* Vote + count */}
+                    <div className="flex items-center gap-3">
+                        <Button
+                            variant={userVoted ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={toggleVote}
+                            disabled={!user}
+                            className="gap-2"
+                        >
+                            <ThumbsUp className={cn('h-3.5 w-3.5', userVoted && 'fill-white')} />
+                            {userVoted ? 'Voted' : 'Vote'}
+                        </Button>
+                        <span className="text-xs text-slate-500">
+                            {voteIds.length} vote{voteIds.length === 1 ? '' : 's'}
+                        </span>
+                    </div>
+
+                    {/* Description */}
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Description</Label>
+                            {!editingDesc ? (
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 text-[10px] gap-1"
+                                    onClick={() => setEditingDesc(true)}
+                                >
+                                    <Pencil className="h-3 w-3" />
+                                    Edit
+                                </Button>
+                            ) : (
+                                <div className="flex items-center gap-1">
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 text-[10px]"
+                                        onClick={() => { setDescDraft(feature.description ?? ''); setEditingDesc(false); }}
+                                        disabled={savingText}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        className="h-6 text-[10px] gap-1"
+                                        onClick={saveText}
+                                        disabled={savingText || !descDirty}
+                                    >
+                                        {savingText ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                                        Save
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                        {editingDesc ? (
+                            <FeatureRichTextEditor
+                                value={descDraft}
+                                onChange={setDescDraft}
+                                minHeight="180px"
+                            />
+                        ) : (
+                            <div className="rounded-md border bg-slate-50/40 px-3 py-2">
+                                <FeatureDescriptionView html={feature.description ?? ''} />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Acceptance criteria */}
+                    <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            Acceptance Criteria
+                        </Label>
+                        {acceptance.length > 0 && (
+                            <ul className="space-y-1">
+                                {acceptance.map((a, i) => (
+                                    <li
+                                        key={i}
+                                        className="flex items-start gap-2 text-sm text-slate-700 bg-slate-50 border border-slate-100 rounded-md px-2 py-1.5"
+                                    >
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                        <span className="flex-1">{a}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeAcceptance(i)}
+                                            className="text-slate-400 hover:text-red-500"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        <div className="flex items-center gap-1">
+                            <Input
+                                value={acceptanceDraft}
+                                onChange={(e) => setAcceptanceDraft(e.target.value)}
+                                placeholder="Add a checkable criterion"
+                                className="h-8 text-xs"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') { e.preventDefault(); addAcceptance(); }
+                                }}
+                            />
+                            <Button size="sm" className="h-8" onClick={addAcceptance} disabled={!acceptanceDraft.trim()}>
+                                Add
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Tags */}
+                    <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tags</Label>
+                        {tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                                {tags.map(t => (
+                                    <span
+                                        key={t}
+                                        className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-700 bg-slate-100 rounded-full pl-2.5 pr-1 py-0.5 border border-slate-200"
+                                    >
+                                        {t}
+                                        <button
+                                            type="button"
+                                            onClick={() => removeTag(t)}
+                                            className="text-slate-400 hover:text-red-500 rounded-full p-0.5"
+                                        >
+                                            <X className="h-2.5 w-2.5" />
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                        <div className="flex items-center gap-1">
+                            <Input
+                                value={tagDraft}
+                                onChange={(e) => setTagDraft(e.target.value)}
+                                placeholder="Press Enter to add"
+                                className="h-8 text-xs"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(); }
+                                }}
+                            />
+                            <Button size="sm" className="h-8" onClick={addTag} disabled={!tagDraft.trim()}>
+                                Add
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Images */}
+                    <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Images</Label>
+                        <FeatureImageUploader
+                            featureId={feature.id}
+                            value={images}
+                            onChange={setImages}
+                        />
+                    </div>
+
+                    {/* Comments */}
+                    <div className="space-y-2 pt-4 border-t">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+                            <MessageSquare className="h-3 w-3" />
+                            Comments ({comments?.length ?? 0})
+                        </Label>
+                        <div className="space-y-2">
+                            {(comments ?? []).length === 0 ? (
+                                <p className="text-[11px] text-slate-400 italic">No comments yet.</p>
+                            ) : (
+                                (comments ?? []).map(c => (
+                                    <div
+                                        key={c.id}
+                                        className="rounded-md border bg-white px-3 py-2 space-y-1"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[11px] font-semibold text-slate-700">
+                                                {c.authorName || 'Someone'}
+                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] text-slate-400">
+                                                    {c.createdAt?.toDate?.().toLocaleString?.() ?? ''}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeComment(c)}
+                                                    className="text-slate-300 hover:text-red-500"
+                                                    title="Delete comment"
+                                                >
+                                                    <Trash2 className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-slate-700 whitespace-pre-wrap">{c.body}</p>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        <div className="flex items-start gap-2 pt-1">
+                            <textarea
+                                value={commentDraft}
+                                onChange={(e) => setCommentDraft(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                                        e.preventDefault();
+                                        postComment();
+                                    }
+                                }}
+                                placeholder="Add a comment (Cmd+Enter to post)"
+                                rows={2}
+                                className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                disabled={!user || postingComment}
+                            />
+                            <Button
+                                size="sm"
+                                onClick={postComment}
+                                disabled={!commentDraft.trim() || postingComment || !user}
+                                className="gap-1 shrink-0"
+                            >
+                                {postingComment ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                                Post
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </ScrollArea>
+
+            <div className="px-6 py-3 border-t bg-slate-50 flex items-center justify-between shrink-0">
+                <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={deleteFeature}
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 gap-2"
+                >
+                    <Trash2 className="h-3 w-3" />
+                    Delete
+                </Button>
+                <div className="flex items-center gap-2">
+                    {titleDirty && (
+                        <span className="text-[10px] text-amber-600">Title has unsaved changes</span>
+                    )}
+                    <Button size="sm" variant="outline" onClick={onClose}>
+                        Close
+                    </Button>
+                </div>
+            </div>
+        </>
     );
 }
