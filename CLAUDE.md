@@ -6,12 +6,13 @@
 
 ---
 
-## Current State (2026-04-22)
+## Current State (2026-04-24)
 
 | Release | Status |
 |---|---|
 | v1.0 → v1.3.1 | ✅ Shipped to production |
-| v1.4 Trailers + Rego | 🚢 Shipped on `claude/app-overview-wKiZ1` — draft PR pending. See `tasks/v1.4-trailers-module-status.md` |
+| v1.4 Trailers + Rego | ✅ Shipped to production. See `tasks/v1.4-trailers-module-status.md` |
+| v1.5 Feature Tracking | 🟡 On `claude/app-overview-wKiZ1`, tester-ready. See `tasks/v1.5-feature-tracking-status.md` |
 
 **Active dev branch**: `claude/app-overview-wKiZ1` (auto-deploys to dev URL)
 
@@ -175,6 +176,13 @@ users/{userId}/quotes/{quoteId}
 - **Pick-time snapshots must include every field the downstream renderer needs** (v1.4 remediation) — the finalize payload can silently drop snapshot fields without any TypeScript error, breaking PDF rendering. When extending a `TrailerSnapshot` / `MotorSnapshot` OR a proposal/PDF component, check BOTH ends of the pipeline. The v1.4 trailer review caught `cost` dropped at finalize and `specifications` never added to `quote.trailer.catalog` → specs invisible on PDF.
 - **Jurisdictional data comes from authoritative catalogs, not import hints** (v1.4 remediation) — rego, tax, registration, anything state-specific must be driven by a deliberate catalog system (v1.4 Rego module) with a named-legacy fallback (e.g. `model.registration.trailerPrice12Months`). Import-time hints on catalog docs (`pricingDetail.regoTypeHint`, `regoDollarsHint`) are operator notes, NOT state-aware pricing — auto-applying them would cross-state silently. Label them "info only" in the UI and leave an in-code comment at the render site explaining why they don't feed the quote flow.
 - **Admin-gating flows through prop threading, not top-level branching** (v1.4 remediation) — pass `isAdmin` down through the component tree and gate at the deepest point (`TrailersWorkspace` → `TrailerDashboard` → `TrailerDetailSheet` → `TrailerImageEditor` / `TrailerEditForm`). Branching at the top of a big component produces two near-duplicate trees that drift over time.
+- **Drag-and-drop cards need fractional indices, not array rewrites** (v1.5) — on drop, set the card's `order` to the midpoint between its new neighbours (or ±10 at an edge). Re-numbering the whole column on every move burns Firestore writes, races badly with concurrent drags, and still visually snaps because the local write hasn't landed yet. Pair this with a board-level optimistic override map (`Record<id, { status, order }>`) so the card shows in its new position immediately and the entry is cleared when the live snapshot catches up (or rolled back on write failure).
+- **Drag + click on the same card surface need an activation distance** (v1.5) — `@dnd-kit` `PointerSensor({ activationConstraint: { distance: 5 } })` means a click opens the detail sheet and a 5px move starts a drag. Cleaner than trying to separate "drag handle" and "click target" into two different regions. Inner interactive elements (vote buttons, etc.) must `e.stopPropagation()` on `onPointerDown` so they don't accidentally initialise a drag when clicked.
+- **Client-side Firestore doc IDs unlock pre-save uploads** (v1.5) — `doc(collection(firestore, 'features')).id` generates a valid ID on the client, letting the image uploader write to `features/{featureId}/` in Storage before the feature doc exists. Pattern applies anywhere an attachment needs a parent path before a parent doc is persisted.
+- **Per-column sort must disable drag in non-manual modes** (v1.5) — if the visible sort is "votes" or "date" and the user drops a card, Firestore gets a new `order` that the sort criterion then ignores → card visually snaps back. Instead, disable `useSortable` and switch cursor from `grab` to `pointer` so the UX signal matches the behaviour.
+- **Denormalize counts with `increment(±1)` to avoid subcollection reads from lists** (v1.5) — the Kanban card badge for "comments" reads `feature.commentCount`, so the card never has to subscribe to its own `features/{id}/comments` subcollection. `addDoc` to the subcollection + `updateDoc(parent, { commentCount: increment(1) })` on post, `-1` on delete. Accept that a mid-flight write failure can drift the count — fix with a reconcile job only if it ever matters.
+- **TipTap `onUpdate` fires per keystroke — save on blur or explicit action** (v1.5) — wiring TipTap directly to a Firestore `updateDoc` writes on every character typed. Capture into a local draft state, show a dirty indicator, save on blur or an explicit Save button. Also dodges races with the live snapshot when another user edits concurrently.
+- **Detail sheets that edit one of N items must be keyed by item id** (v1.5) — wrap the sheet body in a sub-component keyed by `feature.id` (or equivalent) so local drafts (title, description) reset when a different item is opened. Without the key, drafts leak across items and the user sees last session's draft on a freshly opened card.
 
 ---
 
