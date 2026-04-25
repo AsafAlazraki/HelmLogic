@@ -6,13 +6,13 @@
 
 ---
 
-## Current State (2026-04-24)
+## Current State (2026-04-25)
 
 | Release | Status |
 |---|---|
 | v1.0 → v1.3.1 | ✅ Shipped to production |
 | v1.4 Trailers + Rego | ✅ Shipped to production. See `tasks/v1.4-trailers-module-status.md` |
-| v1.5 Feature Tracking | 🟡 On `claude/app-overview-wKiZ1`, tester-ready. See `tasks/v1.5-feature-tracking-status.md` |
+| v1.5 Feature Tracking | ✅ Shipped to production. See `tasks/RELEASE_NOTES_v1.5.0.md` |
 
 **Active dev branch**: `claude/app-overview-wKiZ1` (auto-deploys to dev URL)
 
