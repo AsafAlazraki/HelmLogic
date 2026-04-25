@@ -6,13 +6,13 @@
 
 ---
 
-## Current State (2026-04-24)
+## Current State (2026-04-25)
 
 | Release | Status |
 |---|---|
 | v1.0 → v1.3.1 | ✅ Shipped to production |
 | v1.4 Trailers + Rego | ✅ Shipped to production. See `tasks/v1.4-trailers-module-status.md` |
-| v1.5 Feature Tracking | 🟡 On `claude/app-overview-wKiZ1`, tester-ready. See `tasks/v1.5-feature-tracking-status.md` |
+| v1.5 Feature Tracking | ✅ Shipped to production. See `tasks/RELEASE_NOTES_v1.5.0.md` |
 
 **Active dev branch**: `claude/app-overview-wKiZ1` (auto-deploys to dev URL)
 
@@ -68,6 +68,7 @@
 - **Capture Lessons**: Update tasks/lessons.md after corrections
 - **On Every Release (dev or main)**: Update `.agents/evolution.md` with new patterns/lessons learned, and update `tasks/SESSION_HANDOVER.md` with any new Firestore collections, component changes, or architectural decisions
 - **Release Notes Format**: Every `RELEASE_NOTES_vX.Y.Z.md` file must follow the same layout — title, date/branch header, Release Stats, feature sections with sub-sections, Files Changed at the end. **NO release checklists** — release notes describe what shipped, not what's pending.
+- **🚨 Release notes MUST ship in the same PR as the release** — `tasks/RELEASE_NOTES_vX.Y.Z.md` is required to be present on the dev branch *before* opening the dev → main PR. The in-app `/feature-tracking` Release Notes tab is rendered server-side from these files at build time, so a release that merges without its release notes will go to prod with the historical timeline showing every prior version EXCEPT the one we just shipped. Pre-merge checklist for any release PR: (1) `RELEASE_NOTES_vX.Y.Z.md` exists in `tasks/`, (2) CLAUDE.md release-state table flips that version to ✅ Shipped, (3) `tasks/vX.Y-*-status.md` Phase line records the merge intent. If you catch yourself writing release notes *after* the merge, you've already shipped a stale prod — open a tiny follow-up docs PR immediately.
 
 ---
 
@@ -183,6 +184,7 @@ users/{userId}/quotes/{quoteId}
 - **Denormalize counts with `increment(±1)` to avoid subcollection reads from lists** (v1.5) — the Kanban card badge for "comments" reads `feature.commentCount`, so the card never has to subscribe to its own `features/{id}/comments` subcollection. `addDoc` to the subcollection + `updateDoc(parent, { commentCount: increment(1) })` on post, `-1` on delete. Accept that a mid-flight write failure can drift the count — fix with a reconcile job only if it ever matters.
 - **TipTap `onUpdate` fires per keystroke — save on blur or explicit action** (v1.5) — wiring TipTap directly to a Firestore `updateDoc` writes on every character typed. Capture into a local draft state, show a dirty indicator, save on blur or an explicit Save button. Also dodges races with the live snapshot when another user edits concurrently.
 - **Detail sheets that edit one of N items must be keyed by item id** (v1.5) — wrap the sheet body in a sub-component keyed by `feature.id` (or equivalent) so local drafts (title, description) reset when a different item is opened. Without the key, drafts leak across items and the user sees last session's draft on a freshly opened card.
+- **Release notes are part of the release, not a follow-up** (v1.5 post-mortem) — the in-app `/feature-tracking` Release Notes tab uses a Server Component that reads `tasks/RELEASE_NOTES_*.md` at build time and bakes the parsed HTML into the static page. If a release ships to main without its `RELEASE_NOTES_vX.Y.Z.md` in the same PR, prod redeploys with the timeline missing that version — and there's no runtime fallback because the markdown lives in the deployed bundle, not Firestore. Always include the release notes file in the dev → main PR. Caught the day v1.5 shipped: PR #26 merged without `RELEASE_NOTES_v1.5.0.md`, prod went out blank for v1.5; required a follow-up docs PR. Discipline > defensive code here — making the page dynamic doesn't help, the file has to be in the deployment.
 
 ---
 
