@@ -9,20 +9,23 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { doc } from 'firebase/firestore';
-import { Lightbulb, Kanban, BookOpen, ShieldAlert } from 'lucide-react';
+import { Lightbulb, Kanban, BookOpen, ShieldAlert, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { FeatureTrackingBoard } from '@/components/feature-tracking-board';
 import { ReleaseNotesView } from '@/components/release-notes-view';
+import { RoadmapView } from '@/components/roadmap-view';
 import type { ReleaseNote } from '@/lib/release-notes-loader';
 
-type View = 'board' | 'notes';
+type View = 'board' | 'roadmap' | 'notes';
 
 function initialView(): View {
     if (typeof window === 'undefined') return 'board';
     const v = new URLSearchParams(window.location.search).get('view');
-    return v === 'notes' ? 'notes' : 'board';
+    if (v === 'roadmap') return 'roadmap';
+    if (v === 'notes') return 'notes';
+    return 'board';
 }
 
 export function FeatureTrackingView({ releaseNotes }: { releaseNotes: ReleaseNote[] }) {
@@ -88,6 +91,12 @@ export function FeatureTrackingView({ releaseNotes }: { releaseNotes: ReleaseNot
                         label="Board"
                     />
                     <TabButton
+                        active={view === 'roadmap'}
+                        onClick={() => setView('roadmap')}
+                        icon={<Calendar className="h-3.5 w-3.5" />}
+                        label="Roadmap"
+                    />
+                    <TabButton
                         active={view === 'notes'}
                         onClick={() => setView('notes')}
                         icon={<BookOpen className="h-3.5 w-3.5" />}
@@ -103,11 +112,9 @@ export function FeatureTrackingView({ releaseNotes }: { releaseNotes: ReleaseNot
 
             {/* View body — fills the remaining height */}
             <div className="flex-1 min-h-0">
-                {view === 'board' ? (
-                    <FeatureTrackingBoard />
-                ) : (
-                    <ReleaseNotesView notes={releaseNotes} />
-                )}
+                {view === 'board' && <FeatureTrackingBoard />}
+                {view === 'roadmap' && <RoadmapView />}
+                {view === 'notes' && <ReleaseNotesView notes={releaseNotes} />}
             </div>
         </div>
     );

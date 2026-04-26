@@ -1308,7 +1308,7 @@ interface CommentDoc {
     createdAt?: any;
 }
 
-function FeatureDetailSheet({
+export function FeatureDetailSheet({
     feature,
     open,
     onOpenChange,
