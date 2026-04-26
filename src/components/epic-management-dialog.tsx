@@ -21,7 +21,7 @@ import {
     serverTimestamp,
     updateDoc,
 } from 'firebase/firestore';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -34,9 +34,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Plus, Trash2, Layers } from 'lucide-react';
+import { Loader2, Plus, Trash2, Layers, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDoc } from '@/firebase/firestore/use-doc';
 import type { EpicDoc, EpicColor } from '@/components/feature-tracking-board';
+import { seedMvpPlan } from '@/lib/mvp-plan-seed';
 
 const COLOR_PALETTE: ReadonlyArray<{ key: EpicColor; ring: string; bg: string; text: string }> = [
     { key: 'blue',    ring: 'ring-blue-500',    bg: 'bg-blue-500',    text: 'text-blue-700' },
@@ -69,9 +71,38 @@ export function EpicManagementDialog({
     }, [epics]);
 
     const [creating, setCreating] = useState(false);
+    const [seeding, setSeeding] = useState(false);
     const [draftTitle, setDraftTitle] = useState('');
     const [draftShort, setDraftShort] = useState('');
     const [draftColor, setDraftColor] = useState<EpicColor>('blue');
+
+    // For the seeder we need the user's display name as the submitter.
+    const { user } = useUser();
+    const userProfileRef = useMemoFirebase(
+        () => (user ? doc(firestore, 'users', user.uid) : null),
+        [firestore, user?.uid],
+    );
+    const { data: userProfile } = useDoc<any>(userProfileRef);
+
+    async function handleSeedMvpPlan() {
+        if (!confirm('Seed the v1.6 MVP plan? Creates 5 Epics + 22 features from the stakeholder spec. Idempotent — re-running is safe and skips existing items.')) return;
+        setSeeding(true);
+        try {
+            const submitterName = userProfile?.displayName
+                || userProfile?.email
+                || user?.email
+                || 'MVP Seed';
+            const summary = await seedMvpPlan(firestore, user?.uid, submitterName);
+            toast({
+                title: 'MVP plan seeded',
+                description: `Epics: ${summary.epicsCreated} created, ${summary.epicsSkipped} skipped · Features: ${summary.featuresCreated} created, ${summary.featuresSkipped} skipped.`,
+            });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Seed failed', description: e?.message ?? 'See console.' });
+        } finally {
+            setSeeding(false);
+        }
+    }
 
     function reset() {
         setDraftTitle('');
@@ -122,6 +153,26 @@ export function EpicManagementDialog({
                 </DialogHeader>
 
                 <div className="feature-scroll px-6 py-4 space-y-4 max-h-[calc(100vh-260px)] overflow-y-auto">
+                    {/* MVP plan seeder — one-click bootstrap of the 5 stakeholder epics + 22 features. Idempotent. */}
+                    <div className="rounded-md border border-blue-100 bg-blue-50/40 px-3 py-2.5 flex items-center gap-3">
+                        <Sparkles className="h-4 w-4 text-blue-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-slate-800">Seed MVP plan</p>
+                            <p className="text-[10px] text-slate-500">
+                                Bootstraps 5 epics + 22 user-story features from the stakeholder spec into v1.7 → v2.0. Idempotent — safe to re-run.
+                            </p>
+                        </div>
+                        <Button
+                            size="sm"
+                            onClick={handleSeedMvpPlan}
+                            disabled={seeding}
+                            className="gap-1.5 shrink-0"
+                        >
+                            {seeding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                            Seed
+                        </Button>
+                    </div>
+
                     {/* Existing epics */}
                     {isLoading ? (
                         <div className="flex items-center justify-center py-6">

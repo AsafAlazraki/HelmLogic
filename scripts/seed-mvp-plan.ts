@@ -549,3 +549,8 @@ main().catch(err => {
     console.error('FATAL:', err);
     process.exit(1);
 });
+
+// Mark this file as a module so its top-level consts (argv, LIVE,
+// PROJECT_ID, etc) don't collide with the same names in sibling
+// scripts/* files when tsc walks the project.
+export {};
