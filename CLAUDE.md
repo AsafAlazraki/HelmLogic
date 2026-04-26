@@ -13,7 +13,7 @@
 | v1.0 → v1.3.1 | ✅ Shipped to production |
 | v1.4 Trailers + Rego | ✅ Shipped to production. See `tasks/v1.4-trailers-module-status.md` |
 | v1.5 Feature Tracking | ✅ Shipped to production. See `tasks/RELEASE_NOTES_v1.5.0.md` |
-| v1.5.1 Hotfix — feature overwrite | 🟡 Same-day hotfix in flight. Client reported features disappearing after each save (one-id reuse). See `tasks/RELEASE_NOTES_v1.5.1.md` |
+| v1.5.1 Hotfix — feature overwrite | ✅ Shipped to production. PR #28 merged 2026-04-25. See `tasks/RELEASE_NOTES_v1.5.1.md` |
 
 **Active dev branch**: `claude/app-overview-wKiZ1` (auto-deploys to dev URL)
 
