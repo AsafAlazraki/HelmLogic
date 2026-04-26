@@ -302,6 +302,100 @@ function ReleasePicker({
     );
 }
 
+/**
+ * v1.6 — Epic picker. Subscribes to the epics collection so it always
+ * shows the current set. "No epic" entry maps to null. Sorted by the
+ * epic's `order` field. Colour swatch shown on each option so the
+ * picker matches the swim-lane colours.
+ */
+function EpicPicker({
+    value,
+    onChange,
+    triggerClassName,
+}: {
+    value: string | null | undefined;
+    onChange: (next: string | null) => void;
+    triggerClassName?: string;
+}) {
+    const firestore = useFirestore();
+    const epicsRef = useMemoFirebase(() => collection(firestore, 'epics'), [firestore]);
+    const { data: epics } = useCollection<EpicDoc>(epicsRef);
+    const sorted = useMemo(
+        () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+        [epics],
+    );
+    const effective = value || '__none__';
+    const swatchClassByColor: Record<EpicColor, string> = {
+        blue: 'bg-blue-500',
+        amber: 'bg-amber-500',
+        violet: 'bg-violet-500',
+        emerald: 'bg-emerald-500',
+        rose: 'bg-rose-500',
+        indigo: 'bg-indigo-500',
+        slate: 'bg-slate-500',
+    };
+    return (
+        <Select
+            value={effective}
+            onValueChange={(v) => onChange(v === '__none__' ? null : v)}
+        >
+            <SelectTrigger className={cn('h-9 text-sm', triggerClassName)}>
+                <SelectValue placeholder="Pick an epic" />
+            </SelectTrigger>
+            <SelectContent className="z-[10000]">
+                <SelectItem value="__none__" className="text-xs text-slate-400 italic">
+                    Unfiled (no epic)
+                </SelectItem>
+                {sorted.map(e => (
+                    <SelectItem key={e.id} value={e.id} className="text-xs">
+                        <span className="inline-flex items-center gap-2">
+                            <span className={cn('h-2 w-2 rounded-full', swatchClassByColor[e.color] ?? 'bg-slate-400')} />
+                            {e.shortLabel || e.title}
+                        </span>
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
+}
+
+/**
+ * v1.6 — Story-points picker. Fibonacci options (1/2/3/5/8) plus
+ * "Unestimated" mapping to null. Used in the create dialog and the
+ * detail sheet.
+ */
+function PointsPicker({
+    value,
+    onChange,
+    triggerClassName,
+}: {
+    value: number | null | undefined;
+    onChange: (next: number | null) => void;
+    triggerClassName?: string;
+}) {
+    const effective = value == null ? '__none__' : String(value);
+    return (
+        <Select
+            value={effective}
+            onValueChange={(v) => onChange(v === '__none__' ? null : parseInt(v, 10))}
+        >
+            <SelectTrigger className={cn('h-9 text-sm', triggerClassName)}>
+                <SelectValue placeholder="Estimate" />
+            </SelectTrigger>
+            <SelectContent className="z-[10000]">
+                <SelectItem value="__none__" className="text-xs text-slate-400 italic">
+                    Unestimated
+                </SelectItem>
+                {POINT_OPTIONS.map(p => (
+                    <SelectItem key={p} value={String(p)} className="text-xs">
+                        {p} {p === 1 ? 'point' : 'points'}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
+}
+
 function TypeIcon({ type }: { type?: FeatureType }) {
     switch (type) {
         case 'bug':
@@ -904,6 +998,8 @@ function CreateFeatureDialog({
     const [type, setType] = useState<FeatureType>('feature');
     const [priority, setPriority] = useState<FeaturePriority>('medium');
     const [targetRelease, setTargetRelease] = useState('');
+    const [epicId, setEpicId] = useState<string | null>(null);
+    const [points, setPoints] = useState<number | null>(null);
     const [tags, setTags] = useState<string[]>([]);
     const [tagDraft, setTagDraft] = useState('');
     const [acceptance, setAcceptance] = useState<string[]>([]);
@@ -917,6 +1013,8 @@ function CreateFeatureDialog({
         setType('feature');
         setPriority('medium');
         setTargetRelease('');
+        setEpicId(null);
+        setPoints(null);
         setTags([]);
         setTagDraft('');
         setAcceptance([]);
@@ -963,12 +1061,16 @@ function CreateFeatureDialog({
                 status: 'submitted',
                 priority,
                 targetRelease: targetRelease.trim() || null,
+                epicId,
+                points,
                 tags,
                 voteIds: [],
                 order: defaultOrderForColumn ?? 0,
                 acceptanceCriteria: acceptance,
                 imageUrls: images,
                 commentCount: 0,
+                deletedAt: null,
+                deletedBy: null,
                 submitterId: user.uid,
                 submitterName: userProfile?.displayName || userProfile?.email || user.email || 'Someone',
                 createdAt: serverTimestamp(),
@@ -1036,6 +1138,26 @@ function CreateFeatureDialog({
                                         <SelectItem value="nice-to-have" className="text-xs">Nice to have</SelectItem>
                                     </SelectContent>
                                 </Select>
+                            </div>
+                        </div>
+
+                        {/* Epic + Story points (v1.6) */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Epic</Label>
+                                <EpicPicker
+                                    value={epicId}
+                                    onChange={setEpicId}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                    Story points <span className="text-slate-400 normal-case">(optional)</span>
+                                </Label>
+                                <PointsPicker
+                                    value={points}
+                                    onChange={setPoints}
+                                />
                             </div>
                         </div>
 
@@ -1442,6 +1564,34 @@ function FeatureDetailBody({
                                     <SelectItem value="nice-to-have" className="text-xs">Nice to have</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                    </div>
+
+                    {/* Epic + Story points (v1.6) */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Epic</Label>
+                            <EpicPicker
+                                value={feature.epicId}
+                                onChange={(next) => {
+                                    if (next !== (feature.epicId ?? null)) {
+                                        patch({ epicId: next });
+                                    }
+                                }}
+                                triggerClassName="h-8 text-xs"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Story points</Label>
+                            <PointsPicker
+                                value={feature.points}
+                                onChange={(next) => {
+                                    if (next !== (feature.points ?? null)) {
+                                        patch({ points: next });
+                                    }
+                                }}
+                                triggerClassName="h-8 text-xs"
+                            />
                         </div>
                     </div>
 
