@@ -93,6 +93,7 @@ import {
     CheckCircle2,
     Trash2,
     Send,
+    Layers,
     Pencil,
     GripVertical,
     Clock,
@@ -110,6 +111,7 @@ import {
     FeatureDescriptionView,
 } from '@/components/feature-rich-text-editor';
 import { FeatureImageUploader } from '@/components/feature-image-uploader';
+import { EpicManagementDialog } from '@/components/epic-management-dialog';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -321,6 +323,7 @@ export function FeatureTrackingBoard() {
     const { user } = useUser();
     const { toast } = useToast();
     const [createOpen, setCreateOpen] = useState(false);
+    const [epicMgmtOpen, setEpicMgmtOpen] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [activeId, setActiveId] = useState<string | null>(null);
     // Per-column sort mode. Defaults to 'manual' (drag order). When a
@@ -518,14 +521,26 @@ export function FeatureTrackingBoard() {
                             </p>
                         </div>
                     </div>
-                    <Button
-                        size="sm"
-                        className="bg-white text-blue-700 hover:bg-blue-50 gap-2 shadow-sm"
-                        onClick={() => setCreateOpen(true)}
-                    >
-                        <Plus className="h-4 w-4" />
-                        New Feature
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-white/90 hover:bg-white/15 hover:text-white gap-1.5"
+                            onClick={() => setEpicMgmtOpen(true)}
+                            title="Manage epics — top-level groupings for features"
+                        >
+                            <Layers className="h-3.5 w-3.5" />
+                            Manage epics
+                        </Button>
+                        <Button
+                            size="sm"
+                            className="bg-white text-blue-700 hover:bg-blue-50 gap-2 shadow-sm"
+                            onClick={() => setCreateOpen(true)}
+                        >
+                            <Plus className="h-4 w-4" />
+                            New Feature
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -580,6 +595,11 @@ export function FeatureTrackingBoard() {
                 feature={selectedFeature}
                 open={selectedFeature !== null}
                 onOpenChange={(v) => { if (!v) setSelectedId(null); }}
+            />
+
+            <EpicManagementDialog
+                open={epicMgmtOpen}
+                onOpenChange={setEpicMgmtOpen}
             />
         </div>
     );
