@@ -14,7 +14,7 @@
  *   6. Per-column sort toggle (manual / votes / date)
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     addDoc,
     arrayRemove,
@@ -837,9 +837,18 @@ function CreateFeatureDialog({
     const { data: userProfile } = useDoc<any>(userProfileRef);
     const { toast } = useToast();
 
-    // Generate a client-side doc ID so the image uploader can
-    // write to `features/{featureId}/...` before the doc is saved.
-    const [featureId] = useState(() => doc(collection(firestore, 'features')).id);
+    // Generate a client-side doc ID so the image uploader can write to
+    // `features/{featureId}/...` before the doc is saved. Regenerate
+    // every time the dialog opens — without this, the same id is reused
+    // across every submit in the session and each setDoc overwrites the
+    // previously saved feature at that path. (v1.5.1 hotfix — clients
+    // reported features disappearing after each save.)
+    const [featureId, setFeatureId] = useState(() => doc(collection(firestore, 'features')).id);
+    useEffect(() => {
+        if (open) {
+            setFeatureId(doc(collection(firestore, 'features')).id);
+        }
+    }, [open, firestore]);
 
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');

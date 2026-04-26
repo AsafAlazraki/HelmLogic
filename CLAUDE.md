@@ -13,6 +13,7 @@
 | v1.0 → v1.3.1 | ✅ Shipped to production |
 | v1.4 Trailers + Rego | ✅ Shipped to production. See `tasks/v1.4-trailers-module-status.md` |
 | v1.5 Feature Tracking | ✅ Shipped to production. See `tasks/RELEASE_NOTES_v1.5.0.md` |
+| v1.5.1 Hotfix — feature overwrite | 🟡 Same-day hotfix in flight. Client reported features disappearing after each save (one-id reuse). See `tasks/RELEASE_NOTES_v1.5.1.md` |
 
 **Active dev branch**: `claude/app-overview-wKiZ1` (auto-deploys to dev URL)
 
@@ -185,6 +186,7 @@ users/{userId}/quotes/{quoteId}
 - **TipTap `onUpdate` fires per keystroke — save on blur or explicit action** (v1.5) — wiring TipTap directly to a Firestore `updateDoc` writes on every character typed. Capture into a local draft state, show a dirty indicator, save on blur or an explicit Save button. Also dodges races with the live snapshot when another user edits concurrently.
 - **Detail sheets that edit one of N items must be keyed by item id** (v1.5) — wrap the sheet body in a sub-component keyed by `feature.id` (or equivalent) so local drafts (title, description) reset when a different item is opened. Without the key, drafts leak across items and the user sees last session's draft on a freshly opened card.
 - **Release notes are part of the release, not a follow-up** (v1.5 post-mortem) — the in-app `/feature-tracking` Release Notes tab uses a Server Component that reads `tasks/RELEASE_NOTES_*.md` at build time and bakes the parsed HTML into the static page. If a release ships to main without its `RELEASE_NOTES_vX.Y.Z.md` in the same PR, prod redeploys with the timeline missing that version — and there's no runtime fallback because the markdown lives in the deployed bundle, not Firestore. Always include the release notes file in the dev → main PR. Caught the day v1.5 shipped: PR #26 merged without `RELEASE_NOTES_v1.5.0.md`, prod went out blank for v1.5; required a follow-up docs PR. Discipline > defensive code here — making the page dynamic doesn't help, the file has to be in the deployment.
+- **Client-side doc IDs in long-lived dialogs must regenerate per-open** (v1.5.1 hotfix) — `useState(() => doc(collection(...)).id)` runs once per component mount, and a dialog that's mounted at the page level (controlled via `open` / `onOpenChange` props) has the same mount lifetime as the page. Every `setDoc({sameId}, ...)` on submit then OVERWRITES the previously saved doc at that path. Pair the `useState` seed with a `useEffect(() => { if (open) regenerate(); }, [open, firestore])` so each open starts with a fresh id. Caught the same day v1.5 shipped: a client lost two features and was capped at three because every submit clobbered the previous one. Same pattern applies anywhere a client-side ID is generated for pre-save attachment uploads — always tie regeneration to the open/lifecycle event, never just the component mount.
 
 ---
 
