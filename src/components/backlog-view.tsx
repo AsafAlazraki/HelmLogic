@@ -19,7 +19,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { collection } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useDoc } from '@/firebase/firestore/use-doc';
@@ -31,6 +31,7 @@ import {
     HelpCircle,
     Layers,
     Loader2,
+    Mail,
     Plus,
     Sparkles,
     Wrench,
@@ -95,6 +96,7 @@ export function BacklogView() {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [createEpicOpen, setCreateEpicOpen] = useState(false);
     const [seeding, setSeeding] = useState(false);
+    const [sendingTest, setSendingTest] = useState(false);
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
 
@@ -164,6 +166,44 @@ export function BacklogView() {
         setCollapsedEpics(all);
     }
 
+    async function handleSendTestEmail() {
+        // Hardcoded recipient for the v1.6 verification round — easier
+        // to debug than letting the click target wherever they want.
+        // Once the extension is confirmed working, the @-mention flow
+        // will resolve emails dynamically from the users collection.
+        const to = 'asaf.alazraki@outlook.com';
+        setSendingTest(true);
+        try {
+            const docRef = await addDoc(collection(firestore, 'mail'), {
+                to,
+                message: {
+                    subject: 'HelmLogic — Trigger Email Extension test',
+                    text: `Hi!\n\nThis is a test email from HelmLogic to verify that the Firebase Trigger Email extension is configured correctly.\n\nIf you're reading this, the extension is working.\n\nSent at: ${new Date().toLocaleString()}\nClicked by: ${userProfile?.displayName || user?.email || 'unknown'}\n\nNext step: we'll wire @-mentions in feature comments to send through this same pipe.`,
+                    html: `<p>Hi!</p>
+<p>This is a test email from <strong>HelmLogic</strong> to verify that the Firebase <em>Trigger Email</em> extension is configured correctly.</p>
+<p>If you're reading this, the extension is working.</p>
+<hr/>
+<p style="font-size:12px;color:#666">Sent at: ${new Date().toLocaleString()}<br/>
+Clicked by: ${userProfile?.displayName || user?.email || 'unknown'}</p>
+<p style="font-size:12px;color:#666">Next step: we'll wire @-mentions in feature comments to send through this same pipe.</p>`,
+                },
+                createdAt: serverTimestamp(),
+            });
+            toast({
+                title: `Test email queued to ${to}`,
+                description: `Doc id: ${docRef.id}. Check the inbox in ~30s. If nothing arrives, open Firebase Console → Functions → Logs for "ext-firestore-send-email" and read the latest log.`,
+            });
+        } catch (e: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Could not enqueue',
+                description: e?.message ?? 'See console. Most likely cause: Firestore rules need the new mail/ rule published.',
+            });
+        } finally {
+            setSendingTest(false);
+        }
+    }
+
     async function handleSeed() {
         if (!confirm('Seed the v1.6 MVP plan? Creates 5 Epics + 22 features from the stakeholder spec. Idempotent — re-running is safe and skips existing items.')) return;
         setSeeding(true);
@@ -217,6 +257,17 @@ export function BacklogView() {
                             onClick={collapseAll}
                         >
                             Collapse all
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-white/90 hover:bg-white/15 hover:text-white gap-1.5"
+                            onClick={handleSendTestEmail}
+                            disabled={sendingTest}
+                            title="Send a test email through the Firebase Trigger Email extension to verify SMTP config is right."
+                        >
+                            {sendingTest ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                            Send test email
                         </Button>
                         <Button
                             size="sm"

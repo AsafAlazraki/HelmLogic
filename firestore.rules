@@ -123,6 +123,15 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    // Trigger Email extension queue (v1.6).
+    // Any signed-in user can enqueue an email (used by @-mention
+    // notifications + the "Send test email" button). Only admins can
+    // read the queue (audit trail).
+    match /mail/{mailId} {
+      allow create: if isSignedIn();
+      allow read: if isAdmin();
+    }
+
     match /dealerFitCategories/{catId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
