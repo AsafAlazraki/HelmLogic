@@ -176,6 +176,35 @@ export interface FeatureDoc {
     createdAt?: any;
     updatedAt?: any;
     commentCount?: number;
+    /** v1.6 — FK into epics/{id}. null/undefined = unfiled. */
+    epicId?: string | null;
+    /** v1.6 — Fibonacci story points: 1 | 2 | 3 | 5 | 8. null/undefined = unestimated. */
+    points?: number | null;
+    /** v1.6 — set on soft delete. Hides from board/roadmap; visible in Archive tab. */
+    deletedAt?: any | null;
+    /** v1.6 — uid of the user who soft-deleted. */
+    deletedBy?: string | null;
+}
+
+/** Fibonacci-flavoured story-point options for v1.6 effort estimation. */
+export const POINT_OPTIONS = [1, 2, 3, 5, 8] as const;
+export type StoryPoints = typeof POINT_OPTIONS[number];
+
+/** Epic colour palette — must match the swim-lane band colours. */
+export type EpicColor = 'blue' | 'amber' | 'violet' | 'emerald' | 'rose' | 'slate' | 'indigo';
+
+export interface EpicDoc {
+    id: string;
+    title: string;
+    /** ≤ 24 chars, rendered as the swim-lane label / chip. */
+    shortLabel: string;
+    description?: string;
+    color: EpicColor;
+    /** Fractional index for swim-lane order (drag to reorder). */
+    order: number;
+    status?: 'planning' | 'active' | 'done';
+    createdAt?: any;
+    updatedAt?: any;
 }
 
 // ---------------------------------------------------------------------------

@@ -33,6 +33,20 @@ service cloud.firestore {
       );
     }
 
+    /**
+     * Sub-dealer detection (v1.6) — a user is a sub-dealer when their
+     * org has parentOrganisationId set. Used by Feature Tracking to gate
+     * epics + features away from sub-dealers (commercial-roadmap
+     * isolation per stakeholder spec).
+     */
+    function isSubDealer() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId != null &&
+        exists(/databases/$(database)/documents/organisations/$(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId)) &&
+        get(/databases/$(database)/documents/organisations/$(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId)).data.parentOrganisationId != null;
+    }
+
     // --- COLLECTION RULES ---
 
     // HelmLogic Admins get full access to the entire database
@@ -104,14 +118,24 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
-    // Feature Tracking (v1.5) — fully open to any signed-in user per spec:
-    // anyone can create / vote / comment / drag / move status / set release
-    // / delete. See tasks/v1.5-feature-tracking-design.md.
+    // Feature Tracking (v1.5 + v1.6).
+    // v1.5: open to any signed-in user — create / vote / comment / drag /
+    //       move status / set release / delete.
+    // v1.6: gated AWAY from sub-dealer org users — they must NOT see the
+    //       internal product roadmap (commercial isolation per stakeholder
+    //       spec). HelmLogic staff + parent-dealer staff are still open.
+    //       See tasks/v1.6-planning-system-design.md §3.
     match /features/{featureId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isSignedIn() && !isSubDealer();
       match /comments/{commentId} {
-        allow read, write: if isSignedIn();
+        allow read, write: if isSignedIn() && !isSubDealer();
       }
+    }
+
+    // Epics (v1.6) — first-class grouping for features. Same gating as
+    // features.
+    match /epics/{epicId} {
+      allow read, write: if isSignedIn() && !isSubDealer();
     }
 
     match /dealerFitCategories/{catId} {

@@ -7,9 +7,12 @@
  * where they were.
  */
 
-import { useEffect, useState } from 'react';
-import { Lightbulb, Kanban, BookOpen } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { doc } from 'firebase/firestore';
+import { Lightbulb, Kanban, BookOpen, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
+import { useDoc } from '@/firebase/firestore/use-doc';
 import { FeatureTrackingBoard } from '@/components/feature-tracking-board';
 import { ReleaseNotesView } from '@/components/release-notes-view';
 import type { ReleaseNote } from '@/lib/release-notes-loader';
@@ -24,6 +27,42 @@ function initialView(): View {
 
 export function FeatureTrackingView({ releaseNotes }: { releaseNotes: ReleaseNote[] }) {
     const [view, setView] = useState<View>(initialView);
+
+    // Sub-dealer gate (v1.6 §3 layer 2 of 3).
+    // Sidebar already hides the link, Firestore rules already deny.
+    // This is the user-visible bail-out if a sub-dealer reaches the
+    // route via direct URL or stale browser tab.
+    const firestore = useFirestore();
+    const { user } = useUser();
+    const userProfileRef = useMemoFirebase(
+        () => (user ? doc(firestore, 'users', user.uid) : null),
+        [firestore, user?.uid],
+    );
+    const { data: userProfile } = useDoc<any>(userProfileRef);
+    const orgRef = useMemoFirebase(
+        () => (userProfile?.organisationId
+            ? doc(firestore, 'organisations', userProfile.organisationId)
+            : null),
+        [firestore, userProfile?.organisationId],
+    );
+    const { data: organisation } = useDoc<any>(orgRef);
+    const isSubDealer = !!organisation?.parentOrganisationId;
+
+    if (isSubDealer) {
+        return (
+            <div className="h-full flex items-center justify-center bg-slate-50/50 p-6">
+                <div className="max-w-md text-center space-y-3">
+                    <div className="h-12 w-12 mx-auto rounded-full bg-amber-100 flex items-center justify-center">
+                        <ShieldAlert className="h-6 w-6 text-amber-600" />
+                    </div>
+                    <h2 className="text-lg font-bold text-slate-800">Not available for sub-dealer accounts</h2>
+                    <p className="text-sm text-slate-600">
+                        Feature Tracking is internal to HelmLogic and partner dealer staff. If you think you should have access, please contact your account manager.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     // URL sync — default ('board') is stripped from the query so the
     // URL stays clean.
