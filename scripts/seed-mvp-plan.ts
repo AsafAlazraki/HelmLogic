@@ -292,9 +292,158 @@ const EPIC_1_FEATURES: SeedFeature[] = [
     },
 ];
 
-// Aggregate — Epics 2-5 will append more here in the next turn.
+const EPIC_2_FEATURES: SeedFeature[] = [
+    {
+        title: '2.1.1 — Structured Price Sources',
+        description: story('finance stakeholder', 'all prices sourced from approved lists', 'pricing is accurate and auditable'),
+        acceptanceCriteria: [
+            'Prices originate from: Vendor/distributor price lists, Internal fit-out tables',
+            'Each line shows source reference & last updated date',
+        ],
+        type: 'feature', priority: 'medium', targetRelease: 'v1.8', points: 2, epicId: 'pricing-accuracy',
+    },
+    {
+        title: '2.1.2 — Model-Specific Fit-Out Pricing (Basic / Moderate / Complex)',
+        description: story('salesperson', 'model-specific fit-out tiers', 'labour pricing matches reality'),
+        acceptanceCriteria: [
+            'Each model supports Basic / Moderate / Complex tiers',
+            'Pricing examples from spec: Stabicraft 2350 = $2,800 / $5,500 / $7,800; Surtees GF770 has different numbers for similar size',
+        ],
+        type: 'feature', priority: 'high', targetRelease: 'v1.8', points: 5, epicId: 'pricing-accuracy',
+    },
+    {
+        title: '2.2.1 — Margin Threshold Enforcement + GM Override',
+        description: story('sales manager', 'low-margin quotes blocked by default', 'we protect profitability'),
+        acceptanceCriteria: [
+            'Quotes below threshold cannot be sent',
+            'GM Sales & Marketing can override',
+            'Overrides are fully auditable',
+        ],
+        type: 'feature', priority: 'high', targetRelease: 'v1.8', points: 5, epicId: 'pricing-accuracy',
+    },
+    {
+        title: '2.2.2 — Role-Based Margin Visibility',
+        description: story('salesperson', 'simple margin signals', 'I know when a deal is healthy'),
+        acceptanceCriteria: [
+            'Sales see Target margin %',
+            'Sales see Margin band (Green / Amber / Red)',
+            'Cost detail hidden where appropriate (e.g. internal fit-out items)',
+        ],
+        type: 'feature', priority: 'medium', targetRelease: 'v1.8', points: 3, epicId: 'pricing-accuracy',
+    },
+    {
+        title: '2.3.1 — Quote Variations (post-contract)',
+        description: story('salesperson', 'to make controlled changes after signing', 'customer changes are handled professionally'),
+        acceptanceCriteria: [
+            'Items can be added or removed',
+            'Price delta clearly shown',
+            'Deal totals and margin recalculated',
+            'Original contract remains unchanged (locked baseline)',
+        ],
+        type: 'feature', priority: 'high', targetRelease: 'v1.9', points: 8, epicId: 'pricing-accuracy',
+    },
+];
+
+const EPIC_3_FEATURES: SeedFeature[] = [
+    {
+        title: '3.1.1 — Structured Data Imports + Versioning + Manual Approval',
+        description: story('administrator', 'to import structured data', 'HelmLogic stays up to date efficiently'),
+        acceptanceCriteria: [
+            'Supports import of pricing, specs, photos, marketing copy',
+            'Versioning applied',
+            'Manual approval before publish',
+        ],
+        type: 'feature', priority: 'medium', targetRelease: 'v1.9', points: 5, epicId: 'data-management',
+    },
+    {
+        title: '3.2.1 — Internal Data Normalisation Layer',
+        description: story('product owner', 'consistent internal data structures', 'quoting logic remains stable'),
+        acceptanceCriteria: [
+            'All imported data is normalised',
+            'NSM-specific overlays supported (descriptions, talking points, brand narrative)',
+        ],
+        type: 'feature', priority: 'low', targetRelease: 'v1.9', points: 3, epicId: 'data-management',
+    },
+    {
+        title: '3.3.1 — Crowdsourced Suggestions with Audit',
+        description: story('user', 'to flag errors or suggest improvements', 'data accuracy improves over time'),
+        acceptanceCriteria: [
+            'Suggestions require review & publish by an authorised role',
+            'Full edit history retained',
+            'Sub-dealer permissions enforced (must not leak across brands/dealers)',
+        ],
+        type: 'feature', priority: 'medium', targetRelease: 'v1.9', points: 5, epicId: 'data-management',
+    },
+];
+
+const EPIC_4_FEATURES: SeedFeature[] = [
+    {
+        title: '4.1.1 — Promotion Entry (manual, all forms)',
+        description: story('salesperson', 'to manually enter promotions', 'real-world deals can be quoted'),
+        acceptanceCriteria: [
+            'Supports $ off per HP',
+            'Supports $ off per foot',
+            'Supports % off specific item',
+            'Supports fixed rebate',
+            'Applies at brand, model, or component level',
+        ],
+        type: 'feature', priority: 'high', targetRelease: 'v1.9', points: 3, epicId: 'promotions',
+    },
+    {
+        title: '4.1.2 — Promotion Alerts',
+        description: story('salesperson', 'to be alerted to active promotions', "I don't miss opportunities"),
+        acceptanceCriteria: [
+            'Alerts shown when applicable',
+            'Promotions are date-bounded',
+            'Promotions are NOT auto-applied (manual for MVP)',
+        ],
+        type: 'feature', priority: 'medium', targetRelease: 'v1.9', points: 3, epicId: 'promotions',
+    },
+];
+
+const EPIC_5_FEATURES: SeedFeature[] = [
+    {
+        title: '5.1.1 — Flexible Quoting Units (hull-only, engine-only, trailer-only)',
+        description: story('salesperson', 'to quote individual components', 'HelmLogic works beyond full boat sales'),
+        acceptanceCriteria: [
+            'Can quote hull-only',
+            'Can quote engine-only',
+            'Can quote trailer-only',
+            'Configuration rules are modular, not hard-wired to "boat = required"',
+        ],
+        type: 'feature', priority: 'high', targetRelease: 'v2.0', points: 5, epicId: 'security-extensibility',
+    },
+    {
+        title: '5.2.1 — Brand & Dealer Isolation (RBAC + leakage tests)',
+        description: story('platform owner', 'strict access controls', 'commercial data is protected'),
+        acceptanceCriteria: [
+            'Users see only authorised brands (e.g. Marine Trade Supplies sees Highfield only)',
+            'Sub-dealers cannot see other dealers\' quotes / opportunities',
+            'Pricing visibility is role-controlled',
+            'Crowdsourcing permissions are restricted',
+            'Leakage tests covering cross-brand AND cross-dealer scenarios',
+        ],
+        type: 'feature', priority: 'critical', targetRelease: 'v2.0', points: 8, epicId: 'security-extensibility',
+    },
+    {
+        title: '5.3.1 — Brand Onboarding Without Code',
+        description: story('product owner', 'to add brands without deployment changes', 'HelmLogic can scale safely'),
+        acceptanceCriteria: [
+            'Brand onboarding is data-driven',
+            'Quoting logic remains isolated per brand',
+            'Documented playbook for onboarding a new brand end-to-end',
+        ],
+        type: 'feature', priority: 'medium', targetRelease: 'v2.0', points: 3, epicId: 'security-extensibility',
+    },
+];
+
+/** All 22 features from the MVP spec, bucketed into v1.7 → v2.0. */
 const ALL_FEATURES: SeedFeature[] = [
     ...EPIC_1_FEATURES,
+    ...EPIC_2_FEATURES,
+    ...EPIC_3_FEATURES,
+    ...EPIC_4_FEATURES,
+    ...EPIC_5_FEATURES,
 ];
 
 // ---------------------------------------------------------------------------
