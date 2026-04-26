@@ -19,15 +19,15 @@ import { RoadmapView } from '@/components/roadmap-view';
 import { BacklogView } from '@/components/backlog-view';
 import type { ReleaseNote } from '@/lib/release-notes-loader';
 
-type View = 'board' | 'roadmap' | 'backlog' | 'notes';
+type View = 'backlog' | 'board' | 'roadmap' | 'notes';
 
 function initialView(): View {
-    if (typeof window === 'undefined') return 'board';
+    if (typeof window === 'undefined') return 'backlog';
     const v = new URLSearchParams(window.location.search).get('view');
+    if (v === 'board') return 'board';
     if (v === 'roadmap') return 'roadmap';
-    if (v === 'backlog') return 'backlog';
     if (v === 'notes') return 'notes';
-    return 'board';
+    return 'backlog';
 }
 
 export function FeatureTrackingView({ releaseNotes }: { releaseNotes: ReleaseNote[] }) {
@@ -74,7 +74,7 @@ export function FeatureTrackingView({ releaseNotes }: { releaseNotes: ReleaseNot
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const params = new URLSearchParams(window.location.search);
-        if (view === 'board') params.delete('view');
+        if (view === 'backlog') params.delete('view');
         else params.set('view', view);
         const q = params.toString();
         const next = window.location.pathname + (q ? `?${q}` : '');
@@ -87,6 +87,12 @@ export function FeatureTrackingView({ releaseNotes }: { releaseNotes: ReleaseNot
             <div className="border-b bg-white px-6 shrink-0">
                 <div className="flex items-center gap-1">
                     <TabButton
+                        active={view === 'backlog'}
+                        onClick={() => setView('backlog')}
+                        icon={<Layers className="h-3.5 w-3.5" />}
+                        label="Backlog"
+                    />
+                    <TabButton
                         active={view === 'board'}
                         onClick={() => setView('board')}
                         icon={<Kanban className="h-3.5 w-3.5" />}
@@ -97,12 +103,6 @@ export function FeatureTrackingView({ releaseNotes }: { releaseNotes: ReleaseNot
                         onClick={() => setView('roadmap')}
                         icon={<Calendar className="h-3.5 w-3.5" />}
                         label="Roadmap"
-                    />
-                    <TabButton
-                        active={view === 'backlog'}
-                        onClick={() => setView('backlog')}
-                        icon={<Layers className="h-3.5 w-3.5" />}
-                        label="Backlog"
                     />
                     <TabButton
                         active={view === 'notes'}

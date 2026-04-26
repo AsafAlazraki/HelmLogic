@@ -40,12 +40,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
+    CreateFeatureDialog,
     FeatureDetailSheet,
     type EpicColor,
     type EpicDoc,
     type FeatureDoc,
 } from '@/components/feature-tracking-board';
-import { seedMvpPlan } from '@/lib/mvp-plan-seed';
 import { CreateEpicDialog } from '@/components/create-epic-dialog';
 
 const EPIC_BAND: Record<EpicColor, string> = {
@@ -95,8 +95,9 @@ export function BacklogView() {
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [createEpicOpen, setCreateEpicOpen] = useState(false);
-    const [seeding, setSeeding] = useState(false);
     const [sendingTest, setSendingTest] = useState(false);
+    /** v1.6 — open Create Feature with this epic pre-filled. null = closed. */
+    const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
 
@@ -119,14 +120,21 @@ export function BacklogView() {
             const key = f.epicId && groups[f.epicId] ? f.epicId : UNFILED;
             groups[key].push(f);
         }
-        // Sort: in-progress first, then submitted, then everything else.
-        // Within each, sort by title alphabetically (stable for the
-        // numbered seed: 1.1.1 → 1.1.2 → ...).
+        // Sort: priority first (Critical → High → Medium → Low →
+        // Nice-to-have), then status (in-progress → planned → under-
+        // review → submitted → shipped), then title alphabetically
+        // (stable for the numbered seed: 1.1.1 → 1.1.2 → ...).
+        const priorityOrder: Record<string, number> = {
+            critical: 0, high: 1, medium: 2, low: 3, 'nice-to-have': 4,
+        };
         const statusOrder: Record<string, number> = {
             'in-progress': 0, 'planned': 1, 'under-review': 2, 'submitted': 3, 'shipped': 4,
         };
         for (const key of Object.keys(groups)) {
             groups[key].sort((a, b) => {
+                const pa = priorityOrder[a.priority ?? 'medium'] ?? 99;
+                const pb = priorityOrder[b.priority ?? 'medium'] ?? 99;
+                if (pa !== pb) return pa - pb;
                 const sa = statusOrder[a.status ?? 'submitted'] ?? 99;
                 const sb = statusOrder[b.status ?? 'submitted'] ?? 99;
                 if (sa !== sb) return sa - sb;
@@ -204,26 +212,6 @@ Clicked by: ${userProfile?.displayName || user?.email || 'unknown'}</p>
         }
     }
 
-    async function handleSeed() {
-        if (!confirm('Seed the v1.6 MVP plan? Creates 5 Epics + 22 features from the stakeholder spec. Idempotent — re-running is safe and skips existing items.')) return;
-        setSeeding(true);
-        try {
-            const submitterName = userProfile?.displayName
-                || userProfile?.email
-                || user?.email
-                || 'MVP Seed';
-            const summary = await seedMvpPlan(firestore, user?.uid, submitterName);
-            toast({
-                title: 'MVP plan seeded',
-                description: `Epics: ${summary.epicsCreated} created, ${summary.epicsSkipped} skipped · Features: ${summary.featuresCreated} created, ${summary.featuresSkipped} skipped.`,
-            });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Seed failed', description: e?.message ?? 'See console.' });
-        } finally {
-            setSeeding(false);
-        }
-    }
-
     return (
         <div className="flex flex-col h-full bg-slate-50/50">
             {/* Banner */}
@@ -271,17 +259,6 @@ Clicked by: ${userProfile?.displayName || user?.email || 'unknown'}</p>
                         </Button>
                         <Button
                             size="sm"
-                            variant="ghost"
-                            className="text-white/90 hover:bg-white/15 hover:text-white gap-1.5"
-                            onClick={handleSeed}
-                            disabled={seeding}
-                            title="Bootstrap 5 epics + 22 user-story features from the stakeholder MVP spec. Idempotent."
-                        >
-                            {seeding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                            Seed MVP plan
-                        </Button>
-                        <Button
-                            size="sm"
                             className="bg-white text-slate-800 hover:bg-slate-100 gap-1.5 shadow-sm"
                             onClick={() => setCreateEpicOpen(true)}
                         >
@@ -299,7 +276,7 @@ Clicked by: ${userProfile?.displayName || user?.email || 'unknown'}</p>
                         <div className="rounded-xl border bg-white p-8 text-center space-y-2">
                             <p className="text-sm font-semibold text-slate-700">Empty backlog</p>
                             <p className="text-xs text-slate-500">
-                                Click <strong>Seed MVP plan</strong> to bootstrap the stakeholder spec, or <strong>+ New Epic</strong> to start from scratch.
+                                Click <strong>+ New Epic</strong> to start grouping work, or use <strong>+ New Feature</strong> on the Board to add an unfiled story.
                             </p>
                         </div>
                     ) : (
@@ -312,6 +289,7 @@ Clicked by: ${userProfile?.displayName || user?.email || 'unknown'}</p>
                                     collapsed={collapsedEpics.has(e.id)}
                                     onToggle={() => toggleEpic(e.id)}
                                     onOpen={(id) => setSelectedId(id)}
+                                    onAddStory={(epicId) => setAddStoryEpicId(epicId)}
                                 />
                             ))}
                             {unfiledCount > 0 && (
@@ -342,6 +320,16 @@ Clicked by: ${userProfile?.displayName || user?.email || 'unknown'}</p>
                         : (sortedEpics[sortedEpics.length - 1].order ?? 0) + 100
                 }
             />
+
+            {/* "+ Add story under <epic>" — opens Create Feature with the
+                epic pre-filled. defaultOrderForColumn places it at top
+                of the Submitted column on the Board. */}
+            <CreateFeatureDialog
+                open={addStoryEpicId !== null}
+                onOpenChange={(v) => { if (!v) setAddStoryEpicId(null); }}
+                defaultOrderForColumn={0}
+                initialEpicId={addStoryEpicId}
+            />
         </div>
     );
 }
@@ -352,12 +340,14 @@ function EpicGroup({
     collapsed,
     onToggle,
     onOpen,
+    onAddStory,
 }: {
     epic: EpicDoc;
     features: FeatureDoc[];
     collapsed: boolean;
     onToggle: () => void;
     onOpen: (id: string) => void;
+    onAddStory: (epicId: string) => void;
 }) {
     const total = features.reduce((sum, f) => sum + (f.points ?? 0), 0);
     return (
@@ -390,16 +380,22 @@ function EpicGroup({
                     </div>
                 </div>
             </button>
-            {!collapsed && features.length > 0 && (
+            {!collapsed && (
                 <div className="border-t bg-white/60">
                     {features.map(f => (
                         <FeatureRow key={f.id} feature={f} onOpen={onOpen} />
                     ))}
-                </div>
-            )}
-            {!collapsed && features.length === 0 && (
-                <div className="border-t bg-white/40 px-4 py-3">
-                    <p className="text-[11px] text-slate-400 italic">No features under this epic yet.</p>
+                    {features.length === 0 && (
+                        <p className="px-4 py-3 text-[11px] text-slate-400 italic">No features under this epic yet.</p>
+                    )}
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onAddStory(epic.id); }}
+                        className="w-full px-4 py-2 border-t border-dashed text-left text-[11px] font-semibold text-slate-500 hover:text-blue-700 hover:bg-blue-50/40 transition-colors flex items-center gap-1.5"
+                    >
+                        <Plus className="h-3 w-3" />
+                        Add story under {epic.shortLabel || epic.title}
+                    </button>
                 </div>
             )}
         </div>

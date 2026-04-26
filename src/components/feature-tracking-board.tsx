@@ -1040,15 +1040,18 @@ function FeatureCard({
 // Create Feature Dialog
 // ---------------------------------------------------------------------------
 
-function CreateFeatureDialog({
+export function CreateFeatureDialog({
     open,
     onOpenChange,
     defaultOrderForColumn,
+    initialEpicId = null,
 }: {
     open: boolean;
     onOpenChange: (v: boolean) => void;
     /** Order value that places this new feature at the top of Submitted. */
     defaultOrderForColumn: number;
+    /** v1.6 — Pre-fill the Epic picker (used by Backlog "+ Add story" button). */
+    initialEpicId?: string | null;
 }) {
     const firestore = useFirestore();
     const { user } = useUser();
@@ -1069,15 +1072,18 @@ function CreateFeatureDialog({
     useEffect(() => {
         if (open) {
             setFeatureId(doc(collection(firestore, 'features')).id);
+            // v1.6 — re-apply the epicId prefill on every open (e.g.
+            // Backlog "+ Add story" under a specific epic).
+            setEpicId(initialEpicId ?? null);
         }
-    }, [open, firestore]);
+    }, [open, firestore, initialEpicId]);
 
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [type, setType] = useState<FeatureType>('feature');
     const [priority, setPriority] = useState<FeaturePriority>('medium');
     const [targetRelease, setTargetRelease] = useState('');
-    const [epicId, setEpicId] = useState<string | null>(null);
+    const [epicId, setEpicId] = useState<string | null>(initialEpicId ?? null);
     const [points, setPoints] = useState<number | null>(null);
     const [tags, setTags] = useState<string[]>([]);
     const [tagDraft, setTagDraft] = useState('');
@@ -1092,7 +1098,7 @@ function CreateFeatureDialog({
         setType('feature');
         setPriority('medium');
         setTargetRelease('');
-        setEpicId(null);
+        setEpicId(initialEpicId ?? null);
         setPoints(null);
         setTags([]);
         setTagDraft('');
