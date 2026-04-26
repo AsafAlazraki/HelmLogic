@@ -271,7 +271,7 @@ Clicked by: ${userProfile?.displayName || user?.email || 'unknown'}</p>
 
             {/* Body */}
             <div className="feature-scroll flex-1 min-h-0 overflow-y-auto">
-                <div className="max-w-5xl mx-auto px-4 py-4 space-y-2">
+                <div className="space-y-2 p-2">
                     {sortedEpics.length === 0 && unfiledCount === 0 ? (
                         <div className="rounded-xl border bg-white p-8 text-center space-y-2">
                             <p className="text-sm font-semibold text-slate-700">Empty backlog</p>
@@ -352,13 +352,13 @@ function EpicGroup({
     const total = features.reduce((sum, f) => sum + (f.points ?? 0), 0);
     return (
         <div className={cn('rounded-xl border bg-white overflow-hidden', EPIC_TINT[epic.color] ?? '')}>
-            <button
-                type="button"
-                onClick={onToggle}
-                className="w-full flex items-stretch hover:bg-white/60 transition-colors"
-            >
+            <div className="flex items-stretch">
                 <div className={cn('w-1.5 shrink-0', EPIC_BAND[epic.color] ?? 'bg-slate-400')} />
-                <div className="flex-1 px-4 py-3 flex items-center gap-3 min-w-0">
+                <button
+                    type="button"
+                    onClick={onToggle}
+                    className="flex-1 px-4 py-3 flex items-center gap-3 min-w-0 hover:bg-white/60 transition-colors"
+                >
                     <ChevronRight className={cn(
                         'h-4 w-4 text-slate-400 transition-transform shrink-0',
                         !collapsed && 'rotate-90',
@@ -378,8 +378,17 @@ function EpicGroup({
                         <span className="font-bold text-slate-700">{total}</span>
                         <span className="text-slate-400">pts</span>
                     </div>
-                </div>
-            </button>
+                </button>
+                <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onAddStory(epic.id); }}
+                    className="px-3 hover:bg-blue-50 text-slate-400 hover:text-blue-700 border-l flex items-center justify-center transition-colors"
+                    title={`Add story under ${epic.shortLabel || epic.title}`}
+                    aria-label={`Add story under ${epic.shortLabel || epic.title}`}
+                >
+                    <Plus className="h-4 w-4" />
+                </button>
+            </div>
             {!collapsed && (
                 <div className="border-t bg-white/60">
                     {features.map(f => (
