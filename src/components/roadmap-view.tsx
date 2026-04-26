@@ -100,6 +100,43 @@ export function RoadmapView() {
         Record<string, { epicId: string | null; targetRelease: string | null }>
     >({});
 
+    // Filter state. Empty Set = "show all". Non-empty = "show only these".
+    const [epicFilter, setEpicFilter] = useState<Set<string>>(new Set());
+    const [releaseFilter, setReleaseFilter] = useState<Set<string>>(new Set());
+
+    function toggleEpicFilter(id: string) {
+        setEpicFilter(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }
+
+    function toggleReleaseFilter(rk: string) {
+        setReleaseFilter(prev => {
+            const next = new Set(prev);
+            if (next.has(rk)) next.delete(rk);
+            else next.add(rk);
+            return next;
+        });
+    }
+
+    /** Click an epic's swim-lane label → solo just that epic (or unsolo). */
+    function soloEpic(id: string) {
+        setEpicFilter(prev => {
+            // If already soloed to just this one, clear (= show all).
+            if (prev.size === 1 && prev.has(id)) return new Set();
+            return new Set([id]);
+        });
+    }
+
+    function clearFilters() {
+        setEpicFilter(new Set());
+        setReleaseFilter(new Set());
+    }
+    const hasFilters = epicFilter.size > 0 || releaseFilter.size > 0;
+
     // Activation distance: a click on a chip opens the detail sheet,
     // a 5px drag starts a move. Same UX contract as the Board.
     const sensors = useSensors(
@@ -150,6 +187,18 @@ export function RoadmapView() {
         () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
         [epics],
     );
+
+    /** Epics actually shown — respects the active filter. */
+    const visibleEpics = useMemo(() => {
+        if (epicFilter.size === 0) return sortedEpics;
+        return sortedEpics.filter(e => epicFilter.has(e.id));
+    }, [sortedEpics, epicFilter]);
+
+    /** Release columns actually shown — respects the active filter. */
+    const visibleColumns = useMemo(() => {
+        if (releaseFilter.size === 0) return ROADMAP_COLUMNS as readonly string[];
+        return (ROADMAP_COLUMNS as readonly string[]).filter(rk => releaseFilter.has(rk));
+    }, [releaseFilter]);
 
     const featureById = useMemo(() => {
         const m = new Map<string, FeatureDoc>();
@@ -290,6 +339,37 @@ export function RoadmapView() {
                 </div>
             </div>
 
+            {/* Filter bar — multi-select pills for epics + releases. */}
+            {sortedEpics.length > 0 && (
+                <div className="border-b bg-white px-3 py-2 shrink-0 space-y-1.5">
+                    <FilterRow
+                        label="Epics"
+                        options={sortedEpics.map(e => ({ key: e.id, label: e.shortLabel || e.title, color: e.color }))}
+                        selected={epicFilter}
+                        onToggle={toggleEpicFilter}
+                    />
+                    <FilterRow
+                        label="Releases"
+                        options={(ROADMAP_COLUMNS as readonly string[]).map(rk => ({
+                            key: rk,
+                            label: rk === UNSCHEDULED_KEY ? 'Backlog' : rk,
+                            color: rk === UNSCHEDULED_KEY ? 'slate' : (isMVPRelease(rk) ? 'emerald' : 'blue'),
+                        }))}
+                        selected={releaseFilter}
+                        onToggle={toggleReleaseFilter}
+                    />
+                    {hasFilters && (
+                        <button
+                            type="button"
+                            onClick={clearFilters}
+                            className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 underline"
+                        >
+                            Clear filters
+                        </button>
+                    )}
+                </div>
+            )}
+
             {/* Grid */}
             <div className="feature-scroll flex-1 min-h-0 overflow-auto">
                 <DndContext
@@ -300,11 +380,11 @@ export function RoadmapView() {
                 >
                     <div className="min-w-[1300px] p-2">
                         {/* Header row */}
-                        <div className="grid sticky top-0 z-10 bg-slate-50/95 backdrop-blur" style={gridTemplate(ROADMAP_COLUMNS.length)}>
+                        <div className="grid sticky top-0 z-10 bg-slate-50/95 backdrop-blur" style={gridTemplate(visibleColumns.length)}>
                             <div className="px-2 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
                                 Epic / Release →
                             </div>
-                            {ROADMAP_COLUMNS.map(rk => (
+                            {visibleColumns.map(rk => (
                                 <ReleaseHeader
                                     key={rk}
                                     releaseKey={rk}
@@ -318,17 +398,21 @@ export function RoadmapView() {
 
                         {/* Epic swim lanes */}
                         <div className="space-y-2 mt-2">
-                            {sortedEpics.map(e => (
+                            {visibleEpics.map(e => (
                                 <EpicSwimLane
                                     key={e.id}
                                     epic={e}
                                     cells={grouped[e.id]}
+                                    visibleColumns={visibleColumns}
                                     onOpen={(id) => setSelectedId(id)}
+                                    onSolo={() => soloEpic(e.id)}
+                                    isSoloed={epicFilter.size === 1 && epicFilter.has(e.id)}
                                 />
                             ))}
-                            {Object.values(grouped[UNFILED_EPIC_KEY] ?? {}).some(arr => arr.length > 0) && (
+                            {epicFilter.size === 0 && Object.values(grouped[UNFILED_EPIC_KEY] ?? {}).some(arr => arr.length > 0) && (
                                 <UnfiledSwimLane
                                     cells={grouped[UNFILED_EPIC_KEY]}
+                                    visibleColumns={visibleColumns}
                                     onOpen={(id) => setSelectedId(id)}
                                 />
                             )}
@@ -340,16 +424,23 @@ export function RoadmapView() {
                                     </p>
                                 </div>
                             )}
+                            {visibleEpics.length === 0 && sortedEpics.length > 0 && (
+                                <div className="rounded-xl border border-dashed bg-white p-6 text-center">
+                                    <p className="text-xs text-slate-500">
+                                        No epics match the active filter. <button onClick={clearFilters} className="text-blue-600 underline">Clear filters</button> to see everything.
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Footer — per-release totals so the eye doesn't have to
                             scroll back to the header to compare load. */}
-                        {sortedEpics.length > 0 && (
-                            <div className="grid mt-3 rounded-lg border bg-white" style={gridTemplate(ROADMAP_COLUMNS.length)}>
+                        {sortedEpics.length > 0 && visibleEpics.length > 0 && (
+                            <div className="grid mt-3 rounded-lg border bg-white" style={gridTemplate(visibleColumns.length)}>
                                 <div className="px-3 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-500">
                                     Release totals
                                 </div>
-                                {ROADMAP_COLUMNS.map(rk => {
+                                {visibleColumns.map(rk => {
                                     const total = pointsByRelease[rk] ?? 0;
                                     const itemCount = Object.values(grouped).reduce(
                                         (sum, byEpic) => sum + (byEpic[rk]?.length ?? 0), 0);
@@ -474,11 +565,17 @@ function ReleaseHeader({
 function EpicSwimLane({
     epic,
     cells,
+    visibleColumns,
     onOpen,
+    onSolo,
+    isSoloed,
 }: {
     epic: EpicDoc;
     cells: Record<string, FeatureDoc[]>;
+    visibleColumns: readonly string[];
     onOpen: (id: string) => void;
+    onSolo: () => void;
+    isSoloed: boolean;
 }) {
     const epicTotal = useMemo(
         () => Object.values(cells).reduce((sum, arr) => sum + arr.reduce((s, f) => s + (f.points ?? 0), 0), 0),
@@ -491,21 +588,34 @@ function EpicSwimLane({
 
     return (
         <div className="rounded-xl border bg-white overflow-hidden">
-            <div className="grid" style={gridTemplate(ROADMAP_COLUMNS.length)}>
-                {/* Epic label */}
-                <div className="flex items-stretch">
+            <div className="grid" style={gridTemplate(visibleColumns.length)}>
+                {/* Epic label — clickable to solo */}
+                <button
+                    type="button"
+                    onClick={onSolo}
+                    title={isSoloed ? 'Click to clear filter (show all epics)' : `Click to focus on "${epic.title}" only`}
+                    className={cn(
+                        'flex items-stretch text-left transition-colors',
+                        isSoloed ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-slate-50',
+                    )}
+                >
                     <div className={cn('w-1 shrink-0', EPIC_BAND_BG[epic.color] ?? 'bg-slate-400')} />
                     <div className="flex-1 px-3 py-3 min-w-0">
-                        <div className="text-xs font-bold text-slate-800 truncate" title={epic.title}>
+                        <div className="text-xs font-bold text-slate-800 truncate flex items-center gap-1.5" title={epic.title}>
                             {epic.shortLabel || epic.title}
+                            {isSoloed && (
+                                <span className="text-[8px] font-black uppercase tracking-widest bg-blue-600 text-white rounded-full px-1.5 py-0.5 shrink-0">
+                                    Soloed
+                                </span>
+                            )}
                         </div>
                         <div className="text-[10px] text-slate-400">
                             {epicCount} item{epicCount === 1 ? '' : 's'} · {epicTotal} pts
                         </div>
                     </div>
-                </div>
+                </button>
                 {/* Cells */}
-                {ROADMAP_COLUMNS.map(rk => (
+                {visibleColumns.map(rk => (
                     <RoadmapCell
                         key={rk}
                         epic={epic}
@@ -521,9 +631,11 @@ function EpicSwimLane({
 
 function UnfiledSwimLane({
     cells,
+    visibleColumns,
     onOpen,
 }: {
     cells: Record<string, FeatureDoc[]>;
+    visibleColumns: readonly string[];
     onOpen: (id: string) => void;
 }) {
     const total = useMemo(
@@ -533,7 +645,7 @@ function UnfiledSwimLane({
     if (total === 0) return null;
     return (
         <div className="rounded-xl border border-dashed bg-white overflow-hidden">
-            <div className="grid" style={gridTemplate(ROADMAP_COLUMNS.length)}>
+            <div className="grid" style={gridTemplate(visibleColumns.length)}>
                 <div className="flex items-stretch">
                     <div className="w-1 shrink-0 bg-slate-300" />
                     <div className="flex-1 px-3 py-3 min-w-0">
@@ -541,7 +653,7 @@ function UnfiledSwimLane({
                         <div className="text-[10px] text-slate-400">{total} item{total === 1 ? '' : 's'}</div>
                     </div>
                 </div>
-                {ROADMAP_COLUMNS.map(rk => (
+                {visibleColumns.map(rk => (
                     <RoadmapCell
                         key={rk}
                         epic={null}
@@ -685,5 +797,57 @@ function FeatureChip({
                 </span>
             </div>
         </button>
+    );
+}
+
+/**
+ * Multi-select toggle pill row for the filter bar.
+ *
+ * Empty `selected` set = "show all" (the visual treatment for that
+ * row dims none of the pills — they all read as "available"). Clicking
+ * a pill in this state TOGGLES it selected, which switches into
+ * filter mode. Click a selected pill to remove it from the filter.
+ */
+function FilterRow({
+    label,
+    options,
+    selected,
+    onToggle,
+}: {
+    label: string;
+    options: Array<{ key: string; label: string; color?: EpicColor | string }>;
+    selected: Set<string>;
+    onToggle: (key: string) => void;
+}) {
+    const filterActive = selected.size > 0;
+    return (
+        <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 shrink-0 w-16">
+                {label}
+            </span>
+            {options.map(o => {
+                const isSelected = selected.has(o.key);
+                // When a filter is active: selected = highlighted, others = dimmed.
+                // When no filter: all pills look "neutral available".
+                const dimmed = filterActive && !isSelected;
+                return (
+                    <button
+                        key={o.key}
+                        type="button"
+                        onClick={() => onToggle(o.key)}
+                        className={cn(
+                            'text-[10px] font-semibold rounded-full border px-2 py-0.5 transition-colors',
+                            isSelected
+                                ? 'bg-blue-600 text-white border-blue-700 hover:bg-blue-700'
+                                : dimmed
+                                    ? 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'
+                                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50',
+                        )}
+                    >
+                        {o.label}
+                    </button>
+                );
+            })}
+        </div>
     );
 }
