@@ -9,21 +9,23 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { doc } from 'firebase/firestore';
-import { Lightbulb, Kanban, BookOpen, ShieldAlert, Calendar } from 'lucide-react';
+import { Lightbulb, Kanban, BookOpen, ShieldAlert, Calendar, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { FeatureTrackingBoard } from '@/components/feature-tracking-board';
 import { ReleaseNotesView } from '@/components/release-notes-view';
 import { RoadmapView } from '@/components/roadmap-view';
+import { BacklogView } from '@/components/backlog-view';
 import type { ReleaseNote } from '@/lib/release-notes-loader';
 
-type View = 'board' | 'roadmap' | 'notes';
+type View = 'board' | 'roadmap' | 'backlog' | 'notes';
 
 function initialView(): View {
     if (typeof window === 'undefined') return 'board';
     const v = new URLSearchParams(window.location.search).get('view');
     if (v === 'roadmap') return 'roadmap';
+    if (v === 'backlog') return 'backlog';
     if (v === 'notes') return 'notes';
     return 'board';
 }
@@ -97,6 +99,12 @@ export function FeatureTrackingView({ releaseNotes }: { releaseNotes: ReleaseNot
                         label="Roadmap"
                     />
                     <TabButton
+                        active={view === 'backlog'}
+                        onClick={() => setView('backlog')}
+                        icon={<Layers className="h-3.5 w-3.5" />}
+                        label="Backlog"
+                    />
+                    <TabButton
                         active={view === 'notes'}
                         onClick={() => setView('notes')}
                         icon={<BookOpen className="h-3.5 w-3.5" />}
@@ -114,6 +122,7 @@ export function FeatureTrackingView({ releaseNotes }: { releaseNotes: ReleaseNot
             <div className="flex-1 min-h-0">
                 {view === 'board' && <FeatureTrackingBoard />}
                 {view === 'roadmap' && <RoadmapView />}
+                {view === 'backlog' && <BacklogView />}
                 {view === 'notes' && <ReleaseNotesView notes={releaseNotes} />}
             </div>
         </div>
