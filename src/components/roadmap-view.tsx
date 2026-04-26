@@ -19,9 +19,23 @@
  */
 
 import { useMemo, useState } from 'react';
-import { collection } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import {
+    DndContext,
+    DragOverlay,
+    PointerSensor,
+    useDraggable,
+    useDroppable,
+    useSensor,
+    useSensors,
+    closestCorners,
+    type DragEndEvent,
+    type DragStartEvent,
+} from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { useToast } from '@/hooks/use-toast';
 import {
     AlertTriangle,
     Bug,
@@ -70,12 +84,27 @@ const UNFILED_EPIC_KEY = '__unfiled__';
 
 export function RoadmapView() {
     const firestore = useFirestore();
+    const { toast } = useToast();
     const featuresRef = useMemoFirebase(() => collection(firestore, 'features'), [firestore]);
     const epicsRef = useMemoFirebase(() => collection(firestore, 'epics'), [firestore]);
     const { data: features } = useCollection<FeatureDoc>(featuresRef);
     const { data: epics } = useCollection<EpicDoc>(epicsRef);
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [activeId, setActiveId] = useState<string | null>(null);
+    /**
+     * Optimistic overlay for the dragged feature — same pattern as the
+     * Board. Cleared on snapshot match or on write failure (rolled back).
+     */
+    const [optimistic, setOptimistic] = useState<
+        Record<string, { epicId: string | null; targetRelease: string | null }>
+    >({});
+
+    // Activation distance: a click on a chip opens the detail sheet,
+    // a 5px drag starts a move. Same UX contract as the Board.
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    );
 
     /**
      * Visible features: not soft-deleted, AND either bucket-able into a
@@ -84,13 +113,38 @@ export function RoadmapView() {
      * filtered out — Roadmap is a forward-looking view, the past lives
      * in the Release Notes tab.
      */
+    /** Apply optimistic moves over the live snapshot. */
+    const mergedFeatures = useMemo(() => {
+        if (!features) return features;
+        if (Object.keys(optimistic).length === 0) return features;
+        return features.map(f => {
+            const o = optimistic[f.id];
+            return o ? { ...f, epicId: o.epicId, targetRelease: o.targetRelease } : f;
+        });
+    }, [features, optimistic]);
+
+    // Drop optimistic entries once Firestore catches up.
+    useMemo(() => {
+        if (!features || Object.keys(optimistic).length === 0) return;
+        const next = { ...optimistic };
+        let changed = false;
+        for (const f of features) {
+            const o = optimistic[f.id];
+            if (o && (f.epicId ?? null) === o.epicId && (f.targetRelease ?? null) === o.targetRelease) {
+                delete next[f.id];
+                changed = true;
+            }
+        }
+        if (changed) setOptimistic(next);
+    }, [features, optimistic]);
+
     const visibleFeatures = useMemo(() => {
-        return (features ?? []).filter(f => {
+        return (mergedFeatures ?? []).filter(f => {
             if (f.deletedAt) return false;
             if (!f.targetRelease) return true;     // Unscheduled bucket
             return f.targetRelease in RELEASE_WINDOWS;
         });
-    }, [features]);
+    }, [mergedFeatures]);
 
     const sortedEpics = useMemo(
         () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
@@ -145,6 +199,73 @@ export function RoadmapView() {
     const filteredCount = visibleFeatures.length;
     const hiddenCount = unfilteredCount - filteredCount;
 
+    const activeFeature = activeId ? (featureById.get(activeId) ?? null) : null;
+
+    function onDragStart(e: DragStartEvent) {
+        setActiveId(String(e.active.id));
+    }
+
+    async function onDragEnd(e: DragEndEvent) {
+        setActiveId(null);
+        const { active, over } = e;
+        if (!over) return;
+        const activeKey = String(active.id);
+        const overKey = String(over.id);
+        // Cell ids are encoded as `cell:${epicKey}:${releaseKey}`
+        if (!overKey.startsWith('cell:')) return;
+        const [, epicKeyRaw, releaseKey] = overKey.split(':');
+        const targetEpicId = epicKeyRaw === UNFILED_EPIC_KEY ? null : epicKeyRaw;
+        const targetRelease = releaseKey === UNSCHEDULED_KEY ? null : releaseKey;
+
+        const moving = featureById.get(activeKey);
+        if (!moving) return;
+        // No-op: same cell.
+        const currentEpic = moving.epicId ?? null;
+        const currentRelease = moving.targetRelease ?? null;
+        if (currentEpic === targetEpicId && currentRelease === targetRelease) return;
+
+        // Optimistic.
+        setOptimistic(prev => ({
+            ...prev,
+            [activeKey]: { epicId: targetEpicId, targetRelease },
+        }));
+
+        try {
+            await updateDoc(doc(firestore, 'features', activeKey), {
+                epicId: targetEpicId,
+                targetRelease,
+                updatedAt: serverTimestamp(),
+            });
+
+            // Capacity warning AFTER the write — sum of points for the
+            // target release (using the merged map so the dropped card
+            // is included in the sum).
+            if (targetRelease && targetRelease in RELEASE_WINDOWS) {
+                const newSum = (pointsByRelease[targetRelease] ?? 0) + (moving.points ?? 0)
+                    - (currentRelease === targetRelease ? (moving.points ?? 0) : 0);
+                if (newSum >= POINTS_RED) {
+                    toast({
+                        variant: 'destructive',
+                        title: `${targetRelease} is overloaded`,
+                        description: `${newSum} pts (red — likely impossible to ship).`,
+                    });
+                } else if (newSum >= POINTS_AMBER) {
+                    toast({
+                        title: `${targetRelease} is over capacity`,
+                        description: `${newSum} pts (amber — pushing the limit).`,
+                    });
+                }
+            }
+        } catch (err: any) {
+            setOptimistic(prev => {
+                const copy = { ...prev };
+                delete copy[activeKey];
+                return copy;
+            });
+            toast({ variant: 'destructive', title: 'Move failed', description: err?.message ?? 'See console.' });
+        }
+    }
+
     return (
         <div className="flex flex-col h-full bg-slate-50/50">
             {/* Banner */}
@@ -171,51 +292,60 @@ export function RoadmapView() {
 
             {/* Grid */}
             <div className="feature-scroll flex-1 min-h-0 overflow-auto">
-                <div className="min-w-[1100px] p-4">
-                    {/* Header row */}
-                    <div className="grid sticky top-0 z-10 bg-slate-50/95 backdrop-blur" style={gridTemplate(ROADMAP_COLUMNS.length)}>
-                        <div className="px-2 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            Epic / Release →
-                        </div>
-                        {ROADMAP_COLUMNS.map(rk => (
-                            <ReleaseHeader
-                                key={rk}
-                                releaseKey={rk}
-                                points={pointsByRelease[rk]}
-                                isActive={activeReleaseKey === rk}
-                                isMVP={rk !== UNSCHEDULED_KEY && isMVPRelease(rk)}
-                                isBacklog={rk === UNSCHEDULED_KEY}
-                            />
-                        ))}
-                    </div>
-
-                    {/* Epic swim lanes */}
-                    <div className="space-y-2 mt-2">
-                        {sortedEpics.map(e => (
-                            <EpicSwimLane
-                                key={e.id}
-                                epic={e}
-                                cells={grouped[e.id]}
-                                onOpen={(id) => setSelectedId(id)}
-                            />
-                        ))}
-                        {/* Unfiled lane — only render if there's anything in it. */}
-                        {Object.values(grouped[UNFILED_EPIC_KEY] ?? {}).some(arr => arr.length > 0) && (
-                            <UnfiledSwimLane
-                                cells={grouped[UNFILED_EPIC_KEY]}
-                                onOpen={(id) => setSelectedId(id)}
-                            />
-                        )}
-                        {sortedEpics.length === 0 && (
-                            <div className="rounded-xl border bg-white p-8 text-center space-y-2">
-                                <p className="text-sm font-semibold text-slate-700">No epics yet</p>
-                                <p className="text-xs text-slate-500">
-                                    Open <strong>Manage epics</strong> from the Board banner to create the swim lanes that group your features.
-                                </p>
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCorners}
+                    onDragStart={onDragStart}
+                    onDragEnd={onDragEnd}
+                >
+                    <div className="min-w-[1100px] p-4">
+                        {/* Header row */}
+                        <div className="grid sticky top-0 z-10 bg-slate-50/95 backdrop-blur" style={gridTemplate(ROADMAP_COLUMNS.length)}>
+                            <div className="px-2 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                Epic / Release →
                             </div>
-                        )}
+                            {ROADMAP_COLUMNS.map(rk => (
+                                <ReleaseHeader
+                                    key={rk}
+                                    releaseKey={rk}
+                                    points={pointsByRelease[rk]}
+                                    isActive={activeReleaseKey === rk}
+                                    isMVP={rk !== UNSCHEDULED_KEY && isMVPRelease(rk)}
+                                    isBacklog={rk === UNSCHEDULED_KEY}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Epic swim lanes */}
+                        <div className="space-y-2 mt-2">
+                            {sortedEpics.map(e => (
+                                <EpicSwimLane
+                                    key={e.id}
+                                    epic={e}
+                                    cells={grouped[e.id]}
+                                    onOpen={(id) => setSelectedId(id)}
+                                />
+                            ))}
+                            {Object.values(grouped[UNFILED_EPIC_KEY] ?? {}).some(arr => arr.length > 0) && (
+                                <UnfiledSwimLane
+                                    cells={grouped[UNFILED_EPIC_KEY]}
+                                    onOpen={(id) => setSelectedId(id)}
+                                />
+                            )}
+                            {sortedEpics.length === 0 && (
+                                <div className="rounded-xl border bg-white p-8 text-center space-y-2">
+                                    <p className="text-sm font-semibold text-slate-700">No epics yet</p>
+                                    <p className="text-xs text-slate-500">
+                                        Open <strong>Manage epics</strong> from the Board banner to create the swim lanes that group your features.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                    <DragOverlay>
+                        {activeFeature ? <FeatureChip feature={activeFeature} onOpen={() => {}} isOverlay /> : null}
+                    </DragOverlay>
+                </DndContext>
             </div>
 
             <FeatureDetailSheet
@@ -396,15 +526,23 @@ function RoadmapCell({
     onOpen: (id: string) => void;
 }) {
     const isBacklog = releaseKey === UNSCHEDULED_KEY;
+    const epicKey = epic?.id ?? UNFILED_EPIC_KEY;
+    // Cell id encodes both axes — onDragEnd parses this to know the
+    // target epic + release for the dropped feature.
+    const { setNodeRef, isOver } = useDroppable({ id: `cell:${epicKey}:${releaseKey}` });
     return (
-        <div className={cn(
-            'border-l border-slate-100 px-2 py-2 space-y-1.5 min-h-[64px]',
-            isBacklog && 'bg-slate-50/80',
-            !isBacklog && epic && EPIC_TINT[epic.color],
-        )}>
+        <div
+            ref={setNodeRef}
+            className={cn(
+                'border-l border-slate-100 px-2 py-2 space-y-1.5 min-h-[64px] transition-colors',
+                isBacklog && 'bg-slate-50/80',
+                !isBacklog && epic && EPIC_TINT[epic.color],
+                isOver && 'ring-2 ring-inset ring-blue-300 bg-blue-50/60',
+            )}
+        >
             {features.length === 0 ? (
                 <div className="h-full flex items-center justify-center">
-                    <span className="text-[10px] text-slate-300">—</span>
+                    <span className="text-[10px] text-slate-300">{isOver ? 'Drop' : '—'}</span>
                 </div>
             ) : (
                 features.map(f => (
@@ -418,9 +556,12 @@ function RoadmapCell({
 function FeatureChip({
     feature,
     onOpen,
+    isOverlay = false,
 }: {
     feature: FeatureDoc;
     onOpen: (id: string) => void;
+    /** Rendered inside <DragOverlay>? If so skip useDraggable wiring. */
+    isOverlay?: boolean;
 }) {
     const Icon = feature.type === 'bug' ? Bug
         : feature.type === 'improvement' ? Wrench
@@ -430,15 +571,32 @@ function FeatureChip({
         : 'text-blue-500';
     const isUnestimated = feature.points == null;
 
+    // Hook always called (rules-of-hooks). Disabled for the overlay
+    // clone so it doesn't try to register a second draggable id.
+    const draggable = useDraggable({ id: feature.id, disabled: isOverlay });
+    const style: React.CSSProperties = isOverlay
+        ? { cursor: 'grabbing' }
+        : {
+            transform: CSS.Translate.toString(draggable.transform),
+            opacity: draggable.isDragging ? 0.3 : 1,
+        };
+
     return (
         <button
+            ref={isOverlay ? undefined : draggable.setNodeRef}
+            style={style}
+            {...(isOverlay ? {} : draggable.attributes)}
+            {...(isOverlay ? {} : draggable.listeners)}
             type="button"
-            onClick={() => onOpen(feature.id)}
+            onClick={() => { if (!isOverlay) onOpen(feature.id); }}
             className={cn(
                 'w-full text-left rounded-md border bg-white px-2 py-1.5 hover:border-blue-300 hover:shadow-sm transition-all',
                 'group flex items-start gap-1.5',
+                isOverlay
+                    ? 'shadow-xl ring-2 ring-blue-300 cursor-grabbing'
+                    : 'cursor-grab active:cursor-grabbing',
             )}
-            title={feature.title}
+            title={isOverlay ? feature.title : `${feature.title} — click to open · drag to move`}
         >
             <Icon className={cn('h-3 w-3 shrink-0 mt-0.5', iconClass)} />
             <span className="flex-1 text-[11px] font-medium text-slate-700 line-clamp-2 leading-tight">
