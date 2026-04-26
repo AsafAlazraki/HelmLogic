@@ -33,20 +33,6 @@ service cloud.firestore {
       );
     }
 
-    /**
-     * Sub-dealer detection (v1.6) — a user is a sub-dealer when their
-     * org has parentOrganisationId set. Used by Feature Tracking to gate
-     * epics + features away from sub-dealers (commercial-roadmap
-     * isolation per stakeholder spec).
-     */
-    function isSubDealer() {
-      return isSignedIn() &&
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId != null &&
-        exists(/databases/$(database)/documents/organisations/$(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId)) &&
-        get(/databases/$(database)/documents/organisations/$(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organisationId)).data.parentOrganisationId != null;
-    }
-
     // --- COLLECTION RULES ---
 
     // HelmLogic Admins get full access to the entire database
@@ -119,23 +105,22 @@ service cloud.firestore {
     }
 
     // Feature Tracking (v1.5 + v1.6).
-    // v1.5: open to any signed-in user — create / vote / comment / drag /
-    //       move status / set release / delete.
-    // v1.6: gated AWAY from sub-dealer org users — they must NOT see the
-    //       internal product roadmap (commercial isolation per stakeholder
-    //       spec). HelmLogic staff + parent-dealer staff are still open.
-    //       See tasks/v1.6-planning-system-design.md §3.
+    // Open to any signed-in user. Sub-dealer hiding is enforced
+    // client-side (sidebar hides the link, page-level gate shows
+    // "Not available for sub-dealer accounts"). The rule-layer
+    // sub-dealer check was removed in v1.6.1 because it falsely
+    // denied parent-dealer admins (e.g. billh@nsmarine.com.au).
+    // See post-mortem in tasks/v1.6-planning-system-status.md.
     match /features/{featureId} {
-      allow read, write: if isSignedIn() && !isSubDealer();
+      allow read, write: if isSignedIn();
       match /comments/{commentId} {
-        allow read, write: if isSignedIn() && !isSubDealer();
+        allow read, write: if isSignedIn();
       }
     }
 
-    // Epics (v1.6) — first-class grouping for features. Same gating as
-    // features.
+    // Epics (v1.6) — same gating as features.
     match /epics/{epicId} {
-      allow read, write: if isSignedIn() && !isSubDealer();
+      allow read, write: if isSignedIn();
     }
 
     match /dealerFitCategories/{catId} {
