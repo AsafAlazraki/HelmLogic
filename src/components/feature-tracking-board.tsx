@@ -259,6 +259,26 @@ const PRIORITY_STYLES: Record<FeaturePriority, { label: string; className: strin
     'nice-to-have': { label: 'Nice to have', className: 'bg-slate-50 text-slate-500 border-slate-100' },
 };
 
+/** v1.6 — Epic chip colour classes used on the FeatureCard. */
+const CARD_EPIC_CHIP: Record<EpicColor, string> = {
+    blue:    'bg-blue-50 text-blue-700 border-blue-200',
+    amber:   'bg-amber-50 text-amber-700 border-amber-200',
+    violet:  'bg-violet-50 text-violet-700 border-violet-200',
+    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    rose:    'bg-rose-50 text-rose-700 border-rose-200',
+    indigo:  'bg-indigo-50 text-indigo-700 border-indigo-200',
+    slate:   'bg-slate-50 text-slate-600 border-slate-200',
+};
+const CARD_EPIC_DOT: Record<EpicColor, string> = {
+    blue: 'bg-blue-500',
+    amber: 'bg-amber-500',
+    violet: 'bg-violet-500',
+    emerald: 'bg-emerald-500',
+    rose: 'bg-rose-500',
+    indigo: 'bg-indigo-500',
+    slate: 'bg-slate-500',
+};
+
 /**
  * Shared release Select — used by both the create dialog and the detail
  * sheet so the list stays consistent. Preserves legacy free-text values
@@ -420,6 +440,8 @@ export function FeatureTrackingBoard() {
     const [epicMgmtOpen, setEpicMgmtOpen] = useState(false);
     /** v1.6 — when true the board shows soft-deleted features only. */
     const [archiveMode, setArchiveMode] = useState(false);
+    /** v1.6 — group columns by status (default) or by epic. */
+    const [groupBy, setGroupBy] = useState<'status' | 'epic'>('status');
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [activeId, setActiveId] = useState<string | null>(null);
     // Per-column sort mode. Defaults to 'manual' (drag order). When a
@@ -449,6 +471,22 @@ export function FeatureTrackingBoard() {
         [firestore],
     );
     const { data: features, isLoading } = useCollection<FeatureDoc>(featuresQuery);
+    // v1.6 — epics subscription drives the epic chip on cards and the
+    // "Group by Epic" column rendering.
+    const epicsQuery = useMemoFirebase(
+        () => collection(firestore, 'epics'),
+        [firestore],
+    );
+    const { data: epics } = useCollection<EpicDoc>(epicsQuery);
+    const epicById = useMemo(() => {
+        const m = new Map<string, EpicDoc>();
+        for (const e of epics ?? []) m.set(e.id, e);
+        return m;
+    }, [epics]);
+    const sortedEpics = useMemo(
+        () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+        [epics],
+    );
 
     /** Apply any pending optimistic moves over the live snapshot. */
     const mergedFeatures = useMemo(() => {
@@ -632,6 +670,33 @@ export function FeatureTrackingBoard() {
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        {/* Group-by toggle — pill switch, hidden in archive mode */}
+                        {!archiveMode && (
+                            <div className="inline-flex bg-white/15 rounded-full p-0.5 text-[11px] font-semibold">
+                                <button
+                                    type="button"
+                                    onClick={() => setGroupBy('status')}
+                                    className={cn(
+                                        'px-2.5 py-1 rounded-full transition-colors',
+                                        groupBy === 'status' ? 'bg-white text-blue-700' : 'text-white/80 hover:text-white',
+                                    )}
+                                    title="Group columns by status (default)"
+                                >
+                                    Status
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setGroupBy('epic')}
+                                    className={cn(
+                                        'px-2.5 py-1 rounded-full transition-colors',
+                                        groupBy === 'epic' ? 'bg-white text-blue-700' : 'text-white/80 hover:text-white',
+                                    )}
+                                    title="Group columns by epic (drag is disabled in this mode)"
+                                >
+                                    Epic
+                                </button>
+                            </div>
+                        )}
                         <Button
                             size="sm"
                             variant="ghost"
@@ -672,37 +737,50 @@ export function FeatureTrackingBoard() {
                 user can still reach every column. */}
             <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden">
                 <div className="p-6 h-full flex flex-col">
-                    <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCorners}
-                        onDragStart={onDragStart}
-                        onDragEnd={onDragEnd}
-                    >
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 lg:auto-rows-fr gap-4 flex-1 min-h-0">
-                            {COLUMNS.map(col => (
-                                <ColumnView
-                                    key={col.key}
-                                    column={col}
-                                    features={byStatus[col.key]}
-                                    currentUserId={user?.uid}
-                                    onOpen={id => setSelectedId(id)}
-                                    sortMode={sortModes[col.key]}
-                                    onSortModeChange={(m) =>
-                                        setSortModes(prev => ({ ...prev, [col.key]: m }))
-                                    }
-                                />
-                            ))}
-                        </div>
-                        <DragOverlay>
-                            {activeFeature ? (
-                                <FeatureCard
-                                    feature={activeFeature}
-                                    currentUserId={user?.uid}
-                                    isOverlay
-                                />
-                            ) : null}
-                        </DragOverlay>
-                    </DndContext>
+                    {groupBy === 'status' ? (
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCorners}
+                            onDragStart={onDragStart}
+                            onDragEnd={onDragEnd}
+                        >
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 lg:auto-rows-fr gap-4 flex-1 min-h-0">
+                                {COLUMNS.map(col => (
+                                    <ColumnView
+                                        key={col.key}
+                                        column={col}
+                                        features={byStatus[col.key]}
+                                        currentUserId={user?.uid}
+                                        onOpen={id => setSelectedId(id)}
+                                        sortMode={sortModes[col.key]}
+                                        onSortModeChange={(m) =>
+                                            setSortModes(prev => ({ ...prev, [col.key]: m }))
+                                        }
+                                        epicById={epicById}
+                                    />
+                                ))}
+                            </div>
+                            <DragOverlay>
+                                {activeFeature ? (
+                                    <FeatureCard
+                                        feature={activeFeature}
+                                        currentUserId={user?.uid}
+                                        epicById={epicById}
+                                        isOverlay
+                                    />
+                                ) : null}
+                            </DragOverlay>
+                        </DndContext>
+                    ) : (
+                        <EpicGroupedBoard
+                            epics={sortedEpics}
+                            features={mergedFeatures ?? []}
+                            archiveMode={archiveMode}
+                            currentUserId={user?.uid}
+                            epicById={epicById}
+                            onOpen={id => setSelectedId(id)}
+                        />
+                    )}
                 </div>
             </div>
 
@@ -727,6 +805,109 @@ export function FeatureTrackingBoard() {
 }
 
 // ---------------------------------------------------------------------------
+// Group by Epic — alternative board layout (v1.6)
+// ---------------------------------------------------------------------------
+
+/**
+ * v1.6 — when groupBy === 'epic', render columns by epic instead of by
+ * status. Drag is intentionally disabled in this mode (we wouldn't want
+ * a drop to silently rewrite epicId — change epic via the detail sheet
+ * or the Roadmap). Cards still click-to-open.
+ */
+function EpicGroupedBoard({
+    epics,
+    features,
+    archiveMode,
+    currentUserId,
+    epicById,
+    onOpen,
+}: {
+    epics: EpicDoc[];
+    features: FeatureDoc[];
+    archiveMode: boolean;
+    currentUserId?: string;
+    epicById: Map<string, EpicDoc>;
+    onOpen: (id: string) => void;
+}) {
+    const UNFILED = '__unfiled__';
+    const byEpic = useMemo(() => {
+        const groups: Record<string, FeatureDoc[]> = {};
+        for (const e of epics) groups[e.id] = [];
+        groups[UNFILED] = [];
+        for (const f of features) {
+            const isArchived = !!f.deletedAt;
+            if (archiveMode ? !isArchived : isArchived) continue;
+            const key = f.epicId && groups[f.epicId] ? f.epicId : UNFILED;
+            groups[key].push(f);
+        }
+        // Sort each column by createdAt DESC (newest first) — feels
+        // most useful when scanning epic columns.
+        for (const key of Object.keys(groups)) {
+            groups[key].sort((a, b) => {
+                const bt = b.createdAt?.toMillis?.() ?? 0;
+                const at = a.createdAt?.toMillis?.() ?? 0;
+                return bt - at;
+            });
+        }
+        return groups;
+    }, [epics, features, archiveMode]);
+
+    const cols: Array<{ key: string; label: string; color: EpicColor; epic?: EpicDoc }> = [
+        ...epics.map(e => ({ key: e.id, label: e.shortLabel || e.title, color: e.color, epic: e })),
+        { key: UNFILED, label: 'Unfiled', color: 'slate' as EpicColor },
+    ];
+
+    return (
+        <div
+            className="grid lg:auto-rows-fr gap-4 flex-1 min-h-0"
+            style={{ gridTemplateColumns: `repeat(${cols.length}, minmax(220px, 1fr))` }}
+        >
+            {cols.map(col => (
+                <div key={col.key} className="flex flex-col min-h-0 lg:h-full">
+                    <div className={cn(
+                        'rounded-t-xl border-t-2 border-x border-b bg-white shrink-0',
+                        'flex items-center justify-between gap-2 px-3 py-2.5',
+                        // Top border colour matches the epic colour
+                        col.color === 'blue' && 'border-t-blue-500',
+                        col.color === 'amber' && 'border-t-amber-500',
+                        col.color === 'violet' && 'border-t-violet-500',
+                        col.color === 'emerald' && 'border-t-emerald-500',
+                        col.color === 'rose' && 'border-t-rose-500',
+                        col.color === 'indigo' && 'border-t-indigo-500',
+                        col.color === 'slate' && 'border-t-slate-400',
+                    )}>
+                        <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-700 truncate" title={col.epic?.title || col.label}>
+                            {col.label}
+                        </h3>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                            {byEpic[col.key].length}
+                        </span>
+                    </div>
+                    <div className="feature-scroll flex-1 min-h-[200px] lg:min-h-0 space-y-2 border-x border-b rounded-b-xl bg-slate-50/70 p-2 overflow-y-auto">
+                        {byEpic[col.key].length === 0 ? (
+                            <p className="text-[10px] text-slate-400 italic text-center py-4">
+                                {col.key === UNFILED ? 'Nothing unfiled.' : 'Nothing in this epic.'}
+                            </p>
+                        ) : (
+                            byEpic[col.key].map(f => (
+                                <FeatureCard
+                                    key={f.id}
+                                    feature={f}
+                                    currentUserId={currentUserId}
+                                    onOpen={onOpen}
+                                    dragDisabled
+                                    epicById={epicById}
+                                />
+                            ))
+                        )}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Column
 // ---------------------------------------------------------------------------
 
@@ -737,6 +918,7 @@ function ColumnView({
     onOpen,
     sortMode,
     onSortModeChange,
+    epicById,
 }: {
     column: typeof COLUMNS[number];
     features: FeatureDoc[];
@@ -744,6 +926,7 @@ function ColumnView({
     onOpen: (id: string) => void;
     sortMode: SortMode;
     onSortModeChange: (m: SortMode) => void;
+    epicById?: Map<string, EpicDoc>;
 }) {
     // Column body acts as a drop target so an empty column can still
     // receive cards (dropping anywhere inside appends to the end).
@@ -833,6 +1016,7 @@ function ColumnView({
                                 currentUserId={currentUserId}
                                 onOpen={onOpen}
                                 dragDisabled={dragDisabled}
+                                epicById={epicById}
                             />
                         ))
                     )}
@@ -852,6 +1036,7 @@ function FeatureCard({
     onOpen,
     isOverlay = false,
     dragDisabled = false,
+    epicById,
 }: {
     feature: FeatureDoc;
     currentUserId?: string;
@@ -860,6 +1045,8 @@ function FeatureCard({
     isOverlay?: boolean;
     /** Disable drag handle (used when the column sort is not 'manual'). */
     dragDisabled?: boolean;
+    /** v1.6 — for rendering the epic chip. */
+    epicById?: Map<string, EpicDoc>;
 }) {
     const firestore = useFirestore();
     const voteIds = feature.voteIds ?? [];
@@ -926,6 +1113,22 @@ function FeatureCard({
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
+                {/* v1.6 — Epic chip (if assigned to an epic that exists). */}
+                {feature.epicId && epicById?.get(feature.epicId) && (() => {
+                    const epic = epicById.get(feature.epicId!)!;
+                    return (
+                        <span
+                            className={cn(
+                                'inline-flex items-center gap-1 text-[9px] font-bold rounded px-1.5 py-0.5 border',
+                                CARD_EPIC_CHIP[epic.color] ?? CARD_EPIC_CHIP.slate,
+                            )}
+                            title={`Epic: ${epic.title}`}
+                        >
+                            <span className={cn('h-1.5 w-1.5 rounded-full', CARD_EPIC_DOT[epic.color] ?? CARD_EPIC_DOT.slate)} />
+                            {epic.shortLabel || epic.title}
+                        </span>
+                    );
+                })()}
                 {priority && (
                     <Badge variant="outline" className={cn('text-[9px] font-bold border', priority.className)}>
                         {priority.label}
@@ -936,6 +1139,16 @@ function FeatureCard({
                         {feature.targetRelease}
                     </Badge>
                 )}
+                {/* v1.6 — Story points badge (or "?" warning if unestimated AND release-bound). */}
+                {feature.points != null ? (
+                    <Badge variant="outline" className="text-[9px] font-bold text-slate-700 border-slate-200 bg-slate-100">
+                        {feature.points} pt{feature.points === 1 ? '' : 's'}
+                    </Badge>
+                ) : feature.targetRelease ? (
+                    <Badge variant="outline" className="text-[9px] font-bold text-amber-700 border-amber-200 bg-amber-50" title="Unestimated — needs story points">
+                        ? pts
+                    </Badge>
+                ) : null}
                 {visibleTags.map(t => (
                     <span
                         key={t}
