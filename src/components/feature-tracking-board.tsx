@@ -418,6 +418,8 @@ export function FeatureTrackingBoard() {
     const { toast } = useToast();
     const [createOpen, setCreateOpen] = useState(false);
     const [epicMgmtOpen, setEpicMgmtOpen] = useState(false);
+    /** v1.6 — when true the board shows soft-deleted features only. */
+    const [archiveMode, setArchiveMode] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [activeId, setActiveId] = useState<string | null>(null);
     // Per-column sort mode. Defaults to 'manual' (drag order). When a
@@ -482,6 +484,10 @@ export function FeatureTrackingBoard() {
             shipped: [],
         };
         for (const f of mergedFeatures || []) {
+            // v1.6 archive mode: show ONLY soft-deleted; otherwise hide
+            // soft-deleted from the live board.
+            const isArchived = !!f.deletedAt;
+            if (archiveMode ? !isArchived : isArchived) continue;
             const s = (f.status || 'submitted') as FeatureStatus;
             if (groups[s]) groups[s].push(f);
             else groups.submitted.push(f);
@@ -498,7 +504,7 @@ export function FeatureTrackingBoard() {
             });
         }
         return groups;
-    }, [mergedFeatures]);
+    }, [mergedFeatures, archiveMode]);
 
     const total = features?.length ?? 0;
 
@@ -597,25 +603,45 @@ export function FeatureTrackingBoard() {
 
     return (
         <div className="flex flex-col h-full bg-slate-50/50">
-            {/* Banner */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 shrink-0">
+            {/* Banner — colour shifts to slate when in archive mode so
+                the user can see at a glance they're not on the live board. */}
+            <div className={cn(
+                'text-white px-6 py-4 shrink-0',
+                archiveMode
+                    ? 'bg-gradient-to-r from-slate-600 to-slate-700'
+                    : 'bg-gradient-to-r from-blue-600 to-blue-700',
+            )}>
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-3">
                         <div className="h-10 w-10 bg-white/15 rounded-xl flex items-center justify-center border border-white/20">
-                            <Lightbulb className="h-5 w-5" />
+                            {archiveMode ? <Trash2 className="h-5 w-5" /> : <Lightbulb className="h-5 w-5" />}
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold">Feature Tracking</h1>
+                            <h1 className="text-xl font-bold">
+                                {archiveMode ? 'Archive' : 'Feature Tracking'}
+                            </h1>
                             <p className="text-sm text-blue-50">
                                 {isLoading
                                     ? 'Loading feature requests…'
-                                    : total === 0
-                                        ? 'No requests yet — be the first.'
-                                        : `${total} feature request${total === 1 ? '' : 's'} across the team.`}
+                                    : archiveMode
+                                        ? `${total} archived feature${total === 1 ? '' : 's'} — restore from the detail sheet.`
+                                        : total === 0
+                                            ? 'No requests yet — be the first.'
+                                            : `${total} feature request${total === 1 ? '' : 's'} across the team.`}
                             </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-white/90 hover:bg-white/15 hover:text-white gap-1.5"
+                            onClick={() => setArchiveMode(v => !v)}
+                            title={archiveMode ? 'Back to live board' : 'View archived (soft-deleted) features'}
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {archiveMode ? 'Back to board' : 'Archive'}
+                        </Button>
                         <Button
                             size="sm"
                             variant="ghost"
@@ -630,6 +656,7 @@ export function FeatureTrackingBoard() {
                             size="sm"
                             className="bg-white text-blue-700 hover:bg-blue-50 gap-2 shadow-sm"
                             onClick={() => setCreateOpen(true)}
+                            disabled={archiveMode}
                         >
                             <Plus className="h-4 w-4" />
                             New Feature
@@ -1485,17 +1512,55 @@ function FeatureDetailBody({
         }
     }
 
-    async function deleteFeature() {
-        if (!confirm(`Delete "${feature.title}"? This cannot be undone.`)) return;
+    /**
+     * v1.6 — soft delete. Sets deletedAt + deletedBy instead of
+     * deleteDoc. The board / roadmap filter these out, but they
+     * survive in the Archive view (board with archive toggle on)
+     * for restore.
+     */
+    async function archiveFeature() {
+        if (!confirm(`Archive "${feature.title}"? You can restore it from the Archive tab.`)) return;
+        try {
+            await updateDoc(featureRef, {
+                deletedAt: serverTimestamp(),
+                deletedBy: user?.uid ?? null,
+                updatedAt: serverTimestamp(),
+            });
+            toast({ title: 'Feature archived', description: 'Find it in the Archive tab to restore.' });
+            onClose();
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Archive failed', description: e?.message ?? 'See console.' });
+        }
+    }
+
+    /** Restore a soft-deleted feature. Available only when archive view is open. */
+    async function restoreFeature() {
+        try {
+            await updateDoc(featureRef, {
+                deletedAt: null,
+                deletedBy: null,
+                updatedAt: serverTimestamp(),
+            });
+            toast({ title: 'Feature restored' });
+            onClose();
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Restore failed', description: e?.message ?? 'See console.' });
+        }
+    }
+
+    /** Permanent delete — only offered from the Archive view. Cannot be undone. */
+    async function permanentDelete() {
+        if (!confirm(`Permanently delete "${feature.title}"? This cannot be undone — comments, votes, and uploaded images are gone.`)) return;
         try {
             await deleteDoc(featureRef);
-            toast({ title: 'Feature deleted' });
+            toast({ title: 'Feature permanently deleted' });
             onClose();
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Delete failed', description: e?.message ?? 'See console.' });
         }
     }
 
+    const isArchived = !!feature.deletedAt;
     const currentColumn = COLUMNS.find(c => c.key === status);
 
     return (
@@ -1834,15 +1899,37 @@ function FeatureDetailBody({
             </div>
 
             <div className="px-6 py-3 border-t bg-slate-50 flex items-center justify-between shrink-0">
-                <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={deleteFeature}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 gap-2"
-                >
-                    <Trash2 className="h-3 w-3" />
-                    Delete
-                </Button>
+                {isArchived ? (
+                    <div className="flex items-center gap-2">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={restoreFeature}
+                            className="gap-2"
+                        >
+                            Restore
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={permanentDelete}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 gap-2"
+                        >
+                            <Trash2 className="h-3 w-3" />
+                            Permanent delete
+                        </Button>
+                    </div>
+                ) : (
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={archiveFeature}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 gap-2"
+                    >
+                        <Trash2 className="h-3 w-3" />
+                        Archive
+                    </Button>
+                )}
                 <div className="flex items-center gap-2">
                     {titleDirty && (
                         <span className="text-[10px] text-amber-600">Title has unsaved changes</span>
