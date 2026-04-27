@@ -15,7 +15,7 @@
 | v1.5 Feature Tracking | ✅ Shipped to production. See `tasks/RELEASE_NOTES_v1.5.0.md` |
 | v1.5.1 Hotfix — feature overwrite | ✅ Shipped to production. PR #28 merged 2026-04-25. See `tasks/RELEASE_NOTES_v1.5.1.md` |
 | v1.6 Planning System | ✅ Shipped to production. PR #29 merged 2026-04-27. See `tasks/RELEASE_NOTES_v1.6.0.md` |
-| v1.6.1 Patch — shipped-release lock + v1.6 self-seed | 🟡 In flight — dev → main PR pending. See `tasks/RELEASE_NOTES_v1.6.1.md` |
+| v1.6.1 Patch — shipped-release lock + v1.6 self-seed | ✅ Shipped to production. PR #30 merged 2026-04-27. See `tasks/RELEASE_NOTES_v1.6.1.md` |
 
 **Active dev branch**: `claude/app-overview-wKiZ1` (auto-deploys to dev URL)
 
