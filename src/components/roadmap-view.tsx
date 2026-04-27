@@ -13,7 +13,7 @@
  * intersection. Click a chip to open the existing FeatureDetailSheet
  * (reused from the Board). The header per release shows a points sum
  * and tints amber > 25 / red > 40 so over-stuffed releases are
- * obvious. Today + SCIBS pills mark the active and MVP-target columns.
+ * obvious. A "Today" pill marks the active column.
  *
  * Drag-and-drop between cells lands in stage 5 of v1.6.
  */
@@ -59,7 +59,6 @@ import {
     ROADMAP_COLUMNS,
     UNSCHEDULED_KEY,
     getActiveReleaseKey,
-    isMVPRelease,
 } from '@/lib/release-schedule';
 
 const EPIC_BAND_BG: Record<EpicColor, string> = {
@@ -353,7 +352,7 @@ export function RoadmapView() {
                         options={(ROADMAP_COLUMNS as readonly string[]).map(rk => ({
                             key: rk,
                             label: rk === UNSCHEDULED_KEY ? 'Backlog' : rk,
-                            color: rk === UNSCHEDULED_KEY ? 'slate' : (isMVPRelease(rk) ? 'emerald' : 'blue'),
+                            color: rk === UNSCHEDULED_KEY ? 'slate' : 'blue',
                         }))}
                         selected={releaseFilter}
                         onToggle={toggleReleaseFilter}
@@ -390,7 +389,6 @@ export function RoadmapView() {
                                     releaseKey={rk}
                                     points={pointsByRelease[rk]}
                                     isActive={activeReleaseKey === rk}
-                                    isMVP={rk !== UNSCHEDULED_KEY && isMVPRelease(rk)}
                                     isBacklog={rk === UNSCHEDULED_KEY}
                                 />
                             ))}
@@ -499,13 +497,11 @@ function ReleaseHeader({
     releaseKey,
     points,
     isActive,
-    isMVP,
     isBacklog,
 }: {
     releaseKey: string;
     points: number;
     isActive: boolean;
-    isMVP: boolean;
     isBacklog: boolean;
 }) {
     const overload = points >= POINTS_RED ? 'red' : points >= POINTS_AMBER ? 'amber' : 'green';
@@ -529,11 +525,6 @@ function ReleaseHeader({
                 {isActive && (
                     <span className="text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white rounded-full px-1.5 py-0.5">
                         Today
-                    </span>
-                )}
-                {isMVP && (
-                    <span className="text-[9px] font-black uppercase tracking-widest bg-emerald-600 text-white rounded-full px-1.5 py-0.5">
-                        SCIBS
                     </span>
                 )}
             </div>
