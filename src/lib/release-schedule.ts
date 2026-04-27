@@ -10,6 +10,15 @@
 export interface ReleaseWindow {
     /** Marks an internal MVP target. NOT rendered visually anywhere. */
     isMVP?: boolean;
+    /**
+     * Marks a release that has shipped to production. Drives the emerald
+     * "Shipped" header pill on the Roadmap, the emerald release-pill on
+     * the Backlog, and locks edits on stories targeted at this release
+     * (status / release / epic / points / title / description all become
+     * read-only — comments still post). Flip this flag when the
+     * dev → main PR for the release is merged.
+     */
+    shipped?: boolean;
 }
 
 /**
@@ -21,7 +30,7 @@ export interface ReleaseWindow {
  * theme rather than picking it up after a context switch.
  */
 export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
-    'v1.6':   {},
+    'v1.6':   { shipped: true },
     'v1.7':   {},
     'v1.7.5': {},
     'v1.8':   {},
@@ -50,6 +59,16 @@ export function getActiveReleaseKey(_now: Date = new Date()): string | null {
 /** Returns true if the release is the internal MVP-target flag. */
 export function isMVPRelease(releaseKey: string): boolean {
     return RELEASE_WINDOWS[releaseKey]?.isMVP === true;
+}
+
+/**
+ * Returns true if the release has been shipped to production.
+ * Use this to drive read-only UX on stories + emerald visuals on
+ * release headers / chips. `null` / unknown release keys = false.
+ */
+export function isReleaseShipped(releaseKey: string | null | undefined): boolean {
+    if (!releaseKey) return false;
+    return RELEASE_WINDOWS[releaseKey]?.shipped === true;
 }
 
 /** Threshold above which a column header tints amber (warning). */

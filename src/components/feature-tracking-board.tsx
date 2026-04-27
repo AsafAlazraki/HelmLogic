@@ -100,6 +100,7 @@ import {
     GripVertical,
     Clock,
     ArrowDownUp,
+    Lock,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -113,6 +114,7 @@ import {
     FeatureDescriptionView,
 } from '@/components/feature-rich-text-editor';
 import { FeatureImageUploader } from '@/components/feature-image-uploader';
+import { isReleaseShipped } from '@/lib/release-schedule';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -299,10 +301,12 @@ function ReleasePicker({
     value,
     onChange,
     triggerClassName,
+    disabled,
 }: {
     value: string | null | undefined;
     onChange: (next: string | null) => void;
     triggerClassName?: string;
+    disabled?: boolean;
 }) {
     const current = value ?? '';
     const isLegacy = current !== '' && !(RELEASE_OPTIONS as readonly string[]).includes(current);
@@ -311,6 +315,7 @@ function ReleasePicker({
         <Select
             value={effective}
             onValueChange={(v) => onChange(v === '__none__' ? null : v)}
+            disabled={disabled}
         >
             <SelectTrigger className={cn('h-9 text-sm', triggerClassName)}>
                 <SelectValue placeholder="Pick a release" />
@@ -342,10 +347,12 @@ function EpicPicker({
     value,
     onChange,
     triggerClassName,
+    disabled,
 }: {
     value: string | null | undefined;
     onChange: (next: string | null) => void;
     triggerClassName?: string;
+    disabled?: boolean;
 }) {
     const firestore = useFirestore();
     const epicsRef = useMemoFirebase(() => collection(firestore, 'epics'), [firestore]);
@@ -368,6 +375,7 @@ function EpicPicker({
         <Select
             value={effective}
             onValueChange={(v) => onChange(v === '__none__' ? null : v)}
+            disabled={disabled}
         >
             <SelectTrigger className={cn('h-9 text-sm', triggerClassName)}>
                 <SelectValue placeholder="Pick an epic" />
@@ -398,16 +406,19 @@ function PointsPicker({
     value,
     onChange,
     triggerClassName,
+    disabled,
 }: {
     value: number | null | undefined;
     onChange: (next: number | null) => void;
     triggerClassName?: string;
+    disabled?: boolean;
 }) {
     const effective = value == null ? '__none__' : String(value);
     return (
         <Select
             value={effective}
             onValueChange={(v) => onChange(v === '__none__' ? null : parseInt(v, 10))}
+            disabled={disabled}
         >
             <SelectTrigger className={cn('h-9 text-sm', triggerClassName)}>
                 <SelectValue placeholder="Estimate" />
@@ -1676,6 +1687,13 @@ function FeatureDetailBody({
     }
 
     const isArchived = !!feature.deletedAt;
+    /**
+     * v1.6 — read-only when the target release has shipped. Status,
+     * release, epic, points, type, priority, title, description, accept,
+     * and archive are all locked. Voting + commenting + tags stay live
+     * because those are running history, not scope changes.
+     */
+    const isShipped = isReleaseShipped(feature.targetRelease);
     const currentColumn = COLUMNS.find(c => c.key === status);
 
     return (
@@ -1688,7 +1706,9 @@ function FeatureDetailBody({
                             value={titleDraft}
                             onChange={(e) => setTitleDraft(e.target.value)}
                             onBlur={saveText}
-                            className="border-0 px-0 h-auto text-base font-bold focus-visible:ring-0 shadow-none"
+                            disabled={isShipped}
+                            readOnly={isShipped}
+                            className="border-0 px-0 h-auto text-base font-bold focus-visible:ring-0 shadow-none disabled:opacity-100 disabled:cursor-default"
                             placeholder="Feature title"
                         />
                         <SheetDescription className="text-[10px] text-slate-400 flex items-center gap-2 flex-wrap">
@@ -1708,11 +1728,28 @@ function FeatureDetailBody({
 
             <div className="feature-scroll flex-1 min-h-0 overflow-y-auto">
                 <div className="px-6 py-4 space-y-6">
+                    {/* v1.6 — shipped-release lock banner. Renders only
+                        when the feature's targetRelease is marked
+                        shipped in RELEASE_WINDOWS. */}
+                    {isShipped && (
+                        <div className="rounded-lg border border-emerald-300 bg-emerald-50/80 px-3 py-2.5 flex items-center gap-3">
+                            <Lock className="h-4 w-4 text-emerald-700 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-emerald-900">
+                                    Shipped in {feature.targetRelease} — read-only
+                                </p>
+                                <p className="text-[11px] text-emerald-800">
+                                    This story is locked. Comments + voting still work, but scope edits are disabled
+                                    so the historical record stays clean.
+                                </p>
+                            </div>
+                        </div>
+                    )}
                     {/* Status / Type / Priority */}
                     <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Status</Label>
-                            <Select value={status} onValueChange={(v) => patch({ status: v })}>
+                            <Select value={status} onValueChange={(v) => patch({ status: v })} disabled={isShipped}>
                                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent className="z-[10000]">
                                     {COLUMNS.map(c => (
@@ -1723,7 +1760,7 @@ function FeatureDetailBody({
                         </div>
                         <div className="space-y-1">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Type</Label>
-                            <Select value={type} onValueChange={(v) => patch({ type: v })}>
+                            <Select value={type} onValueChange={(v) => patch({ type: v })} disabled={isShipped}>
                                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent className="z-[10000]">
                                     <SelectItem value="feature" className="text-xs">✨ Feature</SelectItem>
@@ -1737,7 +1774,7 @@ function FeatureDetailBody({
                         </div>
                         <div className="space-y-1">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Priority</Label>
-                            <Select value={priority} onValueChange={(v) => patch({ priority: v })}>
+                            <Select value={priority} onValueChange={(v) => patch({ priority: v })} disabled={isShipped}>
                                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent className="z-[10000]">
                                     <SelectItem value="critical" className="text-xs">Critical</SelectItem>
@@ -1762,6 +1799,7 @@ function FeatureDetailBody({
                                     }
                                 }}
                                 triggerClassName="h-8 text-xs"
+                                disabled={isShipped}
                             />
                         </div>
                         <div className="space-y-1.5">
@@ -1774,6 +1812,7 @@ function FeatureDetailBody({
                                     }
                                 }}
                                 triggerClassName="h-8 text-xs"
+                                disabled={isShipped}
                             />
                         </div>
                     </div>
@@ -1789,6 +1828,7 @@ function FeatureDetailBody({
                                 }
                             }}
                             triggerClassName="h-8 text-xs"
+                            disabled={isShipped}
                         />
                     </div>
 
@@ -1846,6 +1886,7 @@ function FeatureDetailBody({
                                 size="sm"
                                 variant="outline"
                                 onClick={unacceptFeature}
+                                disabled={isShipped}
                                 className="text-xs shrink-0"
                             >
                                 Revoke
@@ -1854,7 +1895,7 @@ function FeatureDetailBody({
                             <Button
                                 size="sm"
                                 onClick={acceptFeature}
-                                disabled={!user}
+                                disabled={!user || isShipped}
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shrink-0"
                             >
                                 <CheckCircle2 className="h-3.5 w-3.5" />
@@ -1873,6 +1914,7 @@ function FeatureDetailBody({
                                     variant="ghost"
                                     className="h-6 text-[10px] gap-1"
                                     onClick={() => setEditingDesc(true)}
+                                    disabled={isShipped}
                                 >
                                     <Pencil className="h-3 w-3" />
                                     Edit
@@ -2091,6 +2133,12 @@ function FeatureDetailBody({
                             Permanent delete
                         </Button>
                     </div>
+                ) : isShipped ? (
+                    /* Shipped releases are read-only — no archive offered. */
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
+                        <Lock className="h-3 w-3" />
+                        Locked — shipped in {feature.targetRelease}
+                    </span>
                 ) : (
                     <Button
                         size="sm"

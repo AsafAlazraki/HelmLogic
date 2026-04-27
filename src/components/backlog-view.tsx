@@ -31,7 +31,7 @@ import {
     ChevronRight,
     HelpCircle,
     Layers,
-    Loader2,
+    Lock,
     Plus,
     Sparkles,
     Wrench,
@@ -42,6 +42,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { isReleaseShipped } from '@/lib/release-schedule';
 import {
     CreateFeatureDialog,
     FeatureDetailSheet,
@@ -462,7 +463,17 @@ function FeatureRow({
                     </Badge>
                 )}
                 {feature.targetRelease && (
-                    <Badge variant="outline" className="text-[9px] font-bold text-indigo-700 border-indigo-200 bg-indigo-50">
+                    <Badge
+                        variant="outline"
+                        className={cn(
+                            'text-[9px] font-bold border inline-flex items-center gap-0.5',
+                            isReleaseShipped(feature.targetRelease)
+                                ? 'text-emerald-800 border-emerald-300 bg-emerald-50'
+                                : 'text-indigo-700 border-indigo-200 bg-indigo-50',
+                        )}
+                        title={isReleaseShipped(feature.targetRelease) ? `${feature.targetRelease} shipped — read-only` : undefined}
+                    >
+                        {isReleaseShipped(feature.targetRelease) && <Lock className="h-2 w-2" />}
                         {feature.targetRelease}
                     </Badge>
                 )}
