@@ -31,7 +31,6 @@ import {
     ChevronRight,
     HelpCircle,
     Layers,
-    Loader2,
     Lock,
     Plus,
     Sparkles,
@@ -42,19 +41,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
-import { seedV16Stories } from '@/lib/v16-self-seed';
 import {
     CreateFeatureDialog,
     FeatureDetailSheet,
@@ -115,37 +103,6 @@ export function BacklogView() {
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
-    /** Confirm dialog + spinner for the one-shot v1.6 self-seed. */
-    const [populateV16Open, setPopulateV16Open] = useState(false);
-    const [populatingV16, setPopulatingV16] = useState(false);
-
-    /**
-     * Already-seeded check — if any feature exists with title starting
-     * "v1.6.", we hide the "Populate v1.6" button. Cheap client-side
-     * heuristic; the seed is idempotent anyway.
-     */
-    const v16AlreadyPopulated = useMemo(
-        () => (features ?? []).some(f => /^v1\.6\.\d+\b/i.test(f.title || '')),
-        [features],
-    );
-
-    async function runPopulateV16() {
-        if (!user) return;
-        setPopulatingV16(true);
-        try {
-            const submitterName = userProfile?.displayName || userProfile?.email || user.email || 'Someone';
-            const summary = await seedV16Stories(firestore, user.uid, submitterName);
-            toast({
-                title: 'v1.6 stories populated',
-                description: `${summary.featuresCreated} created · ${summary.featuresSkipped} skipped${summary.epicCreated ? ' · Platform & Tooling epic added' : ''}.`,
-            });
-            setPopulateV16Open(false);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Populate failed', description: e?.message ?? 'See console.' });
-        } finally {
-            setPopulatingV16(false);
-        }
-    }
 
     const sortedEpics = useMemo(
         () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
@@ -262,17 +219,6 @@ export function BacklogView() {
                             <Plus className="h-4 w-4" />
                             New Epic
                         </Button>
-                        {!v16AlreadyPopulated && (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-600 hover:text-white gap-1.5 shadow-sm"
-                                onClick={() => setPopulateV16Open(true)}
-                            >
-                                <Sparkles className="h-4 w-4" />
-                                Populate v1.6 stories
-                            </Button>
-                        )}
                     </div>
                 </div>
             </div>
@@ -338,62 +284,6 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
-
-            {/* v1.6 self-seed confirmation. One-shot button — disappears
-                once any v1.6.* feature exists. Idempotent under the hood. */}
-            <AlertDialog open={populateV16Open} onOpenChange={setPopulateV16Open}>
-                <AlertDialogContent className="max-w-lg">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <Sparkles className="h-4 w-4 text-emerald-600" />
-                            Populate v1.6 with the work that shipped?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="space-y-2 text-xs text-slate-600">
-                                <p>
-                                    This adds the actual v1.6 deliverables as feature cards in the
-                                    v1.6 release column, so the column isn&apos;t empty in the
-                                    Roadmap and the work has a permanent record.
-                                </p>
-                                <ul className="list-disc pl-5 space-y-0.5">
-                                    <li>1 new epic: <strong>Platform &amp; Tooling</strong> (indigo, internal infrastructure)</li>
-                                    <li>13 stories sized to <strong>40 pts</strong> total — right at the cap, honest signal of the lift</li>
-                                    <li>Each story: <code className="bg-slate-100 rounded px-1">status: shipped</code>, <code className="bg-slate-100 rounded px-1">targetRelease: v1.6</code></li>
-                                    <li>Auto-accepted by you (Asaf) as the seed runs</li>
-                                </ul>
-                                <p className="pt-1">
-                                    Stories include: epics, story points, Backlog tab, Roadmap, drag-and-drop,
-                                    filters, Accept button, soft delete, type extension, half-releases,
-                                    no-dates, sub-dealer gate, MVP plan seed.
-                                </p>
-                                <p className="pt-1 text-[11px] text-slate-500">
-                                    Idempotent — re-running skips stories whose titles already exist.
-                                </p>
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={populatingV16}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={(e) => { e.preventDefault(); runPopulateV16(); }}
-                            disabled={populatingV16}
-                            className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
-                        >
-                            {populatingV16 ? (
-                                <>
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    Populating…
-                                </>
-                            ) : (
-                                <>
-                                    <Sparkles className="h-3.5 w-3.5" />
-                                    Yes, populate
-                                </>
-                            )}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }
