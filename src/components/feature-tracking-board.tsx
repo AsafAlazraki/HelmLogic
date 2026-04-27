@@ -85,6 +85,9 @@ import {
     Bug,
     Sparkles,
     Wrench,
+    FileText,
+    Scale,
+    ClipboardCheck,
     ThumbsUp,
     Tag as TagIcon,
     MessageSquare,
@@ -129,7 +132,7 @@ export type FeaturePriority =
     | 'low'
     | 'nice-to-have';
 
-export type FeatureType = 'feature' | 'bug' | 'improvement';
+export type FeatureType = 'feature' | 'bug' | 'improvement' | 'content' | 'decision' | 'task';
 
 export type SortMode = 'manual' | 'votes' | 'date';
 
@@ -420,6 +423,12 @@ function TypeIcon({ type }: { type?: FeatureType }) {
             return <Bug className="h-3.5 w-3.5 text-rose-500 shrink-0" />;
         case 'improvement':
             return <Wrench className="h-3.5 w-3.5 text-indigo-500 shrink-0" />;
+        case 'content':
+            return <FileText className="h-3.5 w-3.5 text-orange-500 shrink-0" />;
+        case 'decision':
+            return <Scale className="h-3.5 w-3.5 text-purple-500 shrink-0" />;
+        case 'task':
+            return <ClipboardCheck className="h-3.5 w-3.5 text-cyan-600 shrink-0" />;
         case 'feature':
         default:
             return <Sparkles className="h-3.5 w-3.5 text-blue-500 shrink-0" />;
@@ -1208,6 +1217,9 @@ export function CreateFeatureDialog({
                                         <SelectItem value="feature" className="text-xs">✨ Feature</SelectItem>
                                         <SelectItem value="bug" className="text-xs">🐛 Bug</SelectItem>
                                         <SelectItem value="improvement" className="text-xs">🔧 Improvement</SelectItem>
+                                        <SelectItem value="content" className="text-xs">📄 Content</SelectItem>
+                                        <SelectItem value="decision" className="text-xs">⚖️ Decision</SelectItem>
+                                        <SelectItem value="task" className="text-xs">📋 Task</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -1672,6 +1684,9 @@ function FeatureDetailBody({
                                     <SelectItem value="feature" className="text-xs">✨ Feature</SelectItem>
                                     <SelectItem value="bug" className="text-xs">🐛 Bug</SelectItem>
                                     <SelectItem value="improvement" className="text-xs">🔧 Improvement</SelectItem>
+                                    <SelectItem value="content" className="text-xs">📄 Content</SelectItem>
+                                    <SelectItem value="decision" className="text-xs">⚖️ Decision</SelectItem>
+                                    <SelectItem value="task" className="text-xs">📋 Task</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

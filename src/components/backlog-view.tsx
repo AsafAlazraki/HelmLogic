@@ -34,6 +34,9 @@ import {
     Plus,
     Sparkles,
     Wrench,
+    FileText,
+    Scale,
+    ClipboardCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -411,9 +414,15 @@ function FeatureRow({
 }) {
     const Icon = feature.type === 'bug' ? Bug
         : feature.type === 'improvement' ? Wrench
+        : feature.type === 'content' ? FileText
+        : feature.type === 'decision' ? Scale
+        : feature.type === 'task' ? ClipboardCheck
         : Sparkles;
     const iconClass = feature.type === 'bug' ? 'text-rose-500'
         : feature.type === 'improvement' ? 'text-indigo-500'
+        : feature.type === 'content' ? 'text-orange-500'
+        : feature.type === 'decision' ? 'text-purple-500'
+        : feature.type === 'task' ? 'text-cyan-600'
         : 'text-blue-500';
     const isUnestimated = feature.points == null;
     const priorityClass = PRIORITY_CHIP[feature.priority ?? 'medium'] ?? PRIORITY_CHIP.medium;
