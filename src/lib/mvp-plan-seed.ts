@@ -23,6 +23,7 @@ import {
     getDocs,
     serverTimestamp,
     setDoc,
+    updateDoc,
     type Firestore,
 } from 'firebase/firestore';
 import type { EpicColor, FeaturePriority, FeatureType } from '@/components/feature-tracking-board';
@@ -290,4 +291,57 @@ export async function seedMvpPlan(
     }
 
     return { epicsCreated, epicsSkipped, featuresCreated, featuresSkipped };
+}
+
+export interface SyncSummary {
+    updated: number;
+    unchanged: number;
+    notFound: number;
+}
+
+/**
+ * Sync release assignments on existing feature docs to match the
+ * current FEATURES seed payload.
+ *
+ * Use case: the seed payload's targetRelease values were re-bucketed
+ * (e.g. v1.7 → v1.7.5), but existing docs in Firestore still hold
+ * the old values. Run this once to catch them up.
+ *
+ * Matches by feature title (the same dedupe key seedMvpPlan uses).
+ * Only writes when targetRelease differs — no spurious updates.
+ */
+export async function syncReleaseAssignments(
+    firestore: Firestore,
+): Promise<SyncSummary> {
+    let updated = 0;
+    let unchanged = 0;
+    let notFound = 0;
+
+    const existingDocs = await getDocs(collection(firestore, 'features'));
+    const byTitle = new Map<string, { id: string; data: any }>();
+    existingDocs.forEach(d => {
+        const t = (d.data().title as string | undefined)?.trim();
+        if (t) byTitle.set(t, { id: d.id, data: d.data() });
+    });
+
+    for (const f of FEATURES) {
+        const existing = byTitle.get(f.title.trim());
+        if (!existing) {
+            notFound++;
+            continue;
+        }
+        const currentRelease = existing.data.targetRelease ?? null;
+        const desiredRelease = f.targetRelease ?? null;
+        if (currentRelease === desiredRelease) {
+            unchanged++;
+            continue;
+        }
+        await updateDoc(doc(firestore, 'features', existing.id), {
+            targetRelease: desiredRelease,
+            updatedAt: serverTimestamp(),
+        });
+        updated++;
+    }
+
+    return { updated, unchanged, notFound };
 }
