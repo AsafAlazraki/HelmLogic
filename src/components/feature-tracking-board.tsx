@@ -190,6 +190,12 @@ export interface FeatureDoc {
     deletedAt?: any | null;
     /** v1.6 — uid of the user who soft-deleted. */
     deletedBy?: string | null;
+    /** v1.6 — set when stakeholder accepts the story (scope locked). */
+    acceptedAt?: any | null;
+    /** v1.6 — uid of the accepter. */
+    acceptedBy?: string | null;
+    /** v1.6 — display name of the accepter (snapshotted at accept time). */
+    acceptedByName?: string | null;
 }
 
 /** Fibonacci-flavoured story-point options for v1.6 effort estimation. */
@@ -1591,6 +1597,42 @@ function FeatureDetailBody({
      * survive in the Archive view (board with archive toggle on)
      * for restore.
      */
+    /** v1.6 — Accept the story (scope-lock). Records accepter + timestamp. */
+    async function acceptFeature() {
+        if (!user) return;
+        try {
+            const accepterName = userProfile?.displayName
+                || userProfile?.email
+                || user.email
+                || 'Someone';
+            await updateDoc(featureRef, {
+                acceptedAt: serverTimestamp(),
+                acceptedBy: user.uid,
+                acceptedByName: accepterName,
+                updatedAt: serverTimestamp(),
+            });
+            toast({ title: 'Accepted', description: `Locked in by ${accepterName}.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Accept failed', description: e?.message ?? 'See console.' });
+        }
+    }
+
+    /** v1.6 — Revoke acceptance. Same accepter or anyone with edit rights. */
+    async function unacceptFeature() {
+        if (!confirm('Revoke acceptance? The story will go back to draft / pending review.')) return;
+        try {
+            await updateDoc(featureRef, {
+                acceptedAt: null,
+                acceptedBy: null,
+                acceptedByName: null,
+                updatedAt: serverTimestamp(),
+            });
+            toast({ title: 'Acceptance revoked' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Revoke failed', description: e?.message ?? 'See console.' });
+        }
+    }
+
     async function archiveFeature() {
         if (!confirm(`Archive "${feature.title}"? You can restore it from the Archive tab.`)) return;
         try {
@@ -1765,6 +1807,60 @@ function FeatureDetailBody({
                         <span className="text-xs text-slate-500">
                             {voteIds.length} vote{voteIds.length === 1 ? '' : 's'}
                         </span>
+                    </div>
+
+                    {/* v1.6 — Accept / Unaccept (story scope-lock).
+                        Renders the accepter + date when accepted. */}
+                    <div className={cn(
+                        'rounded-lg border px-3 py-2.5 flex items-center gap-3',
+                        feature.acceptedAt
+                            ? 'border-emerald-200 bg-emerald-50/60'
+                            : 'border-slate-200 bg-slate-50/40',
+                    )}>
+                        <CheckCircle2 className={cn(
+                            'h-5 w-5 shrink-0',
+                            feature.acceptedAt ? 'text-emerald-600' : 'text-slate-300',
+                        )} />
+                        <div className="flex-1 min-w-0">
+                            {feature.acceptedAt ? (
+                                <>
+                                    <p className="text-xs font-bold text-emerald-800">Accepted</p>
+                                    <p className="text-[11px] text-emerald-700">
+                                        by <strong>{feature.acceptedByName || 'Unknown'}</strong>
+                                        {feature.acceptedAt?.toDate?.() && (
+                                            <> · {feature.acceptedAt.toDate().toLocaleDateString()}</>
+                                        )}
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-xs font-semibold text-slate-700">Not yet accepted</p>
+                                    <p className="text-[11px] text-slate-500">
+                                        Click Accept once the story + acceptance criteria are agreed.
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                        {feature.acceptedAt ? (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={unacceptFeature}
+                                className="text-xs shrink-0"
+                            >
+                                Revoke
+                            </Button>
+                        ) : (
+                            <Button
+                                size="sm"
+                                onClick={acceptFeature}
+                                disabled={!user}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shrink-0"
+                            >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Accept
+                            </Button>
+                        )}
                     </div>
 
                     {/* Description + Acceptance Criteria (same section) */}

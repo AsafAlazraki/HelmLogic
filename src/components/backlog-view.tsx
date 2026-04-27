@@ -27,6 +27,7 @@ import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import {
     Bug,
+    CheckCircle2,
     ChevronRight,
     HelpCircle,
     Layers,
@@ -302,6 +303,7 @@ function EpicGroup({
     onAddStory: (epicId: string) => void;
 }) {
     const total = features.reduce((sum, f) => sum + (f.points ?? 0), 0);
+    const acceptedCount = features.filter(f => !!f.acceptedAt).length;
     return (
         <div className={cn('rounded-xl border bg-white overflow-hidden', EPIC_TINT[epic.color] ?? '')}>
             <div className="flex items-stretch">
@@ -324,8 +326,15 @@ function EpicGroup({
                         )}
                     </div>
                     <div className="flex items-center gap-2 text-[11px] text-slate-500 shrink-0">
-                        <span className="font-bold text-slate-700">{features.length}</span>
-                        <span className="text-slate-400">item{features.length === 1 ? '' : 's'}</span>
+                        <span className={cn(
+                            'inline-flex items-center gap-1 font-bold rounded px-1.5 py-0.5',
+                            acceptedCount === features.length && features.length > 0
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-slate-100 text-slate-700',
+                        )}>
+                            <CheckCircle2 className="h-3 w-3" />
+                            {acceptedCount} / {features.length}
+                        </span>
                         <span className="text-slate-300">·</span>
                         <span className="font-bold text-slate-700">{total}</span>
                         <span className="text-slate-400">pts</span>
@@ -438,6 +447,15 @@ function FeatureRow({
                 {feature.title || 'Untitled'}
             </span>
             <div className="flex items-center gap-1.5 shrink-0">
+                {feature.acceptedAt && (
+                    <span
+                        className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1 py-0.5"
+                        title={`Accepted by ${feature.acceptedByName ?? 'Unknown'}${feature.acceptedAt?.toDate?.() ? ' on ' + feature.acceptedAt.toDate().toLocaleDateString() : ''}`}
+                    >
+                        <CheckCircle2 className="h-2.5 w-2.5" />
+                        Accepted
+                    </span>
+                )}
                 {feature.priority && (
                     <Badge variant="outline" className={cn('text-[9px] font-bold border', priorityClass)}>
                         {feature.priority}
