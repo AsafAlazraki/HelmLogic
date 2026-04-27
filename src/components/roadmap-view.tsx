@@ -232,7 +232,7 @@ export function RoadmapView() {
         return map;
     }, [visibleFeatures, sortedEpics]);
 
-    /** Total points per release (sum across all epics) — feeds the header badges. */
+    /** Total points + item count per release — feeds the header badges. */
     const pointsByRelease = useMemo(() => {
         const totals: Record<string, number> = {};
         for (const rk of ROADMAP_COLUMNS) totals[rk] = 0;
@@ -243,6 +243,18 @@ export function RoadmapView() {
             totals[rk] += f.points ?? 0;
         }
         return totals;
+    }, [visibleFeatures]);
+
+    const itemsByRelease = useMemo(() => {
+        const counts: Record<string, number> = {};
+        for (const rk of ROADMAP_COLUMNS) counts[rk] = 0;
+        for (const f of visibleFeatures) {
+            const rk = f.targetRelease && (f.targetRelease in RELEASE_WINDOWS)
+                ? f.targetRelease
+                : UNSCHEDULED_KEY;
+            counts[rk] += 1;
+        }
+        return counts;
     }, [visibleFeatures]);
 
     const activeReleaseKey = getActiveReleaseKey();
@@ -391,6 +403,7 @@ export function RoadmapView() {
                                     key={rk}
                                     releaseKey={rk}
                                     points={pointsByRelease[rk]}
+                                    items={itemsByRelease[rk]}
                                     isActive={activeReleaseKey === rk}
                                     isBacklog={rk === UNSCHEDULED_KEY}
                                 />
@@ -499,11 +512,13 @@ function gridTemplate(cols: number): React.CSSProperties {
 function ReleaseHeader({
     releaseKey,
     points,
+    items,
     isActive,
     isBacklog,
 }: {
     releaseKey: string;
     points: number;
+    items: number;
     isActive: boolean;
     isBacklog: boolean;
 }) {
@@ -530,7 +545,7 @@ function ReleaseHeader({
                     </span>
                 )}
             </div>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                 <span className={cn(
                     'text-[10px] font-semibold',
                     overload === 'red' ? 'text-red-700' :
@@ -539,9 +554,13 @@ function ReleaseHeader({
                 )}>
                     {points} pts
                 </span>
+                <span className="text-slate-300 text-[10px]">·</span>
+                <span className="text-[10px] font-semibold text-slate-500">
+                    {items} item{items === 1 ? '' : 's'}
+                </span>
                 {(overload === 'amber' || overload === 'red') && !isBacklog && (
                     <AlertTriangle className={cn(
-                        'h-3 w-3',
+                        'h-3 w-3 ml-auto',
                         overload === 'red' ? 'text-red-600' : 'text-amber-600',
                     )} />
                 )}
