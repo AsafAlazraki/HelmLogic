@@ -508,7 +508,6 @@ function ReleaseHeader({
     isBacklog: boolean;
 }) {
     const overload = points >= POINTS_RED ? 'red' : points >= POINTS_AMBER ? 'amber' : 'green';
-    const win = RELEASE_WINDOWS[releaseKey];
     return (
         <div
             className={cn(
@@ -545,11 +544,6 @@ function ReleaseHeader({
                         'h-3 w-3',
                         overload === 'red' ? 'text-red-600' : 'text-amber-600',
                     )} />
-                )}
-                {win?.label && !isBacklog && (
-                    <span className="text-[9px] text-slate-400 ml-auto truncate">
-                        {win.label}
-                    </span>
                 )}
             </div>
         </div>

@@ -1,33 +1,34 @@
 /**
  * Release schedule (v1.6+).
  *
- * Single source of truth for the planned release windows that drive
- * the Roadmap view's "Today" pill, "SCIBS" pill, column ordering, and
- * over-load colour-coding (points-per-release).
- *
- * Update this file when the plan shifts. Do NOT compute dates from
- * heuristics — explicit windows are easier to reason about and keep
- * in sync with the spreadsheet plan.
+ * Single source of truth for the release columns on the Roadmap.
+ * Dates intentionally absent — Mark's feedback was that visible date
+ * labels implied a fixed timeline / boat-show commitment we don't
+ * want to make. Releases are aspirational, not promises.
  */
 
 export interface ReleaseWindow {
-    /** ISO yyyy-mm-dd, inclusive. */
-    start: string;
-    /** ISO yyyy-mm-dd, inclusive. */
-    end: string;
-    /** Marks the SCIBS-ready release. Renders the SCIBS pill in the column header. */
+    /** Marks an internal MVP target. NOT rendered visually anywhere. */
     isMVP?: boolean;
-    /** Optional human label (e.g. "Apr 27 → Apr 30"). */
-    label?: string;
 }
 
-/** Ordered map (insertion order = column order on the Roadmap). */
+/**
+ * Ordered map (insertion order = column order on the Roadmap).
+ *
+ * Intermediate "half" releases (v1.7.5, v1.8.5, v1.9.5) exist so we
+ * can split work into ~25-40 pt buckets without forcing one giant
+ * release. Each release is themed; "half" releases extend the same
+ * theme rather than picking it up after a context switch.
+ */
 export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
-    'v1.6': { start: '2026-04-27', end: '2026-04-30', label: 'Apr 27 → Apr 30' },
-    'v1.7': { start: '2026-05-01', end: '2026-05-06', label: 'May 1 → May 6' },
-    'v1.8': { start: '2026-05-07', end: '2026-05-11', label: 'May 7 → May 11' },
-    'v1.9': { start: '2026-05-12', end: '2026-05-15', label: 'May 12 → May 15' },
-    'v2.0': { start: '2026-05-16', end: '2026-05-19', label: 'May 16 → May 19', isMVP: true },
+    'v1.6':   {},
+    'v1.7':   {},
+    'v1.7.5': {},
+    'v1.8':   {},
+    'v1.8.5': {},
+    'v1.9':   {},
+    'v1.9.5': {},
+    'v2.0':   { isMVP: true },
 };
 
 /** Pseudo-release for features with targetRelease = null. Always rendered last. */
@@ -37,24 +38,21 @@ export const UNSCHEDULED_KEY = 'Unscheduled';
 export const ROADMAP_COLUMNS = [...Object.keys(RELEASE_WINDOWS), UNSCHEDULED_KEY] as const;
 
 /**
- * Returns the release key whose window contains today's date, or null
- * if today is before/after the planned schedule. Used to render the
- * "Today" pill on the active column.
+ * Always returns null now — kept for callers that haven't been
+ * removed. Today-pill rendering on the Roadmap is dormant; if we
+ * ever want it back we'll add explicit start/end here without
+ * showing a label string.
  */
-export function getActiveReleaseKey(now: Date = new Date()): string | null {
-    const today = now.toISOString().slice(0, 10);
-    for (const [key, win] of Object.entries(RELEASE_WINDOWS)) {
-        if (today >= win.start && today <= win.end) return key;
-    }
+export function getActiveReleaseKey(_now: Date = new Date()): string | null {
     return null;
 }
 
-/** Returns true if the release is the SCIBS-flagged MVP target. */
+/** Returns true if the release is the internal MVP-target flag. */
 export function isMVPRelease(releaseKey: string): boolean {
     return RELEASE_WINDOWS[releaseKey]?.isMVP === true;
 }
 
 /** Threshold above which a column header tints amber (warning). */
-export const POINTS_AMBER = 25;
-/** Threshold above which a column header tints red (likely impossible). */
-export const POINTS_RED = 40;
+export const POINTS_AMBER = 35;
+/** Threshold above which a column header tints red (over capacity). */
+export const POINTS_RED = 50;

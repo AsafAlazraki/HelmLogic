@@ -148,8 +148,11 @@ const RELEASE_OPTIONS = [
     'v1.5',
     'v1.6',
     'v1.7',
+    'v1.7.5',
     'v1.8',
+    'v1.8.5',
     'v1.9',
+    'v1.9.5',
     'v2.0',
     'Unscheduled',
 ] as const;
