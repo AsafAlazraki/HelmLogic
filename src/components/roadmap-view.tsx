@@ -380,7 +380,7 @@ export function RoadmapView() {
                     onDragStart={onDragStart}
                     onDragEnd={onDragEnd}
                 >
-                    <div className="min-w-[1300px] p-2">
+                    <div className="min-w-[1370px] p-2">
                         {/* Header row */}
                         <div className="grid sticky top-0 z-10 bg-slate-50/95 backdrop-blur" style={gridTemplate(visibleColumns.length)}>
                             <div className="px-2 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -493,7 +493,7 @@ export function RoadmapView() {
 function gridTemplate(cols: number): React.CSSProperties {
     // First column is the epic label (180px), remaining `cols` are
     // equal-width release columns.
-    return { gridTemplateColumns: `200px repeat(${cols}, minmax(190px, 1fr))` };
+    return { gridTemplateColumns: `170px repeat(${cols}, minmax(150px, 1fr))` };
 }
 
 function ReleaseHeader({

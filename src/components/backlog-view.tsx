@@ -49,7 +49,6 @@ import {
     type FeatureDoc,
 } from '@/components/feature-tracking-board';
 import { CreateEpicDialog } from '@/components/create-epic-dialog';
-import { seedMvpPlan, syncReleaseAssignments } from '@/lib/mvp-plan-seed';
 
 const EPIC_BAND: Record<EpicColor, string> = {
     blue: 'bg-blue-500',
@@ -98,7 +97,6 @@ export function BacklogView() {
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [createEpicOpen, setCreateEpicOpen] = useState(false);
-    const [syncing, setSyncing] = useState(false);
     /** v1.6 — open Create Feature with this epic pre-filled. null = closed. */
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
     /** Default: all groups collapsed except those with active features. */
@@ -177,36 +175,6 @@ export function BacklogView() {
         setCollapsedEpics(all);
     }
 
-    /**
-     * v1.6 (Turn D3) — combined sync. Two-phase:
-     *   1. seedMvpPlan() creates any missing epics + features (Epic 6
-     *      and the 46 content/decision/task items added in Turn B+).
-     *   2. syncReleaseAssignments() patches existing features whose
-     *      targetRelease no longer matches the seed (after the D2
-     *      v1.7 → v1.7.5 rebucket).
-     * Both phases idempotent. Click → toast → safe to re-run.
-     */
-    async function handleSyncReleases() {
-        if (!confirm('Sync the plan? Adds missing epics + features from the seed payload, then patches release assignments to match. Idempotent — safe to re-run.')) return;
-        setSyncing(true);
-        try {
-            const submitterName = userProfile?.displayName
-                || userProfile?.email
-                || user?.email
-                || 'MVP Sync';
-            const seed = await seedMvpPlan(firestore, user?.uid, submitterName);
-            const sync = await syncReleaseAssignments(firestore);
-            toast({
-                title: 'Plan synced',
-                description: `Created: ${seed.epicsCreated} epics + ${seed.featuresCreated} features. Release assignments: ${sync.updated} updated · ${sync.unchanged} already correct.`,
-            });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Sync failed', description: e?.message ?? 'See console.' });
-        } finally {
-            setSyncing(false);
-        }
-    }
-
     return (
         <div className="flex flex-col h-full bg-slate-50/50">
             {/* Banner */}
@@ -240,17 +208,6 @@ export function BacklogView() {
                             onClick={collapseAll}
                         >
                             Collapse all
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-white/90 hover:bg-white/15 hover:text-white gap-1.5"
-                            onClick={handleSyncReleases}
-                            disabled={syncing}
-                            title="One-shot: update existing feature docs' targetRelease to match the latest seed payload."
-                        >
-                            {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                            Sync releases
                         </Button>
                         <Button
                             size="sm"
