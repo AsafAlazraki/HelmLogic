@@ -104,14 +104,32 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
-    // Feature Tracking (v1.5) — fully open to any signed-in user per spec:
-    // anyone can create / vote / comment / drag / move status / set release
-    // / delete. See tasks/v1.5-feature-tracking-design.md.
+    // Feature Tracking (v1.5 + v1.6).
+    // Open to any signed-in user. Sub-dealer hiding is enforced
+    // client-side (sidebar hides the link, page-level gate shows
+    // "Not available for sub-dealer accounts"). The rule-layer
+    // sub-dealer check was removed in v1.6.1 because it falsely
+    // denied parent-dealer admins (e.g. billh@nsmarine.com.au).
+    // See post-mortem in tasks/v1.6-planning-system-status.md.
     match /features/{featureId} {
       allow read, write: if isSignedIn();
       match /comments/{commentId} {
         allow read, write: if isSignedIn();
       }
+    }
+
+    // Epics (v1.6) — same gating as features.
+    match /epics/{epicId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Trigger Email extension queue (v1.6).
+    // Any signed-in user can enqueue an email (used by @-mention
+    // notifications + the "Send test email" button). Only admins can
+    // read the queue (audit trail).
+    match /mail/{mailId} {
+      allow create: if isSignedIn();
+      allow read: if isAdmin();
     }
 
     match /dealerFitCategories/{catId} {

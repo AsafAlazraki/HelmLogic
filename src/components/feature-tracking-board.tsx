@@ -85,6 +85,9 @@ import {
     Bug,
     Sparkles,
     Wrench,
+    FileText,
+    Scale,
+    ClipboardCheck,
     ThumbsUp,
     Tag as TagIcon,
     MessageSquare,
@@ -129,7 +132,7 @@ export type FeaturePriority =
     | 'low'
     | 'nice-to-have';
 
-export type FeatureType = 'feature' | 'bug' | 'improvement';
+export type FeatureType = 'feature' | 'bug' | 'improvement' | 'content' | 'decision' | 'task';
 
 export type SortMode = 'manual' | 'votes' | 'date';
 
@@ -145,8 +148,11 @@ const RELEASE_OPTIONS = [
     'v1.5',
     'v1.6',
     'v1.7',
+    'v1.7.5',
     'v1.8',
+    'v1.8.5',
     'v1.9',
+    'v1.9.5',
     'v2.0',
     'Unscheduled',
 ] as const;
@@ -176,6 +182,41 @@ export interface FeatureDoc {
     createdAt?: any;
     updatedAt?: any;
     commentCount?: number;
+    /** v1.6 — FK into epics/{id}. null/undefined = unfiled. */
+    epicId?: string | null;
+    /** v1.6 — Fibonacci story points: 1 | 2 | 3 | 5 | 8. null/undefined = unestimated. */
+    points?: number | null;
+    /** v1.6 — set on soft delete. Hides from board/roadmap; visible in Archive tab. */
+    deletedAt?: any | null;
+    /** v1.6 — uid of the user who soft-deleted. */
+    deletedBy?: string | null;
+    /** v1.6 — set when stakeholder accepts the story (scope locked). */
+    acceptedAt?: any | null;
+    /** v1.6 — uid of the accepter. */
+    acceptedBy?: string | null;
+    /** v1.6 — display name of the accepter (snapshotted at accept time). */
+    acceptedByName?: string | null;
+}
+
+/** Fibonacci-flavoured story-point options for v1.6 effort estimation. */
+export const POINT_OPTIONS = [1, 2, 3, 5, 8] as const;
+export type StoryPoints = typeof POINT_OPTIONS[number];
+
+/** Epic colour palette — must match the swim-lane band colours. */
+export type EpicColor = 'blue' | 'amber' | 'violet' | 'emerald' | 'rose' | 'slate' | 'indigo';
+
+export interface EpicDoc {
+    id: string;
+    title: string;
+    /** ≤ 24 chars, rendered as the swim-lane label / chip. */
+    shortLabel: string;
+    description?: string;
+    color: EpicColor;
+    /** Fractional index for swim-lane order (drag to reorder). */
+    order: number;
+    status?: 'planning' | 'active' | 'done';
+    createdAt?: any;
+    updatedAt?: any;
 }
 
 // ---------------------------------------------------------------------------
@@ -228,6 +269,26 @@ const PRIORITY_STYLES: Record<FeaturePriority, { label: string; className: strin
     'nice-to-have': { label: 'Nice to have', className: 'bg-slate-50 text-slate-500 border-slate-100' },
 };
 
+/** v1.6 — Epic chip colour classes used on the FeatureCard. */
+const CARD_EPIC_CHIP: Record<EpicColor, string> = {
+    blue:    'bg-blue-50 text-blue-700 border-blue-200',
+    amber:   'bg-amber-50 text-amber-700 border-amber-200',
+    violet:  'bg-violet-50 text-violet-700 border-violet-200',
+    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    rose:    'bg-rose-50 text-rose-700 border-rose-200',
+    indigo:  'bg-indigo-50 text-indigo-700 border-indigo-200',
+    slate:   'bg-slate-50 text-slate-600 border-slate-200',
+};
+const CARD_EPIC_DOT: Record<EpicColor, string> = {
+    blue: 'bg-blue-500',
+    amber: 'bg-amber-500',
+    violet: 'bg-violet-500',
+    emerald: 'bg-emerald-500',
+    rose: 'bg-rose-500',
+    indigo: 'bg-indigo-500',
+    slate: 'bg-slate-500',
+};
+
 /**
  * Shared release Select — used by both the create dialog and the detail
  * sheet so the list stays consistent. Preserves legacy free-text values
@@ -271,12 +332,112 @@ function ReleasePicker({
     );
 }
 
+/**
+ * v1.6 — Epic picker. Subscribes to the epics collection so it always
+ * shows the current set. "No epic" entry maps to null. Sorted by the
+ * epic's `order` field. Colour swatch shown on each option so the
+ * picker matches the swim-lane colours.
+ */
+function EpicPicker({
+    value,
+    onChange,
+    triggerClassName,
+}: {
+    value: string | null | undefined;
+    onChange: (next: string | null) => void;
+    triggerClassName?: string;
+}) {
+    const firestore = useFirestore();
+    const epicsRef = useMemoFirebase(() => collection(firestore, 'epics'), [firestore]);
+    const { data: epics } = useCollection<EpicDoc>(epicsRef);
+    const sorted = useMemo(
+        () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+        [epics],
+    );
+    const effective = value || '__none__';
+    const swatchClassByColor: Record<EpicColor, string> = {
+        blue: 'bg-blue-500',
+        amber: 'bg-amber-500',
+        violet: 'bg-violet-500',
+        emerald: 'bg-emerald-500',
+        rose: 'bg-rose-500',
+        indigo: 'bg-indigo-500',
+        slate: 'bg-slate-500',
+    };
+    return (
+        <Select
+            value={effective}
+            onValueChange={(v) => onChange(v === '__none__' ? null : v)}
+        >
+            <SelectTrigger className={cn('h-9 text-sm', triggerClassName)}>
+                <SelectValue placeholder="Pick an epic" />
+            </SelectTrigger>
+            <SelectContent className="z-[10000]">
+                <SelectItem value="__none__" className="text-xs text-slate-400 italic">
+                    Unfiled (no epic)
+                </SelectItem>
+                {sorted.map(e => (
+                    <SelectItem key={e.id} value={e.id} className="text-xs">
+                        <span className="inline-flex items-center gap-2">
+                            <span className={cn('h-2 w-2 rounded-full', swatchClassByColor[e.color] ?? 'bg-slate-400')} />
+                            {e.shortLabel || e.title}
+                        </span>
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
+}
+
+/**
+ * v1.6 — Story-points picker. Fibonacci options (1/2/3/5/8) plus
+ * "Unestimated" mapping to null. Used in the create dialog and the
+ * detail sheet.
+ */
+function PointsPicker({
+    value,
+    onChange,
+    triggerClassName,
+}: {
+    value: number | null | undefined;
+    onChange: (next: number | null) => void;
+    triggerClassName?: string;
+}) {
+    const effective = value == null ? '__none__' : String(value);
+    return (
+        <Select
+            value={effective}
+            onValueChange={(v) => onChange(v === '__none__' ? null : parseInt(v, 10))}
+        >
+            <SelectTrigger className={cn('h-9 text-sm', triggerClassName)}>
+                <SelectValue placeholder="Estimate" />
+            </SelectTrigger>
+            <SelectContent className="z-[10000]">
+                <SelectItem value="__none__" className="text-xs text-slate-400 italic">
+                    Unestimated
+                </SelectItem>
+                {POINT_OPTIONS.map(p => (
+                    <SelectItem key={p} value={String(p)} className="text-xs">
+                        {p} {p === 1 ? 'point' : 'points'}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+    );
+}
+
 function TypeIcon({ type }: { type?: FeatureType }) {
     switch (type) {
         case 'bug':
             return <Bug className="h-3.5 w-3.5 text-rose-500 shrink-0" />;
         case 'improvement':
             return <Wrench className="h-3.5 w-3.5 text-indigo-500 shrink-0" />;
+        case 'content':
+            return <FileText className="h-3.5 w-3.5 text-orange-500 shrink-0" />;
+        case 'decision':
+            return <Scale className="h-3.5 w-3.5 text-purple-500 shrink-0" />;
+        case 'task':
+            return <ClipboardCheck className="h-3.5 w-3.5 text-cyan-600 shrink-0" />;
         case 'feature':
         default:
             return <Sparkles className="h-3.5 w-3.5 text-blue-500 shrink-0" />;
@@ -292,6 +453,8 @@ export function FeatureTrackingBoard() {
     const { user } = useUser();
     const { toast } = useToast();
     const [createOpen, setCreateOpen] = useState(false);
+    /** v1.6 — when true the board shows soft-deleted features only. */
+    const [archiveMode, setArchiveMode] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [activeId, setActiveId] = useState<string | null>(null);
     // Per-column sort mode. Defaults to 'manual' (drag order). When a
@@ -321,6 +484,22 @@ export function FeatureTrackingBoard() {
         [firestore],
     );
     const { data: features, isLoading } = useCollection<FeatureDoc>(featuresQuery);
+    // v1.6 — epics subscription drives the epic chip on cards and the
+    // "Group by Epic" column rendering.
+    const epicsQuery = useMemoFirebase(
+        () => collection(firestore, 'epics'),
+        [firestore],
+    );
+    const { data: epics } = useCollection<EpicDoc>(epicsQuery);
+    const epicById = useMemo(() => {
+        const m = new Map<string, EpicDoc>();
+        for (const e of epics ?? []) m.set(e.id, e);
+        return m;
+    }, [epics]);
+    const sortedEpics = useMemo(
+        () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+        [epics],
+    );
 
     /** Apply any pending optimistic moves over the live snapshot. */
     const mergedFeatures = useMemo(() => {
@@ -356,6 +535,10 @@ export function FeatureTrackingBoard() {
             shipped: [],
         };
         for (const f of mergedFeatures || []) {
+            // v1.6 archive mode: show ONLY soft-deleted; otherwise hide
+            // soft-deleted from the live board.
+            const isArchived = !!f.deletedAt;
+            if (archiveMode ? !isArchived : isArchived) continue;
             const s = (f.status || 'submitted') as FeatureStatus;
             if (groups[s]) groups[s].push(f);
             else groups.submitted.push(f);
@@ -372,7 +555,7 @@ export function FeatureTrackingBoard() {
             });
         }
         return groups;
-    }, [mergedFeatures]);
+    }, [mergedFeatures, archiveMode]);
 
     const total = features?.length ?? 0;
 
@@ -471,32 +654,55 @@ export function FeatureTrackingBoard() {
 
     return (
         <div className="flex flex-col h-full bg-slate-50/50">
-            {/* Banner */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 shrink-0">
+            {/* Banner — colour shifts to slate when in archive mode so
+                the user can see at a glance they're not on the live board. */}
+            <div className={cn(
+                'text-white px-6 py-4 shrink-0',
+                archiveMode
+                    ? 'bg-gradient-to-r from-slate-600 to-slate-700'
+                    : 'bg-gradient-to-r from-blue-600 to-blue-700',
+            )}>
                 <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-3">
                         <div className="h-10 w-10 bg-white/15 rounded-xl flex items-center justify-center border border-white/20">
-                            <Lightbulb className="h-5 w-5" />
+                            {archiveMode ? <Trash2 className="h-5 w-5" /> : <Lightbulb className="h-5 w-5" />}
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold">Feature Tracking</h1>
+                            <h1 className="text-xl font-bold">
+                                {archiveMode ? 'Archive' : 'Feature Tracking'}
+                            </h1>
                             <p className="text-sm text-blue-50">
                                 {isLoading
                                     ? 'Loading feature requests…'
-                                    : total === 0
-                                        ? 'No requests yet — be the first.'
-                                        : `${total} feature request${total === 1 ? '' : 's'} across the team.`}
+                                    : archiveMode
+                                        ? `${total} archived feature${total === 1 ? '' : 's'} — restore from the detail sheet.`
+                                        : total === 0
+                                            ? 'No requests yet — be the first.'
+                                            : `${total} feature request${total === 1 ? '' : 's'} across the team.`}
                             </p>
                         </div>
                     </div>
-                    <Button
-                        size="sm"
-                        className="bg-white text-blue-700 hover:bg-blue-50 gap-2 shadow-sm"
-                        onClick={() => setCreateOpen(true)}
-                    >
-                        <Plus className="h-4 w-4" />
-                        New Feature
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-white/90 hover:bg-white/15 hover:text-white gap-1.5"
+                            onClick={() => setArchiveMode(v => !v)}
+                            title={archiveMode ? 'Back to live board' : 'View archived (soft-deleted) features'}
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            {archiveMode ? 'Back to board' : 'Archive'}
+                        </Button>
+                        <Button
+                            size="sm"
+                            className="bg-white text-blue-700 hover:bg-blue-50 gap-2 shadow-sm"
+                            onClick={() => setCreateOpen(true)}
+                            disabled={archiveMode}
+                        >
+                            <Plus className="h-4 w-4" />
+                            New Feature
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -506,14 +712,14 @@ export function FeatureTrackingBoard() {
                 lg) we fall back to page-level overflow-y-auto so the
                 user can still reach every column. */}
             <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden">
-                <div className="p-6 h-full flex flex-col">
+                <div className="px-3 py-3 h-full flex flex-col">
                     <DndContext
                         sensors={sensors}
                         collisionDetection={closestCorners}
                         onDragStart={onDragStart}
                         onDragEnd={onDragEnd}
                     >
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 lg:auto-rows-fr gap-4 flex-1 min-h-0">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 lg:auto-rows-fr gap-3 flex-1 min-h-0">
                             {COLUMNS.map(col => (
                                 <ColumnView
                                     key={col.key}
@@ -525,6 +731,7 @@ export function FeatureTrackingBoard() {
                                     onSortModeChange={(m) =>
                                         setSortModes(prev => ({ ...prev, [col.key]: m }))
                                     }
+                                    epicById={epicById}
                                 />
                             ))}
                         </div>
@@ -533,6 +740,7 @@ export function FeatureTrackingBoard() {
                                 <FeatureCard
                                     feature={activeFeature}
                                     currentUserId={user?.uid}
+                                    epicById={epicById}
                                     isOverlay
                                 />
                             ) : null}
@@ -567,6 +775,7 @@ function ColumnView({
     onOpen,
     sortMode,
     onSortModeChange,
+    epicById,
 }: {
     column: typeof COLUMNS[number];
     features: FeatureDoc[];
@@ -574,6 +783,7 @@ function ColumnView({
     onOpen: (id: string) => void;
     sortMode: SortMode;
     onSortModeChange: (m: SortMode) => void;
+    epicById?: Map<string, EpicDoc>;
 }) {
     // Column body acts as a drop target so an empty column can still
     // receive cards (dropping anywhere inside appends to the end).
@@ -663,6 +873,7 @@ function ColumnView({
                                 currentUserId={currentUserId}
                                 onOpen={onOpen}
                                 dragDisabled={dragDisabled}
+                                epicById={epicById}
                             />
                         ))
                     )}
@@ -682,6 +893,7 @@ function FeatureCard({
     onOpen,
     isOverlay = false,
     dragDisabled = false,
+    epicById,
 }: {
     feature: FeatureDoc;
     currentUserId?: string;
@@ -690,6 +902,8 @@ function FeatureCard({
     isOverlay?: boolean;
     /** Disable drag handle (used when the column sort is not 'manual'). */
     dragDisabled?: boolean;
+    /** v1.6 — for rendering the epic chip. */
+    epicById?: Map<string, EpicDoc>;
 }) {
     const firestore = useFirestore();
     const voteIds = feature.voteIds ?? [];
@@ -756,6 +970,22 @@ function FeatureCard({
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
+                {/* v1.6 — Epic chip (if assigned to an epic that exists). */}
+                {feature.epicId && epicById?.get(feature.epicId) && (() => {
+                    const epic = epicById.get(feature.epicId!)!;
+                    return (
+                        <span
+                            className={cn(
+                                'inline-flex items-center gap-1 text-[9px] font-bold rounded px-1.5 py-0.5 border',
+                                CARD_EPIC_CHIP[epic.color] ?? CARD_EPIC_CHIP.slate,
+                            )}
+                            title={`Epic: ${epic.title}`}
+                        >
+                            <span className={cn('h-1.5 w-1.5 rounded-full', CARD_EPIC_DOT[epic.color] ?? CARD_EPIC_DOT.slate)} />
+                            {epic.shortLabel || epic.title}
+                        </span>
+                    );
+                })()}
                 {priority && (
                     <Badge variant="outline" className={cn('text-[9px] font-bold border', priority.className)}>
                         {priority.label}
@@ -766,6 +996,16 @@ function FeatureCard({
                         {feature.targetRelease}
                     </Badge>
                 )}
+                {/* v1.6 — Story points badge (or "?" warning if unestimated AND release-bound). */}
+                {feature.points != null ? (
+                    <Badge variant="outline" className="text-[9px] font-bold text-slate-700 border-slate-200 bg-slate-100">
+                        {feature.points} pt{feature.points === 1 ? '' : 's'}
+                    </Badge>
+                ) : feature.targetRelease ? (
+                    <Badge variant="outline" className="text-[9px] font-bold text-amber-700 border-amber-200 bg-amber-50" title="Unestimated — needs story points">
+                        ? pts
+                    </Badge>
+                ) : null}
                 {visibleTags.map(t => (
                     <span
                         key={t}
@@ -818,15 +1058,18 @@ function FeatureCard({
 // Create Feature Dialog
 // ---------------------------------------------------------------------------
 
-function CreateFeatureDialog({
+export function CreateFeatureDialog({
     open,
     onOpenChange,
     defaultOrderForColumn,
+    initialEpicId = null,
 }: {
     open: boolean;
     onOpenChange: (v: boolean) => void;
     /** Order value that places this new feature at the top of Submitted. */
     defaultOrderForColumn: number;
+    /** v1.6 — Pre-fill the Epic picker (used by Backlog "+ Add story" button). */
+    initialEpicId?: string | null;
 }) {
     const firestore = useFirestore();
     const { user } = useUser();
@@ -847,14 +1090,19 @@ function CreateFeatureDialog({
     useEffect(() => {
         if (open) {
             setFeatureId(doc(collection(firestore, 'features')).id);
+            // v1.6 — re-apply the epicId prefill on every open (e.g.
+            // Backlog "+ Add story" under a specific epic).
+            setEpicId(initialEpicId ?? null);
         }
-    }, [open, firestore]);
+    }, [open, firestore, initialEpicId]);
 
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [type, setType] = useState<FeatureType>('feature');
     const [priority, setPriority] = useState<FeaturePriority>('medium');
     const [targetRelease, setTargetRelease] = useState('');
+    const [epicId, setEpicId] = useState<string | null>(initialEpicId ?? null);
+    const [points, setPoints] = useState<number | null>(null);
     const [tags, setTags] = useState<string[]>([]);
     const [tagDraft, setTagDraft] = useState('');
     const [acceptance, setAcceptance] = useState<string[]>([]);
@@ -868,6 +1116,8 @@ function CreateFeatureDialog({
         setType('feature');
         setPriority('medium');
         setTargetRelease('');
+        setEpicId(initialEpicId ?? null);
+        setPoints(null);
         setTags([]);
         setTagDraft('');
         setAcceptance([]);
@@ -914,12 +1164,16 @@ function CreateFeatureDialog({
                 status: 'submitted',
                 priority,
                 targetRelease: targetRelease.trim() || null,
+                epicId,
+                points,
                 tags,
                 voteIds: [],
                 order: defaultOrderForColumn ?? 0,
                 acceptanceCriteria: acceptance,
                 imageUrls: images,
                 commentCount: 0,
+                deletedAt: null,
+                deletedBy: null,
                 submitterId: user.uid,
                 submitterName: userProfile?.displayName || userProfile?.email || user.email || 'Someone',
                 createdAt: serverTimestamp(),
@@ -972,6 +1226,9 @@ function CreateFeatureDialog({
                                         <SelectItem value="feature" className="text-xs">✨ Feature</SelectItem>
                                         <SelectItem value="bug" className="text-xs">🐛 Bug</SelectItem>
                                         <SelectItem value="improvement" className="text-xs">🔧 Improvement</SelectItem>
+                                        <SelectItem value="content" className="text-xs">📄 Content</SelectItem>
+                                        <SelectItem value="decision" className="text-xs">⚖️ Decision</SelectItem>
+                                        <SelectItem value="task" className="text-xs">📋 Task</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -987,6 +1244,26 @@ function CreateFeatureDialog({
                                         <SelectItem value="nice-to-have" className="text-xs">Nice to have</SelectItem>
                                     </SelectContent>
                                 </Select>
+                            </div>
+                        </div>
+
+                        {/* Epic + Story points (v1.6) */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Epic</Label>
+                                <EpicPicker
+                                    value={epicId}
+                                    onChange={setEpicId}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                    Story points <span className="text-slate-400 normal-case">(optional)</span>
+                                </Label>
+                                <PointsPicker
+                                    value={points}
+                                    onChange={setPoints}
+                                />
                             </div>
                         </div>
 
@@ -1137,7 +1414,7 @@ interface CommentDoc {
     createdAt?: any;
 }
 
-function FeatureDetailSheet({
+export function FeatureDetailSheet({
     feature,
     open,
     onOpenChange,
@@ -1314,17 +1591,91 @@ function FeatureDetailBody({
         }
     }
 
-    async function deleteFeature() {
-        if (!confirm(`Delete "${feature.title}"? This cannot be undone.`)) return;
+    /**
+     * v1.6 — soft delete. Sets deletedAt + deletedBy instead of
+     * deleteDoc. The board / roadmap filter these out, but they
+     * survive in the Archive view (board with archive toggle on)
+     * for restore.
+     */
+    /** v1.6 — Accept the story (scope-lock). Records accepter + timestamp. */
+    async function acceptFeature() {
+        if (!user) return;
+        try {
+            const accepterName = userProfile?.displayName
+                || userProfile?.email
+                || user.email
+                || 'Someone';
+            await updateDoc(featureRef, {
+                acceptedAt: serverTimestamp(),
+                acceptedBy: user.uid,
+                acceptedByName: accepterName,
+                updatedAt: serverTimestamp(),
+            });
+            toast({ title: 'Accepted', description: `Locked in by ${accepterName}.` });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Accept failed', description: e?.message ?? 'See console.' });
+        }
+    }
+
+    /** v1.6 — Revoke acceptance. Same accepter or anyone with edit rights. */
+    async function unacceptFeature() {
+        if (!confirm('Revoke acceptance? The story will go back to draft / pending review.')) return;
+        try {
+            await updateDoc(featureRef, {
+                acceptedAt: null,
+                acceptedBy: null,
+                acceptedByName: null,
+                updatedAt: serverTimestamp(),
+            });
+            toast({ title: 'Acceptance revoked' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Revoke failed', description: e?.message ?? 'See console.' });
+        }
+    }
+
+    async function archiveFeature() {
+        if (!confirm(`Archive "${feature.title}"? You can restore it from the Archive tab.`)) return;
+        try {
+            await updateDoc(featureRef, {
+                deletedAt: serverTimestamp(),
+                deletedBy: user?.uid ?? null,
+                updatedAt: serverTimestamp(),
+            });
+            toast({ title: 'Feature archived', description: 'Find it in the Archive tab to restore.' });
+            onClose();
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Archive failed', description: e?.message ?? 'See console.' });
+        }
+    }
+
+    /** Restore a soft-deleted feature. Available only when archive view is open. */
+    async function restoreFeature() {
+        try {
+            await updateDoc(featureRef, {
+                deletedAt: null,
+                deletedBy: null,
+                updatedAt: serverTimestamp(),
+            });
+            toast({ title: 'Feature restored' });
+            onClose();
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Restore failed', description: e?.message ?? 'See console.' });
+        }
+    }
+
+    /** Permanent delete — only offered from the Archive view. Cannot be undone. */
+    async function permanentDelete() {
+        if (!confirm(`Permanently delete "${feature.title}"? This cannot be undone — comments, votes, and uploaded images are gone.`)) return;
         try {
             await deleteDoc(featureRef);
-            toast({ title: 'Feature deleted' });
+            toast({ title: 'Feature permanently deleted' });
             onClose();
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Delete failed', description: e?.message ?? 'See console.' });
         }
     }
 
+    const isArchived = !!feature.deletedAt;
     const currentColumn = COLUMNS.find(c => c.key === status);
 
     return (
@@ -1378,6 +1729,9 @@ function FeatureDetailBody({
                                     <SelectItem value="feature" className="text-xs">✨ Feature</SelectItem>
                                     <SelectItem value="bug" className="text-xs">🐛 Bug</SelectItem>
                                     <SelectItem value="improvement" className="text-xs">🔧 Improvement</SelectItem>
+                                    <SelectItem value="content" className="text-xs">📄 Content</SelectItem>
+                                    <SelectItem value="decision" className="text-xs">⚖️ Decision</SelectItem>
+                                    <SelectItem value="task" className="text-xs">📋 Task</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -1393,6 +1747,34 @@ function FeatureDetailBody({
                                     <SelectItem value="nice-to-have" className="text-xs">Nice to have</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                    </div>
+
+                    {/* Epic + Story points (v1.6) */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Epic</Label>
+                            <EpicPicker
+                                value={feature.epicId}
+                                onChange={(next) => {
+                                    if (next !== (feature.epicId ?? null)) {
+                                        patch({ epicId: next });
+                                    }
+                                }}
+                                triggerClassName="h-8 text-xs"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Story points</Label>
+                            <PointsPicker
+                                value={feature.points}
+                                onChange={(next) => {
+                                    if (next !== (feature.points ?? null)) {
+                                        patch({ points: next });
+                                    }
+                                }}
+                                triggerClassName="h-8 text-xs"
+                            />
                         </div>
                     </div>
 
@@ -1425,6 +1807,60 @@ function FeatureDetailBody({
                         <span className="text-xs text-slate-500">
                             {voteIds.length} vote{voteIds.length === 1 ? '' : 's'}
                         </span>
+                    </div>
+
+                    {/* v1.6 — Accept / Unaccept (story scope-lock).
+                        Renders the accepter + date when accepted. */}
+                    <div className={cn(
+                        'rounded-lg border px-3 py-2.5 flex items-center gap-3',
+                        feature.acceptedAt
+                            ? 'border-emerald-200 bg-emerald-50/60'
+                            : 'border-slate-200 bg-slate-50/40',
+                    )}>
+                        <CheckCircle2 className={cn(
+                            'h-5 w-5 shrink-0',
+                            feature.acceptedAt ? 'text-emerald-600' : 'text-slate-300',
+                        )} />
+                        <div className="flex-1 min-w-0">
+                            {feature.acceptedAt ? (
+                                <>
+                                    <p className="text-xs font-bold text-emerald-800">Accepted</p>
+                                    <p className="text-[11px] text-emerald-700">
+                                        by <strong>{feature.acceptedByName || 'Unknown'}</strong>
+                                        {feature.acceptedAt?.toDate?.() && (
+                                            <> · {feature.acceptedAt.toDate().toLocaleDateString()}</>
+                                        )}
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-xs font-semibold text-slate-700">Not yet accepted</p>
+                                    <p className="text-[11px] text-slate-500">
+                                        Click Accept once the story + acceptance criteria are agreed.
+                                    </p>
+                                </>
+                            )}
+                        </div>
+                        {feature.acceptedAt ? (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={unacceptFeature}
+                                className="text-xs shrink-0"
+                            >
+                                Revoke
+                            </Button>
+                        ) : (
+                            <Button
+                                size="sm"
+                                onClick={acceptFeature}
+                                disabled={!user}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shrink-0"
+                            >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Accept
+                            </Button>
+                        )}
                     </div>
 
                     {/* Description + Acceptance Criteria (same section) */}
@@ -1635,15 +2071,37 @@ function FeatureDetailBody({
             </div>
 
             <div className="px-6 py-3 border-t bg-slate-50 flex items-center justify-between shrink-0">
-                <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={deleteFeature}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 gap-2"
-                >
-                    <Trash2 className="h-3 w-3" />
-                    Delete
-                </Button>
+                {isArchived ? (
+                    <div className="flex items-center gap-2">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={restoreFeature}
+                            className="gap-2"
+                        >
+                            Restore
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={permanentDelete}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 gap-2"
+                        >
+                            <Trash2 className="h-3 w-3" />
+                            Permanent delete
+                        </Button>
+                    </div>
+                ) : (
+                    <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={archiveFeature}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 gap-2"
+                    >
+                        <Trash2 className="h-3 w-3" />
+                        Archive
+                    </Button>
+                )}
                 <div className="flex items-center gap-2">
                     {titleDirty && (
                         <span className="text-[10px] text-amber-600">Title has unsaved changes</span>

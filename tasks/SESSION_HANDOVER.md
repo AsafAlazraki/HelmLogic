@@ -538,6 +538,16 @@ Key collections and access:
 
 ---
 
+## v1.6 Planning System — ON BRANCH (2026-04-27)
+
+- **Status**: 39 commits on `claude/app-overview-wKiZ1`. Release notes at `tasks/RELEASE_NOTES_v1.6.0.md`. Dev → main PR pending.
+- **What it adds**: 3 new tabs on `/feature-tracking` (Backlog, Roadmap, Release Notes — Backlog is the new default). New `epics/{id}` Firestore collection. 7 new optional fields on `features/{id}` (epicId, points, deletedAt, deletedBy, acceptedAt, acceptedBy, acceptedByName). Per-story Accept button. 8-bucket release schedule (v1.6 / v1.7 / v1.7.5 / v1.8 / v1.8.5 / v1.9 / v1.9.5 / v2.0). 108 features seeded (6 epics × 22 features + 41 expansion + 14 content + 16 decisions + 16 ops).
+- **New components**: `feature-tracking-view.tsx` (tab switcher), `backlog-view.tsx`, `roadmap-view.tsx`, `create-epic-dialog.tsx`, `mvp-plan-seed.ts` (seed payload + sync functions). `feature-tracking-board.tsx` extended with epic chips, points badges, Accept UI, soft delete + Archive view.
+- **Sub-dealer gate**: `/feature-tracking` blocked for sub-dealer org users (sidebar hidden + page-level gate). The Firestore rule for `epics/` and `features/` left at "any signed-in user" because the v1.5.1 isSubDealer rule had a bug that denied the parent dealer admin.
+- **Capacity colour-coding** thresholds: POINTS_AMBER=35, POINTS_RED=50. Each release ≤40 pts per stakeholder guidance.
+- **Email integration parked** — Trigger Email extension installed but SMTP config throws. Once unblocked, @-mentions in comments + customer email notifications go on the roadmap.
+- **Revolution explicitly out of scope** for the active plan. Stakeholder direction. 3 Revolution-specific stories were deleted from the seed payload.
+
 ## v1.5 Feature Tracking — ON BRANCH (2026-04-24)
 
 - **Status**: All 7 build stages shipped on `claude/app-overview-wKiZ1`.
