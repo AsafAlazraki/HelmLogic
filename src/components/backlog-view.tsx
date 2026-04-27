@@ -46,6 +46,7 @@ import {
     type FeatureDoc,
 } from '@/components/feature-tracking-board';
 import { CreateEpicDialog } from '@/components/create-epic-dialog';
+import { seedMvpPlan } from '@/lib/mvp-plan-seed';
 
 const EPIC_BAND: Record<EpicColor, string> = {
     blue: 'bg-blue-500',
@@ -94,6 +95,7 @@ export function BacklogView() {
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [createEpicOpen, setCreateEpicOpen] = useState(false);
+    const [seeding, setSeeding] = useState(false);
     /** v1.6 — open Create Feature with this epic pre-filled. null = closed. */
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
     /** Default: all groups collapsed except those with active features. */
@@ -172,6 +174,32 @@ export function BacklogView() {
         setCollapsedEpics(all);
     }
 
+    /**
+     * v1.6 — Refresh seed. Idempotent re-run of seedMvpPlan() against
+     * the live Firestore. Re-running after a partial seed (or after
+     * payload additions) lands only the missing items. Title is the
+     * dedupe key.
+     */
+    async function handleRefreshSeed() {
+        if (!confirm('Refresh the MVP plan? Adds any new features from the seed payload that aren\'t already in Firestore. Existing features (matched by title) are skipped — no duplicates created.')) return;
+        setSeeding(true);
+        try {
+            const submitterName = userProfile?.displayName
+                || userProfile?.email
+                || user?.email
+                || 'MVP Seed';
+            const summary = await seedMvpPlan(firestore, user?.uid, submitterName);
+            toast({
+                title: 'Plan refreshed',
+                description: `Epics: ${summary.epicsCreated} created · ${summary.epicsSkipped} skipped. Features: ${summary.featuresCreated} created · ${summary.featuresSkipped} skipped.`,
+            });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Seed failed', description: e?.message ?? 'See console.' });
+        } finally {
+            setSeeding(false);
+        }
+    }
+
     return (
         <div className="flex flex-col h-full bg-slate-50/50">
             {/* Banner */}
@@ -205,6 +233,17 @@ export function BacklogView() {
                             onClick={collapseAll}
                         >
                             Collapse all
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-white/90 hover:bg-white/15 hover:text-white gap-1.5"
+                            onClick={handleRefreshSeed}
+                            disabled={seeding}
+                            title="Re-run the MVP seed. Idempotent — only adds features not already in Firestore."
+                        >
+                            {seeding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                            Refresh seed
                         </Button>
                         <Button
                             size="sm"
