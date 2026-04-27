@@ -49,7 +49,7 @@ import {
     type FeatureDoc,
 } from '@/components/feature-tracking-board';
 import { CreateEpicDialog } from '@/components/create-epic-dialog';
-import { syncReleaseAssignments } from '@/lib/mvp-plan-seed';
+import { seedMvpPlan, syncReleaseAssignments } from '@/lib/mvp-plan-seed';
 
 const EPIC_BAND: Record<EpicColor, string> = {
     blue: 'bg-blue-500',
@@ -178,19 +178,27 @@ export function BacklogView() {
     }
 
     /**
-     * v1.6 (Turn D3) — one-shot sync of targetRelease on existing
-     * feature docs to match the current seed payload. After D2's
-     * v1.7 → v1.7.5 etc. moves, the docs in Firestore still hold
-     * old release values. Click → patch by title.
+     * v1.6 (Turn D3) — combined sync. Two-phase:
+     *   1. seedMvpPlan() creates any missing epics + features (Epic 6
+     *      and the 46 content/decision/task items added in Turn B+).
+     *   2. syncReleaseAssignments() patches existing features whose
+     *      targetRelease no longer matches the seed (after the D2
+     *      v1.7 → v1.7.5 rebucket).
+     * Both phases idempotent. Click → toast → safe to re-run.
      */
     async function handleSyncReleases() {
-        if (!confirm('Sync release assignments? Updates the targetRelease on existing feature docs to match the current seed payload (no other fields touched). Safe to re-run.')) return;
+        if (!confirm('Sync the plan? Adds missing epics + features from the seed payload, then patches release assignments to match. Idempotent — safe to re-run.')) return;
         setSyncing(true);
         try {
-            const summary = await syncReleaseAssignments(firestore);
+            const submitterName = userProfile?.displayName
+                || userProfile?.email
+                || user?.email
+                || 'MVP Sync';
+            const seed = await seedMvpPlan(firestore, user?.uid, submitterName);
+            const sync = await syncReleaseAssignments(firestore);
             toast({
-                title: 'Releases synced',
-                description: `${summary.updated} updated · ${summary.unchanged} already correct · ${summary.notFound} in seed but not in Firestore.`,
+                title: 'Plan synced',
+                description: `Created: ${seed.epicsCreated} epics + ${seed.featuresCreated} features. Release assignments: ${sync.updated} updated · ${sync.unchanged} already correct.`,
             });
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'Sync failed', description: e?.message ?? 'See console.' });
