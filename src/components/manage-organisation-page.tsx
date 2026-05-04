@@ -917,6 +917,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                 <QuoteContentManager
                                     orgId={orgId}
                                     legacyTermsAndConditions={(organisation as any)?.termsAndConditions}
+                                    enabledModuleSubscriptions={(organisation as any)?.enabledModuleSubscriptions}
                                 />
                             </CardContent>
                         </Card>

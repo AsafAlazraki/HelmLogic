@@ -37,9 +37,11 @@ interface Props {
     orgId: string;
     /** From the parent page — used for the auto-migrate's "did the org ever have legacy T&Cs?" check. */
     legacyTermsAndConditions: string | null | undefined;
+    /** Drives the brand-override picker (Phase D). Source per Q2 popup: modules the org has access to. */
+    enabledModuleSubscriptions: string[] | null | undefined;
 }
 
-export function QuoteContentManager({ orgId, legacyTermsAndConditions }: Props) {
+export function QuoteContentManager({ orgId, legacyTermsAndConditions, enabledModuleSubscriptions }: Props) {
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
@@ -124,8 +126,10 @@ export function QuoteContentManager({ orgId, legacyTermsAndConditions }: Props) 
                 loading={blocksLoading}
             />
             <ContentBlockDetail
+                orgId={orgId}
                 blockType={selectedBlockType}
                 block={selectedBlock}
+                enabledModuleSubscriptions={enabledModuleSubscriptions}
             />
         </div>
     );
