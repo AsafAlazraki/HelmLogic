@@ -36,6 +36,7 @@ import {
     Lock,
     Plus,
     Sparkles,
+    TrendingUp,
     Wrench,
     FileText,
     Scale,
@@ -56,6 +57,7 @@ import {
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
 import { seedQuoteContentManagerBacklog } from '@/lib/quote-content-manager-seed';
+import { seedSalesOpsBacklog } from '@/lib/sales-ops-seed';
 import {
     CreateFeatureDialog,
     FeatureDetailSheet,
@@ -125,6 +127,34 @@ export function BacklogView() {
         () => (features ?? []).some(f => /^1\.8\.\d+\b/.test(f.title || '')),
         [features],
     );
+
+    /** Sales Ops backlog seed — one-shot admin button. */
+    const [populateSalesOpen, setPopulateSalesOpen] = useState(false);
+    const [populatingSales, setPopulatingSales] = useState(false);
+
+    /** Hide the seed button once any 8.1.* feature exists. */
+    const salesOpsAlreadyPopulated = useMemo(
+        () => (features ?? []).some(f => /^8\.1\.\d+\b/.test(f.title || '')),
+        [features],
+    );
+
+    async function runPopulateSalesOps() {
+        if (!user) return;
+        setPopulatingSales(true);
+        try {
+            const submitterName = userProfile?.displayName || userProfile?.email || user.email || 'Someone';
+            const summary = await seedSalesOpsBacklog(firestore, user.uid, submitterName);
+            toast({
+                title: 'Sales Ops backlog seeded',
+                description: `${summary.featuresCreated} created · ${summary.featuresSkipped} skipped · ${summary.migrationsApplied} migrated · ${summary.crossRefsApplied} cross-refs${summary.epicCreated ? ' · Epic 8 added' : ''}.`,
+            });
+            setPopulateSalesOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Seed failed', description: e?.message ?? 'See console.' });
+        } finally {
+            setPopulatingSales(false);
+        }
+    }
 
     async function runPopulateContentManager() {
         if (!user) return;
@@ -270,6 +300,17 @@ export function BacklogView() {
                                 Populate Content Manager backlog
                             </Button>
                         )}
+                        {!salesOpsAlreadyPopulated && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-cyan-500 text-white border-cyan-400 hover:bg-cyan-600 hover:text-white gap-1.5 shadow-sm"
+                                onClick={() => setPopulateSalesOpen(true)}
+                            >
+                                <TrendingUp className="h-4 w-4" />
+                                Populate Sales Ops backlog
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -386,6 +427,69 @@ export function BacklogView() {
                                 <>
                                     <FileEdit className="h-3.5 w-3.5" />
                                     Yes, seed 4 stories
+                                </>
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Sales Ops backlog seed — creates Epic 8 + 4 new stories +
+                migrates 3 existing stories from Epic 1 + 2 cross-refs.
+                One-shot button hidden after first successful run. */}
+            <AlertDialog open={populateSalesOpen} onOpenChange={setPopulateSalesOpen}>
+                <AlertDialogContent className="max-w-xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4 text-cyan-600" />
+                            Seed the Sales Operations backlog?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-xs text-slate-600">
+                                <p>
+                                    Creates a <strong>NEW Epic 8 — Sales Operations</strong> and adds 4 new stories +
+                                    migrates 3 existing customer/quote stories from Epic 1 into it.
+                                </p>
+                                <p className="font-semibold pt-1">New stories under sub-feature 8.1.x:</p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                    <li><strong>8.1.1</strong> (v1.8.5, 3 pts) — Sales workspace shell + Customers list</li>
+                                    <li><strong>8.1.4</strong> (v1.9, 5 pts) — Cross-module Quotes view with sort + filter</li>
+                                    <li><strong>8.1.5</strong> (v1.9.5, 3 pts) — Cross-module Contracts view with sort + filter</li>
+                                    <li><strong>8.1.7</strong> (Unscheduled, 2 pts) — Saved filter views per user</li>
+                                </ul>
+                                <p className="font-semibold pt-1">Migrations from Epic 1 → Epic 8:</p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                    <li>1.5.1 Customer Detail Sheet → <strong>8.1.2</strong></li>
+                                    <li>1.5.2 Customer Pipeline View → <strong>8.1.3</strong></li>
+                                    <li>1.7.2 My Quotes / My Customers → <strong>8.1.6</strong></li>
+                                </ul>
+                                <p className="font-semibold pt-1">Cross-references (existing stories stay in place):</p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                    <li>1.6.1 Comms Log → embedded inside 8.1.2 detail sheet</li>
+                                    <li>1.7.4 Global Search → covers 8.1.x tabs</li>
+                                </ul>
+                                <p className="pt-1 text-[11px] text-slate-500">
+                                    Idempotent — re-running skips existing entries, won't double-rename, won't double-cross-ref. Capacity: v1.8.5 47 / v1.9 45 / v1.9.5 41 (all amber, accepted).
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={populatingSales}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => { e.preventDefault(); runPopulateSalesOps(); }}
+                            disabled={populatingSales}
+                            className="bg-cyan-600 hover:bg-cyan-700 gap-1.5"
+                        >
+                            {populatingSales ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Seeding…
+                                </>
+                            ) : (
+                                <>
+                                    <TrendingUp className="h-3.5 w-3.5" />
+                                    Yes, seed Epic 8
                                 </>
                             )}
                         </AlertDialogAction>
