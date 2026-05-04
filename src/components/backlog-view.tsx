@@ -29,8 +29,10 @@ import {
     Bug,
     CheckCircle2,
     ChevronRight,
+    FileEdit,
     HelpCircle,
     Layers,
+    Loader2,
     Lock,
     Plus,
     Sparkles,
@@ -41,8 +43,19 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
+import { seedQuoteContentManagerBacklog } from '@/lib/quote-content-manager-seed';
 import {
     CreateFeatureDialog,
     FeatureDetailSheet,
@@ -103,6 +116,33 @@ export function BacklogView() {
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
+    /** Quote Content Manager backlog seed — one-shot admin button. */
+    const [populateContentOpen, setPopulateContentOpen] = useState(false);
+    const [populatingContent, setPopulatingContent] = useState(false);
+
+    /** Hide the seed button once any 1.8.* feature exists. */
+    const contentManagerAlreadyPopulated = useMemo(
+        () => (features ?? []).some(f => /^1\.8\.\d+\b/.test(f.title || '')),
+        [features],
+    );
+
+    async function runPopulateContentManager() {
+        if (!user) return;
+        setPopulatingContent(true);
+        try {
+            const submitterName = userProfile?.displayName || userProfile?.email || user.email || 'Someone';
+            const summary = await seedQuoteContentManagerBacklog(firestore, user.uid, submitterName);
+            toast({
+                title: 'Quote Content Manager backlog seeded',
+                description: `${summary.featuresCreated} created · ${summary.featuresSkipped} skipped · ${summary.existingPatched} cross-refs added.`,
+            });
+            setPopulateContentOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Seed failed', description: e?.message ?? 'See console.' });
+        } finally {
+            setPopulatingContent(false);
+        }
+    }
 
     const sortedEpics = useMemo(
         () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
@@ -219,6 +259,17 @@ export function BacklogView() {
                             <Plus className="h-4 w-4" />
                             New Epic
                         </Button>
+                        {!contentManagerAlreadyPopulated && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-blue-500 text-white border-blue-400 hover:bg-blue-600 hover:text-white gap-1.5 shadow-sm"
+                                onClick={() => setPopulateContentOpen(true)}
+                            >
+                                <FileEdit className="h-4 w-4" />
+                                Populate Content Manager backlog
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -284,6 +335,63 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
+
+            {/* Quote Content Manager backlog seed — one-shot button
+                hidden after first successful run (heuristic: any 1.8.*
+                feature exists). Idempotent under the hood. */}
+            <AlertDialog open={populateContentOpen} onOpenChange={setPopulateContentOpen}>
+                <AlertDialogContent className="max-w-xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <FileEdit className="h-4 w-4 text-blue-600" />
+                            Seed the Quote Content Manager backlog?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-xs text-slate-600">
+                                <p>
+                                    Adds <strong>4 new stories</strong> under Epic 1 (Guided Configuration) sub-feature 1.8.x
+                                    — extending the T&Cs editor pattern to manage every content block on the customer-facing quote.
+                                </p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                    <li><strong>1.8.1</strong> (v1.7, 5 pts) — Quote Content Block Manager in org settings (TipTap editor + per-brand overrides + version history)</li>
+                                    <li><strong>1.8.2</strong> (v1.7, 2 pts) — Image upload per content block</li>
+                                    <li><strong>1.8.4</strong> (v1.7, 3 pts) — Quote preview button (inline PDF render via existing <code className="bg-slate-100 rounded px-1">ProposalPDFDocument</code>)</li>
+                                    <li><strong>1.8.3</strong> (v1.8, 3 pts) — Layout controls + "Starts on new page" toggle</li>
+                                </ul>
+                                <p className="pt-1">
+                                    Also patches <strong>3 existing v1.7 stories</strong> (1.2.1 / 1.2.2 / 1.2.3) with a
+                                    cross-reference acceptance line pointing at 1.8.1 — so the audit trail shows how the
+                                    PDF generation, brand-aware injection, and personalisation stories all consume the new
+                                    content manager.
+                                </p>
+                                <p className="pt-1 text-[11px] text-slate-500">
+                                    Idempotent — re-running skips stories whose titles already exist. Capacity: v1.7 30 → 40 (at cap), v1.8 38 → 41 (amber, accepted).
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={populatingContent}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => { e.preventDefault(); runPopulateContentManager(); }}
+                            disabled={populatingContent}
+                            className="bg-blue-600 hover:bg-blue-700 gap-1.5"
+                        >
+                            {populatingContent ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Seeding…
+                                </>
+                            ) : (
+                                <>
+                                    <FileEdit className="h-3.5 w-3.5" />
+                                    Yes, seed 4 stories
+                                </>
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
