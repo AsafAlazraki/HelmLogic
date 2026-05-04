@@ -29,8 +29,10 @@ import {
     Bug,
     CheckCircle2,
     ChevronRight,
+    Database,
     HelpCircle,
     Layers,
+    Loader2,
     Lock,
     Plus,
     Sparkles,
@@ -41,8 +43,19 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
+import { seedCatalogManagerBacklog } from '@/lib/catalog-manager-seed';
 import {
     CreateFeatureDialog,
     FeatureDetailSheet,
@@ -103,6 +116,33 @@ export function BacklogView() {
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
+    /** Catalog Manager backlog seed — one-shot admin button. */
+    const [populateCatalogOpen, setPopulateCatalogOpen] = useState(false);
+    const [populatingCatalog, setPopulatingCatalog] = useState(false);
+
+    /** Hide the seed button once any 3.7.* / 3.8.* / 3.9.* / 3.10.* / 3.11.* feature exists. */
+    const catalogManagerAlreadyPopulated = useMemo(
+        () => (features ?? []).some(f => /^3\.(7|8|9|10|11)\.\d+\b/.test(f.title || '')),
+        [features],
+    );
+
+    async function runPopulateCatalogManager() {
+        if (!user) return;
+        setPopulatingCatalog(true);
+        try {
+            const submitterName = userProfile?.displayName || userProfile?.email || user.email || 'Someone';
+            const summary = await seedCatalogManagerBacklog(firestore, user.uid, submitterName);
+            toast({
+                title: 'Catalog Manager backlog seeded',
+                description: `${summary.featuresCreated} created · ${summary.featuresSkipped} skipped.`,
+            });
+            setPopulateCatalogOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Seed failed', description: e?.message ?? 'See console.' });
+        } finally {
+            setPopulatingCatalog(false);
+        }
+    }
 
     const sortedEpics = useMemo(
         () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
@@ -219,6 +259,17 @@ export function BacklogView() {
                             <Plus className="h-4 w-4" />
                             New Epic
                         </Button>
+                        {!catalogManagerAlreadyPopulated && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-violet-500 text-white border-violet-400 hover:bg-violet-600 hover:text-white gap-1.5 shadow-sm"
+                                onClick={() => setPopulateCatalogOpen(true)}
+                            >
+                                <Database className="h-4 w-4" />
+                                Populate Catalog Manager backlog
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -284,6 +335,65 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
+
+            {/* Catalog Manager backlog seed — one-shot button removed
+                after first successful run (heuristic: any 3.7.* / 3.8.* /
+                3.9.* / 3.10.* / 3.11.* feature exists). Idempotent under
+                the hood. */}
+            <AlertDialog open={populateCatalogOpen} onOpenChange={setPopulateCatalogOpen}>
+                <AlertDialogContent className="max-w-xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <Database className="h-4 w-4 text-violet-600" />
+                            Seed the Master Catalog Manager backlog?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-xs text-slate-600">
+                                <p>
+                                    Adds <strong>25 stories</strong> under Epic 3 (Data Management) + Epic 6 (Launch Prep & Ops),
+                                    covering the unified Boats / Motors / Trailers admin surface that replaces the per-module
+                                    Pricing Manager and HighfieldModelEditor.
+                                </p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                    <li><strong>Phase A.1</strong> (v1.7.5, 5 pts) — Trailers table + import migration</li>
+                                    <li><strong>Phase A</strong> (v1.8, 15 pts) — Scaffolding, Boats + Motors tables, parity audit, org-override surfacing, decision: delivered-deals placement</li>
+                                    <li><strong>Phase B</strong> (v1.8.5, 21 pts) — Inline editing (price / specs / image / description), audit trail, export (CSV/XLSX), pre-commit diff preview, decommission of legacy pages, column tooltips</li>
+                                    <li><strong>Phase C</strong> (v2.0, 11 pts) — Optional features editor, motor compat window, dealer fit compat, trailer compat matrix, exchange-rate editor</li>
+                                    <li><strong>Phase D + E</strong> (Unscheduled, 16 pts) — Bulk ops, paste-from-spreadsheet, saved views, importer plug-in registry</li>
+                                    <li><strong>Epic 6 tasks</strong> — Catalog data backfill (v1.8) + admin training (v1.9)</li>
+                                </ul>
+                                <p className="pt-1">
+                                    Stories created with <code className="bg-slate-100 rounded px-1">status: submitted</code> —
+                                    NOT auto-accepted. You + Mark Accept each one through the normal Accept button as you review.
+                                </p>
+                                <p className="pt-1 text-[11px] text-slate-500">
+                                    Idempotent — re-running skips stories whose titles already exist. Capacity: v1.7.5 39 / v1.8 38 / v1.8.5 44 (amber, accepted overage) / v2.0 40.
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={populatingCatalog}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => { e.preventDefault(); runPopulateCatalogManager(); }}
+                            disabled={populatingCatalog}
+                            className="bg-violet-600 hover:bg-violet-700 gap-1.5"
+                        >
+                            {populatingCatalog ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Seeding…
+                                </>
+                            ) : (
+                                <>
+                                    <Database className="h-3.5 w-3.5" />
+                                    Yes, seed 25 stories
+                                </>
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
