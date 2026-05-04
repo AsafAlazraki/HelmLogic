@@ -50,6 +50,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
+import { QuoteContentManager } from '@/components/quote-content-manager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -540,10 +541,11 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 </div>
 
                 <Tabs defaultValue="details" className="space-y-4">
-                    <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-6' : 'grid-cols-5')}>
+                    <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-7' : 'grid-cols-6')}>
                         <TabsTrigger value="details">Company Details</TabsTrigger>
                         <TabsTrigger value="users">Users & Permissions</TabsTrigger>
                         <TabsTrigger value="templates">Document Templates</TabsTrigger>
+                        <TabsTrigger value="quote-content">Quote Content</TabsTrigger>
                         <TabsTrigger value="margins">Margins</TabsTrigger>
                         <TabsTrigger value="modules">Modules</TabsTrigger>
                         {organisation?.subDealersEnabled && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
@@ -899,6 +901,25 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                 </div>
                             </div>
                         </div>
+                    </TabsContent>
+
+                    <TabsContent value="quote-content">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Quote Content Blocks</CardTitle>
+                                <CardDescription>
+                                    Edit the rich-text sections that appear on every customer-facing PDF.
+                                    Each section has a fixed position on the proposal; per-brand overrides let
+                                    you keep different copy for each boat or motor brand you sell.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <QuoteContentManager
+                                    orgId={orgId}
+                                    legacyTermsAndConditions={(organisation as any)?.termsAndConditions}
+                                />
+                            </CardContent>
+                        </Card>
                     </TabsContent>
 
                     <TabsContent value="margins">
