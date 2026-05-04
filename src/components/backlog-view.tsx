@@ -20,14 +20,19 @@
 
 import { useMemo, useState } from 'react';
 import { collection } from 'firebase/firestore';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { useDoc } from '@/firebase/firestore/use-doc';
+import { doc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 import {
     Bug,
     CheckCircle2,
     ChevronRight,
+    GitBranch,
     HelpCircle,
     Layers,
+    Loader2,
     Lock,
     Plus,
     Sparkles,
@@ -38,8 +43,19 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
+import { applyV17Rebalance } from '@/lib/v17-rebalance-seed';
 import {
     CreateFeatureDialog,
     FeatureDetailSheet,
@@ -82,11 +98,19 @@ const UNFILED = '__unfiled__';
 
 export function BacklogView() {
     const firestore = useFirestore();
+    const { user } = useUser();
+    const { toast } = useToast();
 
     const featuresRef = useMemoFirebase(() => collection(firestore, 'features'), [firestore]);
     const epicsRef = useMemoFirebase(() => collection(firestore, 'epics'), [firestore]);
     const { data: features } = useCollection<FeatureDoc>(featuresRef);
     const { data: epics } = useCollection<EpicDoc>(epicsRef);
+
+    const userProfileRef = useMemoFirebase(
+        () => (user ? doc(firestore, 'users', user.uid) : null),
+        [firestore, user?.uid],
+    );
+    const { data: userProfile } = useDoc<any>(userProfileRef);
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [createEpicOpen, setCreateEpicOpen] = useState(false);
@@ -94,6 +118,39 @@ export function BacklogView() {
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
+
+    /** v1.7 dep-rebalance — one-shot admin button, hidden after run.
+     *  Heuristic: any 6.4.* feature exists (the new platform-tooling stories). */
+    const [rebalanceOpen, setRebalanceOpen] = useState(false);
+    const [rebalancing, setRebalancing] = useState(false);
+    const rebalanceAlreadyApplied = useMemo(
+        () => (features ?? []).some(f => /^6\.4\.\d+\b/.test(f.title || '')),
+        [features],
+    );
+
+    async function runRebalance() {
+        if (!user) return;
+        setRebalancing(true);
+        try {
+            const submitterName = userProfile?.displayName || userProfile?.email || user.email || 'Someone';
+            const summary = await applyV17Rebalance(firestore, user.uid, submitterName);
+            const missed = summary.retargetsMissed.length > 0
+                ? ` · ${summary.retargetsMissed.length} retargets missed (titles drift?)`
+                : '';
+            toast({
+                title: 'v1.7 dep-rebalance applied',
+                description: `${summary.featuresCreated} new stories · ${summary.retargetsApplied} retargets · ${summary.retargetsSkipped} skipped${missed}.`,
+            });
+            if (summary.retargetsMissed.length > 0) {
+                console.warn('[rebalance] Retargets that did not match an existing feature:', summary.retargetsMissed);
+            }
+            setRebalanceOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Rebalance failed', description: e?.message ?? 'See console.' });
+        } finally {
+            setRebalancing(false);
+        }
+    }
 
     const sortedEpics = useMemo(
         () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
@@ -210,6 +267,17 @@ export function BacklogView() {
                             <Plus className="h-4 w-4" />
                             New Epic
                         </Button>
+                        {!rebalanceAlreadyApplied && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-rose-500 text-white border-rose-400 hover:bg-rose-600 hover:text-white gap-1.5 shadow-sm"
+                                onClick={() => setRebalanceOpen(true)}
+                            >
+                                <GitBranch className="h-4 w-4" />
+                                Apply v1.7 dep-rebalance
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -275,6 +343,72 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
+
+            {/* v1.7 dep-rebalance — fixes the audit-found 1.2.1 / 1.2.2 → 1.8.1
+                violation, retargets stranded catalog stories to integer releases,
+                and adds 3 platform-tooling stories that prevent the bug class.
+                One-shot button hidden once any 6.4.* story exists. */}
+            <AlertDialog open={rebalanceOpen} onOpenChange={setRebalanceOpen}>
+                <AlertDialogContent className="max-w-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <GitBranch className="h-4 w-4 text-rose-600" />
+                            Apply v1.7 dependency-rebalance?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-xs text-slate-600">
+                                <p>
+                                    Audit-driven follow-up to v1.6.2 (see <code className="bg-slate-100 rounded px-1">tasks/v1.7-dependency-audit.md</code>).
+                                    Three buckets, all idempotent.
+                                </p>
+                                <p className="font-semibold pt-1">1. Rebalance v1.7 ↔ v1.8 (3 retargets):</p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                    <li><strong>1.8.1</strong> Quote Content Block Manager: v1.8 → <strong>v1.7</strong> (pulled back to co-locate with 1.2.1 + 1.2.2)</li>
+                                    <li><strong>1.1.2</strong> Compatibility Rule: v1.7 → <strong>v1.8</strong></li>
+                                    <li><strong>1.1.3</strong> Multiple Quote Scenarios: v1.7 → <strong>v1.8</strong></li>
+                                </ul>
+                                <p className="font-semibold pt-1">2. Catalog Manager retargets (17 retargets):</p>
+                                <p>3.7.x and 3.8.x stories spread across v1.10 → v2.2 — fixes both the v1.7.5/v1.8.5 stranding AND the v1.8 capacity overflow. v1.15 takes a +1 amber band; everything else lands at cap or under.</p>
+                                <p className="font-semibold pt-1">3. Platform & Tooling — 3 new stories (4 pts to v1.7):</p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                    <li><strong>6.4.1</strong> (v1.7, 3 pts) — Feature <code className="bg-slate-100 rounded px-1">dependsOn</code> schema + UI validation (refuses retargets that violate)</li>
+                                    <li><strong>6.4.2</strong> (v1.7, 1 pt) — Pre-merge regex check on acceptanceCriteria text</li>
+                                    <li><strong>6.4.3</strong> (v1.7, 0 pts, doc-only) — &quot;DEPENDS ON x.y.z&quot; cross-ref convention</li>
+                                </ul>
+                                <p className="font-semibold pt-1">Capacity check (everything ≤ 20 pts; v1.15 +1 amber):</p>
+                                <p className="text-[11px] font-mono leading-relaxed bg-slate-50 p-2 rounded border border-slate-200">
+                                    v1.7 20 │ v1.8 20 │ v1.9 20 │ v1.10 20 │ v1.11 20 │ v1.12 20 │ v1.13 20 │<br />
+                                    v1.14 19 │ v1.15 21⚠ │ v1.16 20 │ v1.17 20 │ v1.18 19 │ v1.19 20 │<br />
+                                    v1.20 20 │ v2.0 20 │ v2.1 20 │ v2.2 20
+                                </p>
+                                <p className="text-[11px] text-slate-500 pt-1">
+                                    Idempotent. Re-running skips existing stories (by title) and only writes retargets when targetRelease actually differs. Reports any retargets that didn&apos;t match a live story (catches mid-flight title edits).
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={rebalancing}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => { e.preventDefault(); runRebalance(); }}
+                            disabled={rebalancing}
+                            className="bg-rose-600 hover:bg-rose-700 gap-1.5"
+                        >
+                            {rebalancing ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Rebalancing…
+                                </>
+                            ) : (
+                                <>
+                                    <GitBranch className="h-3.5 w-3.5" />
+                                    Yes, apply rebalance
+                                </>
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
