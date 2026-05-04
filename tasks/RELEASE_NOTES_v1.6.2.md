@@ -5,8 +5,8 @@
 > Patch release on top of v1.6.1
 
 ### Release Stats
-- **7 commits** since v1.6.1 (4 feat + 3 chore)
-- **9 files changed** across the planning system + 4 one-shot seed modules created and removed in the same PR
+- **9 commits** since v1.6.1 (5 feat + 4 chore)
+- **12 files changed** across the planning system + 5 one-shot seed modules created and removed in the same PR
 - TypeScript: zero new errors from v1.6.2 work
 - `npm run build`: clean — `/feature-tracking` page builds with the extended release schedule + new EpicColor
 
@@ -19,6 +19,8 @@ v1.6.0 shipped with 108 stories from the original MVP plan. As the team got clos
 May-2026 backlog-gap consultation between Mark + Asaf identified 9 gap stories, decided four whole-epic-or-near-epic seeds (Master Catalog, Sales Ops, Quote Content, Fit-Up + Notifications), and signed off on a re-cast of v1.7 → v2.2 across 17 releases under a 20-pt cap.
 
 v1.6.2 is the planning-system release that lands all of that into Firestore, plus the small set of code changes the new schedule needed.
+
+**Mid-PR audit caught a class of dependency-order bugs** — a `general-purpose` agent audited the 95-story plan against itself, found 2 critical / 2 high / 3 medium / 4 low violations, and the rebalance fix shipped in this same PR before merge. See the "Mid-PR audit + dependency rebalance" section below.
 
 ---
 
@@ -150,19 +152,67 @@ Three product decisions locked into the Epic 9 acceptance criteria during the se
 
 ---
 
-## Capacity check
+## Mid-PR audit + dependency rebalance
 
-Every release stays within the 20-pt cap after all four seeds applied. A handful of releases land in the amber band (16–20 pts) — accepted by stakeholders during the consultation:
+The day v1.6.2 was due to merge, Asaf flagged a pattern: `1.2.1 — Branded PDF Quote Generation` (v1.7) had an acceptance criterion saying *"Content blocks read from the Quote Content Block Manager (1.8.1) — no hardcoded copy constants"* — but the restructure had pushed 1.8.1 to v1.8. So 1.2.1 was scheduled to ship a release before its dependency.
 
-| Release | Final pts | Band |
+Rather than fix in isolation, he asked for a full audit. A `general-purpose` agent walked all 95 planned stories across v1.7 → v2.2 + Unscheduled, looking at every acceptanceCriteria + description for cross-story references, and produced `tasks/v1.7-dependency-audit.md`.
+
+### Audit findings
+
+| Sev | Count | Pattern |
 |---|---|---|
-| v1.7 | 17 → 40 (with 1.8.x + Epic 9 stories that landed in v1.7) | amber, accepted |
-| v1.8 | 19 → 41 | amber, accepted |
-| v1.8.5 | 44 → 47 | amber, accepted |
-| v1.9 | 40 → 45 | amber, accepted |
-| v1.9.5 | 38 → 41 | amber, accepted |
+| 🔴 CRITICAL | 2 | Story in earlier release directly references later-release story (1.2.1 → 1.8.1, 1.2.2 → 1.8.1) |
+| 🟠 HIGH | 2 | Implicit dep where the depending feature can't fully function without the upstream (1.2.3 → 1.8.1 build-order; 1.7.4 Global Search → 8.1.5 Cross-module Contracts) |
+| 🟡 MEDIUM | 3 | Soft deps + structural issues (8.1.4 → 5.2.1 RBAC; stale `v1.7.5` reference; **Catalog Manager: 25 stories stranded at v1.7.5/v1.8.5/v1.9.5 — releases that no longer exist**) |
+| 🟢 LOW | 4 | Numbering collision `3.8.1` (catalog) vs `3.8.1` (restructure stock); stale references; Unscheduled-implies-∞ borderline cases |
 
-Mark + Asaf signed off on the amber bands during planning. v1.10 onward all stay green.
+### v1.7 ↔ v1.8 rebalance (3 retargets)
+
+Pull 1.8.1 BACK to v1.7 instead of pushing 1.2.1 forward — keeps v1.7 as a coherent customer-visible Branded PDF + Content Manager cornerstone:
+
+- `1.8.1 Quote Content Block Manager` v1.8 → **v1.7** (5 pts pulled back)
+- `1.1.2 Compatibility Rule Enforcement` v1.7 → **v1.8** (3 pts pushed forward)
+- `1.1.3 Multiple Quote Scenarios` v1.7 → **v1.8** (3 pts pushed forward)
+
+### Catalog Manager retargets (17 retargets)
+
+Every `3.7.x` and `3.8.x` story spread across v1.10 → v2.2 per a cap-aware map. Fixes both the v1.7.5 / v1.8.5 stranding AND the v1.8 capacity overflow (was at 35 pts before retarget). Only v1.15 takes a +1 amber band (21 pts); everything else lands at cap or under.
+
+### Process discipline — 3 NEW stories under Platform & Tooling
+
+To prevent this whole class of bug from recurring, three meta-stories shipped to v1.7 itself:
+
+| Story | Pts | Scope |
+|---|---|---|
+| **6.4.1** | 3 | Feature `dependsOn: string[]` schema + UI validation. Refuses retargets that would put a feature in an earlier release than its dep. Roadmap card renders red border + BLOCKED pill on unsatisfied dep. |
+| **6.4.2** | 1 | Pre-merge regex check on acceptanceCriteria text: `/\b\d+\.\d+\.\d+\b/g` against story id resolution + release ordering. Doubles as the dependsOn backfill mechanism. |
+| **6.4.3** | 0 | Standardise cross-ref language to `DEPENDS ON x.y.z`. Replaces the current zoo of "via", "reads from", "references", "Cross-reference to", "Companion to". Doc-only — discipline lands when authored. |
+
+The audit's other recommendations (5/5.5/8.1.4 deps, stale `v1.7.5` references, 3.8.1 collision per Asaf's call to leave it unique-by-title) are documented in the audit report and addressed when those stories start build.
+
+---
+
+## Capacity check (post-rebalance)
+
+Every release ≤ 20 pts after all five seeds + the rebalance applied. v1.15 takes a +1 amber band (Catalog Manager weight); everything else green or at cap.
+
+```
+v1.7  20 │ v1.8  20 │ v1.9  20 │ v1.10 20 │ v1.11 20 │
+v1.12 20 │ v1.13 20 │ v1.14 19 │ v1.15 21⚠ │ v1.16 20 │
+v1.17 20 │ v1.18 19 │ v1.19 20 │ v1.20 20 │
+v2.0  20 │ v2.1  20 │ v2.2  20
+```
+
+**v1.7 final composition** (the next build target):
+- 1.2.1 Branded PDF Quote Generation (8 pts, critical)
+- 1.2.2 Brand-Aware Content Injection (3 pts, high)
+- 1.8.1 Quote Content Block Manager (5 pts, critical) — pulled in by rebalance
+- 6.4.1 dependsOn schema + UI validation (3 pts, high) — process discipline
+- 6.4.2 Pre-merge regex check (1 pt, medium) — process discipline
+- 6.4.3 DEPENDS ON convention (0 pts, low) — process discipline
+
+Mark + Asaf signed off on the amber band during planning.
 
 ---
 
@@ -182,7 +232,7 @@ The restructure required real schema/UI extensions, not just Firestore writes:
 
 ## One-shot seed lifecycle (button → run → remove)
 
-Same pattern as v1.6.1's self-seed. Four seed payloads landed as in-app admin buttons on the Backlog, were run by Asaf on the dev URL, then the buttons + their seed modules were removed in this PR. No source-of-truth duplication: data lives in Firestore, code stays clean.
+Same pattern as v1.6.1's self-seed. Five seed payloads landed as in-app admin buttons on the Backlog, were run by Asaf on the dev URL, then the buttons + their seed modules were removed in this PR. No source-of-truth duplication: data lives in Firestore, code stays clean.
 
 | Seed module | Button | Created | Removed |
 |---|---|---|---|
@@ -190,6 +240,7 @@ Same pattern as v1.6.1's self-seed. Four seed payloads landed as in-app admin bu
 | `src/lib/quote-content-manager-seed.ts` | "Populate Content Manager backlog" | `08aeae1` | `a903c46` |
 | `src/lib/sales-ops-seed.ts` | "Populate Sales Ops backlog" | `8d0a846` | `a903c46` |
 | `src/lib/restructure-v17-seed.ts` | "Apply v1.7 → v2.2 restructure" | `0554a41` | `a903c46` |
+| `src/lib/v17-rebalance-seed.ts` | "Apply v1.7 dep-rebalance" | `14f62cc` | (post-rebalance cleanup) |
 | `src/lib/fit-up-seed.ts` | (folded into restructure) | (pre-existed) | `0554a41` |
 | `src/lib/mvp-plan-seed.ts` | (none — already un-imported) | v1.6.0 | `a903c46` (incidental cleanup) |
 
@@ -210,11 +261,13 @@ Each seed is idempotent under the hood: skip-by-title for new stories, skip-if-e
 | `src/lib/quote-content-manager-seed.ts` | Created → Deleted | Quote Content Manager 4-story seed + 3 patches |
 | `src/lib/sales-ops-seed.ts` | Created → Deleted | Sales Ops Epic 8 seed (4 + 3 + 2) |
 | `src/lib/restructure-v17-seed.ts` | Created → Deleted | v1.7 → v2.2 restructure (2 epics, 21 stories, ~30 retargets, 9 re-costs, 1 cross-ref) |
+| `src/lib/v17-rebalance-seed.ts` | Created → Deleted | Audit-driven rebalance (3 retargets + 17 catalog retargets + 3 platform-tooling stories) |
 | `src/lib/fit-up-seed.ts` | Deleted | Folded into the restructure seed; no longer needed standalone |
 | `src/lib/mvp-plan-seed.ts` | Deleted | Pre-existing dead code from v1.6.0; cleaned up incidentally |
 | `tasks/v1.7-planning-restructure-status.md` | Created | Tracks the planning work product (the v1.7 → v2.2 plan) |
+| `tasks/v1.7-dependency-audit.md` | Created | Mid-PR dep-order audit report (informed the rebalance) |
 | `tasks/RELEASE_NOTES_v1.6.2.md` | Created | This file |
-| `CLAUDE.md` | Modified | Release-state table updated with v1.6.2 row |
+| `CLAUDE.md` | Modified | Release-state table updated with v1.6.2 row + dep-audit lesson appended |
 
 ---
 
