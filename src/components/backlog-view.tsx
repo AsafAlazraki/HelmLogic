@@ -58,6 +58,7 @@ import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
 import { seedQuoteContentManagerBacklog } from '@/lib/quote-content-manager-seed';
 import { seedSalesOpsBacklog } from '@/lib/sales-ops-seed';
+import { applyV17Restructure } from '@/lib/restructure-v17-seed';
 import {
     CreateFeatureDialog,
     FeatureDetailSheet,
@@ -75,6 +76,7 @@ const EPIC_BAND: Record<EpicColor, string> = {
     rose: 'bg-rose-500',
     indigo: 'bg-indigo-500',
     slate: 'bg-slate-500',
+    cyan: 'bg-cyan-500',
 };
 const EPIC_TINT: Record<EpicColor, string> = {
     blue:    'bg-blue-50/40',
@@ -84,6 +86,7 @@ const EPIC_TINT: Record<EpicColor, string> = {
     rose:    'bg-rose-50/40',
     indigo:  'bg-indigo-50/40',
     slate:   'bg-slate-50/60',
+    cyan:    'bg-cyan-50/40',
 };
 
 const PRIORITY_CHIP: Record<string, string> = {
@@ -153,6 +156,40 @@ export function BacklogView() {
             toast({ variant: 'destructive', title: 'Seed failed', description: e?.message ?? 'See console.' });
         } finally {
             setPopulatingSales(false);
+        }
+    }
+
+    /** v1.7 → v2.2 restructure — Epic 9 + Epic 10 + 21 new stories + ~30 retargets. */
+    const [restructureOpen, setRestructureOpen] = useState(false);
+    const [restructuring, setRestructuring] = useState(false);
+
+    /** Hide once Epic 10 (Notifications) exists in any feature's epicId. */
+    const restructureAlreadyApplied = useMemo(
+        () => (features ?? []).some(f => f.epicId === 'notifications-alerts'),
+        [features],
+    );
+
+    async function runRestructure() {
+        if (!user) return;
+        setRestructuring(true);
+        try {
+            const submitterName = userProfile?.displayName || userProfile?.email || user.email || 'Someone';
+            const summary = await applyV17Restructure(firestore, user.uid, submitterName);
+            const missed = summary.retargetsMissed.length > 0
+                ? ` · ${summary.retargetsMissed.length} retargets missed (titles drift?)`
+                : '';
+            toast({
+                title: 'v1.7 → v2.2 restructure applied',
+                description: `${summary.epicsCreated} epics · ${summary.featuresCreated} new stories · ${summary.retargetsApplied} retargets · ${summary.pointsAdjusted} points adjusted · ${summary.crossRefsApplied} cross-refs${missed}.`,
+            });
+            if (summary.retargetsMissed.length > 0) {
+                console.warn('[restructure] Retargets that did not match an existing feature:', summary.retargetsMissed);
+            }
+            setRestructureOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Restructure failed', description: e?.message ?? 'See console.' });
+        } finally {
+            setRestructuring(false);
         }
     }
 
@@ -311,6 +348,17 @@ export function BacklogView() {
                                 Populate Sales Ops backlog
                             </Button>
                         )}
+                        {!restructureAlreadyApplied && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-rose-500 text-white border-rose-400 hover:bg-rose-600 hover:text-white gap-1.5 shadow-sm"
+                                onClick={() => setRestructureOpen(true)}
+                            >
+                                <Layers className="h-4 w-4" />
+                                Apply v1.7 → v2.2 restructure
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -427,6 +475,76 @@ export function BacklogView() {
                                 <>
                                     <FileEdit className="h-3.5 w-3.5" />
                                     Yes, seed 4 stories
+                                </>
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* v1.7 → v2.2 restructure — Epic 9 + Epic 10 + 21 new stories +
+                ~30 retargets + revised points + 1 cross-ref. One-shot button
+                hidden after Epic 10 (Notifications) docs land. */}
+            <AlertDialog open={restructureOpen} onOpenChange={setRestructureOpen}>
+                <AlertDialogContent className="max-w-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <Layers className="h-4 w-4 text-rose-600" />
+                            Apply v1.7 → v2.2 restructure?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-xs text-slate-600">
+                                <p>
+                                    <strong>Big change.</strong> This rewrites the release plan to a 20-pt-per-release cap,
+                                    adds 2 new epics + 21 new stories, retargets ~30 existing stories to new release buckets,
+                                    and lowers point estimates on stories where partial implementation already exists.
+                                </p>
+                                <p className="font-semibold pt-1">New epics:</p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                    <li><strong>Epic 9 — Fit-Up & Production</strong> (rose) — per-item Simple/Medium/Complex tier + cost, master catalog, quote checkbox, PDF section</li>
+                                    <li><strong>Epic 10 — Notifications & Alerts</strong> (cyan) — extends existing notification-bell with email channel + per-event types</li>
+                                </ul>
+                                <p className="font-semibold pt-1">21 new stories:</p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                    <li>Backlog gaps (9): 1.1.4 Comparison · 1.2.4 Email templates · 1.9.1 Quote templates · 5.5.5 Audit viewer · 5.7.1 User Mgmt UI · 8.2.1 Reporting · 3.8.1 Stock display · 7.1.1 Mobile polish · 10.1.1 Notif foundation</li>
+                                    <li>Epic 9 Fit-Up (8): 9.1.1-4 catalog/edit/import/bulk · 9.2.1-3 module-tab/checkbox/PDF · 9.3.1 rule-based</li>
+                                    <li>Epic 10 channels (4): 10.1.2 viewed · 10.1.3 expiring · 10.1.4 milestone · 10.1.5 deposit-due</li>
+                                </ul>
+                                <p className="font-semibold pt-1">17 releases, all under 20 pts:</p>
+                                <p className="text-[11px] font-mono leading-relaxed bg-slate-50 p-2 rounded border border-slate-200">
+                                    v1.7 17 │ v1.8 19 │ v1.9 20 │ v1.10 18 │ v1.11 18 │ v1.12 19 │ v1.13 18 │ v1.14 19 │<br />
+                                    v1.15 16 │ v1.16 18 │ v1.17 20 │ v1.18 19 │ v1.19 17 │ v1.20 11 │<br />
+                                    v2.0 18 (MVP) │ v2.1 17 │ v2.2 10
+                                </p>
+                                <p className="font-semibold pt-1">Re-cost (audit found existing partial code):</p>
+                                <ul className="list-disc pl-5 space-y-0.5 text-[11px]">
+                                    <li>1.4.1 Lifecycle States 5→3 (status field already exists)</li>
+                                    <li>1.4.2 Send Quote 3→2 (email capture already wired)</li>
+                                    <li>3.4.1 Customer Schema 3→2 (basic schema exists)</li>
+                                    <li>1.5.5 Trade-In 3→2 (field exists in adminDetails)</li>
+                                </ul>
+                                <p className="text-[11px] text-slate-500 pt-1">
+                                    Idempotent. Re-running skips existing epics/stories, only writes when targetRelease/points actually differ. Cross-ref to 2.1.2 only added once. Heads-up: if any story title was edited mid-flight, that retarget will be reported as "missed" in the toast.
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={restructuring}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => { e.preventDefault(); runRestructure(); }}
+                            disabled={restructuring}
+                            className="bg-rose-600 hover:bg-rose-700 gap-1.5"
+                        >
+                            {restructuring ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Restructuring…
+                                </>
+                            ) : (
+                                <>
+                                    <Layers className="h-3.5 w-3.5" />
+                                    Yes, apply restructure
                                 </>
                             )}
                         </AlertDialogAction>

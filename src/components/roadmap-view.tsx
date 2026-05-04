@@ -75,6 +75,7 @@ const EPIC_BAND_BG: Record<EpicColor, string> = {
     rose: 'bg-rose-500',
     indigo: 'bg-indigo-500',
     slate: 'bg-slate-500',
+    cyan: 'bg-cyan-500',
 };
 const EPIC_TINT: Record<EpicColor, string> = {
     blue: 'bg-blue-50/40',
@@ -84,6 +85,7 @@ const EPIC_TINT: Record<EpicColor, string> = {
     rose: 'bg-rose-50/40',
     indigo: 'bg-indigo-50/40',
     slate: 'bg-slate-50/60',
+    cyan: 'bg-cyan-50/40',
 };
 const UNFILED_EPIC_KEY = '__unfiled__';
 

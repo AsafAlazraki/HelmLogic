@@ -150,12 +150,22 @@ const RELEASE_OPTIONS = [
     'v1.5',
     'v1.6',
     'v1.7',
-    'v1.7.5',
     'v1.8',
-    'v1.8.5',
     'v1.9',
-    'v1.9.5',
+    'v1.10',
+    'v1.11',
+    'v1.12',
+    'v1.13',
+    'v1.14',
+    'v1.15',
+    'v1.16',
+    'v1.17',
+    'v1.18',
+    'v1.19',
+    'v1.20',
     'v2.0',
+    'v2.1',
+    'v2.2',
     'Unscheduled',
 ] as const;
 
@@ -205,7 +215,7 @@ export const POINT_OPTIONS = [1, 2, 3, 5, 8] as const;
 export type StoryPoints = typeof POINT_OPTIONS[number];
 
 /** Epic colour palette — must match the swim-lane band colours. */
-export type EpicColor = 'blue' | 'amber' | 'violet' | 'emerald' | 'rose' | 'slate' | 'indigo';
+export type EpicColor = 'blue' | 'amber' | 'violet' | 'emerald' | 'rose' | 'slate' | 'indigo' | 'cyan';
 
 export interface EpicDoc {
     id: string;
@@ -280,6 +290,7 @@ const CARD_EPIC_CHIP: Record<EpicColor, string> = {
     rose:    'bg-rose-50 text-rose-700 border-rose-200',
     indigo:  'bg-indigo-50 text-indigo-700 border-indigo-200',
     slate:   'bg-slate-50 text-slate-600 border-slate-200',
+    cyan:    'bg-cyan-50 text-cyan-700 border-cyan-200',
 };
 const CARD_EPIC_DOT: Record<EpicColor, string> = {
     blue: 'bg-blue-500',
@@ -289,6 +300,7 @@ const CARD_EPIC_DOT: Record<EpicColor, string> = {
     rose: 'bg-rose-500',
     indigo: 'bg-indigo-500',
     slate: 'bg-slate-500',
+    cyan: 'bg-cyan-500',
 };
 
 /**
@@ -370,6 +382,7 @@ function EpicPicker({
         rose: 'bg-rose-500',
         indigo: 'bg-indigo-500',
         slate: 'bg-slate-500',
+        cyan: 'bg-cyan-500',
     };
     return (
         <Select

@@ -36,6 +36,7 @@ const COLORS: ReadonlyArray<{ key: EpicColor; bg: string }> = [
     { key: 'rose',    bg: 'bg-rose-500' },
     { key: 'indigo',  bg: 'bg-indigo-500' },
     { key: 'slate',   bg: 'bg-slate-500' },
+    { key: 'cyan',    bg: 'bg-cyan-500' },
 ];
 
 export function CreateEpicDialog({
