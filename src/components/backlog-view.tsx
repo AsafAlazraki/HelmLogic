@@ -15,16 +15,13 @@
  *   - Inside: compact feature rows (title, priority, release, points)
  *
  * Click a feature row → opens the existing FeatureDetailSheet.
- * "+ Create epic" button + "Seed MVP plan" button live in the banner.
+ * "+ New Epic" button lives in the banner.
  */
 
 import { useMemo, useState } from 'react';
 import { collection } from 'firebase/firestore';
-import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { doc } from 'firebase/firestore';
-import { useToast } from '@/hooks/use-toast';
 import {
     Bug,
     CheckCircle2,
@@ -60,6 +57,7 @@ const EPIC_BAND: Record<EpicColor, string> = {
     rose: 'bg-rose-500',
     indigo: 'bg-indigo-500',
     slate: 'bg-slate-500',
+    cyan: 'bg-cyan-500',
 };
 const EPIC_TINT: Record<EpicColor, string> = {
     blue:    'bg-blue-50/40',
@@ -69,6 +67,7 @@ const EPIC_TINT: Record<EpicColor, string> = {
     rose:    'bg-rose-50/40',
     indigo:  'bg-indigo-50/40',
     slate:   'bg-slate-50/60',
+    cyan:    'bg-cyan-50/40',
 };
 
 const PRIORITY_CHIP: Record<string, string> = {
@@ -83,19 +82,11 @@ const UNFILED = '__unfiled__';
 
 export function BacklogView() {
     const firestore = useFirestore();
-    const { user } = useUser();
-    const { toast } = useToast();
 
     const featuresRef = useMemoFirebase(() => collection(firestore, 'features'), [firestore]);
     const epicsRef = useMemoFirebase(() => collection(firestore, 'epics'), [firestore]);
     const { data: features } = useCollection<FeatureDoc>(featuresRef);
     const { data: epics } = useCollection<EpicDoc>(epicsRef);
-
-    const userProfileRef = useMemoFirebase(
-        () => (user ? doc(firestore, 'users', user.uid) : null),
-        [firestore, user?.uid],
-    );
-    const { data: userProfile } = useDoc<any>(userProfileRef);
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [createEpicOpen, setCreateEpicOpen] = useState(false);

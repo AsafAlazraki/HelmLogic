@@ -538,9 +538,22 @@ Key collections and access:
 
 ---
 
-## v1.6 Planning System — ON BRANCH (2026-04-27)
+## v1.6.1 Patch — shipped-release lock + v1.6 self-seed — SHIPPED (2026-04-27)
 
-- **Status**: 39 commits on `claude/app-overview-wKiZ1`. Release notes at `tasks/RELEASE_NOTES_v1.6.0.md`. Dev → main PR pending.
+- **Status**: PR #30 merged to main 2026-04-27. Release notes at `tasks/RELEASE_NOTES_v1.6.1.md`.
+- **What it adds**: New `shipped?: boolean` flag on `RELEASE_WINDOWS` in `src/lib/release-schedule.ts` + `isReleaseShipped(releaseKey)` helper. v1.6 marked shipped. Drives a coordinated read-only treatment everywhere a feature surfaces:
+  - Roadmap header: emerald background + "Shipped" pill + lock icon (replaces capacity colour-coding for that column)
+  - Roadmap cells: emerald wash; `useDroppable({ disabled: true })`; `onDragEnd` rejects shipped-source/target moves with a destructive toast
+  - Roadmap chips: `useDraggable({ disabled: true })`; emerald border + lock icon on the status line
+  - Backlog row pill: emerald + lock icon when targetRelease is shipped
+  - Detail sheet (`FeatureDetailBody`): emerald lock banner + every scope input disabled (status / type / priority / epic / points / release / title / description / accept / archive). Comments + voting + tags stay live.
+- **`disabled?: boolean` prop** added to `ReleasePicker`, `EpicPicker`, `PointsPicker` so the lock can be threaded down without rebuilding each picker. shadcn `<Select disabled>` propagates correctly.
+- **v1.6 self-seed (one-shot, removed)**: A "Populate v1.6 stories" admin button on the Backlog seeded 13 stories representing the v1.6 work — under a new **Platform & Tooling** epic (id `platform-tooling`, indigo, order 700) — all `status: shipped`, `targetRelease: v1.6`, auto-accepted by the runner. 40 pts total. After the seed ran successfully on dev, the button + `src/lib/v16-self-seed.ts` were stripped (commit `9dcfd9d`). The seeded data is now the source of truth.
+- **Ritual for future ships**: when a release merges to main, set `shipped: true` on its `RELEASE_WINDOWS` entry. That's the only flag — every visual + behavioural lock follows automatically.
+
+## v1.6 Planning System — SHIPPED (2026-04-27)
+
+- **Status**: PR #29 merged to main 2026-04-27. Release notes at `tasks/RELEASE_NOTES_v1.6.0.md`.
 - **What it adds**: 3 new tabs on `/feature-tracking` (Backlog, Roadmap, Release Notes — Backlog is the new default). New `epics/{id}` Firestore collection. 7 new optional fields on `features/{id}` (epicId, points, deletedAt, deletedBy, acceptedAt, acceptedBy, acceptedByName). Per-story Accept button. 8-bucket release schedule (v1.6 / v1.7 / v1.7.5 / v1.8 / v1.8.5 / v1.9 / v1.9.5 / v2.0). 108 features seeded (6 epics × 22 features + 41 expansion + 14 content + 16 decisions + 16 ops).
 - **New components**: `feature-tracking-view.tsx` (tab switcher), `backlog-view.tsx`, `roadmap-view.tsx`, `create-epic-dialog.tsx`, `mvp-plan-seed.ts` (seed payload + sync functions). `feature-tracking-board.tsx` extended with epic chips, points badges, Accept UI, soft delete + Archive view.
 - **Sub-dealer gate**: `/feature-tracking` blocked for sub-dealer org users (sidebar hidden + page-level gate). The Firestore rule for `epics/` and `features/` left at "any signed-in user" because the v1.5.1 isSubDealer rule had a bug that denied the parent dealer admin.
