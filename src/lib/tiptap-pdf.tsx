@@ -1,0 +1,208 @@
+/**
+ * TipTap HTML → react-pdf renderer (v1.7 — story 1.2.1).
+ *
+ * @react-pdf/renderer doesn't accept HTML strings directly — it
+ * needs `<Text>` / `<View>` components. TipTap's StarterKit (used
+ * by 1.8.1's Quote Content Block Manager) produces a small,
+ * predictable subset of HTML that we walk with a regex tokenizer
+ * and emit native react-pdf primitives.
+ *
+ * Supported tags (matches what FeatureRichTextEditor's StarterKit
+ * + Link extensions emit):
+ *   Block: <p>, <h2>, <h3>, <ul>, <ol>, <li>
+ *   Inline: <strong>, <em>, <br>, <a>
+ *
+ * Anything else falls back to plain text. Good enough for v1.7;
+ * v1.8.2 (image upload) extends with <img> handling.
+ */
+
+import { Text, View, type Style } from '@react-pdf/renderer';
+import { Fragment, type ReactNode } from 'react';
+
+interface BlockNode {
+    tag: 'p' | 'h2' | 'h3' | 'ul' | 'ol' | 'li';
+    inner: string;
+    children?: BlockNode[];
+}
+
+interface Props {
+    html: string | null | undefined;
+    style?: Style;
+    /** Base text size in pt. Headings scale up; small bodies scale down. */
+    fontSize?: number;
+    /** Default text colour. */
+    color?: string;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+ * Public component
+ * ────────────────────────────────────────────────────────────────── */
+
+export function TipTapHtmlPdf({ html, style, fontSize = 9, color = '#334155' }: Props) {
+    if (!html || !html.trim()) return null;
+    const blocks = parseBlocks(html);
+    return (
+        <View style={style}>
+            {blocks.map((b, i) => renderBlock(b, i, fontSize, color))}
+        </View>
+    );
+}
+
+/* ──────────────────────────────────────────────────────────────────
+ * Block parser — splits top-level into <p>, <h2>, <h3>, <ul>, <ol>
+ * Lists get an inner pass that pulls out <li> children.
+ * ────────────────────────────────────────────────────────────────── */
+
+const BLOCK_RE = /<(p|h2|h3|ul|ol)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+const LI_RE = /<li\b[^>]*>([\s\S]*?)<\/li>/gi;
+
+function parseBlocks(html: string): BlockNode[] {
+    const out: BlockNode[] = [];
+    let m: RegExpExecArray | null;
+    BLOCK_RE.lastIndex = 0;
+    while ((m = BLOCK_RE.exec(html)) !== null) {
+        const tag = m[1].toLowerCase() as BlockNode['tag'];
+        const inner = m[2];
+        if (tag === 'ul' || tag === 'ol') {
+            const items: BlockNode[] = [];
+            let li: RegExpExecArray | null;
+            LI_RE.lastIndex = 0;
+            while ((li = LI_RE.exec(inner)) !== null) {
+                items.push({ tag: 'li', inner: li[1] });
+            }
+            out.push({ tag, inner, children: items });
+        } else {
+            out.push({ tag, inner });
+        }
+    }
+    return out;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+ * Inline renderer — walks <strong>, <em>, <br>, <a> + raw text.
+ * Emits <Text> nodes with style overrides; outer caller wraps in a
+ * block-level <Text>.
+ * ────────────────────────────────────────────────────────────────── */
+
+interface InlineToken {
+    kind: 'text' | 'br';
+    text?: string;
+    bold?: boolean;
+    italic?: boolean;
+}
+
+const INLINE_PARSERS: { re: RegExp; transform: (m: RegExpExecArray) => InlineToken[] }[] = [
+    {
+        re: /<br\s*\/?>/i,
+        transform: () => [{ kind: 'br' }],
+    },
+];
+
+/** Tokenize one block's inner HTML into a flat list of styled spans. */
+function tokenizeInline(html: string): InlineToken[] {
+    const tokens: InlineToken[] = [];
+    let cursor = 0;
+    const TAG = /<(\/)?(strong|b|em|i|a|br)(?:\s[^>]*)?\/?>/gi;
+    const stack: { bold: boolean; italic: boolean }[] = [{ bold: false, italic: false }];
+    let m: RegExpExecArray | null;
+    TAG.lastIndex = 0;
+    while ((m = TAG.exec(html)) !== null) {
+        // Flush plain text up to this tag
+        if (m.index > cursor) {
+            const text = decodeHtml(html.slice(cursor, m.index));
+            if (text) tokens.push({ kind: 'text', text, ...stack[stack.length - 1] });
+        }
+        const isClose = !!m[1];
+        const tagName = m[2].toLowerCase();
+        if (tagName === 'br') {
+            tokens.push({ kind: 'br' });
+        } else if (tagName === 'a') {
+            // Links render as plain text in v1.7 (no @react-pdf Link primitive
+            // wired here yet — we skip the href, keep the visible text).
+            // No state change.
+        } else {
+            const top = stack[stack.length - 1];
+            if (isClose) {
+                if (stack.length > 1) stack.pop();
+            } else {
+                stack.push({
+                    bold: top.bold || tagName === 'strong' || tagName === 'b',
+                    italic: top.italic || tagName === 'em' || tagName === 'i',
+                });
+            }
+        }
+        cursor = m.index + m[0].length;
+    }
+    if (cursor < html.length) {
+        const text = decodeHtml(html.slice(cursor));
+        if (text) tokens.push({ kind: 'text', text, ...stack[stack.length - 1] });
+    }
+    return tokens;
+}
+
+function decodeHtml(s: string): string {
+    return s
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+}
+
+function renderInline(html: string, baseStyle: Style): ReactNode {
+    const tokens = tokenizeInline(html);
+    if (tokens.length === 0) return null;
+    return tokens.map((t, i) => {
+        if (t.kind === 'br') return <Text key={i}>{'\n'}</Text>;
+        const style: Style = { ...baseStyle };
+        if (t.bold) style.fontWeight = 'bold';
+        if (t.italic) style.fontStyle = 'italic';
+        return <Text key={i} style={style}>{t.text}</Text>;
+    });
+}
+
+/* ──────────────────────────────────────────────────────────────────
+ * Block renderer — emits the right react-pdf primitive per tag.
+ * ────────────────────────────────────────────────────────────────── */
+
+function renderBlock(b: BlockNode, key: number, fontSize: number, color: string): ReactNode {
+    switch (b.tag) {
+        case 'h2':
+            return (
+                <Text key={key} style={{ fontSize: fontSize + 3, fontWeight: 'bold', color, marginTop: 6, marginBottom: 4 }}>
+                    {renderInline(b.inner, { fontSize: fontSize + 3, fontWeight: 'bold', color })}
+                </Text>
+            );
+        case 'h3':
+            return (
+                <Text key={key} style={{ fontSize: fontSize + 1, fontWeight: 'bold', color, marginTop: 4, marginBottom: 3 }}>
+                    {renderInline(b.inner, { fontSize: fontSize + 1, fontWeight: 'bold', color })}
+                </Text>
+            );
+        case 'p':
+            return (
+                <Text key={key} style={{ fontSize, color, lineHeight: 1.5, marginBottom: 4 }}>
+                    {renderInline(b.inner, { fontSize, color })}
+                </Text>
+            );
+        case 'ul':
+        case 'ol':
+            return (
+                <View key={key} style={{ marginBottom: 4 }}>
+                    {(b.children ?? []).map((li, i) => (
+                        <View key={i} style={{ flexDirection: 'row', marginBottom: 2 }}>
+                            <Text style={{ fontSize, color, width: 12 }}>
+                                {b.tag === 'ul' ? '•' : `${i + 1}.`}
+                            </Text>
+                            <Text style={{ fontSize, color, lineHeight: 1.5, flex: 1 }}>
+                                {renderInline(li.inner, { fontSize, color })}
+                            </Text>
+                        </View>
+                    ))}
+                </View>
+            );
+        default:
+            return <Fragment key={key} />;
+    }
+}

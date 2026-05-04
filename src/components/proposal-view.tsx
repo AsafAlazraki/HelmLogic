@@ -267,12 +267,17 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         if (!quote || !financials) return;
         setIsGeneratingPdf(true);
         try {
-            const [{ pdf }, { ProposalPDFDocument }] = await Promise.all([
+            const [{ pdf }, { ProposalPDFDocument }, { resolveContentBlocksForQuote }] = await Promise.all([
                 import('@react-pdf/renderer'),
                 import('./proposal-pdf'),
+                import('@/lib/content-blocks'),
             ]);
+            // v1.7 (1.2.1): fetch org-authored content blocks (with brand-override resolution).
+            const contentBlocks = quote.organisationId
+                ? await resolveContentBlocksForQuote(firestore, quote.organisationId, quote.vendorId ?? null)
+                : undefined;
             const blob = await pdf(
-                createElement(ProposalPDFDocument, { quote, organisation, financials }) as any
+                createElement(ProposalPDFDocument, { quote, organisation, financials, contentBlocks }) as any
             ).toBlob();
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
