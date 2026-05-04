@@ -15,28 +15,22 @@
  *   - Inside: compact feature rows (title, priority, release, points)
  *
  * Click a feature row → opens the existing FeatureDetailSheet.
- * "+ Create epic" button + "Seed MVP plan" button live in the banner.
+ * "+ New Epic" button lives in the banner.
  */
 
 import { useMemo, useState } from 'react';
 import { collection } from 'firebase/firestore';
-import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { doc } from 'firebase/firestore';
-import { useToast } from '@/hooks/use-toast';
 import {
     Bug,
     CheckCircle2,
     ChevronRight,
-    FileEdit,
     HelpCircle,
     Layers,
-    Loader2,
     Lock,
     Plus,
     Sparkles,
-    TrendingUp,
     Wrench,
     FileText,
     Scale,
@@ -44,21 +38,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
-import { seedQuoteContentManagerBacklog } from '@/lib/quote-content-manager-seed';
-import { seedSalesOpsBacklog } from '@/lib/sales-ops-seed';
-import { applyV17Restructure } from '@/lib/restructure-v17-seed';
 import {
     CreateFeatureDialog,
     FeatureDetailSheet,
@@ -101,19 +82,11 @@ const UNFILED = '__unfiled__';
 
 export function BacklogView() {
     const firestore = useFirestore();
-    const { user } = useUser();
-    const { toast } = useToast();
 
     const featuresRef = useMemoFirebase(() => collection(firestore, 'features'), [firestore]);
     const epicsRef = useMemoFirebase(() => collection(firestore, 'epics'), [firestore]);
     const { data: features } = useCollection<FeatureDoc>(featuresRef);
     const { data: epics } = useCollection<EpicDoc>(epicsRef);
-
-    const userProfileRef = useMemoFirebase(
-        () => (user ? doc(firestore, 'users', user.uid) : null),
-        [firestore, user?.uid],
-    );
-    const { data: userProfile } = useDoc<any>(userProfileRef);
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [createEpicOpen, setCreateEpicOpen] = useState(false);
@@ -121,95 +94,6 @@ export function BacklogView() {
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
-    /** Quote Content Manager backlog seed — one-shot admin button. */
-    const [populateContentOpen, setPopulateContentOpen] = useState(false);
-    const [populatingContent, setPopulatingContent] = useState(false);
-
-    /** Hide the seed button once any 1.8.* feature exists. */
-    const contentManagerAlreadyPopulated = useMemo(
-        () => (features ?? []).some(f => /^1\.8\.\d+\b/.test(f.title || '')),
-        [features],
-    );
-
-    /** Sales Ops backlog seed — one-shot admin button. */
-    const [populateSalesOpen, setPopulateSalesOpen] = useState(false);
-    const [populatingSales, setPopulatingSales] = useState(false);
-
-    /** Hide the seed button once any 8.1.* feature exists. */
-    const salesOpsAlreadyPopulated = useMemo(
-        () => (features ?? []).some(f => /^8\.1\.\d+\b/.test(f.title || '')),
-        [features],
-    );
-
-    async function runPopulateSalesOps() {
-        if (!user) return;
-        setPopulatingSales(true);
-        try {
-            const submitterName = userProfile?.displayName || userProfile?.email || user.email || 'Someone';
-            const summary = await seedSalesOpsBacklog(firestore, user.uid, submitterName);
-            toast({
-                title: 'Sales Ops backlog seeded',
-                description: `${summary.featuresCreated} created · ${summary.featuresSkipped} skipped · ${summary.migrationsApplied} migrated · ${summary.crossRefsApplied} cross-refs${summary.epicCreated ? ' · Epic 8 added' : ''}.`,
-            });
-            setPopulateSalesOpen(false);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Seed failed', description: e?.message ?? 'See console.' });
-        } finally {
-            setPopulatingSales(false);
-        }
-    }
-
-    /** v1.7 → v2.2 restructure — Epic 9 + Epic 10 + 21 new stories + ~30 retargets. */
-    const [restructureOpen, setRestructureOpen] = useState(false);
-    const [restructuring, setRestructuring] = useState(false);
-
-    /** Hide once Epic 10 (Notifications) exists in any feature's epicId. */
-    const restructureAlreadyApplied = useMemo(
-        () => (features ?? []).some(f => f.epicId === 'notifications-alerts'),
-        [features],
-    );
-
-    async function runRestructure() {
-        if (!user) return;
-        setRestructuring(true);
-        try {
-            const submitterName = userProfile?.displayName || userProfile?.email || user.email || 'Someone';
-            const summary = await applyV17Restructure(firestore, user.uid, submitterName);
-            const missed = summary.retargetsMissed.length > 0
-                ? ` · ${summary.retargetsMissed.length} retargets missed (titles drift?)`
-                : '';
-            toast({
-                title: 'v1.7 → v2.2 restructure applied',
-                description: `${summary.epicsCreated} epics · ${summary.featuresCreated} new stories · ${summary.retargetsApplied} retargets · ${summary.pointsAdjusted} points adjusted · ${summary.crossRefsApplied} cross-refs${missed}.`,
-            });
-            if (summary.retargetsMissed.length > 0) {
-                console.warn('[restructure] Retargets that did not match an existing feature:', summary.retargetsMissed);
-            }
-            setRestructureOpen(false);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Restructure failed', description: e?.message ?? 'See console.' });
-        } finally {
-            setRestructuring(false);
-        }
-    }
-
-    async function runPopulateContentManager() {
-        if (!user) return;
-        setPopulatingContent(true);
-        try {
-            const submitterName = userProfile?.displayName || userProfile?.email || user.email || 'Someone';
-            const summary = await seedQuoteContentManagerBacklog(firestore, user.uid, submitterName);
-            toast({
-                title: 'Quote Content Manager backlog seeded',
-                description: `${summary.featuresCreated} created · ${summary.featuresSkipped} skipped · ${summary.existingPatched} cross-refs added.`,
-            });
-            setPopulateContentOpen(false);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Seed failed', description: e?.message ?? 'See console.' });
-        } finally {
-            setPopulatingContent(false);
-        }
-    }
 
     const sortedEpics = useMemo(
         () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
@@ -326,39 +210,6 @@ export function BacklogView() {
                             <Plus className="h-4 w-4" />
                             New Epic
                         </Button>
-                        {!contentManagerAlreadyPopulated && (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-blue-500 text-white border-blue-400 hover:bg-blue-600 hover:text-white gap-1.5 shadow-sm"
-                                onClick={() => setPopulateContentOpen(true)}
-                            >
-                                <FileEdit className="h-4 w-4" />
-                                Populate Content Manager backlog
-                            </Button>
-                        )}
-                        {!salesOpsAlreadyPopulated && (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-cyan-500 text-white border-cyan-400 hover:bg-cyan-600 hover:text-white gap-1.5 shadow-sm"
-                                onClick={() => setPopulateSalesOpen(true)}
-                            >
-                                <TrendingUp className="h-4 w-4" />
-                                Populate Sales Ops backlog
-                            </Button>
-                        )}
-                        {!restructureAlreadyApplied && (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-rose-500 text-white border-rose-400 hover:bg-rose-600 hover:text-white gap-1.5 shadow-sm"
-                                onClick={() => setRestructureOpen(true)}
-                            >
-                                <Layers className="h-4 w-4" />
-                                Apply v1.7 → v2.2 restructure
-                            </Button>
-                        )}
                     </div>
                 </div>
             </div>
@@ -424,196 +275,6 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
-
-            {/* Quote Content Manager backlog seed — one-shot button
-                hidden after first successful run (heuristic: any 1.8.*
-                feature exists). Idempotent under the hood. */}
-            <AlertDialog open={populateContentOpen} onOpenChange={setPopulateContentOpen}>
-                <AlertDialogContent className="max-w-xl">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <FileEdit className="h-4 w-4 text-blue-600" />
-                            Seed the Quote Content Manager backlog?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="space-y-2 text-xs text-slate-600">
-                                <p>
-                                    Adds <strong>4 new stories</strong> under Epic 1 (Guided Configuration) sub-feature 1.8.x
-                                    — extending the T&Cs editor pattern to manage every content block on the customer-facing quote.
-                                </p>
-                                <ul className="list-disc pl-5 space-y-0.5">
-                                    <li><strong>1.8.1</strong> (v1.7, 5 pts) — Quote Content Block Manager in org settings (TipTap editor + per-brand overrides + version history)</li>
-                                    <li><strong>1.8.2</strong> (v1.7, 2 pts) — Image upload per content block</li>
-                                    <li><strong>1.8.4</strong> (v1.7, 3 pts) — Quote preview button (inline PDF render via existing <code className="bg-slate-100 rounded px-1">ProposalPDFDocument</code>)</li>
-                                    <li><strong>1.8.3</strong> (v1.8, 3 pts) — Layout controls + "Starts on new page" toggle</li>
-                                </ul>
-                                <p className="pt-1">
-                                    Also patches <strong>3 existing v1.7 stories</strong> (1.2.1 / 1.2.2 / 1.2.3) with a
-                                    cross-reference acceptance line pointing at 1.8.1 — so the audit trail shows how the
-                                    PDF generation, brand-aware injection, and personalisation stories all consume the new
-                                    content manager.
-                                </p>
-                                <p className="pt-1 text-[11px] text-slate-500">
-                                    Idempotent — re-running skips stories whose titles already exist. Capacity: v1.7 30 → 40 (at cap), v1.8 38 → 41 (amber, accepted).
-                                </p>
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={populatingContent}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={(e) => { e.preventDefault(); runPopulateContentManager(); }}
-                            disabled={populatingContent}
-                            className="bg-blue-600 hover:bg-blue-700 gap-1.5"
-                        >
-                            {populatingContent ? (
-                                <>
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    Seeding…
-                                </>
-                            ) : (
-                                <>
-                                    <FileEdit className="h-3.5 w-3.5" />
-                                    Yes, seed 4 stories
-                                </>
-                            )}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* v1.7 → v2.2 restructure — Epic 9 + Epic 10 + 21 new stories +
-                ~30 retargets + revised points + 1 cross-ref. One-shot button
-                hidden after Epic 10 (Notifications) docs land. */}
-            <AlertDialog open={restructureOpen} onOpenChange={setRestructureOpen}>
-                <AlertDialogContent className="max-w-2xl">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <Layers className="h-4 w-4 text-rose-600" />
-                            Apply v1.7 → v2.2 restructure?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="space-y-2 text-xs text-slate-600">
-                                <p>
-                                    <strong>Big change.</strong> This rewrites the release plan to a 20-pt-per-release cap,
-                                    adds 2 new epics + 21 new stories, retargets ~30 existing stories to new release buckets,
-                                    and lowers point estimates on stories where partial implementation already exists.
-                                </p>
-                                <p className="font-semibold pt-1">New epics:</p>
-                                <ul className="list-disc pl-5 space-y-0.5">
-                                    <li><strong>Epic 9 — Fit-Up & Production</strong> (rose) — per-item Simple/Medium/Complex tier + cost, master catalog, quote checkbox, PDF section</li>
-                                    <li><strong>Epic 10 — Notifications & Alerts</strong> (cyan) — extends existing notification-bell with email channel + per-event types</li>
-                                </ul>
-                                <p className="font-semibold pt-1">21 new stories:</p>
-                                <ul className="list-disc pl-5 space-y-0.5">
-                                    <li>Backlog gaps (9): 1.1.4 Comparison · 1.2.4 Email templates · 1.9.1 Quote templates · 5.5.5 Audit viewer · 5.7.1 User Mgmt UI · 8.2.1 Reporting · 3.8.1 Stock display · 7.1.1 Mobile polish · 10.1.1 Notif foundation</li>
-                                    <li>Epic 9 Fit-Up (8): 9.1.1-4 catalog/edit/import/bulk · 9.2.1-3 module-tab/checkbox/PDF · 9.3.1 rule-based</li>
-                                    <li>Epic 10 channels (4): 10.1.2 viewed · 10.1.3 expiring · 10.1.4 milestone · 10.1.5 deposit-due</li>
-                                </ul>
-                                <p className="font-semibold pt-1">17 releases, all under 20 pts:</p>
-                                <p className="text-[11px] font-mono leading-relaxed bg-slate-50 p-2 rounded border border-slate-200">
-                                    v1.7 17 │ v1.8 19 │ v1.9 20 │ v1.10 18 │ v1.11 18 │ v1.12 19 │ v1.13 18 │ v1.14 19 │<br />
-                                    v1.15 16 │ v1.16 18 │ v1.17 20 │ v1.18 19 │ v1.19 17 │ v1.20 11 │<br />
-                                    v2.0 18 (MVP) │ v2.1 17 │ v2.2 10
-                                </p>
-                                <p className="font-semibold pt-1">Re-cost (audit found existing partial code):</p>
-                                <ul className="list-disc pl-5 space-y-0.5 text-[11px]">
-                                    <li>1.4.1 Lifecycle States 5→3 (status field already exists)</li>
-                                    <li>1.4.2 Send Quote 3→2 (email capture already wired)</li>
-                                    <li>3.4.1 Customer Schema 3→2 (basic schema exists)</li>
-                                    <li>1.5.5 Trade-In 3→2 (field exists in adminDetails)</li>
-                                </ul>
-                                <p className="text-[11px] text-slate-500 pt-1">
-                                    Idempotent. Re-running skips existing epics/stories, only writes when targetRelease/points actually differ. Cross-ref to 2.1.2 only added once. Heads-up: if any story title was edited mid-flight, that retarget will be reported as "missed" in the toast.
-                                </p>
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={restructuring}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={(e) => { e.preventDefault(); runRestructure(); }}
-                            disabled={restructuring}
-                            className="bg-rose-600 hover:bg-rose-700 gap-1.5"
-                        >
-                            {restructuring ? (
-                                <>
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    Restructuring…
-                                </>
-                            ) : (
-                                <>
-                                    <Layers className="h-3.5 w-3.5" />
-                                    Yes, apply restructure
-                                </>
-                            )}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-
-            {/* Sales Ops backlog seed — creates Epic 8 + 4 new stories +
-                migrates 3 existing stories from Epic 1 + 2 cross-refs.
-                One-shot button hidden after first successful run. */}
-            <AlertDialog open={populateSalesOpen} onOpenChange={setPopulateSalesOpen}>
-                <AlertDialogContent className="max-w-xl">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <TrendingUp className="h-4 w-4 text-cyan-600" />
-                            Seed the Sales Operations backlog?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="space-y-2 text-xs text-slate-600">
-                                <p>
-                                    Creates a <strong>NEW Epic 8 — Sales Operations</strong> and adds 4 new stories +
-                                    migrates 3 existing customer/quote stories from Epic 1 into it.
-                                </p>
-                                <p className="font-semibold pt-1">New stories under sub-feature 8.1.x:</p>
-                                <ul className="list-disc pl-5 space-y-0.5">
-                                    <li><strong>8.1.1</strong> (v1.8.5, 3 pts) — Sales workspace shell + Customers list</li>
-                                    <li><strong>8.1.4</strong> (v1.9, 5 pts) — Cross-module Quotes view with sort + filter</li>
-                                    <li><strong>8.1.5</strong> (v1.9.5, 3 pts) — Cross-module Contracts view with sort + filter</li>
-                                    <li><strong>8.1.7</strong> (Unscheduled, 2 pts) — Saved filter views per user</li>
-                                </ul>
-                                <p className="font-semibold pt-1">Migrations from Epic 1 → Epic 8:</p>
-                                <ul className="list-disc pl-5 space-y-0.5">
-                                    <li>1.5.1 Customer Detail Sheet → <strong>8.1.2</strong></li>
-                                    <li>1.5.2 Customer Pipeline View → <strong>8.1.3</strong></li>
-                                    <li>1.7.2 My Quotes / My Customers → <strong>8.1.6</strong></li>
-                                </ul>
-                                <p className="font-semibold pt-1">Cross-references (existing stories stay in place):</p>
-                                <ul className="list-disc pl-5 space-y-0.5">
-                                    <li>1.6.1 Comms Log → embedded inside 8.1.2 detail sheet</li>
-                                    <li>1.7.4 Global Search → covers 8.1.x tabs</li>
-                                </ul>
-                                <p className="pt-1 text-[11px] text-slate-500">
-                                    Idempotent — re-running skips existing entries, won't double-rename, won't double-cross-ref. Capacity: v1.8.5 47 / v1.9 45 / v1.9.5 41 (all amber, accepted).
-                                </p>
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={populatingSales}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={(e) => { e.preventDefault(); runPopulateSalesOps(); }}
-                            disabled={populatingSales}
-                            className="bg-cyan-600 hover:bg-cyan-700 gap-1.5"
-                        >
-                            {populatingSales ? (
-                                <>
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    Seeding…
-                                </>
-                            ) : (
-                                <>
-                                    <TrendingUp className="h-3.5 w-3.5" />
-                                    Yes, seed Epic 8
-                                </>
-                            )}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }
