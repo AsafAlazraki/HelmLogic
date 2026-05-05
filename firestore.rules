@@ -115,6 +115,14 @@ service cloud.firestore {
           allow read, write: if isSignedIn();
         }
       }
+      // v1.7 (story 1.8.11) — PDF Section Structure (drag-drop reorder).
+      // organisations/{orgId}/pdfStructure/{documentType} where
+      // documentType ∈ ('quote' | 'contract'). Same isSignedIn() gating
+      // as the rest of the org subcollections; UI gates editing on
+      // organisation.permissions[role].can_access_settings.
+      match /pdfStructure/{documentType} {
+        allow read, write: if isSignedIn();
+      }
     }
 
     // Recursive permission for prototyping across the data-warehouse hierarchy
