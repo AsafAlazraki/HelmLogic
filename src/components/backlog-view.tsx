@@ -20,19 +20,14 @@
 
 import { useMemo, useState } from 'react';
 import { collection } from 'firebase/firestore';
-import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { doc } from 'firebase/firestore';
-import { useToast } from '@/hooks/use-toast';
 import {
     Bug,
     CheckCircle2,
     ChevronRight,
     HelpCircle,
     Layers,
-    ListPlus,
-    Loader2,
     Lock,
     Plus,
     Sparkles,
@@ -43,19 +38,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
-import { applyV17FeedbackSeed } from '@/lib/v17-feedback-seed';
 import {
     CreateFeatureDialog,
     FeatureDetailSheet,
@@ -98,19 +82,11 @@ const UNFILED = '__unfiled__';
 
 export function BacklogView() {
     const firestore = useFirestore();
-    const { user } = useUser();
-    const { toast } = useToast();
 
     const featuresRef = useMemoFirebase(() => collection(firestore, 'features'), [firestore]);
     const epicsRef = useMemoFirebase(() => collection(firestore, 'epics'), [firestore]);
     const { data: features } = useCollection<FeatureDoc>(featuresRef);
     const { data: epics } = useCollection<EpicDoc>(epicsRef);
-
-    const userProfileRef = useMemoFirebase(
-        () => (user ? doc(firestore, 'users', user.uid) : null),
-        [firestore, user?.uid],
-    );
-    const { data: userProfile } = useDoc<any>(userProfileRef);
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [createEpicOpen, setCreateEpicOpen] = useState(false);
@@ -118,38 +94,6 @@ export function BacklogView() {
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
-
-    /** v1.7 user-feedback seed — one-shot, hidden once any 1.8.7 feature exists. */
-    const [feedbackOpen, setFeedbackOpen] = useState(false);
-    const [feedbackRunning, setFeedbackRunning] = useState(false);
-    const feedbackAlreadyApplied = useMemo(
-        () => (features ?? []).some(f => /^1\.8\.7\b/.test(f.title || '')),
-        [features],
-    );
-
-    async function runFeedbackSeed() {
-        if (!user) return;
-        setFeedbackRunning(true);
-        try {
-            const submitterName = userProfile?.displayName || userProfile?.email || user.email || 'Someone';
-            const summary = await applyV17FeedbackSeed(firestore, user.uid, submitterName);
-            const missed = summary.retargetsMissed.length > 0
-                ? ` · ${summary.retargetsMissed.length} retargets missed (titles drift?)`
-                : '';
-            toast({
-                title: 'v1.7 user-feedback seeded',
-                description: `${summary.featuresCreated} new stories · ${summary.retargetsApplied} retargets · ${summary.retargetsSkipped} skipped${missed}.`,
-            });
-            if (summary.retargetsMissed.length > 0) {
-                console.warn('[feedback-seed] Retargets that did not match an existing feature:', summary.retargetsMissed);
-            }
-            setFeedbackOpen(false);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Seed failed', description: e?.message ?? 'See console.' });
-        } finally {
-            setFeedbackRunning(false);
-        }
-    }
 
     const sortedEpics = useMemo(
         () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
@@ -266,17 +210,6 @@ export function BacklogView() {
                             <Plus className="h-4 w-4" />
                             New Epic
                         </Button>
-                        {!feedbackAlreadyApplied && (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-blue-500 text-white border-blue-400 hover:bg-blue-600 hover:text-white gap-1.5 shadow-sm"
-                                onClick={() => setFeedbackOpen(true)}
-                            >
-                                <ListPlus className="h-4 w-4" />
-                                Apply v1.7 user-feedback
-                            </Button>
-                        )}
                     </div>
                 </div>
             </div>
@@ -342,77 +275,6 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
-
-            {/* v1.7 user-feedback seed — adds 5 new stories (1.8.5/1.8.6/1.8.7/
-                1.8.8/1.8.9) capturing the post-1.8.1-Phase-D feedback batch,
-                and retargets 5 existing v1.7 stories (1.2.1, 1.2.2, 6.4.1-3)
-                out to v1.8 to keep v1.7 under the 20-pt cap. Hidden once any
-                1.8.7 story exists. */}
-            <AlertDialog open={feedbackOpen} onOpenChange={setFeedbackOpen}>
-                <AlertDialogContent className="max-w-2xl">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <ListPlus className="h-4 w-4 text-blue-600" />
-                            Apply v1.7 user-feedback?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="space-y-2 text-xs text-slate-600">
-                                <p>
-                                    Captures the user-feedback batch from after 1.8.1 + 1.2.1 first-cut on dev.
-                                    Adds 5 new 1.8.x stories and retargets 5 v1.7 stories out to v1.8 to keep
-                                    v1.7 under the 20-pt cap.
-                                </p>
-                                <p className="font-semibold pt-1">5 NEW stories under sub-feature 1.8.x:</p>
-                                <ul className="list-disc pl-5 space-y-0.5">
-                                    <li><strong>1.8.5</strong> (v1.7, 3 pts) — Unified Document Templates surface (Quote + Contract sub-tabs)</li>
-                                    <li><strong>1.8.6</strong> (v1.7, 3 pts) — Multi-document-type field on content blocks</li>
-                                    <li><strong>1.8.7</strong> (v1.7, 5 pts) — Live PDF preview pane in the editor</li>
-                                    <li><strong>1.8.8</strong> (v1.8, 2 pts) — Extended rich-text controls (colour, alignment, etc.)</li>
-                                    <li><strong>1.8.9</strong> (v1.7, 2 pts) — Adopt Document Templates page aesthetic</li>
-                                </ul>
-                                <p className="font-semibold pt-1">5 RETARGETS out of v1.7 → v1.8:</p>
-                                <ul className="list-disc pl-5 space-y-0.5">
-                                    <li>1.2.1 Branded PDF Quote Generation (8 pts)</li>
-                                    <li>1.2.2 Brand-Aware Content Injection (3 pts)</li>
-                                    <li>6.4.1 dependsOn schema (3 pts)</li>
-                                    <li>6.4.2 Pre-merge regex check (1 pt)</li>
-                                    <li>6.4.3 DEPENDS ON convention (0 pts, doc-only)</li>
-                                </ul>
-                                <p className="font-semibold pt-1">v1.7 final composition (18 pts, under cap):</p>
-                                <p className="text-[11px] font-mono bg-slate-50 p-2 rounded border border-slate-200">
-                                    1.8.1 (5) + 1.8.5 (3) + 1.8.6 (3) + 1.8.7 (5) + 1.8.9 (2) = 18 pts ✓
-                                </p>
-                                <p className="text-[11px] text-amber-700 font-semibold pt-1">
-                                    ⚠ v1.8 absorbs 17 pts of incoming retargets on top of its existing 20 pts → 37 pts. Will need a follow-up rebalance pass to spread to v1.9+ before v1.8 build starts. Flagged but not auto-fixed by this seed.
-                                </p>
-                                <p className="text-[11px] text-slate-500 pt-1">
-                                    Idempotent — re-running skips existing stories (by title) and only writes retargets when targetRelease actually differs.
-                                </p>
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={feedbackRunning}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={(e) => { e.preventDefault(); runFeedbackSeed(); }}
-                            disabled={feedbackRunning}
-                            className="bg-blue-600 hover:bg-blue-700 gap-1.5"
-                        >
-                            {feedbackRunning ? (
-                                <>
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    Seeding…
-                                </>
-                            ) : (
-                                <>
-                                    <ListPlus className="h-3.5 w-3.5" />
-                                    Yes, apply feedback
-                                </>
-                            )}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }
