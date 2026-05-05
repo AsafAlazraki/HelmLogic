@@ -32,6 +32,39 @@ export interface SampleQuoteFixture {
     financials: any;
 }
 
+/** Real catalog data optionally injected into the fixture so the
+ *  preview shows the org's actual boat / cover image / specs.
+ *  Any field absent → fixture defaults kick in. */
+export interface RealCatalogContext {
+    moduleName?: string | null;
+    moduleSlug?: string | null;
+    vendorId?: string | null;
+    vendorName?: string | null;
+    vendorLogoUrl?: string | null;
+    rangeId?: string | null;
+    rangeName?: string | null;
+    rangeImageUrl?: string | null;
+    model?: {
+        id?: string;
+        name?: string;
+        modelCode?: string;
+        coverImageUrl?: string | null;
+        specifications?: any;
+        standardFeatures?: string[];
+    } | null;
+    variant?: {
+        id?: string;
+        name?: string;
+        sku?: string;
+        colorName?: string | null;
+        colorCode?: string | null;
+        material?: string | null;
+        cost?: number;
+        sellPriceExclGst?: number;
+        imageUrl?: string | null;
+    } | null;
+}
+
 const NOW = new Date();
 const VALID_UNTIL = new Date(NOW.getTime() + 30 * 24 * 60 * 60 * 1000);
 
@@ -43,20 +76,26 @@ export function buildSampleQuoteFixture(opts: {
     /** When provided, overrides the fixture's vendorId so brand-overrides
      *  are exercised in preview. */
     vendorId?: string | null;
+    /** v1.7 (1.8.10) — real catalog data for the model/variant/vendor.
+     *  Any subfield missing → falls back to the hardcoded defaults. */
+    catalog?: RealCatalogContext;
 }): SampleQuoteFixture {
     const orgName = opts.organisationName || 'Your Organisation';
     const previewQuoteNumber = `PREVIEW-${NOW.getFullYear()}${String(NOW.getMonth() + 1).padStart(2, '0')}-001`;
+    const cat = opts.catalog ?? {};
 
-    const variant = {
-        id: 'preview-variant-cl340-grey-hyp',
-        name: 'Standard',
-        sku: 'CL340-GREY-HYP',
-        colorName: 'Grey',
-        colorCode: '#5b6770',
-        material: 'Hypalon',
-        cost: 38000,
-        sellPriceExclGst: 56000,
-        imageUrl: null,
+    const variant = cat.variant ?? {} as NonNullable<RealCatalogContext['variant']>;
+    const variantSellPrice = variant.sellPriceExclGst ?? 56000;
+    const builtVariant = {
+        id: variant.id ?? 'preview-variant-cl340-grey-hyp',
+        name: variant.name ?? 'Standard',
+        sku: variant.sku ?? 'CL340-GREY-HYP',
+        colorName: variant.colorName ?? 'Grey',
+        colorCode: variant.colorCode ?? '#5b6770',
+        material: variant.material ?? 'Hypalon',
+        cost: variant.cost ?? Math.round(variantSellPrice * 0.68),
+        sellPriceExclGst: variantSellPrice,
+        imageUrl: variant.imageUrl ?? null,
     };
 
     const selectedOptions = [
@@ -97,7 +136,7 @@ export function buildSampleQuoteFixture(opts: {
         { id: 'df-rego-help', name: 'Boat Registration Service',              sellPriceExclGst: 220, cost: 50  },
     ];
 
-    const boatBasePrice = variant.sellPriceExclGst;
+    const boatBasePrice = builtVariant.sellPriceExclGst;
     const optionsTotal = selectedOptions.reduce((s, o) => s + o.sellPriceExclGst, 0);
     const motorTotal = motor.sellPriceExclGst + motor.accessoryItems.reduce((s, a) => s + a.sellPriceExclGst, 0);
     const trailerTotal = trailer.sellPriceExclGst + trailer.options.reduce((s, o) => s + o.sellPriceExclGst, 0);
@@ -107,7 +146,7 @@ export function buildSampleQuoteFixture(opts: {
     const totalInclGst = Math.ceil(subtotalExclGst * 1.1);
     const gstAmount = totalInclGst - subtotalExclGst;
 
-    const boatCost = variant.cost;
+    const boatCost = builtVariant.cost;
     const optionsCost = optionsTotal * 0.65;
     const motorCost = motor.cost + motor.accessoryItems.reduce((s, a) => s + a.sellPriceExclGst * 0.65, 0);
     const trailerCost = trailer.cost + trailer.options.reduce((s, o) => s + o.sellPriceExclGst * 0.65, 0);
@@ -130,20 +169,20 @@ export function buildSampleQuoteFixture(opts: {
                 address: '12 Coastal Road, Sample Bay NSW',
             },
             moduleId: 'preview-module',
-            moduleName: 'Highfield Boats',
-            moduleSlug: 'highfield',
-            vendorId: opts.vendorId ?? 'highfield',
-            vendorName: 'Highfield',
-            vendorLogoUrl: null,
+            moduleName: cat.moduleName ?? 'Highfield Boats',
+            moduleSlug: cat.moduleSlug ?? 'highfield',
+            vendorId: opts.vendorId ?? cat.vendorId ?? 'highfield',
+            vendorName: cat.vendorName ?? 'Highfield',
+            vendorLogoUrl: cat.vendorLogoUrl ?? null,
             vendorCurrency: 'USD',
-            rangeId: 'classic',
-            rangeName: 'Classic',
-            rangeImageUrl: null,
-            modelId: 'cl340',
-            modelName: 'CL340',
-            modelCode: 'CL340',
-            coverImageUrl: null,
-            specifications: {
+            rangeId: cat.rangeId ?? 'classic',
+            rangeName: cat.rangeName ?? 'Classic',
+            rangeImageUrl: cat.rangeImageUrl ?? null,
+            modelId: cat.model?.id ?? 'cl340',
+            modelName: cat.model?.name ?? 'CL340',
+            modelCode: cat.model?.modelCode ?? cat.model?.name ?? 'CL340',
+            coverImageUrl: cat.model?.coverImageUrl ?? null,
+            specifications: cat.model?.specifications ?? {
                 otherSpecs: [
                     { label: 'Length',      value: '3.40 m' },
                     { label: 'Beam',        value: '1.78 m' },
@@ -155,7 +194,7 @@ export function buildSampleQuoteFixture(opts: {
                 ],
                 motorConfigurations: [{ engines: [{ minHp: 15, maxHp: 25 }] }],
             },
-            standardFeatures: [
+            standardFeatures: cat.model?.standardFeatures ?? [
                 'Hypalon tubes (1.2 mm)',
                 'Aluminium hull',
                 'Bow eye + stern eye',
@@ -165,7 +204,7 @@ export function buildSampleQuoteFixture(opts: {
                 'Wooden floorboards',
                 'Side carry handles',
             ],
-            variant,
+            variant: builtVariant,
             selectedOptions,
             customOptions: [],
             registration: {
@@ -186,9 +225,6 @@ export function buildSampleQuoteFixture(opts: {
             shortCode: orgName.slice(0, 3).toUpperCase(),
             primaryLogoUrl: opts.primaryLogoUrl || null,
             secondaryLogoUrl: opts.secondaryLogoUrl || null,
-            // termsAndConditions intentionally absent — the preview should
-            // exercise the content-blocks T&Cs path (with fallback to
-            // DEFAULT_TERMS when no block exists yet).
         },
         financials: {
             boatBasePrice,

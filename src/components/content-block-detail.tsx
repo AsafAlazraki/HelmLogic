@@ -447,6 +447,7 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                                     organisationName={organisationName ?? undefined}
                                     primaryLogoUrl={primaryLogoUrl}
                                     secondaryLogoUrl={secondaryLogoUrl}
+                                    enabledModuleSubscriptions={enabledModuleSubscriptions}
                                 />
                             </div>
                         </div>
