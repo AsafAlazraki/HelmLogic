@@ -150,12 +150,12 @@ export function buildSampleQuoteFixture(opts: {
             modelId: 'sport-560',
             modelName: 'Sport 560',
             modelCode: 'SP560',
-            // No coverImageUrl — proposal-pdf falls back to the dark-navy
-            // gradient. v1.7.5 polish can swap to a real Sport 560 image
-            // URL from the org's Firestore Storage; for now the loaded
-            // options list + spec sheet make the preview meaningful even
-            // without a hero photo.
-            coverImageUrl: null,
+            // Hardcoded boat photo — Unsplash CDN, CORS-permissive, stable.
+            // (Free-use boat-on-water photo, closest visual approximation of
+            // a Highfield Sport 560 we have without burning a real Highfield
+            // CDN URL into the bundle.) v1.7.5 polish can swap to an actual
+            // Sport 560 URL from the org's Firebase Storage when ready.
+            coverImageUrl: 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=1600&q=80',
             specifications: {
                 otherSpecs: [
                     { label: 'Length',          value: '5.60 m' },
