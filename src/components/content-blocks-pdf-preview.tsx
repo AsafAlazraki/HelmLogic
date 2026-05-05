@@ -49,9 +49,13 @@ interface Props {
     secondaryLogoUrl?: string | null;
     enabledModuleSubscriptions?: string[] | null;
     pdfSections?: import('@/lib/pdf-structure').PdfStructureSection[];
+    /** v1.7 — header strip shown above the inline PDF (title + sub +
+     *  Focus button). Set false to render the bare PDFViewer if the
+     *  caller wants its own chrome. */
+    showHeader?: boolean;
 }
 
-export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisationName, primaryLogoUrl, secondaryLogoUrl, pdfSections }: Props) {
+export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisationName, primaryLogoUrl, secondaryLogoUrl, pdfSections, showHeader = true }: Props) {
     const firestore = useFirestore();
     const { user } = useUser();
     const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
@@ -145,44 +149,76 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
         [organisationName, primaryLogoUrl, secondaryLogoUrl, heroImageUrl],
     );
 
+    /** Single document instance — referenced by both inline AND focus-mode
+     *  PDFViewers. We only RENDER one PDFViewer at a time (focus mode hides
+     *  the inline one) to avoid the double-render lag the user flagged. */
+    const docElement = (
+        <ProposalPDFDocument
+            quote={fixture.quote}
+            organisation={fixture.organisation}
+            financials={fixture.financials}
+            contentBlocks={contentBlocksMap}
+            pdfSections={pdfSections}
+            salespersonProfile={salespersonProfile ?? undefined}
+        />
+    );
+
     return (
         <>
-            {/* Inline preview — sits in the right pane of the editor */}
-            <div className="relative w-full h-full min-h-[640px] rounded-lg overflow-hidden border bg-slate-100">
-                {/* v1.7 — focus-mode toggle (mirrors highfield-pricing-workspace pattern) */}
-                <Button
-                    size="sm"
-                    onClick={() => setFocusMode(true)}
-                    className="absolute top-2 right-2 z-10 h-8 px-3 rounded-lg font-black uppercase tracking-widest text-[10px] shadow-md bg-slate-900 text-white hover:bg-slate-800 gap-1.5"
-                    title="Expand preview"
-                >
-                    <Maximize2 className="h-3.5 w-3.5" />
-                    Focus
-                </Button>
-                <PDFViewer
-                    style={{ width: '100%', height: '100%', minHeight: 640, border: 0 }}
-                    showToolbar={false}
-                >
-                    <ProposalPDFDocument
-                        quote={fixture.quote}
-                        organisation={fixture.organisation}
-                        financials={fixture.financials}
-                        contentBlocks={contentBlocksMap}
-                        pdfSections={pdfSections}
-                        salespersonProfile={salespersonProfile ?? undefined}
-                    />
-                </PDFViewer>
+            <div className="rounded-[1.5rem] overflow-hidden border-2 shadow-sm bg-white">
+                {showHeader && (
+                    <div className="px-4 py-3 border-b bg-muted/5 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                                <p className="text-[11px] font-black uppercase tracking-widest">
+                                    {documentType === 'quote' ? 'Quote' : 'Contract'} PDF preview
+                                </p>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-0.5">All sections in render order. Empty blocks shown as placeholders.</p>
+                        </div>
+                        <Button
+                            size="sm"
+                            onClick={() => setFocusMode(true)}
+                            className="h-8 px-3 rounded-lg font-black uppercase tracking-widest text-[10px] shadow-sm bg-slate-900 text-white hover:bg-slate-800 gap-1.5 shrink-0"
+                            title="Expand preview to full screen"
+                        >
+                            <Maximize2 className="h-3.5 w-3.5" />
+                            Focus
+                        </Button>
+                    </div>
+                )}
+                {/* Inline PDF — only render when NOT in focus mode (avoids
+                    double-rendering lag). When focus mode is on, this is
+                    replaced with a static placeholder so the layout doesn't
+                    collapse behind the overlay. */}
+                <div className="p-3 bg-slate-100" style={{ minHeight: 640 }}>
+                    {focusMode ? (
+                        <div className="w-full h-full min-h-[640px] rounded-lg border bg-white flex items-center justify-center text-xs text-slate-400">
+                            Preview is in focus mode (full screen) — close to return here
+                        </div>
+                    ) : (
+                        <div className="w-full h-full min-h-[640px] rounded-lg overflow-hidden border">
+                            <PDFViewer
+                                style={{ width: '100%', height: '100%', minHeight: 640, border: 0 }}
+                                showToolbar={false}
+                            >
+                                {docElement}
+                            </PDFViewer>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Full-screen focus mode — fixed overlay covering the viewport */}
+            {/* Full-screen focus mode — fixed overlay covering the viewport.
+                Only THIS PDFViewer renders when focus is on (the inline one
+                is replaced by a placeholder above). */}
             {focusMode && (
                 <div className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col">
-                    {/* Toolbar */}
                     <div className="flex items-center justify-between px-6 py-3 border-b border-slate-800 bg-slate-900 text-white">
                         <div className="flex items-center gap-3">
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">PDF Preview · Focus mode</p>
                             <p className="text-xs text-slate-300">
-                                {documentType === 'quote' ? 'Quote' : 'Contract'} · Sample boat: Highfield Sport 560
+                                {documentType === 'quote' ? 'Quote' : 'Contract'} · Sample: Highfield Sport 560
                             </p>
                         </div>
                         <Button
@@ -195,21 +231,12 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                             Exit focus
                         </Button>
                     </div>
-
-                    {/* Full-bleed PDF viewer */}
                     <div className="flex-1 min-h-0">
                         <PDFViewer
                             style={{ width: '100%', height: '100%', border: 0 }}
                             showToolbar={true}
                         >
-                            <ProposalPDFDocument
-                                quote={fixture.quote}
-                                organisation={fixture.organisation}
-                                financials={fixture.financials}
-                                contentBlocks={contentBlocksMap}
-                                pdfSections={pdfSections}
-                                salespersonProfile={salespersonProfile ?? undefined}
-                            />
+                            {docElement}
                         </PDFViewer>
                     </div>
                 </div>

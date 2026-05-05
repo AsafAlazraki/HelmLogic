@@ -458,30 +458,20 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                         </TabsTrigger>
                     </TabsList>
 
-                    {/* 1.8.7 — Live PDF preview. Renders all 7 sections in their PDF
-                        positions using saved Firestore state. Re-renders on Save. */}
+                    {/* 1.8.7 — Live PDF preview. The preview component owns its
+                        own header strip (title + sub + Focus button) since v1.7
+                        polish — no need to wrap in another card here. */}
                     <TabsContent value="preview">
-                        <div className="rounded-[1.5rem] overflow-hidden border-2 shadow-sm bg-white">
-                            <div className="px-4 py-3 border-b bg-muted/5">
-                                <div className="flex items-center gap-2">
-                                    <Eye className="h-3.5 w-3.5 text-blue-600" />
-                                    <p className="text-[11px] font-black uppercase tracking-widest">{DOCUMENT_TYPE_LABEL[documentType]} PDF preview</p>
-                                </div>
-                                <p className="text-[10px] text-slate-500 mt-0.5">All sections in render order. Empty blocks shown as placeholders.</p>
-                            </div>
-                            <div className="p-3">
-                                <ContentBlocksPdfPreview
-                                    orgId={orgId}
-                                    blocks={allBlocks}
-                                    documentType={documentType}
-                                    organisationName={organisationName ?? undefined}
-                                    primaryLogoUrl={primaryLogoUrl}
-                                    secondaryLogoUrl={secondaryLogoUrl}
-                                    enabledModuleSubscriptions={enabledModuleSubscriptions}
-                                    pdfSections={pdfSections}
-                                />
-                            </div>
-                        </div>
+                        <ContentBlocksPdfPreview
+                            orgId={orgId}
+                            blocks={allBlocks}
+                            documentType={documentType}
+                            organisationName={organisationName ?? undefined}
+                            primaryLogoUrl={primaryLogoUrl}
+                            secondaryLogoUrl={secondaryLogoUrl}
+                            enabledModuleSubscriptions={enabledModuleSubscriptions}
+                            pdfSections={pdfSections}
+                        />
                     </TabsContent>
 
                     {/* About this section + Where this appears (was the default right-side
