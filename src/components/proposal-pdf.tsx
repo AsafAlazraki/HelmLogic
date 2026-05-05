@@ -340,8 +340,14 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                         <Rect x="0" y="0" width="595" height="842" fill="url(#bottomDark)" />
                     </Svg>
 
-                    {/* Logo bar — overlays the top white gradient */}
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 48, paddingTop: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 80 }}>
+                    {/* Logo bar — overlays the top white gradient. Org on the
+                        left; cascade of vendor/motor/trailer brand pills on the
+                        right (boat brand → powered by → trailer by) so the
+                        customer can see the full provenance of the package at
+                        a glance. Each pill is auto-fallback-to-text when no
+                        logo URL is supplied — keeps the design intentional even
+                        when only some brands have logo assets uploaded. */}
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 48, paddingTop: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         {/* Org logo */}
                         {organisation?.primaryLogoUrl ? (
                             <Image src={organisation.primaryLogoUrl} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
@@ -351,13 +357,52 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                             </Text>
                         )}
 
-                        {/* Right-side logos: vendor + motor brand */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
-                            {quote.motor?.brandLogoUrl && (
-                                <Image src={quote.motor.brandLogoUrl} style={{ height: 28, maxWidth: 90, objectFit: 'contain' }} />
+                        {/* Right-side cascade — three stacked brand pills */}
+                        <View style={{ flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                            {/* Boat brand (vendor) — primary */}
+                            {(quote.vendorLogoUrl || quote.vendorName) && (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 4, paddingHorizontal: 9, paddingVertical: 5, borderWidth: 0.5, borderColor: 'rgba(15,23,42,0.08)' }}>
+                                    <Text style={{ fontSize: 5.5, fontWeight: 'bold', color: MUTED, letterSpacing: 1.8, textTransform: 'uppercase', marginRight: 7 }}>
+                                        Vessel
+                                    </Text>
+                                    {quote.vendorLogoUrl ? (
+                                        <Image src={quote.vendorLogoUrl} style={{ height: 18, maxWidth: 100, objectFit: 'contain' }} />
+                                    ) : (
+                                        <Text style={{ fontSize: 9, fontWeight: 'bold', color: NAVY, letterSpacing: 1, textTransform: 'uppercase' }}>
+                                            {quote.vendorName}
+                                        </Text>
+                                    )}
+                                </View>
                             )}
-                            {quote.vendorLogoUrl && (
-                                <Image src={quote.vendorLogoUrl} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
+                            {/* Motor brand */}
+                            {quote.motor && (quote.motor.brandLogoUrl || quote.motor.brand) && (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 4, paddingHorizontal: 9, paddingVertical: 4, borderWidth: 0.5, borderColor: 'rgba(15,23,42,0.08)' }}>
+                                    <Text style={{ fontSize: 5.5, fontWeight: 'bold', color: MUTED, letterSpacing: 1.8, textTransform: 'uppercase', marginRight: 7 }}>
+                                        Powered By
+                                    </Text>
+                                    {quote.motor.brandLogoUrl ? (
+                                        <Image src={quote.motor.brandLogoUrl} style={{ height: 14, maxWidth: 80, objectFit: 'contain' }} />
+                                    ) : (
+                                        <Text style={{ fontSize: 8, fontWeight: 'bold', color: NAVY, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                                            {quote.motor.brand}
+                                        </Text>
+                                    )}
+                                </View>
+                            )}
+                            {/* Trailer brand */}
+                            {quote.trailer && (quote.trailer.brandLogoUrl || quote.trailer.brand || quote.trailer.catalog?.brandName) && (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 4, paddingHorizontal: 9, paddingVertical: 4, borderWidth: 0.5, borderColor: 'rgba(15,23,42,0.08)' }}>
+                                    <Text style={{ fontSize: 5.5, fontWeight: 'bold', color: MUTED, letterSpacing: 1.8, textTransform: 'uppercase', marginRight: 7 }}>
+                                        Trailer By
+                                    </Text>
+                                    {quote.trailer.brandLogoUrl ? (
+                                        <Image src={quote.trailer.brandLogoUrl} style={{ height: 14, maxWidth: 80, objectFit: 'contain' }} />
+                                    ) : (
+                                        <Text style={{ fontSize: 8, fontWeight: 'bold', color: NAVY, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                                            {quote.trailer.brand || quote.trailer.catalog?.brandName}
+                                        </Text>
+                                    )}
+                                </View>
                             )}
                         </View>
                     </View>
@@ -376,8 +421,11 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                             {quote.rangeName} Series
                         </Text>
 
-                        {/* Model name */}
-                        <Text style={{ fontSize: 62, fontWeight: 'bold', fontStyle: 'italic', color: 'white', letterSpacing: -2, lineHeight: 0.92, marginBottom: 6 }}>
+                        {/* Model name — descenders on italic 56pt are tall;
+                            lineHeight 1.05 + marginBottom 14 keeps clear of
+                            the model-code line below. (v1.7 polish — fixes
+                            cover overlap reported on round-3 feedback.) */}
+                        <Text style={{ fontSize: 56, fontWeight: 'bold', fontStyle: 'italic', color: 'white', letterSpacing: -2, lineHeight: 1.05, marginBottom: 14 }}>
                             {quote.modelName}
                         </Text>
                         <Text style={{ fontSize: 10, fontWeight: 'bold', color: 'rgba(255,255,255,0.45)', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 22 }}>
@@ -651,48 +699,113 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     );
                 })()}
 
-                {/* Trailer */}
+                {/* Trailer — fully-specced layout matching the motor block:
+                    photo + brand + name + price · specifications grid ·
+                    options list · subtotal. Mirrors the motor layout so the
+                    customer sees a consistent treatment for every major
+                    component of the package. */}
                 {quote.trailer && (() => {
                     const catalog = (quote.trailer as any).catalog || null;
                     const specs = catalog?.specifications || null;
-                    const subtitleParts: string[] = [];
-                    if (catalog?.brandName) subtitleParts.push(String(catalog.brandName).toUpperCase());
-                    if (catalog?.code) subtitleParts.push(String(catalog.code));
-                    else if (catalog?.seriesName) subtitleParts.push(String(catalog.seriesName));
-                    const subtitle = subtitleParts.join(' · ');
+                    const trailerImg = quote.trailer.imageUrl || catalog?.imageUrl || null;
+                    const trailerBrand = quote.trailer.brand || catalog?.brandName || '';
 
-                    const specBadges: string[] = [];
-                    if (specs?.boatSizeMtr != null) specBadges.push(`Boat ${specs.boatSizeMtr}m`);
-                    if (specs?.lengthMtr != null) specBadges.push(`Length ${specs.lengthMtr}m`);
-                    if (specs?.atmKg != null) specBadges.push(`ATM ${specs.atmKg}kg`);
-                    if (specs?.tareKg != null) specBadges.push(`Tare ${specs.tareKg}kg`);
-                    if (specs?.wheelSize) specBadges.push(`Wheels ${specs.wheelSize}`);
-                    if (specs?.winch) specBadges.push(`Winch ${specs.winch}`);
+                    const trailerSpecs: { label: string; value: any }[] = [];
+                    if (specs?.boatSizeMtr != null) trailerSpecs.push({ label: 'Suits Boat', value: `${specs.boatSizeMtr} m` });
+                    if (specs?.lengthMtr != null) trailerSpecs.push({ label: 'Trailer Length', value: `${specs.lengthMtr} m` });
+                    if (specs?.widthMtr != null) trailerSpecs.push({ label: 'Width', value: `${specs.widthMtr} m` });
+                    if (specs?.atmKg != null) trailerSpecs.push({ label: 'ATM', value: `${specs.atmKg} kg` });
+                    if (specs?.tareKg != null) trailerSpecs.push({ label: 'Tare', value: `${specs.tareKg} kg` });
+                    if (specs?.axleType) trailerSpecs.push({ label: 'Axle', value: specs.axleType });
+                    if (specs?.wheelSize) trailerSpecs.push({ label: 'Wheels', value: specs.wheelSize });
+                    if (specs?.brakes) trailerSpecs.push({ label: 'Brakes', value: specs.brakes });
+                    if (specs?.winch) trailerSpecs.push({ label: 'Winch', value: specs.winch });
+                    if (specs?.couplingType) trailerSpecs.push({ label: 'Coupling', value: specs.couplingType });
+                    if (specs?.lights) trailerSpecs.push({ label: 'Lights', value: specs.lights });
+                    if (specs?.construction) trailerSpecs.push({ label: 'Construction', value: specs.construction });
+
+                    const trailerOptions: any[] = Array.isArray(quote.trailer.options) ? quote.trailer.options : [];
 
                     return (
-                        <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: '10 14', marginBottom: 14 }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    {quote.trailer.imageUrl && (
-                                        <Image src={quote.trailer.imageUrl} style={{ width: 36, height: 36, objectFit: 'contain', marginRight: 12, borderRadius: 3 }} />
+                        <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
+                            {/* Trailer header with image */}
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <View style={{ flexShrink: 1, flex: 1 }}>
+                                    <Text style={[S.sectionLabel, { marginBottom: 4 }]}>Trailer Package</Text>
+                                    {quote.trailer.brandLogoUrl && (
+                                        <Image src={quote.trailer.brandLogoUrl} style={{ height: 16, maxWidth: 70, objectFit: 'contain', marginBottom: 4 }} />
                                     )}
-                                    <View>
-                                        <Text style={[S.sectionLabel, { marginBottom: 3 }]}>Trailer Package</Text>
-                                        <Text style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', color: NAVY }}>
-                                            {quote.trailer.name || 'Trailer'}
+                                    <Text style={{ fontSize: 15, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.3, color: NAVY, marginBottom: 2 }}>
+                                        {quote.trailer.name || 'Trailer'}
+                                    </Text>
+                                    {trailerBrand ? (
+                                        <Text style={{ fontSize: 8, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE }}>
+                                            {trailerBrand}
                                         </Text>
-                                        {subtitle ? (
-                                            <Text style={{ fontSize: 8, color: '#888', marginTop: 1 }}>{subtitle}</Text>
-                                        ) : null}
+                                    ) : null}
+                                </View>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                    {trailerImg && (
+                                        <Image src={trailerImg} style={{ height: 72, width: 96, objectFit: 'cover', marginRight: 12, borderRadius: 4 }} />
+                                    )}
+                                    <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(quote.trailer.sellPriceExclGst || 0)}</Text>
+                                </View>
+                            </View>
+
+                            {/* Trailer Specifications */}
+                            {trailerSpecs.length > 0 && (
+                                <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER }}>
+                                    <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: BRAND, marginBottom: 6 }}>Trailer Specifications</Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                                        {trailerSpecs.map((spec, i) => (
+                                            <View key={i} style={{ width: '25%', marginBottom: 6, paddingRight: 8 }}>
+                                                <Text style={{ fontSize: 5.5, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: MUTED, marginBottom: 1.5 }}>{spec.label}</Text>
+                                                <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY }}>{spec.value}</Text>
+                                            </View>
+                                        ))}
                                     </View>
                                 </View>
-                                <Text style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(f.trailerTotal)}</Text>
-                            </View>
-                            {specBadges.length > 0 && (
-                                <Text style={{ fontSize: 8, color: '#666', marginTop: 6, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: BORDER }}>
-                                    {specBadges.join('   ·   ')}
-                                </Text>
                             )}
+
+                            {/* Trailer Options */}
+                            {trailerOptions.length > 0 && (
+                                <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER }}>
+                                    <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: BRAND, marginBottom: 4 }}>Trailer Options</Text>
+                                    {Object.entries(
+                                        trailerOptions.reduce((acc: Record<string, any[]>, o: any) => {
+                                            const cat = o.category || 'Options';
+                                            if (!acc[cat]) acc[cat] = [];
+                                            acc[cat].push(o);
+                                            return acc;
+                                        }, {})
+                                    ).map(([cat, items]) => (
+                                        <View key={cat} style={{ marginBottom: 5 }}>
+                                            <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE, marginBottom: 4 }}>{cat}</Text>
+                                            {(items as any[]).map((o: any, i: number) => (
+                                                <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2, paddingHorizontal: 4 }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
+                                                        {o.imageUrl ? (
+                                                            <Image src={o.imageUrl} style={{ width: 20, height: 20, objectFit: 'contain', marginRight: 5, borderRadius: 2, flexShrink: 0 }} />
+                                                        ) : (
+                                                            <View style={S.dot} />
+                                                        )}
+                                                        <Text style={{ fontSize: 7, color: SLATE }}>{o.name}</Text>
+                                                    </View>
+                                                    <Text style={{ fontSize: 7, fontWeight: 'bold', color: NAVY, flexShrink: 0, marginLeft: 8 }}>
+                                                        {o.sellPriceExclGst ? currency(o.sellPriceExclGst) : 'Incl.'}
+                                                    </Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+
+                            {/* Trailer Subtotal */}
+                            <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Text style={{ fontSize: 7, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE }}>Trailer Total</Text>
+                                <Text style={{ fontSize: 11, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(f.trailerTotal)}</Text>
+                            </View>
                         </View>
                     );
                 })()}

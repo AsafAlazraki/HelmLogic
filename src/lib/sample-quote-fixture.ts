@@ -76,8 +76,28 @@ export function buildSampleQuoteFixture(opts: {
         name: 'Yamaha F100 LB — 4-Stroke',
         brand: 'Yamaha',
         brandLogoUrl: null,
+        // Hero shot of an outboard — Unsplash, CORS-friendly. Swap to
+        // org-CDN photo of the actual SKU when ready.
+        imageUrl: 'https://images.unsplash.com/photo-1605281317010-fe5ffe798166?auto=format&fit=crop&w=600&q=80',
         sellPriceExclGst: 18800,
         cost: 13200,
+        // Motor specs — render in the Propulsion System block on
+        // page 2. Mirrors the field shape proposal-pdf.tsx already
+        // reads (hpRating / shaftLength / control / starting / etc.).
+        hpRating: '100 HP',
+        shaftLength: '20" Long',
+        control: 'Mechanical Remote',
+        starting: 'Electric (with Manual Backup)',
+        tiltTrim: 'Power Tilt & Trim',
+        fuelTank: '120 L (Boat-Mounted)',
+        prop: 'Stainless 3-Blade · 13.5" × 17"',
+        warranty: '5-Year Yamaha Limited',
+        accessories: [
+            { name: 'Yamaha 6Y8 CommandLink Plus Gauges', category: 'Instrumentation', sellPriceExclGst: 1450, imageUrl: null },
+            { name: 'Stainless Steel Prop (3-blade, 13.5 × 17)', category: 'Performance', sellPriceExclGst: 850, imageUrl: null },
+            { name: 'Yamaha Hydraulic Steering Kit', category: 'Steering & Control', sellPriceExclGst: 1620, imageUrl: null },
+        ],
+        // Kept for legacy renderers that read accessoryItems.
         accessoryItems: [
             { name: 'Yamaha 6Y8 CommandLink Plus Gauges', sellPriceExclGst: 1450 },
             { name: 'Stainless Steel Prop (3-blade, 13.5 × 17)', sellPriceExclGst: 850 },
@@ -89,11 +109,34 @@ export function buildSampleQuoteFixture(opts: {
         id: 'trailer-stratos-560',
         name: 'Stratos 560 Series — Aluminium Tandem (1800kg ATM)',
         brand: 'Stratos',
+        brandLogoUrl: null,
+        // Stock trailer hero shot — Unsplash, CORS-friendly.
+        imageUrl: 'https://images.unsplash.com/photo-1591025207163-942350e47db2?auto=format&fit=crop&w=600&q=80',
         sellPriceExclGst: 11750,
         cost: 8200,
+        catalog: {
+            brandName: 'Stratos',
+            seriesName: 'Stratos 560 Series',
+            code: 'SP560-TANDEM',
+            imageUrl: 'https://images.unsplash.com/photo-1591025207163-942350e47db2?auto=format&fit=crop&w=600&q=80',
+            specifications: {
+                boatSizeMtr: 5.6,
+                lengthMtr: 6.4,
+                widthMtr: 2.3,
+                atmKg: 1800,
+                tareKg: 360,
+                wheelSize: '14" Galvanised',
+                winch: 'Manual 5:1 + Strap',
+                axleType: 'Tandem (Eyelet Suspension)',
+                brakes: 'Hydraulic Override (4-Wheel Disc)',
+                couplingType: '50 mm Ball + Safety Chains',
+                construction: 'Hot-Dipped Galvanised + Aluminium Mudguards',
+                lights: 'LED Submersible (DOT-Approved)',
+            },
+        },
         options: [
-            { name: 'Spare Wheel + Carrier (with security lock)', sellPriceExclGst: 380 },
-            { name: 'LED Marine Trailer Lights (waterproof)',     sellPriceExclGst: 290 },
+            { name: 'Spare Wheel + Carrier (with security lock)', category: 'Touring', sellPriceExclGst: 380, imageUrl: null },
+            { name: 'LED Marine Trailer Lights (waterproof)',     category: 'Lighting', sellPriceExclGst: 290, imageUrl: null },
         ],
     };
 

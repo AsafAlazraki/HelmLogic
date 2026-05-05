@@ -76,6 +76,11 @@ const UPDATES: StoryUpdate[] = [
         appendAcceptance: [
             '✓ v1.7 polish: cover page redesigned — full-bleed background image (with deep-navy fallback), soft top-down white gradient for logo legibility (replaces hard 80-px white bar), bottom-up navy gradient for customer-info legibility.',
             '✓ v1.7 polish: section headers across all content blocks now use the InnerHeader page-level style (bold italic uppercase title + uppercase letter-spaced sub + 2-px navy bottom border) instead of the tiny "CAD-style" label.',
+            '✓ v1.7 polish round-3: cover model-name overlap fixed — title fontSize 56 + lineHeight 1.05 + marginBottom 14 keeps clear of the model-code line below (italic descenders no longer collide).',
+            '✓ v1.7 polish round-3: cover top-right brand cascade — three stacked pills "VESSEL · POWERED BY · TRAILER BY" with logo OR brand-name fallback; vendor pill is the prominent one (taller, fuller white), motor + trailer pills are smaller. Each pill auto-falls-back to typographic brand name when no logoUrl is set.',
+            '✓ v1.7 polish round-3: motor section on page 2 (Vessel Configuration) expanded to render hero photo + brand logo + 4-up specifications grid (HP / shaft / control / starting / tilt-trim / fuel / prop / warranty) + categorised accessories list with prices + motor subtotal.',
+            '✓ v1.7 polish round-3: trailer section on page 2 mirrors the motor layout — hero photo + brand logo + spec grid (suits-boat / length / width / ATM / tare / axle / wheels / brakes / winch / coupling / lights / construction) + categorised options list + trailer subtotal. Replaces the earlier single-row badge layout.',
+            '✓ v1.7 polish round-3: sample-quote-fixture (Highfield Sport 560) is now fully-specced — motor has hpRating/shaftLength/control/starting/tiltTrim/fuelTank/prop/warranty + imageUrl + 3 categorised accessories; trailer has catalog.specifications + imageUrl + 2 categorised options; preview renders a heavy customer-style proposal end-to-end.',
         ],
     },
     {
