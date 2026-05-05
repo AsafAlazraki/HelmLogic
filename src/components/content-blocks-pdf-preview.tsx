@@ -35,8 +35,6 @@ import {
     type DocumentType,
 } from '@/lib/content-blocks';
 import { buildSampleQuoteFixture } from '@/lib/sample-quote-fixture';
-import { useRealCatalogContext } from '@/lib/use-real-catalog-context';
-import { Loader2 } from 'lucide-react';
 
 interface Props {
     /** All content-block docs for the org (already loaded by parent). */
@@ -47,22 +45,15 @@ interface Props {
     organisationName?: string;
     primaryLogoUrl?: string | null;
     secondaryLogoUrl?: string | null;
-    /** v1.7 (1.8.10) — drives the catalog fetch so the preview's hero boat
-     *  is a real model from the org's catalog (not a hardcoded fixture). */
+    /** Kept on the prop signature for compatibility (ContentBlockDetail
+     *  threads this through). v1.8.10 catalog-fetch reverted; kept the
+     *  prop so wiring doesn't churn — could be removed in a sweep. */
     enabledModuleSubscriptions?: string[] | null;
 }
 
-export function ContentBlocksPdfPreview({ blocks, documentType, organisationName, primaryLogoUrl, secondaryLogoUrl, enabledModuleSubscriptions }: Props) {
-    /** v1.7 (1.8.10) — fetch a real model + variant from the org's catalog
-     *  so the preview shows real hero data + cover image (no more "no image"
-     *  white-bar / gradient ugliness). Falls back to fixture defaults if any
-     *  step in the chain fails (no enabled modules, no models, etc.). */
-    const { catalog, loading: catalogLoading } = useRealCatalogContext(enabledModuleSubscriptions);
-
+export function ContentBlocksPdfPreview({ blocks, documentType, organisationName, primaryLogoUrl, secondaryLogoUrl }: Props) {
     /** Resolve content blocks → blockType → html map for the active
-     *  documentType. No brand-override resolution in the preview path
-     *  (preview always shows org-default; v1.7.5 can add a "Preview
-     *  as brand: X" dropdown if needed). */
+     *  documentType. No brand-override resolution in the preview path. */
     const contentBlocksMap = useMemo(() => {
         const m = new Map<BlockType, { html: string; updatedAt: number }>();
         for (const b of blocks ?? []) {
@@ -79,35 +70,19 @@ export function ContentBlocksPdfPreview({ blocks, documentType, organisationName
         return result;
     }, [blocks, documentType]);
 
-    /** Build fresh fixture per-render so org name / logos / quote
-     *  number reflect the org's actual identity. The fixture merges
-     *  the real catalog context (model, variant, vendor) when available. */
+    /** Hardcoded fixture — Highfield Sport 560 with 16 factory options,
+     *  Yamaha F100, Stratos 560 trailer, full dealer-fit pack. Built fresh
+     *  per-render so org name / logos / quote number reflect the org's
+     *  identity. The fixture itself is stable. */
     const fixture = useMemo(
         () => buildSampleQuoteFixture({
             organisationName,
             primaryLogoUrl,
             secondaryLogoUrl,
-            // No brand-override in preview — keeps content predictable.
             vendorId: null,
-            // v1.7 (1.8.10) — real catalog data folds into the fixture.
-            catalog: catalog ?? undefined,
         }),
-        [organisationName, primaryLogoUrl, secondaryLogoUrl, catalog],
+        [organisationName, primaryLogoUrl, secondaryLogoUrl],
     );
-
-    if (catalogLoading) {
-        return (
-            <div className="w-full h-full min-h-[640px] rounded-lg overflow-hidden border bg-slate-100 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-3 text-slate-500">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <p className="text-xs font-medium">Loading your catalog…</p>
-                    <p className="text-[10px] text-slate-400 max-w-[240px] text-center">
-                        Pulling the first real boat from your enabled modules so the preview hero matches what your customers will see.
-                    </p>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="w-full h-full min-h-[640px] rounded-lg overflow-hidden border bg-slate-100">

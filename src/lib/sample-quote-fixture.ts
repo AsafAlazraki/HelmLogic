@@ -1,27 +1,17 @@
 /**
  * Sample-quote fixture for the 1.8.7 live PDF preview.
  *
- * The Document Templates editor's PDF preview pane renders the
- * full customer-facing ProposalPDFDocument so the author sees how
- * their content blocks land inside a real proposal — not a stripped-
- * down preview. To do that without requiring an actual quote in
- * Firestore, we synthesize a realistic-looking quote payload here.
+ * v1.7 (post-1.8.10 revert): goes back to a hardcoded fixture.
+ * 1.8.10 tried to fetch a real model from the org's catalog but
+ * Asaf's first-model-with-coverImageUrl turned out to be test/
+ * garbage data ("tet"). Hardcoded is what was actually wanted —
+ * a fully spec'd Highfield Sport 560 with lots of options so the
+ * preview shows what a loaded customer quote looks like.
  *
- * Boat: Highfield CL340 Classic with Yamaha F150 + Stratos trailer.
- * Customer: a generic ABC Fishing Charters lead.
- * Pricing: representative of NSM's typical configuration.
- *
- * The fixture is consumed by content-blocks-pdf-preview.tsx and
- * passed straight into ProposalPDFDocument alongside the org's
- * content blocks (so the author can verify content rendering in
- * real layout context).
- *
- * Caveat: only `terms-and-conditions` from content blocks renders
- * in the real PDF as of v1.7 (1.2.1 first cut). The other 6
- * sections (salesperson-message, why-us, brand-story, after-sales,
- * finance-info, value-summary) render once 1.2.1 lands fully in
- * v1.8 — the preview will pick them up automatically when the PDF
- * starts rendering them.
+ * Highfield Sport 560 reference:
+ *   - 5.60 m × 2.30 m, dry weight 410 kg
+ *   - Hypalon, max 100 HP, max 9 persons
+ *   - Real-world spec sheet from the Highfield catalog.
  */
 
 import type { ContentBlock } from '@/lib/content-blocks';
@@ -30,39 +20,6 @@ export interface SampleQuoteFixture {
     quote: any;
     organisation: any;
     financials: any;
-}
-
-/** Real catalog data optionally injected into the fixture so the
- *  preview shows the org's actual boat / cover image / specs.
- *  Any field absent → fixture defaults kick in. */
-export interface RealCatalogContext {
-    moduleName?: string | null;
-    moduleSlug?: string | null;
-    vendorId?: string | null;
-    vendorName?: string | null;
-    vendorLogoUrl?: string | null;
-    rangeId?: string | null;
-    rangeName?: string | null;
-    rangeImageUrl?: string | null;
-    model?: {
-        id?: string;
-        name?: string;
-        modelCode?: string;
-        coverImageUrl?: string | null;
-        specifications?: any;
-        standardFeatures?: string[];
-    } | null;
-    variant?: {
-        id?: string;
-        name?: string;
-        sku?: string;
-        colorName?: string | null;
-        colorCode?: string | null;
-        material?: string | null;
-        cost?: number;
-        sellPriceExclGst?: number;
-        imageUrl?: string | null;
-    } | null;
 }
 
 const NOW = new Date();
@@ -76,77 +33,89 @@ export function buildSampleQuoteFixture(opts: {
     /** When provided, overrides the fixture's vendorId so brand-overrides
      *  are exercised in preview. */
     vendorId?: string | null;
-    /** v1.7 (1.8.10) — real catalog data for the model/variant/vendor.
-     *  Any subfield missing → falls back to the hardcoded defaults. */
-    catalog?: RealCatalogContext;
 }): SampleQuoteFixture {
     const orgName = opts.organisationName || 'Your Organisation';
     const previewQuoteNumber = `PREVIEW-${NOW.getFullYear()}${String(NOW.getMonth() + 1).padStart(2, '0')}-001`;
-    const cat = opts.catalog ?? {};
 
-    const variant = cat.variant ?? {} as NonNullable<RealCatalogContext['variant']>;
-    const variantSellPrice = variant.sellPriceExclGst ?? 56000;
-    const builtVariant = {
-        id: variant.id ?? 'preview-variant-cl340-grey-hyp',
-        name: variant.name ?? 'Standard',
-        sku: variant.sku ?? 'CL340-GREY-HYP',
-        colorName: variant.colorName ?? 'Grey',
-        colorCode: variant.colorCode ?? '#5b6770',
-        material: variant.material ?? 'Hypalon',
-        cost: variant.cost ?? Math.round(variantSellPrice * 0.68),
-        sellPriceExclGst: variantSellPrice,
-        imageUrl: variant.imageUrl ?? null,
+    const variant = {
+        id: 'preview-variant-sport560-grey-hyp',
+        name: 'Standard',
+        sku: 'SP560-GREY-HYP',
+        colorName: 'Storm Grey',
+        colorCode: '#475569',
+        material: 'Hypalon',
+        cost: 89000,
+        sellPriceExclGst: 124500,
+        imageUrl: null,
     };
 
+    /** Loaded factory + dealer-fit options — 16 items so the preview
+     *  shows a heavy-spec'd boat, the way a real customer proposal
+     *  rolls. Mix of fishing, comfort, electronics, dealer prep. */
     const selectedOptions = [
-        { id: 'opt-bow-locker',  name: 'Bow Locker (Insulated)',          category: 'Storage',     sellPriceExclGst: 1850, imageUrl: null },
-        { id: 'opt-tube-cover',  name: 'Tube Cover (Sunbrella Charcoal)', category: 'Protection',  sellPriceExclGst: 1650, imageUrl: null },
-        { id: 'opt-bait-tank',   name: 'Live Bait Tank — 50L',            category: 'Fishing',     sellPriceExclGst: 1295, imageUrl: null },
-        { id: 'opt-rocket-launcher', name: 'Rocket Launcher (4-rod)',     category: 'Fishing',     sellPriceExclGst: 850,  imageUrl: null },
-        { id: 'opt-sounder-mount',   name: 'Garmin Sounder Mount Plate',  category: 'Electronics', sellPriceExclGst: 320,  imageUrl: null },
+        { id: 'opt-t-top',           name: 'T-Top with Rocket Launcher (4-rod)',     category: 'Shade & Fishing',    sellPriceExclGst: 7800, imageUrl: null },
+        { id: 'opt-bow-locker',      name: 'Insulated Bow Locker + Cushion',         category: 'Storage',            sellPriceExclGst: 2150, imageUrl: null },
+        { id: 'opt-bench-storage',   name: 'Aft Bench Seat with Storage Compartment', category: 'Seating',           sellPriceExclGst: 2950, imageUrl: null },
+        { id: 'opt-console-upgrade', name: 'Side-Console Upgrade (full glass-screen)', category: 'Console',          sellPriceExclGst: 3450, imageUrl: null },
+        { id: 'opt-tube-cover',      name: 'Tube Cover (Sunbrella Charcoal)',        category: 'Protection',         sellPriceExclGst: 1850, imageUrl: null },
+        { id: 'opt-bait-tank',       name: 'Live Bait Tank — 80L (with aerator pump)', category: 'Fishing',          sellPriceExclGst: 1495, imageUrl: null },
+        { id: 'opt-bow-rail',        name: 'Stainless Steel Bow Rail (1m)',          category: 'Safety',             sellPriceExclGst: 1250, imageUrl: null },
+        { id: 'opt-bimini',          name: 'Folding Bimini Top with Boot',           category: 'Shade',              sellPriceExclGst: 1650, imageUrl: null },
+        { id: 'opt-led-nav',         name: 'LED Navigation Lights (port/stbd/stern)', category: 'Electrical',        sellPriceExclGst: 480,  imageUrl: null },
+        { id: 'opt-led-underwater',  name: 'Underwater LED Lights (Blue, 4-pack)',   category: 'Electrical',         sellPriceExclGst: 680,  imageUrl: null },
+        { id: 'opt-sounder-mount',   name: 'Garmin GPSMAP 9" Mount + Wiring Loom',   category: 'Electronics',        sellPriceExclGst: 520,  imageUrl: null },
+        { id: 'opt-stereo',          name: 'Marine Stereo + Bluetooth + 4 Speakers', category: 'Electronics',        sellPriceExclGst: 1180, imageUrl: null },
+        { id: 'opt-deluxe-uphol',    name: 'Deluxe Upholstery Upgrade (Charcoal)',   category: 'Comfort',            sellPriceExclGst: 1950, imageUrl: null },
+        { id: 'opt-rod-holders',     name: 'Stainless Rod Holders (Gunwale × 6)',    category: 'Fishing',            sellPriceExclGst: 590,  imageUrl: null },
+        { id: 'opt-ski-tow',         name: 'Stainless Ski Tow Eye + Bridle',         category: 'Watersports',        sellPriceExclGst: 320,  imageUrl: null },
+        { id: 'opt-rear-step',       name: 'Stainless Rear Boarding Step + Ladder',  category: 'Boarding',           sellPriceExclGst: 870,  imageUrl: null },
     ];
 
     const motor = {
-        id: 'motor-yamaha-f150',
-        name: 'Yamaha F150 — 4-Stroke',
+        id: 'motor-yamaha-f100',
+        name: 'Yamaha F100 LB — 4-Stroke',
         brand: 'Yamaha',
         brandLogoUrl: null,
-        sellPriceExclGst: 24500,
-        cost: 17500,
+        sellPriceExclGst: 18800,
+        cost: 13200,
         accessoryItems: [
             { name: 'Yamaha 6Y8 CommandLink Plus Gauges', sellPriceExclGst: 1450 },
-            { name: 'Stainless Steel Prop (3-blade, 14.25)', sellPriceExclGst: 850 },
+            { name: 'Stainless Steel Prop (3-blade, 13.5 × 17)', sellPriceExclGst: 850 },
+            { name: 'Yamaha Hydraulic Steering Kit', sellPriceExclGst: 1620 },
         ],
     };
 
     const trailer = {
-        id: 'trailer-stratos-200',
-        name: 'Stratos 200 Series — Aluminium Tandem',
+        id: 'trailer-stratos-560',
+        name: 'Stratos 560 Series — Aluminium Tandem (1800kg ATM)',
         brand: 'Stratos',
-        sellPriceExclGst: 8950,
-        cost: 6300,
+        sellPriceExclGst: 11750,
+        cost: 8200,
         options: [
-            { name: 'Spare Wheel + Carrier', sellPriceExclGst: 320 },
+            { name: 'Spare Wheel + Carrier (with security lock)', sellPriceExclGst: 380 },
+            { name: 'LED Marine Trailer Lights (waterproof)',     sellPriceExclGst: 290 },
         ],
     };
 
     const dealerFit = [
-        { id: 'df-prep',    name: 'Pre-Delivery Inspection & Hand-Over',      sellPriceExclGst: 850, cost: 350 },
-        { id: 'df-detail',  name: 'Premium Detail + Anti-Fouling',           sellPriceExclGst: 480, cost: 180 },
-        { id: 'df-rego-help', name: 'Boat Registration Service',              sellPriceExclGst: 220, cost: 50  },
+        { id: 'df-prep',         name: 'Pre-Delivery Inspection & Sea-Trial',           sellPriceExclGst: 1250, cost: 480 },
+        { id: 'df-detail',       name: 'Premium Detail + Anti-Fouling (gel-coat sealed)', sellPriceExclGst: 720, cost: 280 },
+        { id: 'df-rego-help',    name: 'Boat + Trailer Registration Service',           sellPriceExclGst: 320,  cost: 80  },
+        { id: 'df-handover',     name: 'On-Water Hand-Over Training (2 hours)',         sellPriceExclGst: 480,  cost: 160 },
+        { id: 'df-warranty-pack', name: 'Extended Marine Warranty Package (3-year)',    sellPriceExclGst: 980,  cost: 420 },
     ];
 
-    const boatBasePrice = builtVariant.sellPriceExclGst;
+    const boatBasePrice = variant.sellPriceExclGst;
     const optionsTotal = selectedOptions.reduce((s, o) => s + o.sellPriceExclGst, 0);
     const motorTotal = motor.sellPriceExclGst + motor.accessoryItems.reduce((s, a) => s + a.sellPriceExclGst, 0);
     const trailerTotal = trailer.sellPriceExclGst + trailer.options.reduce((s, o) => s + o.sellPriceExclGst, 0);
     const dealerFitTotal = dealerFit.reduce((s, d) => s + d.sellPriceExclGst, 0);
-    const regoTotal = 850;
+    const regoTotal = 1480;
     const subtotalExclGst = boatBasePrice + optionsTotal + regoTotal + motorTotal + trailerTotal + dealerFitTotal;
     const totalInclGst = Math.ceil(subtotalExclGst * 1.1);
     const gstAmount = totalInclGst - subtotalExclGst;
 
-    const boatCost = builtVariant.cost;
+    const boatCost = variant.cost;
     const optionsCost = optionsTotal * 0.65;
     const motorCost = motor.cost + motor.accessoryItems.reduce((s, a) => s + a.sellPriceExclGst * 0.65, 0);
     const trailerCost = trailer.cost + trailer.options.reduce((s, o) => s + o.sellPriceExclGst * 0.65, 0);
@@ -162,54 +131,72 @@ export function buildSampleQuoteFixture(opts: {
             createdByName: 'Sample Salesperson',
             organisationId: null,
             customer: {
-                name: 'John Smith',
-                email: 'john@example.com',
-                phone: '0400 000 000',
-                company: 'ABC Fishing Charters',
-                address: '12 Coastal Road, Sample Bay NSW',
+                name: 'James Thompson',
+                email: 'james.thompson@example.com',
+                phone: '0421 555 200',
+                company: 'Pacific Bay Charters',
+                address: '47 Marina Esplanade, Pacific Bay NSW 2480',
             },
             moduleId: 'preview-module',
-            moduleName: cat.moduleName ?? 'Highfield Boats',
-            moduleSlug: cat.moduleSlug ?? 'highfield',
-            vendorId: opts.vendorId ?? cat.vendorId ?? 'highfield',
-            vendorName: cat.vendorName ?? 'Highfield',
-            vendorLogoUrl: cat.vendorLogoUrl ?? null,
+            moduleName: 'Highfield Boats',
+            moduleSlug: 'highfield',
+            vendorId: opts.vendorId ?? 'highfield',
+            vendorName: 'Highfield',
+            vendorLogoUrl: null,
             vendorCurrency: 'USD',
-            rangeId: cat.rangeId ?? 'classic',
-            rangeName: cat.rangeName ?? 'Classic',
-            rangeImageUrl: cat.rangeImageUrl ?? null,
-            modelId: cat.model?.id ?? 'cl340',
-            modelName: cat.model?.name ?? 'CL340',
-            modelCode: cat.model?.modelCode ?? cat.model?.name ?? 'CL340',
-            coverImageUrl: cat.model?.coverImageUrl ?? null,
-            specifications: cat.model?.specifications ?? {
+            rangeId: 'sport',
+            rangeName: 'Sport',
+            rangeImageUrl: null,
+            modelId: 'sport-560',
+            modelName: 'Sport 560',
+            modelCode: 'SP560',
+            // No coverImageUrl — proposal-pdf falls back to the dark-navy
+            // gradient. v1.7.5 polish can swap to a real Sport 560 image
+            // URL from the org's Firestore Storage; for now the loaded
+            // options list + spec sheet make the preview meaningful even
+            // without a hero photo.
+            coverImageUrl: null,
+            specifications: {
                 otherSpecs: [
-                    { label: 'Length',      value: '3.40 m' },
-                    { label: 'Beam',        value: '1.78 m' },
-                    { label: 'Dry Weight',  value: '85 kg' },
-                    { label: 'Max HP',      value: '25 HP' },
-                    { label: 'Max Persons', value: '5' },
-                    { label: 'Tube Diameter', value: '0.46 m' },
-                    { label: 'Air Chambers', value: '5' },
+                    { label: 'Length',          value: '5.60 m' },
+                    { label: 'Beam',            value: '2.30 m' },
+                    { label: 'Internal Length', value: '4.20 m' },
+                    { label: 'Internal Width',  value: '1.20 m' },
+                    { label: 'Tube Diameter',   value: '0.50 m' },
+                    { label: 'Air Chambers',    value: '5' },
+                    { label: 'Dry Weight',      value: '410 kg' },
+                    { label: 'Max Recommended HP', value: '100 HP' },
+                    { label: 'Max Persons',     value: '9' },
+                    { label: 'Fuel Capacity',   value: '120 L' },
+                    { label: 'Max Speed',       value: '40 knots' },
+                    { label: 'CE Category',     value: 'C — Inshore' },
                 ],
-                motorConfigurations: [{ engines: [{ minHp: 15, maxHp: 25 }] }],
+                motorConfigurations: [{ engines: [{ minHp: 75, maxHp: 100 }] }],
             },
-            standardFeatures: cat.model?.standardFeatures ?? [
-                'Hypalon tubes (1.2 mm)',
-                'Aluminium hull',
-                'Bow eye + stern eye',
-                'Tow rings (4)',
-                'Lifting handles',
-                'Foot pump + repair kit',
-                'Wooden floorboards',
-                'Side carry handles',
+            standardFeatures: [
+                'Marine-grade aluminium hull (3 mm bottom, 2 mm sides)',
+                'Hypalon-1670 dtex tubes (5-chamber configuration)',
+                'Self-bailing deck with 2 × auto-bilge pumps',
+                'Forward console with hand grip + drink holders',
+                'Stainless steel grab rails (full perimeter)',
+                'Bow eye + 4 × stern lifting eyes',
+                'Tow rings (4 × marine-grade stainless)',
+                'Welded aluminium fuel tank — 120 L',
+                'Pre-wired for navigation electronics',
+                'Marine-grade vinyl upholstery (UV-stabilised)',
+                'Full anti-skid floor surface',
+                'Side carry handles (8 positions)',
+                'Bow eye D-ring for trailer winch',
+                '12 V outlet at console (waterproof)',
+                'Battery box with isolator switch',
+                'Fender storage compartment',
             ],
-            variant: builtVariant,
+            variant,
             selectedOptions,
             customOptions: [],
             registration: {
                 boatRego: true,
-                trailerRego: false,
+                trailerRego: true,
                 stickerOnly: false,
                 tenderTo: false,
             },
@@ -248,34 +235,4 @@ export function buildSampleQuoteFixture(opts: {
             validUntil: VALID_UNTIL,
         },
     };
-}
-
-/** Convert content-block docs (full collection) into the resolved
- *  contentBlocks map ProposalPDFDocument expects, scoped to the
- *  given documentType + brand override. Mirrors the live
- *  resolveContentBlocksForQuote() but works off in-memory data
- *  (no Firestore round-trip in the live preview path). */
-export function resolveContentBlocksForPreview(
-    blocks: ContentBlock[] | null,
-    documentType: 'quote' | 'contract',
-    vendorId: string | null,
-    brandOverrides: Map<string, string>,
-): Record<string, string> {
-    const result: Record<string, string> = {};
-    for (const b of blocks ?? []) {
-        if (!b.blockType) continue;
-        const docTypes = b.documentTypes && b.documentTypes.length > 0 ? b.documentTypes : ['quote'];
-        if (!docTypes.includes(documentType)) continue;
-
-        let html = b.html ?? '';
-        if (vendorId) {
-            const overrideKey = `${b.id}::${vendorId}`;
-            const override = brandOverrides.get(overrideKey);
-            if (override) html = override;
-        }
-        if (html.trim()) {
-            result[b.blockType] = html;
-        }
-    }
-    return result;
 }
