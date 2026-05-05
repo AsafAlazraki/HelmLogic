@@ -22,15 +22,12 @@ import { useMemo, useState } from 'react';
 import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useToast } from '@/hooks/use-toast';
 import {
     Bug,
     CheckCircle2,
     ChevronRight,
-    ClipboardEdit,
     HelpCircle,
     Layers,
-    Loader2,
     Lock,
     Plus,
     Sparkles,
@@ -41,19 +38,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
-import { applyV17StoryReview } from '@/lib/v17-story-review-seed';
 import {
     CreateFeatureDialog,
     FeatureDetailSheet,
@@ -96,7 +82,6 @@ const UNFILED = '__unfiled__';
 
 export function BacklogView() {
     const firestore = useFirestore();
-    const { toast } = useToast();
 
     const featuresRef = useMemoFirebase(() => collection(firestore, 'features'), [firestore]);
     const epicsRef = useMemoFirebase(() => collection(firestore, 'epics'), [firestore]);
@@ -109,41 +94,6 @@ export function BacklogView() {
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
-
-    /** v1.7 story-review seed — appends "✓ shipped" acceptance lines to v1.7 stories
-     *  and reduces 1.2.1 points (PDF render layer landed in v1.7). One-shot;
-     *  hidden once 1.2.1 has the new "PDF render layer pulled forward" line. */
-    const [reviewOpen, setReviewOpen] = useState(false);
-    const [reviewing, setReviewing] = useState(false);
-    const reviewAlreadyApplied = useMemo(
-        () => (features ?? []).some(f =>
-            f.title?.startsWith('1.2.1 — Branded PDF Quote Generation') &&
-            (f.acceptanceCriteria ?? []).some((l: string) => l.includes('PDF render layer pulled forward'))
-        ),
-        [features],
-    );
-
-    async function runStoryReview() {
-        setReviewing(true);
-        try {
-            const summary = await applyV17StoryReview(firestore);
-            const missed = summary.storiesMissed.length > 0
-                ? ` · ${summary.storiesMissed.length} missed (titles drift?)`
-                : '';
-            toast({
-                title: 'v1.7 story review applied',
-                description: `${summary.storiesUpdated} updated · ${summary.storiesSkipped} skipped · ${summary.pointsAdjusted} points adjusted${missed}.`,
-            });
-            if (summary.storiesMissed.length > 0) {
-                console.warn('[story-review] Stories not found by title prefix:', summary.storiesMissed);
-            }
-            setReviewOpen(false);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Review failed', description: e?.message ?? 'See console.' });
-        } finally {
-            setReviewing(false);
-        }
-    }
 
     const sortedEpics = useMemo(
         () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
@@ -260,17 +210,6 @@ export function BacklogView() {
                             <Plus className="h-4 w-4" />
                             New Epic
                         </Button>
-                        {!reviewAlreadyApplied && (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-600 hover:text-white gap-1.5 shadow-sm"
-                                onClick={() => setReviewOpen(true)}
-                            >
-                                <ClipboardEdit className="h-4 w-4" />
-                                Apply v1.7 story review
-                            </Button>
-                        )}
                     </div>
                 </div>
             </div>
@@ -336,61 +275,6 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
-
-            {/* v1.7 story-review seed — appends "✓ shipped" acceptance lines to
-                v1.7 stories already on dev + reduces 1.2.1 points (PDF render
-                layer landed early). Hidden once 1.2.1 has the new line. */}
-            <AlertDialog open={reviewOpen} onOpenChange={setReviewOpen}>
-                <AlertDialogContent className="max-w-xl">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <ClipboardEdit className="h-4 w-4 text-emerald-600" />
-                            Apply v1.7 story review?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="space-y-2 text-xs text-slate-600">
-                                <p>
-                                    Updates story acceptance criteria to reflect what shipped to dev during the v1.7 build.
-                                    No new stories created; just appends "✓ shipped" lines + adjusts 1.2.1 points.
-                                </p>
-                                <p className="font-semibold pt-1">Stories updated:</p>
-                                <ul className="list-disc pl-5 space-y-0.5">
-                                    <li><strong>1.8.1</strong> — appends Phase A-D ship line</li>
-                                    <li><strong>1.8.5 / 1.8.6 / 1.8.9</strong> — appends ship lines</li>
-                                    <li><strong>1.8.7</strong> — replaces "stripped-down preview" framing with "real ProposalPDFDocument + fixture"</li>
-                                    <li><strong>1.2.1</strong> — appends "PDF render layer pulled forward to v1.7" + reduces points 8 → 3 (remaining v1.8 work is brand-injection coordination + polish, not the bulk render)</li>
-                                </ul>
-                                <p className="text-[11px] text-amber-700 font-semibold pt-1">
-                                    ⚠ v1.8 capacity: 1.2.1 reduction is -5 pts (37 → 32). Still over the 20-pt cap by 12. Needs a separate rebalance pass before v1.8 build kicks off.
-                                </p>
-                                <p className="text-[11px] text-slate-500 pt-1">
-                                    Idempotent — only writes if the new acceptance line isn&apos;t already present.
-                                </p>
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={reviewing}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={(e) => { e.preventDefault(); runStoryReview(); }}
-                            disabled={reviewing}
-                            className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
-                        >
-                            {reviewing ? (
-                                <>
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    Applying…
-                                </>
-                            ) : (
-                                <>
-                                    <ClipboardEdit className="h-3.5 w-3.5" />
-                                    Yes, apply review
-                                </>
-                            )}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }
