@@ -37,7 +37,13 @@ import {
     type ContentBlock,
     type DocumentType,
 } from '@/lib/content-blocks';
-import { ContentBlockList } from '@/components/content-block-list';
+import {
+    DEFAULT_SECTIONS,
+    getOrSeedPdfStructure,
+    reorderSection,
+    type PdfStructureSection,
+} from '@/lib/pdf-structure';
+import { PdfSectionList } from '@/components/pdf-section-list';
 import { ContentBlockDetail } from '@/components/content-block-detail';
 
 interface Props {
@@ -70,6 +76,39 @@ export function ContentBlockManager({ orgId, documentType, legacyTermsAndConditi
         [firestore, orgId],
     );
     const { data: blocks, loading: blocksLoading } = useCollection<ContentBlock>(blocksRef);
+
+    /** v1.7 (1.8.11) — pdfStructure subscription. Stored at
+     *  organisations/{orgId}/pdfStructure/{documentType}. Live so drag-drop
+     *  updates appear immediately across the editor + preview. */
+    const structureRef = useMemoFirebase(
+        () => doc(firestore, `organisations/${orgId}/pdfStructure/${documentType}`),
+        [firestore, orgId, documentType],
+    );
+    const { data: structureDoc } = useDoc<{ sections: PdfStructureSection[] }>(structureRef);
+    const sections: PdfStructureSection[] = useMemo(() => {
+        if (Array.isArray(structureDoc?.sections) && (structureDoc!.sections as PdfStructureSection[]).length > 0) {
+            return [...structureDoc!.sections as PdfStructureSection[]].sort((a, b) => a.order - b.order);
+        }
+        return [...DEFAULT_SECTIONS];
+    }, [structureDoc]);
+
+    /** Seed default structure on first open if missing — fire-and-forget. */
+    const [structureSeeded, setStructureSeeded] = useState(false);
+    useEffect(() => {
+        if (structureSeeded) return;
+        if (!user) return;
+        if (structureDoc !== undefined) {
+            // useDoc returned: either the doc exists (we're done) or it doesn't.
+            // If it doesn't exist OR has no sections, seed defaults.
+            if (!structureDoc || !Array.isArray(structureDoc.sections) || structureDoc.sections.length === 0) {
+                getOrSeedPdfStructure(firestore, orgId, documentType)
+                    .then(() => setStructureSeeded(true))
+                    .catch(e => console.warn('[pdf-structure] seed failed', e));
+            } else {
+                setStructureSeeded(true);
+            }
+        }
+    }, [structureSeeded, structureDoc, user, firestore, orgId, documentType]);
 
     /** Default selection — Terms & Conditions, since every org will have at minimum after migration. */
     const [selectedBlockType, setSelectedBlockType] = useState<typeof BLOCK_TYPES[number]>('terms-and-conditions');
@@ -142,12 +181,23 @@ export function ContentBlockManager({ orgId, documentType, legacyTermsAndConditi
 
     const selectedBlock = blockByType.get(selectedBlockType);
 
+    function handleReorder(sectionId: string, newOrder: number) {
+        // Optimistic — Firestore live snapshot will reflect after write.
+        reorderSection(firestore, orgId, documentType, sectionId, newOrder)
+            .catch(e => {
+                console.warn('[pdf-structure] reorder failed', e);
+                toast({ variant: 'destructive', title: 'Reorder failed', description: e?.message ?? 'See console.' });
+            });
+    }
+
     return (
-        <div className="grid gap-5 lg:grid-cols-[280px,1fr]">
-            <ContentBlockList
+        <div className="grid gap-5 lg:grid-cols-[300px,1fr]">
+            <PdfSectionList
+                sections={sections}
                 selectedBlockType={selectedBlockType}
-                onSelect={setSelectedBlockType}
+                onSelectContentBlock={setSelectedBlockType}
                 blockByType={blockByType}
+                onReorder={handleReorder}
                 loading={blocksLoading}
             />
             <ContentBlockDetail
@@ -160,6 +210,7 @@ export function ContentBlockManager({ orgId, documentType, legacyTermsAndConditi
                 organisationName={organisationName}
                 primaryLogoUrl={primaryLogoUrl}
                 secondaryLogoUrl={secondaryLogoUrl}
+                pdfSections={sections}
             />
         </div>
     );

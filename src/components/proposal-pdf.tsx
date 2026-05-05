@@ -2,7 +2,13 @@
 
 import { Document, Page, View, Text, Image, StyleSheet, Svg, Defs, LinearGradient, Stop, Rect } from '@react-pdf/renderer';
 import type { BlockType } from '@/lib/content-blocks';
+import { BLOCK_TYPE_LABEL } from '@/lib/content-blocks';
 import { TipTapHtmlPdf } from '@/lib/tiptap-pdf';
+import {
+    DEFAULT_SECTIONS,
+    partitionContentBlocks,
+    type PdfStructureSection,
+} from '@/lib/pdf-structure';
 
 /* ─── Palette ──────────────────────────────────────────────────────────── */
 const BRAND  = '#0066cc';
@@ -131,9 +137,51 @@ interface Props {
     organisation: any;
     financials: any;
     contentBlocks?: Partial<Record<BlockType, string>>;
+    /** v1.7 (1.8.11) — user-defined ordering of content blocks within
+     *  the 3 reorder zones (zoneA before vessel-config, zoneB after
+     *  vessel-config / before pricing, zoneC after pricing / before
+     *  signatures). System sections stay at their hardcoded positions
+     *  in v1.7; v1.8 polish makes them flowable. */
+    pdfSections?: PdfStructureSection[];
 }
 
-export function ProposalPDFDocument({ quote, organisation, financials, contentBlocks }: Props) {
+export function ProposalPDFDocument({ quote, organisation, financials, contentBlocks, pdfSections }: Props) {
+    const zones = partitionContentBlocks(pdfSections ?? DEFAULT_SECTIONS);
+    /** v1.7 (1.8.11) — render zone helper. Each content block in the zone
+     *  is emitted as a ContentBlockSection. T&Cs gets a fallback chain
+     *  (block content → legacy organisation.termsAndConditions →
+     *  DEFAULT_TERMS) so a quote always has terms even if the org hasn't
+     *  authored anything. */
+    const renderZone = (zoneSections: PdfStructureSection[]) =>
+        zoneSections.map(s => {
+            const blockType = s.key as BlockType;
+            const html = contentBlocks?.[blockType];
+            const label = BLOCK_TYPE_LABEL[blockType] ?? s.key;
+            // T&Cs fallback chain — keep it always rendering even if no
+            // content block is authored.
+            if (blockType === 'terms-and-conditions' && (!html || !html.trim())) {
+                const DEFAULT_TERMS = [
+                    '1. This proposal is valid for 30 days from the date of issue.',
+                    '2. Prices are subject to change without notice after the validity period.',
+                    '3. A non-refundable deposit may be required to secure this package.',
+                    '4. Final delivery dates will be confirmed upon order acceptance.',
+                ];
+                const customTerms = organisation?.termsAndConditions
+                    ? (organisation.termsAndConditions as string).split('\n').filter((l: string) => l.trim())
+                    : null;
+                const lines = customTerms && customTerms.length > 0 ? customTerms : DEFAULT_TERMS;
+                return (
+                    <View key={s.id} style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 5, padding: '10 12', marginBottom: 18 }}>
+                        <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1.5, color: SLATE, marginBottom: 6 }}>Terms &amp; Conditions</Text>
+                        {lines.map((t: string, i: number, arr: string[]) => (
+                            <Text key={i} style={{ fontSize: 7, color: MUTED, lineHeight: 1.55, marginBottom: i < arr.length - 1 ? 2 : 0 }}>{t}</Text>
+                        ))}
+                    </View>
+                );
+            }
+            return <ContentBlockSection key={s.id} label={label} html={html} />;
+        });
+
     const f = financials;
     const createdAt: Date = quote.createdAt?.toDate?.() ?? new Date();
     const validUntil = new Date(createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -327,9 +375,11 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             <Page size="A4" style={{ ...S.page, padding: 44 }}>
                 <InnerHeader title="Vessel Configuration" sub="Technical Data & Standard Inclusions" quoteNumber={quote.quoteNumber} page="02" />
 
-                {/* v1.7 (1.2.1) — Salesperson message + Why Choose Us, top of page 2 */}
-                <ContentBlockSection label="A note from your salesperson" html={contentBlocks?.['salesperson-message']} />
-                <ContentBlockSection label="Why choose us" html={contentBlocks?.['why-us']} />
+                {/* v1.7 (1.8.11) — zoneA: content blocks ordered to appear BEFORE the
+                    vessel-config system section. Default = salesperson-message + why-us,
+                    but the user's drag-drop reorder can put any of the 7 content blocks
+                    here. */}
+                {renderZone(zones.zoneA)}
 
                 {/* Specs + Standard Features */}
                 {(quote.specifications?.otherSpecs?.length > 0 || quote.standardFeatures?.length > 0) && (
@@ -603,9 +653,11 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     </View>
                 )}
 
-                {/* v1.7 (1.2.1) — Brand & model story + After-sales, end of page 2 */}
-                <ContentBlockSection label="About this brand & model" html={contentBlocks?.['brand-story']} />
-                <ContentBlockSection label="After-sales confidence" html={contentBlocks?.['after-sales']} />
+                {/* v1.7 (1.8.11) — page 2 ends after the system vessel-config block.
+                    Content blocks that used to live here (brand-story, after-sales)
+                    moved to page 3's zoneB before pricing — keeps the data-driven
+                    model coherent (all narrative content blocks on page 3, technical
+                    config on page 2). */}
 
                 <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
             </Page>
@@ -616,8 +668,10 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             <Page size="A4" style={{ ...S.page, padding: 44 }}>
                 <InnerHeader title="Investment Summary" sub="Comprehensive Package Breakdown" quoteNumber={quote.quoteNumber} page="03" />
 
-                {/* v1.7 (1.2.1) — Finance & insurance info, top of page 3 (before pricing) */}
-                <ContentBlockSection label="Finance & insurance" html={contentBlocks?.['finance-info']} />
+                {/* v1.7 (1.8.11) — zoneB: content blocks ordered between the vessel-
+                    config and pricing-section system anchors. Default = brand-story,
+                    after-sales, finance-info. Reorderable via drag-drop in the editor. */}
+                {renderZone(zones.zoneB)}
 
                 {/* Pricing table */}
                 <View style={{ marginBottom: 28 }}>
@@ -671,34 +725,11 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     </View>
                 </View>
 
-                {/* v1.7 (1.2.1) — Value summary, after the grand total, before T&Cs */}
-                <ContentBlockSection label="Why this package, why now" html={contentBlocks?.['value-summary']} />
-
-                {/* Terms — v1.7 (1.2.1): content-blocks first, then legacy field, then DEFAULT_TERMS */}
-                {(() => {
-                    const DEFAULT_TERMS = [
-                        '1. This proposal is valid for 30 days from the date of issue.',
-                        '2. Prices are subject to change without notice after the validity period.',
-                        '3. A non-refundable deposit may be required to secure this package.',
-                        '4. Final delivery dates will be confirmed upon order acceptance.',
-                    ];
-                    const blockHtml = contentBlocks?.['terms-and-conditions'];
-                    const customTerms = organisation?.termsAndConditions
-                        ? (organisation.termsAndConditions as string).split('\n').filter((l: string) => l.trim())
-                        : null;
-                    return (
-                        <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 5, padding: '10 12', marginBottom: 28 }}>
-                            <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1.5, color: SLATE, marginBottom: 6 }}>Terms &amp; Conditions</Text>
-                            {blockHtml && blockHtml.trim() ? (
-                                <TipTapHtmlPdf html={blockHtml} fontSize={7} color={MUTED} />
-                            ) : (
-                                (customTerms && customTerms.length > 0 ? customTerms : DEFAULT_TERMS).map((t: string, i: number, arr: string[]) => (
-                                    <Text key={i} style={{ fontSize: 7, color: MUTED, lineHeight: 1.55, marginBottom: i < arr.length - 1 ? 2 : 0 }}>{t}</Text>
-                                ))
-                            )}
-                        </View>
-                    );
-                })()}
+                {/* v1.7 (1.8.11) — zoneC: content blocks ordered after pricing-section
+                    and before signatures. Default = value-summary + terms-and-conditions.
+                    T&Cs gets a fallback chain inside renderZone (block content → legacy
+                    org.termsAndConditions → DEFAULT_TERMS) so quotes always have terms. */}
+                {renderZone(zones.zoneC)}
 
                 {/* Signature blocks */}
                 <View style={{ flexDirection: 'row', gap: 40, marginBottom: 24 }}>

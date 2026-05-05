@@ -75,9 +75,12 @@ interface Props {
     organisationName: string | null | undefined;
     primaryLogoUrl: string | null | undefined;
     secondaryLogoUrl: string | null | undefined;
+    /** v1.7 (1.8.11) — passed to the live preview so the PDF reflects the user's
+     *  drag-drop ordering. Sorted-by-order array of PdfStructureSection. */
+    pdfSections: import('@/lib/pdf-structure').PdfStructureSection[];
 }
 
-export function ContentBlockDetail({ orgId, documentType, blockType, block, allBlocks, enabledModuleSubscriptions, organisationName, primaryLogoUrl, secondaryLogoUrl }: Props) {
+export function ContentBlockDetail({ orgId, documentType, blockType, block, allBlocks, enabledModuleSubscriptions, organisationName, primaryLogoUrl, secondaryLogoUrl, pdfSections }: Props) {
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
@@ -448,6 +451,7 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                                     primaryLogoUrl={primaryLogoUrl}
                                     secondaryLogoUrl={secondaryLogoUrl}
                                     enabledModuleSubscriptions={enabledModuleSubscriptions}
+                                    pdfSections={pdfSections}
                                 />
                             </div>
                         </div>

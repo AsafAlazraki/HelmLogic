@@ -49,9 +49,12 @@ interface Props {
      *  threads this through). v1.8.10 catalog-fetch reverted; kept the
      *  prop so wiring doesn't churn — could be removed in a sweep. */
     enabledModuleSubscriptions?: string[] | null;
+    /** v1.7 (1.8.11) — drag-drop ordering. Threaded into ProposalPDFDocument
+     *  so the preview reflects the user's drag-drop reorder. */
+    pdfSections?: import('@/lib/pdf-structure').PdfStructureSection[];
 }
 
-export function ContentBlocksPdfPreview({ blocks, documentType, organisationName, primaryLogoUrl, secondaryLogoUrl }: Props) {
+export function ContentBlocksPdfPreview({ blocks, documentType, organisationName, primaryLogoUrl, secondaryLogoUrl, pdfSections }: Props) {
     /** Resolve content blocks → blockType → html map for the active
      *  documentType. No brand-override resolution in the preview path. */
     const contentBlocksMap = useMemo(() => {
@@ -95,6 +98,7 @@ export function ContentBlocksPdfPreview({ blocks, documentType, organisationName
                     organisation={fixture.organisation}
                     financials={fixture.financials}
                     contentBlocks={contentBlocksMap}
+                    pdfSections={pdfSections}
                 />
             </PDFViewer>
         </div>
