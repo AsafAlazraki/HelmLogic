@@ -20,14 +20,19 @@
 
 import { useMemo, useState } from 'react';
 import { collection } from 'firebase/firestore';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { useDoc } from '@/firebase/firestore/use-doc';
+import { doc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 import {
     Bug,
     CheckCircle2,
     ChevronRight,
     HelpCircle,
     Layers,
+    ListPlus,
+    Loader2,
     Lock,
     Plus,
     Sparkles,
@@ -38,8 +43,19 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
+import { applyV17FeedbackRound2 } from '@/lib/v17-feedback-round2-seed';
 import {
     CreateFeatureDialog,
     FeatureDetailSheet,
@@ -82,6 +98,8 @@ const UNFILED = '__unfiled__';
 
 export function BacklogView() {
     const firestore = useFirestore();
+    const { user } = useUser();
+    const { toast } = useToast();
 
     const featuresRef = useMemoFirebase(() => collection(firestore, 'features'), [firestore]);
     const epicsRef = useMemoFirebase(() => collection(firestore, 'epics'), [firestore]);
@@ -94,6 +112,39 @@ export function BacklogView() {
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
+
+    const userProfileRef = useMemoFirebase(
+        () => (user ? doc(firestore, 'users', user.uid) : null),
+        [firestore, user?.uid],
+    );
+    const { data: userProfile } = useDoc<any>(userProfileRef);
+
+    /** v1.7 round-2 feedback seed — adds 1.8.10 (real-data preview) + 1.8.11
+     *  (drag-drop reorder of all PDF sections). Hidden once 1.8.10 exists. */
+    const [round2Open, setRound2Open] = useState(false);
+    const [round2Running, setRound2Running] = useState(false);
+    const round2AlreadyApplied = useMemo(
+        () => (features ?? []).some(f => /^1\.8\.10\b/.test(f.title || '')),
+        [features],
+    );
+
+    async function runRound2Seed() {
+        if (!user) return;
+        setRound2Running(true);
+        try {
+            const submitterName = userProfile?.displayName || userProfile?.email || user.email || 'Someone';
+            const summary = await applyV17FeedbackRound2(firestore, user.uid, submitterName);
+            toast({
+                title: 'v1.7 round-2 feedback seeded',
+                description: `${summary.featuresCreated} new stories · ${summary.featuresSkipped} skipped.`,
+            });
+            setRound2Open(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Seed failed', description: e?.message ?? 'See console.' });
+        } finally {
+            setRound2Running(false);
+        }
+    }
 
     const sortedEpics = useMemo(
         () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
@@ -210,6 +261,17 @@ export function BacklogView() {
                             <Plus className="h-4 w-4" />
                             New Epic
                         </Button>
+                        {!round2AlreadyApplied && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-purple-500 text-white border-purple-400 hover:bg-purple-600 hover:text-white gap-1.5 shadow-sm"
+                                onClick={() => setRound2Open(true)}
+                            >
+                                <ListPlus className="h-4 w-4" />
+                                Apply v1.7 round-2 feedback
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -275,6 +337,61 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
+
+            {/* v1.7 round-2 feedback seed — adds 1.8.10 + 1.8.11. Hidden once
+                1.8.10 exists. */}
+            <AlertDialog open={round2Open} onOpenChange={setRound2Open}>
+                <AlertDialogContent className="max-w-xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <ListPlus className="h-4 w-4 text-purple-600" />
+                            Apply v1.7 round-2 feedback?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-xs text-slate-600">
+                                <p>
+                                    Captures the feedback batch after seeing the 1.8.7 preview on dev:
+                                    real-catalog data + drag-drop reorder.
+                                </p>
+                                <p className="font-semibold pt-1">2 NEW stories:</p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                    <li><strong>1.8.10</strong> (v1.7, 3 pts) — Real catalog data in PDF preview (replaces hardcoded fixture with first real model from the org&apos;s catalog)</li>
+                                    <li><strong>1.8.11</strong> (v1.8, 8 pts) — Drag-drop reorder of all PDF sections (content blocks AND existing system blocks: vessel config, pricing, signatures)</li>
+                                </ul>
+                                <p className="text-[11px] text-amber-700 font-semibold pt-1">
+                                    ⚠ v1.7: 18 → 21 pts (amber +1 above cap, accepted because 1.8.10 fixes the preview directly).
+                                </p>
+                                <p className="text-[11px] text-amber-700 font-semibold">
+                                    ⚠ v1.8: still over cap, still needs separate rebalance pass before v1.8 build kicks off.
+                                </p>
+                                <p className="text-[11px] text-slate-500 pt-1">
+                                    Idempotent — re-running skips existing stories by title.
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={round2Running}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => { e.preventDefault(); runRound2Seed(); }}
+                            disabled={round2Running}
+                            className="bg-purple-600 hover:bg-purple-700 gap-1.5"
+                        >
+                            {round2Running ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Seeding…
+                                </>
+                            ) : (
+                                <>
+                                    <ListPlus className="h-3.5 w-3.5" />
+                                    Yes, add 2 stories
+                                </>
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
