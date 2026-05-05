@@ -16,14 +16,14 @@
  * polish can generalise per org's enabled modules.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { collection, doc, getDocs, limit, query } from 'firebase/firestore';
 import { PDFViewer } from '@react-pdf/renderer';
 import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { ProposalPDFDocument } from '@/components/proposal-pdf';
 import { Button } from '@/components/ui/button';
-import { Maximize2, Minimize2, X } from 'lucide-react';
+import { Loader2, Maximize2, Minimize2 } from 'lucide-react';
 import {
     blockBelongsTo,
     type BlockType,
@@ -149,18 +149,68 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
         [organisationName, primaryLogoUrl, secondaryLogoUrl, heroImageUrl],
     );
 
-    /** Single document instance — referenced by both inline AND focus-mode
-     *  PDFViewers. We only RENDER one PDFViewer at a time (focus mode hides
-     *  the inline one) to avoid the double-render lag the user flagged. */
-    const docElement = (
-        <ProposalPDFDocument
-            quote={fixture.quote}
-            organisation={fixture.organisation}
-            financials={fixture.financials}
-            contentBlocks={contentBlocksMap}
-            pdfSections={pdfSections}
-            salespersonProfile={salespersonProfile ?? undefined}
-        />
+    /** v1.7 perf — debounce the PDF inputs. Editing in TipTap fires
+     *  onUpdate per keystroke; auto-save propagates to Firestore which
+     *  triggers a useCollection snapshot which recomputes contentBlocksMap
+     *  which would normally rebuild the PDF on EVERY keystroke (rasterise
+     *  + paginate + iframe reload = 1-3s each). Hold the inputs stable
+     *  for 1500ms after the last change before pushing into the
+     *  ProposalPDFDocument; the iframe regenerates once when the user
+     *  stops editing. */
+    const [stableMap, setStableMap] = useState(contentBlocksMap);
+    const [stableSections, setStableSections] = useState(pdfSections);
+    const [stableProfile, setStableProfile] = useState(salespersonProfile ?? undefined);
+    const [pendingUpdate, setPendingUpdate] = useState(false);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => {
+        // Detect any input drift from the stable snapshot. If they match,
+        // nothing to do (skip showing the indicator on initial mount).
+        const sameSections = (stableSections?.length ?? 0) === (pdfSections?.length ?? 0)
+            && (stableSections ?? []).every((s, i) => {
+                const o = (pdfSections ?? [])[i];
+                return o && o.id === s.id && o.order === s.order;
+            });
+        const mapKeys = Object.keys(contentBlocksMap);
+        const stableKeys = Object.keys(stableMap);
+        const sameMap = mapKeys.length === stableKeys.length
+            && mapKeys.every(k => contentBlocksMap[k as BlockType] === stableMap[k as BlockType]);
+        const sameProfile = (stableProfile?.messageHtml === salespersonProfile?.messageHtml)
+            && (stableProfile?.photoUrl === salespersonProfile?.photoUrl)
+            && (stableProfile?.role === salespersonProfile?.role)
+            && (stableProfile?.signOff === salespersonProfile?.signOff);
+
+        if (sameSections && sameMap && sameProfile) {
+            setPendingUpdate(false);
+            return;
+        }
+        setPendingUpdate(true);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+            setStableMap(contentBlocksMap);
+            setStableSections(pdfSections);
+            setStableProfile(salespersonProfile ?? undefined);
+            setPendingUpdate(false);
+        }, 1500);
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+        };
+    }, [contentBlocksMap, pdfSections, salespersonProfile, stableMap, stableSections, stableProfile]);
+
+    /** Single document instance — useMemo-stabilised so the PDFViewer
+     *  iframe only regenerates when the debounced inputs actually change. */
+    const docElement = useMemo(
+        () => (
+            <ProposalPDFDocument
+                quote={fixture.quote}
+                organisation={fixture.organisation}
+                financials={fixture.financials}
+                contentBlocks={stableMap}
+                pdfSections={stableSections}
+                salespersonProfile={stableProfile}
+            />
+        ),
+        [fixture, stableMap, stableSections, stableProfile],
     );
 
     return (
@@ -173,8 +223,16 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                                 <p className="text-[11px] font-black uppercase tracking-widest">
                                     {documentType === 'quote' ? 'Quote' : 'Contract'} PDF preview
                                 </p>
+                                {pendingUpdate && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] text-amber-700 font-medium">
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                        Updating…
+                                    </span>
+                                )}
                             </div>
-                            <p className="text-[10px] text-slate-500 mt-0.5">All sections in render order. Empty blocks shown as placeholders.</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">
+                                All sections in render order · regenerates 1.5s after edits settle
+                            </p>
                         </div>
                         <Button
                             size="sm"
