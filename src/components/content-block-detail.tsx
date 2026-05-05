@@ -43,6 +43,7 @@ import { FeatureRichTextEditor } from '@/components/feature-rich-text-editor';
 import { VersionHistoryDrawer } from '@/components/content-block-version-history-drawer';
 import { BrandOverridePicker } from '@/components/brand-override-picker';
 import { ContentBlocksPdfPreview } from '@/components/content-blocks-pdf-preview';
+import { SalespersonMessageEditor } from '@/components/salesperson-message-editor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     Building2,
@@ -81,6 +82,31 @@ interface Props {
 }
 
 export function ContentBlockDetail({ orgId, documentType, blockType, block, allBlocks, enabledModuleSubscriptions, organisationName, primaryLogoUrl, secondaryLogoUrl, pdfSections }: Props) {
+    /** v1.7 (1.8.12) — salesperson-message uses a per-user editor instead
+     *  of the standard org-level content-block editor. Bail out early to
+     *  the SalespersonMessageEditor surface; PDF preview wraps below
+     *  unchanged. */
+    if (blockType === 'salesperson-message') {
+        return (
+            <div className="grid grid-cols-1 xl:grid-cols-5 gap-5">
+                <div className="xl:col-span-3">
+                    <SalespersonMessageEditor orgId={orgId} />
+                </div>
+                <div className="xl:col-span-2">
+                    <ContentBlocksPdfPreview
+                        orgId={orgId}
+                        blocks={allBlocks}
+                        documentType={documentType}
+                        organisationName={organisationName ?? undefined}
+                        primaryLogoUrl={primaryLogoUrl}
+                        secondaryLogoUrl={secondaryLogoUrl}
+                        enabledModuleSubscriptions={enabledModuleSubscriptions}
+                        pdfSections={pdfSections}
+                    />
+                </div>
+            </div>
+        );
+    }
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
@@ -445,6 +471,7 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                             </div>
                             <div className="p-3">
                                 <ContentBlocksPdfPreview
+                                    orgId={orgId}
                                     blocks={allBlocks}
                                     documentType={documentType}
                                     organisationName={organisationName ?? undefined}

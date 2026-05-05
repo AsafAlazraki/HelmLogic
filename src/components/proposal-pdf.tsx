@@ -132,20 +132,29 @@ function ContentBlockSection({
  * familiar surface) so the data path can be verified end-to-end on
  * dev before the other six sections are wired in.
  */
+interface SalespersonProfile {
+    displayName?: string;
+    role?: string;
+    messageHtml?: string;
+    photoUrl?: string | null;
+    signOff?: string;
+}
+
 interface Props {
     quote: any;
     organisation: any;
     financials: any;
     contentBlocks?: Partial<Record<BlockType, string>>;
-    /** v1.7 (1.8.11) — user-defined ordering of content blocks within
-     *  the 3 reorder zones (zoneA before vessel-config, zoneB after
-     *  vessel-config / before pricing, zoneC after pricing / before
-     *  signatures). System sections stay at their hardcoded positions
-     *  in v1.7; v1.8 polish makes them flowable. */
+    /** v1.7 (1.8.11) — user-defined ordering of content blocks. */
     pdfSections?: PdfStructureSection[];
+    /** v1.7 (1.8.12) — per-salesperson message + photo. When present, the
+     *  salesperson-message section renders a custom layout with photo +
+     *  name + role + message + signoff. When absent, the section is
+     *  omitted from the PDF. */
+    salespersonProfile?: SalespersonProfile | null;
 }
 
-export function ProposalPDFDocument({ quote, organisation, financials, contentBlocks, pdfSections }: Props) {
+export function ProposalPDFDocument({ quote, organisation, financials, contentBlocks, pdfSections, salespersonProfile }: Props) {
     const zones = partitionContentBlocks(pdfSections ?? DEFAULT_SECTIONS);
     /** v1.7 (1.8.11) — render zone helper. Each content block in the zone
      *  is emitted as a ContentBlockSection. T&Cs gets a fallback chain
@@ -157,6 +166,30 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             const blockType = s.key as BlockType;
             const html = contentBlocks?.[blockType];
             const label = BLOCK_TYPE_LABEL[blockType] ?? s.key;
+            // v1.7 (1.8.12) — salesperson-message renders from the
+            // per-user salesperson profile, not from contentBlocks.
+            // Omit the section entirely if no profile (or empty content).
+            if (blockType === 'salesperson-message') {
+                const sp = salespersonProfile;
+                const spHtml = sp?.messageHtml;
+                if (!sp || !spHtml || !spHtml.trim()) return null;
+                return (
+                    <View key={s.id} style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 5, padding: '12 14', marginBottom: 18, flexDirection: 'row', gap: 14 }}>
+                        {sp.photoUrl ? (
+                            <Image src={sp.photoUrl} style={{ height: 64, width: 64, borderRadius: 32, objectFit: 'cover' }} />
+                        ) : null}
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1.5, color: SLATE, marginBottom: 4 }}>
+                                A note from {sp.displayName ?? 'your salesperson'}{sp.role ? ` · ${sp.role}` : ''}
+                            </Text>
+                            <TipTapHtmlPdf html={spHtml} fontSize={9} color={MUTED} />
+                            {sp.signOff ? (
+                                <Text style={{ fontSize: 9, fontStyle: 'italic', color: SLATE, marginTop: 6 }}>{sp.signOff}</Text>
+                            ) : null}
+                        </View>
+                    </View>
+                );
+            }
             // T&Cs fallback chain — keep it always rendering even if no
             // content block is authored.
             if (blockType === 'terms-and-conditions' && (!html || !html.trim())) {

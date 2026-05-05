@@ -123,6 +123,14 @@ service cloud.firestore {
       match /pdfStructure/{documentType} {
         allow read, write: if isSignedIn();
       }
+      // v1.7 (story 1.8.12) — Sales Team per-salesperson messages + photos.
+      // organisations/{orgId}/salesTeam/{userId}. Doc id === user uid.
+      // Reads open so the customer-PDF render can resolve the salesperson
+      // for any quote.createdByUid; writes signed-in (UI gates org-admin
+      // edit access via /manage's can_access_settings permission).
+      match /salesTeam/{userId} {
+        allow read, write: if isSignedIn();
+      }
     }
 
     // Recursive permission for prototyping across the data-warehouse hierarchy

@@ -17,9 +17,10 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, limit, query } from 'firebase/firestore';
+import { collection, doc, getDocs, limit, query } from 'firebase/firestore';
 import { PDFViewer } from '@react-pdf/renderer';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
+import { useDoc } from '@/firebase/firestore/use-doc';
 import { ProposalPDFDocument } from '@/components/proposal-pdf';
 import {
     blockBelongsTo,
@@ -28,6 +29,7 @@ import {
     type DocumentType,
 } from '@/lib/content-blocks';
 import { buildSampleQuoteFixture } from '@/lib/sample-quote-fixture';
+import type { SalesTeamMember } from '@/lib/sales-team';
 
 /** Hardcoded Highfield Sport range IDs (per CLAUDE.md). The preview
  *  fetches one model from this range and uses its real coverImageUrl. */
@@ -35,6 +37,9 @@ const HIGHFIELD_VENDOR_ID = 'LafOLpLb6QIFE856TiD4';
 const SPORT_RANGE_ID = 'nQ2LE50z9Tbf2uss0Ote';
 
 interface Props {
+    /** v1.7 (1.8.12) — needed to resolve the current user's salesperson
+     *  profile for the preview's salesperson-message section. */
+    orgId: string;
     blocks: ContentBlock[] | null;
     documentType: DocumentType;
     organisationName?: string;
@@ -44,9 +49,19 @@ interface Props {
     pdfSections?: import('@/lib/pdf-structure').PdfStructureSection[];
 }
 
-export function ContentBlocksPdfPreview({ blocks, documentType, organisationName, primaryLogoUrl, secondaryLogoUrl, pdfSections }: Props) {
+export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisationName, primaryLogoUrl, secondaryLogoUrl, pdfSections }: Props) {
     const firestore = useFirestore();
+    const { user } = useUser();
     const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+
+    /** v1.7 (1.8.12) — preview uses the CURRENT user's salesperson profile
+     *  so each salesman sees their own message + photo. If unauthored,
+     *  the salesperson-message section is omitted (same as real PDFs). */
+    const salespersonRef = useMemoFirebase(
+        () => (user?.uid ? doc(firestore, `organisations/${orgId}/salesTeam/${user.uid}`) : null),
+        [firestore, orgId, user?.uid],
+    );
+    const { data: salespersonProfile } = useDoc<SalesTeamMember>(salespersonRef);
 
     /** Fetch the real Highfield Sport 560 cover image URL once on mount.
      *  Tries to match a model name containing "560" first (Sport 560 if
@@ -128,6 +143,7 @@ export function ContentBlocksPdfPreview({ blocks, documentType, organisationName
                     financials={fixture.financials}
                     contentBlocks={contentBlocksMap}
                     pdfSections={pdfSections}
+                    salespersonProfile={salespersonProfile ?? undefined}
                 />
             </PDFViewer>
         </div>
