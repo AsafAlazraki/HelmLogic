@@ -72,7 +72,7 @@ export function ContentBlockList({ selectedBlockType, onSelect, blockByType, loa
                                             {BLOCK_TYPE_LABEL[t]}
                                         </p>
                                         <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5">
-                                            {hasContent ? 'Customised' : 'Not yet authored'}
+                                            {hasContent ? 'Has content' : 'Empty'}
                                         </p>
                                     </div>
                                 </button>
@@ -83,7 +83,7 @@ export function ContentBlockList({ selectedBlockType, onSelect, blockByType, loa
             )}
 
             <div className="px-4 py-2.5 border-t bg-slate-50/60 text-[10px] text-slate-500">
-                {BLOCK_TYPES.filter(t => blockByType.get(t)?.html?.trim()).length} of {BLOCK_TYPES.length} authored
+                {BLOCK_TYPES.filter(t => blockByType.get(t)?.html?.trim()).length} of {BLOCK_TYPES.length} have content
             </div>
         </div>
     );

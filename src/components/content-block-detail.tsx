@@ -71,9 +71,13 @@ interface Props {
     /** All blocks for the org — passed through for the live PDF preview pane (1.8.7). */
     allBlocks: ContentBlock[] | null;
     enabledModuleSubscriptions: string[] | null | undefined;
+    /** Threaded into the live preview fixture so the cover branding feels real. */
+    organisationName: string | null | undefined;
+    primaryLogoUrl: string | null | undefined;
+    secondaryLogoUrl: string | null | undefined;
 }
 
-export function ContentBlockDetail({ orgId, documentType, blockType, block, allBlocks, enabledModuleSubscriptions }: Props) {
+export function ContentBlockDetail({ orgId, documentType, blockType, block, allBlocks, enabledModuleSubscriptions, organisationName, primaryLogoUrl, secondaryLogoUrl }: Props) {
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
@@ -263,7 +267,7 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                                 {BLOCK_TYPE_LABEL[blockType]}
                             </h3>
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
-                                {hasContentInCurrentSurface ? 'Authored' : 'Empty'} · {DOCUMENT_TYPE_LABEL[documentType]} tab
+                                {hasContentInCurrentSurface ? 'Has content' : 'Empty'} · {DOCUMENT_TYPE_LABEL[documentType]} tab
                             </p>
                         </div>
                     </div>
@@ -277,7 +281,7 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                         {!editMode && (
                             <Button size="sm" onClick={startEdit} className="gap-1.5 bg-white text-slate-900 hover:bg-slate-100 text-xs">
                                 <Pencil className="h-3.5 w-3.5" />
-                                {hasContentInCurrentSurface ? 'Edit' : 'Author'}
+                                {hasContentInCurrentSurface ? 'Edit' : 'Add content'}
                             </Button>
                         )}
                     </div>
@@ -332,8 +336,8 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                                 value={draftHtml}
                                 onChange={setDraftHtml}
                                 placeholder={selectedBrand
-                                    ? `Author the brand-override for ${BLOCK_TYPE_LABEL[blockType]}.`
-                                    : `Author the ${BLOCK_TYPE_LABEL[blockType]} content. This is what your customers will read on the ${DOCUMENT_TYPE_LABEL[documentType]} PDF.`
+                                    ? `Write the brand-specific version of ${BLOCK_TYPE_LABEL[blockType]}.`
+                                    : `Write the ${BLOCK_TYPE_LABEL[blockType]} content. This is what your customers will read on the ${DOCUMENT_TYPE_LABEL[documentType]} PDF.`
                                 }
                             />
 
@@ -404,7 +408,7 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                             <FileText className="h-8 w-8 mb-3" />
                             <p className="text-sm font-medium text-slate-500">No content yet</p>
                             <p className="text-[11px] mt-1 max-w-xs">
-                                Click <strong>Author</strong> to write this block. It won&apos;t render on the customer PDF until you save content.
+                                Click <strong>Add content</strong> to write this block. It won&apos;t render on the customer PDF until you save content.
                             </p>
                         </div>
                     )}
@@ -437,7 +441,13 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                                 <p className="text-[10px] text-slate-500 mt-0.5">All sections in render order. Empty blocks shown as placeholders.</p>
                             </div>
                             <div className="p-3">
-                                <ContentBlocksPdfPreview blocks={allBlocks} documentType={documentType} />
+                                <ContentBlocksPdfPreview
+                                    blocks={allBlocks}
+                                    documentType={documentType}
+                                    organisationName={organisationName ?? undefined}
+                                    primaryLogoUrl={primaryLogoUrl}
+                                    secondaryLogoUrl={secondaryLogoUrl}
+                                />
                             </div>
                         </div>
                     </TabsContent>
@@ -500,7 +510,7 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
 
                 {!editMode && hasContentInCurrentSurface && (
                     <Badge variant="secondary" className="text-[10px] bg-blue-100 text-blue-700 border-blue-200">
-                        ✓ Content authored — will render on the {DOCUMENT_TYPE_LABEL[documentType]} PDF
+                        ✓ Has content — will render on the {DOCUMENT_TYPE_LABEL[documentType]} PDF
                     </Badge>
                 )}
             </div>

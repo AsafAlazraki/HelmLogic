@@ -48,9 +48,13 @@ interface Props {
     legacyTermsAndConditions: string | null | undefined;
     /** Drives the brand-override picker (Phase D). Source per Q2 popup: modules the org has access to. */
     enabledModuleSubscriptions: string[] | null | undefined;
+    /** v1.7 (1.8.7) — fed into the live PDF preview's fixture so the cover branding looks real. */
+    organisationName: string | null | undefined;
+    primaryLogoUrl: string | null | undefined;
+    secondaryLogoUrl: string | null | undefined;
 }
 
-export function ContentBlockManager({ orgId, documentType, legacyTermsAndConditions, enabledModuleSubscriptions }: Props) {
+export function ContentBlockManager({ orgId, documentType, legacyTermsAndConditions, enabledModuleSubscriptions, organisationName, primaryLogoUrl, secondaryLogoUrl }: Props) {
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
@@ -153,6 +157,9 @@ export function ContentBlockManager({ orgId, documentType, legacyTermsAndConditi
                 block={selectedBlock}
                 allBlocks={blocks ?? null}
                 enabledModuleSubscriptions={enabledModuleSubscriptions}
+                organisationName={organisationName}
+                primaryLogoUrl={primaryLogoUrl}
+                secondaryLogoUrl={secondaryLogoUrl}
             />
         </div>
     );

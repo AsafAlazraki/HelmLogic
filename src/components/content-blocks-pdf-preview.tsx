@@ -3,190 +3,85 @@
 /**
  * Content Blocks PDF Preview (v1.7 — story 1.8.7).
  *
- * Live in-browser PDF preview of the org's authored content blocks
- * in their PDF positions. Wraps @react-pdf/renderer's PDFViewer
- * around a purpose-built preview document — this is NOT the
- * customer-facing PDF (that's proposal-pdf.tsx with full quote
- * data). It's content-blocks-only so the author can verify what
- * will render and where without building a quote first.
+ * Renders the full customer-facing ProposalPDFDocument inside an
+ * in-browser PDFViewer, using:
+ *   - A baked sample-quote fixture (Highfield CL340 + Yamaha F150
+ *     + Stratos trailer + sample customer + sample options) so the
+ *     PDF has realistic shape without needing a real Firestore quote
+ *   - The actual organisation's name + logos so the cover branding
+ *     feels real
+ *   - The org's authored content blocks (filtered to the active
+ *     sub-tab's documentType) — so what the author writes shows up
+ *     in real layout context
  *
- * Page layout (mirrors customer PDF section positions):
- *   Page 1 — salesperson-message → why-us
- *   Page 2 — brand-story → after-sales
- *   Page 3 — finance-info → value-summary → terms-and-conditions
- *
- * Empty blocks render a faint placeholder so the author can see
- * which sections still need authoring.
- *
- * v1.7 first ship reflects SAVED state (re-renders when the user
- * clicks Save in the editor). A future polish pass can lift the
- * editor's draft state to feed live keystroke updates.
+ * v1.7 caveat: only `terms-and-conditions` from content blocks
+ * renders inside ProposalPDFDocument as of the 1.2.1 first cut
+ * (commit f70796e). The other 6 sections (salesperson-message,
+ * why-us, brand-story, after-sales, finance-info, value-summary)
+ * will start rendering once 1.2.1's full PDF wiring lands in v1.8 —
+ * this preview will pick them up automatically (no preview code
+ * change needed). For now, authoring a "Why Choose Us" block is
+ * captured + saved + brand-overrideable, but the preview only
+ * reflects T&Cs content directly.
  */
 
 import { useMemo } from 'react';
-import { Document, Page, View, Text, PDFViewer, StyleSheet } from '@react-pdf/renderer';
-import { TipTapHtmlPdf } from '@/lib/tiptap-pdf';
+import { PDFViewer } from '@react-pdf/renderer';
+import { ProposalPDFDocument } from '@/components/proposal-pdf';
 import {
-    BLOCK_TYPES,
-    BLOCK_TYPE_LABEL,
     blockBelongsTo,
-    getBlockDocumentTypes,
     type BlockType,
     type ContentBlock,
     type DocumentType,
 } from '@/lib/content-blocks';
-
-const NAVY = '#0f172a';
-const SLATE = '#475569';
-const MUTED = '#94a3b8';
-const BORDER = '#e2e8f0';
-const LIGHT = '#f8fafc';
-
-const S = StyleSheet.create({
-    page: {
-        backgroundColor: 'white',
-        padding: 36,
-        fontFamily: 'Helvetica',
-    },
-    pageHeader: {
-        borderBottomWidth: 2,
-        borderBottomColor: NAVY,
-        paddingBottom: 8,
-        marginBottom: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    pageHeaderText: {
-        fontSize: 8,
-        fontWeight: 'bold',
-        textTransform: 'uppercase',
-        letterSpacing: 1.5,
-        color: SLATE,
-    },
-    pageHeaderTitle: {
-        fontSize: 11,
-        fontWeight: 'bold',
-        color: NAVY,
-    },
-    sectionLabel: {
-        fontSize: 7,
-        fontWeight: 'bold',
-        textTransform: 'uppercase',
-        letterSpacing: 1.5,
-        color: SLATE,
-        marginBottom: 5,
-    },
-    section: {
-        marginBottom: 14,
-        backgroundColor: LIGHT,
-        borderWidth: 1,
-        borderColor: BORDER,
-        borderRadius: 4,
-        padding: 10,
-    },
-    sectionEmpty: {
-        marginBottom: 14,
-        borderWidth: 1,
-        borderColor: BORDER,
-        borderStyle: 'dashed',
-        borderRadius: 4,
-        padding: 10,
-    },
-    emptyText: {
-        fontSize: 8,
-        color: MUTED,
-        fontStyle: 'italic',
-    },
-    pageFooter: {
-        position: 'absolute',
-        bottom: 18,
-        left: 36,
-        right: 36,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        fontSize: 7,
-        color: MUTED,
-    },
-});
-
-/**
- * Layout map — which block types appear on which page.
- * Mirrors the planned customer PDF positions from the design spec.
- */
-const PAGE_LAYOUT: Array<{ pageLabel: string; sections: BlockType[] }> = [
-    { pageLabel: 'Cover & Welcome',  sections: ['salesperson-message', 'why-us'] },
-    { pageLabel: 'Vessel & Brand',   sections: ['brand-story', 'after-sales'] },
-    { pageLabel: 'Investment',       sections: ['finance-info', 'value-summary', 'terms-and-conditions'] },
-];
-
-interface PreviewDocumentProps {
-    blocksByType: Record<BlockType, string | undefined>;
-    documentType: DocumentType;
-}
-
-function PreviewDocument({ blocksByType, documentType }: PreviewDocumentProps) {
-    return (
-        <Document title={`${documentType} content preview`}>
-            {PAGE_LAYOUT.map((p, i) => (
-                <Page key={i} size="A4" style={S.page}>
-                    <View style={S.pageHeader}>
-                        <Text style={S.pageHeaderTitle}>Page {i + 1}</Text>
-                        <Text style={S.pageHeaderText}>{p.pageLabel} · {documentType.toUpperCase()}</Text>
-                    </View>
-
-                    {p.sections.map(blockType => {
-                        const html = blocksByType[blockType];
-                        const hasContent = !!(html && html.trim());
-                        return (
-                            <View key={blockType} style={hasContent ? S.section : S.sectionEmpty}>
-                                <Text style={S.sectionLabel}>{BLOCK_TYPE_LABEL[blockType]}</Text>
-                                {hasContent ? (
-                                    <TipTapHtmlPdf html={html!} fontSize={8} color={SLATE} />
-                                ) : (
-                                    <Text style={S.emptyText}>
-                                        Empty — this section won&apos;t appear on the {documentType} PDF until authored.
-                                    </Text>
-                                )}
-                            </View>
-                        );
-                    })}
-
-                    <View style={S.pageFooter}>
-                        <Text>Content preview · Authored content only · Live customer PDF will include cover image, vessel config and pricing</Text>
-                        <Text>{i + 1} / {PAGE_LAYOUT.length}</Text>
-                    </View>
-                </Page>
-            ))}
-        </Document>
-    );
-}
+import { buildSampleQuoteFixture } from '@/lib/sample-quote-fixture';
 
 interface Props {
     /** All content-block docs for the org (already loaded by parent). */
     blocks: ContentBlock[] | null;
     /** Active sub-tab — preview shows sections rendering on this document type. */
     documentType: DocumentType;
+    /** Real org name + logos so the cover branding looks right. */
+    organisationName?: string;
+    primaryLogoUrl?: string | null;
+    secondaryLogoUrl?: string | null;
 }
 
-export function ContentBlocksPdfPreview({ blocks, documentType }: Props) {
-    /** Reduce blocks to a blockType → html map, applying documentType filter
-     *  + most-recently-updated tie-break (mirrors content-block-manager). */
-    const blocksByType = useMemo(() => {
-        const m: Partial<Record<BlockType, { html: string; updatedAt: number }>> = {};
+export function ContentBlocksPdfPreview({ blocks, documentType, organisationName, primaryLogoUrl, secondaryLogoUrl }: Props) {
+    /** Resolve content blocks → blockType → html map for the active
+     *  documentType. No brand-override resolution in the preview path
+     *  (preview always shows org-default; v1.7.5 can add a "Preview
+     *  as brand: X" dropdown if needed). */
+    const contentBlocksMap = useMemo(() => {
+        const m = new Map<BlockType, { html: string; updatedAt: number }>();
         for (const b of blocks ?? []) {
             if (!b.blockType) continue;
             if (!blockBelongsTo(b, documentType)) continue;
+            const html = b.html ?? '';
+            if (!html.trim()) continue;
             const t = (b.updatedAt as any)?.toMillis?.() ?? 0;
-            const existing = m[b.blockType];
-            if (!existing || t > existing.updatedAt) {
-                m[b.blockType] = { html: b.html ?? '', updatedAt: t };
-            }
+            const existing = m.get(b.blockType);
+            if (!existing || t > existing.updatedAt) m.set(b.blockType, { html, updatedAt: t });
         }
-        const result: Record<BlockType, string | undefined> = {} as any;
-        for (const t of BLOCK_TYPES) result[t] = m[t]?.html;
+        const result: Partial<Record<BlockType, string>> = {};
+        m.forEach((v, k) => { result[k] = v.html; });
         return result;
     }, [blocks, documentType]);
+
+    /** Build fresh fixture per-render so org name / logos / quote
+     *  number reflect the org's actual identity. The quote payload
+     *  itself is stable across re-renders — only the contentBlocks
+     *  map changes when the user saves a block. */
+    const fixture = useMemo(
+        () => buildSampleQuoteFixture({
+            organisationName,
+            primaryLogoUrl,
+            secondaryLogoUrl,
+            // No brand-override in preview — keeps content predictable.
+            vendorId: null,
+        }),
+        [organisationName, primaryLogoUrl, secondaryLogoUrl],
+    );
 
     return (
         <div className="w-full h-full min-h-[640px] rounded-lg overflow-hidden border bg-slate-100">
@@ -194,7 +89,12 @@ export function ContentBlocksPdfPreview({ blocks, documentType }: Props) {
                 style={{ width: '100%', height: '100%', minHeight: 640, border: 0 }}
                 showToolbar={false}
             >
-                <PreviewDocument blocksByType={blocksByType} documentType={documentType} />
+                <ProposalPDFDocument
+                    quote={fixture.quote}
+                    organisation={fixture.organisation}
+                    financials={fixture.financials}
+                    contentBlocks={contentBlocksMap}
+                />
             </PDFViewer>
         </div>
     );

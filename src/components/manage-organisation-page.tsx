@@ -779,6 +779,9 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                         documentType="quote"
                                         legacyTermsAndConditions={(organisation as any)?.termsAndConditions}
                                         enabledModuleSubscriptions={(organisation as any)?.enabledModuleSubscriptions}
+                                        organisationName={organisation?.name}
+                                        primaryLogoUrl={organisation?.primaryLogoUrl}
+                                        secondaryLogoUrl={organisation?.secondaryLogoUrl}
                                     />
                                 </TabsContent>
                                 <TabsContent value="contract">
@@ -787,6 +790,9 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                         documentType="contract"
                                         legacyTermsAndConditions={(organisation as any)?.termsAndConditions}
                                         enabledModuleSubscriptions={(organisation as any)?.enabledModuleSubscriptions}
+                                        organisationName={organisation?.name}
+                                        primaryLogoUrl={organisation?.primaryLogoUrl}
+                                        secondaryLogoUrl={organisation?.secondaryLogoUrl}
                                     />
                                 </TabsContent>
                             </Tabs>
