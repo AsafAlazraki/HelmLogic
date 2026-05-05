@@ -4,29 +4,22 @@
  * Content Blocks PDF Preview (v1.7 — story 1.8.7).
  *
  * Renders the full customer-facing ProposalPDFDocument inside an
- * in-browser PDFViewer, using:
- *   - A baked sample-quote fixture (Highfield CL340 + Yamaha F150
- *     + Stratos trailer + sample customer + sample options) so the
- *     PDF has realistic shape without needing a real Firestore quote
- *   - The actual organisation's name + logos so the cover branding
- *     feels real
- *   - The org's authored content blocks (filtered to the active
- *     sub-tab's documentType) — so what the author writes shows up
- *     in real layout context
+ * in-browser PDFViewer using a hardcoded Highfield Sport 560
+ * fixture, with one targeted live fetch: the cover image URL.
+ * That comes from the org's actual Highfield Sport range in
+ * data-warehouse so the hero photo is the real boat — not an
+ * Unsplash stock photo. Falls back to the Unsplash placeholder
+ * baked into the fixture if the lookup fails.
  *
- * v1.7 caveat: only `terms-and-conditions` from content blocks
- * renders inside ProposalPDFDocument as of the 1.2.1 first cut
- * (commit f70796e). The other 6 sections (salesperson-message,
- * why-us, brand-story, after-sales, finance-info, value-summary)
- * will start rendering once 1.2.1's full PDF wiring lands in v1.8 —
- * this preview will pick them up automatically (no preview code
- * change needed). For now, authoring a "Why Choose Us" block is
- * captured + saved + brand-overrideable, but the preview only
- * reflects T&Cs content directly.
+ * Anchoring to a fixed Highfield path is intentional for v1.7 —
+ * NSM is the primary user, Highfield is their main brand. v1.7.5
+ * polish can generalise per org's enabled modules.
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { collection, getDocs, limit, query } from 'firebase/firestore';
 import { PDFViewer } from '@react-pdf/renderer';
+import { useFirestore } from '@/firebase/provider';
 import { ProposalPDFDocument } from '@/components/proposal-pdf';
 import {
     blockBelongsTo,
@@ -36,25 +29,56 @@ import {
 } from '@/lib/content-blocks';
 import { buildSampleQuoteFixture } from '@/lib/sample-quote-fixture';
 
+/** Hardcoded Highfield Sport range IDs (per CLAUDE.md). The preview
+ *  fetches one model from this range and uses its real coverImageUrl. */
+const HIGHFIELD_VENDOR_ID = 'LafOLpLb6QIFE856TiD4';
+const SPORT_RANGE_ID = 'nQ2LE50z9Tbf2uss0Ote';
+
 interface Props {
-    /** All content-block docs for the org (already loaded by parent). */
     blocks: ContentBlock[] | null;
-    /** Active sub-tab — preview shows sections rendering on this document type. */
     documentType: DocumentType;
-    /** Real org name + logos so the cover branding looks right. */
     organisationName?: string;
     primaryLogoUrl?: string | null;
     secondaryLogoUrl?: string | null;
-    /** Kept on the prop signature for compatibility (ContentBlockDetail
-     *  threads this through). v1.8.10 catalog-fetch reverted; kept the
-     *  prop so wiring doesn't churn — could be removed in a sweep. */
     enabledModuleSubscriptions?: string[] | null;
-    /** v1.7 (1.8.11) — drag-drop ordering. Threaded into ProposalPDFDocument
-     *  so the preview reflects the user's drag-drop reorder. */
     pdfSections?: import('@/lib/pdf-structure').PdfStructureSection[];
 }
 
 export function ContentBlocksPdfPreview({ blocks, documentType, organisationName, primaryLogoUrl, secondaryLogoUrl, pdfSections }: Props) {
+    const firestore = useFirestore();
+    const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+
+    /** Fetch the real Highfield Sport 560 cover image URL once on mount.
+     *  Tries to match a model name containing "560" first (Sport 560 if
+     *  it exists); otherwise picks the first model with a coverImageUrl.
+     *  Quietly falls back to the fixture's Unsplash URL on any failure. */
+    useEffect(() => {
+        let cancelled = false;
+        async function fetchHeroImage() {
+            try {
+                const snap = await getDocs(query(
+                    collection(firestore, `data-warehouse/${HIGHFIELD_VENDOR_ID}/ranges/${SPORT_RANGE_ID}/models`),
+                    limit(20),
+                ));
+                if (cancelled || snap.empty) return;
+                const sport560 = snap.docs.find(d => {
+                    const data = d.data();
+                    const name = ((data.name ?? data.modelCode ?? '') as string).toLowerCase();
+                    return /\b560\b|sp560/.test(name) && !!data.coverImageUrl;
+                });
+                const fallback = snap.docs.find(d => !!d.data().coverImageUrl);
+                const pick = sport560 ?? fallback;
+                if (pick && !cancelled) {
+                    setHeroImageUrl(pick.data().coverImageUrl ?? null);
+                }
+            } catch (e) {
+                console.warn('[preview] Highfield Sport 560 image fetch failed; falling back to Unsplash:', e);
+            }
+        }
+        fetchHeroImage();
+        return () => { cancelled = true; };
+    }, [firestore]);
+
     /** Resolve content blocks → blockType → html map for the active
      *  documentType. No brand-override resolution in the preview path. */
     const contentBlocksMap = useMemo(() => {
@@ -73,18 +97,23 @@ export function ContentBlocksPdfPreview({ blocks, documentType, organisationName
         return result;
     }, [blocks, documentType]);
 
-    /** Hardcoded fixture — Highfield Sport 560 with 16 factory options,
-     *  Yamaha F100, Stratos 560 trailer, full dealer-fit pack. Built fresh
-     *  per-render so org name / logos / quote number reflect the org's
-     *  identity. The fixture itself is stable. */
+    /** Hardcoded fixture — Highfield Sport 560 with full options. The
+     *  cover image URL is overridden by the real Highfield Sport 560
+     *  image when the fetch succeeds. */
     const fixture = useMemo(
-        () => buildSampleQuoteFixture({
-            organisationName,
-            primaryLogoUrl,
-            secondaryLogoUrl,
-            vendorId: null,
-        }),
-        [organisationName, primaryLogoUrl, secondaryLogoUrl],
+        () => {
+            const base = buildSampleQuoteFixture({
+                organisationName,
+                primaryLogoUrl,
+                secondaryLogoUrl,
+                vendorId: null,
+            });
+            if (heroImageUrl) {
+                base.quote.coverImageUrl = heroImageUrl;
+            }
+            return base;
+        },
+        [organisationName, primaryLogoUrl, secondaryLogoUrl, heroImageUrl],
     );
 
     return (
