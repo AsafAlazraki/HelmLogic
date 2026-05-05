@@ -1,17 +1,32 @@
 'use client';
 
 /**
- * TipTap-based rich-text editor for v1.5 Feature Tracking.
+ * TipTap-based rich-text editor for v1.5 Feature Tracking +
+ * v1.7 Quote Content Block Manager.
  *
- * Supports: headings (H2 / H3), bold, italic, bullet list, numbered list,
- * links. Stored as HTML string on the feature doc's `description` field.
- * Read-only rendering is handled by <FeatureDescriptionView>.
+ * Supports: headings (H2 / H3), bold, italic, bullet list, numbered
+ * list, links. v1.7 adds an optional inline-image insert button —
+ * pass `imageStoragePathPrefix` to enable; without it the button is
+ * hidden (feature-tracking still uploads images via the separate
+ * <FeatureImageUploader>).
+ *
+ * Image upload flow when enabled:
+ *   - Click image button → file picker
+ *   - On file pick → upload to firebase storage at
+ *     {imageStoragePathPrefix}/{timestamp}-{rand}-{name}
+ *   - Insert <img src={downloadUrl}> at cursor
+ *   - tiptap-pdf.tsx renders <img> as @react-pdf <Image> at PDF render
  */
 
+import { useRef, useState } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
+import ImageExt from '@tiptap/extension-image';
+import { useStorage } from '@/firebase/provider';
+import { uploadFileToStorage } from '@/firebase/storage';
+import { useToast } from '@/hooks/use-toast';
 import {
     Bold,
     Italic,
@@ -19,7 +34,9 @@ import {
     ListOrdered,
     Heading2,
     Heading3,
+    ImagePlus,
     Link as LinkIcon,
+    Loader2,
     Undo,
     Redo,
 } from 'lucide-react';
@@ -30,6 +47,11 @@ interface FeatureRichTextEditorProps {
     onChange: (html: string) => void;
     placeholder?: string;
     minHeight?: string;
+    /** v1.7 (1.8.2) — when set, the toolbar shows an Insert Image
+     *  button. Uploaded files land under
+     *  {imageStoragePathPrefix}/{timestamped-filename}. Omit to keep
+     *  the editor text-only (feature tracking uses this). */
+    imageStoragePathPrefix?: string;
 }
 
 export function FeatureRichTextEditor({
@@ -37,6 +59,7 @@ export function FeatureRichTextEditor({
     onChange,
     placeholder = 'Describe the feature. What is it? Why does it matter? Who benefits?',
     minHeight = '200px',
+    imageStoragePathPrefix,
 }: FeatureRichTextEditorProps) {
     const editor = useEditor({
         extensions: [
@@ -47,6 +70,10 @@ export function FeatureRichTextEditor({
             Link.configure({
                 openOnClick: false,
                 HTMLAttributes: { class: 'text-blue-600 underline' },
+            }),
+            ImageExt.configure({
+                inline: false,
+                HTMLAttributes: { class: 'rounded-md max-w-full my-2' },
             }),
         ],
         content: value,
@@ -62,6 +89,7 @@ export function FeatureRichTextEditor({
                     '[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1 [&_ul_li]:text-sm',
                     '[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1 [&_ol_li]:text-sm',
                     '[&_a]:text-blue-600 [&_a]:underline',
+                    '[&_img]:rounded-md [&_img]:max-w-full [&_img]:my-2',
                 ),
             },
         },
@@ -78,7 +106,7 @@ export function FeatureRichTextEditor({
 
     return (
         <div className="rounded-md border bg-white overflow-hidden">
-            <EditorToolbar editor={editor} />
+            <EditorToolbar editor={editor} imageStoragePathPrefix={imageStoragePathPrefix} />
             <div style={{ minHeight }} className="overflow-auto">
                 <EditorContent editor={editor} />
             </div>
@@ -86,22 +114,30 @@ export function FeatureRichTextEditor({
     );
 }
 
-function EditorToolbar({ editor }: { editor: Editor }) {
+function EditorToolbar({ editor, imageStoragePathPrefix }: { editor: Editor; imageStoragePathPrefix?: string }) {
+    const storage = useStorage();
+    const { toast } = useToast();
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+    const [uploading, setUploading] = useState<boolean>(false);
+
     const btn = (
         active: boolean,
         onClick: () => void,
         title: string,
         icon: React.ReactNode,
+        disabled?: boolean,
     ) => (
         <button
             type="button"
             onClick={onClick}
+            disabled={disabled}
             title={title}
             className={cn(
                 'h-7 w-7 rounded-md flex items-center justify-center transition-colors',
                 active
                     ? 'bg-blue-100 text-blue-700'
                     : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800',
+                disabled && 'opacity-50 cursor-not-allowed',
             )}
         >
             {icon}
@@ -117,6 +153,28 @@ function EditorToolbar({ editor }: { editor: Editor }) {
             return;
         }
         editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+    }
+
+    async function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        e.target.value = ''; // allow re-pick
+        if (!file || !imageStoragePathPrefix) return;
+        if (!file.type.startsWith('image/')) {
+            toast({ variant: 'destructive', title: 'Not an image', description: 'Pick an image file.' });
+            return;
+        }
+        setUploading(true);
+        try {
+            const path = `${imageStoragePathPrefix}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${file.name}`;
+            const url = await uploadFileToStorage(storage, file, path);
+            editor.chain().focus().setImage({ src: url, alt: file.name }).run();
+            toast({ title: 'Image inserted' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Upload failed', description: e?.message ?? 'See console.' });
+            console.error('[tiptap-image]', e);
+        } finally {
+            setUploading(false);
+        }
     }
 
     return (
@@ -165,6 +223,24 @@ function EditorToolbar({ editor }: { editor: Editor }) {
                 'Add / edit link',
                 <LinkIcon className="h-3.5 w-3.5" />,
             )}
+            {imageStoragePathPrefix ? (
+                <>
+                    {btn(
+                        false,
+                        () => fileInputRef.current?.click(),
+                        'Insert image',
+                        uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />,
+                        uploading,
+                    )}
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImagePick}
+                        className="hidden"
+                    />
+                </>
+            ) : null}
             <div className="flex-1" />
             {btn(
                 false,
@@ -201,6 +277,7 @@ export function FeatureDescriptionView({ html }: { html: string }) {
                 '[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1.5 [&_ul_li]:text-sm',
                 '[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1.5 [&_ol_li]:text-sm',
                 '[&_a]:text-blue-600 [&_a]:underline',
+                '[&_img]:rounded-md [&_img]:max-w-full [&_img]:my-2',
             )}
             dangerouslySetInnerHTML={{ __html: html }}
         />

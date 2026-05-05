@@ -89,30 +89,49 @@ function InnerFooter({ organisation, quoteNumber }: { organisation: any; quoteNu
  * has content; otherwise silently emits nothing so empty blocks
  * don't leave gaps in the layout.
  *
- * Each section gets:
- *   - Tiny uppercase label band at the top (matches T&Cs styling)
- *   - TipTap-rendered HTML body (lib/tiptap-pdf.tsx)
- *   - Light card background + soft border + standard margin-bottom
+ * v1.7 polish — section headers now match the InnerHeader / page-
+ * level style (big bold italic uppercase title + small uppercase
+ * sub-line, bottom-bordered) instead of the earlier tiny "CAD"
+ * label. Looks like a real PDF section, not a footnote.
  * ──────────────────────────────────────────────────────────────────── */
+const SECTION_SUB: Record<string, string> = {
+    'salesperson-message': 'Personal Welcome',
+    'why-us':              'Our Promise To You',
+    'brand-story':         'Why This Boat',
+    'after-sales':         'Ownership Support',
+    'finance-info':        'Payment & Coverage Options',
+    'value-summary':       'Investment Summary',
+    'terms-and-conditions': 'Standard Proposal Terms',
+};
+
 function ContentBlockSection({
     label,
+    sub,
     html,
-    accent = SLATE,
     bodyColor = MUTED,
     bodySize = 9,
 }: {
     label: string;
+    sub?: string;
     html: string | undefined;
-    accent?: string;
     bodyColor?: string;
     bodySize?: number;
 }) {
     if (!html || !html.trim()) return null;
     return (
-        <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 5, padding: '10 12', marginBottom: 18 }}>
-            <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1.5, color: accent, marginBottom: 6 }}>
-                {label}
-            </Text>
+        <View style={{ marginBottom: 22 }}>
+            {/* Section header — matches InnerHeader page-level style at slightly smaller scale */}
+            <View style={{ borderBottomWidth: 2, borderBottomColor: NAVY, paddingBottom: 8, marginBottom: 12 }}>
+                <Text style={{ fontSize: 16, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.4, lineHeight: 1.1, color: NAVY }}>
+                    {label}
+                </Text>
+                {sub ? (
+                    <Text style={{ fontSize: 6, letterSpacing: 2.5, fontWeight: 'bold', textTransform: 'uppercase', color: MUTED, marginTop: 3 }}>
+                        {sub}
+                    </Text>
+                ) : null}
+            </View>
+            {/* Body */}
             <TipTapHtmlPdf html={html} fontSize={bodySize} color={bodyColor} />
         </View>
     );
@@ -166,6 +185,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             const blockType = s.key as BlockType;
             const html = contentBlocks?.[blockType];
             const label = BLOCK_TYPE_LABEL[blockType] ?? s.key;
+            const sub = SECTION_SUB[blockType];
             // v1.7 (1.8.12) — salesperson-message renders from the
             // per-user salesperson profile, not from contentBlocks.
             // Omit the section entirely if no profile (or empty content).
@@ -174,18 +194,27 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                 const spHtml = sp?.messageHtml;
                 if (!sp || !spHtml || !spHtml.trim()) return null;
                 return (
-                    <View key={s.id} style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 5, padding: '12 14', marginBottom: 18, flexDirection: 'row', gap: 14 }}>
-                        {sp.photoUrl ? (
-                            <Image src={sp.photoUrl} style={{ height: 64, width: 64, borderRadius: 32, objectFit: 'cover' }} />
-                        ) : null}
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1.5, color: SLATE, marginBottom: 4 }}>
-                                A note from {sp.displayName ?? 'your salesperson'}{sp.role ? ` · ${sp.role}` : ''}
+                    <View key={s.id} style={{ marginBottom: 22 }}>
+                        {/* Section header — matches the polished style */}
+                        <View style={{ borderBottomWidth: 2, borderBottomColor: NAVY, paddingBottom: 8, marginBottom: 12 }}>
+                            <Text style={{ fontSize: 16, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.4, lineHeight: 1.1, color: NAVY }}>
+                                {label}
                             </Text>
-                            <TipTapHtmlPdf html={spHtml} fontSize={9} color={MUTED} />
-                            {sp.signOff ? (
-                                <Text style={{ fontSize: 9, fontStyle: 'italic', color: SLATE, marginTop: 6 }}>{sp.signOff}</Text>
+                            <Text style={{ fontSize: 6, letterSpacing: 2.5, fontWeight: 'bold', textTransform: 'uppercase', color: MUTED, marginTop: 3 }}>
+                                From {sp.displayName ?? 'Your Salesperson'}{sp.role ? ` · ${sp.role}` : ''}
+                            </Text>
+                        </View>
+                        {/* Photo + message body */}
+                        <View style={{ flexDirection: 'row', gap: 14 }}>
+                            {sp.photoUrl ? (
+                                <Image src={sp.photoUrl} style={{ height: 64, width: 64, borderRadius: 32, objectFit: 'cover' }} />
                             ) : null}
+                            <View style={{ flex: 1 }}>
+                                <TipTapHtmlPdf html={spHtml} fontSize={9} color={MUTED} />
+                                {sp.signOff ? (
+                                    <Text style={{ fontSize: 9, fontStyle: 'italic', color: SLATE, marginTop: 6 }}>{sp.signOff}</Text>
+                                ) : null}
+                            </View>
                         </View>
                     </View>
                 );
@@ -204,15 +233,24 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     : null;
                 const lines = customTerms && customTerms.length > 0 ? customTerms : DEFAULT_TERMS;
                 return (
-                    <View key={s.id} style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 5, padding: '10 12', marginBottom: 18 }}>
-                        <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1.5, color: SLATE, marginBottom: 6 }}>Terms &amp; Conditions</Text>
+                    <View key={s.id} style={{ marginBottom: 22 }}>
+                        <View style={{ borderBottomWidth: 2, borderBottomColor: NAVY, paddingBottom: 8, marginBottom: 12 }}>
+                            <Text style={{ fontSize: 16, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.4, lineHeight: 1.1, color: NAVY }}>
+                                {label}
+                            </Text>
+                            {sub ? (
+                                <Text style={{ fontSize: 6, letterSpacing: 2.5, fontWeight: 'bold', textTransform: 'uppercase', color: MUTED, marginTop: 3 }}>
+                                    {sub}
+                                </Text>
+                            ) : null}
+                        </View>
                         {lines.map((t: string, i: number, arr: string[]) => (
-                            <Text key={i} style={{ fontSize: 7, color: MUTED, lineHeight: 1.55, marginBottom: i < arr.length - 1 ? 2 : 0 }}>{t}</Text>
+                            <Text key={i} style={{ fontSize: 8, color: MUTED, lineHeight: 1.55, marginBottom: i < arr.length - 1 ? 3 : 0 }}>{t}</Text>
                         ))}
                     </View>
                 );
             }
-            return <ContentBlockSection key={s.id} label={label} html={html} />;
+            return <ContentBlockSection key={s.id} label={label} sub={sub} html={html} />;
         });
 
     const f = financials;

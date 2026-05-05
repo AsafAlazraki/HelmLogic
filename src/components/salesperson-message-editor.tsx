@@ -297,6 +297,7 @@ export function SalespersonMessageEditor({ orgId }: Props) {
                                             value={draftMessage}
                                             onChange={setDraftMessage}
                                             placeholder={`Write your personal note that customers see at the top of every quote you create. Welcome them, introduce yourself, set the tone for the proposal.`}
+                                            imageStoragePathPrefix={`salesTeam/${orgId}/${selectedUid}/inline-images`}
                                         />
                                     </div>
 

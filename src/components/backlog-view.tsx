@@ -22,12 +22,15 @@ import { useMemo, useState } from 'react';
 import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { useToast } from '@/hooks/use-toast';
 import {
     Bug,
     CheckCircle2,
     ChevronRight,
+    ClipboardEdit,
     HelpCircle,
     Layers,
+    Loader2,
     Lock,
     Plus,
     Sparkles,
@@ -38,8 +41,19 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
+import { applyV17PolishReview } from '@/lib/v17-polish-review-seed';
 import {
     CreateFeatureDialog,
     FeatureDetailSheet,
@@ -82,6 +96,7 @@ const UNFILED = '__unfiled__';
 
 export function BacklogView() {
     const firestore = useFirestore();
+    const { toast } = useToast();
 
     const featuresRef = useMemoFirebase(() => collection(firestore, 'features'), [firestore]);
     const epicsRef = useMemoFirebase(() => collection(firestore, 'epics'), [firestore]);
@@ -94,6 +109,41 @@ export function BacklogView() {
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
+
+    /** v1.7 polish-review seed — appends "✓ shipped" lines + retargets 1.8.2
+     *  to v1.7. Hidden once 1.2.1 has the "section headers match the
+     *  InnerHeader page-level style" line. */
+    const [polishOpen, setPolishOpen] = useState(false);
+    const [polishing, setPolishing] = useState(false);
+    const polishAlreadyApplied = useMemo(
+        () => (features ?? []).some(f =>
+            f.title?.startsWith('1.2.1 — Branded PDF Quote Generation') &&
+            (f.acceptanceCriteria ?? []).some((l: string) => l.includes('section headers across all content blocks'))
+        ),
+        [features],
+    );
+
+    async function runPolishReview() {
+        setPolishing(true);
+        try {
+            const summary = await applyV17PolishReview(firestore);
+            const missed = summary.storiesMissed.length > 0
+                ? ` · ${summary.storiesMissed.length} missed (titles drift?)`
+                : '';
+            toast({
+                title: 'v1.7 polish review applied',
+                description: `${summary.storiesUpdated} updated · ${summary.retargetsApplied} retargets · ${summary.storiesSkipped} skipped${missed}.`,
+            });
+            if (summary.storiesMissed.length > 0) {
+                console.warn('[polish-review]', summary.storiesMissed);
+            }
+            setPolishOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Review failed', description: e?.message ?? 'See console.' });
+        } finally {
+            setPolishing(false);
+        }
+    }
 
     const sortedEpics = useMemo(
         () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
@@ -210,6 +260,17 @@ export function BacklogView() {
                             <Plus className="h-4 w-4" />
                             New Epic
                         </Button>
+                        {!polishAlreadyApplied && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-600 hover:text-white gap-1.5 shadow-sm"
+                                onClick={() => setPolishOpen(true)}
+                            >
+                                <ClipboardEdit className="h-4 w-4" />
+                                Apply v1.7 polish review
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -275,6 +336,59 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
+
+            {/* v1.7 polish-review seed — appends "✓ shipped" acceptance lines
+                + retargets 1.8.2 to v1.7. Hidden once 1.2.1 has the new
+                "section headers" acceptance line. */}
+            <AlertDialog open={polishOpen} onOpenChange={setPolishOpen}>
+                <AlertDialogContent className="max-w-xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <ClipboardEdit className="h-4 w-4 text-emerald-600" />
+                            Apply v1.7 polish review?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-xs text-slate-600">
+                                <p>
+                                    Updates story acceptance to reflect the polish work shipped after
+                                    the round-2 feedback cycle (image upload, section headers, focus
+                                    mode + debounce, salesperson editor).
+                                </p>
+                                <p className="font-semibold pt-1">Stories updated:</p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                    <li><strong>1.8.2</strong> — retargeted v1.8 → v1.7; appends image-extension + tiptap-pdf rendering lines</li>
+                                    <li><strong>1.8.7</strong> — appends debounce + focus mode + section-header polish lines</li>
+                                    <li><strong>1.2.1</strong> — appends cover redesign + section-header style lines</li>
+                                    <li><strong>1.8.12</strong> — appends salesperson-editor + PDF-render-from-salesTeam lines</li>
+                                </ul>
+                                <p className="text-[11px] text-slate-500 pt-1">
+                                    Idempotent — only writes when the new acceptance line isn&apos;t already present.
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={polishing}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => { e.preventDefault(); runPolishReview(); }}
+                            disabled={polishing}
+                            className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
+                        >
+                            {polishing ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Applying…
+                                </>
+                            ) : (
+                                <>
+                                    <ClipboardEdit className="h-3.5 w-3.5" />
+                                    Yes, apply review
+                                </>
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

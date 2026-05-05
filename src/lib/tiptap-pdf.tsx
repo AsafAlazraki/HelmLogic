@@ -16,7 +16,7 @@
  * v1.8.2 (image upload) extends with <img> handling.
  */
 
-import { Text, View, type Style } from '@react-pdf/renderer';
+import { Image, Text, View, type Style } from '@react-pdf/renderer';
 import { Fragment, type ReactNode } from 'react';
 
 interface BlockNode {
@@ -40,10 +40,38 @@ interface Props {
 
 export function TipTapHtmlPdf({ html, style, fontSize = 9, color = '#334155' }: Props) {
     if (!html || !html.trim()) return null;
-    const blocks = parseBlocks(html);
+    /**
+     * v1.7 (1.8.2) — split on <img> so images render as @react-pdf
+     * <Image> while the surrounding HTML still goes through the
+     * block parser. Handles the TipTap image extension's output:
+     *   <p>Some text…</p>
+     *   <img src="https://…" alt="…" />
+     *   <p>More text…</p>
+     */
+    const segments = html.split(/(<img[^>]*\/?>)/i);
     return (
         <View style={style}>
-            {blocks.map((b, i) => renderBlock(b, i, fontSize, color))}
+            {segments.map((seg, i) => {
+                if (/^<img/i.test(seg)) {
+                    const srcMatch = seg.match(/src=(?:"([^"]+)"|'([^']+)')/i);
+                    const src = srcMatch ? (srcMatch[1] ?? srcMatch[2]) : null;
+                    if (!src) return <Fragment key={`img-${i}`} />;
+                    return (
+                        <Image
+                            key={`img-${i}`}
+                            src={src}
+                            style={{ marginVertical: 6, maxHeight: 240, objectFit: 'contain' }}
+                        />
+                    );
+                }
+                const blocks = parseBlocks(seg);
+                if (blocks.length === 0) return <Fragment key={`seg-${i}`} />;
+                return (
+                    <Fragment key={`seg-${i}`}>
+                        {blocks.map((b, j) => renderBlock(b, j, fontSize, color))}
+                    </Fragment>
+                );
+            })}
         </View>
     );
 }

@@ -368,6 +368,7 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                                     ? `Write the brand-specific version of ${BLOCK_TYPE_LABEL[blockType]}.`
                                     : `Write the ${BLOCK_TYPE_LABEL[blockType]} content. This is what your customers will read on the ${DOCUMENT_TYPE_LABEL[documentType]} PDF.`
                                 }
+                                imageStoragePathPrefix={`contentBlocks/${orgId}/${blockType}/inline-images`}
                             />
 
                             {/* 1.8.6 — documentTypes chip multi-select. Hidden in brand-override
