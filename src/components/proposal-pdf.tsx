@@ -77,6 +77,41 @@ function InnerFooter({ organisation, quoteNumber }: { organisation: any; quoteNu
     );
 }
 
+/* ─── Content-block section helper (v1.7 — 1.2.1 PDF wiring) ──────────
+ * Renders one of the org-authored narrative content blocks at the
+ * call-site's position. Only renders when contentBlocks[blockType]
+ * has content; otherwise silently emits nothing so empty blocks
+ * don't leave gaps in the layout.
+ *
+ * Each section gets:
+ *   - Tiny uppercase label band at the top (matches T&Cs styling)
+ *   - TipTap-rendered HTML body (lib/tiptap-pdf.tsx)
+ *   - Light card background + soft border + standard margin-bottom
+ * ──────────────────────────────────────────────────────────────────── */
+function ContentBlockSection({
+    label,
+    html,
+    accent = SLATE,
+    bodyColor = MUTED,
+    bodySize = 9,
+}: {
+    label: string;
+    html: string | undefined;
+    accent?: string;
+    bodyColor?: string;
+    bodySize?: number;
+}) {
+    if (!html || !html.trim()) return null;
+    return (
+        <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 5, padding: '10 12', marginBottom: 18 }}>
+            <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1.5, color: accent, marginBottom: 6 }}>
+                {label}
+            </Text>
+            <TipTapHtmlPdf html={html} fontSize={bodySize} color={bodyColor} />
+        </View>
+    );
+}
+
 /* ─── Main Document ────────────────────────────────────────────────────── */
 /**
  * `contentBlocks` is the resolved-per-quote map from
@@ -291,6 +326,10 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             ═══════════════════════════════════════════════════════════ */}
             <Page size="A4" style={{ ...S.page, padding: 44 }}>
                 <InnerHeader title="Vessel Configuration" sub="Technical Data & Standard Inclusions" quoteNumber={quote.quoteNumber} page="02" />
+
+                {/* v1.7 (1.2.1) — Salesperson message + Why Choose Us, top of page 2 */}
+                <ContentBlockSection label="A note from your salesperson" html={contentBlocks?.['salesperson-message']} />
+                <ContentBlockSection label="Why choose us" html={contentBlocks?.['why-us']} />
 
                 {/* Specs + Standard Features */}
                 {(quote.specifications?.otherSpecs?.length > 0 || quote.standardFeatures?.length > 0) && (
@@ -564,6 +603,10 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     </View>
                 )}
 
+                {/* v1.7 (1.2.1) — Brand & model story + After-sales, end of page 2 */}
+                <ContentBlockSection label="About this brand & model" html={contentBlocks?.['brand-story']} />
+                <ContentBlockSection label="After-sales confidence" html={contentBlocks?.['after-sales']} />
+
                 <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
             </Page>
 
@@ -572,6 +615,9 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             ═══════════════════════════════════════════════════════════ */}
             <Page size="A4" style={{ ...S.page, padding: 44 }}>
                 <InnerHeader title="Investment Summary" sub="Comprehensive Package Breakdown" quoteNumber={quote.quoteNumber} page="03" />
+
+                {/* v1.7 (1.2.1) — Finance & insurance info, top of page 3 (before pricing) */}
+                <ContentBlockSection label="Finance & insurance" html={contentBlocks?.['finance-info']} />
 
                 {/* Pricing table */}
                 <View style={{ marginBottom: 28 }}>
@@ -624,6 +670,9 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                         <Text style={{ fontSize: 22, fontWeight: 'bold', fontStyle: 'italic', color: 'white', letterSpacing: -0.5 }}>{currency(f.totalInclGst)}</Text>
                     </View>
                 </View>
+
+                {/* v1.7 (1.2.1) — Value summary, after the grand total, before T&Cs */}
+                <ContentBlockSection label="Why this package, why now" html={contentBlocks?.['value-summary']} />
 
                 {/* Terms — v1.7 (1.2.1): content-blocks first, then legacy field, then DEFAULT_TERMS */}
                 {(() => {
