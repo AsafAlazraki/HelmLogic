@@ -151,6 +151,7 @@ export function ContentBlockManager({ orgId, documentType, legacyTermsAndConditi
                 documentType={documentType}
                 blockType={selectedBlockType}
                 block={selectedBlock}
+                allBlocks={blocks ?? null}
                 enabledModuleSubscriptions={enabledModuleSubscriptions}
             />
         </div>
