@@ -43,17 +43,43 @@ export type BlockType =
     | 'value-summary'
     | 'terms-and-conditions';
 
+/** v1.7 (1.8.6) — which document(s) this block appears on. */
+export type DocumentType = 'quote' | 'contract';
+export const DOCUMENT_TYPES: DocumentType[] = ['quote', 'contract'];
+export const DOCUMENT_TYPE_LABEL: Record<DocumentType, string> = {
+    quote: 'Quote',
+    contract: 'Contract',
+};
+
 export interface ContentBlock {
     id: string;
     blockType: BlockType;
     /** TipTap-serialised HTML. Empty string = block defined but no content authored. */
     html: string;
+    /**
+     * v1.7 (1.8.6) — multi-select. Block renders only on the listed
+     * document types. Missing field on legacy docs is treated as ['quote']
+     * (matches pre-1.8.6 behaviour, where the manager was Quote-only).
+     */
+    documentTypes?: DocumentType[];
     /** Schema field for v1.8.3 layout controls. Default false; no UI in 1.8.1. */
     startsOnNewPage: boolean;
     createdAt?: Timestamp;
     updatedAt?: Timestamp;
     updatedByUid?: string;
     updatedByName?: string;
+}
+
+/** Resolve a block's effective documentTypes — defaults to ['quote'] for legacy docs. */
+export function getBlockDocumentTypes(block: ContentBlock | undefined): DocumentType[] {
+    const dt = block?.documentTypes;
+    if (!dt || dt.length === 0) return ['quote'];
+    return dt;
+}
+
+/** True when the block should render under the given document-type filter. */
+export function blockBelongsTo(block: ContentBlock, docType: DocumentType): boolean {
+    return getBlockDocumentTypes(block).includes(docType);
 }
 
 export interface BrandOverride {
@@ -164,12 +190,18 @@ export async function resolveContentBlocksForQuote(
     firestore: Firestore,
     orgId: string,
     vendorId: string | null,
+    /** v1.7 (1.8.6) — filter to blocks tagged with this document type. Defaults to 'quote'. */
+    documentType: DocumentType = 'quote',
 ): Promise<Partial<Record<BlockType, string>>> {
     const blocksSnap = await getDocs(collection(firestore, `organisations/${orgId}/contentBlocks`));
     const result: Partial<Record<BlockType, string>> = {};
 
     for (const blockDoc of blocksSnap.docs) {
-        const block = blockDoc.data() as ContentBlock;
+        const block = { id: blockDoc.id, ...blockDoc.data() } as ContentBlock;
+
+        // 1.8.6 — skip blocks not tagged for this document type.
+        if (!blockBelongsTo(block, documentType)) continue;
+
         let html = block.html ?? '';
 
         if (vendorId) {

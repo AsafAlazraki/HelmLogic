@@ -1,30 +1,21 @@
 'use client';
 
 /**
- * Content Block Detail (right panel of the Quote Content Manager).
+ * Content Block Detail (right panel of the Content Block Manager).
  *
- * Phase D adds the brand-override picker above the editor. The
- * picker scopes the current edit session to either the org default
- * or a specific brand's override. Reading + writing follow the
- * same source-of-truth as the resolver:
- *   - selectedBrand === null → read/write the parent block doc
- *   - selectedBrand === vendorId → read/write
- *     contentBlocks/{blockId}/brandOverrides/{vendorId}
+ * v1.7 stories shipping in this component:
+ *   - 1.8.1 (foundation: editor + version history + brand overrides)
+ *   - 1.8.6 — documentTypes multi-select chips (Quote / Contract)
+ *   - 1.8.9 — Document Templates aesthetic (NAVY dark banded header,
+ *             two-column with side info card, scrollable section)
  *
- * When entering a brand context with no override yet, the editor
- * pre-fills with the org-default content as a starting point. The
- * version history captures both default and brand-override saves
- * with `level: 'default' | brand:{vendorId}` so restore works
- * across both surfaces.
- *
- * Lazy doc creation: blocks the org hasn't authored yet don't
- * have a Firestore parent doc. On the first default save we mint
- * a client-side id and setDoc the parent. Brand-override saves
- * REQUIRE the parent doc to exist — we create the parent first
- * (with empty html) if needed so the override has a parent path.
+ * Edit / read-only / brand-override flows unchanged from 1.8.1
+ * Phase D — see file history. The 1.8.6 multi-select threads
+ * documentTypes into every save (lazy parent-doc creation, brand
+ * override saves, version restores).
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     addDoc,
     collection,
@@ -38,9 +29,13 @@ import { useToast } from '@/hooks/use-toast';
 import {
     BLOCK_TYPE_HELP,
     BLOCK_TYPE_LABEL,
+    DOCUMENT_TYPES,
+    DOCUMENT_TYPE_LABEL,
+    getBlockDocumentTypes,
     type BlockType,
     type BrandOverride,
     type ContentBlock,
+    type DocumentType,
 } from '@/lib/content-blocks';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,12 +45,14 @@ import { BrandOverridePicker } from '@/components/brand-override-picker';
 import {
     Building2,
     CalendarDays,
+    Check,
     FileText,
     Globe2,
     History,
     Loader2,
     Pencil,
     Save,
+    ScrollText,
     User,
     X,
 } from 'lucide-react';
@@ -63,12 +60,14 @@ import { cn } from '@/lib/utils';
 
 interface Props {
     orgId: string;
+    /** Which document type sub-tab is active. New blocks default to this docType. */
+    documentType: DocumentType;
     blockType: BlockType;
     block: ContentBlock | undefined;
     enabledModuleSubscriptions: string[] | null | undefined;
 }
 
-export function ContentBlockDetail({ orgId, blockType, block, enabledModuleSubscriptions }: Props) {
+export function ContentBlockDetail({ orgId, documentType, blockType, block, enabledModuleSubscriptions }: Props) {
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
@@ -79,10 +78,8 @@ export function ContentBlockDetail({ orgId, blockType, block, enabledModuleSubsc
     );
     const { data: userProfile } = useDoc<any>(userProfileRef);
 
-    /** null = org-default, vendorId string = editing that brand's override. */
     const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
 
-    /** Subscribe to the brand-override doc when in brand mode + parent block exists. */
     const overrideRef = useMemoFirebase(
         () => (selectedBrand && block?.id
             ? doc(firestore, `organisations/${orgId}/contentBlocks/${block.id}/brandOverrides/${selectedBrand}`)
@@ -91,23 +88,31 @@ export function ContentBlockDetail({ orgId, blockType, block, enabledModuleSubsc
     );
     const { data: overrideDoc } = useDoc<BrandOverride>(overrideRef);
 
-    /** Currently displayed html — depends on which surface we're in. */
     const currentHtml = selectedBrand
         ? (overrideDoc?.html ?? block?.html ?? '')
         : (block?.html ?? '');
     const hasContentInCurrentSurface = !!(currentHtml && currentHtml.trim());
+
+    /** v1.7 (1.8.6) — documentTypes for this block. Defaults to the
+     *  current sub-tab's docType for NEW blocks; reflects existing
+     *  field (with legacy ['quote'] fallback) for existing blocks. */
+    const initialDocTypes = useMemo<DocumentType[]>(
+        () => block ? getBlockDocumentTypes(block) : [documentType],
+        [block, documentType],
+    );
+    const [draftDocTypes, setDraftDocTypes] = useState<DocumentType[]>(initialDocTypes);
 
     const [editMode, setEditMode] = useState(false);
     const [draftHtml, setDraftHtml] = useState<string>('');
     const [saving, setSaving] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
 
-    /** Reset edit state when block OR selectedBrand changes — drafts
-     *  must not leak across blocks/brands (v1.5 lesson). */
+    /** Reset edit state on selection change (block / brand / docType-tab). */
     useEffect(() => {
         setEditMode(false);
         setDraftHtml(currentHtml);
-    }, [blockType, block?.id, selectedBrand, currentHtml]);
+        setDraftDocTypes(initialDocTypes);
+    }, [blockType, block?.id, selectedBrand, currentHtml, initialDocTypes]);
 
     const formattedUpdatedAt = (
         selectedBrand
@@ -121,12 +126,25 @@ export function ContentBlockDetail({ orgId, blockType, block, enabledModuleSubsc
 
     function startEdit() {
         setDraftHtml(currentHtml);
+        setDraftDocTypes(initialDocTypes);
         setEditMode(true);
     }
 
     function cancelEdit() {
         setDraftHtml(currentHtml);
+        setDraftDocTypes(initialDocTypes);
         setEditMode(false);
+    }
+
+    function toggleDocType(t: DocumentType) {
+        setDraftDocTypes(prev => {
+            if (prev.includes(t)) {
+                // Don't allow zero — at least one document type must be selected.
+                if (prev.length === 1) return prev;
+                return prev.filter(x => x !== t);
+            }
+            return [...prev, t];
+        });
     }
 
     async function persist(htmlToSave: string) {
@@ -137,16 +155,21 @@ export function ContentBlockDetail({ orgId, blockType, block, enabledModuleSubsc
         setSaving(true);
         try {
             const submitterName = userProfile?.displayName || userProfile?.email || user.email || 'Someone';
-
-            // Lazy parent-doc creation if needed. Both default + brand
-            // saves go through this — brand saves need the parent
-            // path to exist for the override subcollection.
             const blockId = block?.id ?? doc(collection(firestore, `organisations/${orgId}/contentBlocks`)).id;
             const blockRef = doc(firestore, `organisations/${orgId}/contentBlocks/${blockId}`);
+
+            // Determine documentTypes to persist on the parent block doc:
+            //   - In default (org) edit mode → use draft selection
+            //   - In brand-override mode → keep block's existing types unchanged
+            const docTypesForParent = selectedBrand
+                ? (block ? getBlockDocumentTypes(block) : [documentType])
+                : draftDocTypes;
+
             if (!block) {
                 await setDoc(blockRef, {
                     blockType,
                     html: '',
+                    documentTypes: docTypesForParent,
                     startsOnNewPage: false,
                     createdAt: serverTimestamp(),
                     updatedAt: serverTimestamp(),
@@ -156,7 +179,6 @@ export function ContentBlockDetail({ orgId, blockType, block, enabledModuleSubsc
             }
 
             if (selectedBrand) {
-                // Brand-override save → write to brandOverrides/{vendorId}.
                 const overrideDocRef = doc(
                     firestore,
                     `organisations/${orgId}/contentBlocks/${blockId}/brandOverrides/${selectedBrand}`,
@@ -172,12 +194,12 @@ export function ContentBlockDetail({ orgId, blockType, block, enabledModuleSubsc
                     { merge: true },
                 );
             } else {
-                // Org-default save → update the parent block doc.
                 await setDoc(
                     blockRef,
                     {
                         blockType,
                         html: htmlToSave,
+                        documentTypes: docTypesForParent,
                         updatedAt: serverTimestamp(),
                         updatedByUid: user.uid,
                         updatedByName: submitterName,
@@ -187,7 +209,6 @@ export function ContentBlockDetail({ orgId, blockType, block, enabledModuleSubsc
                 );
             }
 
-            // Append version doc — captures the surface this save targeted.
             await addDoc(collection(firestore, `organisations/${orgId}/contentBlocks/${blockId}/versions`), {
                 html: htmlToSave,
                 level: selectedBrand ? `brand:${selectedBrand}` : 'default',
@@ -222,55 +243,48 @@ export function ContentBlockDetail({ orgId, blockType, block, enabledModuleSubsc
     }
 
     return (
-        <>
-            <div className="rounded-xl border bg-white overflow-hidden">
-                {/* Header */}
-                <div className="px-5 py-4 border-b">
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-base font-semibold text-slate-800">
-                                    {BLOCK_TYPE_LABEL[blockType]}
-                                </h3>
-                                {hasContentInCurrentSurface ? (
-                                    <Badge variant="secondary" className="text-[10px] bg-blue-100 text-blue-700 border-blue-200">
-                                        Authored
-                                    </Badge>
-                                ) : (
-                                    <Badge variant="outline" className="text-[10px] text-slate-500">
-                                        Empty
-                                    </Badge>
-                                )}
-                            </div>
-                            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                                {BLOCK_TYPE_HELP[blockType]}
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-5">
+            {/* Editor card — 3 cols. NAVY dark band header per the Document Templates aesthetic (1.8.9). */}
+            <div className="xl:col-span-3 rounded-[1.5rem] overflow-hidden border-2 shadow-sm bg-white flex flex-col">
+                {/* Dark band header */}
+                <div className="px-6 py-5 bg-slate-900 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-10 w-10 rounded-2xl bg-blue-500/20 flex items-center justify-center shrink-0">
+                            <ScrollText className="h-5 w-5 text-blue-300" />
+                        </div>
+                        <div className="min-w-0">
+                            <h3 className="text-base font-black uppercase tracking-tight text-white truncate">
+                                {BLOCK_TYPE_LABEL[blockType]}
+                            </h3>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
+                                {hasContentInCurrentSurface ? 'Authored' : 'Empty'} · {DOCUMENT_TYPE_LABEL[documentType]} tab
                             </p>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                            {block && (
-                                <Button size="sm" variant="ghost" onClick={() => setHistoryOpen(true)} className="gap-1.5">
-                                    <History className="h-3.5 w-3.5" />
-                                    History
-                                </Button>
-                            )}
-                            {!editMode && (
-                                <Button size="sm" variant="outline" onClick={startEdit} className="gap-1.5">
-                                    <Pencil className="h-3.5 w-3.5" />
-                                    {hasContentInCurrentSurface ? 'Edit' : 'Author'}
-                                </Button>
-                            )}
-                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        {block && (
+                            <Button size="sm" variant="ghost" onClick={() => setHistoryOpen(true)} className="gap-1.5 text-white/90 hover:bg-white/10 hover:text-white text-xs">
+                                <History className="h-3.5 w-3.5" />
+                                History
+                            </Button>
+                        )}
+                        {!editMode && (
+                            <Button size="sm" onClick={startEdit} className="gap-1.5 bg-white text-slate-900 hover:bg-slate-100 text-xs">
+                                <Pencil className="h-3.5 w-3.5" />
+                                {hasContentInCurrentSurface ? 'Edit' : 'Author'}
+                            </Button>
+                        )}
                     </div>
                 </div>
 
                 {/* Brand-override picker */}
-                <div className="px-5 py-3 border-b bg-slate-50/40">
-                    <div className="flex items-center gap-3">
+                <div className="px-6 py-3 border-b bg-slate-50/40">
+                    <div className="flex items-center gap-3 flex-wrap">
                         <span className="text-[11px] font-medium text-slate-600 shrink-0 inline-flex items-center gap-1.5">
                             {selectedBrand ? <Building2 className="h-3 w-3" /> : <Globe2 className="h-3 w-3" />}
                             Editing for
                         </span>
-                        <div className="flex-1 max-w-[260px]">
+                        <div className="flex-1 min-w-[200px] max-w-[260px]">
                             <BrandOverridePicker
                                 enabledModuleSubscriptions={enabledModuleSubscriptions}
                                 value={selectedBrand}
@@ -280,7 +294,7 @@ export function ContentBlockDetail({ orgId, blockType, block, enabledModuleSubsc
                         </div>
                         {selectedBrand && !overrideDoc && (
                             <span className="text-[10px] text-slate-500 italic">
-                                No override yet — pre-filled with org-default content
+                                No override yet — pre-filled with org-default
                             </span>
                         )}
                     </div>
@@ -288,7 +302,7 @@ export function ContentBlockDetail({ orgId, blockType, block, enabledModuleSubsc
 
                 {/* Metadata strip */}
                 {(block || overrideDoc) && !editMode && (
-                    <div className="px-5 py-2.5 border-b bg-slate-50/60 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
+                    <div className="px-6 py-2.5 border-b bg-slate-50/60 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
                         {formattedUpdatedAt && (
                             <span className="inline-flex items-center gap-1.5">
                                 <CalendarDays className="h-3 w-3" />
@@ -304,19 +318,54 @@ export function ContentBlockDetail({ orgId, blockType, block, enabledModuleSubsc
                     </div>
                 )}
 
-                {/* Body */}
-                <div className="px-5 py-5">
+                {/* Body — scrollable section per 1.8.9 */}
+                <div className="px-6 py-5 max-h-[60vh] overflow-y-auto bg-slate-50/30">
                     {editMode ? (
                         <div className="space-y-4">
                             <FeatureRichTextEditor
                                 value={draftHtml}
                                 onChange={setDraftHtml}
                                 placeholder={selectedBrand
-                                    ? `Author the brand-override for ${BLOCK_TYPE_LABEL[blockType]}. This will replace the org-default for quotes whose vendorId matches.`
-                                    : `Author the ${BLOCK_TYPE_LABEL[blockType]} content. This is what your customers will read on the proposal PDF.`
+                                    ? `Author the brand-override for ${BLOCK_TYPE_LABEL[blockType]}.`
+                                    : `Author the ${BLOCK_TYPE_LABEL[blockType]} content. This is what your customers will read on the ${DOCUMENT_TYPE_LABEL[documentType]} PDF.`
                                 }
                             />
-                            <div className="flex items-center justify-end gap-2 pt-2 border-t">
+
+                            {/* 1.8.6 — documentTypes chip multi-select. Hidden in brand-override
+                                mode because doc-type membership is parent-block scope, not per-brand. */}
+                            {!selectedBrand && (
+                                <div className="space-y-2 pt-1">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                        Appears on
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        {DOCUMENT_TYPES.map(t => {
+                                            const active = draftDocTypes.includes(t);
+                                            return (
+                                                <button
+                                                    key={t}
+                                                    type="button"
+                                                    onClick={() => toggleDocType(t)}
+                                                    className={cn(
+                                                        'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-xs font-medium transition-colors',
+                                                        active
+                                                            ? 'bg-blue-50 text-blue-700 border-blue-300'
+                                                            : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300',
+                                                    )}
+                                                >
+                                                    {active && <Check className="h-3 w-3" />}
+                                                    {DOCUMENT_TYPE_LABEL[t]}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <p className="text-[10px] text-slate-400">
+                                        Tag this block for one or both document types. Selected = renders on that PDF.
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="flex items-center justify-end gap-2 pt-3 border-t">
                                 <Button size="sm" variant="ghost" onClick={cancelEdit} disabled={saving} className="gap-1.5">
                                     <X className="h-3.5 w-3.5" />
                                     Cancel
@@ -345,7 +394,7 @@ export function ContentBlockDetail({ orgId, blockType, block, enabledModuleSubsc
                             dangerouslySetInnerHTML={{ __html: currentHtml }}
                         />
                     ) : (
-                        <div className="flex flex-col items-center justify-center py-12 text-center text-slate-400 border-2 border-dashed rounded-lg">
+                        <div className="flex flex-col items-center justify-center py-12 text-center text-slate-400 border-2 border-dashed rounded-lg bg-white">
                             <FileText className="h-8 w-8 mb-3" />
                             <p className="text-sm font-medium text-slate-500">No content yet</p>
                             <p className="text-[11px] mt-1 max-w-xs">
@@ -354,12 +403,66 @@ export function ContentBlockDetail({ orgId, blockType, block, enabledModuleSubsc
                         </div>
                     )}
                 </div>
+            </div>
 
-                {/* Footer hint */}
-                <div className="px-5 py-2.5 border-t bg-slate-50/60 text-[10px] text-slate-500 flex items-center gap-1.5">
-                    <Pencil className="h-3 w-3" />
-                    Versions captured on every save · Brand overrides win at PDF render when quote.vendorId matches
+            {/* Side info card — 2 cols. Per 1.8.9 — shows where this block appears + current tagging. */}
+            <div className="xl:col-span-2 space-y-4">
+                <div className="rounded-[1.5rem] overflow-hidden border-2 shadow-sm bg-white">
+                    <div className="px-5 py-4 border-b bg-muted/5">
+                        <div className="flex items-center gap-2">
+                            <ScrollText className="h-4 w-4 text-blue-600" />
+                            <p className="text-xs font-black uppercase tracking-widest">About this section</p>
+                        </div>
+                    </div>
+                    <div className="p-5 space-y-3 text-xs text-slate-600 leading-relaxed">
+                        <p>{BLOCK_TYPE_HELP[blockType]}</p>
+                    </div>
                 </div>
+
+                <div className="rounded-[1.5rem] overflow-hidden border-2 shadow-sm bg-blue-50/40 border-blue-200">
+                    <div className="p-5 space-y-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-700">Where this appears</p>
+                        <ul className="space-y-2">
+                            {getBlockDocumentTypes(block).map(t => (
+                                <li key={t} className="flex items-start gap-2">
+                                    <Check className="h-3 w-3 text-blue-700 mt-0.5 shrink-0" />
+                                    <span className="text-[11px] font-bold text-slate-700">
+                                        {DOCUMENT_TYPE_LABEL[t]} PDF — {BLOCK_TYPE_LABEL[blockType]} section
+                                    </span>
+                                </li>
+                            ))}
+                            {selectedBrand ? (
+                                <li className="flex items-start gap-2">
+                                    <Check className="h-3 w-3 text-blue-700 mt-0.5 shrink-0" />
+                                    <span className="text-[11px] font-bold text-slate-700">
+                                        Brand override active for <code className="bg-blue-100 rounded px-1">{selectedBrand}</code>
+                                    </span>
+                                </li>
+                            ) : (
+                                <li className="flex items-start gap-2">
+                                    <Check className="h-3 w-3 text-blue-700 mt-0.5 shrink-0" />
+                                    <span className="text-[11px] font-bold text-slate-700">
+                                        Org-default content (applies when no brand override matches)
+                                    </span>
+                                </li>
+                            )}
+                            {block ? (
+                                <li className="flex items-start gap-2">
+                                    <Check className="h-3 w-3 text-blue-700 mt-0.5 shrink-0" />
+                                    <span className="text-[11px] font-bold text-slate-700">
+                                        Versions captured on every save (restore via History)
+                                    </span>
+                                </li>
+                            ) : null}
+                        </ul>
+                    </div>
+                </div>
+
+                {!editMode && hasContentInCurrentSurface && (
+                    <Badge variant="secondary" className="text-[10px] bg-blue-100 text-blue-700 border-blue-200">
+                        ✓ Content authored — will render on the {DOCUMENT_TYPE_LABEL[documentType]} PDF
+                    </Badge>
+                )}
             </div>
 
             <VersionHistoryDrawer
@@ -369,6 +472,6 @@ export function ContentBlockDetail({ orgId, blockType, block, enabledModuleSubsc
                 blockId={block?.id ?? null}
                 onRestore={handleRestore}
             />
-        </>
+        </div>
     );
 }

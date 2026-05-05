@@ -28,7 +28,6 @@ import {
     Check,
     PlusCircle,
     Hash,
-    FileSpreadsheet,
     ChevronRight,
     Waves,
     Pencil,
@@ -40,17 +39,14 @@ import {
     Clock,
     TrendingUp,
     ShieldAlert,
-    ScrollText,
-    RotateCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
-import { QuoteContentManager } from '@/components/quote-content-manager';
+import { ContentBlockManager } from '@/components/content-block-manager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -346,8 +342,6 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     const [isAddingUser, setIsAddingUser] = useState(false);
     const [primaryLogoPreview, setPrimaryLogoPreview] = useState<string | null>(null);
     const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
-    const [tcText, setTcText] = useState('');
-    const [isSavingTc, setIsSavingTc] = useState(false);
     
     const firestore = useFirestore();
     const storage = useStorage();
@@ -409,7 +403,6 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
             });
             if (organisation.primaryLogoUrl) setPrimaryLogoPreview(organisation.primaryLogoUrl);
             if (organisation.secondaryLogoUrl) setSecondaryLogoPreview(organisation.secondaryLogoUrl);
-            setTcText((organisation as any).termsAndConditions || '');
         }
     }, [organisation, form]);
 
@@ -453,26 +446,6 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 await deleteApp(tempApp).catch(console.error);
             }
             setIsAddingUser(false);
-        }
-    };
-
-    const DEFAULT_TERMS = `1. This proposal is valid for 30 days from the date of issue.
-2. Prices are subject to change without notice after the validity period.
-3. A non-refundable deposit may be required to secure this package.
-4. Final delivery dates will be confirmed upon order acceptance.`;
-
-    const saveTandC = async () => {
-        if (!organisation) return;
-        setIsSavingTc(true);
-        try {
-            await updateDoc(doc(firestore, 'organisations', orgId), {
-                termsAndConditions: tcText.trim() || DEFAULT_TERMS,
-            });
-            toast({ title: 'Terms & Conditions saved', description: 'Will appear on all new proposals.' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Save failed', description: e.message });
-        } finally {
-            setIsSavingTc(false);
         }
     };
 
@@ -541,11 +514,10 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 </div>
 
                 <Tabs defaultValue="details" className="space-y-4">
-                    <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-7' : 'grid-cols-6')}>
+                    <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-6' : 'grid-cols-5')}>
                         <TabsTrigger value="details">Company Details</TabsTrigger>
                         <TabsTrigger value="users">Users & Permissions</TabsTrigger>
                         <TabsTrigger value="templates">Document Templates</TabsTrigger>
-                        <TabsTrigger value="quote-content">Quote Content</TabsTrigger>
                         <TabsTrigger value="margins">Margins</TabsTrigger>
                         <TabsTrigger value="modules">Modules</TabsTrigger>
                         {organisation?.subDealersEnabled && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
@@ -791,136 +763,35 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                 </CardHeader>
                             </Card>
 
-                            {/* Terms & Conditions Editor */}
-                            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                                {/* Editor panel — 3 cols */}
-                                <Card className="lg:col-span-3 border-2 rounded-[2rem] overflow-hidden shadow-sm">
-                                    <CardHeader className="px-8 py-6 border-b bg-slate-900">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
-                                                <ScrollText className="h-5 w-5 text-primary" />
-                                            </div>
-                                            <div>
-                                                <CardTitle className="text-base font-black uppercase tracking-tight text-white">Terms &amp; Conditions</CardTitle>
-                                                <CardDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Printed on every proposal PDF</CardDescription>
-                                            </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="p-0">
-                                        <div className="p-6 space-y-4 bg-slate-50/50">
-                                            <div className="flex items-start gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
-                                                <ScrollText className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" />
-                                                <p className="text-[10px] font-bold text-blue-700 leading-relaxed">Enter each term on its own line. Standard numbering (1. 2. 3.) is recommended. Changes apply to all future proposals.</p>
-                                            </div>
-                                            <Textarea
-                                                value={tcText}
-                                                onChange={e => setTcText(e.target.value)}
-                                                placeholder={DEFAULT_TERMS}
-                                                className="min-h-[260px] font-mono text-sm resize-none rounded-xl border-2 focus-visible:ring-primary/30 bg-white leading-relaxed"
-                                                spellCheck={false}
-                                            />
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                                    {tcText.split('\n').filter(l => l.trim()).length} line{tcText.split('\n').filter(l => l.trim()).length !== 1 ? 's' : ''} · {tcText.length} chars
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setTcText(DEFAULT_TERMS)}
-                                                    className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
-                                                >
-                                                    <RotateCcw className="h-3 w-3" />
-                                                    Reset to defaults
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                    <CardFooter className="px-6 py-5 border-t bg-white flex justify-end">
-                                        <Button
-                                            type="button"
-                                            onClick={saveTandC}
-                                            disabled={isSavingTc}
-                                            className="h-11 px-8 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg bg-primary text-white hover:scale-[1.02] active:scale-100 transition-transform"
-                                        >
-                                            {isSavingTc ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                                            Save Terms
-                                        </Button>
-                                    </CardFooter>
-                                </Card>
+                            {/* v1.7 (1.8.5) — Document Templates is the unified surface for
+                                Quote + Contract content. Sub-tabs filter the same content-block
+                                store by documentType (1.8.6). The legacy T&Cs textarea is gone —
+                                its content auto-migrates into a `terms-and-conditions` block
+                                on first open of the Quote sub-tab. */}
+                            <Tabs defaultValue="quote" className="space-y-4">
+                                <TabsList className="grid w-full grid-cols-2 max-w-sm">
+                                    <TabsTrigger value="quote">Quote</TabsTrigger>
+                                    <TabsTrigger value="contract">Contract</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="quote">
+                                    <ContentBlockManager
+                                        orgId={orgId}
+                                        documentType="quote"
+                                        legacyTermsAndConditions={(organisation as any)?.termsAndConditions}
+                                        enabledModuleSubscriptions={(organisation as any)?.enabledModuleSubscriptions}
+                                    />
+                                </TabsContent>
+                                <TabsContent value="contract">
+                                    <ContentBlockManager
+                                        orgId={orgId}
+                                        documentType="contract"
+                                        legacyTermsAndConditions={(organisation as any)?.termsAndConditions}
+                                        enabledModuleSubscriptions={(organisation as any)?.enabledModuleSubscriptions}
+                                    />
+                                </TabsContent>
+                            </Tabs>
 
-                                {/* PDF Preview panel — 2 cols */}
-                                <div className="lg:col-span-2 space-y-4">
-                                    <Card className="border-2 rounded-[2rem] overflow-hidden shadow-sm">
-                                        <CardHeader className="px-6 py-5 border-b bg-muted/5">
-                                            <div className="flex items-center gap-2">
-                                                <FileSpreadsheet className="h-4 w-4 text-primary" />
-                                                <CardTitle className="text-xs font-black uppercase tracking-widest">PDF Preview</CardTitle>
-                                            </div>
-                                            <CardDescription className="text-[10px] font-bold uppercase tracking-wider mt-1">How it appears on proposal page 3</CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="p-5">
-                                            {/* Mimics the PDF T&C box styling */}
-                                            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                                                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Terms &amp; Conditions</p>
-                                                <div className="space-y-1.5">
-                                                    {(tcText.trim() || DEFAULT_TERMS).split('\n').filter(l => l.trim()).map((line, i) => (
-                                                        <p key={i} className="text-[11px] text-slate-500 leading-relaxed">{line}</p>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            {/* Signature block preview */}
-                                            <div className="mt-4 flex gap-4">
-                                                {['Merchant Authorisation', 'Client Acceptance'].map(label => (
-                                                    <div key={label} className="flex-1">
-                                                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2">{label}</p>
-                                                        <div className="h-8 border-b-2 border-dashed border-slate-200" />
-                                                        <p className="text-[8px] text-slate-300 mt-1 font-bold uppercase">Signature line</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-
-                                    {/* Where it appears info */}
-                                    <Card className="border-2 rounded-[2rem] overflow-hidden shadow-sm bg-primary/5 border-primary/20">
-                                        <CardContent className="p-5 space-y-3">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary">Where this appears</p>
-                                            <ul className="space-y-2">
-                                                {[
-                                                    'Proposal PDF — page 3, above signature lines',
-                                                    'Applies to all future proposals',
-                                                    'Existing proposals use the terms saved at time of creation',
-                                                ].map((item, i) => (
-                                                    <li key={i} className="flex items-start gap-2">
-                                                        <Check className="h-3 w-3 text-primary mt-0.5 shrink-0" />
-                                                        <span className="text-[10px] font-bold text-slate-600">{item}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </CardContent>
-                                    </Card>
-                                </div>
-                            </div>
                         </div>
-                    </TabsContent>
-
-                    <TabsContent value="quote-content">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Quote Content Blocks</CardTitle>
-                                <CardDescription>
-                                    Edit the rich-text sections that appear on every customer-facing PDF.
-                                    Each section has a fixed position on the proposal; per-brand overrides let
-                                    you keep different copy for each boat or motor brand you sell.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <QuoteContentManager
-                                    orgId={orgId}
-                                    legacyTermsAndConditions={(organisation as any)?.termsAndConditions}
-                                    enabledModuleSubscriptions={(organisation as any)?.enabledModuleSubscriptions}
-                                />
-                            </CardContent>
-                        </Card>
                     </TabsContent>
 
                     <TabsContent value="margins">
