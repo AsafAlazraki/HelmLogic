@@ -22,6 +22,8 @@ import { PDFViewer } from '@react-pdf/renderer';
 import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { ProposalPDFDocument } from '@/components/proposal-pdf';
+import { Button } from '@/components/ui/button';
+import { Maximize2, Minimize2, X } from 'lucide-react';
 import {
     blockBelongsTo,
     type BlockType,
@@ -53,6 +55,18 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
     const firestore = useFirestore();
     const { user } = useUser();
     const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+    /** v1.7 — focus mode toggle: when true, preview takes over the
+     *  full viewport with a top toolbar (mirrors the
+     *  highfield-pricing-workspace focus pattern). */
+    const [focusMode, setFocusMode] = useState(false);
+
+    /** ESC closes focus mode. */
+    useEffect(() => {
+        if (!focusMode) return;
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFocusMode(false); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [focusMode]);
 
     /** v1.7 (1.8.12) — preview uses the CURRENT user's salesperson profile
      *  so each salesman sees their own message + photo. If unauthored,
@@ -132,20 +146,74 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
     );
 
     return (
-        <div className="w-full h-full min-h-[640px] rounded-lg overflow-hidden border bg-slate-100">
-            <PDFViewer
-                style={{ width: '100%', height: '100%', minHeight: 640, border: 0 }}
-                showToolbar={false}
-            >
-                <ProposalPDFDocument
-                    quote={fixture.quote}
-                    organisation={fixture.organisation}
-                    financials={fixture.financials}
-                    contentBlocks={contentBlocksMap}
-                    pdfSections={pdfSections}
-                    salespersonProfile={salespersonProfile ?? undefined}
-                />
-            </PDFViewer>
-        </div>
+        <>
+            {/* Inline preview — sits in the right pane of the editor */}
+            <div className="relative w-full h-full min-h-[640px] rounded-lg overflow-hidden border bg-slate-100">
+                {/* v1.7 — focus-mode toggle (mirrors highfield-pricing-workspace pattern) */}
+                <Button
+                    size="sm"
+                    onClick={() => setFocusMode(true)}
+                    className="absolute top-2 right-2 z-10 h-8 px-3 rounded-lg font-black uppercase tracking-widest text-[10px] shadow-md bg-slate-900 text-white hover:bg-slate-800 gap-1.5"
+                    title="Expand preview"
+                >
+                    <Maximize2 className="h-3.5 w-3.5" />
+                    Focus
+                </Button>
+                <PDFViewer
+                    style={{ width: '100%', height: '100%', minHeight: 640, border: 0 }}
+                    showToolbar={false}
+                >
+                    <ProposalPDFDocument
+                        quote={fixture.quote}
+                        organisation={fixture.organisation}
+                        financials={fixture.financials}
+                        contentBlocks={contentBlocksMap}
+                        pdfSections={pdfSections}
+                        salespersonProfile={salespersonProfile ?? undefined}
+                    />
+                </PDFViewer>
+            </div>
+
+            {/* Full-screen focus mode — fixed overlay covering the viewport */}
+            {focusMode && (
+                <div className="fixed inset-0 z-50 bg-slate-950/95 flex flex-col">
+                    {/* Toolbar */}
+                    <div className="flex items-center justify-between px-6 py-3 border-b border-slate-800 bg-slate-900 text-white">
+                        <div className="flex items-center gap-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">PDF Preview · Focus mode</p>
+                            <p className="text-xs text-slate-300">
+                                {documentType === 'quote' ? 'Quote' : 'Contract'} · Sample boat: Highfield Sport 560
+                            </p>
+                        </div>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setFocusMode(false)}
+                            className="h-9 px-4 rounded-lg font-black uppercase tracking-widest text-[10px] border-slate-700 bg-slate-800 hover:bg-slate-700 text-white gap-1.5"
+                        >
+                            <Minimize2 className="h-3.5 w-3.5" />
+                            Exit focus
+                        </Button>
+                    </div>
+
+                    {/* Full-bleed PDF viewer */}
+                    <div className="flex-1 min-h-0">
+                        <PDFViewer
+                            style={{ width: '100%', height: '100%', border: 0 }}
+                            showToolbar={true}
+                        >
+                            <ProposalPDFDocument
+                                quote={fixture.quote}
+                                organisation={fixture.organisation}
+                                financials={fixture.financials}
+                                contentBlocks={contentBlocksMap}
+                                pdfSections={pdfSections}
+                                salespersonProfile={salespersonProfile ?? undefined}
+                            />
+                        </PDFViewer>
+                    </div>
+                </div>
+            )}
+        </>
     );
 }
