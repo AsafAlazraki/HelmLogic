@@ -49,108 +49,158 @@ export function TipTapHtmlPdf({ html, style, fontSize = 9, color = '#334155' }: 
      *   <p>More text…</p>
      */
     const segments = html.split(/(<img[^>]*\/?>)/i);
-    return (
-        <View style={style}>
-            {segments.map((seg, i) => {
-                if (/^<img/i.test(seg)) {
-                    const srcMatch = seg.match(/src=(?:"([^"]+)"|'([^']+)')/i);
-                    const src = srcMatch ? (srcMatch[1] ?? srcMatch[2]) : null;
-                    if (!src) return <Fragment key={`img-${i}`} />;
+    const out: ReactNode[] = [];
 
-                    /**
-                     * v1.7 round-6 — @react-pdf <Image> only supports JPEG
-                     * and PNG. SVG / WebP / GIF render as nothing (the
-                     * round-5 bug — image visible in editor, missing on
-                     * PDF). Detect unsupported formats and show a clear
-                     * placeholder block instead of silently dropping it.
-                     *
-                     * Detection is path-based — reliable for normal
-                     * uploads (Firebase Storage URLs preserve the
-                     * filename + extension), good enough for the org-
-                     * authored content-blocks pipeline. Data URLs use
-                     * the MIME prefix.
-                     */
-                    const lower = src.toLowerCase();
-                    const isUnsupported =
-                        /\.svg(\?|$)/.test(lower) ||
-                        /\.webp(\?|$)/.test(lower) ||
-                        /\.gif(\?|$)/.test(lower) ||
-                        lower.startsWith('data:image/svg') ||
-                        lower.startsWith('data:image/webp') ||
-                        lower.startsWith('data:image/gif');
-                    if (isUnsupported) {
-                        if (typeof console !== 'undefined') {
-                            console.warn('[tiptap-pdf] Image format not supported by @react-pdf:', src);
-                        }
-                        return (
-                            <View
-                                key={`img-${i}`}
-                                style={{
-                                    width: '100%',
-                                    marginVertical: 8,
-                                    padding: 12,
-                                    borderWidth: 1,
-                                    borderColor: '#fde68a',
-                                    backgroundColor: '#fffbeb',
-                                    borderRadius: 4,
-                                }}
-                            >
-                                <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#92400e', marginBottom: 2 }}>
-                                    Image cannot render on PDF
-                                </Text>
-                                <Text style={{ fontSize: 7, color: '#92400e' }}>
-                                    The customer PDF supports JPG and PNG only. Replace this image with a JPG / PNG to make it appear on the customer&apos;s quote.
-                                </Text>
-                            </View>
-                        );
-                    }
+    /**
+     * v1.7 round-7 — index-based walk (was a .map) so we can
+     * "consume" the next text segment when an image is floated
+     * left/right. A floated image renders in a flex-row View
+     * alongside the immediately-following paragraph(s) — that's how
+     * we get Word-style text-wrap on the PDF, since @react-pdf has
+     * no native float / text-wrap support.
+     */
+    for (let i = 0; i < segments.length; i++) {
+        const seg = segments[i];
 
-                    /**
-                     * v1.7 round-5 — width + alignment support. The custom
-                     * Image extension in feature-rich-text-editor.tsx
-                     * serialises `data-width` (percentage like "50%") and
-                     * `data-align` (left|center|right) onto the <img> tag.
-                     * Default is 100% width centered if attrs are missing.
-                     *
-                     * @react-pdf <Image> needs an explicit width or it can
-                     * collapse to 0px in some layouts — this is the bug
-                     * users were hitting: image visible in the editor but
-                     * absent from the PDF. The wrapping <View> handles
-                     * alignment; the <Image> itself takes the width.
-                     */
-                    const widthMatch = seg.match(/data-width=(?:"([^"]+)"|'([^']+)')/i);
-                    const alignMatch = seg.match(/data-align=(?:"([^"]+)"|'([^']+)')/i);
-                    const width = (widthMatch ? (widthMatch[1] ?? widthMatch[2]) : '') || '100%';
-                    const align = ((alignMatch ? (alignMatch[1] ?? alignMatch[2]) : '') || 'center').toLowerCase();
-                    const alignItems =
-                        align === 'left'  ? 'flex-start' :
-                        align === 'right' ? 'flex-end'   :
-                                            'center';
-                    if (typeof console !== 'undefined') {
-                        console.info('[tiptap-pdf] rendering image:', { src, width, align });
-                    }
-                    return (
+        if (/^<img/i.test(seg)) {
+            const imgNode = renderImageSeg(seg, i, fontSize, color);
+            if (!imgNode) continue;
+
+            // Float-row branch: image is left/right aligned with width <100%
+            if (imgNode.kind === 'float') {
+                const nextSeg = segments[i + 1] ?? '';
+                const nextBlocks = parseBlocks(nextSeg);
+                // Only group when there's actually following text to wrap
+                if (nextBlocks.length > 0) {
+                    i++; // consume the next segment
+                    out.push(
                         <View
-                            key={`img-${i}`}
-                            style={{ width: '100%', marginVertical: 8, alignItems }}
+                            key={`flow-${i}`}
+                            style={{
+                                width: '100%',
+                                marginVertical: 8,
+                                flexDirection: imgNode.align === 'right' ? 'row-reverse' : 'row',
+                                gap: 14,
+                            }}
                         >
                             <Image
-                                src={src}
-                                style={{ width, maxWidth: '100%', maxHeight: 360, objectFit: 'contain' }}
+                                src={imgNode.src}
+                                style={{ width: imgNode.width, maxHeight: 360, objectFit: 'contain' }}
                             />
-                        </View>
+                            <View style={{ flex: 1 }}>
+                                {nextBlocks.map((b, j) => renderBlock(b, j, fontSize, color))}
+                            </View>
+                        </View>,
                     );
+                    continue;
                 }
-                const blocks = parseBlocks(seg);
-                if (blocks.length === 0) return <Fragment key={`seg-${i}`} />;
-                return (
-                    <Fragment key={`seg-${i}`}>
-                        {blocks.map((b, j) => renderBlock(b, j, fontSize, color))}
-                    </Fragment>
-                );
-            })}
-        </View>
-    );
+                // No following text — fall through to block render
+            }
+
+            // Block-level image (centered, full-width, or float w/ no follower)
+            if (imgNode.kind === 'placeholder') {
+                out.push(imgNode.element);
+                continue;
+            }
+            const alignItems =
+                imgNode.align === 'left'  ? 'flex-start' :
+                imgNode.align === 'right' ? 'flex-end'   :
+                                            'center';
+            out.push(
+                <View key={`img-${i}`} style={{ width: '100%', marginVertical: 8, alignItems }}>
+                    <Image
+                        src={imgNode.src}
+                        style={{ width: imgNode.width, maxWidth: '100%', maxHeight: 360, objectFit: 'contain' }}
+                    />
+                </View>,
+            );
+            continue;
+        }
+
+        const blocks = parseBlocks(seg);
+        if (blocks.length === 0) continue;
+        out.push(
+            <Fragment key={`seg-${i}`}>
+                {blocks.map((b, j) => renderBlock(b, j, fontSize, color))}
+            </Fragment>,
+        );
+    }
+
+    return <View style={style}>{out}</View>;
+}
+
+/**
+ * v1.7 round-7 — parse one <img> segment into a tagged union the
+ * caller branches on. Returns null for missing src.
+ *   - 'placeholder' for unsupported formats (SVG / WebP / GIF)
+ *   - 'float' for left/right alignment with width < 100%
+ *   - 'block' for centered, full-width, or no-alignment images
+ */
+type ImgSeg =
+    | { kind: 'placeholder'; element: ReactNode }
+    | { kind: 'float';       src: string; width: string; align: 'left' | 'right' }
+    | { kind: 'block';       src: string; width: string; align: 'left' | 'center' | 'right' };
+
+function renderImageSeg(seg: string, i: number, _fontSize: number, _color: string): ImgSeg | null {
+    const srcMatch = seg.match(/src=(?:"([^"]+)"|'([^']+)')/i);
+    const src = srcMatch ? (srcMatch[1] ?? srcMatch[2]) : null;
+    if (!src) return null;
+
+    // Unsupported-format placeholder (round-6).
+    const lower = src.toLowerCase();
+    const isUnsupported =
+        /\.svg(\?|$)/.test(lower) ||
+        /\.webp(\?|$)/.test(lower) ||
+        /\.gif(\?|$)/.test(lower) ||
+        lower.startsWith('data:image/svg') ||
+        lower.startsWith('data:image/webp') ||
+        lower.startsWith('data:image/gif');
+    if (isUnsupported) {
+        if (typeof console !== 'undefined') {
+            console.warn('[tiptap-pdf] Image format not supported by @react-pdf:', src);
+        }
+        return {
+            kind: 'placeholder',
+            element: (
+                <View
+                    key={`img-${i}`}
+                    style={{
+                        width: '100%',
+                        marginVertical: 8,
+                        padding: 12,
+                        borderWidth: 1,
+                        borderColor: '#fde68a',
+                        backgroundColor: '#fffbeb',
+                        borderRadius: 4,
+                    }}
+                >
+                    <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#92400e', marginBottom: 2 }}>
+                        Image cannot render on PDF
+                    </Text>
+                    <Text style={{ fontSize: 7, color: '#92400e' }}>
+                        The customer PDF supports JPG and PNG only. Replace this image with a JPG / PNG to make it appear on the customer&apos;s quote.
+                    </Text>
+                </View>
+            ),
+        };
+    }
+
+    const widthMatch = seg.match(/data-width=(?:"([^"]+)"|'([^']+)')/i);
+    const alignMatch = seg.match(/data-align=(?:"([^"]+)"|'([^']+)')/i);
+    const width = (widthMatch ? (widthMatch[1] ?? widthMatch[2]) : '') || '100%';
+    const alignRaw = ((alignMatch ? (alignMatch[1] ?? alignMatch[2]) : '') || 'center').toLowerCase();
+    const align: 'left' | 'center' | 'right' =
+        alignRaw === 'left' ? 'left' : alignRaw === 'right' ? 'right' : 'center';
+
+    if (typeof console !== 'undefined') {
+        console.info('[tiptap-pdf] rendering image:', { src, width, align });
+    }
+
+    // Float-row mode: left/right alignment with width < 100%
+    if ((align === 'left' || align === 'right') && width !== '100%') {
+        return { kind: 'float', src, width, align };
+    }
+    return { kind: 'block', src, width, align };
 }
 
 /* ──────────────────────────────────────────────────────────────────

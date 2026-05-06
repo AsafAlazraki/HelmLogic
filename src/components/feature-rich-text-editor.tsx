@@ -84,10 +84,23 @@ const ResizableImage = ImageExt.extend({
     renderHTML({ HTMLAttributes, node }) {
         const w = node.attrs.width || '100%';
         const align = node.attrs.align || 'center';
-        const styleParts = [`width: ${w}`, 'max-width: 100%', 'display: block'];
-        if (align === 'center') styleParts.push('margin-left: auto', 'margin-right: auto');
-        else if (align === 'right') styleParts.push('margin-left: auto', 'margin-right: 0');
-        else styleParts.push('margin-left: 0', 'margin-right: auto');
+        const styleParts = [`width: ${w}`, 'max-width: 100%'];
+
+        /**
+         * v1.7 round-7 — left/right alignment now uses CSS `float` so
+         * paragraphs that follow the image visually wrap around it
+         * (Word-style). Center alignment keeps the block-level
+         * treatment. Width 100% always falls back to block-level (a
+         * full-width image can't have text wrap around it).
+         */
+        if ((align === 'left' || align === 'right') && w !== '100%') {
+            styleParts.push(`float: ${align}`);
+            styleParts.push(align === 'left' ? 'margin: 4px 14px 8px 0' : 'margin: 4px 0 8px 14px');
+        } else {
+            styleParts.push('display: block');
+            if (align === 'center') styleParts.push('margin-left: auto', 'margin-right: auto');
+            else styleParts.push('margin: 8px 0');
+        }
         return [
             'img',
             mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, {
@@ -138,13 +151,16 @@ export function FeatureRichTextEditor({
             attributes: {
                 class: cn(
                     'prose prose-sm max-w-none p-3 focus:outline-none',
+                    // v1.7 round-7 — flow-root contains floated images
+                    // so they don't bleed out of the editor box.
+                    '[display:flow-root]',
                     '[&_h2]:text-base [&_h2]:font-bold [&_h2]:mt-2 [&_h2]:mb-1',
                     '[&_h3]:text-sm [&_h3]:font-bold [&_h3]:mt-1.5 [&_h3]:mb-1',
                     '[&_p]:text-sm [&_p]:my-1',
                     '[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-1 [&_ul_li]:text-sm',
                     '[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-1 [&_ol_li]:text-sm',
                     '[&_a]:text-blue-600 [&_a]:underline',
-                    '[&_img]:rounded-md [&_img]:max-w-full [&_img]:my-2',
+                    '[&_img]:rounded-md',
                 ),
             },
         },
@@ -173,6 +189,10 @@ function EditorToolbar({ editor, imageStoragePathPrefix }: { editor: Editor; ima
     const storage = useStorage();
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement | null>(null);
+    /** v1.7 round-7 — separate ref for the contextual "replace image"
+     *  picker so it doesn't collide with the standard "insert image"
+     *  picker (both are mounted simultaneously now). */
+    const imageReplaceInputRef = useRef<HTMLInputElement | null>(null);
     const [uploading, setUploading] = useState<boolean>(false);
 
     /** v1.7 round-5 — re-render the toolbar whenever the selection /
@@ -293,76 +313,14 @@ function EditorToolbar({ editor, imageStoragePathPrefix }: { editor: Editor; ima
     }
 
     /**
-     * v1.7 round-5 — when an image is selected, the toolbar swaps to
-     * a CONTEXTUAL strip with size pills (25/50/75/100), three align
-     * buttons (left / center / right), and a remove button. Click
-     * anywhere outside the image to bring back the standard toolbar.
-     */
-    if (imageActive) {
-        return (
-            <div className="flex items-center gap-1 border-b bg-blue-50/40 px-2 py-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-blue-700 mr-2">
-                    Image
-                </span>
-                <span className="text-[10px] uppercase tracking-wider text-slate-500 mr-1">Size</span>
-                {sizePill('25%', '25%', currentWidth)}
-                {sizePill('50%', '50%', currentWidth)}
-                {sizePill('75%', '75%', currentWidth)}
-                {sizePill('100%', '100%', currentWidth)}
-                <div className="w-px h-4 bg-slate-200 mx-1" />
-                <span className="text-[10px] uppercase tracking-wider text-slate-500 mr-1">Align</span>
-                {btn(
-                    currentAlign === 'left',
-                    () => editor.chain().focus().updateAttributes('image', { align: 'left' }).run(),
-                    'Align left',
-                    <AlignLeft className="h-3.5 w-3.5" />,
-                )}
-                {btn(
-                    currentAlign === 'center',
-                    () => editor.chain().focus().updateAttributes('image', { align: 'center' }).run(),
-                    'Align center',
-                    <AlignCenter className="h-3.5 w-3.5" />,
-                )}
-                {btn(
-                    currentAlign === 'right',
-                    () => editor.chain().focus().updateAttributes('image', { align: 'right' }).run(),
-                    'Align right',
-                    <AlignRight className="h-3.5 w-3.5" />,
-                )}
-                <div className="w-px h-4 bg-slate-200 mx-1" />
-                {imageStoragePathPrefix ? (
-                    <>
-                        {btn(
-                            false,
-                            () => fileInputRef.current?.click(),
-                            'Replace image',
-                            uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />,
-                            uploading,
-                        )}
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/jpeg,image/jpg,image/png"
-                            onChange={(e) => handleImagePick(e, true)}
-                            className="hidden"
-                        />
-                    </>
-                ) : null}
-                <div className="flex-1" />
-                <button
-                    type="button"
-                    onClick={() => editor.chain().focus().deleteSelection().run()}
-                    title="Remove image"
-                    className="h-7 px-2 rounded-md flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-red-600 hover:bg-red-50 transition-colors"
-                >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Remove
-                </button>
-            </div>
-        );
-    }
-
+     * v1.7 round-7 — toolbar always shows the standard text controls
+     * (H2/H3/Bold/Italic/lists/link/insert-image/undo/redo). When an
+     * image is selected, a SECOND row appears below it with the
+     * image-specific controls (size / align / replace / remove).
+     * Earlier round-5 swapped the toolbar entirely on image-selected,
+     * which hid the text formatting controls — that was wrong. */
     return (
+        <>
         <div className="flex items-center gap-0.5 border-b bg-slate-50/60 px-2 py-1">
             {btn(
                 editor.isActive('heading', { level: 2 }),
@@ -440,6 +398,72 @@ function EditorToolbar({ editor, imageStoragePathPrefix }: { editor: Editor; ima
                 <Redo className="h-3.5 w-3.5" />,
             )}
         </div>
+
+        {/* v1.7 round-7 — second toolbar row, only when an image is
+            selected. Image controls (size / align / replace / remove)
+            without hiding the standard text controls above. */}
+        {imageActive && (
+            <div className="flex items-center gap-1 border-b bg-blue-50/40 px-2 py-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-blue-700 mr-2">
+                    Image
+                </span>
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 mr-1">Size</span>
+                {sizePill('25%', '25%', currentWidth)}
+                {sizePill('50%', '50%', currentWidth)}
+                {sizePill('75%', '75%', currentWidth)}
+                {sizePill('100%', '100%', currentWidth)}
+                <div className="w-px h-4 bg-slate-200 mx-1" />
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 mr-1">Align</span>
+                {btn(
+                    currentAlign === 'left',
+                    () => editor.chain().focus().updateAttributes('image', { align: 'left' }).run(),
+                    'Align left — text wraps to the right',
+                    <AlignLeft className="h-3.5 w-3.5" />,
+                )}
+                {btn(
+                    currentAlign === 'center',
+                    () => editor.chain().focus().updateAttributes('image', { align: 'center' }).run(),
+                    'Center (no wrap)',
+                    <AlignCenter className="h-3.5 w-3.5" />,
+                )}
+                {btn(
+                    currentAlign === 'right',
+                    () => editor.chain().focus().updateAttributes('image', { align: 'right' }).run(),
+                    'Align right — text wraps to the left',
+                    <AlignRight className="h-3.5 w-3.5" />,
+                )}
+                <div className="w-px h-4 bg-slate-200 mx-1" />
+                {imageStoragePathPrefix ? (
+                    <>
+                        {btn(
+                            false,
+                            () => imageReplaceInputRef.current?.click(),
+                            'Replace image',
+                            uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />,
+                            uploading,
+                        )}
+                        <input
+                            ref={imageReplaceInputRef}
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png"
+                            onChange={(e) => handleImagePick(e, true)}
+                            className="hidden"
+                        />
+                    </>
+                ) : null}
+                <div className="flex-1" />
+                <button
+                    type="button"
+                    onClick={() => editor.chain().focus().deleteSelection().run()}
+                    title="Remove image"
+                    className="h-7 px-2 rounded-md flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-red-600 hover:bg-red-50 transition-colors"
+                >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Remove
+                </button>
+            </div>
+        )}
+        </>
     );
 }
 
