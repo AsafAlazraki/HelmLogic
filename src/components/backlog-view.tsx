@@ -111,17 +111,13 @@ export function BacklogView() {
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
 
     /** v1.7 polish-review seed — appends "✓ shipped" lines + retargets 1.8.2
-     *  to v1.7. Hidden once 1.2.1 has the "section headers match the
-     *  InnerHeader page-level style" line. */
+     *  to v1.7. Always visible: the seed is idempotent (skip-if-includes
+     *  check inside applyV17PolishReview), so re-clicking when nothing's
+     *  new is harmless. Earlier rounds hid the button once the round-2
+     *  marker line landed, but new rounds add new lines and the marker
+     *  was stale — leading to "button flashes then poofs" on refresh. */
     const [polishOpen, setPolishOpen] = useState(false);
     const [polishing, setPolishing] = useState(false);
-    const polishAlreadyApplied = useMemo(
-        () => (features ?? []).some(f =>
-            f.title?.startsWith('1.2.1 — Branded PDF Quote Generation') &&
-            (f.acceptanceCriteria ?? []).some((l: string) => l.includes('section headers across all content blocks'))
-        ),
-        [features],
-    );
 
     async function runPolishReview() {
         setPolishing(true);
@@ -260,17 +256,15 @@ export function BacklogView() {
                             <Plus className="h-4 w-4" />
                             New Epic
                         </Button>
-                        {!polishAlreadyApplied && (
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-600 hover:text-white gap-1.5 shadow-sm"
-                                onClick={() => setPolishOpen(true)}
-                            >
-                                <ClipboardEdit className="h-4 w-4" />
-                                Apply v1.7 polish review
-                            </Button>
-                        )}
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-600 hover:text-white gap-1.5 shadow-sm"
+                            onClick={() => setPolishOpen(true)}
+                        >
+                            <ClipboardEdit className="h-4 w-4" />
+                            Apply v1.7 polish review
+                        </Button>
                     </div>
                 </div>
             </div>
