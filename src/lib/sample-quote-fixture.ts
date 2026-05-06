@@ -25,7 +25,13 @@ export interface SampleQuoteFixture {
 const NOW = new Date();
 const VALID_UNTIL = new Date(NOW.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-/** Build a fresh fixture each call — keeps quoteNumber + dates current. */
+/** Build a fresh fixture each call — keeps quoteNumber + dates current.
+ *
+ *  v1.7 (round-4): accepts optional motor / trailer / vendor overrides so
+ *  the preview can splice REAL data fetched from Firestore (live motor +
+ *  trailer modules from the org's catalog, real vendor logo) over the
+ *  placeholder fixture. Financials recompute against the real prices
+ *  when overrides are supplied. */
 export function buildSampleQuoteFixture(opts: {
     organisationName?: string;
     primaryLogoUrl?: string | null;
@@ -33,6 +39,22 @@ export function buildSampleQuoteFixture(opts: {
     /** When provided, overrides the fixture's vendorId so brand-overrides
      *  are exercised in preview. */
     vendorId?: string | null;
+    /** Real cover image URL (or data URL) — overrides the fixture's null
+     *  default. The preview pre-fetches and passes a data URL to bypass
+     *  @react-pdf's per-render image fetch (first-page lag fix). */
+    coverImageUrl?: string | null;
+    /** Real vendor (boat brand) logo URL + display name from the
+     *  data-warehouse vendor doc. */
+    vendorName?: string | null;
+    vendorLogoUrl?: string | null;
+    /** Real motor splice — when provided, replaces the placeholder motor
+     *  entirely. Shape matches the real motor snapshot stored on a
+     *  finalized quote (see finalize-quote-dialog.tsx:250–281). */
+    motorOverride?: any | null;
+    /** Real trailer splice — when provided, replaces the placeholder
+     *  trailer entirely. Shape matches the real trailer snapshot stored
+     *  on a finalized quote (see finalize-quote-dialog.tsx:284–325). */
+    trailerOverride?: any | null;
 }): SampleQuoteFixture {
     const orgName = opts.organisationName || 'Your Organisation';
     const previewQuoteNumber = `PREVIEW-${NOW.getFullYear()}${String(NOW.getMonth() + 1).padStart(2, '0')}-001`;
@@ -151,10 +173,21 @@ export function buildSampleQuoteFixture(opts: {
         { id: 'df-warranty-pack', name: 'Extended Marine Warranty Package (3-year)',    sellPriceExclGst: 980,  cost: 420 },
     ];
 
+    /** Splice real motor / trailer overrides over the placeholders if the
+     *  preview fetched live data from Firestore. Real prices flow into
+     *  the financials so the breakdown table on page 3 stays consistent. */
+    const finalMotor = opts.motorOverride ? { ...motor, ...opts.motorOverride } : motor;
+    const finalTrailer = opts.trailerOverride ? { ...trailer, ...opts.trailerOverride } : trailer;
+
+    const motorAccessoriesTotal = (finalMotor.accessories ?? finalMotor.accessoryItems ?? [])
+        .reduce((s: number, a: any) => s + (a.sellPriceExclGst ?? 0), 0);
+    const trailerOptionsTotal = (finalTrailer.options ?? [])
+        .reduce((s: number, o: any) => s + (o.sellPriceExclGst ?? 0), 0);
+
     const boatBasePrice = variant.sellPriceExclGst;
     const optionsTotal = selectedOptions.reduce((s, o) => s + o.sellPriceExclGst, 0);
-    const motorTotal = motor.sellPriceExclGst + motor.accessoryItems.reduce((s, a) => s + a.sellPriceExclGst, 0);
-    const trailerTotal = trailer.sellPriceExclGst + trailer.options.reduce((s, o) => s + o.sellPriceExclGst, 0);
+    const motorTotal = (finalMotor.sellPriceExclGst ?? 0) + motorAccessoriesTotal;
+    const trailerTotal = (finalTrailer.sellPriceExclGst ?? 0) + trailerOptionsTotal;
     const dealerFitTotal = dealerFit.reduce((s, d) => s + d.sellPriceExclGst, 0);
     const regoTotal = 1480;
     const subtotalExclGst = boatBasePrice + optionsTotal + regoTotal + motorTotal + trailerTotal + dealerFitTotal;
@@ -163,8 +196,8 @@ export function buildSampleQuoteFixture(opts: {
 
     const boatCost = variant.cost;
     const optionsCost = optionsTotal * 0.65;
-    const motorCost = motor.cost + motor.accessoryItems.reduce((s, a) => s + a.sellPriceExclGst * 0.65, 0);
-    const trailerCost = trailer.cost + trailer.options.reduce((s, o) => s + o.sellPriceExclGst * 0.65, 0);
+    const motorCost = (finalMotor.cost ?? 0) + motorAccessoriesTotal * 0.65;
+    const trailerCost = (finalTrailer.cost ?? 0) + trailerOptionsTotal * 0.65;
     const dealerFitCost = dealerFit.reduce((s, d) => s + d.cost, 0);
     const totalDealCostExclGst = boatCost + optionsCost + motorCost + trailerCost + dealerFitCost + regoTotal;
 
@@ -187,8 +220,8 @@ export function buildSampleQuoteFixture(opts: {
             moduleName: 'Highfield Boats',
             moduleSlug: 'highfield',
             vendorId: opts.vendorId ?? 'highfield',
-            vendorName: 'Highfield',
-            vendorLogoUrl: null,
+            vendorName: opts.vendorName ?? 'Highfield',
+            vendorLogoUrl: opts.vendorLogoUrl ?? null,
             vendorCurrency: 'USD',
             rangeId: 'sport',
             rangeName: 'Sport',
@@ -196,12 +229,11 @@ export function buildSampleQuoteFixture(opts: {
             modelId: 'sport-560',
             modelName: 'Sport 560',
             modelCode: 'SP560',
-            // Hardcoded boat photo — Unsplash CDN, CORS-permissive, stable.
-            // (Free-use boat-on-water photo, closest visual approximation of
-            // a Highfield Sport 560 we have without burning a real Highfield
-            // CDN URL into the bundle.) v1.7.5 polish can swap to an actual
-            // Sport 560 URL from the org's Firebase Storage when ready.
-            coverImageUrl: 'https://images.unsplash.com/photo-1567899378494-47b22a2ae96a?auto=format&fit=crop&w=1600&q=80',
+            // Cover image comes from Firestore (real Highfield Sport 560
+            // model.coverImageUrl) via the preview component's pre-fetcher.
+            // Null fallback → cover renders the deep-navy gradient instead
+            // of a stock photo. No Unsplash baked in.
+            coverImageUrl: opts.coverImageUrl ?? null,
             specifications: {
                 otherSpecs: [
                     { label: 'Length',          value: '5.60 m' },
@@ -246,8 +278,8 @@ export function buildSampleQuoteFixture(opts: {
                 stickerOnly: false,
                 tenderTo: false,
             },
-            motor,
-            trailer,
+            motor: finalMotor,
+            trailer: finalTrailer,
             dealerFit,
             priceLevelUsed: 'hull_cash',
             promotions: { applied: [], discountTotal: 0 },

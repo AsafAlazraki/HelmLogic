@@ -17,7 +17,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { collection, doc, getDocs, limit, query } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query } from 'firebase/firestore';
 import { PDFViewer } from '@react-pdf/renderer';
 import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
 import { useDoc } from '@/firebase/firestore/use-doc';
@@ -37,6 +37,20 @@ import type { SalesTeamMember } from '@/lib/sales-team';
  *  fetches one model from this range and uses its real coverImageUrl. */
 const HIGHFIELD_VENDOR_ID = 'LafOLpLb6QIFE856TiD4';
 const SPORT_RANGE_ID = 'nQ2LE50z9Tbf2uss0Ote';
+
+/** Real trailer-brand vendor IDs (see scripts/seed-trailers.ts:154–165).
+ *  The preview walks these in order and uses the first trailer it finds
+ *  with usable specs, so the demo reflects what's actually in the org's
+ *  catalog rather than invented brand names. */
+const TRAILER_BRAND_VENDOR_IDS = [
+    'mackay-trailers',
+    'redco-tinka-trailers',
+    'gfab-trailers',
+    'stacer-trailers',
+    'dunbier-haines-bmt',
+    'dunbier-trailers',
+    'nsm-custom-trailers',
+];
 
 interface Props {
     /** v1.7 (1.8.12) — needed to resolve the current user's salesperson
@@ -81,12 +95,21 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
     );
     const { data: salespersonProfile } = useDoc<SalesTeamMember>(salespersonRef);
 
-    /** Fetch the real Highfield Sport 560 cover image URL once on mount.
-     *  Tries to match a model name containing "560" first (Sport 560 if
-     *  it exists); otherwise picks the first model with a coverImageUrl.
-     *  Quietly falls back to the fixture's Unsplash URL on any failure. */
+    /** v1.7 round-4 — fetch real motor + trailer + vendor logo from
+     *  Firestore so the preview shows what the customer would actually
+     *  see. No Unsplash, no invented brands, no fake categories. Walks
+     *  the canonical paths from the seed scripts:
+     *    motor:   data-warehouse/{motorVendorId}/dataSets/{ds}/rows
+     *    trailer: data-warehouse/{trailerVendorId}/series/{s}/trailers
+     *    vendor:  data-warehouse/{vendorId} (logoUrl field) */
+    const [realMotor, setRealMotor] = useState<any | null>(null);
+    const [realTrailer, setRealTrailer] = useState<any | null>(null);
+    const [realVendorLogoUrl, setRealVendorLogoUrl] = useState<string | null>(null);
+    const [realVendorName, setRealVendorName] = useState<string | null>(null);
+
     useEffect(() => {
         let cancelled = false;
+
         async function fetchHeroImage() {
             try {
                 const snap = await getDocs(query(
@@ -105,12 +128,201 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                     setHeroImageUrl(pick.data().coverImageUrl ?? null);
                 }
             } catch (e) {
-                console.warn('[preview] Highfield Sport 560 image fetch failed; falling back to Unsplash:', e);
+                console.warn('[preview] Sport 560 cover image fetch failed:', e);
             }
         }
+
+        async function fetchHighfieldVendor() {
+            try {
+                const vDoc = await getDoc(doc(firestore, 'data-warehouse', HIGHFIELD_VENDOR_ID));
+                if (cancelled || !vDoc.exists()) return;
+                const v = vDoc.data() as any;
+                setRealVendorLogoUrl(v.logoUrl ?? null);
+                setRealVendorName(v.name ?? null);
+            } catch (e) {
+                console.warn('[preview] Highfield vendor fetch failed:', e);
+            }
+        }
+
+        async function fetchRealMotor() {
+            try {
+                const vendorsSnap = await getDocs(collection(firestore, 'data-warehouse'));
+                if (cancelled) return;
+                const motorVendorDoc = vendorsSnap.docs.find(d => (d.data() as any).vendorType === 'Motor Brand');
+                if (!motorVendorDoc) return;
+                const motorVendor = { id: motorVendorDoc.id, ...motorVendorDoc.data() } as any;
+
+                const dataSetsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets`));
+                if (cancelled || dataSetsSnap.empty) return;
+
+                for (const ds of dataSetsSnap.docs) {
+                    if (cancelled) return;
+                    const rowsSnap = await getDocs(query(
+                        collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${ds.id}/rows`),
+                        limit(80),
+                    ));
+                    if (rowsSnap.empty) continue;
+                    const rows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+                    // Prefer a motor in the Sport 560's HP envelope (75–100 HP).
+                    const inEnvelope = rows.find(r => {
+                        const hp = String(r['HP Rating'] ?? r.hpRating ?? '');
+                        const m = hp.match(/(\d+)/);
+                        const n = m ? parseInt(m[1], 10) : NaN;
+                        return Number.isFinite(n) && n >= 75 && n <= 100 && (r.SummaryImage || r.imageUrl);
+                    });
+                    const withImage = rows.find(r => r.SummaryImage || r.imageUrl);
+                    const pick = inEnvelope ?? withImage ?? rows[0];
+                    if (!pick) continue;
+
+                    const rawImg = (pick.SummaryImage as string | undefined) ?? pick.imageUrl ?? null;
+                    const fullImg = !rawImg
+                        ? null
+                        : rawImg.startsWith('http')
+                            ? rawImg
+                            : `https://www.yamaha-motor.com.au${rawImg.startsWith('/') ? '' : '/'}${rawImg}`;
+                    const name = (pick['Model Name'] ?? pick.ModelName ?? pick.Model ?? pick.Description ?? pick.name ?? 'Outboard') as string;
+                    const sellPrice = (pick.priceLevels?.hull_cash ?? pick.sellPriceExclGst ?? 0) as number;
+                    const accessories = ((pick.masterAccessories ?? []) as any[])
+                        .filter(a => !a.isStandard)
+                        .slice(0, 8)
+                        .map(a => ({
+                            name: a.name,
+                            category: a.category ?? 'Other',
+                            sellPriceExclGst: a.sellPriceExclGst ?? 0,
+                            imageUrl: null,
+                        }));
+
+                    if (!cancelled) {
+                        setRealMotor({
+                            id: pick.id,
+                            name,
+                            brand: motorVendor.name ?? 'Yamaha',
+                            brandLogoUrl: motorVendor.logoUrl ?? null,
+                            imageUrl: fullImg,
+                            sellPriceExclGst: sellPrice,
+                            cost: pick.costPrice ?? pick.cost ?? Math.round(sellPrice * 0.7),
+                            hpRating: pick['HP Rating'] ?? pick.hpRating,
+                            shaftLength: pick['Shaft Length'] ?? pick.shaftLength ?? pick.Shaft,
+                            control: pick.control ?? pick.Control,
+                            starting: pick.starting ?? pick.Starting,
+                            tiltTrim: pick.tiltTrim ?? pick['Tilt & Trim'],
+                            fuelTank: pick.fuelTank ?? pick['Fuel Tank'],
+                            prop: pick.prop ?? pick.propType ?? pick.Prop,
+                            warranty: pick.warranty ?? pick.Warranty,
+                            accessories,
+                            accessoryItems: accessories.map((a: any) => ({ name: a.name, sellPriceExclGst: a.sellPriceExclGst })),
+                        });
+                    }
+                    return;
+                }
+            } catch (e) {
+                console.warn('[preview] real motor fetch failed:', e);
+            }
+        }
+
+        async function fetchRealTrailer() {
+            try {
+                for (const vid of TRAILER_BRAND_VENDOR_IDS) {
+                    if (cancelled) return;
+                    const vDoc = await getDoc(doc(firestore, 'data-warehouse', vid));
+                    if (!vDoc.exists()) continue;
+                    const vendor = { id: vid, ...vDoc.data() } as any;
+
+                    const seriesSnap = await getDocs(collection(firestore, `data-warehouse/${vid}/series`));
+                    if (cancelled) return;
+                    if (seriesSnap.empty) continue;
+
+                    for (const s of seriesSnap.docs) {
+                        if (cancelled) return;
+                        const trailersSnap = await getDocs(query(
+                            collection(firestore, `data-warehouse/${vid}/series/${s.id}/trailers`),
+                            limit(40),
+                        ));
+                        if (trailersSnap.empty) continue;
+                        const cands = trailersSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
+                        // Prefer a trailer rated for ~5–6 m hulls with an image.
+                        const sized = cands.find(t => {
+                            const sz = t.specifications?.boatSizeMtr;
+                            return typeof sz === 'number' && sz >= 5 && sz <= 6.5 && t.imageUrl;
+                        });
+                        const withImage = cands.find(t => t.imageUrl);
+                        const pick = sized ?? withImage ?? cands[0];
+                        if (!pick) continue;
+
+                        if (!cancelled) {
+                            setRealTrailer({
+                                id: pick.id,
+                                name: pick.name ?? pick.code ?? 'Trailer',
+                                brand: vendor.name ?? vid,
+                                brandLogoUrl: vendor.logoUrl ?? null,
+                                imageUrl: pick.imageUrl ?? null,
+                                sellPriceExclGst: pick.sellPriceExclGst ?? 0,
+                                cost: pick.cost ?? Math.round((pick.sellPriceExclGst ?? 0) * 0.7),
+                                catalog: {
+                                    brandVendorId: vid,
+                                    brandName: vendor.name ?? vid,
+                                    seriesId: s.id,
+                                    seriesName: (s.data() as any).name ?? '',
+                                    trailerId: pick.id,
+                                    code: pick.code ?? '',
+                                    imageUrl: pick.imageUrl ?? null,
+                                    specifications: pick.specifications ?? {},
+                                },
+                                options: ((pick.optionalFeatures ?? []) as any[]).slice(0, 6).map(o => ({
+                                    id: o.id,
+                                    name: o.name,
+                                    sellPriceExclGst: o.sellExclGst ?? 0,
+                                })),
+                            });
+                        }
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn('[preview] real trailer fetch failed:', e);
+            }
+        }
+
+        // Run all four fetchers in parallel — they're independent.
         fetchHeroImage();
+        fetchHighfieldVendor();
+        fetchRealMotor();
+        fetchRealTrailer();
         return () => { cancelled = true; };
     }, [firestore]);
+
+    /** v1.7 round-4 — pre-fetch the cover image as a base64 data URL so
+     *  @react-pdf doesn't re-fetch + decode it on every regeneration of
+     *  the document tree. The cover image is the heaviest asset on
+     *  page 1; without this, the preview's first page lags every time
+     *  a content block is edited (the inner pages don't because they
+     *  have no remote images). Falls through to the URL form on any
+     *  failure (CORS, 404, etc.). */
+    const [coverDataUrl, setCoverDataUrl] = useState<string | null>(null);
+    useEffect(() => {
+        if (!heroImageUrl) {
+            setCoverDataUrl(null);
+            return;
+        }
+        let cancelled = false;
+        (async () => {
+            try {
+                const resp = await fetch(heroImageUrl, { mode: 'cors' });
+                if (!resp.ok) return;
+                const blob = await resp.blob();
+                const dataUrl: string = await new Promise((resolve, reject) => {
+                    const r = new FileReader();
+                    r.onloadend = () => resolve(r.result as string);
+                    r.onerror = reject;
+                    r.readAsDataURL(blob);
+                });
+                if (!cancelled) setCoverDataUrl(dataUrl);
+            } catch (e) {
+                // CORS or network — fall back to URL form, @react-pdf will fetch it.
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [heroImageUrl]);
 
     /** Resolve content blocks → blockType → html map for the active
      *  documentType. No brand-override resolution in the preview path. */
@@ -130,23 +342,24 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
         return result;
     }, [blocks, documentType]);
 
-    /** Hardcoded fixture — Highfield Sport 560 with full options. The
-     *  cover image URL is overridden by the real Highfield Sport 560
-     *  image when the fetch succeeds. */
+    /** v1.7 round-4 — fixture splices in real motor / trailer / vendor /
+     *  cover-image data when the Firestore fetchers complete. Sections
+     *  fall back to the placeholder fixture entries (which use real
+     *  brand names + real category names) until the live data arrives.
+     *  No Unsplash, no invented brands, no fake categories. */
     const fixture = useMemo(
-        () => {
-            const base = buildSampleQuoteFixture({
-                organisationName,
-                primaryLogoUrl,
-                secondaryLogoUrl,
-                vendorId: null,
-            });
-            if (heroImageUrl) {
-                base.quote.coverImageUrl = heroImageUrl;
-            }
-            return base;
-        },
-        [organisationName, primaryLogoUrl, secondaryLogoUrl, heroImageUrl],
+        () => buildSampleQuoteFixture({
+            organisationName,
+            primaryLogoUrl,
+            secondaryLogoUrl,
+            vendorId: null,
+            coverImageUrl: coverDataUrl ?? heroImageUrl ?? null,
+            vendorName: realVendorName,
+            vendorLogoUrl: realVendorLogoUrl,
+            motorOverride: realMotor,
+            trailerOverride: realTrailer,
+        }),
+        [organisationName, primaryLogoUrl, secondaryLogoUrl, heroImageUrl, coverDataUrl, realVendorName, realVendorLogoUrl, realMotor, realTrailer],
     );
 
     /** v1.7 perf — debounce the PDF inputs. Editing in TipTap fires
