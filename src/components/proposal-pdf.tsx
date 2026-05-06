@@ -340,14 +340,10 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                         <Rect x="0" y="0" width="595" height="842" fill="url(#bottomDark)" />
                     </Svg>
 
-                    {/* Logo bar — overlays the top white gradient. Org on the
-                        left; cascade of vendor/motor/trailer brand pills on the
-                        right (boat brand → powered by → trailer by) so the
-                        customer can see the full provenance of the package at
-                        a glance. Each pill is auto-fallback-to-text when no
-                        logo URL is supplied — keeps the design intentional even
-                        when only some brands have logo assets uploaded. */}
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 48, paddingTop: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    {/* Logo bar — overlays the top white gradient. Org logo
+                        on the left, vendor logo on the right (the boat brand,
+                        e.g. Highfield). Single right-side logo — no cascade. */}
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 48, paddingTop: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 80 }}>
                         {/* Org logo */}
                         {organisation?.primaryLogoUrl ? (
                             <Image src={organisation.primaryLogoUrl} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
@@ -357,54 +353,14 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                             </Text>
                         )}
 
-                        {/* Right-side cascade — three stacked brand pills */}
-                        <View style={{ flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
-                            {/* Boat brand (vendor) — primary */}
-                            {(quote.vendorLogoUrl || quote.vendorName) && (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 4, paddingHorizontal: 9, paddingVertical: 5, borderWidth: 0.5, borderColor: 'rgba(15,23,42,0.08)' }}>
-                                    <Text style={{ fontSize: 5.5, fontWeight: 'bold', color: MUTED, letterSpacing: 1.8, textTransform: 'uppercase', marginRight: 7 }}>
-                                        Vessel
-                                    </Text>
-                                    {quote.vendorLogoUrl ? (
-                                        <Image src={quote.vendorLogoUrl} style={{ height: 18, maxWidth: 100, objectFit: 'contain' }} />
-                                    ) : (
-                                        <Text style={{ fontSize: 9, fontWeight: 'bold', color: NAVY, letterSpacing: 1, textTransform: 'uppercase' }}>
-                                            {quote.vendorName}
-                                        </Text>
-                                    )}
-                                </View>
-                            )}
-                            {/* Motor brand */}
-                            {quote.motor && (quote.motor.brandLogoUrl || quote.motor.brand) && (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 4, paddingHorizontal: 9, paddingVertical: 4, borderWidth: 0.5, borderColor: 'rgba(15,23,42,0.08)' }}>
-                                    <Text style={{ fontSize: 5.5, fontWeight: 'bold', color: MUTED, letterSpacing: 1.8, textTransform: 'uppercase', marginRight: 7 }}>
-                                        Powered By
-                                    </Text>
-                                    {quote.motor.brandLogoUrl ? (
-                                        <Image src={quote.motor.brandLogoUrl} style={{ height: 14, maxWidth: 80, objectFit: 'contain' }} />
-                                    ) : (
-                                        <Text style={{ fontSize: 8, fontWeight: 'bold', color: NAVY, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-                                            {quote.motor.brand}
-                                        </Text>
-                                    )}
-                                </View>
-                            )}
-                            {/* Trailer brand */}
-                            {quote.trailer && (quote.trailer.brandLogoUrl || quote.trailer.brand || quote.trailer.catalog?.brandName) && (
-                                <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 4, paddingHorizontal: 9, paddingVertical: 4, borderWidth: 0.5, borderColor: 'rgba(15,23,42,0.08)' }}>
-                                    <Text style={{ fontSize: 5.5, fontWeight: 'bold', color: MUTED, letterSpacing: 1.8, textTransform: 'uppercase', marginRight: 7 }}>
-                                        Trailer By
-                                    </Text>
-                                    {quote.trailer.brandLogoUrl ? (
-                                        <Image src={quote.trailer.brandLogoUrl} style={{ height: 14, maxWidth: 80, objectFit: 'contain' }} />
-                                    ) : (
-                                        <Text style={{ fontSize: 8, fontWeight: 'bold', color: NAVY, letterSpacing: 0.8, textTransform: 'uppercase' }}>
-                                            {quote.trailer.brand || quote.trailer.catalog?.brandName}
-                                        </Text>
-                                    )}
-                                </View>
-                            )}
-                        </View>
+                        {/* Vendor (boat brand) logo on the right */}
+                        {quote.vendorLogoUrl ? (
+                            <Image src={quote.vendorLogoUrl} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
+                        ) : quote.vendorName ? (
+                            <Text style={{ fontSize: 13, fontWeight: 'bold', color: NAVY, letterSpacing: 1 }}>
+                                {quote.vendorName.toUpperCase()}
+                            </Text>
+                        ) : null}
                     </View>
 
                     {/* ── Bottom hero block ── */}
@@ -619,9 +575,11 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     ].filter(s => s.value);
                     return (
                     <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
-                        {/* Motor header with image */}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <View style={{ flexShrink: 1, flex: 1 }}>
+                        {/* Motor header — left: title + brand. Right: price.
+                            Photo (when present) sits as a banner ABOVE the
+                            specs grid so it doesn't crash into the price. */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: quote.motor.imageUrl ? 10 : 0 }}>
+                            <View style={{ flexShrink: 1, flex: 1, paddingRight: 14 }}>
                                 <Text style={[S.sectionLabel, { marginBottom: 4 }]}>Propulsion System</Text>
                                 {quote.motor.brandLogoUrl && (
                                     <Image src={quote.motor.brandLogoUrl} style={{ height: 16, maxWidth: 70, objectFit: 'contain', marginBottom: 4 }} />
@@ -633,13 +591,11 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                     {quote.motor.brand}
                                 </Text>
                             </View>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                {quote.motor.imageUrl && (
-                                    <Image src={quote.motor.imageUrl} style={{ height: 72, width: 72, objectFit: 'contain', marginRight: 12 }} />
-                                )}
-                                <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(quote.motor.sellPriceExclGst || 0)}</Text>
-                            </View>
+                            <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY, flexShrink: 0 }}>{currency(quote.motor.sellPriceExclGst || 0)}</Text>
                         </View>
+                        {quote.motor.imageUrl && (
+                            <Image src={quote.motor.imageUrl} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 4, marginBottom: 6 }} />
+                        )}
 
                         {/* Motor Specifications */}
                         {motorSpecs.length > 0 && (
@@ -728,9 +684,11 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
 
                     return (
                         <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
-                            {/* Trailer header with image */}
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <View style={{ flexShrink: 1, flex: 1 }}>
+                            {/* Trailer header — left: title + brand. Right: price.
+                                Photo (when present) is a banner above the
+                                specs grid (matches motor section layout). */}
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: trailerImg ? 10 : 0 }}>
+                                <View style={{ flexShrink: 1, flex: 1, paddingRight: 14 }}>
                                     <Text style={[S.sectionLabel, { marginBottom: 4 }]}>Trailer Package</Text>
                                     {quote.trailer.brandLogoUrl && (
                                         <Image src={quote.trailer.brandLogoUrl} style={{ height: 16, maxWidth: 70, objectFit: 'contain', marginBottom: 4 }} />
@@ -744,13 +702,11 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                         </Text>
                                     ) : null}
                                 </View>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    {trailerImg && (
-                                        <Image src={trailerImg} style={{ height: 72, width: 96, objectFit: 'cover', marginRight: 12, borderRadius: 4 }} />
-                                    )}
-                                    <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(quote.trailer.sellPriceExclGst || 0)}</Text>
-                                </View>
+                                <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY, flexShrink: 0 }}>{currency(quote.trailer.sellPriceExclGst || 0)}</Text>
                             </View>
+                            {trailerImg && (
+                                <Image src={trailerImg} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 4, marginBottom: 6 }} />
+                            )}
 
                             {/* Trailer Specifications */}
                             {trailerSpecs.length > 0 && (
