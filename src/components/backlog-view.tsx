@@ -28,6 +28,7 @@ import {
     CheckCircle2,
     ChevronRight,
     ClipboardEdit,
+    FileSearch,
     HelpCircle,
     Layers,
     Loader2,
@@ -118,6 +119,26 @@ export function BacklogView() {
      *  was stale — leading to "button flashes then poofs" on refresh. */
     const [polishOpen, setPolishOpen] = useState(false);
     const [polishing, setPolishing] = useState(false);
+
+    /** v1.7 round-8 — diagnostic dialog: triple-confirms what's actually
+     *  in Firestore for v1.7 stories before shipping dev → main. Shows
+     *  count, status breakdown, and any titles flagged for review. */
+    const [auditOpen, setAuditOpen] = useState(false);
+    const v17Audit = useMemo(() => {
+        const v17 = (features ?? []).filter(f => (f as any).targetRelease === 'v1.7');
+        const total = v17.length;
+        const shipped = v17.filter(f => ((f as any).status as string) === 'shipped').length;
+        const inProgress = v17.filter(f => ((f as any).status as string) === 'in_progress').length;
+        const pending = total - shipped - inProgress;
+        const points = v17.reduce((s, f) => s + (((f as any).points as number | undefined) ?? 0), 0);
+        const titles = v17.map(f => ({
+            title: (f as any).title as string,
+            status: ((f as any).status as string) ?? 'pending',
+            points: ((f as any).points as number | undefined) ?? 0,
+            acCount: Array.isArray((f as any).acceptanceCriteria) ? (f as any).acceptanceCriteria.length : 0,
+        })).sort((a, b) => a.title.localeCompare(b.title));
+        return { total, shipped, inProgress, pending, points, titles };
+    }, [features]);
 
     async function runPolishReview() {
         setPolishing(true);
@@ -265,6 +286,15 @@ export function BacklogView() {
                             <ClipboardEdit className="h-4 w-4" />
                             Apply v1.7 polish review
                         </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="bg-slate-100 text-slate-800 border-slate-300 hover:bg-slate-200 gap-1.5 shadow-sm"
+                            onClick={() => setAuditOpen(true)}
+                        >
+                            <FileSearch className="h-4 w-4" />
+                            Audit v1.7 ({v17Audit.total})
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -380,6 +410,89 @@ export function BacklogView() {
                                 </>
                             )}
                         </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* v1.7 round-8 — story audit dialog: triple-confirm Firestore
+                state of every v1.7 story before shipping dev → main. */}
+            <AlertDialog open={auditOpen} onOpenChange={setAuditOpen}>
+                <AlertDialogContent className="max-w-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <FileSearch className="h-4 w-4 text-slate-700" />
+                            v1.7 Firestore audit
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-3 text-xs text-slate-600">
+                                <div className="grid grid-cols-4 gap-2">
+                                    <div className="rounded-md border bg-slate-50 p-3">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Total</p>
+                                        <p className="text-2xl font-black text-slate-900">{v17Audit.total}</p>
+                                    </div>
+                                    <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-700">Shipped</p>
+                                        <p className="text-2xl font-black text-emerald-700">{v17Audit.shipped}</p>
+                                    </div>
+                                    <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-blue-700">In progress</p>
+                                        <p className="text-2xl font-black text-blue-700">{v17Audit.inProgress}</p>
+                                    </div>
+                                    <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                                        <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">Pending</p>
+                                        <p className="text-2xl font-black text-amber-700">{v17Audit.pending}</p>
+                                    </div>
+                                </div>
+                                <p className="text-[11px]">
+                                    Total points: <strong>{v17Audit.points}</strong> (cap: 20)
+                                </p>
+                                <div className="max-h-72 overflow-y-auto rounded-md border bg-white">
+                                    <table className="w-full text-[11px]">
+                                        <thead className="bg-slate-50 sticky top-0">
+                                            <tr className="text-left">
+                                                <th className="px-2 py-1.5 font-bold text-slate-600">Story</th>
+                                                <th className="px-2 py-1.5 font-bold text-slate-600 w-24">Status</th>
+                                                <th className="px-2 py-1.5 font-bold text-slate-600 w-12">Pts</th>
+                                                <th className="px-2 py-1.5 font-bold text-slate-600 w-12">AC</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {v17Audit.titles.map((t, i) => (
+                                                <tr key={i} className="border-t">
+                                                    <td className="px-2 py-1.5 font-mono text-[10px] truncate">{t.title}</td>
+                                                    <td className="px-2 py-1.5">
+                                                        <span className={
+                                                            t.status === 'shipped' ? 'text-emerald-700 font-bold' :
+                                                            t.status === 'in_progress' ? 'text-blue-700 font-bold' :
+                                                            'text-amber-700 font-bold'
+                                                        }>
+                                                            {t.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-2 py-1.5">{t.points}</td>
+                                                    <td className="px-2 py-1.5">{t.acCount}</td>
+                                                </tr>
+                                            ))}
+                                            {v17Audit.titles.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={4} className="px-2 py-3 text-center text-slate-500 italic">
+                                                        No stories tagged targetRelease=v1.7 in Firestore.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p className="text-[11px] text-slate-500 pt-1">
+                                    Live snapshot from Firestore <code>features</code> collection. Status comes
+                                    from the <code>status</code> field on each doc; if it&apos;s unset / not
+                                    &apos;shipped&apos;/&apos;in_progress&apos;, it counts as Pending.
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Close</AlertDialogCancel>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

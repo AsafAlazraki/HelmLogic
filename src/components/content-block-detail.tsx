@@ -459,13 +459,7 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                             </div>
                         </div>
                     ) : hasContentInCurrentSurface ? (
-                        <article
-                            className={cn(
-                                'prose prose-sm max-w-none text-slate-700',
-                                '[&_p]:my-2 [&_h2]:text-base [&_h3]:text-sm',
-                            )}
-                            dangerouslySetInnerHTML={{ __html: currentHtml }}
-                        />
+                        <RawHtmlInspectableView html={currentHtml} />
                     ) : (
                         <div className="flex flex-col items-center justify-center py-12 text-center text-slate-400 border-2 border-dashed rounded-lg bg-white">
                             <FileText className="h-8 w-8 mb-3" />
@@ -578,6 +572,96 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                 blockId={block?.id ?? null}
                 onRestore={handleRestore}
             />
+        </div>
+    );
+}
+
+/**
+ * v1.7 round-8 — read-only content viewer that lets us inspect what's
+ * actually saved in Firestore for diagnostic purposes. Toggle between
+ * the rendered-HTML view (default) and the raw HTML / detected image
+ * URLs (debug). The image URL list is the actual fix for the
+ * "image visible in editor, missing from PDF" debug — it tells us
+ * exactly what URL the PDF parser is being asked to render and what
+ * extension it has.
+ */
+function RawHtmlInspectableView({ html }: { html: string }) {
+    const [showRaw, setShowRaw] = useState(false);
+    const imgUrls = useMemo(() => {
+        const urls: { src: string; lower: string; verdict: string }[] = [];
+        const re = /<img[^>]*src=(?:"([^"]+)"|'([^']+)')[^>]*\/?>/gi;
+        let m: RegExpExecArray | null;
+        while ((m = re.exec(html)) !== null) {
+            const src = m[1] ?? m[2];
+            if (!src) continue;
+            const lower = src.toLowerCase();
+            const isUnsupported =
+                /\.svg(\?|$)/.test(lower) ||
+                /\.webp(\?|$)/.test(lower) ||
+                /\.gif(\?|$)/.test(lower) ||
+                lower.startsWith('data:image/svg') ||
+                lower.startsWith('data:image/webp') ||
+                lower.startsWith('data:image/gif');
+            const noExt = !/\.(png|jpe?g|svg|webp|gif|bmp|tiff?)(\?|$)/.test(lower);
+            const verdict = isUnsupported
+                ? 'UNSUPPORTED — placeholder will render on PDF (SVG/WebP/GIF)'
+                : noExt
+                    ? 'NO EXTENSION — render outcome unknown (could be SVG without extension)'
+                    : 'JPG/PNG (should render)';
+            urls.push({ src, lower, verdict });
+        }
+        return urls;
+    }, [html]);
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                    {showRaw ? 'Raw HTML (Firestore)' : 'Rendered'}
+                </p>
+                <button
+                    type="button"
+                    onClick={() => setShowRaw(s => !s)}
+                    className="text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-slate-800 underline-offset-2 hover:underline"
+                >
+                    {showRaw ? 'Show rendered' : 'Show raw HTML'}
+                </button>
+            </div>
+            {showRaw ? (
+                <>
+                    {imgUrls.length > 0 && (
+                        <div className="rounded-md border-2 border-amber-200 bg-amber-50 p-3 space-y-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-800">
+                                Detected images ({imgUrls.length})
+                            </p>
+                            {imgUrls.map((u, i) => (
+                                <div key={i} className="text-[10px] font-mono break-all bg-white border border-amber-200 rounded p-2 space-y-1">
+                                    <div className="text-slate-700">{u.src}</div>
+                                    <div className={cn(
+                                        'text-[9px] font-bold uppercase',
+                                        u.verdict.startsWith('UNSUPPORTED') ? 'text-red-700' :
+                                        u.verdict.startsWith('NO EXTENSION') ? 'text-amber-700' :
+                                        'text-emerald-700',
+                                    )}>
+                                        {u.verdict}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <pre className="text-[10px] font-mono bg-slate-900 text-slate-100 rounded p-3 overflow-auto max-h-64 whitespace-pre-wrap break-all">
+                        {html}
+                    </pre>
+                </>
+            ) : (
+                <article
+                    className={cn(
+                        'prose prose-sm max-w-none text-slate-700',
+                        '[&_p]:my-2 [&_h2]:text-base [&_h3]:text-sm',
+                    )}
+                    dangerouslySetInnerHTML={{ __html: html }}
+                />
+            )}
         </div>
     );
 }
