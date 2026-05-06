@@ -106,6 +106,15 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
     const [realTrailer, setRealTrailer] = useState<any | null>(null);
     const [realVendorLogoUrl, setRealVendorLogoUrl] = useState<string | null>(null);
     const [realVendorName, setRealVendorName] = useState<string | null>(null);
+    /** v1.7 round-8 — surface fetcher status in the preview header so
+     *  the user sees WHY motor / trailer photos may be missing (no real
+     *  data seeded for that vendor in Firestore). Cleaner than digging
+     *  through the browser console. */
+    const [fetchStatus, setFetchStatus] = useState<{
+        motor: 'pending' | 'found' | 'no-vendor' | 'no-rows' | 'error';
+        trailer: 'pending' | 'found' | 'no-vendor' | 'no-rows' | 'error';
+        vendorLogo: 'pending' | 'found' | 'missing';
+    }>({ motor: 'pending', trailer: 'pending', vendorLogo: 'pending' });
 
     useEffect(() => {
         let cancelled = false;
@@ -135,12 +144,17 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
         async function fetchHighfieldVendor() {
             try {
                 const vDoc = await getDoc(doc(firestore, 'data-warehouse', HIGHFIELD_VENDOR_ID));
-                if (cancelled || !vDoc.exists()) return;
+                if (cancelled || !vDoc.exists()) {
+                    if (!cancelled) setFetchStatus(s => ({ ...s, vendorLogo: 'missing' }));
+                    return;
+                }
                 const v = vDoc.data() as any;
                 setRealVendorLogoUrl(v.logoUrl ?? null);
                 setRealVendorName(v.name ?? null);
+                if (!cancelled) setFetchStatus(s => ({ ...s, vendorLogo: v.logoUrl ? 'found' : 'missing' }));
             } catch (e) {
                 console.warn('[preview] Highfield vendor fetch failed:', e);
+                if (!cancelled) setFetchStatus(s => ({ ...s, vendorLogo: 'missing' }));
             }
         }
 
@@ -149,11 +163,20 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                 const vendorsSnap = await getDocs(collection(firestore, 'data-warehouse'));
                 if (cancelled) return;
                 const motorVendorDoc = vendorsSnap.docs.find(d => (d.data() as any).vendorType === 'Motor Brand');
-                if (!motorVendorDoc) return;
+                if (!motorVendorDoc) {
+                    console.warn('[preview] no vendor with vendorType=Motor Brand in data-warehouse');
+                    if (!cancelled) setFetchStatus(s => ({ ...s, motor: 'no-vendor' }));
+                    return;
+                }
                 const motorVendor = { id: motorVendorDoc.id, ...motorVendorDoc.data() } as any;
 
                 const dataSetsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets`));
-                if (cancelled || dataSetsSnap.empty) return;
+                if (cancelled) return;
+                if (dataSetsSnap.empty) {
+                    console.warn(`[preview] no dataSets under data-warehouse/${motorVendor.id}`);
+                    if (!cancelled) setFetchStatus(s => ({ ...s, motor: 'no-rows' }));
+                    return;
+                }
 
                 for (const ds of dataSetsSnap.docs) {
                     if (cancelled) return;
@@ -212,20 +235,27 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                             accessories,
                             accessoryItems: accessories.map((a: any) => ({ name: a.name, sellPriceExclGst: a.sellPriceExclGst })),
                         });
+                        setFetchStatus(s => ({ ...s, motor: 'found' }));
                     }
                     return;
                 }
+                // Walked all dataSets, found no usable rows
+                if (!cancelled) setFetchStatus(s => ({ ...s, motor: 'no-rows' }));
             } catch (e) {
                 console.warn('[preview] real motor fetch failed:', e);
+                if (!cancelled) setFetchStatus(s => ({ ...s, motor: 'error' }));
             }
         }
 
         async function fetchRealTrailer() {
             try {
+                let anyVendorFound = false;
+                let anyTrailersFound = false;
                 for (const vid of TRAILER_BRAND_VENDOR_IDS) {
                     if (cancelled) return;
                     const vDoc = await getDoc(doc(firestore, 'data-warehouse', vid));
                     if (!vDoc.exists()) continue;
+                    anyVendorFound = true;
                     const vendor = { id: vid, ...vDoc.data() } as any;
 
                     const seriesSnap = await getDocs(collection(firestore, `data-warehouse/${vid}/series`));
@@ -239,6 +269,7 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                             limit(40),
                         ));
                         if (trailersSnap.empty) continue;
+                        anyTrailersFound = true;
                         const cands = trailersSnap.docs.map(d => ({ id: d.id, ...d.data() })) as any[];
                         // Prefer a trailer rated for ~5–6 m hulls with an image.
                         const sized = cands.find(t => {
@@ -274,12 +305,26 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                                     sellPriceExclGst: o.sellExclGst ?? 0,
                                 })),
                             });
+                            setFetchStatus(s => ({ ...s, trailer: 'found' }));
                         }
                         return;
                     }
                 }
+                // Walked all 7 vendors, didn't find a usable trailer
+                if (!cancelled) {
+                    if (!anyVendorFound) {
+                        console.warn('[preview] none of the 7 trailer-brand vendor IDs exist in data-warehouse');
+                        setFetchStatus(s => ({ ...s, trailer: 'no-vendor' }));
+                    } else if (!anyTrailersFound) {
+                        console.warn('[preview] trailer brand vendors exist but no series/trailers under any of them');
+                        setFetchStatus(s => ({ ...s, trailer: 'no-rows' }));
+                    } else {
+                        setFetchStatus(s => ({ ...s, trailer: 'no-rows' }));
+                    }
+                }
             } catch (e) {
                 console.warn('[preview] real trailer fetch failed:', e);
+                if (!cancelled) setFetchStatus(s => ({ ...s, trailer: 'error' }));
             }
         }
 
@@ -472,6 +517,14 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                             <p className="text-[10px] text-slate-500 mt-0.5">
                                 All sections in render order · regenerates 1.5s after edits settle
                             </p>
+                            {/* v1.7 round-8 — real-data fetcher status pills.
+                                Surfaces WHY motor/trailer photos may be missing
+                                (no real data seeded for that vendor in Firestore). */}
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                                <FetchPill label="Vendor" status={fetchStatus.vendorLogo} />
+                                <FetchPill label="Motor" status={fetchStatus.motor} />
+                                <FetchPill label="Trailer" status={fetchStatus.trailer} />
+                            </div>
                         </div>
                         <Button
                             size="sm"
@@ -539,5 +592,48 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                 </div>
             )}
         </>
+    );
+}
+
+/**
+ * v1.7 round-8 — small status pill that tells the operator whether
+ * the real-data fetcher found motor / trailer / vendor data in
+ * Firestore. Green when data was loaded, amber when missing (with a
+ * tooltip explaining why), grey while pending. Tells the user at a
+ * glance why a motor / trailer photo is or isn't showing on the PDF.
+ */
+function FetchPill({
+    label,
+    status,
+}: {
+    label: string;
+    status: 'pending' | 'found' | 'no-vendor' | 'no-rows' | 'missing' | 'error';
+}) {
+    const isGreen = status === 'found';
+    const isGrey = status === 'pending';
+    const tooltip =
+        status === 'found'      ? `${label}: real data loaded from Firestore.` :
+        status === 'pending'    ? `${label}: fetching…` :
+        status === 'no-vendor'  ? `${label}: no matching vendor seeded in data-warehouse. Photo + specs in PDF will be empty / placeholder until you add one.` :
+        status === 'no-rows'    ? `${label}: vendor exists but no rows under it. Photo + specs will be empty.` :
+        status === 'missing'    ? `${label}: vendor doc missing or has no logoUrl.` :
+                                  `${label}: fetch failed — see browser console.`;
+    return (
+        <span
+            title={tooltip}
+            className={
+                'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest border ' +
+                (isGreen
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : isGrey
+                        ? 'bg-slate-50 text-slate-500 border-slate-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200')
+            }
+        >
+            <span className={'w-1.5 h-1.5 rounded-full ' + (isGreen ? 'bg-emerald-500' : isGrey ? 'bg-slate-400' : 'bg-amber-500')} />
+            {label}
+            {isGreen && ' ✓'}
+            {!isGreen && !isGrey && ' missing'}
+        </span>
     );
 }

@@ -143,8 +143,29 @@ type ImgSeg =
 
 function renderImageSeg(seg: string, i: number, _fontSize: number, _color: string): ImgSeg | null {
     const srcMatch = seg.match(/src=(?:"([^"]+)"|'([^']+)')/i);
-    const src = srcMatch ? (srcMatch[1] ?? srcMatch[2]) : null;
-    if (!src) return null;
+    const rawSrc = srcMatch ? (srcMatch[1] ?? srcMatch[2]) : null;
+    if (!rawSrc) return null;
+
+    /**
+     * v1.7 round-8 — HTML-entity-decode the src URL. TipTap correctly
+     * escapes `&` to `&amp;` when serialising the editor to HTML, which
+     * is the right thing for HTML rendering (the browser decodes it
+     * back). But the PDF parser was extracting the raw attribute value
+     * with the literal `&amp;` still in it, then passing that to
+     * `@react-pdf <Image>` — which then fetched the URL with
+     * `?alt=media&amp;token=…` (a query param literally named
+     * "amp;token") instead of `?alt=media&token=…`. Firebase Storage
+     * rejected the malformed request, the fetch failed silently, and
+     * the image rendered as nothing on the PDF. This was the actual
+     * root cause of every "image visible in editor, missing from PDF"
+     * report from rounds 5-8.
+     */
+    const src = rawSrc
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
 
     // Unsupported-format placeholder (round-6).
     const lower = src.toLowerCase();
