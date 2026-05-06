@@ -58,6 +58,54 @@ export function TipTapHtmlPdf({ html, style, fontSize = 9, color = '#334155' }: 
                     if (!src) return <Fragment key={`img-${i}`} />;
 
                     /**
+                     * v1.7 round-6 — @react-pdf <Image> only supports JPEG
+                     * and PNG. SVG / WebP / GIF render as nothing (the
+                     * round-5 bug — image visible in editor, missing on
+                     * PDF). Detect unsupported formats and show a clear
+                     * placeholder block instead of silently dropping it.
+                     *
+                     * Detection is path-based — reliable for normal
+                     * uploads (Firebase Storage URLs preserve the
+                     * filename + extension), good enough for the org-
+                     * authored content-blocks pipeline. Data URLs use
+                     * the MIME prefix.
+                     */
+                    const lower = src.toLowerCase();
+                    const isUnsupported =
+                        /\.svg(\?|$)/.test(lower) ||
+                        /\.webp(\?|$)/.test(lower) ||
+                        /\.gif(\?|$)/.test(lower) ||
+                        lower.startsWith('data:image/svg') ||
+                        lower.startsWith('data:image/webp') ||
+                        lower.startsWith('data:image/gif');
+                    if (isUnsupported) {
+                        if (typeof console !== 'undefined') {
+                            console.warn('[tiptap-pdf] Image format not supported by @react-pdf:', src);
+                        }
+                        return (
+                            <View
+                                key={`img-${i}`}
+                                style={{
+                                    width: '100%',
+                                    marginVertical: 8,
+                                    padding: 12,
+                                    borderWidth: 1,
+                                    borderColor: '#fde68a',
+                                    backgroundColor: '#fffbeb',
+                                    borderRadius: 4,
+                                }}
+                            >
+                                <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#92400e', marginBottom: 2 }}>
+                                    Image cannot render on PDF
+                                </Text>
+                                <Text style={{ fontSize: 7, color: '#92400e' }}>
+                                    The customer PDF supports JPG and PNG only. Replace this image with a JPG / PNG to make it appear on the customer&apos;s quote.
+                                </Text>
+                            </View>
+                        );
+                    }
+
+                    /**
                      * v1.7 round-5 — width + alignment support. The custom
                      * Image extension in feature-rich-text-editor.tsx
                      * serialises `data-width` (percentage like "50%") and
@@ -78,6 +126,9 @@ export function TipTapHtmlPdf({ html, style, fontSize = 9, color = '#334155' }: 
                         align === 'left'  ? 'flex-start' :
                         align === 'right' ? 'flex-end'   :
                                             'center';
+                    if (typeof console !== 'undefined') {
+                        console.info('[tiptap-pdf] rendering image:', { src, width, align });
+                    }
                     return (
                         <View
                             key={`img-${i}`}

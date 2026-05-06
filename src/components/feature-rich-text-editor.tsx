@@ -252,8 +252,22 @@ function EditorToolbar({ editor, imageStoragePathPrefix }: { editor: Editor; ima
         const file = e.target.files?.[0];
         e.target.value = ''; // allow re-pick
         if (!file || !imageStoragePathPrefix) return;
-        if (!file.type.startsWith('image/')) {
-            toast({ variant: 'destructive', title: 'Not an image', description: 'Pick an image file.' });
+        /**
+         * v1.7 round-6 — restrict uploads to JPG/PNG only. @react-pdf's
+         * <Image> component supports JPEG and PNG (with alpha) but does
+         * NOT support SVG, WebP, or GIF. If a user uploads an SVG it
+         * shows fine in the editor but renders as nothing on the PDF
+         * (which was the round-5 bug — image showed in editor, missing
+         * from PDF). Blocking unsupported formats at upload time is
+         * cleaner than rendering an empty image silently downstream.
+         */
+        const SUPPORTED = ['image/jpeg', 'image/jpg', 'image/png'];
+        if (!SUPPORTED.includes(file.type)) {
+            toast({
+                variant: 'destructive',
+                title: 'Unsupported image format',
+                description: `Use JPG or PNG (got ${file.type || 'unknown'}). SVG / WebP / GIF do not render in the customer PDF.`,
+            });
             return;
         }
         setUploading(true);
@@ -328,7 +342,7 @@ function EditorToolbar({ editor, imageStoragePathPrefix }: { editor: Editor; ima
                         <input
                             ref={fileInputRef}
                             type="file"
-                            accept="image/*"
+                            accept="image/jpeg,image/jpg,image/png"
                             onChange={(e) => handleImagePick(e, true)}
                             className="hidden"
                         />
@@ -406,7 +420,7 @@ function EditorToolbar({ editor, imageStoragePathPrefix }: { editor: Editor; ima
                     <input
                         ref={fileInputRef}
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/jpg,image/png"
                         onChange={handleImagePick}
                         className="hidden"
                     />
