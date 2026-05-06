@@ -56,12 +56,38 @@ export function TipTapHtmlPdf({ html, style, fontSize = 9, color = '#334155' }: 
                     const srcMatch = seg.match(/src=(?:"([^"]+)"|'([^']+)')/i);
                     const src = srcMatch ? (srcMatch[1] ?? srcMatch[2]) : null;
                     if (!src) return <Fragment key={`img-${i}`} />;
+
+                    /**
+                     * v1.7 round-5 — width + alignment support. The custom
+                     * Image extension in feature-rich-text-editor.tsx
+                     * serialises `data-width` (percentage like "50%") and
+                     * `data-align` (left|center|right) onto the <img> tag.
+                     * Default is 100% width centered if attrs are missing.
+                     *
+                     * @react-pdf <Image> needs an explicit width or it can
+                     * collapse to 0px in some layouts — this is the bug
+                     * users were hitting: image visible in the editor but
+                     * absent from the PDF. The wrapping <View> handles
+                     * alignment; the <Image> itself takes the width.
+                     */
+                    const widthMatch = seg.match(/data-width=(?:"([^"]+)"|'([^']+)')/i);
+                    const alignMatch = seg.match(/data-align=(?:"([^"]+)"|'([^']+)')/i);
+                    const width = (widthMatch ? (widthMatch[1] ?? widthMatch[2]) : '') || '100%';
+                    const align = ((alignMatch ? (alignMatch[1] ?? alignMatch[2]) : '') || 'center').toLowerCase();
+                    const alignItems =
+                        align === 'left'  ? 'flex-start' :
+                        align === 'right' ? 'flex-end'   :
+                                            'center';
                     return (
-                        <Image
+                        <View
                             key={`img-${i}`}
-                            src={src}
-                            style={{ marginVertical: 6, maxHeight: 240, objectFit: 'contain' }}
-                        />
+                            style={{ width: '100%', marginVertical: 8, alignItems }}
+                        >
+                            <Image
+                                src={src}
+                                style={{ width, maxWidth: '100%', maxHeight: 360, objectFit: 'contain' }}
+                            />
+                        </View>
                     );
                 }
                 const blocks = parseBlocks(seg);

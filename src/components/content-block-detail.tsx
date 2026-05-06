@@ -143,6 +143,9 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
 
     const [editMode, setEditMode] = useState(false);
     const [draftHtml, setDraftHtml] = useState<string>('');
+    /** v1.7 round-5 — author-customisable PDF sub-header. Editable in
+     *  org-default mode only; brand overrides currently inherit. */
+    const [draftSubHeader, setDraftSubHeader] = useState<string>('');
     const [saving, setSaving] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -151,7 +154,8 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
         setEditMode(false);
         setDraftHtml(currentHtml);
         setDraftDocTypes(initialDocTypes);
-    }, [blockType, block?.id, selectedBrand, currentHtml, initialDocTypes]);
+        setDraftSubHeader((block?.subHeader ?? '') as string);
+    }, [blockType, block?.id, selectedBrand, currentHtml, initialDocTypes, block?.subHeader]);
 
     const formattedUpdatedAt = (
         selectedBrand
@@ -166,12 +170,14 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
     function startEdit() {
         setDraftHtml(currentHtml);
         setDraftDocTypes(initialDocTypes);
+        setDraftSubHeader((block?.subHeader ?? '') as string);
         setEditMode(true);
     }
 
     function cancelEdit() {
         setDraftHtml(currentHtml);
         setDraftDocTypes(initialDocTypes);
+        setDraftSubHeader((block?.subHeader ?? '') as string);
         setEditMode(false);
     }
 
@@ -238,6 +244,10 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                     {
                         blockType,
                         html: htmlToSave,
+                        // v1.7 round-5 — author-customisable PDF sub-header.
+                        // Empty string is persisted as null so the resolver
+                        // falls back to the SECTION_SUB default.
+                        subHeader: draftSubHeader.trim() ? draftSubHeader.trim() : null,
                         documentTypes: docTypesForParent,
                         updatedAt: serverTimestamp(),
                         updatedByUid: user.uid,
@@ -361,6 +371,29 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                 <div className="px-6 py-5 max-h-[60vh] overflow-y-auto bg-slate-50/30">
                     {editMode ? (
                         <div className="space-y-4">
+                            {/* v1.7 round-5 — author-customisable PDF sub-header.
+                                Renders under the section title (e.g. "Our Promise To You"
+                                under "Why Choose Us"). Empty falls back to the
+                                SECTION_SUB default. Org-default scope only. */}
+                            {!selectedBrand && (
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                        PDF sub-header
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={draftSubHeader}
+                                        onChange={(e) => setDraftSubHeader(e.target.value)}
+                                        placeholder="e.g. OUR PROMISE TO YOU"
+                                        maxLength={80}
+                                        className="w-full px-3 py-2 rounded-md border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300"
+                                    />
+                                    <p className="text-[10px] text-slate-400">
+                                        Renders under the section title on the PDF. Leave blank to use the default.
+                                    </p>
+                                </div>
+                            )}
+
                             <FeatureRichTextEditor
                                 value={draftHtml}
                                 onChange={setDraftHtml}

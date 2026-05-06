@@ -342,6 +342,25 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
         return result;
     }, [blocks, documentType]);
 
+    /** v1.7 round-5 — parallel map of author-customised PDF sub-headers
+     *  (e.g. "OUR PROMISE TO YOU"). Empty / unset → SECTION_SUB default
+     *  in proposal-pdf.tsx. */
+    const contentBlockSubHeadersMap = useMemo(() => {
+        const m = new Map<BlockType, { sub: string; updatedAt: number }>();
+        for (const b of blocks ?? []) {
+            if (!b.blockType) continue;
+            if (!blockBelongsTo(b, documentType)) continue;
+            const sub = (b.subHeader ?? '').trim();
+            if (!sub) continue;
+            const t = (b.updatedAt as any)?.toMillis?.() ?? 0;
+            const existing = m.get(b.blockType);
+            if (!existing || t > existing.updatedAt) m.set(b.blockType, { sub, updatedAt: t });
+        }
+        const result: Partial<Record<BlockType, string>> = {};
+        m.forEach((v, k) => { result[k] = v.sub; });
+        return result;
+    }, [blocks, documentType]);
+
     /** v1.7 round-4 — fixture splices in real motor / trailer / vendor /
      *  cover-image data when the Firestore fetchers complete. Sections
      *  fall back to the placeholder fixture entries (which use real
@@ -371,6 +390,7 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
      *  ProposalPDFDocument; the iframe regenerates once when the user
      *  stops editing. */
     const [stableMap, setStableMap] = useState(contentBlocksMap);
+    const [stableSubHeaders, setStableSubHeaders] = useState(contentBlockSubHeadersMap);
     const [stableSections, setStableSections] = useState(pdfSections);
     const [stableProfile, setStableProfile] = useState(salespersonProfile ?? undefined);
     const [pendingUpdate, setPendingUpdate] = useState(false);
@@ -388,12 +408,16 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
         const stableKeys = Object.keys(stableMap);
         const sameMap = mapKeys.length === stableKeys.length
             && mapKeys.every(k => contentBlocksMap[k as BlockType] === stableMap[k as BlockType]);
+        const subKeys = Object.keys(contentBlockSubHeadersMap);
+        const stableSubKeys = Object.keys(stableSubHeaders);
+        const sameSubs = subKeys.length === stableSubKeys.length
+            && subKeys.every(k => contentBlockSubHeadersMap[k as BlockType] === stableSubHeaders[k as BlockType]);
         const sameProfile = (stableProfile?.messageHtml === salespersonProfile?.messageHtml)
             && (stableProfile?.photoUrl === salespersonProfile?.photoUrl)
             && (stableProfile?.role === salespersonProfile?.role)
             && (stableProfile?.signOff === salespersonProfile?.signOff);
 
-        if (sameSections && sameMap && sameProfile) {
+        if (sameSections && sameMap && sameSubs && sameProfile) {
             setPendingUpdate(false);
             return;
         }
@@ -401,6 +425,7 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => {
             setStableMap(contentBlocksMap);
+            setStableSubHeaders(contentBlockSubHeadersMap);
             setStableSections(pdfSections);
             setStableProfile(salespersonProfile ?? undefined);
             setPendingUpdate(false);
@@ -408,7 +433,7 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
         return () => {
             if (debounceRef.current) clearTimeout(debounceRef.current);
         };
-    }, [contentBlocksMap, pdfSections, salespersonProfile, stableMap, stableSections, stableProfile]);
+    }, [contentBlocksMap, contentBlockSubHeadersMap, pdfSections, salespersonProfile, stableMap, stableSubHeaders, stableSections, stableProfile]);
 
     /** Single document instance — useMemo-stabilised so the PDFViewer
      *  iframe only regenerates when the debounced inputs actually change. */
@@ -419,11 +444,12 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                 organisation={fixture.organisation}
                 financials={fixture.financials}
                 contentBlocks={stableMap}
+                contentBlockSubHeaders={stableSubHeaders}
                 pdfSections={stableSections}
                 salespersonProfile={stableProfile}
             />
         ),
-        [fixture, stableMap, stableSections, stableProfile],
+        [fixture, stableMap, stableSubHeaders, stableSections, stableProfile],
     );
 
     return (

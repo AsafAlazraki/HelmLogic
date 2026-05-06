@@ -56,7 +56,7 @@ const S = StyleSheet.create({
 });
 
 /* ─── Sub-components ───────────────────────────────────────────────────── */
-function InnerHeader({ title, sub, quoteNumber, page }: { title: string; sub: string; quoteNumber: string; page: string }) {
+function InnerHeader({ title, sub, quoteNumber }: { title: string; sub: string; quoteNumber: string }) {
     return (
         <View style={S.pageHeader}>
             <View>
@@ -65,7 +65,11 @@ function InnerHeader({ title, sub, quoteNumber, page }: { title: string; sub: st
             </View>
             <View style={S.pageHeaderRight}>
                 <Text style={S.pageHeaderMeta}>{quoteNumber}</Text>
-                <Text style={S.pageHeaderMeta}>Page {page}</Text>
+                <Text
+                    style={S.pageHeaderMeta}
+                    render={({ pageNumber }) => `Page ${String(pageNumber).padStart(2, '0')}`}
+                    fixed
+                />
             </View>
         </View>
     );
@@ -164,6 +168,10 @@ interface Props {
     organisation: any;
     financials: any;
     contentBlocks?: Partial<Record<BlockType, string>>;
+    /** v1.7 round-5 — per-block sub-header overrides authored in the
+     *  Quote Content Block Manager. When set, replaces the SECTION_SUB
+     *  default for that block type. */
+    contentBlockSubHeaders?: Partial<Record<BlockType, string | null>>;
     /** v1.7 (1.8.11) — user-defined ordering of content blocks. */
     pdfSections?: PdfStructureSection[];
     /** v1.7 (1.8.12) — per-salesperson message + photo. When present, the
@@ -173,85 +181,85 @@ interface Props {
     salespersonProfile?: SalespersonProfile | null;
 }
 
-export function ProposalPDFDocument({ quote, organisation, financials, contentBlocks, pdfSections, salespersonProfile }: Props) {
+export function ProposalPDFDocument({ quote, organisation, financials, contentBlocks, contentBlockSubHeaders, pdfSections, salespersonProfile }: Props) {
     const zones = partitionContentBlocks(pdfSections ?? DEFAULT_SECTIONS);
-    /** v1.7 (1.8.11) — render zone helper. Each content block in the zone
-     *  is emitted as a ContentBlockSection. T&Cs gets a fallback chain
-     *  (block content → legacy organisation.termsAndConditions →
-     *  DEFAULT_TERMS) so a quote always has terms even if the org hasn't
-     *  authored anything. */
-    const renderZone = (zoneSections: PdfStructureSection[]) =>
-        zoneSections.map(s => {
-            const blockType = s.key as BlockType;
-            const html = contentBlocks?.[blockType];
-            const label = BLOCK_TYPE_LABEL[blockType] ?? s.key;
-            const sub = SECTION_SUB[blockType];
-            // v1.7 (1.8.12) — salesperson-message renders from the
-            // per-user salesperson profile, not from contentBlocks.
-            // Omit the section entirely if no profile (or empty content).
-            if (blockType === 'salesperson-message') {
-                const sp = salespersonProfile;
-                const spHtml = sp?.messageHtml;
-                if (!sp || !spHtml || !spHtml.trim()) return null;
-                return (
-                    <View key={s.id} style={{ marginBottom: 22 }}>
-                        {/* Section header — matches the polished style */}
-                        <View style={{ borderBottomWidth: 2, borderBottomColor: NAVY, paddingBottom: 8, marginBottom: 12 }}>
-                            <Text style={{ fontSize: 16, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.4, lineHeight: 1.1, color: NAVY }}>
-                                {label}
-                            </Text>
-                            <Text style={{ fontSize: 6, letterSpacing: 2.5, fontWeight: 'bold', textTransform: 'uppercase', color: MUTED, marginTop: 3 }}>
-                                From {sp.displayName ?? 'Your Salesperson'}{sp.role ? ` · ${sp.role}` : ''}
-                            </Text>
-                        </View>
-                        {/* Photo + message body */}
-                        <View style={{ flexDirection: 'row', gap: 14 }}>
-                            {sp.photoUrl ? (
-                                <Image src={sp.photoUrl} style={{ height: 64, width: 64, borderRadius: 32, objectFit: 'cover' }} />
-                            ) : null}
-                            <View style={{ flex: 1 }}>
-                                <TipTapHtmlPdf html={spHtml} fontSize={9} color={MUTED} />
-                                {sp.signOff ? (
-                                    <Text style={{ fontSize: 9, fontStyle: 'italic', color: SLATE, marginTop: 6 }}>{sp.signOff}</Text>
+
+    /** v1.7 round-5 — each content block now renders as its OWN PAGE
+     *  with its OWN InnerHeader matching the block type. Fixes the
+     *  earlier bug where zoneA blocks rendered under the "Vessel
+     *  Configuration" header on page 2 (orphan content under the wrong
+     *  header). T&Cs keeps its fallback chain (authored → legacy
+     *  org.termsAndConditions → DEFAULT_TERMS). Empty blocks (no
+     *  authored content, no fallback) emit nothing. */
+    const renderBlockPages = (zoneSections: PdfStructureSection[]) =>
+        zoneSections
+            .map(s => {
+                const blockType = s.key as BlockType;
+                const html = contentBlocks?.[blockType];
+                const label = BLOCK_TYPE_LABEL[blockType] ?? s.key;
+                const customSub = contentBlockSubHeaders?.[blockType];
+                const sub = (customSub && customSub.trim()) || SECTION_SUB[blockType] || '';
+
+                // Salesperson-message — bespoke layout (photo + name + sign-off).
+                if (blockType === 'salesperson-message') {
+                    const sp = salespersonProfile;
+                    const spHtml = sp?.messageHtml;
+                    if (!sp || !spHtml || !spHtml.trim()) return null;
+                    const spSub = (customSub && customSub.trim())
+                        || `From ${sp.displayName ?? 'Your Salesperson'}${sp.role ? ` · ${sp.role}` : ''}`;
+                    return (
+                        <Page key={s.id} size="A4" style={{ ...S.page, padding: 44 }}>
+                            <InnerHeader title={label} sub={spSub} quoteNumber={quote.quoteNumber} />
+                            <View style={{ flexDirection: 'row', gap: 18 }}>
+                                {sp.photoUrl ? (
+                                    <Image src={sp.photoUrl} style={{ height: 110, width: 110, borderRadius: 55, objectFit: 'cover' }} />
                                 ) : null}
+                                <View style={{ flex: 1 }}>
+                                    <TipTapHtmlPdf html={spHtml} fontSize={10} color={SLATE} />
+                                    {sp.signOff ? (
+                                        <Text style={{ fontSize: 10, fontStyle: 'italic', color: SLATE, marginTop: 12 }}>{sp.signOff}</Text>
+                                    ) : null}
+                                </View>
                             </View>
-                        </View>
-                    </View>
-                );
-            }
-            // T&Cs fallback chain — keep it always rendering even if no
-            // content block is authored.
-            if (blockType === 'terms-and-conditions' && (!html || !html.trim())) {
-                const DEFAULT_TERMS = [
-                    '1. This proposal is valid for 30 days from the date of issue.',
-                    '2. Prices are subject to change without notice after the validity period.',
-                    '3. A non-refundable deposit may be required to secure this package.',
-                    '4. Final delivery dates will be confirmed upon order acceptance.',
-                ];
-                const customTerms = organisation?.termsAndConditions
-                    ? (organisation.termsAndConditions as string).split('\n').filter((l: string) => l.trim())
-                    : null;
-                const lines = customTerms && customTerms.length > 0 ? customTerms : DEFAULT_TERMS;
+                            <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
+                        </Page>
+                    );
+                }
+
+                // T&Cs fallback chain — always renders even if no block is authored.
+                if (blockType === 'terms-and-conditions' && (!html || !html.trim())) {
+                    const DEFAULT_TERMS = [
+                        '1. This proposal is valid for 30 days from the date of issue.',
+                        '2. Prices are subject to change without notice after the validity period.',
+                        '3. A non-refundable deposit may be required to secure this package.',
+                        '4. Final delivery dates will be confirmed upon order acceptance.',
+                    ];
+                    const customTerms = organisation?.termsAndConditions
+                        ? (organisation.termsAndConditions as string).split('\n').filter((l: string) => l.trim())
+                        : null;
+                    const lines = customTerms && customTerms.length > 0 ? customTerms : DEFAULT_TERMS;
+                    return (
+                        <Page key={s.id} size="A4" style={{ ...S.page, padding: 44 }}>
+                            <InnerHeader title={label} sub={sub} quoteNumber={quote.quoteNumber} />
+                            {lines.map((t: string, i: number, arr: string[]) => (
+                                <Text key={i} style={{ fontSize: 9, color: SLATE, lineHeight: 1.6, marginBottom: i < arr.length - 1 ? 5 : 0 }}>{t}</Text>
+                            ))}
+                            <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
+                        </Page>
+                    );
+                }
+
+                // Generic content block — only render if html present.
+                if (!html || !html.trim()) return null;
                 return (
-                    <View key={s.id} style={{ marginBottom: 22 }}>
-                        <View style={{ borderBottomWidth: 2, borderBottomColor: NAVY, paddingBottom: 8, marginBottom: 12 }}>
-                            <Text style={{ fontSize: 16, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.4, lineHeight: 1.1, color: NAVY }}>
-                                {label}
-                            </Text>
-                            {sub ? (
-                                <Text style={{ fontSize: 6, letterSpacing: 2.5, fontWeight: 'bold', textTransform: 'uppercase', color: MUTED, marginTop: 3 }}>
-                                    {sub}
-                                </Text>
-                            ) : null}
-                        </View>
-                        {lines.map((t: string, i: number, arr: string[]) => (
-                            <Text key={i} style={{ fontSize: 8, color: MUTED, lineHeight: 1.55, marginBottom: i < arr.length - 1 ? 3 : 0 }}>{t}</Text>
-                        ))}
-                    </View>
+                    <Page key={s.id} size="A4" style={{ ...S.page, padding: 44 }}>
+                        <InnerHeader title={label} sub={sub} quoteNumber={quote.quoteNumber} />
+                        <TipTapHtmlPdf html={html} fontSize={10} color={SLATE} />
+                        <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
+                    </Page>
                 );
-            }
-            return <ContentBlockSection key={s.id} label={label} sub={sub} html={html} />;
-        });
+            })
+            .filter(Boolean);
 
     const f = financials;
     const createdAt: Date = quote.createdAt?.toDate?.() ?? new Date();
@@ -447,17 +455,16 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                 </View>
             </Page>
 
+            {/* v1.7 round-5 — zoneA content blocks: each gets its OWN page
+                with its OWN InnerHeader matching the block type. No more
+                orphaned content under a mismatched system page header. */}
+            {renderBlockPages(zones.zoneA)}
+
             {/* ═══════════════════════════════════════════════════════════
-                PAGE 2 — VESSEL CONFIGURATION
+                PAGE — VESSEL CONFIGURATION (system, anchored)
             ═══════════════════════════════════════════════════════════ */}
             <Page size="A4" style={{ ...S.page, padding: 44 }}>
-                <InnerHeader title="Vessel Configuration" sub="Technical Data & Standard Inclusions" quoteNumber={quote.quoteNumber} page="02" />
-
-                {/* v1.7 (1.8.11) — zoneA: content blocks ordered to appear BEFORE the
-                    vessel-config system section. Default = salesperson-message + why-us,
-                    but the user's drag-drop reorder can put any of the 7 content blocks
-                    here. */}
-                {renderZone(zones.zoneA)}
+                <InnerHeader title="Vessel Configuration" sub="Technical Data & Standard Inclusions" quoteNumber={quote.quoteNumber} />
 
                 {/* Specs + Standard Features */}
                 {(quote.specifications?.otherSpecs?.length > 0 || quote.standardFeatures?.length > 0) && (
@@ -805,16 +812,15 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                 <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
             </Page>
 
+            {/* v1.7 round-5 — zoneB content blocks: each on its own page
+                between the vessel-config and pricing-section anchors. */}
+            {renderBlockPages(zones.zoneB)}
+
             {/* ═══════════════════════════════════════════════════════════
-                PAGE 3 — INVESTMENT SUMMARY
+                PAGE — INVESTMENT SUMMARY (system, anchored)
             ═══════════════════════════════════════════════════════════ */}
             <Page size="A4" style={{ ...S.page, padding: 44 }}>
-                <InnerHeader title="Investment Summary" sub="Comprehensive Package Breakdown" quoteNumber={quote.quoteNumber} page="03" />
-
-                {/* v1.7 (1.8.11) — zoneB: content blocks ordered between the vessel-
-                    config and pricing-section system anchors. Default = brand-story,
-                    after-sales, finance-info. Reorderable via drag-drop in the editor. */}
-                {renderZone(zones.zoneB)}
+                <InnerHeader title="Investment Summary" sub="Comprehensive Package Breakdown" quoteNumber={quote.quoteNumber} />
 
                 {/* Pricing table */}
                 <View style={{ marginBottom: 28 }}>
@@ -868,23 +874,29 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     </View>
                 </View>
 
-                {/* v1.7 (1.8.11) — zoneC: content blocks ordered after pricing-section
-                    and before signatures. Default = value-summary + terms-and-conditions.
-                    T&Cs gets a fallback chain inside renderZone (block content → legacy
-                    org.termsAndConditions → DEFAULT_TERMS) so quotes always have terms. */}
-                {renderZone(zones.zoneC)}
+                <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
+            </Page>
 
-                {/* Signature blocks */}
-                <View style={{ flexDirection: 'row', gap: 40, marginBottom: 24 }}>
+            {/* v1.7 round-5 — zoneC content blocks (Value Summary, T&Cs):
+                each on its own page after the pricing-section anchor. */}
+            {renderBlockPages(zones.zoneC)}
+
+            {/* ═══════════════════════════════════════════════════════════
+                PAGE — ACCEPTANCE (signatures, anchored)
+            ═══════════════════════════════════════════════════════════ */}
+            <Page size="A4" style={{ ...S.page, padding: 44 }}>
+                <InnerHeader title="Acceptance" sub="Signatures & Confirmation" quoteNumber={quote.quoteNumber} />
+
+                <View style={{ flexDirection: 'row', gap: 40, marginTop: 40, marginBottom: 24 }}>
                     <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 2, color: MUTED, marginBottom: 12 }}>Merchant Authorisation</Text>
-                        <View style={{ height: 60, borderBottomWidth: 1, borderBottomColor: '#cbd5e1' }} />
+                        <View style={{ height: 80, borderBottomWidth: 1, borderBottomColor: '#cbd5e1' }} />
                         <Text style={{ fontSize: 8, fontWeight: 'bold', color: SLATE, marginTop: 8 }}>{quote.createdByName} — {organisation?.name}</Text>
                         <Text style={{ fontSize: 7, color: MUTED, marginTop: 2 }}>Date: _____ / _____ / _____</Text>
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 2, color: MUTED, marginBottom: 12 }}>Client Acceptance</Text>
-                        <View style={{ height: 60, borderBottomWidth: 1, borderBottomColor: '#cbd5e1' }} />
+                        <View style={{ height: 80, borderBottomWidth: 1, borderBottomColor: '#cbd5e1' }} />
                         <Text style={{ fontSize: 8, fontWeight: 'bold', color: SLATE, marginTop: 8 }}>{quote.customer?.name}</Text>
                         <Text style={{ fontSize: 7, color: MUTED, marginTop: 2 }}>Date: _____ / _____ / _____</Text>
                     </View>

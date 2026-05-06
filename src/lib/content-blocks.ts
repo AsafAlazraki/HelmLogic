@@ -57,6 +57,13 @@ export interface ContentBlock {
     /** TipTap-serialised HTML. Empty string = block defined but no content authored. */
     html: string;
     /**
+     * v1.7 round-5 — author-customisable sub-line that renders under
+     * the section title on the PDF (e.g. "Our Promise To You" under
+     * "Why Choose Us"). When null/empty, falls back to the SECTION_SUB
+     * default in proposal-pdf.tsx. Also flows through brand overrides.
+     */
+    subHeader?: string | null;
+    /**
      * v1.7 (1.8.6) — multi-select. Block renders only on the listed
      * document types. Missing field on legacy docs is treated as ['quote']
      * (matches pre-1.8.6 behaviour, where the manager was Quote-only).
@@ -223,5 +230,33 @@ export async function resolveContentBlocksForQuote(
         }
     }
 
+    return result;
+}
+
+/**
+ * v1.7 round-5 — parallel resolver that returns the per-block sub-header
+ * overrides authored in the Quote Content Block Manager. Sub-headers
+ * render under the section title on the PDF (e.g. "Our Promise To You"
+ * under "Why Choose Us"). Empty / unauthored sub-headers fall back to
+ * SECTION_SUB defaults in proposal-pdf.tsx.
+ *
+ * Kept as a separate function (rather than expanding the existing
+ * resolver's return shape) so legacy callers don't break. New callers
+ * (preview, finalize, proposal-view) call both and pass two parallel
+ * maps to ProposalPDFDocument.
+ */
+export async function resolveContentBlockSubHeadersForQuote(
+    firestore: Firestore,
+    orgId: string,
+    documentType: DocumentType = 'quote',
+): Promise<Partial<Record<BlockType, string>>> {
+    const blocksSnap = await getDocs(collection(firestore, `organisations/${orgId}/contentBlocks`));
+    const result: Partial<Record<BlockType, string>> = {};
+    for (const blockDoc of blocksSnap.docs) {
+        const block = { id: blockDoc.id, ...blockDoc.data() } as ContentBlock;
+        if (!blockBelongsTo(block, documentType)) continue;
+        const sub = block.subHeader;
+        if (sub && sub.trim()) result[block.blockType] = sub.trim();
+    }
     return result;
 }

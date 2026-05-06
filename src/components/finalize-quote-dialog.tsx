@@ -9,7 +9,7 @@ import { doc, setDoc, updateDoc, serverTimestamp, collection as firestoreCollect
 import { pdf } from '@react-pdf/renderer';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { ProposalPDFDocument } from '@/components/proposal-pdf';
-import { resolveContentBlocksForQuote } from '@/lib/content-blocks';
+import { resolveContentBlocksForQuote, resolveContentBlockSubHeadersForQuote } from '@/lib/content-blocks';
 import { buildQuoteFinancials } from '@/lib/quote-financials';
 import {
     Dialog,
@@ -486,11 +486,15 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 try {
                     const financials = buildQuoteFinancials(payload);
                     // v1.7 (1.2.1): fetch org's authored content blocks before PDF render.
-                    // Skip on missing orgId (stock-only flows) — PDF falls back to legacy T&Cs path.
-                    const contentBlocks = organisationId
-                        ? await resolveContentBlocksForQuote(firestore, organisationId, (payload as any).vendorId ?? null)
-                        : undefined;
-                    const pdfBlob = await pdf(<ProposalPDFDocument quote={payload} organisation={organisation} financials={financials} contentBlocks={contentBlocks} />).toBlob();
+                    // v1.7 round-5: parallel fetch of authored PDF sub-headers.
+                    // Skip both on missing orgId (stock-only flows) — PDF falls back to legacy T&Cs path.
+                    const [contentBlocks, contentBlockSubHeaders] = organisationId
+                        ? await Promise.all([
+                            resolveContentBlocksForQuote(firestore, organisationId, (payload as any).vendorId ?? null),
+                            resolveContentBlockSubHeadersForQuote(firestore, organisationId),
+                        ])
+                        : [undefined, undefined];
+                    const pdfBlob = await pdf(<ProposalPDFDocument quote={payload} organisation={organisation} financials={financials} contentBlocks={contentBlocks} contentBlockSubHeaders={contentBlockSubHeaders} />).toBlob();
                     if (!pdfBlob || pdfBlob.size === 0) {
                         throw new Error('PDF generation returned an empty blob');
                     }
