@@ -22,15 +22,12 @@ import { useMemo, useState } from 'react';
 import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useToast } from '@/hooks/use-toast';
 import {
     Bug,
     CheckCircle2,
     ChevronRight,
-    ClipboardEdit,
     HelpCircle,
     Layers,
-    Loader2,
     Lock,
     Plus,
     Sparkles,
@@ -41,19 +38,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
-import { applyV17PolishReview } from '@/lib/v17-polish-review-seed';
 import {
     CreateFeatureDialog,
     FeatureDetailSheet,
@@ -96,7 +82,6 @@ const UNFILED = '__unfiled__';
 
 export function BacklogView() {
     const firestore = useFirestore();
-    const { toast } = useToast();
 
     const featuresRef = useMemoFirebase(() => collection(firestore, 'features'), [firestore]);
     const epicsRef = useMemoFirebase(() => collection(firestore, 'epics'), [firestore]);
@@ -109,36 +94,6 @@ export function BacklogView() {
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
-
-    /** v1.7 finalize-release seed — appends "✓ shipped" acceptance
-     *  lines, retargets 1.8.2 v1.8 → v1.7, and marks every v1.7
-     *  feature `status: 'shipped'`. Idempotent (skip-if-includes /
-     *  skip-if-already-shipped). One-shot button per the v1.6.2
-     *  pattern — removed in the same dev cycle once the user clicks. */
-    const [polishOpen, setPolishOpen] = useState(false);
-    const [polishing, setPolishing] = useState(false);
-
-    async function runPolishReview() {
-        setPolishing(true);
-        try {
-            const summary = await applyV17PolishReview(firestore);
-            const missed = summary.storiesMissed.length > 0
-                ? ` · ${summary.storiesMissed.length} missed (titles drift?)`
-                : '';
-            toast({
-                title: 'v1.7 finalized',
-                description: `${summary.storiesUpdated} updated · ${summary.retargetsApplied} retargets · ${summary.storiesMarkedShipped} marked shipped · ${summary.storiesSkipped} skipped${missed}.`,
-            });
-            if (summary.storiesMissed.length > 0) {
-                console.warn('[polish-review]', summary.storiesMissed);
-            }
-            setPolishOpen(false);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Review failed', description: e?.message ?? 'See console.' });
-        } finally {
-            setPolishing(false);
-        }
-    }
 
     const sortedEpics = useMemo(
         () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
@@ -255,15 +210,6 @@ export function BacklogView() {
                             <Plus className="h-4 w-4" />
                             New Epic
                         </Button>
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-600 hover:text-white gap-1.5 shadow-sm"
-                            onClick={() => setPolishOpen(true)}
-                        >
-                            <ClipboardEdit className="h-4 w-4" />
-                            Finalize v1.7 Release
-                        </Button>
                     </div>
                 </div>
             </div>
@@ -329,63 +275,6 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
-
-            {/* v1.7 polish-review seed — appends "✓ shipped" acceptance lines
-                + retargets 1.8.2 to v1.7. Hidden once 1.2.1 has the new
-                "section headers" acceptance line. */}
-            <AlertDialog open={polishOpen} onOpenChange={setPolishOpen}>
-                <AlertDialogContent className="max-w-xl">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <ClipboardEdit className="h-4 w-4 text-emerald-600" />
-                            Finalize v1.7 Release?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="space-y-2 text-xs text-slate-600">
-                                <p>
-                                    Final pre-release pass for v1.7. Two stages, both idempotent:
-                                </p>
-                                <p className="font-semibold pt-1">1. Acceptance + retargets</p>
-                                <ul className="list-disc pl-5 space-y-0.5">
-                                    <li>Appends every &quot;✓ shipped&quot; acceptance line from rounds 2–12 to its target story</li>
-                                    <li>Retargets <strong>1.8.2</strong> v1.8 → v1.7 (was originally a v1.8 story; image upload shipped early)</li>
-                                </ul>
-                                <p className="font-semibold pt-1">2. Mark v1.7 stories shipped</p>
-                                <ul className="list-disc pl-5 space-y-0.5">
-                                    <li>Sets <code>status: &apos;shipped&apos;</code> on every feature with <code>targetRelease = &apos;v1.7&apos;</code></li>
-                                    <li>Roadmap and Board show all v1.7 stories as ✓ done</li>
-                                </ul>
-                                <p className="text-[11px] text-slate-500 pt-1">
-                                    Note — the Roadmap header pill goes emerald only when
-                                    <code> RELEASE_WINDOWS[&apos;v1.7&apos;].shipped = true</code> in
-                                    <code> release-schedule.ts</code>, flipped in the same commit that
-                                    removes this button (next dev push, before the dev → main PR).
-                                </p>
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={polishing}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={(e) => { e.preventDefault(); runPolishReview(); }}
-                            disabled={polishing}
-                            className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
-                        >
-                            {polishing ? (
-                                <>
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                    Finalizing…
-                                </>
-                            ) : (
-                                <>
-                                    <ClipboardEdit className="h-3.5 w-3.5" />
-                                    Yes, finalize v1.7
-                                </>
-                            )}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }

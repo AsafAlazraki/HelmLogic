@@ -17,7 +17,7 @@
 | v1.6 Planning System | ✅ Shipped to production. PR #29 merged 2026-04-27. See `tasks/RELEASE_NOTES_v1.6.0.md` |
 | v1.6.1 Patch — shipped-release lock + v1.6 self-seed | ✅ Shipped to production. PR #30 merged 2026-04-27. See `tasks/RELEASE_NOTES_v1.6.1.md` |
 | v1.6.2 Patch — v1.7→v2.2 restructure + 4 new epic backlogs | ✅ Shipped to production. See `tasks/RELEASE_NOTES_v1.6.2.md` + `tasks/v1.7-planning-restructure-status.md` |
-| v1.7 Customer-PDF authoring (Content Blocks + Live Preview + Image authoring + per-Salesperson) | ✅ Shipped to dev. See `tasks/RELEASE_NOTES_v1.7.0.md`. Pending dev → main PR. |
+| v1.7 Customer-PDF authoring (Content Blocks + Live Preview + Image authoring + per-Salesperson) | ✅ Ready for dev → main. Stories finalized in Firestore (`status: shipped` on all v1.7 features), `RELEASE_WINDOWS['v1.7'].shipped = true`. See `tasks/RELEASE_NOTES_v1.7.0.md` + `tasks/USER_GUIDE_v1.7.0.md`. |
 
 **Active dev branch**: `claude/app-overview-wKiZ1` (auto-deploys to dev URL)
 
