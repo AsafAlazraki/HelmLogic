@@ -22,12 +22,15 @@ import { useMemo, useState } from 'react';
 import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { useToast } from '@/hooks/use-toast';
 import {
     Bug,
     CheckCircle2,
     ChevronRight,
+    ClipboardEdit,
     HelpCircle,
     Layers,
+    Loader2,
     Lock,
     Plus,
     Sparkles,
@@ -38,8 +41,19 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
+import { applyV18Planning } from '@/lib/v18-planning-seed';
 import {
     CreateFeatureDialog,
     FeatureDetailSheet,
@@ -94,6 +108,38 @@ export function BacklogView() {
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
+    const { toast } = useToast();
+
+    /** v1.8 planning seed — locks the v1.8 SCOPE in Firestore before build
+     *  starts. Creates 1.5.0 + 1.4.1, clobbers AC on the 9 existing v1.8
+     *  stories with the Step 2 expanded acceptance, sets dependsOn[], and
+     *  retargets 1.1.3 v1.8 → v1.9. Idempotent. One-shot button per the
+     *  CONVENTIONS.md lifecycle — removed in the next commit after click. */
+    const [planningOpen, setPlanningOpen] = useState(false);
+    const [planning, setPlanning] = useState(false);
+
+    async function runV18Planning() {
+        setPlanning(true);
+        try {
+            const summary = await applyV18Planning(firestore);
+            const missed = summary.storiesMissed.length > 0
+                ? ` · ${summary.storiesMissed.length} missed (titles drift?)`
+                : '';
+            toast({
+                title: 'v1.8 planning applied',
+                description: `${summary.storiesCreated} created · ${summary.storiesUpdated} AC-updated · ${summary.dependsOnSet} dependsOn-set · ${summary.retargetsApplied} retargets · ${summary.storiesSkipped} skipped${missed}.`,
+            });
+            if (summary.storiesMissed.length > 0) {
+                console.warn('[v18-planning]', summary.storiesMissed);
+            }
+            setPlanningOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Planning seed failed', description: e?.message ?? 'See console.' });
+            console.error('[v18-planning]', e);
+        } finally {
+            setPlanning(false);
+        }
+    }
 
     const sortedEpics = useMemo(
         () => [...(epics ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
@@ -210,6 +256,15 @@ export function BacklogView() {
                             <Plus className="h-4 w-4" />
                             New Epic
                         </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-600 hover:text-white gap-1.5 shadow-sm"
+                            onClick={() => setPlanningOpen(true)}
+                        >
+                            <ClipboardEdit className="h-4 w-4" />
+                            Apply v1.8 planning
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -275,6 +330,57 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
+
+            {/* v1.8 planning seed — locks the v1.8 SCOPE in Firestore before
+                build starts. One-shot per CONVENTIONS.md lifecycle: this
+                button + the seed module get removed in the next commit. */}
+            <AlertDialog open={planningOpen} onOpenChange={setPlanningOpen}>
+                <AlertDialogContent className="max-w-xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <ClipboardEdit className="h-4 w-4 text-emerald-600" />
+                            Apply v1.8 planning?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-xs text-slate-600">
+                                <p>
+                                    Locks v1.8 SCOPE in Firestore before build starts. <strong>Does not build any features</strong> &mdash; data-only.
+                                </p>
+                                <p className="font-semibold pt-1">Four idempotent jobs:</p>
+                                <ol className="list-decimal pl-5 space-y-0.5">
+                                    <li><strong>Create</strong> 2 new stories: <code>1.5.0</code> (PDF render refactor) + <code>1.4.1</code> (audit log)</li>
+                                    <li><strong>Clobber</strong> acceptance criteria on the 9 existing v1.8 stories with the Step-2 expanded AC (replaces v1.6.2 thin AC)</li>
+                                    <li><strong>Set</strong> <code>dependsOn[]</code> field on every v1.8 story per the build-order graph</li>
+                                    <li><strong>Retarget</strong> <code>1.1.3 Multiple Quote Scenarios</code> v1.8 &rarr; v1.9</li>
+                                </ol>
+                                <p className="text-[11px] text-slate-500 pt-1">
+                                    Skip-if-exists / skip-if-already-set everywhere. Re-clicking when nothing&apos;s new is harmless. Status, RELEASE_WINDOWS flag, and Highfield rules data are NOT touched &mdash; those happen at end-of-cycle finalize.
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={planning}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => { e.preventDefault(); runV18Planning(); }}
+                            disabled={planning}
+                            className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
+                        >
+                            {planning ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Applying&hellip;
+                                </>
+                            ) : (
+                                <>
+                                    <ClipboardEdit className="h-3.5 w-3.5" />
+                                    Yes, apply v1.8 planning
+                                </>
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
