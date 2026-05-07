@@ -32,7 +32,7 @@ import {
 } from '@/lib/content-blocks';
 import { buildSampleQuoteFixture } from '@/lib/sample-quote-fixture';
 import type { SalesTeamMember } from '@/lib/sales-team';
-import { extractImgUrlsFromHtml, preloadImages, swapImgUrlsInHtml } from '@/lib/image-preload';
+import { extractImgUrlsFromHtml, preloadImagesWithStatus, swapImgUrlsInHtml, type ImageLoadStatus } from '@/lib/image-preload';
 
 /** Hardcoded Highfield Sport range IDs (per CLAUDE.md). The preview
  *  fetches one model from this range and uses its real coverImageUrl. */
@@ -340,6 +340,10 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
     /** v1.7 round-9 — image preload state, populated by the effect
      *  declared after `contentBlocksMap` (so the dep array is valid). */
     const [imageDataUrls, setImageDataUrls] = useState<Map<string, string>>(new Map());
+    /** v1.7 round-10 — per-URL preload status surfaced in the diagnostic
+     *  panel so we can SEE which step failed for each image. */
+    const [imageStatuses, setImageStatuses] = useState<ImageLoadStatus[]>([]);
+    const [imagesDiagOpen, setImagesDiagOpen] = useState(false);
 
     /** v1.7 round-4 — pre-fetch the cover image as a base64 data URL so
      *  @react-pdf doesn't re-fetch + decode it on every regeneration of
@@ -432,8 +436,11 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
             salespersonProfile?.photoUrl ?? null,
         ];
         (async () => {
-            const map = await preloadImages(candidates);
-            if (!cancelled) setImageDataUrls(map);
+            const { map, statuses } = await preloadImagesWithStatus(candidates);
+            if (!cancelled) {
+                setImageDataUrls(map);
+                setImageStatuses(statuses);
+            }
         })();
         return () => { cancelled = true; };
     }, [contentBlocksMap, realMotor, realTrailer, realVendorLogoUrl, primaryLogoUrl, secondaryLogoUrl, salespersonProfile?.photoUrl]);
@@ -599,10 +606,20 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                             {/* v1.7 round-8 — real-data fetcher status pills.
                                 Surfaces WHY motor/trailer photos may be missing
                                 (no real data seeded for that vendor in Firestore). */}
-                            <div className="flex items-center gap-1.5 mt-1.5">
+                            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                                 <FetchPill label="Vendor" status={fetchStatus.vendorLogo} />
                                 <FetchPill label="Motor" status={fetchStatus.motor} />
                                 <FetchPill label="Trailer" status={fetchStatus.trailer} />
+                                {/* v1.7 round-10 — image preload diagnostic.
+                                    Click to expand; shows each image URL the
+                                    preview tried to load and exactly what
+                                    happened (cors-blocked / fetch-failed /
+                                    decode-failed / success). */}
+                                <ImagePreloadPill
+                                    statuses={imageStatuses}
+                                    onClick={() => setImagesDiagOpen(o => !o)}
+                                    open={imagesDiagOpen}
+                                />
                             </div>
                         </div>
                         <Button
@@ -615,6 +632,13 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                             Focus
                         </Button>
                     </div>
+                )}
+                {/* v1.7 round-10 — expandable image-preload diagnostic table.
+                    Shows every URL the preloader attempted and exactly what
+                    happened to it. This is the actual debug surface for
+                    "image visible in editor, missing from PDF". */}
+                {showHeader && imagesDiagOpen && (
+                    <ImagePreloadPanel statuses={imageStatuses} />
                 )}
                 {/* Inline PDF — only render when NOT in focus mode (avoids
                     double-rendering lag). When focus mode is on, this is
@@ -714,5 +738,97 @@ function FetchPill({
             {isGreen && ' ✓'}
             {!isGreen && !isGrey && ' missing'}
         </span>
+    );
+}
+
+/**
+ * v1.7 round-10 — image-preload status pill: how many image URLs were
+ * collected and how many succeeded as data URLs. Click to expand the
+ * full diagnostic table below the header. The actual debug surface
+ * for "image visible in editor, missing from PDF" reports.
+ */
+function ImagePreloadPill({
+    statuses,
+    open,
+    onClick,
+}: {
+    statuses: ImageLoadStatus[];
+    open: boolean;
+    onClick: () => void;
+}) {
+    const total = statuses.length;
+    const success = statuses.filter(s => s.state === 'success').length;
+    const failed = total - success;
+    const allOk = total > 0 && failed === 0;
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            title="Click to view per-image preload status"
+            className={
+                'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest border transition-colors ' +
+                (total === 0
+                    ? 'bg-slate-50 text-slate-500 border-slate-200'
+                    : allOk
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                        : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100')
+            }
+        >
+            <span className={'w-1.5 h-1.5 rounded-full ' + (total === 0 ? 'bg-slate-400' : allOk ? 'bg-emerald-500' : 'bg-red-500')} />
+            Images {success}/{total}
+            {open ? ' ▴' : ' ▾'}
+        </button>
+    );
+}
+
+/**
+ * Expandable per-image diagnostic table. Shows each URL that the
+ * preloader tried to fetch and the exact outcome — so we can see
+ * whether the cause of a missing image is CORS, a 404, a decode
+ * failure, or something else, instead of guessing rounds-deep.
+ */
+function ImagePreloadPanel({ statuses }: { statuses: ImageLoadStatus[] }) {
+    if (statuses.length === 0) {
+        return (
+            <div className="px-4 py-3 border-b bg-amber-50 text-[11px] text-amber-700">
+                No images collected yet — preview is fetching content blocks + real motor / trailer data.
+            </div>
+        );
+    }
+    return (
+        <div className="border-b bg-slate-900 text-slate-100">
+            <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest border-b border-slate-800">
+                Image preload — {statuses.length} URL(s)
+            </div>
+            <div className="max-h-72 overflow-auto text-[10px] font-mono">
+                {statuses.map((s, i) => {
+                    const stateColor =
+                        s.state === 'success'       ? 'text-emerald-400' :
+                        s.state === 'cors-blocked'  ? 'text-red-400' :
+                        s.state === 'fetch-failed'  ? 'text-orange-400' :
+                                                      'text-amber-400';
+                    return (
+                        <div key={i} className="px-4 py-1.5 border-b border-slate-800 break-all">
+                            <div className="flex items-baseline gap-2">
+                                <span className={'shrink-0 font-bold uppercase ' + stateColor}>
+                                    {s.state}
+                                </span>
+                                {s.state === 'success' && (
+                                    <span className="text-slate-400">{Math.round((s.bytes ?? 0) / 1024)} KB</span>
+                                )}
+                                {s.state === 'fetch-failed' && (
+                                    <span className="text-slate-400">{s.reason}</span>
+                                )}
+                            </div>
+                            <div className="text-slate-300 mt-0.5">{s.url}</div>
+                        </div>
+                    );
+                })}
+            </div>
+            <div className="px-4 py-2 text-[10px] text-slate-400 border-t border-slate-800">
+                <strong className="text-slate-200">cors-blocked</strong> = the browser blocked the cross-origin fetch. Long-term
+                fix: configure CORS on the Firebase Storage bucket. Short-term: the image still won&apos;t render on the PDF.
+            </div>
+        </div>
     );
 }

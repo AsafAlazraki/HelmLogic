@@ -26,6 +26,14 @@
  * behaviour). We log a warn so debugging is straightforward.
  */
 
+/** Per-URL preload outcome — surfaced in the diagnostic panel so the
+ *  operator can see exactly which step failed for each image. */
+export type ImageLoadStatus =
+    | { state: 'success'; url: string; dataUrl: string; bytes: number }
+    | { state: 'fetch-failed'; url: string; reason: string }
+    | { state: 'cors-blocked'; url: string }
+    | { state: 'decode-failed'; url: string };
+
 /** Fetch one URL, decode to base64 data URL. Returns null on failure. */
 export async function fetchImageAsDataUrl(url: string): Promise<string | null> {
     if (!url) return null;
@@ -53,6 +61,44 @@ export async function fetchImageAsDataUrl(url: string): Promise<string | null> {
 }
 
 /**
+ * Same as fetchImageAsDataUrl but returns a structured ImageLoadStatus
+ * so the preview's diagnostic panel can show exactly which step failed
+ * for each image (cors-blocked vs fetch-failed vs decode-failed). Used
+ * by the new preloadImagesWithStatus().
+ */
+async function fetchImageAsDataUrlWithStatus(url: string): Promise<ImageLoadStatus> {
+    if (url.startsWith('data:')) {
+        return { state: 'success', url, dataUrl: url, bytes: url.length };
+    }
+    let resp: Response;
+    try {
+        resp = await fetch(url, { mode: 'cors' });
+    } catch (e: any) {
+        // TypeError on a fetch is almost always CORS or network failure
+        const msg = (e?.message ?? String(e)) as string;
+        if (/cors|cross.origin|opaque/i.test(msg) || msg.includes('Failed to fetch')) {
+            return { state: 'cors-blocked', url };
+        }
+        return { state: 'fetch-failed', url, reason: msg };
+    }
+    if (!resp.ok) {
+        return { state: 'fetch-failed', url, reason: `HTTP ${resp.status}` };
+    }
+    try {
+        const blob = await resp.blob();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+            const r = new FileReader();
+            r.onloadend = () => resolve(r.result as string);
+            r.onerror = () => reject(new Error('FileReader error'));
+            r.readAsDataURL(blob);
+        });
+        return { state: 'success', url, dataUrl, bytes: blob.size };
+    } catch (e: any) {
+        return { state: 'decode-failed', url };
+    }
+}
+
+/**
  * Preload many URLs in parallel. Returns Map<originalUrl, dataUrl>;
  * URLs that fail to fetch are absent from the result so callers can
  * fall back to the original URL.
@@ -65,6 +111,23 @@ export async function preloadImages(urls: (string | null | undefined)[]): Promis
         if (r.data) out.set(r.url, r.data);
     }
     return out;
+}
+
+/**
+ * Same as preloadImages but ALSO returns per-URL status objects so the
+ * preview can render a diagnostic panel ("URL X failed: cors-blocked")
+ * instead of silently dropping the image.
+ */
+export async function preloadImagesWithStatus(
+    urls: (string | null | undefined)[],
+): Promise<{ map: Map<string, string>; statuses: ImageLoadStatus[] }> {
+    const unique = Array.from(new Set(urls.filter((u): u is string => !!u && u.trim().length > 0)));
+    const statuses = await Promise.all(unique.map(u => fetchImageAsDataUrlWithStatus(u)));
+    const map = new Map<string, string>();
+    for (const s of statuses) {
+        if (s.state === 'success') map.set(s.url, s.dataUrl);
+    }
+    return { map, statuses };
 }
 
 /**
