@@ -32,7 +32,7 @@ import {
 } from '@/lib/content-blocks';
 import { buildSampleQuoteFixture } from '@/lib/sample-quote-fixture';
 import type { SalesTeamMember } from '@/lib/sales-team';
-import { extractImgUrlsFromHtml, preloadImagesWithStatus, swapImgUrlsInHtml, type ImageLoadStatus } from '@/lib/image-preload';
+import { extractImgUrlsFromHtml, preloadImages, swapImgUrlsInHtml } from '@/lib/image-preload';
 
 /** Hardcoded Highfield Sport range IDs (per CLAUDE.md). The preview
  *  fetches one model from this range and uses its real coverImageUrl. */
@@ -115,15 +115,6 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
     const [realTrailer, setRealTrailer] = useState<any | null>(null);
     const [realVendorLogoUrl, setRealVendorLogoUrl] = useState<string | null>(null);
     const [realVendorName, setRealVendorName] = useState<string | null>(null);
-    /** v1.7 round-8 — surface fetcher status in the preview header so
-     *  the user sees WHY motor / trailer photos may be missing (no real
-     *  data seeded for that vendor in Firestore). Cleaner than digging
-     *  through the browser console. */
-    const [fetchStatus, setFetchStatus] = useState<{
-        motor: 'pending' | 'found' | 'no-vendor' | 'no-rows' | 'error';
-        trailer: 'pending' | 'found' | 'no-vendor' | 'no-rows' | 'error';
-        vendorLogo: 'pending' | 'found' | 'missing';
-    }>({ motor: 'pending', trailer: 'pending', vendorLogo: 'pending' });
 
     useEffect(() => {
         let cancelled = false;
@@ -154,16 +145,13 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
             try {
                 const vDoc = await getDoc(doc(firestore, 'data-warehouse', HIGHFIELD_VENDOR_ID));
                 if (cancelled || !vDoc.exists()) {
-                    if (!cancelled) setFetchStatus(s => ({ ...s, vendorLogo: 'missing' }));
                     return;
                 }
                 const v = vDoc.data() as any;
                 setRealVendorLogoUrl(v.logoUrl ?? null);
                 setRealVendorName(v.name ?? null);
-                if (!cancelled) setFetchStatus(s => ({ ...s, vendorLogo: v.logoUrl ? 'found' : 'missing' }));
             } catch (e) {
                 console.warn('[preview] Highfield vendor fetch failed:', e);
-                if (!cancelled) setFetchStatus(s => ({ ...s, vendorLogo: 'missing' }));
             }
         }
 
@@ -174,7 +162,6 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                 const motorVendorDoc = vendorsSnap.docs.find(d => (d.data() as any).vendorType === 'Motor Brand');
                 if (!motorVendorDoc) {
                     console.warn('[preview] no vendor with vendorType=Motor Brand in data-warehouse');
-                    if (!cancelled) setFetchStatus(s => ({ ...s, motor: 'no-vendor' }));
                     return;
                 }
                 const motorVendor = { id: motorVendorDoc.id, ...motorVendorDoc.data() } as any;
@@ -183,7 +170,6 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                 if (cancelled) return;
                 if (dataSetsSnap.empty) {
                     console.warn(`[preview] no dataSets under data-warehouse/${motorVendor.id}`);
-                    if (!cancelled) setFetchStatus(s => ({ ...s, motor: 'no-rows' }));
                     return;
                 }
 
@@ -244,15 +230,12 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                             accessories,
                             accessoryItems: accessories.map((a: any) => ({ name: a.name, sellPriceExclGst: a.sellPriceExclGst })),
                         });
-                        setFetchStatus(s => ({ ...s, motor: 'found' }));
                     }
                     return;
                 }
                 // Walked all dataSets, found no usable rows
-                if (!cancelled) setFetchStatus(s => ({ ...s, motor: 'no-rows' }));
             } catch (e) {
                 console.warn('[preview] real motor fetch failed:', e);
-                if (!cancelled) setFetchStatus(s => ({ ...s, motor: 'error' }));
             }
         }
 
@@ -314,7 +297,6 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                                     sellPriceExclGst: o.sellExclGst ?? 0,
                                 })),
                             });
-                            setFetchStatus(s => ({ ...s, trailer: 'found' }));
                         }
                         return;
                     }
@@ -323,17 +305,13 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                 if (!cancelled) {
                     if (!anyVendorFound) {
                         console.warn('[preview] none of the 7 trailer-brand vendor IDs exist in data-warehouse');
-                        setFetchStatus(s => ({ ...s, trailer: 'no-vendor' }));
                     } else if (!anyTrailersFound) {
                         console.warn('[preview] trailer brand vendors exist but no series/trailers under any of them');
-                        setFetchStatus(s => ({ ...s, trailer: 'no-rows' }));
                     } else {
-                        setFetchStatus(s => ({ ...s, trailer: 'no-rows' }));
                     }
                 }
             } catch (e) {
                 console.warn('[preview] real trailer fetch failed:', e);
-                if (!cancelled) setFetchStatus(s => ({ ...s, trailer: 'error' }));
             }
         }
 
@@ -348,10 +326,6 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
     /** v1.7 round-9 — image preload state, populated by the effect
      *  declared after `contentBlocksMap` (so the dep array is valid). */
     const [imageDataUrls, setImageDataUrls] = useState<Map<string, string>>(new Map());
-    /** v1.7 round-10 — per-URL preload status surfaced in the diagnostic
-     *  panel so we can SEE which step failed for each image. */
-    const [imageStatuses, setImageStatuses] = useState<ImageLoadStatus[]>([]);
-    const [imagesDiagOpen, setImagesDiagOpen] = useState(false);
 
     /** v1.7 round-4 — pre-fetch the cover image as a base64 data URL so
      *  @react-pdf doesn't re-fetch + decode it on every regeneration of
@@ -444,11 +418,8 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
             salespersonProfile?.photoUrl ?? null,
         ];
         (async () => {
-            const { map, statuses } = await preloadImagesWithStatus(candidates);
-            if (!cancelled) {
-                setImageDataUrls(map);
-                setImageStatuses(statuses);
-            }
+            const map = await preloadImages(candidates);
+            if (!cancelled) setImageDataUrls(map);
         })();
         return () => { cancelled = true; };
     }, [contentBlocksMap, realMotor, realTrailer, realVendorLogoUrl, primaryLogoUrl, secondaryLogoUrl, salespersonProfile?.photoUrl]);
@@ -611,24 +582,6 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                             <p className="text-[10px] text-slate-500 mt-0.5">
                                 All sections in render order · regenerates 1.5s after edits settle
                             </p>
-                            {/* v1.7 round-8 — real-data fetcher status pills.
-                                Surfaces WHY motor/trailer photos may be missing
-                                (no real data seeded for that vendor in Firestore). */}
-                            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                                <FetchPill label="Vendor" status={fetchStatus.vendorLogo} />
-                                <FetchPill label="Motor" status={fetchStatus.motor} />
-                                <FetchPill label="Trailer" status={fetchStatus.trailer} />
-                                {/* v1.7 round-10 — image preload diagnostic.
-                                    Click to expand; shows each image URL the
-                                    preview tried to load and exactly what
-                                    happened (cors-blocked / fetch-failed /
-                                    decode-failed / success). */}
-                                <ImagePreloadPill
-                                    statuses={imageStatuses}
-                                    onClick={() => setImagesDiagOpen(o => !o)}
-                                    open={imagesDiagOpen}
-                                />
-                            </div>
                         </div>
                         <Button
                             size="sm"
@@ -640,13 +593,6 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                             Focus
                         </Button>
                     </div>
-                )}
-                {/* v1.7 round-10 — expandable image-preload diagnostic table.
-                    Shows every URL the preloader attempted and exactly what
-                    happened to it. This is the actual debug surface for
-                    "image visible in editor, missing from PDF". */}
-                {showHeader && imagesDiagOpen && (
-                    <ImagePreloadPanel statuses={imageStatuses} />
                 )}
                 {/* Inline PDF — only render when NOT in focus mode (avoids
                     double-rendering lag). When focus mode is on, this is
@@ -703,140 +649,5 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                 </div>
             )}
         </>
-    );
-}
-
-/**
- * v1.7 round-8 — small status pill that tells the operator whether
- * the real-data fetcher found motor / trailer / vendor data in
- * Firestore. Green when data was loaded, amber when missing (with a
- * tooltip explaining why), grey while pending. Tells the user at a
- * glance why a motor / trailer photo is or isn't showing on the PDF.
- */
-function FetchPill({
-    label,
-    status,
-}: {
-    label: string;
-    status: 'pending' | 'found' | 'no-vendor' | 'no-rows' | 'missing' | 'error';
-}) {
-    const isGreen = status === 'found';
-    const isGrey = status === 'pending';
-    const tooltip =
-        status === 'found'      ? `${label}: real data loaded from Firestore.` :
-        status === 'pending'    ? `${label}: fetching…` :
-        status === 'no-vendor'  ? `${label}: no matching vendor seeded in data-warehouse. Photo + specs in PDF will be empty / placeholder until you add one.` :
-        status === 'no-rows'    ? `${label}: vendor exists but no rows under it. Photo + specs will be empty.` :
-        status === 'missing'    ? `${label}: vendor doc missing or has no logoUrl.` :
-                                  `${label}: fetch failed — see browser console.`;
-    return (
-        <span
-            title={tooltip}
-            className={
-                'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest border ' +
-                (isGreen
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    : isGrey
-                        ? 'bg-slate-50 text-slate-500 border-slate-200'
-                        : 'bg-amber-50 text-amber-700 border-amber-200')
-            }
-        >
-            <span className={'w-1.5 h-1.5 rounded-full ' + (isGreen ? 'bg-emerald-500' : isGrey ? 'bg-slate-400' : 'bg-amber-500')} />
-            {label}
-            {isGreen && ' ✓'}
-            {!isGreen && !isGrey && ' missing'}
-        </span>
-    );
-}
-
-/**
- * v1.7 round-10 — image-preload status pill: how many image URLs were
- * collected and how many succeeded as data URLs. Click to expand the
- * full diagnostic table below the header. The actual debug surface
- * for "image visible in editor, missing from PDF" reports.
- */
-function ImagePreloadPill({
-    statuses,
-    open,
-    onClick,
-}: {
-    statuses: ImageLoadStatus[];
-    open: boolean;
-    onClick: () => void;
-}) {
-    const total = statuses.length;
-    const success = statuses.filter(s => s.state === 'success').length;
-    const failed = total - success;
-    const allOk = total > 0 && failed === 0;
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            title="Click to view per-image preload status"
-            className={
-                'inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-widest border transition-colors ' +
-                (total === 0
-                    ? 'bg-slate-50 text-slate-500 border-slate-200'
-                    : allOk
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                        : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100')
-            }
-        >
-            <span className={'w-1.5 h-1.5 rounded-full ' + (total === 0 ? 'bg-slate-400' : allOk ? 'bg-emerald-500' : 'bg-red-500')} />
-            Images {success}/{total}
-            {open ? ' ▴' : ' ▾'}
-        </button>
-    );
-}
-
-/**
- * Expandable per-image diagnostic table. Shows each URL that the
- * preloader tried to fetch and the exact outcome — so we can see
- * whether the cause of a missing image is CORS, a 404, a decode
- * failure, or something else, instead of guessing rounds-deep.
- */
-function ImagePreloadPanel({ statuses }: { statuses: ImageLoadStatus[] }) {
-    if (statuses.length === 0) {
-        return (
-            <div className="px-4 py-3 border-b bg-amber-50 text-[11px] text-amber-700">
-                No images collected yet — preview is fetching content blocks + real motor / trailer data.
-            </div>
-        );
-    }
-    return (
-        <div className="border-b bg-slate-900 text-slate-100">
-            <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest border-b border-slate-800">
-                Image preload — {statuses.length} URL(s)
-            </div>
-            <div className="max-h-72 overflow-auto text-[10px] font-mono">
-                {statuses.map((s, i) => {
-                    const stateColor =
-                        s.state === 'success'       ? 'text-emerald-400' :
-                        s.state === 'cors-blocked'  ? 'text-red-400' :
-                        s.state === 'fetch-failed'  ? 'text-orange-400' :
-                                                      'text-amber-400';
-                    return (
-                        <div key={i} className="px-4 py-1.5 border-b border-slate-800 break-all">
-                            <div className="flex items-baseline gap-2">
-                                <span className={'shrink-0 font-bold uppercase ' + stateColor}>
-                                    {s.state}
-                                </span>
-                                {s.state === 'success' && (
-                                    <span className="text-slate-400">{Math.round((s.bytes ?? 0) / 1024)} KB</span>
-                                )}
-                                {s.state === 'fetch-failed' && (
-                                    <span className="text-slate-400">{s.reason}</span>
-                                )}
-                            </div>
-                            <div className="text-slate-300 mt-0.5">{s.url}</div>
-                        </div>
-                    );
-                })}
-            </div>
-            <div className="px-4 py-2 text-[10px] text-slate-400 border-t border-slate-800">
-                <strong className="text-slate-200">cors-blocked</strong> = the browser blocked the cross-origin fetch. Long-term
-                fix: configure CORS on the Firebase Storage bucket. Short-term: the image still won&apos;t render on the PDF.
-            </div>
-        </div>
     );
 }

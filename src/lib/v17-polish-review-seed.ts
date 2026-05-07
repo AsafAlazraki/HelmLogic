@@ -1,29 +1,20 @@
 /**
- * v1.7 polish-review seed (planning-only).
+ * v1.7 finalize-release seed (planning-only).
  *
- * One-shot button that updates story docs to reflect the polish work
- * shipped across rounds 2–7 of the v1.7 feedback cycle:
+ * One-shot button on the Backlog that:
+ *   1. Appends the "✓ shipped" acceptance lines from rounds 2–12 to
+ *      every v1.7 story (idempotent, skip-if-includes).
+ *   2. Retargets 1.8.2 v1.8 → v1.7 (it was originally a v1.8 story
+ *      that got pulled forward when image upload shipped early).
+ *   3. Marks every v1.7 feature `status: 'shipped'` so the Backlog +
+ *      Board show them as done. The Roadmap's emerald shipped tint
+ *      still requires `RELEASE_WINDOWS['v1.7'].shipped = true` in
+ *      release-schedule.ts — flipped in the same commit that removes
+ *      this button (next dev cycle, before main merge).
  *
- *   1.8.2  Image upload per content block (was v1.8)
- *          RETARGET v1.8 → v1.7. Image extension + width/align attrs
- *          + contextual toolbar (size/align/replace/remove) + JPG/PNG
- *          format restriction + Word-style text wrap (round-7).
- *
- *   1.8.7  Live PDF preview pane — debounce + memoize, focus mode,
- *          cover-as-data-URL pre-fetch (round-4 first-page lag fix),
- *          real motor + trailer + vendor logo Firestore overlays.
- *
- *   1.8.10 Real-data fetcher path (canonical Firestore reads).
- *
- *   1.2.1  Branded PDF Quote Generation — cover redesign, polished
- *          section headers, model-name overlap fix, per-block pages
- *          with own InnerHeaders (round-5), customisable sub-header
- *          per block.
- *
- *   1.8.12 Per-salesperson messages + photos — schema + editor + PDF.
- *
- * Idempotent — only writes if the new acceptance line isn't already
- * present (skip-if-includes check).
+ * Lifecycle: per the v1.6.2 one-shot-seed pattern in CLAUDE.md, this
+ * button + module get removed in the SAME dev cycle once the user
+ * clicks it. Don't keep this around long-term.
  */
 
 import {
@@ -100,6 +91,7 @@ export interface PolishReviewSummary {
     storiesUpdated: number;
     storiesSkipped: number;
     retargetsApplied: number;
+    storiesMarkedShipped: number;
     storiesMissed: string[];
 }
 
@@ -107,6 +99,7 @@ export async function applyV17PolishReview(firestore: Firestore): Promise<Polish
     let storiesUpdated = 0;
     let storiesSkipped = 0;
     let retargetsApplied = 0;
+    let storiesMarkedShipped = 0;
     const storiesMissed: string[] = [];
 
     const existing = await getDocs(collection(firestore, 'features'));
@@ -118,6 +111,7 @@ export async function applyV17PolishReview(firestore: Firestore): Promise<Polish
         allExisting.push({ id: d.id, data, title: t });
     });
 
+    // Stage 1 — append acceptance lines + retarget 1.8.2.
     for (const u of UPDATES) {
         const target = allExisting.find(d => d.title.startsWith(u.titlePrefix));
         if (!target) {
@@ -145,5 +139,28 @@ export async function applyV17PolishReview(firestore: Firestore): Promise<Polish
         storiesUpdated++;
     }
 
-    return { storiesUpdated, storiesSkipped, retargetsApplied, storiesMissed };
+    /**
+     * Stage 2 — mark every v1.7 feature as shipped. Re-reads the
+     * features collection so 1.8.2 (just retargeted to v1.7) is
+     * picked up. Skip-if-already-shipped keeps it idempotent.
+     */
+    const refreshed = await getDocs(collection(firestore, 'features'));
+    refreshed.forEach(_ => {/* no-op, used for refresh */});
+    const v17Features: { id: string; data: any }[] = [];
+    refreshed.forEach(d => {
+        const data = d.data();
+        if ((data.targetRelease as string | undefined) === 'v1.7') {
+            v17Features.push({ id: d.id, data });
+        }
+    });
+    for (const f of v17Features) {
+        if (f.data.status === 'shipped') continue;
+        await updateDoc(doc(firestore, 'features', f.id), {
+            status: 'shipped',
+            updatedAt: serverTimestamp(),
+        });
+        storiesMarkedShipped++;
+    }
+
+    return { storiesUpdated, storiesSkipped, retargetsApplied, storiesMarkedShipped, storiesMissed };
 }
