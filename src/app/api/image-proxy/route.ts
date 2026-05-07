@@ -75,6 +75,17 @@ export async function GET(req: NextRequest) {
             method: 'GET',
             // Don't forward cookies / auth headers — server-side fetch is anonymous.
             redirect: 'follow',
+            // v1.7 round-12 — some CDNs (Yamaha) reject the default
+            // server-side fetch user-agent as a hot-link prevention
+            // measure. Browser-style UA + a Referer pointing at the
+            // CDN's own host gets through. Plus an Accept header so
+            // image content-types are returned (some servers default
+            // to application/octet-stream without it).
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; HelmLogic-PDF-Preview/1.7; +https://helmlogic.app)',
+                Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+                Referer: `${target.protocol}//${target.hostname}/`,
+            },
         });
     } catch (e: any) {
         return NextResponse.json(

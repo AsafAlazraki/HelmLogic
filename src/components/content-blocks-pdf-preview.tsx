@@ -42,15 +42,23 @@ const SPORT_RANGE_ID = 'nQ2LE50z9Tbf2uss0Ote';
 /** Real trailer-brand vendor IDs (see scripts/seed-trailers.ts:154–165).
  *  The preview walks these in order and uses the first trailer it finds
  *  with usable specs, so the demo reflects what's actually in the org's
- *  catalog rather than invented brand names. */
+ *  catalog rather than invented brand names.
+ *
+ *  v1.7 round-12: Mackay deprioritised because its brand logoUrl points
+ *  at a private SharePoint /sites/ path that even our server-side proxy
+ *  can't fetch (requires SharePoint auth). Brands whose logos sit on
+ *  Firebase Storage (or have no logo set) come first so the preview's
+ *  trailer-logo pill stays green. Mackay still appears in real customer
+ *  quotes once the trailer is actually selected — this just controls
+ *  the demo-data preference inside the editor preview. */
 const TRAILER_BRAND_VENDOR_IDS = [
-    'mackay-trailers',
+    'nsm-custom-trailers',
     'redco-tinka-trailers',
     'gfab-trailers',
     'stacer-trailers',
     'dunbier-haines-bmt',
     'dunbier-trailers',
-    'nsm-custom-trailers',
+    'mackay-trailers',
 ];
 
 interface Props {

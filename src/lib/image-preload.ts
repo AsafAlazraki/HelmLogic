@@ -62,6 +62,22 @@ async function fetchImageAsDataUrlWithStatus(url: string): Promise<ImageLoadStat
         return { state: 'success', url, dataUrl: url, bytes: url.length };
     }
 
+    /**
+     * v1.7 round-12 — known-private origins that need authentication.
+     * SharePoint /sites/ paths require an authenticated session that
+     * neither the browser fetch nor our anonymous server-side proxy
+     * can satisfy. Short-circuit with a clear message instead of
+     * timing out / returning generic cors-blocked. Org admins should
+     * re-host these images on Firebase Storage to make them render.
+     */
+    if (/sharepoint\.com\/sites\//i.test(url)) {
+        return {
+            state: 'fetch-failed',
+            url,
+            reason: 'SharePoint /sites/ path needs auth — re-host on Firebase Storage',
+        };
+    }
+
     // 1. Try direct fetch first (fast path for same-origin or CORS-friendly origins).
     let resp: Response | null = null;
     let directFailed = false;
