@@ -34,30 +34,14 @@ export type ImageLoadStatus =
     | { state: 'cors-blocked'; url: string }
     | { state: 'decode-failed'; url: string };
 
-/** Fetch one URL, decode to base64 data URL. Returns null on failure. */
+/** Fetch one URL, decode to base64 data URL. Returns null on failure.
+ *  Round-11: shares the direct-then-proxy fallback with the status
+ *  variant so the simpler call-sites (customer PDF download, finalize
+ *  snapshot) get the proxy bypass too. */
 export async function fetchImageAsDataUrl(url: string): Promise<string | null> {
     if (!url) return null;
-    if (url.startsWith('data:')) return url; // already a data URL — pass through
-    try {
-        const resp = await fetch(url, { mode: 'cors' });
-        if (!resp.ok) {
-            console.warn('[image-preload] non-OK response:', resp.status, url);
-            return null;
-        }
-        const blob = await resp.blob();
-        return await new Promise<string | null>((resolve) => {
-            const r = new FileReader();
-            r.onloadend = () => resolve((r.result as string) ?? null);
-            r.onerror = () => {
-                console.warn('[image-preload] FileReader failed for:', url);
-                resolve(null);
-            };
-            r.readAsDataURL(blob);
-        });
-    } catch (e) {
-        console.warn('[image-preload] fetch failed:', url, e);
-        return null;
-    }
+    const status = await fetchImageAsDataUrlWithStatus(url);
+    return status.state === 'success' ? status.dataUrl : null;
 }
 
 /**
@@ -65,25 +49,59 @@ export async function fetchImageAsDataUrl(url: string): Promise<string | null> {
  * so the preview's diagnostic panel can show exactly which step failed
  * for each image (cors-blocked vs fetch-failed vs decode-failed). Used
  * by the new preloadImagesWithStatus().
+ *
+ * v1.7 round-11 — falls back to the server-side image proxy at
+ * /api/image-proxy?url=... when the direct fetch is blocked by CORS.
+ * The proxy fetches server-side (no browser CORS) and re-emits the
+ * bytes with permissive Access-Control-Allow-Origin so we can decode
+ * them as a data URL. This is what finally bypasses Firebase Storage
+ * / Yamaha CDN / SharePoint not having CORS headers configured.
  */
 async function fetchImageAsDataUrlWithStatus(url: string): Promise<ImageLoadStatus> {
     if (url.startsWith('data:')) {
         return { state: 'success', url, dataUrl: url, bytes: url.length };
     }
-    let resp: Response;
+
+    // 1. Try direct fetch first (fast path for same-origin or CORS-friendly origins).
+    let resp: Response | null = null;
+    let directFailed = false;
     try {
         resp = await fetch(url, { mode: 'cors' });
-    } catch (e: any) {
-        // TypeError on a fetch is almost always CORS or network failure
-        const msg = (e?.message ?? String(e)) as string;
-        if (/cors|cross.origin|opaque/i.test(msg) || msg.includes('Failed to fetch')) {
-            return { state: 'cors-blocked', url };
+        if (!resp.ok) {
+            // Non-OK from the direct fetch — try the proxy in case the proxy
+            // can handle it (e.g. some origins return 401 to anonymous browser
+            // requests but accept server-side requests).
+            directFailed = true;
+            resp = null;
         }
-        return { state: 'fetch-failed', url, reason: msg };
+    } catch (e: any) {
+        directFailed = true;
+        // TypeError on a fetch is almost always CORS or network failure
+        // — fall through to the proxy retry below.
     }
-    if (!resp.ok) {
-        return { state: 'fetch-failed', url, reason: `HTTP ${resp.status}` };
+
+    // 2. CORS / direct-fetch failure: retry via the server-side proxy.
+    if (!resp) {
+        try {
+            const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(url)}`;
+            resp = await fetch(proxyUrl);
+            if (!resp.ok) {
+                // Try to parse a structured error from the proxy.
+                let proxyMsg = `proxy HTTP ${resp.status}`;
+                try {
+                    const j = await resp.json();
+                    if (j?.error) proxyMsg = `proxy: ${j.error}${j.host ? ` (${j.host})` : ''}`;
+                } catch { /* fall through */ }
+                return directFailed
+                    ? { state: 'cors-blocked', url }
+                    : { state: 'fetch-failed', url, reason: proxyMsg };
+            }
+        } catch (e: any) {
+            return { state: 'fetch-failed', url, reason: e?.message ?? String(e) };
+        }
     }
+
+    // 3. Decode the (direct or proxied) response into a data URL.
     try {
         const blob = await resp.blob();
         const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -93,7 +111,7 @@ async function fetchImageAsDataUrlWithStatus(url: string): Promise<ImageLoadStat
             r.readAsDataURL(blob);
         });
         return { state: 'success', url, dataUrl, bytes: blob.size };
-    } catch (e: any) {
+    } catch {
         return { state: 'decode-failed', url };
     }
 }
