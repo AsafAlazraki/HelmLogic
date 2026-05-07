@@ -267,10 +267,11 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         if (!quote || !financials) return;
         setIsGeneratingPdf(true);
         try {
-            const [{ pdf }, { ProposalPDFDocument }, { resolveContentBlocksForQuote, resolveContentBlockSubHeadersForQuote }] = await Promise.all([
+            const [{ pdf }, { ProposalPDFDocument }, { resolveContentBlocksForQuote, resolveContentBlockSubHeadersForQuote }, { extractImgUrlsFromHtml, preloadImages, swapImgUrlsInHtml }] = await Promise.all([
                 import('@react-pdf/renderer'),
                 import('./proposal-pdf'),
                 import('@/lib/content-blocks'),
+                import('@/lib/image-preload'),
             ]);
             // v1.7 (1.2.1): fetch org-authored content blocks (with brand-override resolution).
             // v1.7 round-5: parallel fetch of authored PDF sub-headers.
@@ -280,8 +281,56 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                     resolveContentBlockSubHeadersForQuote(firestore, quote.organisationId),
                 ])
                 : [undefined, undefined];
+
+            /**
+             * v1.7 round-9 — pre-load every image referenced by the
+             * customer PDF and swap URLs for base64 data URLs before
+             * @react-pdf renders. Bypasses the iframe-CORS issue that
+             * silently dropped Firebase Storage / vendor-CDN images.
+             */
+            const inlineUrls = contentBlocks
+                ? Object.values(contentBlocks).flatMap(html => extractImgUrlsFromHtml(html ?? ''))
+                : [];
+            const candidateUrls: (string | null | undefined)[] = [
+                ...inlineUrls,
+                quote.coverImageUrl,
+                quote.vendorLogoUrl,
+                quote.motor?.imageUrl,
+                quote.motor?.brandLogoUrl,
+                quote.trailer?.imageUrl,
+                quote.trailer?.brandLogoUrl,
+                quote.trailer?.catalog?.imageUrl,
+                organisation?.primaryLogoUrl,
+                organisation?.secondaryLogoUrl,
+            ];
+            const dataUrls = await preloadImages(candidateUrls);
+            const swap = (u: string | null | undefined) => (u ? (dataUrls.get(u) ?? u) : u);
+            const mappedBlocks: typeof contentBlocks = contentBlocks
+                ? Object.fromEntries(Object.entries(contentBlocks).map(([k, v]) => [k, v ? swapImgUrlsInHtml(v, dataUrls) : v]))
+                : contentBlocks;
+            const swappedQuote = {
+                ...quote,
+                coverImageUrl: swap(quote.coverImageUrl),
+                vendorLogoUrl: swap(quote.vendorLogoUrl),
+                motor: quote.motor
+                    ? { ...quote.motor, imageUrl: swap(quote.motor.imageUrl), brandLogoUrl: swap(quote.motor.brandLogoUrl) }
+                    : quote.motor,
+                trailer: quote.trailer
+                    ? {
+                          ...quote.trailer,
+                          imageUrl: swap(quote.trailer.imageUrl),
+                          brandLogoUrl: swap(quote.trailer.brandLogoUrl),
+                          catalog: quote.trailer.catalog
+                              ? { ...quote.trailer.catalog, imageUrl: swap(quote.trailer.catalog.imageUrl) }
+                              : quote.trailer.catalog,
+                      }
+                    : quote.trailer,
+            };
+            const swappedOrg = organisation
+                ? { ...organisation, primaryLogoUrl: swap(organisation.primaryLogoUrl), secondaryLogoUrl: swap(organisation.secondaryLogoUrl) }
+                : organisation;
             const blob = await pdf(
-                createElement(ProposalPDFDocument, { quote, organisation, financials, contentBlocks, contentBlockSubHeaders }) as any
+                createElement(ProposalPDFDocument, { quote: swappedQuote, organisation: swappedOrg, financials, contentBlocks: mappedBlocks, contentBlockSubHeaders }) as any
             ).toBlob();
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');

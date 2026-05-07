@@ -32,6 +32,7 @@ import {
 } from '@/lib/content-blocks';
 import { buildSampleQuoteFixture } from '@/lib/sample-quote-fixture';
 import type { SalesTeamMember } from '@/lib/sales-team';
+import { extractImgUrlsFromHtml, preloadImages, swapImgUrlsInHtml } from '@/lib/image-preload';
 
 /** Hardcoded Highfield Sport range IDs (per CLAUDE.md). The preview
  *  fetches one model from this range and uses its real coverImageUrl. */
@@ -336,6 +337,10 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
         return () => { cancelled = true; };
     }, [firestore]);
 
+    /** v1.7 round-9 — image preload state, populated by the effect
+     *  declared after `contentBlocksMap` (so the dep array is valid). */
+    const [imageDataUrls, setImageDataUrls] = useState<Map<string, string>>(new Map());
+
     /** v1.7 round-4 — pre-fetch the cover image as a base64 data URL so
      *  @react-pdf doesn't re-fetch + decode it on every regeneration of
      *  the document tree. The cover image is the heaviest asset on
@@ -406,24 +411,81 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
         return result;
     }, [blocks, documentType]);
 
+    /** v1.7 round-9 — preload every image URL the PDF will need into a
+     *  base64 data URL map. Bypasses the @react-pdf-iframe-CORS issue
+     *  that silently failed inline content-block images, motor photos,
+     *  and trailer photos. The cover already had this since round-4;
+     *  round-9 generalises to every image source on the customer PDF. */
+    useEffect(() => {
+        let cancelled = false;
+        const inlineUrls = Object.values(contentBlocksMap).flatMap(html => extractImgUrlsFromHtml(html ?? ''));
+        const candidates: (string | null | undefined)[] = [
+            ...inlineUrls,
+            realMotor?.imageUrl,
+            realMotor?.brandLogoUrl,
+            realTrailer?.imageUrl,
+            realTrailer?.brandLogoUrl,
+            realTrailer?.catalog?.imageUrl,
+            realVendorLogoUrl,
+            primaryLogoUrl ?? null,
+            secondaryLogoUrl ?? null,
+            salespersonProfile?.photoUrl ?? null,
+        ];
+        (async () => {
+            const map = await preloadImages(candidates);
+            if (!cancelled) setImageDataUrls(map);
+        })();
+        return () => { cancelled = true; };
+    }, [contentBlocksMap, realMotor, realTrailer, realVendorLogoUrl, primaryLogoUrl, secondaryLogoUrl, salespersonProfile?.photoUrl]);
+
     /** v1.7 round-4 — fixture splices in real motor / trailer / vendor /
      *  cover-image data when the Firestore fetchers complete. Sections
      *  fall back to the placeholder fixture entries (which use real
      *  brand names + real category names) until the live data arrives.
      *  No Unsplash, no invented brands, no fake categories. */
+    /** v1.7 round-9 — swap every URL field with its preloaded data URL
+     *  (when available). Keeps the original URL when preload failed so
+     *  @react-pdf can attempt the fetch itself (it'll silently no-op
+     *  on failure, matching prior behaviour). */
+    const swap = (u: string | null | undefined): string | null => {
+        if (!u) return u ?? null;
+        return imageDataUrls.get(u) ?? u;
+    };
+
+    const motorWithDataUrls = useMemo(() => {
+        if (!realMotor) return realMotor;
+        return {
+            ...realMotor,
+            imageUrl: swap(realMotor.imageUrl),
+            brandLogoUrl: swap(realMotor.brandLogoUrl),
+        };
+    }, [realMotor, imageDataUrls]);
+
+    const trailerWithDataUrls = useMemo(() => {
+        if (!realTrailer) return realTrailer;
+        return {
+            ...realTrailer,
+            imageUrl: swap(realTrailer.imageUrl),
+            brandLogoUrl: swap(realTrailer.brandLogoUrl),
+            catalog: realTrailer.catalog
+                ? { ...realTrailer.catalog, imageUrl: swap(realTrailer.catalog.imageUrl) }
+                : realTrailer.catalog,
+        };
+    }, [realTrailer, imageDataUrls]);
+
     const fixture = useMemo(
         () => buildSampleQuoteFixture({
             organisationName,
-            primaryLogoUrl,
-            secondaryLogoUrl,
+            primaryLogoUrl: swap(primaryLogoUrl),
+            secondaryLogoUrl: swap(secondaryLogoUrl),
             vendorId: null,
             coverImageUrl: coverDataUrl ?? heroImageUrl ?? null,
             vendorName: realVendorName,
-            vendorLogoUrl: realVendorLogoUrl,
-            motorOverride: realMotor,
-            trailerOverride: realTrailer,
+            vendorLogoUrl: swap(realVendorLogoUrl),
+            motorOverride: motorWithDataUrls,
+            trailerOverride: trailerWithDataUrls,
         }),
-        [organisationName, primaryLogoUrl, secondaryLogoUrl, heroImageUrl, coverDataUrl, realVendorName, realVendorLogoUrl, realMotor, realTrailer],
+        [organisationName, primaryLogoUrl, secondaryLogoUrl, heroImageUrl, coverDataUrl, realVendorName, realVendorLogoUrl, motorWithDataUrls, trailerWithDataUrls, imageDataUrls],
     );
 
     /** v1.7 perf — debounce the PDF inputs. Editing in TipTap fires
@@ -482,19 +544,36 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
 
     /** Single document instance — useMemo-stabilised so the PDFViewer
      *  iframe only regenerates when the debounced inputs actually change. */
+    /** v1.7 round-9 — final pre-render swap on the debounced inputs.
+     *  Keeps the swap inside the memo so the PDFViewer iframe regenerates
+     *  exactly when the data URLs become available, not on every map
+     *  reference change. */
     const docElement = useMemo(
-        () => (
-            <ProposalPDFDocument
-                quote={fixture.quote}
-                organisation={fixture.organisation}
-                financials={fixture.financials}
-                contentBlocks={stableMap}
-                contentBlockSubHeaders={stableSubHeaders}
-                pdfSections={stableSections}
-                salespersonProfile={stableProfile}
-            />
-        ),
-        [fixture, stableMap, stableSubHeaders, stableSections, stableProfile],
+        () => {
+            const mappedHtml: Partial<Record<BlockType, string>> = {};
+            for (const [k, v] of Object.entries(stableMap)) {
+                mappedHtml[k as BlockType] = v ? swapImgUrlsInHtml(v, imageDataUrls) : v;
+            }
+            const mappedProfile = stableProfile
+                ? {
+                      ...stableProfile,
+                      photoUrl: stableProfile.photoUrl ? (imageDataUrls.get(stableProfile.photoUrl) ?? stableProfile.photoUrl) : stableProfile.photoUrl,
+                      messageHtml: stableProfile.messageHtml ? swapImgUrlsInHtml(stableProfile.messageHtml, imageDataUrls) : stableProfile.messageHtml,
+                  }
+                : stableProfile;
+            return (
+                <ProposalPDFDocument
+                    quote={fixture.quote}
+                    organisation={fixture.organisation}
+                    financials={fixture.financials}
+                    contentBlocks={mappedHtml}
+                    contentBlockSubHeaders={stableSubHeaders}
+                    pdfSections={stableSections}
+                    salespersonProfile={mappedProfile}
+                />
+            );
+        },
+        [fixture, stableMap, stableSubHeaders, stableSections, stableProfile, imageDataUrls],
     );
 
     return (
