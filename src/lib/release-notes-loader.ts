@@ -20,6 +20,14 @@ export interface ReleaseNote {
     date: string | null;
     /** Rendered HTML body, first H1 stripped (since we render it ourselves). */
     html: string;
+    /**
+     * v1.7 — paired user guide for this release. Loaded from
+     * `tasks/USER_GUIDE_vX.Y.Z.md` when present. Null when the release
+     * doesn't ship a user guide (older releases pre-v1.7, patches with
+     * no user-facing UX change). The view renders this in a "How to
+     * use" tab next to the "What changed" release notes.
+     */
+    userGuideHtml: string | null;
 }
 
 /** Semantic-ish comparator — "v1" < "v1.1" < "v1.2" < "v1.2.1" < "v1.3" etc. */
@@ -33,6 +41,26 @@ function compareVersions(a: string, b: string): number {
         if (diff !== 0) return diff;
     }
     return 0;
+}
+
+/**
+ * v1.7 — read tasks/USER_GUIDE_vX.Y.Z.md for the given version (if it
+ * exists), strip the first H1, return parsed HTML. Null when no guide
+ * exists. Per `tasks/RELEASE_PROCESS.md`, every minor + every user-UX
+ * patch from v1.7 onward should ship a paired user guide.
+ */
+function loadUserGuide(version: string): string | null {
+    const dir = path.join(process.cwd(), 'tasks');
+    const filename = `USER_GUIDE_${version}.md`;
+    const fullPath = path.join(dir, filename);
+    let md: string;
+    try {
+        md = fs.readFileSync(fullPath, 'utf8');
+    } catch {
+        return null;
+    }
+    const bodyMd = md.replace(/^#\s+.+$/m, '').trimStart();
+    return marked.parse(bodyMd, { async: false }) as string;
 }
 
 export function loadReleaseNotes(): ReleaseNote[] {
@@ -64,7 +92,10 @@ export function loadReleaseNotes(): ReleaseNote[] {
         // marked.parse is sync when called without options that force async.
         const html = marked.parse(bodyMd, { async: false }) as string;
 
-        return { version, title, date, html };
+        // v1.7 — also load the paired user guide if one exists.
+        const userGuideHtml = loadUserGuide(version);
+
+        return { version, title, date, html, userGuideHtml };
     });
 
     // Newest first.
