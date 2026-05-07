@@ -97,6 +97,40 @@ service cloud.firestore {
       match /dealerFitSelections/{selectionId} {
         allow read, write: if isSignedIn();
       }
+      // v1.7 (story 1.8.1) — Quote Content Block Manager.
+      // Reads open to all org members so the PDF render works for
+      // every salesperson; writes nominally signed-in to match the
+      // sibling org subcollections, with the org-admin gate enforced
+      // at the UI layer (organisation.permissions[role].can_access_settings,
+      // same gate the parent /manage page uses). Same rationale as
+      // the v1.6.1 sub-dealer rule removal — rule-layer org-admin
+      // checks have false-positive risks; UI gating is the
+      // authoritative layer in this codebase.
+      match /contentBlocks/{blockId} {
+        allow read, write: if isSignedIn();
+        match /brandOverrides/{vendorId} {
+          allow read, write: if isSignedIn();
+        }
+        match /versions/{versionId} {
+          allow read, write: if isSignedIn();
+        }
+      }
+      // v1.7 (story 1.8.11) — PDF Section Structure (drag-drop reorder).
+      // organisations/{orgId}/pdfStructure/{documentType} where
+      // documentType ∈ ('quote' | 'contract'). Same isSignedIn() gating
+      // as the rest of the org subcollections; UI gates editing on
+      // organisation.permissions[role].can_access_settings.
+      match /pdfStructure/{documentType} {
+        allow read, write: if isSignedIn();
+      }
+      // v1.7 (story 1.8.12) — Sales Team per-salesperson messages + photos.
+      // organisations/{orgId}/salesTeam/{userId}. Doc id === user uid.
+      // Reads open so the customer-PDF render can resolve the salesperson
+      // for any quote.createdByUid; writes signed-in (UI gates org-admin
+      // edit access via /manage's can_access_settings permission).
+      match /salesTeam/{userId} {
+        allow read, write: if isSignedIn();
+      }
     }
 
     // Recursive permission for prototyping across the data-warehouse hierarchy

@@ -32,7 +32,7 @@ export interface ReleaseWindow {
  */
 export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     'v1.6':   { shipped: true },
-    'v1.7':   {},
+    'v1.7':   { shipped: true },
     'v1.8':   {},
     'v1.9':   {},
     'v1.10':  {},

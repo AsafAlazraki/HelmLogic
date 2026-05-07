@@ -1,6 +1,14 @@
 'use client';
 
 import { Document, Page, View, Text, Image, StyleSheet, Svg, Defs, LinearGradient, Stop, Rect } from '@react-pdf/renderer';
+import type { BlockType } from '@/lib/content-blocks';
+import { BLOCK_TYPE_LABEL } from '@/lib/content-blocks';
+import { TipTapHtmlPdf } from '@/lib/tiptap-pdf';
+import {
+    DEFAULT_SECTIONS,
+    partitionContentBlocks,
+    type PdfStructureSection,
+} from '@/lib/pdf-structure';
 
 /* ─── Palette ──────────────────────────────────────────────────────────── */
 const BRAND  = '#0066cc';
@@ -48,7 +56,7 @@ const S = StyleSheet.create({
 });
 
 /* ─── Sub-components ───────────────────────────────────────────────────── */
-function InnerHeader({ title, sub, quoteNumber, page }: { title: string; sub: string; quoteNumber: string; page: string }) {
+function InnerHeader({ title, sub, quoteNumber }: { title: string; sub: string; quoteNumber: string }) {
     return (
         <View style={S.pageHeader}>
             <View>
@@ -57,7 +65,11 @@ function InnerHeader({ title, sub, quoteNumber, page }: { title: string; sub: st
             </View>
             <View style={S.pageHeaderRight}>
                 <Text style={S.pageHeaderMeta}>{quoteNumber}</Text>
-                <Text style={S.pageHeaderMeta}>Page {page}</Text>
+                <Text
+                    style={S.pageHeaderMeta}
+                    render={({ pageNumber }) => `Page ${String(pageNumber).padStart(2, '0')}`}
+                    fixed
+                />
             </View>
         </View>
     );
@@ -75,10 +87,180 @@ function InnerFooter({ organisation, quoteNumber }: { organisation: any; quoteNu
     );
 }
 
-/* ─── Main Document ────────────────────────────────────────────────────── */
-interface Props { quote: any; organisation: any; financials: any }
+/* ─── Content-block section helper (v1.7 — 1.2.1 PDF wiring) ──────────
+ * Renders one of the org-authored narrative content blocks at the
+ * call-site's position. Only renders when contentBlocks[blockType]
+ * has content; otherwise silently emits nothing so empty blocks
+ * don't leave gaps in the layout.
+ *
+ * v1.7 polish — section headers now match the InnerHeader / page-
+ * level style (big bold italic uppercase title + small uppercase
+ * sub-line, bottom-bordered) instead of the earlier tiny "CAD"
+ * label. Looks like a real PDF section, not a footnote.
+ * ──────────────────────────────────────────────────────────────────── */
+const SECTION_SUB: Record<string, string> = {
+    'salesperson-message': 'Personal Welcome',
+    'why-us':              'Our Promise To You',
+    'brand-story':         'Why This Boat',
+    'after-sales':         'Ownership Support',
+    'finance-info':        'Payment & Coverage Options',
+    'value-summary':       'Investment Summary',
+    'terms-and-conditions': 'Standard Proposal Terms',
+};
 
-export function ProposalPDFDocument({ quote, organisation, financials }: Props) {
+function ContentBlockSection({
+    label,
+    sub,
+    html,
+    bodyColor = MUTED,
+    bodySize = 9,
+}: {
+    label: string;
+    sub?: string;
+    html: string | undefined;
+    bodyColor?: string;
+    bodySize?: number;
+}) {
+    if (!html || !html.trim()) return null;
+    return (
+        <View style={{ marginBottom: 22 }}>
+            {/* Section header — matches InnerHeader page-level style at slightly smaller scale */}
+            <View style={{ borderBottomWidth: 2, borderBottomColor: NAVY, paddingBottom: 8, marginBottom: 12 }}>
+                <Text style={{ fontSize: 16, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.4, lineHeight: 1.1, color: NAVY }}>
+                    {label}
+                </Text>
+                {sub ? (
+                    <Text style={{ fontSize: 6, letterSpacing: 2.5, fontWeight: 'bold', textTransform: 'uppercase', color: MUTED, marginTop: 3 }}>
+                        {sub}
+                    </Text>
+                ) : null}
+            </View>
+            {/* Body */}
+            <TipTapHtmlPdf html={html} fontSize={bodySize} color={bodyColor} />
+        </View>
+    );
+}
+
+/* ─── Main Document ────────────────────────────────────────────────────── */
+/**
+ * `contentBlocks` is the resolved-per-quote map from
+ * `resolveContentBlocksForQuote(firestore, orgId, quote.vendorId)`
+ * (1.8.1's resolver). When present, the corresponding sections of
+ * the PDF render the org-authored rich text — with brand overrides
+ * already applied. Absent or empty entries fall back to legacy
+ * behaviour (e.g. terms-and-conditions falls through to
+ * `organisation.termsAndConditions` then to DEFAULT_TERMS).
+ *
+ * 1.2.1 — first cut wires only the terms-and-conditions block (the
+ * familiar surface) so the data path can be verified end-to-end on
+ * dev before the other six sections are wired in.
+ */
+interface SalespersonProfile {
+    displayName?: string;
+    role?: string;
+    messageHtml?: string;
+    photoUrl?: string | null;
+    signOff?: string;
+}
+
+interface Props {
+    quote: any;
+    organisation: any;
+    financials: any;
+    contentBlocks?: Partial<Record<BlockType, string>>;
+    /** v1.7 round-5 — per-block sub-header overrides authored in the
+     *  Quote Content Block Manager. When set, replaces the SECTION_SUB
+     *  default for that block type. */
+    contentBlockSubHeaders?: Partial<Record<BlockType, string | null>>;
+    /** v1.7 (1.8.11) — user-defined ordering of content blocks. */
+    pdfSections?: PdfStructureSection[];
+    /** v1.7 (1.8.12) — per-salesperson message + photo. When present, the
+     *  salesperson-message section renders a custom layout with photo +
+     *  name + role + message + signoff. When absent, the section is
+     *  omitted from the PDF. */
+    salespersonProfile?: SalespersonProfile | null;
+}
+
+export function ProposalPDFDocument({ quote, organisation, financials, contentBlocks, contentBlockSubHeaders, pdfSections, salespersonProfile }: Props) {
+    const zones = partitionContentBlocks(pdfSections ?? DEFAULT_SECTIONS);
+
+    /** v1.7 round-5 — each content block now renders as its OWN PAGE
+     *  with its OWN InnerHeader matching the block type. Fixes the
+     *  earlier bug where zoneA blocks rendered under the "Vessel
+     *  Configuration" header on page 2 (orphan content under the wrong
+     *  header). T&Cs keeps its fallback chain (authored → legacy
+     *  org.termsAndConditions → DEFAULT_TERMS). Empty blocks (no
+     *  authored content, no fallback) emit nothing. */
+    const renderBlockPages = (zoneSections: PdfStructureSection[]) =>
+        zoneSections
+            .map(s => {
+                const blockType = s.key as BlockType;
+                const html = contentBlocks?.[blockType];
+                const label = BLOCK_TYPE_LABEL[blockType] ?? s.key;
+                const customSub = contentBlockSubHeaders?.[blockType];
+                const sub = (customSub && customSub.trim()) || SECTION_SUB[blockType] || '';
+
+                // Salesperson-message — bespoke layout (photo + name + sign-off).
+                if (blockType === 'salesperson-message') {
+                    const sp = salespersonProfile;
+                    const spHtml = sp?.messageHtml;
+                    if (!sp || !spHtml || !spHtml.trim()) return null;
+                    const spSub = (customSub && customSub.trim())
+                        || `From ${sp.displayName ?? 'Your Salesperson'}${sp.role ? ` · ${sp.role}` : ''}`;
+                    return (
+                        <Page key={s.id} size="A4" style={{ ...S.page, padding: 44 }}>
+                            <InnerHeader title={label} sub={spSub} quoteNumber={quote.quoteNumber} />
+                            <View style={{ flexDirection: 'row', gap: 18 }}>
+                                {sp.photoUrl ? (
+                                    <Image src={sp.photoUrl} style={{ height: 110, width: 110, borderRadius: 55, objectFit: 'cover' }} />
+                                ) : null}
+                                <View style={{ flex: 1 }}>
+                                    <TipTapHtmlPdf html={spHtml} fontSize={10} color={SLATE} />
+                                    {sp.signOff ? (
+                                        <Text style={{ fontSize: 10, fontStyle: 'italic', color: SLATE, marginTop: 12 }}>{sp.signOff}</Text>
+                                    ) : null}
+                                </View>
+                            </View>
+                            <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
+                        </Page>
+                    );
+                }
+
+                // T&Cs fallback chain — always renders even if no block is authored.
+                if (blockType === 'terms-and-conditions' && (!html || !html.trim())) {
+                    const DEFAULT_TERMS = [
+                        '1. This proposal is valid for 30 days from the date of issue.',
+                        '2. Prices are subject to change without notice after the validity period.',
+                        '3. A non-refundable deposit may be required to secure this package.',
+                        '4. Final delivery dates will be confirmed upon order acceptance.',
+                    ];
+                    const customTerms = organisation?.termsAndConditions
+                        ? (organisation.termsAndConditions as string).split('\n').filter((l: string) => l.trim())
+                        : null;
+                    const lines = customTerms && customTerms.length > 0 ? customTerms : DEFAULT_TERMS;
+                    return (
+                        <Page key={s.id} size="A4" style={{ ...S.page, padding: 44 }}>
+                            <InnerHeader title={label} sub={sub} quoteNumber={quote.quoteNumber} />
+                            {lines.map((t: string, i: number, arr: string[]) => (
+                                <Text key={i} style={{ fontSize: 9, color: SLATE, lineHeight: 1.6, marginBottom: i < arr.length - 1 ? 5 : 0 }}>{t}</Text>
+                            ))}
+                            <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
+                        </Page>
+                    );
+                }
+
+                // Generic content block — only render if html present.
+                if (!html || !html.trim()) return null;
+                return (
+                    <Page key={s.id} size="A4" style={{ ...S.page, padding: 44 }}>
+                        <InnerHeader title={label} sub={sub} quoteNumber={quote.quoteNumber} />
+                        <TipTapHtmlPdf html={html} fontSize={10} color={SLATE} />
+                        <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
+                    </Page>
+                );
+            })
+            .filter(Boolean);
+
     const f = financials;
     const createdAt: Date = quote.createdAt?.toDate?.() ?? new Date();
     const validUntil = new Date(createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -122,49 +304,54 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
 
             {/* ═══════════════════════════════════════════════════════════
                 PAGE 1 — COVER
+
+                v1.7 (1.8.11 polish): full-bleed background image, no
+                solid white header band. The org logo sits on a soft
+                top-down white gradient that blends into the image —
+                gives logo legibility without a hard "header bar". When
+                no cover image is set, falls back to a deep-navy full-
+                page that reads as intentional rather than empty.
             ═══════════════════════════════════════════════════════════ */}
             <Page size="A4" style={S.page}>
-                <View style={{ width: '100%', height: '100%', position: 'relative', backgroundColor: 'white' }}>
+                <View style={{ width: '100%', height: '100%', position: 'relative', backgroundColor: NAVY }}>
 
-                    {/* ── Solid white header band (top 80px) ── */}
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 80, backgroundColor: 'white' }} />
-
-                    {/* ── Background boat image — starts below white band ── */}
-                    {quote.coverImageUrl && (
+                    {/* Background — full-bleed image OR deep navy fallback */}
+                    {quote.coverImageUrl ? (
                         <Image
                             src={quote.coverImageUrl}
-                            style={{ position: 'absolute', top: 80, left: 0, width: '100%', height: 762, objectFit: 'cover' }}
+                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                         />
-                    )}
-                    {/* Dark navy fill below white band when no image */}
-                    {!quote.coverImageUrl && (
-                        <View style={{ position: 'absolute', top: 80, left: 0, right: 0, bottom: 0, backgroundColor: NAVY }} />
-                    )}
+                    ) : null}
 
-                    {/* ── Fade-in from white into image (top of image zone) ── */}
-                    <Svg viewBox="0 0 595 60" style={{ position: 'absolute', top: 80, left: 0, width: '100%', height: 60 }}>
+                    {/* Top-down white gradient — logo bar legibility (replaces the
+                        old solid white band; blends into the image instead of
+                        cutting it off with a hard line) */}
+                    <Svg viewBox="0 0 595 200" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 200 }}>
                         <Defs>
-                            <LinearGradient id="fadeIn" x1="0" y1="0" x2="0" y2="1">
-                                <Stop offset="0%" stopColor="white" stopOpacity="1" />
+                            <LinearGradient id="topWhite" x1="0" y1="0" x2="0" y2="1">
+                                <Stop offset="0%" stopColor="white" stopOpacity="0.92" />
+                                <Stop offset="60%" stopColor="white" stopOpacity="0.4" />
                                 <Stop offset="100%" stopColor="white" stopOpacity="0" />
                             </LinearGradient>
                         </Defs>
-                        <Rect x="0" y="0" width="595" height="60" fill="url(#fadeIn)" />
+                        <Rect x="0" y="0" width="595" height="200" fill="url(#topWhite)" />
                     </Svg>
 
-                    {/* ── Bottom dark gradient for text legibility ── */}
+                    {/* Bottom dark gradient — text legibility on customer info / total */}
                     <Svg viewBox="0 0 595 842" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
                         <Defs>
                             <LinearGradient id="bottomDark" x1="0" y1="0" x2="0" y2="1">
-                                <Stop offset="35%" stopColor={NAVY} stopOpacity="0" />
+                                <Stop offset="40%" stopColor={NAVY} stopOpacity="0" />
                                 <Stop offset="100%" stopColor={NAVY} stopOpacity="0.94" />
                             </LinearGradient>
                         </Defs>
-                        <Rect x="0" y="80" width="595" height="762" fill="url(#bottomDark)" />
+                        <Rect x="0" y="0" width="595" height="842" fill="url(#bottomDark)" />
                     </Svg>
 
-                    {/* ── Logo bar — sits in the solid white band ── */}
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 48, paddingTop: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 80 }}>
+                    {/* Logo bar — overlays the top white gradient. Org logo
+                        on the left, vendor logo on the right (the boat brand,
+                        e.g. Highfield). Single right-side logo — no cascade. */}
+                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 48, paddingTop: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 80 }}>
                         {/* Org logo */}
                         {organisation?.primaryLogoUrl ? (
                             <Image src={organisation.primaryLogoUrl} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
@@ -174,15 +361,14 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                             </Text>
                         )}
 
-                        {/* Right-side logos: vendor + motor brand */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
-                            {quote.motor?.brandLogoUrl && (
-                                <Image src={quote.motor.brandLogoUrl} style={{ height: 28, maxWidth: 90, objectFit: 'contain' }} />
-                            )}
-                            {quote.vendorLogoUrl && (
-                                <Image src={quote.vendorLogoUrl} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
-                            )}
-                        </View>
+                        {/* Vendor (boat brand) logo on the right */}
+                        {quote.vendorLogoUrl ? (
+                            <Image src={quote.vendorLogoUrl} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
+                        ) : quote.vendorName ? (
+                            <Text style={{ fontSize: 13, fontWeight: 'bold', color: NAVY, letterSpacing: 1 }}>
+                                {quote.vendorName.toUpperCase()}
+                            </Text>
+                        ) : null}
                     </View>
 
                     {/* ── Bottom hero block ── */}
@@ -199,8 +385,11 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                             {quote.rangeName} Series
                         </Text>
 
-                        {/* Model name */}
-                        <Text style={{ fontSize: 62, fontWeight: 'bold', fontStyle: 'italic', color: 'white', letterSpacing: -2, lineHeight: 0.92, marginBottom: 6 }}>
+                        {/* Model name — descenders on italic 56pt are tall;
+                            lineHeight 1.05 + marginBottom 14 keeps clear of
+                            the model-code line below. (v1.7 polish — fixes
+                            cover overlap reported on round-3 feedback.) */}
+                        <Text style={{ fontSize: 56, fontWeight: 'bold', fontStyle: 'italic', color: 'white', letterSpacing: -2, lineHeight: 1.05, marginBottom: 14 }}>
                             {quote.modelName}
                         </Text>
                         <Text style={{ fontSize: 10, fontWeight: 'bold', color: 'rgba(255,255,255,0.45)', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 22 }}>
@@ -266,11 +455,16 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                 </View>
             </Page>
 
+            {/* v1.7 round-5 — zoneA content blocks: each gets its OWN page
+                with its OWN InnerHeader matching the block type. No more
+                orphaned content under a mismatched system page header. */}
+            {renderBlockPages(zones.zoneA)}
+
             {/* ═══════════════════════════════════════════════════════════
-                PAGE 2 — VESSEL CONFIGURATION
+                PAGE — VESSEL CONFIGURATION (system, anchored)
             ═══════════════════════════════════════════════════════════ */}
             <Page size="A4" style={{ ...S.page, padding: 44 }}>
-                <InnerHeader title="Vessel Configuration" sub="Technical Data & Standard Inclusions" quoteNumber={quote.quoteNumber} page="02" />
+                <InnerHeader title="Vessel Configuration" sub="Technical Data & Standard Inclusions" quoteNumber={quote.quoteNumber} />
 
                 {/* Specs + Standard Features */}
                 {(quote.specifications?.otherSpecs?.length > 0 || quote.standardFeatures?.length > 0) && (
@@ -388,9 +582,11 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                     ].filter(s => s.value);
                     return (
                     <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
-                        {/* Motor header with image */}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <View style={{ flexShrink: 1, flex: 1 }}>
+                        {/* Motor header — left: title + brand. Right: price.
+                            Photo (when present) sits as a banner ABOVE the
+                            specs grid so it doesn't crash into the price. */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: quote.motor.imageUrl ? 10 : 0 }}>
+                            <View style={{ flexShrink: 1, flex: 1, paddingRight: 14 }}>
                                 <Text style={[S.sectionLabel, { marginBottom: 4 }]}>Propulsion System</Text>
                                 {quote.motor.brandLogoUrl && (
                                     <Image src={quote.motor.brandLogoUrl} style={{ height: 16, maxWidth: 70, objectFit: 'contain', marginBottom: 4 }} />
@@ -402,13 +598,11 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                                     {quote.motor.brand}
                                 </Text>
                             </View>
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                {quote.motor.imageUrl && (
-                                    <Image src={quote.motor.imageUrl} style={{ height: 72, width: 72, objectFit: 'contain', marginRight: 12 }} />
-                                )}
-                                <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(quote.motor.sellPriceExclGst || 0)}</Text>
-                            </View>
+                            <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY, flexShrink: 0 }}>{currency(quote.motor.sellPriceExclGst || 0)}</Text>
                         </View>
+                        {quote.motor.imageUrl && (
+                            <Image src={quote.motor.imageUrl} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 4, marginBottom: 6 }} />
+                        )}
 
                         {/* Motor Specifications */}
                         {motorSpecs.length > 0 && (
@@ -468,48 +662,113 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                     );
                 })()}
 
-                {/* Trailer */}
+                {/* Trailer — fully-specced layout matching the motor block:
+                    photo + brand + name + price · specifications grid ·
+                    options list · subtotal. Mirrors the motor layout so the
+                    customer sees a consistent treatment for every major
+                    component of the package. */}
                 {quote.trailer && (() => {
                     const catalog = (quote.trailer as any).catalog || null;
                     const specs = catalog?.specifications || null;
-                    const subtitleParts: string[] = [];
-                    if (catalog?.brandName) subtitleParts.push(String(catalog.brandName).toUpperCase());
-                    if (catalog?.code) subtitleParts.push(String(catalog.code));
-                    else if (catalog?.seriesName) subtitleParts.push(String(catalog.seriesName));
-                    const subtitle = subtitleParts.join(' · ');
+                    const trailerImg = quote.trailer.imageUrl || catalog?.imageUrl || null;
+                    const trailerBrand = quote.trailer.brand || catalog?.brandName || '';
 
-                    const specBadges: string[] = [];
-                    if (specs?.boatSizeMtr != null) specBadges.push(`Boat ${specs.boatSizeMtr}m`);
-                    if (specs?.lengthMtr != null) specBadges.push(`Length ${specs.lengthMtr}m`);
-                    if (specs?.atmKg != null) specBadges.push(`ATM ${specs.atmKg}kg`);
-                    if (specs?.tareKg != null) specBadges.push(`Tare ${specs.tareKg}kg`);
-                    if (specs?.wheelSize) specBadges.push(`Wheels ${specs.wheelSize}`);
-                    if (specs?.winch) specBadges.push(`Winch ${specs.winch}`);
+                    const trailerSpecs: { label: string; value: any }[] = [];
+                    if (specs?.boatSizeMtr != null) trailerSpecs.push({ label: 'Suits Boat', value: `${specs.boatSizeMtr} m` });
+                    if (specs?.lengthMtr != null) trailerSpecs.push({ label: 'Trailer Length', value: `${specs.lengthMtr} m` });
+                    if (specs?.widthMtr != null) trailerSpecs.push({ label: 'Width', value: `${specs.widthMtr} m` });
+                    if (specs?.atmKg != null) trailerSpecs.push({ label: 'ATM', value: `${specs.atmKg} kg` });
+                    if (specs?.tareKg != null) trailerSpecs.push({ label: 'Tare', value: `${specs.tareKg} kg` });
+                    if (specs?.axleType) trailerSpecs.push({ label: 'Axle', value: specs.axleType });
+                    if (specs?.wheelSize) trailerSpecs.push({ label: 'Wheels', value: specs.wheelSize });
+                    if (specs?.brakes) trailerSpecs.push({ label: 'Brakes', value: specs.brakes });
+                    if (specs?.winch) trailerSpecs.push({ label: 'Winch', value: specs.winch });
+                    if (specs?.couplingType) trailerSpecs.push({ label: 'Coupling', value: specs.couplingType });
+                    if (specs?.lights) trailerSpecs.push({ label: 'Lights', value: specs.lights });
+                    if (specs?.construction) trailerSpecs.push({ label: 'Construction', value: specs.construction });
+
+                    const trailerOptions: any[] = Array.isArray(quote.trailer.options) ? quote.trailer.options : [];
 
                     return (
-                        <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: '10 14', marginBottom: 14 }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                    {quote.trailer.imageUrl && (
-                                        <Image src={quote.trailer.imageUrl} style={{ width: 36, height: 36, objectFit: 'contain', marginRight: 12, borderRadius: 3 }} />
+                        <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
+                            {/* Trailer header — left: title + brand. Right: price.
+                                Photo (when present) is a banner above the
+                                specs grid (matches motor section layout). */}
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: trailerImg ? 10 : 0 }}>
+                                <View style={{ flexShrink: 1, flex: 1, paddingRight: 14 }}>
+                                    <Text style={[S.sectionLabel, { marginBottom: 4 }]}>Trailer Package</Text>
+                                    {quote.trailer.brandLogoUrl && (
+                                        <Image src={quote.trailer.brandLogoUrl} style={{ height: 16, maxWidth: 70, objectFit: 'contain', marginBottom: 4 }} />
                                     )}
-                                    <View>
-                                        <Text style={[S.sectionLabel, { marginBottom: 3 }]}>Trailer Package</Text>
-                                        <Text style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', color: NAVY }}>
-                                            {quote.trailer.name || 'Trailer'}
+                                    <Text style={{ fontSize: 15, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.3, color: NAVY, marginBottom: 2 }}>
+                                        {quote.trailer.name || 'Trailer'}
+                                    </Text>
+                                    {trailerBrand ? (
+                                        <Text style={{ fontSize: 8, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE }}>
+                                            {trailerBrand}
                                         </Text>
-                                        {subtitle ? (
-                                            <Text style={{ fontSize: 8, color: '#888', marginTop: 1 }}>{subtitle}</Text>
-                                        ) : null}
+                                    ) : null}
+                                </View>
+                                <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY, flexShrink: 0 }}>{currency(quote.trailer.sellPriceExclGst || 0)}</Text>
+                            </View>
+                            {trailerImg && (
+                                <Image src={trailerImg} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 4, marginBottom: 6 }} />
+                            )}
+
+                            {/* Trailer Specifications */}
+                            {trailerSpecs.length > 0 && (
+                                <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER }}>
+                                    <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: BRAND, marginBottom: 6 }}>Trailer Specifications</Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                                        {trailerSpecs.map((spec, i) => (
+                                            <View key={i} style={{ width: '25%', marginBottom: 6, paddingRight: 8 }}>
+                                                <Text style={{ fontSize: 5.5, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: MUTED, marginBottom: 1.5 }}>{spec.label}</Text>
+                                                <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY }}>{spec.value}</Text>
+                                            </View>
+                                        ))}
                                     </View>
                                 </View>
-                                <Text style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(f.trailerTotal)}</Text>
-                            </View>
-                            {specBadges.length > 0 && (
-                                <Text style={{ fontSize: 8, color: '#666', marginTop: 6, paddingTop: 6, borderTopWidth: 0.5, borderTopColor: BORDER }}>
-                                    {specBadges.join('   ·   ')}
-                                </Text>
                             )}
+
+                            {/* Trailer Options */}
+                            {trailerOptions.length > 0 && (
+                                <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER }}>
+                                    <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: BRAND, marginBottom: 4 }}>Trailer Options</Text>
+                                    {Object.entries(
+                                        trailerOptions.reduce((acc: Record<string, any[]>, o: any) => {
+                                            const cat = o.category || 'Options';
+                                            if (!acc[cat]) acc[cat] = [];
+                                            acc[cat].push(o);
+                                            return acc;
+                                        }, {})
+                                    ).map(([cat, items]) => (
+                                        <View key={cat} style={{ marginBottom: 5 }}>
+                                            <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE, marginBottom: 4 }}>{cat}</Text>
+                                            {(items as any[]).map((o: any, i: number) => (
+                                                <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2, paddingHorizontal: 4 }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
+                                                        {o.imageUrl ? (
+                                                            <Image src={o.imageUrl} style={{ width: 20, height: 20, objectFit: 'contain', marginRight: 5, borderRadius: 2, flexShrink: 0 }} />
+                                                        ) : (
+                                                            <View style={S.dot} />
+                                                        )}
+                                                        <Text style={{ fontSize: 7, color: SLATE }}>{o.name}</Text>
+                                                    </View>
+                                                    <Text style={{ fontSize: 7, fontWeight: 'bold', color: NAVY, flexShrink: 0, marginLeft: 8 }}>
+                                                        {o.sellPriceExclGst ? currency(o.sellPriceExclGst) : 'Incl.'}
+                                                    </Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+
+                            {/* Trailer Subtotal */}
+                            <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Text style={{ fontSize: 7, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE }}>Trailer Total</Text>
+                                <Text style={{ fontSize: 11, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(f.trailerTotal)}</Text>
+                            </View>
                         </View>
                     );
                 })()}
@@ -544,14 +803,24 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                     </View>
                 )}
 
+                {/* v1.7 (1.8.11) — page 2 ends after the system vessel-config block.
+                    Content blocks that used to live here (brand-story, after-sales)
+                    moved to page 3's zoneB before pricing — keeps the data-driven
+                    model coherent (all narrative content blocks on page 3, technical
+                    config on page 2). */}
+
                 <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
             </Page>
 
+            {/* v1.7 round-5 — zoneB content blocks: each on its own page
+                between the vessel-config and pricing-section anchors. */}
+            {renderBlockPages(zones.zoneB)}
+
             {/* ═══════════════════════════════════════════════════════════
-                PAGE 3 — INVESTMENT SUMMARY
+                PAGE — INVESTMENT SUMMARY (system, anchored)
             ═══════════════════════════════════════════════════════════ */}
             <Page size="A4" style={{ ...S.page, padding: 44 }}>
-                <InnerHeader title="Investment Summary" sub="Comprehensive Package Breakdown" quoteNumber={quote.quoteNumber} page="03" />
+                <InnerHeader title="Investment Summary" sub="Comprehensive Package Breakdown" quoteNumber={quote.quoteNumber} />
 
                 {/* Pricing table */}
                 <View style={{ marginBottom: 28 }}>
@@ -605,39 +874,29 @@ export function ProposalPDFDocument({ quote, organisation, financials }: Props) 
                     </View>
                 </View>
 
-                {/* Terms */}
-                {(() => {
-                    const DEFAULT_TERMS = [
-                        '1. This proposal is valid for 30 days from the date of issue.',
-                        '2. Prices are subject to change without notice after the validity period.',
-                        '3. A non-refundable deposit may be required to secure this package.',
-                        '4. Final delivery dates will be confirmed upon order acceptance.',
-                    ];
-                    const customTerms = organisation?.termsAndConditions
-                        ? (organisation.termsAndConditions as string).split('\n').filter((l: string) => l.trim())
-                        : null;
-                    const terms = customTerms && customTerms.length > 0 ? customTerms : DEFAULT_TERMS;
-                    return (
-                        <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 5, padding: '10 12', marginBottom: 28 }}>
-                            <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1.5, color: SLATE, marginBottom: 6 }}>Terms &amp; Conditions</Text>
-                            {terms.map((t: string, i: number) => (
-                                <Text key={i} style={{ fontSize: 7, color: MUTED, lineHeight: 1.55, marginBottom: i < terms.length - 1 ? 2 : 0 }}>{t}</Text>
-                            ))}
-                        </View>
-                    );
-                })()}
+                <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
+            </Page>
 
-                {/* Signature blocks */}
-                <View style={{ flexDirection: 'row', gap: 40, marginBottom: 24 }}>
+            {/* v1.7 round-5 — zoneC content blocks (Value Summary, T&Cs):
+                each on its own page after the pricing-section anchor. */}
+            {renderBlockPages(zones.zoneC)}
+
+            {/* ═══════════════════════════════════════════════════════════
+                PAGE — ACCEPTANCE (signatures, anchored)
+            ═══════════════════════════════════════════════════════════ */}
+            <Page size="A4" style={{ ...S.page, padding: 44 }}>
+                <InnerHeader title="Acceptance" sub="Signatures & Confirmation" quoteNumber={quote.quoteNumber} />
+
+                <View style={{ flexDirection: 'row', gap: 40, marginTop: 40, marginBottom: 24 }}>
                     <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 2, color: MUTED, marginBottom: 12 }}>Merchant Authorisation</Text>
-                        <View style={{ height: 60, borderBottomWidth: 1, borderBottomColor: '#cbd5e1' }} />
+                        <View style={{ height: 80, borderBottomWidth: 1, borderBottomColor: '#cbd5e1' }} />
                         <Text style={{ fontSize: 8, fontWeight: 'bold', color: SLATE, marginTop: 8 }}>{quote.createdByName} — {organisation?.name}</Text>
                         <Text style={{ fontSize: 7, color: MUTED, marginTop: 2 }}>Date: _____ / _____ / _____</Text>
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 2, color: MUTED, marginBottom: 12 }}>Client Acceptance</Text>
-                        <View style={{ height: 60, borderBottomWidth: 1, borderBottomColor: '#cbd5e1' }} />
+                        <View style={{ height: 80, borderBottomWidth: 1, borderBottomColor: '#cbd5e1' }} />
                         <Text style={{ fontSize: 8, fontWeight: 'bold', color: SLATE, marginTop: 8 }}>{quote.customer?.name}</Text>
                         <Text style={{ fontSize: 7, color: MUTED, marginTop: 2 }}>Date: _____ / _____ / _____</Text>
                     </View>

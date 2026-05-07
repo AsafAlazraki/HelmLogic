@@ -8,14 +8,25 @@
  */
 
 import { useEffect, useState } from 'react';
-import { BookOpen, Calendar, ChevronRight, Sparkles } from 'lucide-react';
+import { BookOpen, Calendar, ChevronRight, FileText, GraduationCap, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ReleaseNote } from '@/lib/release-notes-loader';
+
+type Pane = 'notes' | 'guide';
 
 export function ReleaseNotesView({ notes }: { notes: ReleaseNote[] }) {
     const [activeVersion, setActiveVersion] = useState<string | null>(
         notes[0]?.version ?? null,
     );
+    /**
+     * v1.7 — per-release tab state ("What changed" / "How to use").
+     * Each release independently remembers which pane is active so a
+     * user reading the v1.7 guide doesn't lose their tab when scrolling
+     * past v1.6.2's release block. Versions without a paired user
+     * guide implicitly stay on 'notes'.
+     */
+    const [paneByVersion, setPaneByVersion] = useState<Record<string, Pane>>({});
+    const paneFor = (v: string): Pane => paneByVersion[v] ?? 'notes';
 
     // Intersection-observer-lite: on scroll, pick the version whose
     // block is top-most in the viewport. Keeps the sidebar highlight
@@ -103,7 +114,17 @@ export function ReleaseNotesView({ notes }: { notes: ReleaseNote[] }) {
                                 )}
                             />
                             <div className="flex-1 min-w-0">
-                                <div className="text-xs font-bold">{n.version}</div>
+                                <div className="text-xs font-bold flex items-center gap-1.5">
+                                    {n.version}
+                                    {n.userGuideHtml && (
+                                        <span
+                                            title="Has user guide"
+                                            className="inline-flex items-center justify-center h-3.5 w-3.5 rounded-full bg-blue-100 text-blue-700"
+                                        >
+                                            <GraduationCap className="h-2.5 w-2.5" />
+                                        </span>
+                                    )}
+                                </div>
                                 {n.date && (
                                     <div className="text-[10px] text-slate-500 truncate">{n.date}</div>
                                 )}
@@ -123,7 +144,11 @@ export function ReleaseNotesView({ notes }: { notes: ReleaseNote[] }) {
                 className="feature-scroll flex-1 min-h-0 overflow-y-auto"
             >
                 <div className="max-w-3xl mx-auto px-8 py-8 space-y-12">
-                    {notes.map((n, idx) => (
+                    {notes.map((n, idx) => {
+                        const pane = paneFor(n.version);
+                        const hasGuide = !!n.userGuideHtml;
+                        const showGuide = hasGuide && pane === 'guide';
+                        return (
                         <article
                             key={n.version}
                             data-version={n.version}
@@ -147,6 +172,42 @@ export function ReleaseNotesView({ notes }: { notes: ReleaseNote[] }) {
                                     )}
                                 </div>
                                 <p className="text-xs text-slate-500 mt-1">{n.title}</p>
+
+                                {/* v1.7 — paired-pane toggle: "What changed"
+                                    (release notes) | "How to use" (user guide).
+                                    Only renders the toggle when a user guide
+                                    exists for this release; older releases just
+                                    show the notes. */}
+                                {hasGuide && (
+                                    <div className="mt-3 inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => setPaneByVersion(s => ({ ...s, [n.version]: 'notes' }))}
+                                            className={cn(
+                                                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wider transition-colors',
+                                                pane === 'notes'
+                                                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
+                                                    : 'text-slate-500 hover:text-slate-800',
+                                            )}
+                                        >
+                                            <FileText className="h-3 w-3" />
+                                            What changed
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPaneByVersion(s => ({ ...s, [n.version]: 'guide' }))}
+                                            className={cn(
+                                                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-bold uppercase tracking-wider transition-colors',
+                                                pane === 'guide'
+                                                    ? 'bg-white text-blue-700 shadow-sm border border-slate-200'
+                                                    : 'text-slate-500 hover:text-slate-800',
+                                            )}
+                                        >
+                                            <GraduationCap className="h-3 w-3" />
+                                            How to use
+                                        </button>
+                                    </div>
+                                )}
                             </header>
                             <div
                                 className={cn(
@@ -166,10 +227,11 @@ export function ReleaseNotesView({ notes }: { notes: ReleaseNote[] }) {
                                     '[&_table]:text-xs [&_table]:my-3 [&_th]:bg-slate-100 [&_th]:font-bold [&_th]:px-2 [&_th]:py-1.5 [&_th]:text-left [&_th]:text-[11px] [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-slate-600 [&_td]:px-2 [&_td]:py-1.5 [&_td]:border-t [&_td]:border-slate-100',
                                     '[&_hr]:my-6 [&_hr]:border-slate-200',
                                 )}
-                                dangerouslySetInnerHTML={{ __html: n.html }}
+                                dangerouslySetInnerHTML={{ __html: showGuide ? (n.userGuideHtml ?? '') : n.html }}
                             />
                         </article>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         </div>
