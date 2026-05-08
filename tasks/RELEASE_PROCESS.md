@@ -109,7 +109,23 @@ When a release includes Firestore data changes (e.g. seeding new stories, retarg
 
 If you need to add MORE seeded data after the user has clicked once, that's another seed module + another one-shot button. Don't try to keep one button alive across cycles.
 
-The v1.7 polish-review seed (`src/lib/v17-polish-review-seed.ts` + the green button on the Backlog) is intentionally idempotent and stays — it's the exception, not the rule. The rule is "seed once, remove the button".
+The v1.7 polish-review seed (`src/lib/v17-polish-review-seed.ts` + the green button on the Backlog) was intentionally idempotent and stayed across multiple click-cycles — it's the exception, not the rule. The rule is "seed once, remove the button". (Both that seed and the v1.7 finalize button + module were removed at v1.7 ship per the rule.)
+
+---
+
+## "DEPENDS ON x.y.z" cross-story dependency convention — codified in v1.8
+
+From v1.8 onward, every cross-story reference in a feature's `acceptanceCriteria` or `description` uses one of three canonical prefixes. **Full spec lives in `tasks/CONVENTIONS.md`** — pointer here for discoverability:
+
+| Prefix | Meaning |
+|---|---|
+| `DEPENDS ON 1.8.1` | Hard dep — story can't function without the referenced one. Regex-matched by `scripts/validate-features.ts` and validated against the `dependsOn[]` schema field. |
+| `RELATED:` | Soft reference. Conceptually adjacent but ships independently. |
+| `See also:` | Documentation pointer. Navigation, not dependency. |
+
+Strict format: exact spelling `DEPENDS ON ` (capitalised, single space), version number `\d+\.\d+\.\d+`, no comma / parentheses / list. One dep per acceptance line.
+
+`scripts/validate-features.ts` (story 6.4.2) catches drift at pre-merge. The schema field (story 6.4.1) populates the dependsOn UI on the feature detail sheet with colour-coded chips (green = same release or earlier, amber = later release, red = missing).
 
 ---
 
