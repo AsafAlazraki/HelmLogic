@@ -52,6 +52,16 @@ service cloud.firestore {
         match /service_items/{itemId} {
           allow read, write: if isSignedIn();
         }
+        // v1.8 (story 1.4.1) — Quote audit log subcollection. Captures
+        // every lifecycle event (created / finalised / sent / locked /
+        // unlocked / version-forked / content-overridden / discount-
+        // changed) so the Activity tab can render an audit trail.
+        // Reads + writes signed-in (matches the rest of the quote
+        // subcollections). Server-side write enforcement (rules block
+        // tampering) is a v1.9 candidate.
+        match /auditLog/{eventId} {
+          allow read, write: if isSignedIn();
+        }
       }
       match /routes/{routeId} {
         allow read, write: if isOwner(userId) || isAdmin();
