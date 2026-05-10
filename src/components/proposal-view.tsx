@@ -31,6 +31,15 @@ import {
     Copy,
     Ruler,
     FileText,
+    Activity,
+    UserPlus,
+    Send,
+    Lock,
+    LockOpen,
+    GitBranch,
+    Edit3,
+    Percent,
+    Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -41,6 +50,7 @@ import {
     SheetTitle,
 } from "@/components/ui/sheet";
 import { Input } from '@/components/ui/input';
+import { useQuoteAuditLog, type AuditEventType, type QuoteAuditEvent } from '@/lib/quote-audit-log';
 import { ProposalPrint } from './proposal-print';
 
 interface ProposalViewProps {
@@ -111,6 +121,13 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     const { toast } = useToast();
 
     const [isAuditOpen, setIsAuditOpen] = useState(false);
+    /** v1.8 (story 1.4.1.c) — Activity sheet shows the per-quote audit
+     *  log captured by 1.4.1.b's logAuditEvent calls (created /
+     *  finalised / sent / locked / unlocked / version-forked /
+     *  content-overridden / discount-changed). Read-only.
+     *  The actual subscription (`useQuoteAuditLog`) is below the
+     *  `quote` declaration since it depends on the resolved owner uid. */
+    const [isActivityOpen, setIsActivityOpen] = useState(false);
     const [localDiscount, setLocalDiscount] = useState<number>(0);
     const [isSaving, setIsSaving] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -168,6 +185,9 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     }, [ownQuote, ownQuoteLoading, quoteId, user, userProfile?.organisationId, firestore]);
 
     const quote = ownQuote || orgFallbackQuote;
+    /** v1.8 (story 1.4.1.c) — live audit-log subscription. */
+    const auditOwnerUid = (quote?.createdByUid ?? user?.uid) as string | null | undefined;
+    const { data: auditEvents } = useQuoteAuditLog(auditOwnerUid, quote?.id ?? null);
     const isLoadingQuote = !quote && (ownQuoteLoading || orgFallbackLoading);
 
     const orgRef = useMemoFirebase(() => quote?.organisationId ? doc(firestore, 'organisations', quote.organisationId) : null, [firestore, quote?.organisationId]);
@@ -345,6 +365,20 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5 hover:bg-slate-100 relative"
+                                onClick={() => setIsActivityOpen(true)}
+                            >
+                                <Activity className="h-3.5 w-3.5 text-primary" />
+                                <span className="hidden sm:inline">Activity</span>
+                                {(auditEvents?.length ?? 0) > 0 && (
+                                    <span className="ml-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary/15 text-primary text-[9px] font-black">
+                                        {auditEvents!.length}
+                                    </span>
+                                )}
+                            </Button>
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -868,6 +902,111 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                     </div>
                 </SheetContent>
             </Sheet>
+
+            {/* v1.8 (story 1.4.1.c) — Activity Sheet. Read-only audit
+                log for the quote. Events: created / finalised / sent /
+                locked / unlocked / version-forked / content-overridden
+                / discount-changed. Filter / search / export deferred
+                to v1.9 per CONVENTIONS.md "don't expand release scope". */}
+            <Sheet open={isActivityOpen} onOpenChange={setIsActivityOpen}>
+                <SheetContent className="sm:max-w-md p-0 flex flex-col h-full bg-slate-50 border-l-4">
+                    <SheetHeader className="px-8 py-7 border-b bg-white relative overflow-hidden shrink-0">
+                        <div className="absolute top-0 right-0 p-4 opacity-5"><Activity className="h-24 w-24" /></div>
+                        <div className="flex items-center gap-2 text-primary font-black uppercase text-[9px] tracking-[0.2em] mb-2">
+                            <Activity className="h-3.5 w-3.5" />Quote Activity
+                        </div>
+                        <SheetTitle className="text-2xl font-black uppercase italic tracking-tighter leading-none">Audit Trail</SheetTitle>
+                        <SheetDescription className="text-[9px] font-bold uppercase text-slate-400 mt-1 tracking-widest">
+                            Every Lifecycle Event, Newest First
+                        </SheetDescription>
+                    </SheetHeader>
+
+                    <div className="flex-1 overflow-y-auto p-6">
+                        {!auditEvents || auditEvents.length === 0 ? (
+                            <div className="rounded-2xl border-2 border-dashed bg-white p-8 text-center space-y-2">
+                                <Clock className="h-8 w-8 text-slate-300 mx-auto" />
+                                <p className="text-sm font-semibold text-slate-700">No activity yet</p>
+                                <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                                    {(auditEvents === undefined)
+                                        ? 'Loading…'
+                                        : 'This quote was created before the v1.8 audit log shipped, or hasn\'t had a lifecycle event yet. Activity is captured automatically from now on — finalize, send, lock, override, or change the discount and you\'ll see entries appear here.'}
+                                </p>
+                            </div>
+                        ) : (
+                            <ol className="space-y-3">
+                                {auditEvents.map(evt => (
+                                    <ActivityRow key={evt.id} event={evt} />
+                                ))}
+                            </ol>
+                        )}
+                    </div>
+                </SheetContent>
+            </Sheet>
         </div>
     );
+}
+
+/* ──────────────────────────────────────────────────────────────────
+ * v1.8 (story 1.4.1.c) — Activity row helper.
+ * ────────────────────────────────────────────────────────────────── */
+
+const ACTIVITY_META: Record<AuditEventType, { icon: any; label: string; tint: string }> = {
+    'created':            { icon: UserPlus,    label: 'Quote created',          tint: 'bg-blue-50 text-blue-700 border-blue-200' },
+    'finalised':          { icon: CheckCircle2, label: 'Finalised',              tint: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    'sent':               { icon: Send,        label: 'Sent to customer',       tint: 'bg-violet-50 text-violet-700 border-violet-200' },
+    'locked':             { icon: Lock,        label: 'Locked',                 tint: 'bg-amber-50 text-amber-700 border-amber-200' },
+    'unlocked':           { icon: LockOpen,    label: 'Unlocked',               tint: 'bg-slate-50 text-slate-700 border-slate-200' },
+    'version-forked':     { icon: GitBranch,   label: 'Forked to new version',  tint: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+    'content-overridden': { icon: Edit3,       label: 'Content personalised',   tint: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+    'discount-changed':   { icon: Percent,     label: 'Discount changed',       tint: 'bg-rose-50 text-rose-700 border-rose-200' },
+};
+
+function ActivityRow({ event }: { event: QuoteAuditEvent }) {
+    const meta = ACTIVITY_META[event.eventType] ?? {
+        icon: Activity,
+        label: event.eventType,
+        tint: 'bg-slate-50 text-slate-700 border-slate-200',
+    };
+    const Icon = meta.icon;
+    const at = event.at?.toDate?.();
+    const summary = renderSummary(event);
+    return (
+        <li className={cn('rounded-2xl border-2 p-4 bg-white shadow-sm flex items-start gap-3')}>
+            <div className={cn('shrink-0 h-9 w-9 rounded-lg border-2 flex items-center justify-center', meta.tint)}>
+                <Icon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                    <p className="text-[11px] font-black uppercase tracking-widest text-slate-700">{meta.label}</p>
+                    {at && (
+                        <p className="text-[10px] text-slate-400">{at.toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                    )}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                    by <span className="font-semibold text-slate-700">{event.byName || 'Someone'}</span>
+                </p>
+                {summary && <p className="text-[11px] text-slate-600 mt-1.5">{summary}</p>}
+            </div>
+        </li>
+    );
+}
+
+function renderSummary(event: QuoteAuditEvent): string | null {
+    const m = event.metadata ?? {};
+    switch (event.eventType) {
+        case 'discount-changed':
+            return `From $${Number(m.fromValue ?? 0).toLocaleString()} → $${Number(m.toValue ?? 0).toLocaleString()}`;
+        case 'content-overridden':
+            return m.blockType ? `Block: ${m.blockType}` : null;
+        case 'version-forked':
+            return m.parentQuoteId
+                ? `Forked from quote ${m.parentQuoteId.slice(0, 8)}…`
+                : (m.childQuoteId ? `Forked into quote ${m.childQuoteId.slice(0, 8)}…` : null);
+        case 'sent':
+            return m.sentEmailId ? `Send id: ${m.sentEmailId.slice(0, 8)}…` : null;
+        case 'locked':
+            return m.lockReason ? `Reason: ${m.lockReason}` : null;
+        default:
+            return m.note ?? null;
+    }
 }
