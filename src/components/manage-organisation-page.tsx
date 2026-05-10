@@ -47,7 +47,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
 import { ContentBlockManager } from '@/components/content-block-manager';
-import { EmailTemplateManager } from '@/components/email-template-manager';
+import { EmailTemplatesTab } from '@/components/email-template-manager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -802,7 +802,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                     />
                                 </TabsContent>
                                 <TabsContent value="email">
-                                    <EmailTemplateManager orgId={orgId} />
+                                    <EmailTemplatesTab orgId={orgId} />
                                 </TabsContent>
                             </Tabs>
 

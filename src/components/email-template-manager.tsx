@@ -81,14 +81,50 @@ import {
     type EmailTemplateType,
 } from '@/lib/email-send';
 import { buildSampleQuoteFixture } from '@/lib/sample-quote-fixture';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+/* ──────────────────────────────────────────────────────────────────
+ * SEED TEMPLATES — per-templateType starter content for the "+ New"
+ * button. Pre-populated with sensible defaults the operator tweaks.
+ * ────────────────────────────────────────────────────────────────── */
+
+const SEED_TEMPLATES: Record<EmailTemplateType, { subject: string; bodyHtml: string }> = {
+    'send-quote': {
+        subject: 'Your quote — {{quote.modelName}}',
+        bodyHtml:
+            '<p>Hi {{customer.name}},</p>'
+            + '<p>Attached is the quote we discussed for the {{quote.modelName}}. Total comes to <strong>{{quote.total}}</strong> inc. GST.</p>'
+            + '<p>Any questions, just reply to this email and I\'ll be in touch.</p>'
+            + '<p>Cheers,<br/>{{salesperson.name}}</p>',
+    },
+    'send-contract': {
+        subject: 'Your contract — {{quote.modelName}}',
+        bodyHtml:
+            '<p>Hi {{customer.name}},</p>'
+            + '<p>Attached is your contract for the {{quote.modelName}}. Please review, sign, and return at your earliest convenience.</p>'
+            + '<p>Total: <strong>{{quote.total}}</strong> inc. GST.</p>'
+            + '<p>If anything needs adjusting before you sign, give me a call.</p>'
+            + '<p>Cheers,<br/>{{salesperson.name}}</p>',
+    },
+    'follow-up': {
+        subject: 'Following up — {{quote.modelName}}',
+        bodyHtml:
+            '<p>Hi {{customer.name}},</p>'
+            + '<p>Just following up on the quote I sent for the {{quote.modelName}}. Let me know if you have any questions or would like to proceed.</p>'
+            + '<p>Cheers,<br/>{{salesperson.name}}</p>',
+    },
+};
 
 interface Props {
     orgId: string;
+    /** v1.8 — which email type to author. Defaults to 'send-quote' for
+     *  the original 1.2.4.b surface. Now driven by the inner Quote /
+     *  Contract sub-tabs added in the EmailTemplatesTab wrapper below. */
+    templateType?: EmailTemplateType;
 }
 
-const TEMPLATE_TYPE: EmailTemplateType = 'send-quote';
-
-export function EmailTemplateManager({ orgId }: Props) {
+export function EmailTemplateManager({ orgId, templateType = 'send-quote' }: Props) {
+    const TEMPLATE_TYPE = templateType;
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
@@ -124,12 +160,13 @@ export function EmailTemplateManager({ orgId }: Props) {
     async function handleCreate() {
         if (!user) return;
         try {
+            const seed = SEED_TEMPLATES[TEMPLATE_TYPE];
             const docRef = await addDoc(
                 collection(firestore, 'organisations', orgId, 'emailTemplates'),
                 {
                     templateType: TEMPLATE_TYPE,
-                    subject: 'Your quote — {{quote.modelName}}',
-                    bodyHtml: '<p>Hi {{customer.name}},</p><p>Attached is the quote we discussed. Total comes to {{quote.total}} inc. GST.</p><p>Any questions, just reply to this email.</p><p>{{salesperson.name}}</p>',
+                    subject: seed.subject,
+                    bodyHtml: seed.bodyHtml,
                     fromName: organisationDefaultFromName(userProfile),
                     fromEmail: null,
                     bccEmails: [],
@@ -641,7 +678,7 @@ export async function findDefaultSendQuoteTemplate(
         const snap = await getDocs(
             query(
                 collection(firestore, 'organisations', orgId, 'emailTemplates'),
-                where('templateType', '==', TEMPLATE_TYPE),
+                where('templateType', '==', 'send-quote'),
                 where('isDefault', '==', true),
             ),
         );
@@ -652,4 +689,38 @@ export async function findDefaultSendQuoteTemplate(
         console.warn('[email-templates] default lookup failed:', e);
         return null;
     }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+ * v1.8 — EmailTemplatesTab wrapper
+ *
+ * Mounted directly inside /manage → Document Templates → Email. Renders
+ * an inner Quote / Contract sub-tab strip so the operator can author
+ * email templates for BOTH document types in one place. Each sub-tab
+ * is its own EmailTemplateManager instance scoped to that templateType.
+ *
+ * Quote → send-quote templates (used by proposal-view's Send Quote
+ *   dialog at 1.2.4.c)
+ * Contract → send-contract templates (authored ready for v1.9 contract-
+ *   send flow; templates already work today via the same sendQuoteEmail
+ *   pipeline if a caller passes templateType: 'send-contract')
+ *
+ * Follow-up emails are out of scope for v1.8 — defer to v1.9.
+ * ────────────────────────────────────────────────────────────────── */
+
+export function EmailTemplatesTab({ orgId }: { orgId: string }) {
+    return (
+        <Tabs defaultValue="send-quote" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2 max-w-sm">
+                <TabsTrigger value="send-quote">Quote</TabsTrigger>
+                <TabsTrigger value="send-contract">Contract</TabsTrigger>
+            </TabsList>
+            <TabsContent value="send-quote">
+                <EmailTemplateManager orgId={orgId} templateType="send-quote" />
+            </TabsContent>
+            <TabsContent value="send-contract">
+                <EmailTemplateManager orgId={orgId} templateType="send-contract" />
+            </TabsContent>
+        </Tabs>
+    );
 }
