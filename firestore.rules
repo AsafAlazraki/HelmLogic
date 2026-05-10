@@ -91,6 +91,14 @@ service cloud.firestore {
         match /auditLog/{eventId} {
           allow read, write: if isSignedIn();
         }
+        // v1.8 (story 1.2.4.a) — Sent-email audit records. Every Send
+        // Quote action writes a sentEmails/{sendId} doc capturing
+        // recipient, frozen subject/body, PDF storage path, status,
+        // and the FK into mail/{id} for delivery tracking. Reads +
+        // writes signed-in (matches sibling quote subcollections).
+        match /sentEmails/{sendId} {
+          allow read, write: if isSignedIn();
+        }
       }
       match /routes/{routeId} {
         allow read, write: if isOwner(userId) || isAdmin();
@@ -168,6 +176,15 @@ service cloud.firestore {
       // for any quote.createdByUid; writes signed-in (UI gates org-admin
       // edit access via /manage's can_access_settings permission).
       match /salesTeam/{userId} {
+        allow read, write: if isSignedIn();
+      }
+      // v1.8 (story 1.2.4.a) — Email templates per org. Per-template-type
+      // (send-quote / send-contract / follow-up); the v1.2.4.b authoring
+      // surface lives at /manage → Document Templates → Email tab. Reads
+      // open to all org members (the Send Quote dialog needs to pick a
+      // template at send time); writes signed-in with UI-layer can_access_settings
+      // gating, consistent with the rest of the org subcollection pattern.
+      match /emailTemplates/{templateId} {
         allow read, write: if isSignedIn();
       }
     }
