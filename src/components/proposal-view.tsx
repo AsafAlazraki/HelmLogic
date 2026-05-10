@@ -145,6 +145,13 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
      *  confirmations rule. */
     const [isForkOpen, setIsForkOpen] = useState(false);
     const [isForking, setIsForking] = useState(false);
+
+    /** v1.8 (story 1.3.1.c) — Manual-unlock popup state. Admin-only
+     *  emergency override (the AlertDialog itself is hidden when the
+     *  operator doesn't have can_access_settings). Reuses the same
+     *  popup-for-confirmations pattern. */
+    const [isUnlockOpen, setIsUnlockOpen] = useState(false);
+    const [isUnlocking, setIsUnlocking] = useState(false);
     const [localDiscount, setLocalDiscount] = useState<number>(0);
     const [isSaving, setIsSaving] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -284,6 +291,47 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
             totalDealCostExclGst, grossProfit, marginPercent
         };
     }, [quote, strategy, activeExchangeRate, localDiscount, organisation]);
+
+    /** v1.8 (story 1.3.1.c) — admin gate for the manual-unlock action.
+     *  Mirrors the can_access_settings check used by /manage and the
+     *  sidebar Settings link. HelmLogic Admins bypass org-role checks. */
+    const canManuallyUnlock = useMemo(() => {
+        if (userProfile?.appRole === 'HelmLogic Admin') return true;
+        const roleId = userProfile?.organisationRole;
+        if (!roleId || !organisation?.permissions?.[roleId]) return false;
+        return !!organisation.permissions[roleId].can_access_settings;
+    }, [userProfile, organisation]);
+
+    /** v1.8 (story 1.3.1.c) — Manually unlock a locked quote. Admin
+     *  override path — used when the operator needs to edit a locked
+     *  quote directly without forking (e.g. typo correction on a sent
+     *  quote where re-sending isn't appropriate). Caller must already
+     *  pass the canManuallyUnlock gate before reaching this handler. */
+    async function handleUnlockConfirm() {
+        if (!user || !quote || !auditOwnerUid) return;
+        setIsUnlocking(true);
+        try {
+            const { unlockQuote } = await import('@/lib/quote-lock');
+            await unlockQuote(firestore, auditOwnerUid, quote.id, {
+                byUid: user.uid,
+                byName: userProfile?.displayName || user.displayName || user.email || 'Someone',
+            });
+            toast({
+                title: 'Quote unlocked',
+                description: 'Edits are now allowed. Re-locks automatically on next Send.',
+            });
+            setIsUnlockOpen(false);
+        } catch (e: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Unlock failed',
+                description: e?.message ?? 'See console.',
+            });
+            console.error('[unlock-quote]', e);
+        } finally {
+            setIsUnlocking(false);
+        }
+    }
 
     /** v1.8 (story 1.3.1.b.iii) — Fork a locked quote into a fresh
      *  editable v{N+1} doc. Calls forkLockedQuote() (which writes the
@@ -1038,13 +1086,37 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                 <SheetContent className="sm:max-w-md p-0 flex flex-col h-full bg-slate-50 border-l-4">
                     <SheetHeader className="px-8 py-7 border-b bg-white relative overflow-hidden shrink-0">
                         <div className="absolute top-0 right-0 p-4 opacity-5"><Activity className="h-24 w-24" /></div>
-                        <div className="flex items-center gap-2 text-primary font-black uppercase text-[9px] tracking-[0.2em] mb-2">
-                            <Activity className="h-3.5 w-3.5" />Quote Activity
+                        <div className="flex items-center justify-between gap-3">
+                            <div>
+                                <div className="flex items-center gap-2 text-primary font-black uppercase text-[9px] tracking-[0.2em] mb-2">
+                                    <Activity className="h-3.5 w-3.5" />Quote Activity
+                                </div>
+                                <SheetTitle className="text-2xl font-black uppercase italic tracking-tighter leading-none">Audit Trail</SheetTitle>
+                                <SheetDescription className="text-[9px] font-bold uppercase text-slate-400 mt-1 tracking-widest">
+                                    Every Lifecycle Event, Newest First
+                                </SheetDescription>
+                            </div>
+                            {/* v1.8 (story 1.3.1.c) — Manual unlock button.
+                                Admin-only (gated on can_access_settings, same
+                                gate as the /manage page). Visible only when
+                                the quote is currently locked. Override path
+                                for emergency edits — fork-on-edit (Create v2)
+                                is the standard path. */}
+                            {quote.isLocked === true && canManuallyUnlock && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setIsUnlockOpen(true)}
+                                    disabled={isUnlocking}
+                                    className="h-8 px-3 rounded-lg font-black uppercase tracking-widest text-[9px] border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 gap-1.5 shrink-0"
+                                >
+                                    {isUnlocking
+                                        ? <Loader2 className="h-3 w-3 animate-spin" />
+                                        : <LockOpen className="h-3 w-3" />}
+                                    Unlock
+                                </Button>
+                            )}
                         </div>
-                        <SheetTitle className="text-2xl font-black uppercase italic tracking-tighter leading-none">Audit Trail</SheetTitle>
-                        <SheetDescription className="text-[9px] font-bold uppercase text-slate-400 mt-1 tracking-widest">
-                            Every Lifecycle Event, Newest First
-                        </SheetDescription>
                     </SheetHeader>
 
                     <div className="flex-1 overflow-y-auto p-6">
@@ -1121,6 +1193,57 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                 <>
                                     <GitBranch className="h-3.5 w-3.5" />
                                     Yes, create v{(quote.version ?? 1) + 1}
+                                </>
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* v1.8 (story 1.3.1.c) — Manual unlock popup. Admin-only
+                emergency override; the entry button is gated on
+                canManuallyUnlock so this dialog only ever opens when
+                the operator passed the can_access_settings check. */}
+            <AlertDialog open={isUnlockOpen} onOpenChange={setIsUnlockOpen}>
+                <AlertDialogContent className="max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <LockOpen className="h-4 w-4 text-amber-600" />
+                            Unlock this quote?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-xs text-slate-600">
+                                <p>
+                                    Manually unlocking <strong>{quote.quoteNumber}</strong> bypasses the standard fork-on-edit flow. Use this only for emergency corrections (typos, contact updates) where forking would create unnecessary version history.
+                                </p>
+                                <p className="font-semibold pt-1">After unlock:</p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                    <li>The quote becomes editable again</li>
+                                    <li>The unlock event is logged to Activity (with your name)</li>
+                                    <li>Re-locks automatically the next time the quote is sent</li>
+                                </ul>
+                                <p className="text-[11px] text-slate-500 pt-1">
+                                    For most edits, prefer <strong>Create v{(quote.version ?? 1) + 1}</strong> &mdash; it preserves the original sent version for audit.
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isUnlocking}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => { e.preventDefault(); handleUnlockConfirm(); }}
+                            disabled={isUnlocking}
+                            className="bg-amber-600 hover:bg-amber-700 gap-1.5"
+                        >
+                            {isUnlocking ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Unlocking&hellip;
+                                </>
+                            ) : (
+                                <>
+                                    <LockOpen className="h-3.5 w-3.5" />
+                                    Yes, unlock
                                 </>
                             )}
                         </AlertDialogAction>
