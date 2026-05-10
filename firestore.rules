@@ -99,6 +99,15 @@ service cloud.firestore {
         match /sentEmails/{sendId} {
           allow read, write: if isSignedIn();
         }
+        // v1.8 (story 1.2.3) — Per-quote content overrides. Doc id is
+        // the blockType (one override per block per quote). Salespeople
+        // use the Personalise side sheet on the proposal view to author
+        // these; the lock flag on the parent contentBlock controls
+        // whether the override layer is honoured by the resolver. Reads
+        // + writes signed-in (matches sibling quote subcollections).
+        match /contentOverrides/{blockType} {
+          allow read, write: if isSignedIn();
+        }
       }
       match /routes/{routeId} {
         allow read, write: if isOwner(userId) || isAdmin();
