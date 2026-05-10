@@ -416,18 +416,23 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                 <Calculator className="h-3.5 w-3.5 text-primary" />
                                 <span className="hidden sm:inline">Audit</span>
                             </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5 hover:bg-slate-100"
-                                onClick={() => router.push(
-                                    `/modules/${quote.moduleSlug}/quote/${quote.modelId}` +
-                                    `?range=${quote.rangeId}&vendor=${quote.vendorId}&duplicate=${quote.id}`
-                                )}
-                            >
-                                <Copy className="h-3.5 w-3.5 text-primary" />
-                                <span className="hidden sm:inline">Duplicate</span>
-                            </Button>
+                            {/* v1.8 (story 1.3.1.b.ii) — Duplicate hidden when
+                                locked. Use Create v2 (1.3.1.b.iii) to make a
+                                forkable working copy of a sent quote. */}
+                            {quote.isLocked !== true && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5 hover:bg-slate-100"
+                                    onClick={() => router.push(
+                                        `/modules/${quote.moduleSlug}/quote/${quote.modelId}` +
+                                        `?range=${quote.rangeId}&vendor=${quote.vendorId}&duplicate=${quote.id}`
+                                    )}
+                                >
+                                    <Copy className="h-3.5 w-3.5 text-primary" />
+                                    <span className="hidden sm:inline">Duplicate</span>
+                                </Button>
+                            )}
                             <Button
                                 size="sm"
                                 className="h-9 px-5 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5"
@@ -886,17 +891,30 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                             onChange={(e) => setLocalDiscount(Number(e.target.value))}
                                             className="pl-8 h-11 rounded-xl border-2 font-black text-sm"
                                             placeholder="0"
+                                            disabled={quote.isLocked === true}
+                                            title={quote.isLocked === true
+                                                ? 'Locked — create a new version to change pricing.'
+                                                : undefined}
                                         />
                                     </div>
                                     <Button
                                         className="h-11 rounded-xl px-5 bg-slate-900 hover:bg-primary font-black uppercase tracking-widest text-[9px]"
                                         onClick={() => handleSaveDiscount(localDiscount)}
-                                        disabled={isSaving}
+                                        disabled={isSaving || quote.isLocked === true}
                                     >
                                         <Save className="h-3.5 w-3.5 mr-1.5" />Sync
                                     </Button>
                                 </div>
-                                <p className="text-[8px] font-bold text-slate-400 uppercase italic">Adjusts sell price and recalculates all margins.</p>
+                                {/* v1.8 (story 1.3.1.b.ii) — locked-quote
+                                    explainer replaces the standard help text. */}
+                                {quote.isLocked === true ? (
+                                    <p className="text-[8px] font-bold text-amber-700 uppercase italic flex items-center gap-1.5">
+                                        <Lock className="h-2.5 w-2.5" />
+                                        Quote is locked — pricing changes need a new version (v{(quote.version ?? 1) + 1}).
+                                    </p>
+                                ) : (
+                                    <p className="text-[8px] font-bold text-slate-400 uppercase italic">Adjusts sell price and recalculates all margins.</p>
+                                )}
                             </div>
                         </div>
 
