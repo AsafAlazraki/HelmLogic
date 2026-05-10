@@ -69,13 +69,24 @@ export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<Rende
         import('react'),
     ]);
 
+    // v1.8 (1.2.3.c) — per-quote content override context. The resolver
+    // checks users/{ownerUid}/quotes/{quoteId}/contentOverrides/{blockType}
+    // and prefers per-quote html / subHeader over brand override / org
+    // default. Locked blocks (`isLockedForQuotes === true`) short-circuit
+    // the override layer inside the resolver. ownerUid resolves to
+    // quote.createdByUid (auth-side denormalisation since v1.0); we fall
+    // back to undefined when missing so legacy quotes still render.
+    const quoteOverrideCtx = (quote.organisationId && quote.createdByUid && quote.id)
+        ? { ownerUid: quote.createdByUid as string, quoteId: quote.id as string }
+        : null;
+
     // 1 + 2. Resolve content blocks + sub-headers in parallel. Skip when
     // the quote has no organisationId (stock-only flows) — the PDF
     // renderer handles `undefined` cleanly via legacy fallbacks.
     const [contentBlocks, contentBlockSubHeaders] = quote.organisationId
         ? await Promise.all([
-            resolveContentBlocksForQuote(firestore, quote.organisationId, quote.vendorId ?? null, documentType),
-            resolveContentBlockSubHeadersForQuote(firestore, quote.organisationId, documentType),
+            resolveContentBlocksForQuote(firestore, quote.organisationId, quote.vendorId ?? null, documentType, quoteOverrideCtx),
+            resolveContentBlockSubHeadersForQuote(firestore, quote.organisationId, documentType, quoteOverrideCtx),
         ])
         : [undefined, undefined];
 

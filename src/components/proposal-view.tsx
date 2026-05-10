@@ -34,6 +34,7 @@ import {
     Activity,
     UserPlus,
     Send,
+    Sparkles,
     Lock,
     LockOpen,
     GitBranch,
@@ -53,6 +54,7 @@ import { Input } from '@/components/ui/input';
 import { useQuoteAuditLog, type AuditEventType, type QuoteAuditEvent } from '@/lib/quote-audit-log';
 import { isEmailSendEnabled } from '@/lib/email-send';
 import { SendQuoteDialog } from '@/components/send-quote-dialog';
+import { PersonaliseContentSheet } from '@/components/personalise-content-sheet';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -161,6 +163,11 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
      *  not the pipeline). */
     const [isSendOpen, setIsSendOpen] = useState(false);
     const sendEnabled = useMemo(() => isEmailSendEnabled(), []);
+
+    /** v1.8 (story 1.2.3.c) — Personalise Content side sheet state.
+     *  Opens from the Personalise button. Hidden when the quote is
+     *  locked (lock state owns the broader edit gate). */
+    const [isPersonaliseOpen, setIsPersonaliseOpen] = useState(false);
     const [localDiscount, setLocalDiscount] = useState<number>(0);
     const [isSaving, setIsSaving] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -568,6 +575,21 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     <span className="hidden sm:inline">
                                         {isForking ? 'Creating…' : `Create v${(quote.version ?? 1) + 1}`}
                                     </span>
+                                </Button>
+                            )}
+                            {/* v1.8 (story 1.2.3.c) — Personalise button. Visible
+                                only when the quote is unlocked (the override layer
+                                is editing state, and locked quotes are read-only).
+                                Opens the Personalise side sheet. */}
+                            {quote.isLocked !== true && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5 hover:bg-slate-100"
+                                    onClick={() => setIsPersonaliseOpen(true)}
+                                >
+                                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                    <span className="hidden sm:inline">Personalise</span>
                                 </Button>
                             )}
                             {/* v1.8 (story 1.2.4.c) — Send Quote button. Always
@@ -1307,6 +1329,21 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                     financials={f}
                     senderUid={user.uid}
                     senderName={userProfile?.displayName || user.displayName || user.email || 'Someone'}
+                />
+            )}
+
+            {/* v1.8 (story 1.2.3.c) — Personalise Content side sheet.
+                Edits per-quote content-block overrides at
+                users/{ownerUid}/quotes/{quoteId}/contentOverrides/{blockType}.
+                Locked blocks are filtered out inside the sheet. */}
+            {auditOwnerUid && quote?.organisationId && (
+                <PersonaliseContentSheet
+                    open={isPersonaliseOpen}
+                    onOpenChange={setIsPersonaliseOpen}
+                    orgId={quote.organisationId}
+                    ownerUid={auditOwnerUid}
+                    quoteId={quote.id}
+                    actorName={userProfile?.displayName || user?.displayName || user?.email || 'Someone'}
                 />
             )}
         </div>
