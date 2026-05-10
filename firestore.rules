@@ -33,6 +33,21 @@ service cloud.firestore {
       );
     }
 
+    /**
+     * v1.8 (story 1.3.1.a) — Quote-lock guard. Returns true when an
+     * update to a locked quote ONLY touches fields in the lock-related
+     * whitelist. Used in /users/{uid}/quotes/{qid} update rule to allow
+     * unlock + re-send denormalisation while blocking arbitrary edits
+     * to a locked quote (so power-users can't bypass via dev tools).
+     */
+    function onlyLockFieldsChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'isLocked', 'lockedAt', 'lockedByUid', 'lockedByName', 'lockedReason',
+        'lastSentAt', 'sentCount',
+        'updatedAt'
+      ]);
+    }
+
     // --- COLLECTION RULES ---
 
     // HelmLogic Admins get full access to the entire database
@@ -48,7 +63,21 @@ service cloud.firestore {
         allow read, write: if isOwner(userId) || isAdmin();
       }
       match /quotes/{quoteId} {
-        allow read, write: if isSignedIn();
+        // v1.8 (story 1.3.1.a) — quote-lock enforcement at the rules
+        // layer. Reads + create + delete unchanged (any signed-in user,
+        // matches v1.0 cross-user collaboration model). Update splits:
+        //   - If the existing doc is NOT locked → allow any update.
+        //   - If the existing doc IS locked → only allow updates that
+        //     touch lock-related fields (isLocked, lockedAt, lockedByUid,
+        //     lockedByName, lockedReason, lastSentAt, sentCount, updatedAt).
+        // Power-users with browser dev tools can't bypass the lock
+        // by writing arbitrary fields directly to Firestore.
+        allow read: if isSignedIn();
+        allow create, delete: if isSignedIn();
+        allow update: if isSignedIn() && (
+          !(resource.data.isLocked == true)
+          || onlyLockFieldsChanged()
+        );
         match /service_items/{itemId} {
           allow read, write: if isSignedIn();
         }
