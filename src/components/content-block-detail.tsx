@@ -642,6 +642,7 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                 onOpenChange={setHistoryOpen}
                 orgId={orgId}
                 blockId={block?.id ?? null}
+                currentHtml={currentHtml}
                 onRestore={handleRestore}
             />
         </div>
