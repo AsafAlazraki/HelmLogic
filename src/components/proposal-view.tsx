@@ -51,6 +51,16 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from '@/components/ui/input';
 import { useQuoteAuditLog, type AuditEventType, type QuoteAuditEvent } from '@/lib/quote-audit-log';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ProposalPrint } from './proposal-print';
 
 interface ProposalViewProps {
@@ -128,6 +138,13 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
      *  The actual subscription (`useQuoteAuditLog`) is below the
      *  `quote` declaration since it depends on the resolved owner uid. */
     const [isActivityOpen, setIsActivityOpen] = useState(false);
+
+    /** v1.8 (story 1.3.1.b.iii) — Fork-on-edit popup state. Opens when
+     *  the operator clicks "Create v{N+1}" on a locked quote. Confirm
+     *  → forkLockedQuote() → redirect. Per CONVENTIONS.md popup-for-
+     *  confirmations rule. */
+    const [isForkOpen, setIsForkOpen] = useState(false);
+    const [isForking, setIsForking] = useState(false);
     const [localDiscount, setLocalDiscount] = useState<number>(0);
     const [isSaving, setIsSaving] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -267,6 +284,44 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
             totalDealCostExclGst, grossProfit, marginPercent
         };
     }, [quote, strategy, activeExchangeRate, localDiscount, organisation]);
+
+    /** v1.8 (story 1.3.1.b.iii) — Fork a locked quote into a fresh
+     *  editable v{N+1} doc. Calls forkLockedQuote() (which writes the
+     *  new doc, copies contentOverrides, fires version-forked auditLog
+     *  events on both ends), then redirects the operator to the new
+     *  quote. Per CONVENTIONS.md popup-for-confirmations rule. */
+    async function handleForkConfirm() {
+        if (!user || !quote || !auditOwnerUid) return;
+        setIsForking(true);
+        try {
+            const { forkLockedQuote } = await import('@/lib/quote-lock');
+            const { childQuoteId, childVersion } = await forkLockedQuote(
+                firestore,
+                auditOwnerUid,
+                quote.id,
+                {
+                    byUid: user.uid,
+                    byName: userProfile?.displayName || user.displayName || user.email || 'Someone',
+                },
+            );
+            toast({
+                title: `Created v${childVersion}`,
+                description: `New editable copy ready.`,
+            });
+            setIsForkOpen(false);
+            // Redirect — the new doc lives at /proposals/{newId}.
+            router.push(`/proposals/${childQuoteId}`);
+        } catch (e: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Fork failed',
+                description: e?.message ?? 'See console.',
+            });
+            console.error('[fork-quote]', e);
+        } finally {
+            setIsForking(false);
+        }
+    }
 
     async function handleSaveDiscount(newDiscount: number) {
         if (!user || !quote) return;
@@ -417,8 +472,10 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                 <span className="hidden sm:inline">Audit</span>
                             </Button>
                             {/* v1.8 (story 1.3.1.b.ii) — Duplicate hidden when
-                                locked. Use Create v2 (1.3.1.b.iii) to make a
-                                forkable working copy of a sent quote. */}
+                                locked. The Create v2 button below replaces it
+                                semantically: it forks the locked quote in
+                                place with parentQuoteId tracking instead of
+                                routing through the quote-flow. */}
                             {quote.isLocked !== true && (
                                 <Button
                                     variant="ghost"
@@ -431,6 +488,29 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                 >
                                     <Copy className="h-3.5 w-3.5 text-primary" />
                                     <span className="hidden sm:inline">Duplicate</span>
+                                </Button>
+                            )}
+                            {/* v1.8 (story 1.3.1.b.iii) — Create v2 button.
+                                Visible only when locked. Opens fork-on-edit
+                                popup → forkLockedQuote() → redirect to the
+                                new editable v{N+1} doc. Per CONVENTIONS.md
+                                "popups for confirmations" rule. */}
+                            {quote.isLocked === true && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5 hover:bg-amber-50 text-amber-700"
+                                    onClick={() => setIsForkOpen(true)}
+                                    disabled={isForking}
+                                >
+                                    {isForking ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <GitBranch className="h-3.5 w-3.5" />
+                                    )}
+                                    <span className="hidden sm:inline">
+                                        {isForking ? 'Creating…' : `Create v${(quote.version ?? 1) + 1}`}
+                                    </span>
                                 </Button>
                             )}
                             <Button
@@ -988,6 +1068,65 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                     </div>
                 </SheetContent>
             </Sheet>
+
+            {/* v1.8 (story 1.3.1.b.iii) — Fork-on-edit popup. Confirms
+                the operator wants to create a new version of a locked
+                quote. Override path is the only way to mutate a locked
+                quote in v1.8 (manual unlock by admin in 1.3.1.c is the
+                other escape hatch). */}
+            <AlertDialog open={isForkOpen} onOpenChange={setIsForkOpen}>
+                <AlertDialogContent className="max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <GitBranch className="h-4 w-4 text-amber-600" />
+                            Create a new version?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-xs text-slate-600">
+                                <p>
+                                    Quote <strong>{quote.quoteNumber}</strong> (v{quote.version ?? 1}) is locked
+                                    {quote.lockedReason === 'sent' && quote.customer?.name
+                                        ? <> &mdash; sent to <strong>{quote.customer.name}</strong></>
+                                        : null}
+                                    {quote.lockedAt?.toDate
+                                        ? <> on {quote.lockedAt.toDate().toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</>
+                                        : null}.
+                                </p>
+                                <p className="font-semibold pt-1">Creating v{(quote.version ?? 1) + 1} will:</p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                    <li>Duplicate this quote into a fresh editable doc</li>
+                                    <li>Carry over <strong>everything</strong> &mdash; SKU, options, motor, trailer, customer details, content overrides</li>
+                                    <li>Reset the audit log on the new version (fresh trail starting now)</li>
+                                    <li>Leave <strong>this</strong> quote locked and untouched</li>
+                                </ul>
+                                <p className="text-[11px] text-slate-500 pt-1">
+                                    You&apos;ll be redirected to the new version after creation.
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isForking}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => { e.preventDefault(); handleForkConfirm(); }}
+                            disabled={isForking}
+                            className="bg-amber-600 hover:bg-amber-700 gap-1.5"
+                        >
+                            {isForking ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Creating&hellip;
+                                </>
+                            ) : (
+                                <>
+                                    <GitBranch className="h-3.5 w-3.5" />
+                                    Yes, create v{(quote.version ?? 1) + 1}
+                                </>
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
