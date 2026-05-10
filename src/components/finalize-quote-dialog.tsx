@@ -401,6 +401,24 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 const quoteRef = doc(firestoreCollection(firestore, `users/${user.uid}/quotes`));
                 await setDoc(quoteRef, { ...payload, id: quoteRef.id });
 
+                // v1.8 (story 1.4.1.b) — capture lifecycle events for the
+                // Activity tab. Customer-mode finalize is the moment the
+                // quote first lands in Firestore (created) AND becomes a
+                // proposal (finalised) — record both in order so the
+                // Activity tab tells the story chronologically.
+                const { logAuditEvent } = await import('@/lib/quote-audit-log');
+                const auditByName = userProfile?.displayName || user.displayName || user.email || 'Someone';
+                await logAuditEvent(firestore, user.uid, quoteRef.id, {
+                    eventType: 'created',
+                    byUid: user.uid,
+                    byName: auditByName,
+                });
+                await logAuditEvent(firestore, user.uid, quoteRef.id, {
+                    eventType: 'finalised',
+                    byUid: user.uid,
+                    byName: auditByName,
+                });
+
                 // Upload section PDFs if any attached
                 const sectionPdfs = quoteData.sectionPdfs;
                 if (sectionPdfs) {

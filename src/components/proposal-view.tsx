@@ -253,8 +253,23 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         setIsSaving(true);
         try {
             const ownerUid = quote.createdByUid || user.uid;
+            const previousDiscount = quote.discountExclGst ?? 0;
             const ref = doc(firestore, `users/${ownerUid}/quotes`, quote.id);
             await updateDoc(ref, { discountExclGst: newDiscount, lastUpdateAt: serverTimestamp() });
+            // v1.8 (story 1.4.1.b) — capture lifecycle event so the
+            // Activity tab can surface the discount change with from/to.
+            if (previousDiscount !== newDiscount) {
+                const { logAuditEvent } = await import('@/lib/quote-audit-log');
+                await logAuditEvent(firestore, ownerUid, quote.id, {
+                    eventType: 'discount-changed',
+                    byUid: user.uid,
+                    byName: userProfile?.displayName || user.email || 'Someone',
+                    metadata: {
+                        fromValue: previousDiscount,
+                        toValue: newDiscount,
+                    },
+                });
+            }
             toast({ title: "Discount Saved", description: "The proposal has been updated successfully." });
         } catch {
             toast({ title: "Error", description: "Failed to save discount.", variant: "destructive" });
