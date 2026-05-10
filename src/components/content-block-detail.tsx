@@ -39,6 +39,7 @@ import {
 } from '@/lib/content-blocks';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { FeatureRichTextEditor } from '@/components/feature-rich-text-editor';
 import { VersionHistoryDrawer } from '@/components/content-block-version-history-drawer';
 import { BrandOverridePicker } from '@/components/brand-override-picker';
@@ -55,6 +56,7 @@ import {
     History,
     Info,
     Loader2,
+    Lock,
     Pencil,
     Save,
     ScrollText,
@@ -146,6 +148,10 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
     /** v1.7 round-5 — author-customisable PDF sub-header. Editable in
      *  org-default mode only; brand overrides currently inherit. */
     const [draftSubHeader, setDraftSubHeader] = useState<string>('');
+    /** v1.8 (1.2.3) — admin-only "lock for quotes" toggle. When on,
+     *  the Personalise side sheet on proposal-view hides this block
+     *  and the resolver skips per-quote overrides for it. */
+    const [draftIsLocked, setDraftIsLocked] = useState<boolean>(false);
     const [saving, setSaving] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -155,7 +161,8 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
         setDraftHtml(currentHtml);
         setDraftDocTypes(initialDocTypes);
         setDraftSubHeader((block?.subHeader ?? '') as string);
-    }, [blockType, block?.id, selectedBrand, currentHtml, initialDocTypes, block?.subHeader]);
+        setDraftIsLocked(!!block?.isLockedForQuotes);
+    }, [blockType, block?.id, selectedBrand, currentHtml, initialDocTypes, block?.subHeader, block?.isLockedForQuotes]);
 
     const formattedUpdatedAt = (
         selectedBrand
@@ -171,6 +178,7 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
         setDraftHtml(currentHtml);
         setDraftDocTypes(initialDocTypes);
         setDraftSubHeader((block?.subHeader ?? '') as string);
+        setDraftIsLocked(!!block?.isLockedForQuotes);
         setEditMode(true);
     }
 
@@ -178,6 +186,7 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
         setDraftHtml(currentHtml);
         setDraftDocTypes(initialDocTypes);
         setDraftSubHeader((block?.subHeader ?? '') as string);
+        setDraftIsLocked(!!block?.isLockedForQuotes);
         setEditMode(false);
     }
 
@@ -249,6 +258,10 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                         // falls back to the SECTION_SUB default.
                         subHeader: draftSubHeader.trim() ? draftSubHeader.trim() : null,
                         documentTypes: docTypesForParent,
+                        // v1.8 (1.2.3) — admin lock toggle. Always persist so
+                        // unlocking actually overwrites a previously locked
+                        // flag (merge: true wouldn't drop an existing true).
+                        isLockedForQuotes: draftIsLocked,
                         updatedAt: serverTimestamp(),
                         updatedByUid: user.uid,
                         updatedByName: submitterName,
@@ -364,6 +377,12 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                                 {formattedUpdatedBy}
                             </span>
                         )}
+                        {block?.isLockedForQuotes && !selectedBrand && (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                                <Lock className="h-3 w-3" />
+                                Locked for quotes
+                            </span>
+                        )}
                     </div>
                 )}
 
@@ -435,6 +454,38 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                                     <p className="text-[10px] text-slate-400">
                                         Tag this block for one or both document types. Selected = renders on that PDF.
                                     </p>
+                                </div>
+                            )}
+
+                            {/* v1.8 (1.2.3) — admin lock for per-quote personalisation.
+                                Org-default scope only; brand overrides are tied to vendor
+                                and don't participate in per-quote overrides. */}
+                            {!selectedBrand && (
+                                <div className="space-y-2 pt-1">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                        Personalisation
+                                    </p>
+                                    <div className="flex items-center justify-between gap-3 rounded-lg border-2 border-slate-200 bg-white px-3 py-2.5">
+                                        <div className="flex items-start gap-2 min-w-0">
+                                            <Lock className={cn(
+                                                'h-3.5 w-3.5 mt-0.5 shrink-0',
+                                                draftIsLocked ? 'text-amber-600' : 'text-slate-400',
+                                            )} />
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-semibold text-slate-700">
+                                                    Lock for quotes
+                                                </p>
+                                                <p className="text-[10px] text-slate-400">
+                                                    When on, salespeople can&apos;t override this section&apos;s content on individual quotes.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Switch
+                                            checked={draftIsLocked}
+                                            onCheckedChange={setDraftIsLocked}
+                                            aria-label="Lock for quotes"
+                                        />
+                                    </div>
                                 </div>
                             )}
 
@@ -555,6 +606,21 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                                             <Check className="h-3 w-3 text-blue-700 mt-0.5 shrink-0" />
                                             <span className="text-[11px] font-bold text-slate-700">
                                                 Versions captured on every save (restore via History)
+                                            </span>
+                                        </li>
+                                    ) : null}
+                                    {block?.isLockedForQuotes ? (
+                                        <li className="flex items-start gap-2">
+                                            <Lock className="h-3 w-3 text-amber-700 mt-0.5 shrink-0" />
+                                            <span className="text-[11px] font-bold text-slate-700">
+                                                Locked — salespeople can&apos;t personalise this section on individual quotes
+                                            </span>
+                                        </li>
+                                    ) : block ? (
+                                        <li className="flex items-start gap-2">
+                                            <Pencil className="h-3 w-3 text-slate-500 mt-0.5 shrink-0" />
+                                            <span className="text-[11px] font-bold text-slate-700">
+                                                Salespeople can personalise this section per quote
                                             </span>
                                         </li>
                                     ) : null}
