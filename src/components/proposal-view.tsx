@@ -362,6 +362,34 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                             )}>
                                 {quote.status}
                             </Badge>
+                            {/* v1.8 (story 1.3.1.b.i) — Lock badge. Renders next
+                                to the status badge whenever the quote has been
+                                locked. Shows version + lock reason inline so
+                                the operator sees at a glance why edits are
+                                disabled. Tooltip surfaces the lock actor +
+                                timestamp. Hidden on mobile (sm:inline-flex)
+                                to match the status-badge breakpoint. */}
+                            {quote.isLocked === true && (
+                                <Badge
+                                    title={(() => {
+                                        const at = quote.lockedAt?.toDate?.();
+                                        const reason = quote.lockedReason ?? 'manual';
+                                        const by = quote.lockedByName ?? 'Someone';
+                                        const ts = at ? at.toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+                                        return `Locked (${reason}) by ${by}${ts ? ` on ${ts}` : ''}. Click "Create v2" to fork.`;
+                                    })()}
+                                    className="text-[8px] font-black uppercase tracking-widest px-2.5 shrink-0 hidden sm:inline-flex bg-amber-50 text-amber-700 border-amber-200 gap-1"
+                                >
+                                    <Lock className="h-2.5 w-2.5" />
+                                    Locked
+                                    {typeof quote.version === 'number' && quote.version > 0 && (
+                                        <span className="text-amber-500">· v{quote.version}</span>
+                                    )}
+                                    {quote.lockedReason && (
+                                        <span className="text-amber-500">· {quote.lockedReason}</span>
+                                    )}
+                                </Badge>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
