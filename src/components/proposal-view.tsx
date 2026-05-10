@@ -51,6 +51,8 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from '@/components/ui/input';
 import { useQuoteAuditLog, type AuditEventType, type QuoteAuditEvent } from '@/lib/quote-audit-log';
+import { isEmailSendEnabled } from '@/lib/email-send';
+import { SendQuoteDialog } from '@/components/send-quote-dialog';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -152,6 +154,13 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
      *  popup-for-confirmations pattern. */
     const [isUnlockOpen, setIsUnlockOpen] = useState(false);
     const [isUnlocking, setIsUnlocking] = useState(false);
+
+    /** v1.8 (story 1.2.4.c) — Send Quote dialog state. Opens from the
+     *  Send button in the header. Disabled when email infra is not yet
+     *  wired (NEXT_PUBLIC_EMAIL_SEND_ENABLED flag — gating the BUTTON,
+     *  not the pipeline). */
+    const [isSendOpen, setIsSendOpen] = useState(false);
+    const sendEnabled = useMemo(() => isEmailSendEnabled(), []);
     const [localDiscount, setLocalDiscount] = useState<number>(0);
     const [isSaving, setIsSaving] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -561,6 +570,37 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     </span>
                                 </Button>
                             )}
+                            {/* v1.8 (story 1.2.4.c) — Send Quote button. Always
+                                visible. Disabled until NEXT_PUBLIC_EMAIL_SEND_ENABLED=true
+                                AND customer has an email AND quote isn't a
+                                stock item (mode === 'inventory'). Tooltip
+                                explains the gate. */}
+                            {(() => {
+                                const emailEnabled = sendEnabled;
+                                const hasRecipient = !!quote.customer?.email;
+                                const disabled = !emailEnabled || !hasRecipient;
+                                const tooltip = !emailEnabled
+                                    ? 'Email sending is awaiting infrastructure setup (sender domain + provider). Templates can be authored now in /manage.'
+                                    : !hasRecipient
+                                        ? 'Set a customer email on the quote before sending.'
+                                        : 'Send the quote to the customer';
+                                return (
+                                    <Button
+                                        variant={disabled ? 'outline' : 'default'}
+                                        size="sm"
+                                        className={cn(
+                                            'h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5',
+                                            disabled && 'bg-slate-100 text-slate-400 hover:bg-slate-100 cursor-not-allowed',
+                                        )}
+                                        onClick={() => { if (!disabled) setIsSendOpen(true); }}
+                                        disabled={disabled}
+                                        title={tooltip}
+                                    >
+                                        <Send className="h-3.5 w-3.5" />
+                                        <span className="hidden sm:inline">Send Quote</span>
+                                    </Button>
+                                );
+                            })()}
                             <Button
                                 size="sm"
                                 className="h-9 px-5 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5"
@@ -1250,6 +1290,25 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* v1.8 (story 1.2.4.c) — Send Quote dialog. The actual
+                send pipeline + first-Send auto-lock + auditLog 'sent'
+                + 1.3.1 lock all fire inside the dialog's confirm
+                handler. Mounted regardless of sendEnabled so the
+                child component can manage its own open/closed state,
+                but the trigger button is what gates UX-side. */}
+            {auditOwnerUid && user && (
+                <SendQuoteDialog
+                    open={isSendOpen}
+                    onOpenChange={setIsSendOpen}
+                    ownerUid={auditOwnerUid}
+                    quote={quote}
+                    organisation={organisation}
+                    financials={f}
+                    senderUid={user.uid}
+                    senderName={userProfile?.displayName || user.displayName || user.email || 'Someone'}
+                />
+            )}
         </div>
     );
 }
