@@ -47,6 +47,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
 import { ContentBlockManager } from '@/components/content-block-manager';
+import { EmailTemplateManager } from '@/components/email-template-manager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -769,9 +770,14 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                 its content auto-migrates into a `terms-and-conditions` block
                                 on first open of the Quote sub-tab. */}
                             <Tabs defaultValue="quote" className="space-y-4">
-                                <TabsList className="grid w-full grid-cols-2 max-w-sm">
+                                <TabsList className="grid w-full grid-cols-3 max-w-md">
                                     <TabsTrigger value="quote">Quote</TabsTrigger>
                                     <TabsTrigger value="contract">Contract</TabsTrigger>
+                                    {/* v1.8 (story 1.2.4.b) — Email templates
+                                        sub-tab. Authors the subject + body for
+                                        Send Quote emails. Send Quote button
+                                        itself lives on the proposal-view (1.2.4.c). */}
+                                    <TabsTrigger value="email">Email</TabsTrigger>
                                 </TabsList>
                                 <TabsContent value="quote">
                                     <ContentBlockManager
@@ -794,6 +800,9 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                         primaryLogoUrl={organisation?.primaryLogoUrl}
                                         secondaryLogoUrl={organisation?.secondaryLogoUrl}
                                     />
+                                </TabsContent>
+                                <TabsContent value="email">
+                                    <EmailTemplateManager orgId={orgId} />
                                 </TabsContent>
                             </Tabs>
 
