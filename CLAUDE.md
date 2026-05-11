@@ -6,7 +6,7 @@
 
 ---
 
-## Current State (2026-05-06)
+## Current State (2026-05-11)
 
 | Release | Status |
 |---|---|
@@ -18,7 +18,8 @@
 | v1.6.1 Patch — shipped-release lock + v1.6 self-seed | ✅ Shipped to production. PR #30 merged 2026-04-27. See `tasks/RELEASE_NOTES_v1.6.1.md` |
 | v1.6.2 Patch — v1.7→v2.2 restructure + 4 new epic backlogs | ✅ Shipped to production. See `tasks/RELEASE_NOTES_v1.6.2.md` + `tasks/v1.7-planning-restructure-status.md` |
 | v1.7 Customer-PDF authoring (Content Blocks + Live Preview + Image authoring + per-Salesperson) | ✅ Ready for dev → main. Stories finalized in Firestore (`status: shipped` on all v1.7 features), `RELEASE_WINDOWS['v1.7'].shipped = true`. See `tasks/RELEASE_NOTES_v1.7.0.md` + `tasks/USER_GUIDE_v1.7.0.md`. |
-| v1.8 Quote Lifecycle (Send + Lock + Audit + Personalisation + dependency hygiene) | 🔵 In progress on dev. See `tasks/v1.8-build-plan.md` + `tasks/CONVENTIONS.md`. Planning seeded `c8a5382`, cleaned up `4310578`, kickoff in progress. |
+| v1.8 Quote Lifecycle (Send + Lock + Audit + Personalisation + dependency hygiene) | ✅ Ready for dev → main. All planned stories shipped except 1.1.2 (Compatibility Rules) + 1.8.3 `startsOnNewPage` UI which were moved to v1.9 backlog mid-cycle (rationale in `tasks/RELEASE_NOTES_v1.8.0.md`). `RELEASE_WINDOWS['v1.8'].shipped = true`. See `tasks/RELEASE_NOTES_v1.8.0.md`. **🚨 Email send is gated by `NEXT_PUBLIC_EMAIL_SEND_ENABLED`** — flip to `true` after stakeholder approval on sender domain + SendGrid setup (see `tasks/ADMIN_TASK_email-trigger-setup.md`). |
+| v1.9 (next) | 🔜 Backlog. v1.8 carry-overs: 1.1.2 Compatibility Rules + Highfield auto-seed (3 pts), 1.8.3 `startsOnNewPage` UI (needs inline-render path first). |
 
 **Active dev branch**: `claude/app-overview-wKiZ1` (auto-deploys to dev URL)
 
