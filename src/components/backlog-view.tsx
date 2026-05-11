@@ -38,6 +38,19 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { finalizeV18Release } from '@/lib/v18-finalize-seed';
+import { Loader2, PackageCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
 import {
@@ -88,10 +101,42 @@ export function BacklogView() {
     const { data: features } = useCollection<FeatureDoc>(featuresRef);
     const { data: epics } = useCollection<EpicDoc>(epicsRef);
 
+    const { toast } = useToast();
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [createEpicOpen, setCreateEpicOpen] = useState(false);
     /** v1.6 — open Create Feature with this epic pre-filled. null = closed. */
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
+    /** v1.8 finalize seed (one-shot — module + button removed in next dev push). */
+    const [finalizeOpen, setFinalizeOpen] = useState(false);
+    const [finalizing, setFinalizing] = useState(false);
+
+    async function handleFinalizeV18() {
+        setFinalizing(true);
+        try {
+            const r = await finalizeV18Release(firestore);
+            const parts = [
+                `${r.storiesMarkedShipped} marked shipped`,
+                `${r.storiesAlreadyShipped} already shipped`,
+            ];
+            if (r.storiesNotFound.length > 0) {
+                parts.push(`${r.storiesNotFound.length} story IDs not found in Firestore (${r.storiesNotFound.join(', ')})`);
+            }
+            toast({
+                title: 'v1.8 finalized',
+                description: parts.join(' · '),
+            });
+            setFinalizeOpen(false);
+        } catch (e: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Finalize failed',
+                description: e?.message ?? 'See console.',
+            });
+            console.error('[v18 finalize]', e);
+        } finally {
+            setFinalizing(false);
+        }
+    }
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
 
@@ -202,6 +247,19 @@ export function BacklogView() {
                         >
                             Collapse all
                         </Button>
+                        {/* v1.8 finalize seed — one-shot. Removed in next dev push
+                            after the user clicks (per CONVENTIONS.md one-shot
+                            lifecycle). Sits next to New Epic so it's findable
+                            without crowding the rest of the toolbar. */}
+                        <Button
+                            size="sm"
+                            className="bg-emerald-500 text-white hover:bg-emerald-400 gap-1.5 shadow-sm"
+                            onClick={() => setFinalizeOpen(true)}
+                            disabled={finalizing}
+                        >
+                            {finalizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
+                            Finalize v1.8
+                        </Button>
                         <Button
                             size="sm"
                             className="bg-white text-slate-800 hover:bg-slate-100 gap-1.5 shadow-sm"
@@ -275,6 +333,49 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
+
+            {/* v1.8 finalize confirm popup. One-shot — module + button removed
+                in next dev push (cleanup commit) per CONVENTIONS.md. */}
+            <AlertDialog open={finalizeOpen} onOpenChange={setFinalizeOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <PackageCheck className="h-4 w-4 text-emerald-600" />
+                            Finalize v1.8 release?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-sm">
+                                <p>
+                                    This marks every <strong>v1.8 story that shipped this cycle</strong> as
+                                    <code className="bg-slate-100 px-1 rounded">status: 'shipped'</code> in
+                                    Firestore so the Backlog + Board reflect what actually went out:
+                                </p>
+                                <ul className="list-disc list-inside text-xs text-slate-600 space-y-0.5 pl-2">
+                                    <li>1.5.0 PDF render refactor</li>
+                                    <li>1.4.1 Audit log + Activity tab</li>
+                                    <li>1.3.1 Quote lock + fork-on-edit</li>
+                                    <li>1.2.4 Send Quote pipeline + email templates</li>
+                                    <li>1.2.3 Controlled Personalisation</li>
+                                    <li>1.8.3 Version-history polish (startsOnNewPage UI punted)</li>
+                                    <li>1.8.8 Content-block import / export</li>
+                                    <li>6.4.1 / 6.4.2 / 6.4.3 dependency hygiene</li>
+                                </ul>
+                                <p className="text-xs text-slate-500 pt-1">
+                                    1.1.2 Compatibility Rules stays at its current status — it was punted to v1.9.
+                                    Idempotent; safe to re-run.
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={finalizing}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleFinalizeV18} disabled={finalizing} className="gap-1.5 bg-emerald-600 hover:bg-emerald-500">
+                            {finalizing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PackageCheck className="h-3.5 w-3.5" />}
+                            {finalizing ? 'Finalizing…' : 'Yes, finalize v1.8'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
