@@ -6,17 +6,17 @@
  * actually shipped. Skip-if-already-shipped — re-running is safe
  * but writes nothing extra.
  *
- * One-shot lifecycle per CONVENTIONS.md:
- *   1. Build the button on this commit (`finalizeV18Release()` here,
- *      "Finalize v1.8 Release" button on backlog-view.tsx)
- *   2. User clicks the button on dev once
- *   3. Next dev push removes the button + this module + flips
- *      `RELEASE_WINDOWS['v1.8'].shipped = true` (already done in
- *      32d1dc4 — flip happened during Phase D close-out)
+ * Story matching: feature docs don't carry a structured `storyId`
+ * field — the id is embedded as a prefix in the human title (e.g.
+ * "1.5.0 — Extract render-quote-pdf.ts refactor"). We match by
+ * scanning each v1.8-targeted feature's title for one of the
+ * shipped story-id prefixes. This mirrors how the v1.7 finalize
+ * seed (d677ee7) matched by `title.startsWith(prefix)`.
  *
- * v1.8 punted carry-overs (1.1.2, 1.8.3 startsOnNewPage UI) STAY at
- * their current status — they did not ship. The seed scopes only to
- * stories that completed during the build cycle.
+ * One-shot lifecycle per CONVENTIONS.md:
+ *   1. Build the button on this commit
+ *   2. User clicks the button on dev once
+ *   3. Next dev push removes the button + this module
  */
 
 import {
@@ -29,24 +29,34 @@ import {
 import type { Firestore } from 'firebase/firestore';
 
 /** Story IDs that were completed in v1.8 (will be flipped to shipped).
- *  Excludes 1.1.2 + 1.8.3 (the punted carry-overs). */
-const V18_SHIPPED_STORY_IDS = new Set<string>([
-    '1.5.0',   // PDF render refactor
-    '1.4.1',   // Audit log + Activity tab
-    '1.3.1',   // Lock + fork-on-edit
-    '1.2.4',   // Send Quote pipeline + email templates
-    '1.2.3',   // Controlled Personalisation
-    '1.8.8',   // Content-block import/export
-    '6.4.1',   // dependsOn schema + UI validation
-    '6.4.2',   // validate-features.ts script
-    '6.4.3',   // DEPENDS-ON convention (doc)
-]);
+ *  Excludes 1.1.2 (punted to v1.9 — Compatibility Rules). 1.8.3 IS in
+ *  the list because version-history polish shipped; only the punted
+ *  startsOnNewPage UI slice didn't. */
+const V18_SHIPPED_STORY_IDS: string[] = [
+    '1.5.0',
+    '1.4.1',
+    '1.3.1',
+    '1.2.4',
+    '1.2.3',
+    '1.8.3',
+    '1.8.8',
+    '6.4.1',
+    '6.4.2',
+    '6.4.3',
+];
 
-/** 1.8.3 partially shipped — version-history polish landed, but the
- *  startsOnNewPage UI checkbox punted. Mark as shipped (the polish
- *  IS the user-visible portion); the punted slice is captured in
- *  v1.9 backlog. */
-V18_SHIPPED_STORY_IDS.add('1.8.3');
+/** True when `title` begins with `storyId` as a complete token —
+ *  e.g. "1.5.0 — Extract render-quote-pdf.ts" matches "1.5.0", but
+ *  "1.5.01" does NOT. Tolerates leading whitespace. */
+function titleMatchesStoryId(title: string | undefined, storyId: string): boolean {
+    if (!title) return false;
+    const trimmed = title.trimStart();
+    if (!trimmed.startsWith(storyId)) return false;
+    // Next char must be a separator (end / space / em-dash / hyphen / colon / dot-space).
+    const next = trimmed.charAt(storyId.length);
+    if (next === '') return true;
+    return /[\s—–:\-]/.test(next);
+}
 
 export interface FinalizeV18Result {
     storiesMarkedShipped: number;
@@ -65,25 +75,25 @@ export async function finalizeV18Release(firestore: Firestore): Promise<Finalize
     let storiesMarkedShipped = 0;
     let storiesAlreadyShipped = 0;
     let nonV18Skipped = 0;
-    const seenIds = new Set<string>();
+    const matchedIds = new Set<string>();
 
     for (const d of snap.docs) {
-        const data = d.data() as { storyId?: string; status?: string; targetRelease?: string };
-        const sid = data.storyId;
-        if (!sid) continue;
+        const data = d.data() as { title?: string; status?: string; targetRelease?: string | null };
 
         if (data.targetRelease !== 'v1.8') {
             nonV18Skipped++;
             continue;
         }
 
-        if (!V18_SHIPPED_STORY_IDS.has(sid)) {
-            // v1.8-targeted but not in our shipped set (e.g. 1.1.2 punted).
+        const sid = V18_SHIPPED_STORY_IDS.find(id => titleMatchesStoryId(data.title, id));
+        if (!sid) {
+            // v1.8-targeted but not one of the stories we're flipping
+            // (e.g. 1.1.2 Compatibility Rules — punted to v1.9).
             nonV18Skipped++;
             continue;
         }
 
-        seenIds.add(sid);
+        matchedIds.add(sid);
 
         if (data.status === 'shipped') {
             storiesAlreadyShipped++;
@@ -97,7 +107,7 @@ export async function finalizeV18Release(firestore: Firestore): Promise<Finalize
         storiesMarkedShipped++;
     }
 
-    const storiesNotFound = [...V18_SHIPPED_STORY_IDS].filter(id => !seenIds.has(id));
+    const storiesNotFound = V18_SHIPPED_STORY_IDS.filter(id => !matchedIds.has(id));
 
     return {
         storiesMarkedShipped,
@@ -106,3 +116,4 @@ export async function finalizeV18Release(firestore: Firestore): Promise<Finalize
         nonV18Skipped,
     };
 }
+
