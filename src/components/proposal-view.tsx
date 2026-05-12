@@ -59,6 +59,7 @@ import { isEmailSendEnabled } from '@/lib/email-send';
 import { SendQuoteDialog } from '@/components/send-quote-dialog';
 import { PersonaliseContentSheet } from '@/components/personalise-content-sheet';
 import { QuotePreviewSheet } from '@/components/quote-preview-sheet';
+import { CreateScenarioDialog } from '@/components/create-scenario-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
     getLifecycleState,
@@ -69,6 +70,7 @@ import {
     LIFECYCLE_STATE_TINT,
     type LifecycleState,
 } from '@/lib/quote-lifecycle';
+import { useSiblingScenarios } from '@/lib/quote-scenarios';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -186,6 +188,9 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
      *  PDF the Download button produces via renderQuotePdf(); blob lives
      *  inside the sheet, so the operator can verify before download/send. */
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    /** v1.9 (story 1.1.3) — Create Scenario dialog open state. Confirm
+     *  → createQuoteScenario() → redirect to the new sibling quote. */
+    const [isScenarioOpen, setIsScenarioOpen] = useState(false);
     const [localDiscount, setLocalDiscount] = useState<number>(0);
     const [isSaving, setIsSaving] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -246,6 +251,10 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     /** v1.8 (story 1.4.1.c) — live audit-log subscription. */
     const auditOwnerUid = (quote?.createdByUid ?? user?.uid) as string | null | undefined;
     const { data: auditEvents } = useQuoteAuditLog(auditOwnerUid, quote?.id ?? null);
+    /** v1.9 (story 1.1.3) — sibling-scenarios live subscription. Returns
+     *  the ordered list [root, ...scenarios] under the current quote's
+     *  family tree. `null` until the audit-owner uid resolves. */
+    const { data: siblingScenarios } = useSiblingScenarios(auditOwnerUid ?? null, quote ?? null);
     const isLoadingQuote = !quote && (ownQuoteLoading || orgFallbackLoading);
 
     const orgRef = useMemoFirebase(() => quote?.organisationId ? doc(firestore, 'organisations', quote.organisationId) : null, [firestore, quote?.organisationId]);
@@ -581,6 +590,17 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                 disabled. Tooltip surfaces the lock actor +
                                 timestamp. Hidden on mobile (sm:inline-flex)
                                 to match the status-badge breakpoint. */}
+                            {/* v1.9 (story 1.1.3) — Scenario label chip.
+                                Renders next to the lifecycle picker whenever
+                                the quote is a scenario (has scenarioLabel
+                                set). Tells the operator at a glance which
+                                option they're looking at in the family. */}
+                            {quote.scenarioLabel && (
+                                <Badge className="text-[8px] font-black uppercase tracking-widest px-2.5 shrink-0 hidden sm:inline-flex bg-indigo-50 text-indigo-700 border-indigo-200 gap-1">
+                                    <Layers className="h-2.5 w-2.5" />
+                                    {quote.scenarioLabel}
+                                </Badge>
+                            )}
                             {quote.isLocked === true && (
                                 <Badge
                                     title={(() => {
@@ -716,6 +736,22 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     </Button>
                                 );
                             })()}
+                            {/* v1.9 (story 1.1.3) — Create Scenario button.
+                                Opens CreateScenarioDialog → spawns a sibling
+                                quote under the same root + redirects. Hidden
+                                on stock quotes (the lifecycle / sibling
+                                concept doesn't apply to inventory rows). */}
+                            {quote.status !== 'stock' && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5 hover:bg-slate-100"
+                                    onClick={() => setIsScenarioOpen(true)}
+                                >
+                                    <Layers className="h-3.5 w-3.5 text-indigo-600" />
+                                    <span className="hidden sm:inline">Scenario</span>
+                                </Button>
+                            )}
                             {/* v1.9 (story 1.8.4) — Preview button. Opens
                                 QuotePreviewSheet which renders the same PDF
                                 renderQuotePdf() produces, inline in an iframe.
@@ -1288,7 +1324,73 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                         </div>
                     </SheetHeader>
 
-                    <div className="flex-1 overflow-y-auto p-6">
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                        {/* v1.9 (story 1.1.3) — Sibling-scenarios sub-section.
+                            Renders the root + every scenario under it as a
+                            click-to-navigate list. Hidden when there's only
+                            one quote in the family (no siblings to navigate
+                            to). Current quote is highlighted. */}
+                        {siblingScenarios && siblingScenarios.length > 1 && (
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 px-1">
+                                    <Layers className="h-3.5 w-3.5 text-indigo-600" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                                        Scenarios <span className="text-slate-400">· {siblingScenarios.length} in family</span>
+                                    </p>
+                                </div>
+                                <ul className="space-y-1.5">
+                                    {siblingScenarios.map((s) => {
+                                        const displayLabel = s.scenarioLabel
+                                            ? s.scenarioLabel
+                                            : (s.isRoot ? 'Original' : s.quoteNumber);
+                                        const lc = s.lifecycleState ?? 'draft';
+                                        const lcTint = LIFECYCLE_STATE_TINT[lc as LifecycleState] ?? LIFECYCLE_STATE_TINT.draft;
+                                        return (
+                                            <li key={s.id}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (s.isCurrent) return;
+                                                        router.push(`/proposals/${s.quoteNumber}`);
+                                                    }}
+                                                    disabled={s.isCurrent}
+                                                    className={cn(
+                                                        'w-full rounded-xl border-2 p-3 bg-white shadow-sm flex items-center justify-between gap-3 transition-all',
+                                                        s.isCurrent
+                                                            ? 'border-indigo-300 ring-1 ring-indigo-200 cursor-default'
+                                                            : 'hover:border-slate-300 hover:bg-slate-50',
+                                                    )}
+                                                >
+                                                    <div className="min-w-0 flex-1 text-left">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <p className="text-xs font-black uppercase tracking-tight text-slate-800 truncate">
+                                                                {displayLabel}
+                                                            </p>
+                                                            {s.isCurrent && (
+                                                                <span className="text-[8px] font-black uppercase tracking-widest text-indigo-700 bg-indigo-100 rounded px-1.5 py-0.5">Current</span>
+                                                            )}
+                                                            {s.isRoot && !s.scenarioLabel && (
+                                                                <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 rounded px-1.5 py-0.5">Root</span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-500 mt-0.5 truncate">{s.quoteNumber}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                        <span className={cn('text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border', lcTint)}>
+                                                            {LIFECYCLE_STATE_LABEL[lc as LifecycleState] ?? lc}
+                                                        </span>
+                                                        {s.isLocked && (
+                                                            <Lock className="h-3 w-3 text-amber-600" />
+                                                        )}
+                                                    </div>
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </div>
+                        )}
+
                         {!auditEvents || auditEvents.length === 0 ? (
                             <div className="rounded-2xl border-2 border-dashed bg-white p-8 text-center space-y-2">
                                 <Clock className="h-8 w-8 text-slate-300 mx-auto" />
@@ -1467,6 +1569,22 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                     financials={financials}
                 />
             )}
+
+            {/* v1.9 (story 1.1.3) — Create Scenario dialog. Spawns a
+                sibling quote under the same root with the operator-supplied
+                label, then router.pushes to the new quoteNumber. */}
+            {auditOwnerUid && user && quote && (
+                <CreateScenarioDialog
+                    open={isScenarioOpen}
+                    onOpenChange={setIsScenarioOpen}
+                    ownerUid={auditOwnerUid}
+                    fromQuote={{ id: quote.id, quoteNumber: quote.quoteNumber, scenarioLabel: quote.scenarioLabel ?? null }}
+                    actor={{
+                        byUid: user.uid,
+                        byName: userProfile?.displayName || user.displayName || user.email || 'Someone',
+                    }}
+                />
+            )}
         </div>
     );
 }
@@ -1485,6 +1603,7 @@ const ACTIVITY_META: Record<AuditEventType, { icon: any; label: string; tint: st
     'content-overridden': { icon: Edit3,       label: 'Content personalised',   tint: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
     'discount-changed':   { icon: Percent,     label: 'Discount changed',       tint: 'bg-rose-50 text-rose-700 border-rose-200' },
     'lifecycle-transitioned': { icon: Activity, label: 'Status updated',         tint: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+    'scenario-created':   { icon: Layers,      label: 'Scenario created',       tint: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
 };
 
 function ActivityRow({ event }: { event: QuoteAuditEvent }) {
@@ -1535,6 +1654,10 @@ function renderSummary(event: QuoteAuditEvent): string | null {
         case 'lifecycle-transitioned':
             return m.fromLifecycle && m.toLifecycle
                 ? `${m.fromLifecycle} → ${m.toLifecycle}`
+                : null;
+        case 'scenario-created':
+            return m.scenarioLabel
+                ? `Label: "${m.scenarioLabel}"`
                 : null;
         default:
             return m.note ?? null;

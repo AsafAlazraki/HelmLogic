@@ -52,7 +52,8 @@ export type AuditEventType =
     | 'version-forked'          // 1.3.1 — fork-on-edit from a locked quote
     | 'content-overridden'      // 1.2.3 — per-quote content-block override saved
     | 'discount-changed'        // proposal-view audit drawer
-    | 'lifecycle-transitioned'; // v1.9 (1.4.1) — sales-journey state change
+    | 'lifecycle-transitioned'  // v1.9 (1.4.1) — sales-journey state change
+    | 'scenario-created';       // v1.9 (1.1.3) — sibling scenario spawned
 
 export interface AuditEventMetadata {
     /** discount-changed: previous + new values for fast diff render */
@@ -70,6 +71,9 @@ export interface AuditEventMetadata {
     /** v1.9 (1.4.1) — lifecycle-transitioned: previous + new state. */
     fromLifecycle?: string;
     toLifecycle?: string;
+    /** v1.9 (1.1.3) — scenario-created: human label + sibling pointer. */
+    scenarioLabel?: string;
+    siblingQuoteId?: string;
     /** Free-form note. */
     note?: string;
 }
