@@ -71,7 +71,7 @@ export function CreateScenarioDialog({ open, onOpenChange, ownerUid, fromQuote, 
         if (!canSubmit) return;
         setSubmitting(true);
         try {
-            const { scenarioQuoteNumber } = await createQuoteScenario(
+            const { scenarioQuoteId, scenarioQuoteNumber } = await createQuoteScenario(
                 firestore,
                 ownerUid,
                 fromQuote.id,
@@ -83,6 +83,17 @@ export function CreateScenarioDialog({ open, onOpenChange, ownerUid, fromQuote, 
                 description: `"${label.trim()}" is ready to edit.`,
             });
             onOpenChange(false);
+            // v1.9 (story 1.3.3) — fire SharePoint sync on the new
+            // scenario doc. Fire-and-forget so the redirect feels
+            // instant; helper is a no-op when env flag is off.
+            void (async () => {
+                const { syncQuoteToSharePoint } = await import('@/lib/sharepoint-sync');
+                await syncQuoteToSharePoint({
+                    firestore,
+                    ownerUid,
+                    quoteId: scenarioQuoteId,
+                });
+            })();
             // Navigate to the new scenario by its quoteNumber (the route
             // at /proposals/[quoteNumber] looks up by the quoteNumber
             // field, so doc-id navigation wouldn't resolve).

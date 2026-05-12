@@ -28,8 +28,10 @@ import {
     ChevronRight,
     HelpCircle,
     Layers,
+    Loader2,
     Lock,
     Plus,
+    RefreshCw,
     Sparkles,
     Wrench,
     FileText,
@@ -38,6 +40,18 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { seedV19SharePointStory } from '@/lib/v19-sharepoint-story-seed';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
 import {
@@ -88,10 +102,40 @@ export function BacklogView() {
     const { data: features } = useCollection<FeatureDoc>(featuresRef);
     const { data: epics } = useCollection<EpicDoc>(epicsRef);
 
+    const { toast } = useToast();
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [createEpicOpen, setCreateEpicOpen] = useState(false);
     /** v1.6 — open Create Feature with this epic pre-filled. null = closed. */
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
+
+    /** v1.9 (1.3.3) — one-shot story-text refresh button. Mid-build the
+     *  user expanded 1.3.3 scope from "Finalize only" to all 5 trigger
+     *  events; the in-app /feature-tracking story doc has stale text
+     *  until this seed runs. Button + script + dialog all get removed
+     *  in Commit 7b after the user clicks per CONVENTIONS.md one-shot. */
+    const [spSeedOpen, setSpSeedOpen] = useState(false);
+    const [spSeeding, setSpSeeding] = useState(false);
+
+    async function handleSeedSharePointStory() {
+        setSpSeeding(true);
+        try {
+            const r = await seedV19SharePointStory(firestore);
+            toast({
+                title: 'Story 1.3.3 refreshed',
+                description: `${r.updated} updated · ${r.skippedUpToDate} already current · ${r.matched} matched`,
+            });
+            setSpSeedOpen(false);
+        } catch (e: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Refresh failed',
+                description: e?.message ?? 'See console.',
+            });
+            console.error('[v19 sharepoint story seed]', e);
+        } finally {
+            setSpSeeding(false);
+        }
+    }
 
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
@@ -203,6 +247,18 @@ export function BacklogView() {
                         >
                             Collapse all
                         </Button>
+                        {/* v1.9 (1.3.3) — Refresh-story one-shot button.
+                            Same slot the v1.1.2 "Seed Highfield Compat" button
+                            used. Removed in Commit 7b after the user clicks. */}
+                        <Button
+                            size="sm"
+                            className="bg-amber-500 text-white hover:bg-amber-400 gap-1.5 shadow-sm"
+                            onClick={() => setSpSeedOpen(true)}
+                            disabled={spSeeding}
+                        >
+                            {spSeeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                            Refresh 1.3.3 Story
+                        </Button>
                         <Button
                             size="sm"
                             className="bg-white text-slate-800 hover:bg-slate-100 gap-1.5 shadow-sm"
@@ -276,6 +332,45 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
+
+            {/* v1.9 (1.3.3) — Refresh-story confirm popup. One-shot —
+                button + dialog + seed module removed in Commit 7b per
+                CONVENTIONS.md one-shot lifecycle. */}
+            <AlertDialog open={spSeedOpen} onOpenChange={setSpSeedOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <RefreshCw className="h-4 w-4 text-amber-600" />
+                            Refresh story 1.3.3 in /feature-tracking?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-sm">
+                                <p>
+                                    Updates the in-app story text for <strong>1.3.3 SharePoint Quote Storage</strong> so
+                                    the roadmap matches what actually shipped — the full 5-trigger sync, 4-level
+                                    folder mirror, env-flag gating, and best-effort semantics that landed in Commit 7.
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                    Idempotent — safe to re-run (already-current docs are skipped). Matches by title
+                                    prefix "1.3.3". The button + this seed module disappear in Commit 7b after you
+                                    click.
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={spSeeding}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleSeedSharePointStory}
+                            disabled={spSeeding}
+                            className="gap-1.5 bg-amber-600 hover:bg-amber-500"
+                        >
+                            {spSeeding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                            {spSeeding ? 'Refreshing…' : 'Yes, refresh 1.3.3'}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
         </div>
     );

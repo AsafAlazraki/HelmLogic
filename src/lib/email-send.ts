@@ -411,6 +411,23 @@ export async function sendQuoteEmail(opts: SendQuoteEmailOptions): Promise<SendQ
         }
     }
 
+    // 9. v1.9 (1.3.3) — SharePoint sync. Every successful send re-syncs
+    // the PDF that the customer just received, so the SharePoint mirror
+    // stays byte-for-byte aligned with what was emailed. Best-effort:
+    // failures log and resolve; the send itself is unaffected.
+    if (status === 'queued') {
+        try {
+            const { syncQuoteToSharePoint } = await import('@/lib/sharepoint-sync');
+            await syncQuoteToSharePoint({
+                firestore,
+                ownerUid,
+                quoteId: quote.id,
+            });
+        } catch (e) {
+            console.warn('[email-send] SharePoint sync after send failed (non-fatal):', e);
+        }
+    }
+
     return { sendId, triggerEmailId, status, pdfStoragePath, triggeredLock };
 }
 

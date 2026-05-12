@@ -400,6 +400,18 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                 description: `New editable copy ready.`,
             });
             setIsForkOpen(false);
+            // v1.9 (story 1.3.3) — fire SharePoint sync on the new v{N}
+            // child. Fire-and-forget; helper is a no-op when env flag
+            // is off / org has no SharePoint config.
+            void (async () => {
+                if (!auditOwnerUid) return;
+                const { syncQuoteToSharePoint } = await import('@/lib/sharepoint-sync');
+                await syncQuoteToSharePoint({
+                    firestore,
+                    ownerUid: auditOwnerUid,
+                    quoteId: childQuoteId,
+                });
+            })();
             // Redirect — the new doc lives at /proposals/{newId}.
             router.push(`/proposals/${childQuoteId}`);
         } catch (e: any) {
@@ -456,6 +468,22 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                 title: `Status: ${next}`,
                 description: 'Lifecycle state updated and logged to the Activity tab.',
             });
+            // v1.9 (story 1.3.3) — re-sync SharePoint when the quote
+            // hits a TERMINAL lifecycle state (Accepted / Rejected /
+            // Lost / Expired). Keeps the SharePoint copy current with
+            // any operator edits that happened between Send and the
+            // terminal-state pick. Fire-and-forget — no toast bloat.
+            const TERMINAL: LifecycleState[] = ['accepted', 'rejected', 'lost', 'expired'];
+            if (TERMINAL.includes(next)) {
+                void (async () => {
+                    const { syncQuoteToSharePoint } = await import('@/lib/sharepoint-sync');
+                    await syncQuoteToSharePoint({
+                        firestore,
+                        ownerUid: auditOwnerUid,
+                        quoteId: quote.id,
+                    });
+                })();
+            }
         } catch (e: any) {
             console.error('[lifecycle-transition] failed', e);
             toast({

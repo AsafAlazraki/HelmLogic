@@ -48,6 +48,7 @@ import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
 import { ContentBlockManager } from '@/components/content-block-manager';
 import { EmailTemplatesTab } from '@/components/email-template-manager';
+import { SharePointConfigEditor } from '@/components/sharepoint-config-editor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -515,10 +516,11 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 </div>
 
                 <Tabs defaultValue="details" className="space-y-4">
-                    <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-6' : 'grid-cols-5')}>
+                    <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-7' : 'grid-cols-6')}>
                         <TabsTrigger value="details">Company Details</TabsTrigger>
                         <TabsTrigger value="users">Users & Permissions</TabsTrigger>
                         <TabsTrigger value="templates">Document Templates</TabsTrigger>
+                        <TabsTrigger value="integrations">Integrations</TabsTrigger>
                         <TabsTrigger value="margins">Margins</TabsTrigger>
                         <TabsTrigger value="modules">Modules</TabsTrigger>
                         {organisation?.subDealersEnabled && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
@@ -807,6 +809,13 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                             </Tabs>
 
                         </div>
+                    </TabsContent>
+
+                    <TabsContent value="integrations">
+                        {/* v1.9 (story 1.3.3) — SharePoint config form. Future
+                            integrations (Slack, Zapier, etc.) will land in
+                            this same tab below as additional Cards. */}
+                        <SharePointConfigEditor orgId={orgId} />
                     </TabsContent>
 
                     <TabsContent value="margins">
