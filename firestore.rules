@@ -48,6 +48,20 @@ service cloud.firestore {
       ]);
     }
 
+    /**
+     * v1.9 (story 1.4.1) — Quote lifecycle-state guard. Returns true when
+     * an update ONLY touches lifecycle-state fields, so a LOCKED quote can
+     * still transition through its sales journey (Sent → Viewed → Accepted
+     * etc.) without the lock blocking the state machine. The lock layer
+     * gates CONTENT edits; the lifecycle layer is orthogonal.
+     */
+    function onlyLifecycleFieldsChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'lifecycleState', 'lifecycleStateAt', 'lifecycleStateByUid', 'lifecycleStateByName',
+        'updatedAt'
+      ]);
+    }
+
     // --- COLLECTION RULES ---
 
     // HelmLogic Admins get full access to the entire database
@@ -77,6 +91,7 @@ service cloud.firestore {
         allow update: if isSignedIn() && (
           !(resource.data.isLocked == true)
           || onlyLockFieldsChanged()
+          || onlyLifecycleFieldsChanged()
         );
         match /service_items/{itemId} {
           allow read, write: if isSignedIn();

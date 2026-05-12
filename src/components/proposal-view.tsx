@@ -18,7 +18,9 @@ import {
     Zap,
     DollarSign,
     User,
+    Check,
     CheckCircle2,
+    ChevronDown,
     Layers,
     Eye,
     Printer,
@@ -57,6 +59,16 @@ import { isEmailSendEnabled } from '@/lib/email-send';
 import { SendQuoteDialog } from '@/components/send-quote-dialog';
 import { PersonaliseContentSheet } from '@/components/personalise-content-sheet';
 import { QuotePreviewSheet } from '@/components/quote-preview-sheet';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+    getLifecycleState,
+    transitionQuoteLifecycle,
+    LIFECYCLE_STATES,
+    LIFECYCLE_STATE_LABEL,
+    LIFECYCLE_STATE_DESC,
+    LIFECYCLE_STATE_TINT,
+    type LifecycleState,
+} from '@/lib/quote-lifecycle';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -423,6 +435,28 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         }
     }
 
+    /** v1.9 (story 1.4.1) — Lifecycle picker click handler. */
+    const handleLifecycleTransition = async (next: LifecycleState) => {
+        if (!quote?.id || !auditOwnerUid || !user) return;
+        try {
+            await transitionQuoteLifecycle(firestore, auditOwnerUid, quote.id, next, {
+                byUid: user.uid,
+                byName: userProfile?.displayName || user.displayName || user.email || 'Someone',
+            });
+            toast({
+                title: `Status: ${next}`,
+                description: 'Lifecycle state updated and logged to the Activity tab.',
+            });
+        } catch (e: any) {
+            console.error('[lifecycle-transition] failed', e);
+            toast({
+                variant: 'destructive',
+                title: 'Could not update status',
+                description: e?.message ?? 'See console.',
+            });
+        }
+    };
+
     const handleDownloadPdf = async () => {
         if (!quote || !financials) return;
         setIsGeneratingPdf(true);
@@ -481,12 +515,65 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                 <p className="text-[8px] font-black uppercase tracking-[0.3em] text-muted-foreground leading-none mb-0.5">Proposal</p>
                                 <p className="text-sm font-black uppercase tracking-tight leading-none truncate">{quote.quoteNumber}</p>
                             </div>
-                            <Badge className={cn(
-                                "text-[8px] font-black uppercase tracking-widest px-2.5 shrink-0 hidden sm:inline-flex",
-                                quote.status === 'proposal' ? 'bg-primary/10 text-primary border-primary/30' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            )}>
-                                {quote.status}
-                            </Badge>
+                            {/* v1.9 (story 1.4.1) — Lifecycle picker. Stock
+                                quotes keep the simple type badge (no
+                                customer-facing lifecycle). Proposal quotes
+                                surface a click-to-transition Popover whose
+                                trigger is the lifecycle-state badge. */}
+                            {quote.status === 'stock' ? (
+                                <Badge className="text-[8px] font-black uppercase tracking-widest px-2.5 shrink-0 hidden sm:inline-flex bg-emerald-50 text-emerald-700 border-emerald-200">
+                                    stock
+                                </Badge>
+                            ) : (
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <button
+                                            type="button"
+                                            className={cn(
+                                                'rounded-md border text-[8px] font-black uppercase tracking-widest px-2.5 py-0.5 shrink-0 hidden sm:inline-flex items-center gap-1 transition-opacity hover:opacity-80',
+                                                LIFECYCLE_STATE_TINT[getLifecycleState(quote)],
+                                            )}
+                                            aria-label="Change quote lifecycle state"
+                                        >
+                                            {LIFECYCLE_STATE_LABEL[getLifecycleState(quote)]}
+                                            <ChevronDown className="h-3 w-3 opacity-70" />
+                                        </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent align="start" className="w-72 p-1">
+                                        <div className="px-3 py-2 border-b mb-1">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Quote lifecycle</p>
+                                            <p className="text-[10px] text-slate-500 mt-0.5">Pick the current sales-journey state. Every change is captured in the Activity log.</p>
+                                        </div>
+                                        {LIFECYCLE_STATES.map((s) => {
+                                            const isCurrent = s === getLifecycleState(quote);
+                                            return (
+                                                <button
+                                                    key={s}
+                                                    type="button"
+                                                    onClick={() => handleLifecycleTransition(s)}
+                                                    disabled={isCurrent}
+                                                    className={cn(
+                                                        'w-full text-left px-2 py-2 rounded-md flex items-start gap-2 hover:bg-slate-50 disabled:opacity-100 disabled:cursor-default',
+                                                    )}
+                                                >
+                                                    <Check className={cn('h-3.5 w-3.5 mt-0.5 shrink-0', isCurrent ? 'text-emerald-600' : 'text-transparent')} />
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className={cn(
+                                                                'text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border',
+                                                                LIFECYCLE_STATE_TINT[s],
+                                                            )}>
+                                                                {LIFECYCLE_STATE_LABEL[s]}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">{LIFECYCLE_STATE_DESC[s]}</p>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </PopoverContent>
+                                </Popover>
+                            )}
                             {/* v1.8 (story 1.3.1.b.i) — Lock badge. Renders next
                                 to the status badge whenever the quote has been
                                 locked. Shows version + lock reason inline so
@@ -1397,6 +1484,7 @@ const ACTIVITY_META: Record<AuditEventType, { icon: any; label: string; tint: st
     'version-forked':     { icon: GitBranch,   label: 'Forked to new version',  tint: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
     'content-overridden': { icon: Edit3,       label: 'Content personalised',   tint: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
     'discount-changed':   { icon: Percent,     label: 'Discount changed',       tint: 'bg-rose-50 text-rose-700 border-rose-200' },
+    'lifecycle-transitioned': { icon: Activity, label: 'Status updated',         tint: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
 };
 
 function ActivityRow({ event }: { event: QuoteAuditEvent }) {
@@ -1444,6 +1532,10 @@ function renderSummary(event: QuoteAuditEvent): string | null {
             return m.sentEmailId ? `Send id: ${m.sentEmailId.slice(0, 8)}…` : null;
         case 'locked':
             return m.lockReason ? `Reason: ${m.lockReason}` : null;
+        case 'lifecycle-transitioned':
+            return m.fromLifecycle && m.toLifecycle
+                ? `${m.fromLifecycle} → ${m.toLifecycle}`
+                : null;
         default:
             return m.note ?? null;
     }
