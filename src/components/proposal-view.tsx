@@ -20,6 +20,7 @@ import {
     User,
     CheckCircle2,
     Layers,
+    Eye,
     Printer,
     Calculator,
     TrendingUp,
@@ -55,6 +56,7 @@ import { useQuoteAuditLog, type AuditEventType, type QuoteAuditEvent } from '@/l
 import { isEmailSendEnabled } from '@/lib/email-send';
 import { SendQuoteDialog } from '@/components/send-quote-dialog';
 import { PersonaliseContentSheet } from '@/components/personalise-content-sheet';
+import { QuotePreviewSheet } from '@/components/quote-preview-sheet';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -168,6 +170,10 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
      *  Opens from the Personalise button. Hidden when the quote is
      *  locked (lock state owns the broader edit gate). */
     const [isPersonaliseOpen, setIsPersonaliseOpen] = useState(false);
+    /** v1.9 (story 1.8.4) — Preview sheet open state. Renders the same
+     *  PDF the Download button produces via renderQuotePdf(); blob lives
+     *  inside the sheet, so the operator can verify before download/send. */
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [localDiscount, setLocalDiscount] = useState<number>(0);
     const [isSaving, setIsSaving] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -623,6 +629,20 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     </Button>
                                 );
                             })()}
+                            {/* v1.9 (story 1.8.4) — Preview button. Opens
+                                QuotePreviewSheet which renders the same PDF
+                                renderQuotePdf() produces, inline in an iframe.
+                                Sits before Download so the operator's eye flows
+                                Preview → Download (or Preview → Send). */}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5"
+                                onClick={() => setIsPreviewOpen(true)}
+                            >
+                                <Eye className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">Preview</span>
+                            </Button>
                             <Button
                                 size="sm"
                                 className="h-9 px-5 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5"
@@ -1344,6 +1364,20 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                     ownerUid={auditOwnerUid}
                     quoteId={quote.id}
                     actorName={userProfile?.displayName || user?.displayName || user?.email || 'Someone'}
+                />
+            )}
+
+            {/* v1.9 (story 1.8.4) — Inline PDF preview. Renders the same
+                renderQuotePdf() pipeline as Download/Send and embeds the
+                resulting Blob in an iframe inside a side Sheet. The
+                sheet's own Download button reuses the in-memory blob. */}
+            {financials && (
+                <QuotePreviewSheet
+                    open={isPreviewOpen}
+                    onOpenChange={setIsPreviewOpen}
+                    quote={quote}
+                    organisation={organisation}
+                    financials={financials}
                 />
             )}
         </div>
