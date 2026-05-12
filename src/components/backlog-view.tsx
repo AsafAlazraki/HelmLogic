@@ -28,10 +28,8 @@ import {
     ChevronRight,
     HelpCircle,
     Layers,
-    Loader2,
     Lock,
     Plus,
-    ShieldAlert,
     Sparkles,
     Wrench,
     FileText,
@@ -40,18 +38,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { useToast } from '@/hooks/use-toast';
-import { seedV19HighfieldCompat } from '@/lib/v19-highfield-compat-seed';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
 import {
@@ -102,35 +88,10 @@ export function BacklogView() {
     const { data: features } = useCollection<FeatureDoc>(featuresRef);
     const { data: epics } = useCollection<EpicDoc>(epicsRef);
 
-    const { toast } = useToast();
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [createEpicOpen, setCreateEpicOpen] = useState(false);
     /** v1.6 — open Create Feature with this epic pre-filled. null = closed. */
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
-    /** v1.9 Highfield compat-rules seed (one-shot — module + button removed in next dev push). */
-    const [compatSeedOpen, setCompatSeedOpen] = useState(false);
-    const [compatSeeding, setCompatSeeding] = useState(false);
-
-    async function handleSeedHighfieldCompat() {
-        setCompatSeeding(true);
-        try {
-            const r = await seedV19HighfieldCompat(firestore);
-            toast({
-                title: 'Highfield compat templates seeded',
-                description: `${r.rulesCreated} created · ${r.rulesAlreadyPresent} already present · module ${r.moduleId}`,
-            });
-            setCompatSeedOpen(false);
-        } catch (e: any) {
-            toast({
-                variant: 'destructive',
-                title: 'Seed failed',
-                description: e?.message ?? 'See console.',
-            });
-            console.error('[v19 compat seed]', e);
-        } finally {
-            setCompatSeeding(false);
-        }
-    }
 
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
@@ -242,18 +203,6 @@ export function BacklogView() {
                         >
                             Collapse all
                         </Button>
-                        {/* v1.9 (1.1.2) Highfield compat-rules seed — one-shot. Removed
-                            in next dev push after the user clicks (per CONVENTIONS.md
-                            one-shot lifecycle). Same slot the v1.8 Finalize button used. */}
-                        <Button
-                            size="sm"
-                            className="bg-amber-500 text-white hover:bg-amber-400 gap-1.5 shadow-sm"
-                            onClick={() => setCompatSeedOpen(true)}
-                            disabled={compatSeeding}
-                        >
-                            {compatSeeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
-                            Seed Highfield Compat
-                        </Button>
                         <Button
                             size="sm"
                             className="bg-white text-slate-800 hover:bg-slate-100 gap-1.5 shadow-sm"
@@ -328,45 +277,6 @@ export function BacklogView() {
                 initialEpicId={addStoryEpicId}
             />
 
-            {/* v1.9 (1.1.2) Highfield compat-rules seed confirm popup.
-                One-shot — module + button removed in next dev push per
-                CONVENTIONS.md. */}
-            <AlertDialog open={compatSeedOpen} onOpenChange={setCompatSeedOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <ShieldAlert className="h-4 w-4 text-amber-600" />
-                            Seed Highfield compatibility-rule templates?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="space-y-2 text-sm">
-                                <p>
-                                    This writes <strong>three example rules</strong> to{' '}
-                                    <code className="bg-slate-100 px-1 rounded">modules/M1Yf3R9igpJDxJnOVr6f/compatibilityRules</code>:
-                                </p>
-                                <ul className="list-disc list-inside text-xs text-slate-600 space-y-0.5 pl-2">
-                                    <li><strong>Two sun-shades conflict</strong> (forbids pattern)</li>
-                                    <li><strong>Helm seat needs a console</strong> (requires pattern)</li>
-                                    <li><strong>Bow ladder vs anchor locker</strong> (forbids pattern)</li>
-                                </ul>
-                                <p className="text-xs text-slate-500 pt-1">
-                                    Every seeded rule is <code className="bg-slate-100 px-1 rounded">isActive: false</code> with
-                                    placeholder feature IDs. The engineering team edits the rule in Firebase Console (replace
-                                    placeholder IDs with real ones, refine the reason text, flip <code>isActive</code>) before
-                                    it actually fires for quotes. Idempotent — safe to re-run.
-                                </p>
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={compatSeeding}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleSeedHighfieldCompat} disabled={compatSeeding} className="gap-1.5 bg-amber-600 hover:bg-amber-500">
-                            {compatSeeding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ShieldAlert className="h-3.5 w-3.5" />}
-                            {compatSeeding ? 'Seeding…' : 'Yes, seed templates'}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }
