@@ -45,6 +45,7 @@ import {
 } from '@/lib/pdf-structure';
 import { PdfSectionList } from '@/components/pdf-section-list';
 import { ContentBlockDetail } from '@/components/content-block-detail';
+import { ContentBlockImportExport } from '@/components/content-block-import-export';
 
 interface Props {
     orgId: string;
@@ -191,8 +192,13 @@ export function ContentBlockManager({ orgId, documentType, legacyTermsAndConditi
     }
 
     return (
-        <div className="grid gap-5 lg:grid-cols-[300px,1fr]">
-            <PdfSectionList
+        <div>
+            {/* v1.8 (1.8.8) — Import / Export toolbar. Org-default blocks
+                only — brand overrides + per-quote overrides + versions
+                are intentionally excluded (vendor / quote-tied). */}
+            <ContentBlockImportExport orgId={orgId} />
+            <div className="grid gap-5 lg:grid-cols-[300px,1fr]">
+                <PdfSectionList
                 sections={sections}
                 selectedBlockType={selectedBlockType}
                 onSelectContentBlock={setSelectedBlockType}
@@ -212,6 +218,7 @@ export function ContentBlockManager({ orgId, documentType, legacyTermsAndConditi
                 secondaryLogoUrl={secondaryLogoUrl}
                 pdfSections={sections}
             />
+            </div>
         </div>
     );
 }

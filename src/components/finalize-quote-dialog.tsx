@@ -6,10 +6,7 @@ import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { useUser } from '@/firebase/auth/use-user';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { doc, setDoc, updateDoc, serverTimestamp, collection as firestoreCollection } from 'firebase/firestore';
-import { pdf } from '@react-pdf/renderer';
 import { uploadFileToStorage } from '@/firebase/storage';
-import { ProposalPDFDocument } from '@/components/proposal-pdf';
-import { resolveContentBlocksForQuote, resolveContentBlockSubHeadersForQuote } from '@/lib/content-blocks';
 import { buildQuoteFinancials } from '@/lib/quote-financials';
 import {
     Dialog,
@@ -404,6 +401,24 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 const quoteRef = doc(firestoreCollection(firestore, `users/${user.uid}/quotes`));
                 await setDoc(quoteRef, { ...payload, id: quoteRef.id });
 
+                // v1.8 (story 1.4.1.b) — capture lifecycle events for the
+                // Activity tab. Customer-mode finalize is the moment the
+                // quote first lands in Firestore (created) AND becomes a
+                // proposal (finalised) — record both in order so the
+                // Activity tab tells the story chronologically.
+                const { logAuditEvent } = await import('@/lib/quote-audit-log');
+                const auditByName = userProfile?.displayName || user.displayName || user.email || 'Someone';
+                await logAuditEvent(firestore, user.uid, quoteRef.id, {
+                    eventType: 'created',
+                    byUid: user.uid,
+                    byName: auditByName,
+                });
+                await logAuditEvent(firestore, user.uid, quoteRef.id, {
+                    eventType: 'finalised',
+                    byUid: user.uid,
+                    byName: auditByName,
+                });
+
                 // Upload section PDFs if any attached
                 const sectionPdfs = quoteData.sectionPdfs;
                 if (sectionPdfs) {
@@ -485,65 +500,18 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 // Generate and store PDF
                 try {
                     const financials = buildQuoteFinancials(payload);
-                    // v1.7 (1.2.1): fetch org's authored content blocks before PDF render.
-                    // v1.7 round-5: parallel fetch of authored PDF sub-headers.
-                    // Skip both on missing orgId (stock-only flows) — PDF falls back to legacy T&Cs path.
-                    const [contentBlocks, contentBlockSubHeaders] = organisationId
-                        ? await Promise.all([
-                            resolveContentBlocksForQuote(firestore, organisationId, (payload as any).vendorId ?? null),
-                            resolveContentBlockSubHeadersForQuote(firestore, organisationId),
-                        ])
-                        : [undefined, undefined];
-
-                    /**
-                     * v1.7 round-9 — preload every image as base64 data URL
-                     * to bypass @react-pdf's iframe-CORS issue on inline
-                     * content-block images, motor / trailer photos, and
-                     * brand logos. See src/lib/image-preload.ts.
-                     */
-                    const { extractImgUrlsFromHtml, preloadImages, swapImgUrlsInHtml } = await import('@/lib/image-preload');
-                    const inlineUrls = contentBlocks
-                        ? Object.values(contentBlocks).flatMap(html => extractImgUrlsFromHtml(html ?? ''))
-                        : [];
-                    const candidateUrls: (string | null | undefined)[] = [
-                        ...inlineUrls,
-                        (payload as any).coverImageUrl,
-                        (payload as any).vendorLogoUrl,
-                        (payload as any).motor?.imageUrl,
-                        (payload as any).motor?.brandLogoUrl,
-                        (payload as any).trailer?.imageUrl,
-                        (payload as any).trailer?.brandLogoUrl,
-                        (payload as any).trailer?.catalog?.imageUrl,
-                        organisation?.primaryLogoUrl,
-                        organisation?.secondaryLogoUrl,
-                    ];
-                    const dataUrls = await preloadImages(candidateUrls);
-                    const swap = (u: string | null | undefined) => (u ? (dataUrls.get(u) ?? u) : u);
-                    const mappedBlocks: typeof contentBlocks = contentBlocks
-                        ? Object.fromEntries(Object.entries(contentBlocks).map(([k, v]) => [k, v ? swapImgUrlsInHtml(v, dataUrls) : v]))
-                        : contentBlocks;
-                    const swappedPayload: any = {
-                        ...payload,
-                        coverImageUrl: swap((payload as any).coverImageUrl),
-                        vendorLogoUrl: swap((payload as any).vendorLogoUrl),
-                        motor: (payload as any).motor
-                            ? { ...(payload as any).motor, imageUrl: swap((payload as any).motor.imageUrl), brandLogoUrl: swap((payload as any).motor.brandLogoUrl) }
-                            : (payload as any).motor,
-                        trailer: (payload as any).trailer
-                            ? {
-                                  ...(payload as any).trailer,
-                                  imageUrl: swap((payload as any).trailer.imageUrl),
-                                  brandLogoUrl: swap((payload as any).trailer.brandLogoUrl),
-                                  catalog: (payload as any).trailer.catalog
-                                      ? { ...(payload as any).trailer.catalog, imageUrl: swap((payload as any).trailer.catalog.imageUrl) }
-                                      : (payload as any).trailer.catalog,
-                              }
-                            : (payload as any).trailer,
-                    };
-                    const swappedOrg = organisation
-                        ? { ...organisation, primaryLogoUrl: swap((organisation as any).primaryLogoUrl), secondaryLogoUrl: swap((organisation as any).secondaryLogoUrl) }
-                        : organisation;
-                    const pdfBlob = await pdf(<ProposalPDFDocument quote={swappedPayload} organisation={swappedOrg} financials={financials} contentBlocks={mappedBlocks} contentBlockSubHeaders={contentBlockSubHeaders} />).toBlob();
+                    // v1.8 (story 1.5.0) — single-source PDF render
+                    // pipeline. Replaces the duplicated content-block
+                    // resolve + image preload + URL swap + @react-pdf
+                    // render logic with one call. Same client-side flow.
+                    const { renderQuotePdf } = await import('@/lib/render-quote-pdf');
+                    const { blob: pdfBlob } = await renderQuotePdf({
+                        firestore,
+                        storage,
+                        quote: payload,
+                        organisation,
+                        financials,
+                    });
                     if (!pdfBlob || pdfBlob.size === 0) {
                         throw new Error('PDF generation returned an empty blob');
                     }

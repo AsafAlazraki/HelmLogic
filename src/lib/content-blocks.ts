@@ -71,10 +71,35 @@ export interface ContentBlock {
     documentTypes?: DocumentType[];
     /** Schema field for v1.8.3 layout controls. Default false; no UI in 1.8.1. */
     startsOnNewPage: boolean;
+    /**
+     * v1.8 (story 1.2.3) — when true, salespeople CANNOT override this
+     * block per-quote. The org-authored content always wins. UI gating
+     * lives in content-block-detail.tsx (admin toggle) and the
+     * personalisation side sheet on proposal-view.tsx hides locked
+     * blocks from its block picker. Resolver short-circuits the
+     * per-quote override layer when this flag is true.
+     * Missing field = false = unlocked = per-quote overrides allowed
+     * (preserves legacy behaviour for blocks created before v1.8).
+     */
+    isLockedForQuotes?: boolean;
     createdAt?: Timestamp;
     updatedAt?: Timestamp;
     updatedByUid?: string;
     updatedByName?: string;
+}
+
+/**
+ * v1.8 (story 1.2.3) — per-quote content override doc shape. Lives
+ * at users/{ownerUid}/quotes/{quoteId}/contentOverrides/{blockType}.
+ * Doc id is the blockType (one override per block per quote).
+ */
+export interface ContentOverride {
+    id: string;                  // blockType
+    html?: string | null;
+    subHeader?: string | null;
+    overriddenAt?: Timestamp;
+    overriddenByUid?: string;
+    overriddenByName?: string;
 }
 
 /** Resolve a block's effective documentTypes — defaults to ['quote'] for legacy docs. */
@@ -199,6 +224,15 @@ export async function resolveContentBlocksForQuote(
     vendorId: string | null,
     /** v1.7 (1.8.6) — filter to blocks tagged with this document type. Defaults to 'quote'. */
     documentType: DocumentType = 'quote',
+    /**
+     * v1.8 (story 1.2.3) — optional per-quote override coordinates. When
+     * both provided, the resolver checks `users/{ownerUid}/quotes/{quoteId}/
+     * contentOverrides/{blockType}` and prefers per-quote html over brand
+     * override over org default. The check is short-circuited for blocks
+     * with `isLockedForQuotes === true` so admin-locked content always
+     * wins over a stale salesperson override.
+     */
+    quoteOverrideCtx?: { ownerUid: string; quoteId: string } | null,
 ): Promise<Partial<Record<BlockType, string>>> {
     const blocksSnap = await getDocs(collection(firestore, `organisations/${orgId}/contentBlocks`));
     const result: Partial<Record<BlockType, string>> = {};
@@ -220,6 +254,23 @@ export async function resolveContentBlocksForQuote(
             if (overrideSnap.exists()) {
                 const override = overrideSnap.data() as BrandOverride;
                 if (override.html) html = override.html;
+            }
+        }
+
+        // v1.8 (1.2.3) — per-quote override beats brand & default, unless
+        // the block is admin-locked. Locked blocks fall through with the
+        // org-default / brand-override html already resolved above.
+        if (quoteOverrideCtx && !block.isLockedForQuotes) {
+            const quoteOverrideRef = doc(
+                firestore,
+                `users/${quoteOverrideCtx.ownerUid}/quotes/${quoteOverrideCtx.quoteId}/contentOverrides/${block.blockType}`,
+            );
+            const quoteOverrideSnap = await getDoc(quoteOverrideRef);
+            if (quoteOverrideSnap.exists()) {
+                const override = quoteOverrideSnap.data() as ContentOverride;
+                if (typeof override.html === 'string' && override.html.trim()) {
+                    html = override.html;
+                }
             }
         }
 
@@ -249,14 +300,35 @@ export async function resolveContentBlockSubHeadersForQuote(
     firestore: Firestore,
     orgId: string,
     documentType: DocumentType = 'quote',
+    /**
+     * v1.8 (story 1.2.3) — optional per-quote override coordinates. Same
+     * lock-aware short-circuit as `resolveContentBlocksForQuote`.
+     */
+    quoteOverrideCtx?: { ownerUid: string; quoteId: string } | null,
 ): Promise<Partial<Record<BlockType, string>>> {
     const blocksSnap = await getDocs(collection(firestore, `organisations/${orgId}/contentBlocks`));
     const result: Partial<Record<BlockType, string>> = {};
     for (const blockDoc of blocksSnap.docs) {
         const block = { id: blockDoc.id, ...blockDoc.data() } as ContentBlock;
         if (!blockBelongsTo(block, documentType)) continue;
-        const sub = block.subHeader;
-        if (sub && sub.trim()) result[block.blockType] = sub.trim();
+
+        let sub = block.subHeader?.trim() || '';
+
+        if (quoteOverrideCtx && !block.isLockedForQuotes) {
+            const quoteOverrideRef = doc(
+                firestore,
+                `users/${quoteOverrideCtx.ownerUid}/quotes/${quoteOverrideCtx.quoteId}/contentOverrides/${block.blockType}`,
+            );
+            const quoteOverrideSnap = await getDoc(quoteOverrideRef);
+            if (quoteOverrideSnap.exists()) {
+                const override = quoteOverrideSnap.data() as ContentOverride;
+                if (typeof override.subHeader === 'string' && override.subHeader.trim()) {
+                    sub = override.subHeader.trim();
+                }
+            }
+        }
+
+        if (sub) result[block.blockType] = sub;
     }
     return result;
 }

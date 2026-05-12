@@ -115,6 +115,24 @@ import {
 } from '@/components/feature-rich-text-editor';
 import { FeatureImageUploader } from '@/components/feature-image-uploader';
 import { isReleaseShipped } from '@/lib/release-schedule';
+import {
+    STORY_REF_REGEX,
+    colourForDep,
+    resolveDep,
+    validateRetarget,
+    type DepColour,
+    type RetargetValidationResult,
+} from '@/lib/dependency-validation';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -208,6 +226,30 @@ export interface FeatureDoc {
     acceptedBy?: string | null;
     /** v1.6 — display name of the accepter (snapshotted at accept time). */
     acceptedByName?: string | null;
+    /** v1.8 (story 6.4.1) — hard cross-story dependencies as canonical
+     *  story numbers ("1.8.1", "1.2.1"). Validated at retarget time:
+     *  if any dep is in a later release than this story's target, the
+     *  retarget popup blocks (or requires explicit Override). Renders
+     *  as colour-coded chips on the feature detail sheet. Missing or
+     *  empty array = no deps. See tasks/CONVENTIONS.md cross-story
+     *  dependency convention. */
+    dependsOn?: string[];
+    /** v1.8 (story 6.4.1) — soft references (RELATED: / See also:).
+     *  Render as muted chips. NOT validated at retarget. */
+    dependsOnSoft?: string[];
+    /** v1.8 (story 6.4.1) — audit log of times an operator retargeted
+     *  this story despite a broken dependency, with their reason.
+     *  Append-only. Surfaced in the detail sheet so reviewers can see
+     *  the override history. */
+    dependencyOverrides?: Array<{
+        at: any;
+        byUid?: string | null;
+        byName?: string | null;
+        fromRelease?: string | null;
+        toRelease: string | null;
+        brokenDeps: Array<{ ref: string; targetRelease: string | null }>;
+        reason?: string | null;
+    }>;
 }
 
 /** Fibonacci-flavoured story-point options for v1.6 effort estimation. */
@@ -1494,6 +1536,26 @@ function FeatureDetailBody({
     );
     const { data: comments } = useCollection<CommentDoc>(commentsRef);
 
+    /** v1.8 (story 6.4.1) — live features collection so the dependsOn
+     *  chips can colour-code in real time + the retarget validator can
+     *  walk every story without a separate fetch. Same shape as the
+     *  parent FeatureTrackingBoard subscription at line 530. */
+    const allFeaturesRef = useMemoFirebase(
+        () => collection(firestore, 'features'),
+        [firestore],
+    );
+    const { data: allFeatures } = useCollection<FeatureDoc>(allFeaturesRef);
+
+    /** v1.8 (story 6.4.1) — retarget validation popup state. Triggered
+     *  when the operator picks a new target release that would land
+     *  this story BEFORE one of its hard dependsOn refs. Override
+     *  requires a non-empty reason which appends to dependencyOverrides[]. */
+    const [retargetPending, setRetargetPending] = useState<{
+        toRelease: string | null;
+        validation: RetargetValidationResult;
+    } | null>(null);
+    const [retargetReason, setRetargetReason] = useState('');
+
     // Title + description are edited via local draft + Save button to
     // avoid firing a Firestore write on every keystroke and racing with
     // the live snapshot. Everything else (selects, tags, acceptance,
@@ -1830,20 +1892,42 @@ function FeatureDetailBody({
                         </div>
                     </div>
 
-                    {/* Target Release */}
+                    {/* Target Release — v1.8 (story 6.4.1): retarget runs
+                        through validateRetarget() FIRST. If the proposed
+                        release would land this story BEFORE one of its
+                        hard dependsOn refs, opens an override-with-reason
+                        popup; only proceeds if the operator confirms. */}
                     <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Target Release</Label>
                         <ReleasePicker
                             value={feature.targetRelease}
                             onChange={(next) => {
-                                if (next !== (feature.targetRelease ?? null)) {
-                                    patch({ targetRelease: next });
+                                if (next === (feature.targetRelease ?? null)) return;
+                                const validation = validateRetarget(
+                                    feature,
+                                    feature.dependsOn,
+                                    next,
+                                    allFeatures ?? [],
+                                );
+                                if (validation.requiresOverride) {
+                                    setRetargetReason('');
+                                    setRetargetPending({ toRelease: next, validation });
+                                    return;
                                 }
+                                patch({ targetRelease: next });
                             }}
                             triggerClassName="h-8 text-xs"
                             disabled={isShipped}
                         />
                     </div>
+
+                    {/* v1.8 (story 6.4.1) — Depends On editor + chips. */}
+                    <DependsOnEditor
+                        feature={feature}
+                        allFeatures={allFeatures ?? []}
+                        disabled={isShipped}
+                        onChange={(next) => patch({ dependsOn: next })}
+                    />
 
                     {/* Vote + count */}
                     <div className="flex items-center gap-3">
@@ -2172,6 +2256,248 @@ function FeatureDetailBody({
                     </Button>
                 </div>
             </div>
+
+            {/* v1.8 (story 6.4.1) — retarget validation popup. Opens
+                only when the operator picks a target release that
+                lands this story BEFORE one of its hard dependsOn
+                refs. Override-with-reason; reason appended to
+                feature.dependencyOverrides[]. */}
+            <AlertDialog
+                open={retargetPending !== null}
+                onOpenChange={(v) => {
+                    if (!v) {
+                        setRetargetPending(null);
+                        setRetargetReason('');
+                    }
+                }}
+            >
+                <AlertDialogContent className="max-w-lg">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Retarget breaks a dependency</AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-3 text-xs text-slate-600">
+                                <p>
+                                    Moving <strong>{feature.title}</strong> to{' '}
+                                    <strong>{retargetPending?.toRelease ?? 'Unscheduled'}</strong>{' '}
+                                    would land it BEFORE one of its hard dependencies:
+                                </p>
+                                {(retargetPending?.validation.brokenDeps.length ?? 0) > 0 && (
+                                    <ul className="list-disc pl-5 space-y-1">
+                                        {retargetPending?.validation.brokenDeps.map(b => (
+                                            <li key={b.ref}>
+                                                <code className="bg-amber-50 text-amber-700 px-1 rounded text-[11px]">
+                                                    {b.ref}
+                                                </code>{' '}
+                                                ships in{' '}
+                                                <strong>{b.depTarget ?? 'unscheduled'}</strong>
+                                                {b.depTitle ? ` — ${b.depTitle.replace(`${b.ref} — `, '')}` : ''}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                                {(retargetPending?.validation.missingDeps.length ?? 0) > 0 && (
+                                    <div>
+                                        <p className="font-semibold">Missing dep targets:</p>
+                                        <ul className="list-disc pl-5">
+                                            {retargetPending?.validation.missingDeps.map(d => (
+                                                <li key={d}>
+                                                    <code className="bg-red-50 text-red-700 px-1 rounded text-[11px]">{d}</code>{' '}
+                                                    — no matching feature found, or unscheduled, or soft-deleted
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                                <div className="pt-1 space-y-1">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                                        Reason for override
+                                    </Label>
+                                    <Input
+                                        value={retargetReason}
+                                        onChange={(e) => setRetargetReason(e.target.value)}
+                                        placeholder="e.g. Confirmed with stakeholder; dep order acceptable for this case"
+                                        className="text-xs"
+                                    />
+                                    <p className="text-[10px] text-slate-400">
+                                        Required. Appended to <code>dependencyOverrides[]</code> on this feature for audit.
+                                    </p>
+                                </div>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            disabled={retargetReason.trim().length === 0}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                if (!retargetPending) return;
+                                const override = {
+                                    at: serverTimestamp(),
+                                    byUid: user?.uid ?? null,
+                                    byName: userProfile?.displayName ?? user?.email ?? null,
+                                    fromRelease: feature.targetRelease ?? null,
+                                    toRelease: retargetPending.toRelease,
+                                    brokenDeps: retargetPending.validation.brokenDeps.map(b => ({
+                                        ref: b.ref,
+                                        targetRelease: b.depTarget,
+                                    })),
+                                    reason: retargetReason.trim(),
+                                };
+                                patch({
+                                    targetRelease: retargetPending.toRelease,
+                                    dependencyOverrides: [...(feature.dependencyOverrides ?? []), override],
+                                });
+                                setRetargetPending(null);
+                                setRetargetReason('');
+                            }}
+                            className="bg-amber-600 hover:bg-amber-700"
+                        >
+                            Override and retarget
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
+    );
+}
+
+/**
+ * v1.8 (story 6.4.1) — Depends On editor surface inside the feature
+ * detail sheet. Renders chips for the current `dependsOn[]` array
+ * (colour-coded green/amber/red per `colourForDep`) plus an autocomplete
+ * "Add" input that auto-validates the canonical x.y.z format. Soft
+ * deps (`dependsOnSoft[]`) render in a muted second row (read-only —
+ * we'll add edit UI in v1.9 if it proves needed).
+ */
+function DependsOnEditor({
+    feature,
+    allFeatures,
+    disabled,
+    onChange,
+}: {
+    feature: FeatureDoc;
+    allFeatures: FeatureDoc[];
+    disabled: boolean;
+    onChange: (next: string[]) => void;
+}) {
+    const [draft, setDraft] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const deps = feature.dependsOn ?? [];
+    const softDeps = feature.dependsOnSoft ?? [];
+
+    function addDep() {
+        const v = draft.trim();
+        if (!v) return;
+        if (!STORY_REF_REGEX.test(v)) {
+            setError('Format: x.y.z (e.g. 1.8.1)');
+            return;
+        }
+        if (deps.includes(v)) {
+            setError('Already in list');
+            return;
+        }
+        onChange([...deps, v]);
+        setDraft('');
+        setError(null);
+    }
+
+    function removeDep(ref: string) {
+        onChange(deps.filter(d => d !== ref));
+    }
+
+    return (
+        <div className="space-y-1.5">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                Depends on (hard)
+            </Label>
+            {deps.length > 0 ? (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                    {deps.map(ref => {
+                        const dep = resolveDep(ref, allFeatures);
+                        const colour: DepColour = colourForDep(ref, feature.targetRelease, allFeatures);
+                        const cls =
+                            colour === 'green' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : colour === 'amber' ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'bg-red-50 text-red-700 border-red-200';
+                        const tooltip =
+                            colour === 'green' ? `Ships in ${dep?.targetRelease ?? '?'} — same release or earlier ✓`
+                            : colour === 'amber' ? `Ships in ${dep?.targetRelease ?? '?'} — LATER than this story ⚠`
+                            : `Missing / unscheduled / soft-deleted ❌`;
+                        return (
+                            <span
+                                key={ref}
+                                title={tooltip}
+                                className={cn(
+                                    'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold border',
+                                    cls,
+                                )}
+                            >
+                                {ref}
+                                {!disabled && (
+                                    <button
+                                        type="button"
+                                        onClick={() => removeDep(ref)}
+                                        className="opacity-60 hover:opacity-100 ml-0.5"
+                                        title="Remove"
+                                    >
+                                        ×
+                                    </button>
+                                )}
+                            </span>
+                        );
+                    })}
+                </div>
+            ) : (
+                <p className="text-[11px] text-slate-400 italic">No hard dependencies.</p>
+            )}
+            {!disabled && (
+                <div className="flex items-center gap-1.5">
+                    <Input
+                        value={draft}
+                        onChange={(e) => { setDraft(e.target.value); setError(null); }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addDep(); } }}
+                        placeholder="Add x.y.z (e.g. 1.8.1)"
+                        className="h-7 text-xs"
+                    />
+                    <Button size="sm" onClick={addDep} disabled={!draft.trim()} className="h-7 text-xs">
+                        Add
+                    </Button>
+                </div>
+            )}
+            {error && <p className="text-[10px] text-red-600">{error}</p>}
+            {softDeps.length > 0 && (
+                <div className="pt-1">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                        Related (soft)
+                    </Label>
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                        {softDeps.map(ref => (
+                            <span
+                                key={ref}
+                                className="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-slate-50 text-slate-500 border border-slate-200"
+                            >
+                                {ref}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+            {(feature.dependencyOverrides?.length ?? 0) > 0 && (
+                <details className="pt-1">
+                    <summary className="text-[10px] font-bold uppercase tracking-widest text-amber-700 cursor-pointer">
+                        {feature.dependencyOverrides!.length} override{feature.dependencyOverrides!.length === 1 ? '' : 's'} on file
+                    </summary>
+                    <ul className="mt-1 space-y-1">
+                        {feature.dependencyOverrides!.map((o, i) => (
+                            <li key={i} className="text-[10px] text-slate-600 bg-amber-50 border border-amber-200 rounded p-1.5">
+                                <strong>{o.fromRelease ?? 'Unscheduled'} → {o.toRelease ?? 'Unscheduled'}</strong>
+                                {o.byName ? ` by ${o.byName}` : ''} — {o.reason ?? '(no reason)'}
+                            </li>
+                        ))}
+                    </ul>
+                </details>
+            )}
+        </div>
     );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect, createElement } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useUser } from '@/firebase/auth/use-user';
 import { useDoc } from '@/firebase/firestore/use-doc';
@@ -31,6 +31,16 @@ import {
     Copy,
     Ruler,
     FileText,
+    Activity,
+    UserPlus,
+    Send,
+    Sparkles,
+    Lock,
+    LockOpen,
+    GitBranch,
+    Edit3,
+    Percent,
+    Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -41,6 +51,20 @@ import {
     SheetTitle,
 } from "@/components/ui/sheet";
 import { Input } from '@/components/ui/input';
+import { useQuoteAuditLog, type AuditEventType, type QuoteAuditEvent } from '@/lib/quote-audit-log';
+import { isEmailSendEnabled } from '@/lib/email-send';
+import { SendQuoteDialog } from '@/components/send-quote-dialog';
+import { PersonaliseContentSheet } from '@/components/personalise-content-sheet';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ProposalPrint } from './proposal-print';
 
 interface ProposalViewProps {
@@ -111,6 +135,39 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     const { toast } = useToast();
 
     const [isAuditOpen, setIsAuditOpen] = useState(false);
+    /** v1.8 (story 1.4.1.c) — Activity sheet shows the per-quote audit
+     *  log captured by 1.4.1.b's logAuditEvent calls (created /
+     *  finalised / sent / locked / unlocked / version-forked /
+     *  content-overridden / discount-changed). Read-only.
+     *  The actual subscription (`useQuoteAuditLog`) is below the
+     *  `quote` declaration since it depends on the resolved owner uid. */
+    const [isActivityOpen, setIsActivityOpen] = useState(false);
+
+    /** v1.8 (story 1.3.1.b.iii) — Fork-on-edit popup state. Opens when
+     *  the operator clicks "Create v{N+1}" on a locked quote. Confirm
+     *  → forkLockedQuote() → redirect. Per CONVENTIONS.md popup-for-
+     *  confirmations rule. */
+    const [isForkOpen, setIsForkOpen] = useState(false);
+    const [isForking, setIsForking] = useState(false);
+
+    /** v1.8 (story 1.3.1.c) — Manual-unlock popup state. Admin-only
+     *  emergency override (the AlertDialog itself is hidden when the
+     *  operator doesn't have can_access_settings). Reuses the same
+     *  popup-for-confirmations pattern. */
+    const [isUnlockOpen, setIsUnlockOpen] = useState(false);
+    const [isUnlocking, setIsUnlocking] = useState(false);
+
+    /** v1.8 (story 1.2.4.c) — Send Quote dialog state. Opens from the
+     *  Send button in the header. Disabled when email infra is not yet
+     *  wired (NEXT_PUBLIC_EMAIL_SEND_ENABLED flag — gating the BUTTON,
+     *  not the pipeline). */
+    const [isSendOpen, setIsSendOpen] = useState(false);
+    const sendEnabled = useMemo(() => isEmailSendEnabled(), []);
+
+    /** v1.8 (story 1.2.3.c) — Personalise Content side sheet state.
+     *  Opens from the Personalise button. Hidden when the quote is
+     *  locked (lock state owns the broader edit gate). */
+    const [isPersonaliseOpen, setIsPersonaliseOpen] = useState(false);
     const [localDiscount, setLocalDiscount] = useState<number>(0);
     const [isSaving, setIsSaving] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -168,6 +225,9 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     }, [ownQuote, ownQuoteLoading, quoteId, user, userProfile?.organisationId, firestore]);
 
     const quote = ownQuote || orgFallbackQuote;
+    /** v1.8 (story 1.4.1.c) — live audit-log subscription. */
+    const auditOwnerUid = (quote?.createdByUid ?? user?.uid) as string | null | undefined;
+    const { data: auditEvents } = useQuoteAuditLog(auditOwnerUid, quote?.id ?? null);
     const isLoadingQuote = !quote && (ownQuoteLoading || orgFallbackLoading);
 
     const orgRef = useMemoFirebase(() => quote?.organisationId ? doc(firestore, 'organisations', quote.organisationId) : null, [firestore, quote?.organisationId]);
@@ -248,13 +308,107 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         };
     }, [quote, strategy, activeExchangeRate, localDiscount, organisation]);
 
+    /** v1.8 (story 1.3.1.c) — admin gate for the manual-unlock action.
+     *  Mirrors the can_access_settings check used by /manage and the
+     *  sidebar Settings link. HelmLogic Admins bypass org-role checks. */
+    const canManuallyUnlock = useMemo(() => {
+        if (userProfile?.appRole === 'HelmLogic Admin') return true;
+        const roleId = userProfile?.organisationRole;
+        if (!roleId || !organisation?.permissions?.[roleId]) return false;
+        return !!organisation.permissions[roleId].can_access_settings;
+    }, [userProfile, organisation]);
+
+    /** v1.8 (story 1.3.1.c) — Manually unlock a locked quote. Admin
+     *  override path — used when the operator needs to edit a locked
+     *  quote directly without forking (e.g. typo correction on a sent
+     *  quote where re-sending isn't appropriate). Caller must already
+     *  pass the canManuallyUnlock gate before reaching this handler. */
+    async function handleUnlockConfirm() {
+        if (!user || !quote || !auditOwnerUid) return;
+        setIsUnlocking(true);
+        try {
+            const { unlockQuote } = await import('@/lib/quote-lock');
+            await unlockQuote(firestore, auditOwnerUid, quote.id, {
+                byUid: user.uid,
+                byName: userProfile?.displayName || user.displayName || user.email || 'Someone',
+            });
+            toast({
+                title: 'Quote unlocked',
+                description: 'Edits are now allowed. Re-locks automatically on next Send.',
+            });
+            setIsUnlockOpen(false);
+        } catch (e: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Unlock failed',
+                description: e?.message ?? 'See console.',
+            });
+            console.error('[unlock-quote]', e);
+        } finally {
+            setIsUnlocking(false);
+        }
+    }
+
+    /** v1.8 (story 1.3.1.b.iii) — Fork a locked quote into a fresh
+     *  editable v{N+1} doc. Calls forkLockedQuote() (which writes the
+     *  new doc, copies contentOverrides, fires version-forked auditLog
+     *  events on both ends), then redirects the operator to the new
+     *  quote. Per CONVENTIONS.md popup-for-confirmations rule. */
+    async function handleForkConfirm() {
+        if (!user || !quote || !auditOwnerUid) return;
+        setIsForking(true);
+        try {
+            const { forkLockedQuote } = await import('@/lib/quote-lock');
+            const { childQuoteId, childVersion } = await forkLockedQuote(
+                firestore,
+                auditOwnerUid,
+                quote.id,
+                {
+                    byUid: user.uid,
+                    byName: userProfile?.displayName || user.displayName || user.email || 'Someone',
+                },
+            );
+            toast({
+                title: `Created v${childVersion}`,
+                description: `New editable copy ready.`,
+            });
+            setIsForkOpen(false);
+            // Redirect — the new doc lives at /proposals/{newId}.
+            router.push(`/proposals/${childQuoteId}`);
+        } catch (e: any) {
+            toast({
+                variant: 'destructive',
+                title: 'Fork failed',
+                description: e?.message ?? 'See console.',
+            });
+            console.error('[fork-quote]', e);
+        } finally {
+            setIsForking(false);
+        }
+    }
+
     async function handleSaveDiscount(newDiscount: number) {
         if (!user || !quote) return;
         setIsSaving(true);
         try {
             const ownerUid = quote.createdByUid || user.uid;
+            const previousDiscount = quote.discountExclGst ?? 0;
             const ref = doc(firestore, `users/${ownerUid}/quotes`, quote.id);
             await updateDoc(ref, { discountExclGst: newDiscount, lastUpdateAt: serverTimestamp() });
+            // v1.8 (story 1.4.1.b) — capture lifecycle event so the
+            // Activity tab can surface the discount change with from/to.
+            if (previousDiscount !== newDiscount) {
+                const { logAuditEvent } = await import('@/lib/quote-audit-log');
+                await logAuditEvent(firestore, ownerUid, quote.id, {
+                    eventType: 'discount-changed',
+                    byUid: user.uid,
+                    byName: userProfile?.displayName || user.email || 'Someone',
+                    metadata: {
+                        fromValue: previousDiscount,
+                        toValue: newDiscount,
+                    },
+                });
+            }
             toast({ title: "Discount Saved", description: "The proposal has been updated successfully." });
         } catch {
             toast({ title: "Error", description: "Failed to save discount.", variant: "destructive" });
@@ -267,71 +421,17 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         if (!quote || !financials) return;
         setIsGeneratingPdf(true);
         try {
-            const [{ pdf }, { ProposalPDFDocument }, { resolveContentBlocksForQuote, resolveContentBlockSubHeadersForQuote }, { extractImgUrlsFromHtml, preloadImages, swapImgUrlsInHtml }] = await Promise.all([
-                import('@react-pdf/renderer'),
-                import('./proposal-pdf'),
-                import('@/lib/content-blocks'),
-                import('@/lib/image-preload'),
-            ]);
-            // v1.7 (1.2.1): fetch org-authored content blocks (with brand-override resolution).
-            // v1.7 round-5: parallel fetch of authored PDF sub-headers.
-            const [contentBlocks, contentBlockSubHeaders] = quote.organisationId
-                ? await Promise.all([
-                    resolveContentBlocksForQuote(firestore, quote.organisationId, quote.vendorId ?? null),
-                    resolveContentBlockSubHeadersForQuote(firestore, quote.organisationId),
-                ])
-                : [undefined, undefined];
-
-            /**
-             * v1.7 round-9 — pre-load every image referenced by the
-             * customer PDF and swap URLs for base64 data URLs before
-             * @react-pdf renders. Bypasses the iframe-CORS issue that
-             * silently dropped Firebase Storage / vendor-CDN images.
-             */
-            const inlineUrls = contentBlocks
-                ? Object.values(contentBlocks).flatMap(html => extractImgUrlsFromHtml(html ?? ''))
-                : [];
-            const candidateUrls: (string | null | undefined)[] = [
-                ...inlineUrls,
-                quote.coverImageUrl,
-                quote.vendorLogoUrl,
-                quote.motor?.imageUrl,
-                quote.motor?.brandLogoUrl,
-                quote.trailer?.imageUrl,
-                quote.trailer?.brandLogoUrl,
-                quote.trailer?.catalog?.imageUrl,
-                organisation?.primaryLogoUrl,
-                organisation?.secondaryLogoUrl,
-            ];
-            const dataUrls = await preloadImages(candidateUrls);
-            const swap = (u: string | null | undefined) => (u ? (dataUrls.get(u) ?? u) : u);
-            const mappedBlocks: typeof contentBlocks = contentBlocks
-                ? Object.fromEntries(Object.entries(contentBlocks).map(([k, v]) => [k, v ? swapImgUrlsInHtml(v, dataUrls) : v]))
-                : contentBlocks;
-            const swappedQuote = {
-                ...quote,
-                coverImageUrl: swap(quote.coverImageUrl),
-                vendorLogoUrl: swap(quote.vendorLogoUrl),
-                motor: quote.motor
-                    ? { ...quote.motor, imageUrl: swap(quote.motor.imageUrl), brandLogoUrl: swap(quote.motor.brandLogoUrl) }
-                    : quote.motor,
-                trailer: quote.trailer
-                    ? {
-                          ...quote.trailer,
-                          imageUrl: swap(quote.trailer.imageUrl),
-                          brandLogoUrl: swap(quote.trailer.brandLogoUrl),
-                          catalog: quote.trailer.catalog
-                              ? { ...quote.trailer.catalog, imageUrl: swap(quote.trailer.catalog.imageUrl) }
-                              : quote.trailer.catalog,
-                      }
-                    : quote.trailer,
-            };
-            const swappedOrg = organisation
-                ? { ...organisation, primaryLogoUrl: swap(organisation.primaryLogoUrl), secondaryLogoUrl: swap(organisation.secondaryLogoUrl) }
-                : organisation;
-            const blob = await pdf(
-                createElement(ProposalPDFDocument, { quote: swappedQuote, organisation: swappedOrg, financials, contentBlocks: mappedBlocks, contentBlockSubHeaders }) as any
-            ).toBlob();
+            // v1.8 (story 1.5.0) — single-source PDF render pipeline.
+            // Was 80+ lines of duplicated content-block resolve + image
+            // preload + URL swap + @react-pdf render; now one call.
+            // Same client-side flow, no behaviour change.
+            const { renderQuotePdf } = await import('@/lib/render-quote-pdf');
+            const { blob } = await renderQuotePdf({
+                firestore,
+                quote,
+                organisation,
+                financials,
+            });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -381,9 +481,51 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                             )}>
                                 {quote.status}
                             </Badge>
+                            {/* v1.8 (story 1.3.1.b.i) — Lock badge. Renders next
+                                to the status badge whenever the quote has been
+                                locked. Shows version + lock reason inline so
+                                the operator sees at a glance why edits are
+                                disabled. Tooltip surfaces the lock actor +
+                                timestamp. Hidden on mobile (sm:inline-flex)
+                                to match the status-badge breakpoint. */}
+                            {quote.isLocked === true && (
+                                <Badge
+                                    title={(() => {
+                                        const at = quote.lockedAt?.toDate?.();
+                                        const reason = quote.lockedReason ?? 'manual';
+                                        const by = quote.lockedByName ?? 'Someone';
+                                        const ts = at ? at.toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+                                        return `Locked (${reason}) by ${by}${ts ? ` on ${ts}` : ''}. Click "Create v2" to fork.`;
+                                    })()}
+                                    className="text-[8px] font-black uppercase tracking-widest px-2.5 shrink-0 hidden sm:inline-flex bg-amber-50 text-amber-700 border-amber-200 gap-1"
+                                >
+                                    <Lock className="h-2.5 w-2.5" />
+                                    Locked
+                                    {typeof quote.version === 'number' && quote.version > 0 && (
+                                        <span className="text-amber-500">· v{quote.version}</span>
+                                    )}
+                                    {quote.lockedReason && (
+                                        <span className="text-amber-500">· {quote.lockedReason}</span>
+                                    )}
+                                </Badge>
+                            )}
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5 hover:bg-slate-100 relative"
+                                onClick={() => setIsActivityOpen(true)}
+                            >
+                                <Activity className="h-3.5 w-3.5 text-primary" />
+                                <span className="hidden sm:inline">Activity</span>
+                                {(auditEvents?.length ?? 0) > 0 && (
+                                    <span className="ml-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary/15 text-primary text-[9px] font-black">
+                                        {auditEvents!.length}
+                                    </span>
+                                )}
+                            </Button>
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -393,18 +535,94 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                 <Calculator className="h-3.5 w-3.5 text-primary" />
                                 <span className="hidden sm:inline">Audit</span>
                             </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5 hover:bg-slate-100"
-                                onClick={() => router.push(
-                                    `/modules/${quote.moduleSlug}/quote/${quote.modelId}` +
-                                    `?range=${quote.rangeId}&vendor=${quote.vendorId}&duplicate=${quote.id}`
-                                )}
-                            >
-                                <Copy className="h-3.5 w-3.5 text-primary" />
-                                <span className="hidden sm:inline">Duplicate</span>
-                            </Button>
+                            {/* v1.8 (story 1.3.1.b.ii) — Duplicate hidden when
+                                locked. The Create v2 button below replaces it
+                                semantically: it forks the locked quote in
+                                place with parentQuoteId tracking instead of
+                                routing through the quote-flow. */}
+                            {quote.isLocked !== true && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5 hover:bg-slate-100"
+                                    onClick={() => router.push(
+                                        `/modules/${quote.moduleSlug}/quote/${quote.modelId}` +
+                                        `?range=${quote.rangeId}&vendor=${quote.vendorId}&duplicate=${quote.id}`
+                                    )}
+                                >
+                                    <Copy className="h-3.5 w-3.5 text-primary" />
+                                    <span className="hidden sm:inline">Duplicate</span>
+                                </Button>
+                            )}
+                            {/* v1.8 (story 1.3.1.b.iii) — Create v2 button.
+                                Visible only when locked. Opens fork-on-edit
+                                popup → forkLockedQuote() → redirect to the
+                                new editable v{N+1} doc. Per CONVENTIONS.md
+                                "popups for confirmations" rule. */}
+                            {quote.isLocked === true && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5 hover:bg-amber-50 text-amber-700"
+                                    onClick={() => setIsForkOpen(true)}
+                                    disabled={isForking}
+                                >
+                                    {isForking ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <GitBranch className="h-3.5 w-3.5" />
+                                    )}
+                                    <span className="hidden sm:inline">
+                                        {isForking ? 'Creating…' : `Create v${(quote.version ?? 1) + 1}`}
+                                    </span>
+                                </Button>
+                            )}
+                            {/* v1.8 (story 1.2.3.c) — Personalise button. Visible
+                                only when the quote is unlocked (the override layer
+                                is editing state, and locked quotes are read-only).
+                                Opens the Personalise side sheet. */}
+                            {quote.isLocked !== true && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5 hover:bg-slate-100"
+                                    onClick={() => setIsPersonaliseOpen(true)}
+                                >
+                                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                    <span className="hidden sm:inline">Personalise</span>
+                                </Button>
+                            )}
+                            {/* v1.8 (story 1.2.4.c) — Send Quote button. Always
+                                visible. Disabled until NEXT_PUBLIC_EMAIL_SEND_ENABLED=true
+                                AND customer has an email AND quote isn't a
+                                stock item (mode === 'inventory'). Tooltip
+                                explains the gate. */}
+                            {(() => {
+                                const emailEnabled = sendEnabled;
+                                const hasRecipient = !!quote.customer?.email;
+                                const disabled = !emailEnabled || !hasRecipient;
+                                const tooltip = !emailEnabled
+                                    ? 'Email sending is awaiting infrastructure setup (sender domain + provider). Templates can be authored now in /manage.'
+                                    : !hasRecipient
+                                        ? 'Set a customer email on the quote before sending.'
+                                        : 'Send the quote to the customer';
+                                return (
+                                    <Button
+                                        variant={disabled ? 'outline' : 'default'}
+                                        size="sm"
+                                        className={cn(
+                                            'h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5',
+                                            disabled && 'bg-slate-100 text-slate-400 hover:bg-slate-100 cursor-not-allowed',
+                                        )}
+                                        onClick={() => { if (!disabled) setIsSendOpen(true); }}
+                                        disabled={disabled}
+                                        title={tooltip}
+                                    >
+                                        <Send className="h-3.5 w-3.5" />
+                                        <span className="hidden sm:inline">Send Quote</span>
+                                    </Button>
+                                );
+                            })()}
                             <Button
                                 size="sm"
                                 className="h-9 px-5 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5"
@@ -863,17 +1081,30 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                             onChange={(e) => setLocalDiscount(Number(e.target.value))}
                                             className="pl-8 h-11 rounded-xl border-2 font-black text-sm"
                                             placeholder="0"
+                                            disabled={quote.isLocked === true}
+                                            title={quote.isLocked === true
+                                                ? 'Locked — create a new version to change pricing.'
+                                                : undefined}
                                         />
                                     </div>
                                     <Button
                                         className="h-11 rounded-xl px-5 bg-slate-900 hover:bg-primary font-black uppercase tracking-widest text-[9px]"
                                         onClick={() => handleSaveDiscount(localDiscount)}
-                                        disabled={isSaving}
+                                        disabled={isSaving || quote.isLocked === true}
                                     >
                                         <Save className="h-3.5 w-3.5 mr-1.5" />Sync
                                     </Button>
                                 </div>
-                                <p className="text-[8px] font-bold text-slate-400 uppercase italic">Adjusts sell price and recalculates all margins.</p>
+                                {/* v1.8 (story 1.3.1.b.ii) — locked-quote
+                                    explainer replaces the standard help text. */}
+                                {quote.isLocked === true ? (
+                                    <p className="text-[8px] font-bold text-amber-700 uppercase italic flex items-center gap-1.5">
+                                        <Lock className="h-2.5 w-2.5" />
+                                        Quote is locked — pricing changes need a new version (v{(quote.version ?? 1) + 1}).
+                                    </p>
+                                ) : (
+                                    <p className="text-[8px] font-bold text-slate-400 uppercase italic">Adjusts sell price and recalculates all margins.</p>
+                                )}
                             </div>
                         </div>
 
@@ -907,6 +1138,279 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                     </div>
                 </SheetContent>
             </Sheet>
+
+            {/* v1.8 (story 1.4.1.c) — Activity Sheet. Read-only audit
+                log for the quote. Events: created / finalised / sent /
+                locked / unlocked / version-forked / content-overridden
+                / discount-changed. Filter / search / export deferred
+                to v1.9 per CONVENTIONS.md "don't expand release scope". */}
+            <Sheet open={isActivityOpen} onOpenChange={setIsActivityOpen}>
+                <SheetContent className="sm:max-w-md p-0 flex flex-col h-full bg-slate-50 border-l-4">
+                    <SheetHeader className="px-8 py-7 border-b bg-white relative overflow-hidden shrink-0">
+                        <div className="absolute top-0 right-0 p-4 opacity-5"><Activity className="h-24 w-24" /></div>
+                        <div className="flex items-center justify-between gap-3">
+                            <div>
+                                <div className="flex items-center gap-2 text-primary font-black uppercase text-[9px] tracking-[0.2em] mb-2">
+                                    <Activity className="h-3.5 w-3.5" />Quote Activity
+                                </div>
+                                <SheetTitle className="text-2xl font-black uppercase italic tracking-tighter leading-none">Audit Trail</SheetTitle>
+                                <SheetDescription className="text-[9px] font-bold uppercase text-slate-400 mt-1 tracking-widest">
+                                    Every Lifecycle Event, Newest First
+                                </SheetDescription>
+                            </div>
+                            {/* v1.8 (story 1.3.1.c) — Manual unlock button.
+                                Admin-only (gated on can_access_settings, same
+                                gate as the /manage page). Visible only when
+                                the quote is currently locked. Override path
+                                for emergency edits — fork-on-edit (Create v2)
+                                is the standard path. */}
+                            {quote.isLocked === true && canManuallyUnlock && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setIsUnlockOpen(true)}
+                                    disabled={isUnlocking}
+                                    className="h-8 px-3 rounded-lg font-black uppercase tracking-widest text-[9px] border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 gap-1.5 shrink-0"
+                                >
+                                    {isUnlocking
+                                        ? <Loader2 className="h-3 w-3 animate-spin" />
+                                        : <LockOpen className="h-3 w-3" />}
+                                    Unlock
+                                </Button>
+                            )}
+                        </div>
+                    </SheetHeader>
+
+                    <div className="flex-1 overflow-y-auto p-6">
+                        {!auditEvents || auditEvents.length === 0 ? (
+                            <div className="rounded-2xl border-2 border-dashed bg-white p-8 text-center space-y-2">
+                                <Clock className="h-8 w-8 text-slate-300 mx-auto" />
+                                <p className="text-sm font-semibold text-slate-700">No activity yet</p>
+                                <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+                                    {(auditEvents === undefined)
+                                        ? 'Loading…'
+                                        : 'This quote was created before the v1.8 audit log shipped, or hasn\'t had a lifecycle event yet. Activity is captured automatically from now on — finalize, send, lock, override, or change the discount and you\'ll see entries appear here.'}
+                                </p>
+                            </div>
+                        ) : (
+                            <ol className="space-y-3">
+                                {auditEvents.map(evt => (
+                                    <ActivityRow key={evt.id} event={evt} />
+                                ))}
+                            </ol>
+                        )}
+                    </div>
+                </SheetContent>
+            </Sheet>
+
+            {/* v1.8 (story 1.3.1.b.iii) — Fork-on-edit popup. Confirms
+                the operator wants to create a new version of a locked
+                quote. Override path is the only way to mutate a locked
+                quote in v1.8 (manual unlock by admin in 1.3.1.c is the
+                other escape hatch). */}
+            <AlertDialog open={isForkOpen} onOpenChange={setIsForkOpen}>
+                <AlertDialogContent className="max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <GitBranch className="h-4 w-4 text-amber-600" />
+                            Create a new version?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-xs text-slate-600">
+                                <p>
+                                    Quote <strong>{quote.quoteNumber}</strong> (v{quote.version ?? 1}) is locked
+                                    {quote.lockedReason === 'sent' && quote.customer?.name
+                                        ? <> &mdash; sent to <strong>{quote.customer.name}</strong></>
+                                        : null}
+                                    {quote.lockedAt?.toDate
+                                        ? <> on {quote.lockedAt.toDate().toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</>
+                                        : null}.
+                                </p>
+                                <p className="font-semibold pt-1">Creating v{(quote.version ?? 1) + 1} will:</p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                    <li>Duplicate this quote into a fresh editable doc</li>
+                                    <li>Carry over <strong>everything</strong> &mdash; SKU, options, motor, trailer, customer details, content overrides</li>
+                                    <li>Reset the audit log on the new version (fresh trail starting now)</li>
+                                    <li>Leave <strong>this</strong> quote locked and untouched</li>
+                                </ul>
+                                <p className="text-[11px] text-slate-500 pt-1">
+                                    You&apos;ll be redirected to the new version after creation.
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isForking}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => { e.preventDefault(); handleForkConfirm(); }}
+                            disabled={isForking}
+                            className="bg-amber-600 hover:bg-amber-700 gap-1.5"
+                        >
+                            {isForking ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Creating&hellip;
+                                </>
+                            ) : (
+                                <>
+                                    <GitBranch className="h-3.5 w-3.5" />
+                                    Yes, create v{(quote.version ?? 1) + 1}
+                                </>
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* v1.8 (story 1.3.1.c) — Manual unlock popup. Admin-only
+                emergency override; the entry button is gated on
+                canManuallyUnlock so this dialog only ever opens when
+                the operator passed the can_access_settings check. */}
+            <AlertDialog open={isUnlockOpen} onOpenChange={setIsUnlockOpen}>
+                <AlertDialogContent className="max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <LockOpen className="h-4 w-4 text-amber-600" />
+                            Unlock this quote?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-2 text-xs text-slate-600">
+                                <p>
+                                    Manually unlocking <strong>{quote.quoteNumber}</strong> bypasses the standard fork-on-edit flow. Use this only for emergency corrections (typos, contact updates) where forking would create unnecessary version history.
+                                </p>
+                                <p className="font-semibold pt-1">After unlock:</p>
+                                <ul className="list-disc pl-5 space-y-0.5">
+                                    <li>The quote becomes editable again</li>
+                                    <li>The unlock event is logged to Activity (with your name)</li>
+                                    <li>Re-locks automatically the next time the quote is sent</li>
+                                </ul>
+                                <p className="text-[11px] text-slate-500 pt-1">
+                                    For most edits, prefer <strong>Create v{(quote.version ?? 1) + 1}</strong> &mdash; it preserves the original sent version for audit.
+                                </p>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isUnlocking}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => { e.preventDefault(); handleUnlockConfirm(); }}
+                            disabled={isUnlocking}
+                            className="bg-amber-600 hover:bg-amber-700 gap-1.5"
+                        >
+                            {isUnlocking ? (
+                                <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Unlocking&hellip;
+                                </>
+                            ) : (
+                                <>
+                                    <LockOpen className="h-3.5 w-3.5" />
+                                    Yes, unlock
+                                </>
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* v1.8 (story 1.2.4.c) — Send Quote dialog. The actual
+                send pipeline + first-Send auto-lock + auditLog 'sent'
+                + 1.3.1 lock all fire inside the dialog's confirm
+                handler. Mounted regardless of sendEnabled so the
+                child component can manage its own open/closed state,
+                but the trigger button is what gates UX-side. */}
+            {auditOwnerUid && user && (
+                <SendQuoteDialog
+                    open={isSendOpen}
+                    onOpenChange={setIsSendOpen}
+                    ownerUid={auditOwnerUid}
+                    quote={quote}
+                    organisation={organisation}
+                    financials={f}
+                    senderUid={user.uid}
+                    senderName={userProfile?.displayName || user.displayName || user.email || 'Someone'}
+                />
+            )}
+
+            {/* v1.8 (story 1.2.3.c) — Personalise Content side sheet.
+                Edits per-quote content-block overrides at
+                users/{ownerUid}/quotes/{quoteId}/contentOverrides/{blockType}.
+                Locked blocks are filtered out inside the sheet. */}
+            {auditOwnerUid && quote?.organisationId && (
+                <PersonaliseContentSheet
+                    open={isPersonaliseOpen}
+                    onOpenChange={setIsPersonaliseOpen}
+                    orgId={quote.organisationId}
+                    ownerUid={auditOwnerUid}
+                    quoteId={quote.id}
+                    actorName={userProfile?.displayName || user?.displayName || user?.email || 'Someone'}
+                />
+            )}
         </div>
     );
+}
+
+/* ──────────────────────────────────────────────────────────────────
+ * v1.8 (story 1.4.1.c) — Activity row helper.
+ * ────────────────────────────────────────────────────────────────── */
+
+const ACTIVITY_META: Record<AuditEventType, { icon: any; label: string; tint: string }> = {
+    'created':            { icon: UserPlus,    label: 'Quote created',          tint: 'bg-blue-50 text-blue-700 border-blue-200' },
+    'finalised':          { icon: CheckCircle2, label: 'Finalised',              tint: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    'sent':               { icon: Send,        label: 'Sent to customer',       tint: 'bg-violet-50 text-violet-700 border-violet-200' },
+    'locked':             { icon: Lock,        label: 'Locked',                 tint: 'bg-amber-50 text-amber-700 border-amber-200' },
+    'unlocked':           { icon: LockOpen,    label: 'Unlocked',               tint: 'bg-slate-50 text-slate-700 border-slate-200' },
+    'version-forked':     { icon: GitBranch,   label: 'Forked to new version',  tint: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+    'content-overridden': { icon: Edit3,       label: 'Content personalised',   tint: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+    'discount-changed':   { icon: Percent,     label: 'Discount changed',       tint: 'bg-rose-50 text-rose-700 border-rose-200' },
+};
+
+function ActivityRow({ event }: { event: QuoteAuditEvent }) {
+    const meta = ACTIVITY_META[event.eventType] ?? {
+        icon: Activity,
+        label: event.eventType,
+        tint: 'bg-slate-50 text-slate-700 border-slate-200',
+    };
+    const Icon = meta.icon;
+    const at = event.at?.toDate?.();
+    const summary = renderSummary(event);
+    return (
+        <li className={cn('rounded-2xl border-2 p-4 bg-white shadow-sm flex items-start gap-3')}>
+            <div className={cn('shrink-0 h-9 w-9 rounded-lg border-2 flex items-center justify-center', meta.tint)}>
+                <Icon className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+                <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                    <p className="text-[11px] font-black uppercase tracking-widest text-slate-700">{meta.label}</p>
+                    {at && (
+                        <p className="text-[10px] text-slate-400">{at.toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
+                    )}
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                    by <span className="font-semibold text-slate-700">{event.byName || 'Someone'}</span>
+                </p>
+                {summary && <p className="text-[11px] text-slate-600 mt-1.5">{summary}</p>}
+            </div>
+        </li>
+    );
+}
+
+function renderSummary(event: QuoteAuditEvent): string | null {
+    const m = event.metadata ?? {};
+    switch (event.eventType) {
+        case 'discount-changed':
+            return `From $${Number(m.fromValue ?? 0).toLocaleString()} → $${Number(m.toValue ?? 0).toLocaleString()}`;
+        case 'content-overridden':
+            return m.blockType ? `Block: ${m.blockType}` : null;
+        case 'version-forked':
+            return m.parentQuoteId
+                ? `Forked from quote ${m.parentQuoteId.slice(0, 8)}…`
+                : (m.childQuoteId ? `Forked into quote ${m.childQuoteId.slice(0, 8)}…` : null);
+        case 'sent':
+            return m.sentEmailId ? `Send id: ${m.sentEmailId.slice(0, 8)}…` : null;
+        case 'locked':
+            return m.lockReason ? `Reason: ${m.lockReason}` : null;
+        default:
+            return m.note ?? null;
+    }
 }
