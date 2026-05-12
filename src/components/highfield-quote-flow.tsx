@@ -88,6 +88,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TrailerCatalogPicker, type TrailerSnapshot } from '@/components/trailer-catalog-picker';
 import { RegoPicker, type RegoTypeSnapshot } from '@/components/rego-picker';
+import {
+    loadCompatibilityRules,
+    evaluateCompatibility,
+    type CompatibilityRule,
+} from '@/lib/compatibility-rules';
 
 /** Normalize spacing, strip internal model-code suffixes, and extract first color from parenthetical */
 function formatOptionDisplayLabel(name: string): { base: string; color: string | null } {
@@ -220,6 +225,19 @@ export function HighfieldQuoteFlow({
 
     const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>(initialState?.selectedOptionIds ?? []);
     const [customOptions, setCustomOptions] = useState<CustomOption[]>(initialState?.customOptions ?? []);
+
+    // v1.9 (1.1.2) — Compatibility rules for this module. Loaded once on
+    // mount; empty array if module has no rules attached. Inactive rules
+    // are loaded but skipped at evaluation.
+    const [compatibilityRules, setCompatibilityRules] = useState<CompatibilityRule[]>([]);
+    useEffect(() => {
+        if (!firestore || !module?.id) return;
+        let cancelled = false;
+        loadCompatibilityRules(firestore, module.id).then(rules => {
+            if (!cancelled) setCompatibilityRules(rules);
+        });
+        return () => { cancelled = true; };
+    }, [firestore, module?.id]);
     const [selectedMotor, setSelectedMotor] = useState<any | null>(initialState?.selectedMotorObj ?? null);
     const [selectedMotorAccessoryIds, setSelectedMotorAccessoryIds] = useState<string[]>(initialState?.selectedMotorAccessoryIds ?? []);
     const [selectedTrailerId, setSelectedTrailerId] = useState<string | null>(initialState?.selectedTrailerId ?? null);
@@ -647,6 +665,27 @@ export function HighfieldQuoteFlow({
             return a.localeCompare(b);
         }) as [string, any][];
     }, [relevantFeatures]);
+
+    /**
+     * v1.9 (1.1.2) — Live compatibility violations.
+     *
+     * Recomputes on every selection change. Each violation carries the
+     * conflicting (forbids) or missing (requires) feature names so the
+     * banner can show "T-Top conflicts with: Bimini Top" not raw IDs.
+     */
+    const compatibilityViolations = useMemo(() => {
+        if (compatibilityRules.length === 0) return [];
+        const raw = evaluateCompatibility(selectedOptionIds, compatibilityRules);
+        if (raw.length === 0) return [];
+        const nameById = new Map<string, string>();
+        for (const f of (model.optionalFeatures ?? [])) {
+            nameById.set(f.id, f.name || '(unnamed feature)');
+        }
+        return raw.map(violation => ({
+            ...violation,
+            conflictingNames: violation.conflictingIds.map(id => nameById.get(id) ?? id),
+        }));
+    }, [selectedOptionIds, compatibilityRules, model.optionalFeatures]);
 
     // Determine which seat is auto-locked via console pairing
     const activeConsoleFeature = useMemo(() => {
@@ -1428,6 +1467,35 @@ export function HighfieldQuoteFlow({
                             )}
                             {currentStep === 2 && (
                                 <div className="space-y-12 animate-in fade-in duration-1000 mt-4">
+                                    {/* v1.9 (1.1.2) — Compatibility violations banner.
+                                        Non-blocking warn: explains the rule but doesn't
+                                        prevent the user from continuing. Hard-blocking
+                                        is a v1.10 candidate once admin authoring lands. */}
+                                    {compatibilityViolations.length > 0 && (
+                                        <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 space-y-2 shadow-sm">
+                                            <div className="flex items-center gap-2 text-amber-900">
+                                                <AlertTriangle className="h-4 w-4 shrink-0" />
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em]">
+                                                    Compatibility {compatibilityViolations.length === 1 ? 'warning' : 'warnings'}
+                                                </h3>
+                                            </div>
+                                            <ul className="space-y-1.5 pl-6 list-disc text-xs text-amber-900">
+                                                {compatibilityViolations.map(v => (
+                                                    <li key={v.ruleId}>
+                                                        <span className="font-semibold">{v.reason || v.ruleName}</span>
+                                                        {v.conflictingNames.length > 0 && (
+                                                            <>
+                                                                {' '}
+                                                                <span className="text-amber-700">
+                                                                    ({v.type === 'forbids' ? 'remove' : 'add'}: {v.conflictingNames.join(', ')})
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
                                     {groupedOptions.map(([cat, opts]) => {
                                         /* Seat category visibility rules:
                                          * - If a console is selected with a paired seat → show only that seat, locked

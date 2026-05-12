@@ -126,6 +126,13 @@ service cloud.firestore {
       match /promotions/{promoId} {
         allow read, write: if isSignedIn();
       }
+
+      // v1.9 (1.1.2) — Feature × feature compatibility rules.
+      // Authored direct to Firestore by engineering for v1.9; admin UI
+      // deferred to v1.10+.
+      match /compatibilityRules/{ruleId} {
+        allow read, write: if isSignedIn();
+      }
     }
 
     match /organisations/{orgId} {
