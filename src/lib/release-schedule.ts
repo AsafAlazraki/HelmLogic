@@ -34,7 +34,7 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     'v1.6':   { shipped: true },
     'v1.7':   { shipped: true },
     'v1.8':   { shipped: true },
-    'v1.9':   {},
+    'v1.9':   { shipped: true },
     'v1.10':  {},
     'v1.11':  {},
     'v1.12':  {},
