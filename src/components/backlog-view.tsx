@@ -28,9 +28,7 @@ import {
     ChevronRight,
     HelpCircle,
     Layers,
-    Loader2,
     Lock,
-    PackageCheck,
     Plus,
     Sparkles,
     Wrench,
@@ -40,18 +38,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { useToast } from '@/hooks/use-toast';
-import { finaliseV19Stories } from '@/lib/v19-mark-stories-shipped';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
 import {
@@ -106,38 +92,6 @@ export function BacklogView() {
     const [createEpicOpen, setCreateEpicOpen] = useState(false);
     /** v1.6 — open Create Feature with this epic pre-filled. null = closed. */
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
-
-    /** v1.9 close-out — one-shot "Finalise v1.9 Stories" button. Flips
-     *  the 5 shipped v1.9 stories to `status: 'shipped'` and retargets
-     *  the dropped 1.8.3 to v1.10 + 'planned' so the Roadmap is 100%
-     *  reflective. Button + script removed in follow-up commit per
-     *  CONVENTIONS.md one-shot lifecycle. */
-    const [finaliseOpen, setFinaliseOpen] = useState(false);
-    const [finalising, setFinalising] = useState(false);
-    const { toast } = useToast();
-
-    async function handleFinaliseV19() {
-        setFinalising(true);
-        try {
-            const r = await finaliseV19Stories(firestore);
-            toast({
-                title: 'v1.9 stories finalised',
-                description:
-                    `${r.shippedUpdated} marked shipped · ${r.shippedAlreadyCurrent} already shipped · ` +
-                    `${r.retargetUpdated} 1.8.3 retargeted · ${r.retargetAlreadyCurrent} 1.8.3 already current`,
-            });
-            setFinaliseOpen(false);
-        } catch (e: any) {
-            toast({
-                variant: 'destructive',
-                title: 'Finalise failed',
-                description: e?.message ?? 'See console.',
-            });
-            console.error('[v19 finalise stories]', e);
-        } finally {
-            setFinalising(false);
-        }
-    }
 
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
@@ -249,19 +203,6 @@ export function BacklogView() {
                         >
                             Collapse all
                         </Button>
-                        {/* v1.9 close-out — one-shot "Finalise v1.9 Stories"
-                            button. Same slot the v1.1.2 + v1.3.3 seed
-                            buttons used. Removed in the follow-up commit
-                            after the user clicks. */}
-                        <Button
-                            size="sm"
-                            className="bg-emerald-500 text-white hover:bg-emerald-400 gap-1.5 shadow-sm"
-                            onClick={() => setFinaliseOpen(true)}
-                            disabled={finalising}
-                        >
-                            {finalising ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
-                            Finalise v1.9 Stories
-                        </Button>
                         <Button
                             size="sm"
                             className="bg-white text-slate-800 hover:bg-slate-100 gap-1.5 shadow-sm"
@@ -335,51 +276,6 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
-
-            {/* v1.9 close-out — Finalise stories confirm popup. One-shot —
-                button + dialog + seed module removed in the follow-up
-                commit per CONVENTIONS.md one-shot lifecycle. */}
-            <AlertDialog open={finaliseOpen} onOpenChange={setFinaliseOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <PackageCheck className="h-4 w-4 text-emerald-600" />
-                            Finalise v1.9 stories in /feature-tracking?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="space-y-2 text-sm">
-                                <p>
-                                    Aligns the in-app story states with the v1.9 ship reality so the Roadmap is 100% reflective:
-                                </p>
-                                <ul className="list-disc list-inside text-xs text-slate-600 space-y-0.5 pl-2">
-                                    <li><strong>1.1.2</strong> Compatibility Rules → <code>status: shipped</code></li>
-                                    <li><strong>1.8.4</strong> Quote Preview → <code>status: shipped</code></li>
-                                    <li><strong>1.4.1</strong> Lifecycle States → <code>status: shipped</code></li>
-                                    <li><strong>1.1.3</strong> Multiple Scenarios → <code>status: shipped</code></li>
-                                    <li><strong>1.3.3</strong> SharePoint Quote Storage → <code>status: shipped</code></li>
-                                    <li><strong>1.8.3</strong> (dropped mid-Phase-A) → retargeted to <code>v1.10</code> with <code>status: planned</code></li>
-                                    <li><strong>1.3.2</strong> Contract Signing Pack (email-blocked) → retargeted to <code>v1.10</code> with <code>status: planned</code></li>
-                                </ul>
-                                <p className="text-xs text-slate-500 pt-1">
-                                    Idempotent — already-current docs are skipped. Matches by title prefix.
-                                    The button + this seed module disappear in the follow-up commit after you click.
-                                </p>
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={finalising}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleFinaliseV19}
-                            disabled={finalising}
-                            className="gap-1.5 bg-emerald-600 hover:bg-emerald-500"
-                        >
-                            {finalising ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PackageCheck className="h-3.5 w-3.5" />}
-                            {finalising ? 'Finalising…' : 'Yes, finalise v1.9'}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
 
         </div>
     );
