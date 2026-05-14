@@ -841,8 +841,12 @@ function FeatureChip({
                     {feature.title}
                 </span>
             </div>
-            {/* Meta row — priority dot, points, status */}
-            <div className="flex items-center gap-1.5 pl-5">
+            {/* Meta row — priority dot, points, status. flex-wrap so the
+                status pill never clips on narrow Roadmap columns (it's
+                short — "Shipped" / "Submitted" / "In Progress" — but
+                the cards are tight; wrapping is preferable to truncating
+                a 9-char label that customers read at a glance). */}
+            <div className="flex flex-wrap items-center gap-1.5 pl-5">
                 {feature.priority && (
                     <span
                         className={cn('h-2 w-2 rounded-full shrink-0', priorityClass)}
@@ -857,12 +861,12 @@ function FeatureChip({
                         <HelpCircle className="h-2.5 w-2.5" /> ?
                     </span>
                 ) : (
-                    <span className="text-[10px] font-bold text-slate-700 bg-slate-100 rounded px-1.5 py-0.5">
+                    <span className="text-[10px] font-bold text-slate-700 bg-slate-100 rounded px-1.5 py-0.5 shrink-0">
                         {feature.points} pts
                     </span>
                 )}
                 <span className={cn(
-                    'text-[10px] truncate inline-flex items-center gap-0.5',
+                    'text-[10px] inline-flex items-center gap-0.5 shrink-0 whitespace-nowrap',
                     isShipped ? 'text-emerald-700 font-semibold' : 'text-slate-400',
                 )}>
                     {isShipped && <Lock className="h-2.5 w-2.5" />}
