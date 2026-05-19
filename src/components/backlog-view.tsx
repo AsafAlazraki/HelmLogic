@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { RestructureWorkbench } from '@/components/restructure-workbench';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
 import {
@@ -92,6 +93,11 @@ export function BacklogView() {
     const [createEpicOpen, setCreateEpicOpen] = useState(false);
     /** v1.6 — open Create Feature with this epic pre-filled. null = closed. */
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
+
+    /** v1.10 restructure — one-shot Workbench sheet open state. Button +
+     *  sheet + module removed in the follow-up commit after the user
+     *  clicks Apply, per CONVENTIONS.md one-shot lifecycle. */
+    const [workbenchOpen, setWorkbenchOpen] = useState(false);
 
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
@@ -203,6 +209,18 @@ export function BacklogView() {
                         >
                             Collapse all
                         </Button>
+                        {/* v1.10 restructure — one-shot Workbench button.
+                            Same slot the v1.1.2 / v1.3.3 / Finalise V1.9
+                            buttons used. Removed in the follow-up commit
+                            after the user clicks Apply in the Workbench. */}
+                        <Button
+                            size="sm"
+                            className="bg-indigo-500 text-white hover:bg-indigo-400 gap-1.5 shadow-sm"
+                            onClick={() => setWorkbenchOpen(true)}
+                        >
+                            <Wrench className="h-4 w-4" />
+                            v1.10 Workbench
+                        </Button>
                         <Button
                             size="sm"
                             className="bg-white text-slate-800 hover:bg-slate-100 gap-1.5 shadow-sm"
@@ -276,6 +294,10 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
+
+            {/* v1.10 restructure — Workbench Sheet. One-shot. Removed in
+                follow-up commit after Apply per CONVENTIONS.md. */}
+            <RestructureWorkbench open={workbenchOpen} onOpenChange={setWorkbenchOpen} />
 
         </div>
     );
