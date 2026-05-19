@@ -86,8 +86,9 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
     const [filterOnlyChanges, setFilterOnlyChanges] = useState(true);
 
     // Seed proposals once features arrive. Filter out shipped + deleted
-    // + Backlog (null targetRelease) — those are out of scope for this
-    // restructure.
+    // ONLY — unscheduled (no targetRelease) Submitted-column inflow is
+    // included so the operator can drain the Submitted column into
+    // release columns in the same surface.
     useEffect(() => {
         if (!open) return;
         if (!features || seeded) return;
@@ -95,9 +96,8 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
         for (const f of features) {
             if (f.deletedAt) continue;
             if (isShippedRelease(f.targetRelease ?? undefined)) continue;
-            if (!f.targetRelease) continue; // Backlog — separate triage UI later
             const category = inferCategory(f.title);
-            const newRelease = suggestTargetRelease(f.targetRelease, category);
+            const newRelease = suggestTargetRelease(f.targetRelease ?? null, category);
             seed[f.id] = { feature: f, category, newRelease, skip: false };
         }
         setProposals(seed);
@@ -114,24 +114,39 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
     // Effective new release per row (skipped rows treat newRelease as current).
     const effectiveRelease = (r: ProposalRow): string => r.skip ? (r.feature.targetRelease ?? '') : (r.newRelease ?? r.feature.targetRelease ?? '');
 
+    /**
+     * A "proposed change" is anything that will result in a Firestore
+     * write on Apply: target change, status promotion (Submitted →
+     * Planned when a target is assigned), or both. Skipped rows never
+     * count.
+     */
+    const isChangeProposed = (r: ProposalRow): boolean => {
+        if (r.skip) return false;
+        const targetChange = r.newRelease && r.newRelease !== r.feature.targetRelease;
+        const statusPromotion = r.feature.status === 'submitted' && r.newRelease;
+        return Boolean(targetChange || statusPromotion);
+    };
+
     const movesProposed = useMemo(
-        () => rows.filter(r => !r.skip && r.newRelease && r.newRelease !== r.feature.targetRelease).length,
+        () => rows.filter(isChangeProposed).length,
         [rows],
     );
 
     // Capacity dashboard: per-release pts under the PROPOSED layout.
+    // Excludes '(unscheduled)' from the pills since it's not a release;
+    // unscheduled pt totals are visible in the row body's group header.
     const capacity = useMemo(() => {
         const before: Record<string, number> = {};
         const after:  Record<string, number> = {};
         for (const r of rows) {
             const pts = typeof r.feature.points === 'number' ? r.feature.points : 0;
-            const cur = r.feature.targetRelease ?? '(none)';
-            const newR = effectiveRelease(r) || '(none)';
+            const cur = r.feature.targetRelease ?? '(unscheduled)';
+            const newR = effectiveRelease(r) || '(unscheduled)';
             before[cur] = (before[cur] ?? 0) + pts;
             after[newR] = (after[newR] ?? 0) + pts;
         }
         const all = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
-            .filter(k => k !== '(none)')
+            .filter(k => k !== '(unscheduled)')
             .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         return all.map(release => ({
             release,
@@ -141,12 +156,15 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
         }));
     }, [rows]);
 
-    // Group rows by CURRENT release for display.
+    // Group rows by CURRENT release for display. Unscheduled features
+    // (Submitted-column inflow) bucket under the synthetic key
+    // '(unscheduled)' so they're visibly separate from real release
+    // columns.
     const groupedByCurrent = useMemo(() => {
         const groups: Record<string, ProposalRow[]> = {};
         for (const r of rows) {
-            if (filterOnlyChanges && (r.skip || !r.newRelease || r.newRelease === r.feature.targetRelease)) continue;
-            const key = r.feature.targetRelease ?? '(none)';
+            if (filterOnlyChanges && !isChangeProposed(r)) continue;
+            const key = r.feature.targetRelease ?? '(unscheduled)';
             (groups[key] ??= []).push(r);
         }
         for (const k of Object.keys(groups)) {
@@ -165,24 +183,28 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
     }
 
     async function handleApply() {
-        const toApply = rows.filter(r => !r.skip && r.newRelease && r.newRelease !== r.feature.targetRelease);
+        const toApply = rows.filter(isChangeProposed);
         if (toApply.length === 0) {
-            toast({ title: 'No moves to apply', description: 'Every row is either skipped or already at its proposed target.' });
+            toast({ title: 'No moves to apply', description: 'Every row is either skipped or already at its proposed state.' });
             return;
         }
         setApplying(true);
         let ok = 0;
         let failed = 0;
         let statusBumped = 0;
+        let newlyScheduled = 0;
         for (const r of toApply) {
             try {
-                const updates: any = {
-                    targetRelease: r.newRelease,
-                    updatedAt: serverTimestamp(),
-                };
-                // Drain the Submitted column: anything with status: 'submitted'
-                // that now has a targetRelease assignment graduates to 'planned'.
-                if (r.feature.status === 'submitted') {
+                const updates: any = { updatedAt: serverTimestamp() };
+                const targetChanged = r.newRelease && r.newRelease !== r.feature.targetRelease;
+                if (targetChanged) {
+                    updates.targetRelease = r.newRelease;
+                    if (!r.feature.targetRelease) newlyScheduled++;
+                }
+                // Drain the Submitted column: any submitted-status feature
+                // that now has (or just received) a targetRelease graduates
+                // to 'planned'.
+                if (r.feature.status === 'submitted' && r.newRelease) {
                     updates.status = 'planned';
                     statusBumped++;
                 }
@@ -196,7 +218,7 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
         setApplying(false);
         toast({
             title: failed === 0 ? 'Restructure applied' : `Restructure partially applied (${failed} failed)`,
-            description: `${ok} moves committed · ${statusBumped} status bumped to planned · ${failed} failed`,
+            description: `${ok} writes committed · ${newlyScheduled} newly scheduled from Submitted · ${statusBumped} status bumped to planned · ${failed} failed`,
             variant: failed === 0 ? 'default' : 'destructive',
         });
         if (failed === 0) {
@@ -320,13 +342,25 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
                             </p>
                         </div>
                     )}
-                    {!isLoading && Object.entries(groupedByCurrent).map(([currentRelease, groupRows]) => {
+                    {!isLoading && Object.entries(groupedByCurrent)
+                        .sort(([a], [b]) => {
+                            // '(unscheduled)' sorts FIRST — Backlog inflow gets visual
+                            // priority since it's what the operator most needs to drain.
+                            if (a === '(unscheduled)') return -1;
+                            if (b === '(unscheduled)') return 1;
+                            return a.localeCompare(b, undefined, { numeric: true });
+                        })
+                        .map(([currentRelease, groupRows]) => {
                         const beforePts = groupRows.reduce((s, r) => s + (r.feature.points ?? 0), 0);
+                        const isUnscheduled = currentRelease === '(unscheduled)';
                         return (
                             <div key={currentRelease} className="border-b">
-                                <div className="px-5 py-2 bg-slate-100/70 sticky top-0 z-10 flex items-center justify-between">
+                                <div className={cn(
+                                    'px-5 py-2 sticky top-0 z-10 flex items-center justify-between',
+                                    isUnscheduled ? 'bg-amber-100/80' : 'bg-slate-100/70',
+                                )}>
                                     <p className="text-[11px] font-black uppercase tracking-widest text-slate-700">
-                                        Currently {currentRelease}
+                                        {isUnscheduled ? '⚠️ Unscheduled · Backlog / Submitted-column inflow' : `Currently ${currentRelease}`}
                                         <span className="text-slate-500 font-semibold normal-case ml-2">
                                             · {groupRows.length} {groupRows.length === 1 ? 'story' : 'stories'} · {beforePts} pts
                                         </span>

@@ -98,30 +98,35 @@ export function isShippedRelease(release: string | null | undefined): boolean {
 /**
  * Suggest a new target release based on category + current target.
  *
+ * Handles BOTH scheduled features (current = "v1.X") and Backlog /
+ * unscheduled features (current = null / undefined — Submitted-column
+ * inflow with no release yet).
+ *
  * Heuristic (NOT capacity-aware — the Workbench shows running totals so
  * the user can re-balance any cell that goes red):
  *
- *   dealer-ops in v1.10-v1.14    → no move (already prioritised)
- *   dealer-ops elsewhere         → suggest v1.10
- *   notifications anywhere       → suggest v1.22 (push to last)
- *   customer-facing in v1.18+    → no move
- *   customer-facing in v1.10-v1.17 → suggest v1.18
- *   cross-cutting / unknown      → no move
  *   shipped releases             → no move
- *   no target release set        → no move (caller filters Backlog out)
+ *   dealer-ops in v1.10-v1.14    → no move (already prioritised)
+ *   dealer-ops elsewhere or null → suggest v1.10
+ *   notifications (any target)   → suggest v1.22 (push to last)
+ *   customer-facing in v1.18+    → no move
+ *   customer-facing < v1.18 or null → suggest v1.18
+ *   cross-cutting on a release   → no move
+ *   cross-cutting unscheduled    → suggest v1.20 (operator can override)
+ *   discard                      → no move (caller soft-deletes)
  */
 export function suggestTargetRelease(
     currentRelease: string | null | undefined,
     category: Category,
 ): string | null {
-    if (!currentRelease) return null;
-    if (isShippedRelease(currentRelease)) return currentRelease;
+    // Shipped: never propose a move
+    if (currentRelease && isShippedRelease(currentRelease)) return currentRelease;
 
-    // Discard category — caller handles separately (soft delete, not retarget).
-    if (category === 'discard') return currentRelease;
+    // Discard: caller handles via soft-delete, not retarget
+    if (category === 'discard') return currentRelease ?? null;
 
     if (category.startsWith('dealer-ops')) {
-        if (isInRange(currentRelease, ['v1.10', 'v1.11', 'v1.12', 'v1.13', 'v1.14'])) {
+        if (currentRelease && isInRange(currentRelease, ['v1.10', 'v1.11', 'v1.12', 'v1.13', 'v1.14'])) {
             return currentRelease;
         }
         return 'v1.10';
@@ -132,13 +137,20 @@ export function suggestTargetRelease(
     }
 
     if (category === 'customer-facing') {
-        const num = parseV1MinorNumber(currentRelease);
-        if (num !== null && num >= 18) return currentRelease;
+        if (currentRelease) {
+            const num = parseV1MinorNumber(currentRelease);
+            if (num !== null && num >= 18) return currentRelease;
+        }
         return 'v1.18';
     }
 
-    // cross-cutting + anything else → leave alone
-    return currentRelease;
+    // cross-cutting:
+    //   - if already on a release, leave it
+    //   - if unscheduled, slot at v1.20 (polish bucket) so it doesn't
+    //     stay invisible in the Submitted column. Operator overrides
+    //     if a different release fits better.
+    if (currentRelease) return currentRelease;
+    return 'v1.20';
 }
 
 function isInRange(release: string, range: string[]): boolean {
