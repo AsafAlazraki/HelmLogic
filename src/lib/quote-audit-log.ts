@@ -44,14 +44,16 @@ import { useCollection } from '@/firebase/firestore/use-collection';
  * ────────────────────────────────────────────────────────────────── */
 
 export type AuditEventType =
-    | 'created'              // new quote, payload first written
-    | 'finalised'            // status flipped to 'proposal' (or 'inventory' for stock)
-    | 'sent'                 // 1.2.4 — quote emailed to customer
-    | 'locked'               // 1.3.1 — first-send lock fired (or manual lock)
-    | 'unlocked'             // 1.3.1 — admin unlock from Activity tab
-    | 'version-forked'       // 1.3.1 — fork-on-edit from a locked quote
-    | 'content-overridden'   // 1.2.3 — per-quote content-block override saved
-    | 'discount-changed';    // proposal-view audit drawer
+    | 'created'                 // new quote, payload first written
+    | 'finalised'               // status flipped to 'proposal' (or 'inventory' for stock)
+    | 'sent'                    // 1.2.4 — quote emailed to customer
+    | 'locked'                  // 1.3.1 — first-send lock fired (or manual lock)
+    | 'unlocked'                // 1.3.1 — admin unlock from Activity tab
+    | 'version-forked'          // 1.3.1 — fork-on-edit from a locked quote
+    | 'content-overridden'      // 1.2.3 — per-quote content-block override saved
+    | 'discount-changed'        // proposal-view audit drawer
+    | 'lifecycle-transitioned'  // v1.9 (1.4.1) — sales-journey state change
+    | 'scenario-created';       // v1.9 (1.1.3) — sibling scenario spawned
 
 export interface AuditEventMetadata {
     /** discount-changed: previous + new values for fast diff render */
@@ -66,6 +68,12 @@ export interface AuditEventMetadata {
     sentEmailId?: string;
     /** locked: 'sent' | 'manual' | 'finalised' */
     lockReason?: 'sent' | 'manual' | 'finalised';
+    /** v1.9 (1.4.1) — lifecycle-transitioned: previous + new state. */
+    fromLifecycle?: string;
+    toLifecycle?: string;
+    /** v1.9 (1.1.3) — scenario-created: human label + sibling pointer. */
+    scenarioLabel?: string;
+    siblingQuoteId?: string;
     /** Free-form note. */
     note?: string;
 }

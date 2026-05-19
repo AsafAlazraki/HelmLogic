@@ -15,11 +15,30 @@
 | v1.2.1 | 2026-04-10 | ✅ Shipped (patch) | main |
 | v1.3.0 | 2026-04-17 | ✅ Shipped | main |
 | v1.3.1 | 2026-04-17 | ✅ Shipped (same-day hotfix) | main |
-| **v1.4** | **2026-04-23** | 🚢 **Ready on branch — awaiting user's PR green-light** | `claude/app-overview-wKiZ1` |
+| v1.4 | 2026-04-23 | ✅ Shipped | main |
+| v1.5 / v1.5.1 | 2026-04-25 | ✅ Shipped | main |
+| v1.6 / v1.6.1 / v1.6.2 | 2026-04-27 | ✅ Shipped | main |
+| v1.7 | 2026-05-04 | ✅ Shipped | main |
+| v1.8 | 2026-05-11 | ✅ Shipped | main |
+| **v1.9** | **2026-05-12** | 🚢 **Ready on branch — awaiting user's PR green-light** | `claude/app-overview-wKiZ1` |
 
-**Scoreboard (v1.4 as of 2026-04-23 EOD):** 70 commits since `main` diverged · 65 files changed · +11,594 / −825 lines · `npm run build` clean · TS 86 pre-existing / 0 new.
+> **Note**: this table was backfilled at v1.9 from a stale v1.4-era state. Canonical release state lives in **`CLAUDE.md`** top-of-file table; per-release detail lives in **`tasks/RELEASE_NOTES_vX.Y.Z.md`**.
 
-**Current work**: v1.4 Trailers + Rego + Pricing Manager uplift. Design doc at `tasks/v1.4-trailers-module-design.md`, live status at `tasks/v1.4-trailers-module-status.md`, release notes at `tasks/RELEASE_NOTES_v1.4.md`.
+**Scoreboard (v1.9 as of 2026-05-12):** 10 commits since v1.8 ship · 25 files changed · +~4100 / −350 lines · `npm run build` clean · TS pre-existing only / 0 new.
+
+**Current work**: v1.9 Quote-lifecycle wrap-up — Compatibility Rules (1.1.2), Inline PDF Preview (1.8.4), Lifecycle State Machine (1.4.1), Multiple Quote Scenarios (1.1.3), SharePoint Quote Storage (1.3.3). Build plan at `tasks/v1.9-build-plan.md`, release notes at `tasks/RELEASE_NOTES_v1.9.0.md`, admin task at `tasks/ADMIN_TASK_sharepoint-setup.md`.
+
+**Key v1.9 concepts for new sessions:**
+- `users/{ownerUid}/quotes/{quoteId}.lifecycleState` (1.4.1) — `'draft' | 'sent' | 'viewed' | 'accepted' | 'rejected' | 'lost' | 'expired'`. Orthogonal to existing `status` (`'proposal' | 'stock'`); see `src/lib/quote-lifecycle.ts`.
+- `users/{ownerUid}/quotes/{quoteId}.scenarioLabel` (1.1.3) — sibling-scenario marker. Family root has no label; scenarios share `parentQuoteId === root.id`. See `src/lib/quote-scenarios.ts`.
+- `users/{ownerUid}/quotes/{quoteId}.sharePoint{SyncedAt,Path,WebUrl}` (1.3.3) — set by the SharePoint sync orchestrator after a successful Graph upload. Rule whitelist (`onlySharePointFieldsChanged()`) allows these on locked quotes.
+- `modules/{moduleId}/compatibilityRules/{ruleId}` (1.1.2) — feature × feature compat rules per module. Engineering authors direct to Firestore for v1.9; admin UI deferred to v1.10+.
+- `organisations/{orgId}/sharePointConfig/{configId}` (1.3.3) — per-org SharePoint integration config. Doc id is `default` (multi-site is v1.10+). Public identifiers only (`tenantId`, `clientId`, `siteId`, `folderPath` + `enabled` toggle). Client secret lives in Firebase App Hosting env (`SHAREPOINT_CLIENT_SECRET`), never in Firestore.
+- New API route `src/app/api/sharepoint-sync/route.ts` — Node runtime, Microsoft Graph proxy. Server-side OAuth client-credentials + folder walk + PDF upload. Trusts the calling client in v1.9 (Firebase ID-token verification is a v1.10 hardening task).
+- 5 sync hooks at: `finalize-quote-dialog.tsx`, `email-send.ts` (post-lock + lifecycle-Sent), `create-scenario-dialog.tsx`, `proposal-view.tsx#handleForkConfirm`, `proposal-view.tsx#handleLifecycleTransition` (terminal states only). All fire-and-forget, best-effort, env-flag-gated.
+- New `Integrations` tab in `/manage` → hosts `SharePointConfigEditor`. Grid-cols bumped 5→6 (or 6→7 with subDealersEnabled).
+- Env vars: `NEXT_PUBLIC_SHAREPOINT_ENABLED` (UI gate, public) + `SHAREPOINT_CLIENT_SECRET` (backend only, Firebase App Hosting env).
+- Rules helpers added: `onlyLifecycleFieldsChanged()` + `onlySharePointFieldsChanged()`. Both OR'd into the quote-update rule alongside the v1.8 `onlyLockFieldsChanged()` so a locked quote accepts lifecycle + sync writes (sales journey continues + post-send sync stamps tracking fields).
 
 **Key v1.4 concepts for new sessions:**
 - `modules/{id}.associatedModuleIds[]` — a module can link other modules; the Trailer Catalog Picker + DealerFitOptions + quote flow all respect the link.

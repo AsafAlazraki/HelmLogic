@@ -441,6 +441,19 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 onOpenChange(false);
                 resetForm();
                 router.push(`/modules/${quoteData.module?.slug || quoteData.module?.id}/proposals/${quoteRef.id}`);
+
+                // v1.9 (story 1.3.3) — fire SharePoint sync best-effort.
+                // Fire-and-forget so the redirect happens immediately;
+                // the helper logs failures and is a no-op when the env
+                // flag is off / org has no SharePoint config.
+                void (async () => {
+                    const { syncQuoteToSharePoint } = await import('@/lib/sharepoint-sync');
+                    await syncQuoteToSharePoint({
+                        firestore,
+                        ownerUid: user.uid,
+                        quoteId: quoteRef.id,
+                    });
+                })();
             } else {
                 // Save as stock in inventory collection
                 if (!organisationId) {

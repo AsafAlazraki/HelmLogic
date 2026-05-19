@@ -92,6 +92,7 @@ export function BacklogView() {
     const [createEpicOpen, setCreateEpicOpen] = useState(false);
     /** v1.6 — open Create Feature with this epic pre-filled. null = closed. */
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
+
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
 
@@ -275,6 +276,7 @@ export function BacklogView() {
                 defaultOrderForColumn={0}
                 initialEpicId={addStoryEpicId}
             />
+
         </div>
     );
 }

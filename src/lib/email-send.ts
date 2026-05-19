@@ -81,6 +81,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { logAuditEvent } from '@/lib/quote-audit-log';
 import { lockQuote } from '@/lib/quote-lock';
+import { transitionQuoteLifecycle } from '@/lib/quote-lifecycle';
 import { renderQuotePdf } from '@/lib/render-quote-pdf';
 
 /* ──────────────────────────────────────────────────────────────────
@@ -391,6 +392,39 @@ export async function sendQuoteEmail(opts: SendQuoteEmailOptions): Promise<SendQ
             triggeredLock = true;
         } catch (e) {
             console.warn('[email-send] auto-lock on first send failed (non-fatal):', e);
+        }
+    }
+
+    // 8. v1.9 (1.4.1) — Lifecycle transition: Sent. Gated on first send
+    // only (same condition as auto-lock) so re-sends never clobber an
+    // operator's later transition (e.g. Sent → Accepted, then a re-send
+    // shouldn't yank the state back to 'sent'). Idempotent if the quote
+    // already reached 'sent' via the manual picker before send.
+    if (status === 'queued' && previousSentCount === 0) {
+        try {
+            await transitionQuoteLifecycle(firestore, ownerUid, quote.id, 'sent', {
+                byUid: sender.uid,
+                byName: sender.name,
+            });
+        } catch (e) {
+            console.warn('[email-send] lifecycle transition to "sent" failed (non-fatal):', e);
+        }
+    }
+
+    // 9. v1.9 (1.3.3) — SharePoint sync. Every successful send re-syncs
+    // the PDF that the customer just received, so the SharePoint mirror
+    // stays byte-for-byte aligned with what was emailed. Best-effort:
+    // failures log and resolve; the send itself is unaffected.
+    if (status === 'queued') {
+        try {
+            const { syncQuoteToSharePoint } = await import('@/lib/sharepoint-sync');
+            await syncQuoteToSharePoint({
+                firestore,
+                ownerUid,
+                quoteId: quote.id,
+            });
+        } catch (e) {
+            console.warn('[email-send] SharePoint sync after send failed (non-fatal):', e);
         }
     }
 

@@ -48,6 +48,36 @@ service cloud.firestore {
       ]);
     }
 
+    /**
+     * v1.9 (story 1.4.1) — Quote lifecycle-state guard. Returns true when
+     * an update ONLY touches lifecycle-state fields, so a LOCKED quote can
+     * still transition through its sales journey (Sent → Viewed → Accepted
+     * etc.) without the lock blocking the state machine. The lock layer
+     * gates CONTENT edits; the lifecycle layer is orthogonal.
+     */
+    function onlyLifecycleFieldsChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'lifecycleState', 'lifecycleStateAt', 'lifecycleStateByUid', 'lifecycleStateByName',
+        'updatedAt'
+      ]);
+    }
+
+    /**
+     * v1.9 (story 1.3.3) — SharePoint sync-tracking guard. Returns true
+     * when an update ONLY touches sync-tracking fields written by the
+     * SharePoint sync orchestrator after a successful Graph upload. Lets
+     * the sync stamp `sharePointSyncedAt` / `sharePointPath` /
+     * `sharePointWebUrl` on LOCKED quotes (Send auto-locks, then sync
+     * runs immediately after — without this allowance, post-send sync
+     * would be blocked by the lock rule).
+     */
+    function onlySharePointFieldsChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'sharePointSyncedAt', 'sharePointPath', 'sharePointWebUrl',
+        'updatedAt'
+      ]);
+    }
+
     // --- COLLECTION RULES ---
 
     // HelmLogic Admins get full access to the entire database
@@ -77,6 +107,8 @@ service cloud.firestore {
         allow update: if isSignedIn() && (
           !(resource.data.isLocked == true)
           || onlyLockFieldsChanged()
+          || onlyLifecycleFieldsChanged()
+          || onlySharePointFieldsChanged()
         );
         match /service_items/{itemId} {
           allow read, write: if isSignedIn();
@@ -124,6 +156,13 @@ service cloud.firestore {
       allow write: if isSignedIn();
 
       match /promotions/{promoId} {
+        allow read, write: if isSignedIn();
+      }
+
+      // v1.9 (1.1.2) — Feature × feature compatibility rules.
+      // Authored direct to Firestore by engineering for v1.9; admin UI
+      // deferred to v1.10+.
+      match /compatibilityRules/{ruleId} {
         allow read, write: if isSignedIn();
       }
     }
@@ -194,6 +233,17 @@ service cloud.firestore {
       // template at send time); writes signed-in with UI-layer can_access_settings
       // gating, consistent with the rest of the org subcollection pattern.
       match /emailTemplates/{templateId} {
+        allow read, write: if isSignedIn();
+      }
+      // v1.9 (story 1.3.3) — SharePoint integration config. Single doc
+      // per org at `default`. Public identifiers only (tenantId, clientId,
+      // siteId, folderPath) — the Azure app client secret lives in
+      // Firebase App Hosting backend env (SHAREPOINT_CLIENT_SECRET) and
+      // never touches Firestore. Reads open for the client to know
+      // whether sync is configured before firing the hook; writes
+      // signed-in with UI-layer can_access_settings gating in
+      // sharepoint-config-editor.tsx.
+      match /sharePointConfig/{configId} {
         allow read, write: if isSignedIn();
       }
     }

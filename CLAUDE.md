@@ -6,7 +6,7 @@
 
 ---
 
-## Current State (2026-05-11)
+## Current State (2026-05-12)
 
 | Release | Status |
 |---|---|
@@ -19,7 +19,7 @@
 | v1.6.2 Patch — v1.7→v2.2 restructure + 4 new epic backlogs | ✅ Shipped to production. See `tasks/RELEASE_NOTES_v1.6.2.md` + `tasks/v1.7-planning-restructure-status.md` |
 | v1.7 Customer-PDF authoring (Content Blocks + Live Preview + Image authoring + per-Salesperson) | ✅ Ready for dev → main. Stories finalized in Firestore (`status: shipped` on all v1.7 features), `RELEASE_WINDOWS['v1.7'].shipped = true`. See `tasks/RELEASE_NOTES_v1.7.0.md` + `tasks/USER_GUIDE_v1.7.0.md`. |
 | v1.8 Quote Lifecycle (Send + Lock + Audit + Personalisation + dependency hygiene) | ✅ Ready for dev → main. All planned stories shipped except 1.1.2 (Compatibility Rules) + 1.8.3 `startsOnNewPage` UI which were moved to v1.9 backlog mid-cycle (rationale in `tasks/RELEASE_NOTES_v1.8.0.md`). `RELEASE_WINDOWS['v1.8'].shipped = true`. See `tasks/RELEASE_NOTES_v1.8.0.md`. **🚨 Email send is gated by `NEXT_PUBLIC_EMAIL_SEND_ENABLED`** — flip to `true` after stakeholder approval on sender domain + SendGrid setup (see `tasks/ADMIN_TASK_email-trigger-setup.md`). |
-| v1.9 (next) | 🔜 Backlog. v1.8 carry-overs: 1.1.2 Compatibility Rules + Highfield auto-seed (3 pts), 1.8.3 `startsOnNewPage` UI (needs inline-render path first). |
+| v1.9 Quote-lifecycle wrap-up (Compatibility Rules + Inline Preview + Lifecycle state machine + Multiple Scenarios + SharePoint) | ✅ Ready for dev → main. 4 of 5 planned stories shipped; 1.8.3 re-dropped early-Phase-A (schema dormant under v1.7 PDF architecture, 1.8.4 didn't unblock — rationale in `tasks/RELEASE_NOTES_v1.9.0.md`). `RELEASE_WINDOWS['v1.9'].shipped = true`. See `tasks/RELEASE_NOTES_v1.9.0.md` + `tasks/ADMIN_TASK_sharepoint-setup.md`. **🚨 SharePoint sync is gated by `NEXT_PUBLIC_SHAREPOINT_ENABLED`** — flip to `true` after Azure app registration + `SHAREPOINT_CLIENT_SECRET` env-var setup + per-org `sharePointConfig` doc (see admin task). Sync hooks fire on Finalize / Send / Scenario / Fork / Terminal lifecycle. |
 
 **Active dev branch**: `claude/app-overview-wKiZ1` (auto-deploys to dev URL)
 
@@ -73,9 +73,10 @@
 - **Verify Plan**: High-level summary at each step
 - **Document Results**: Add review section to tasks/todo.md
 - **Capture Lessons**: Update tasks/lessons.md after corrections
-- **On Every Release (dev or main)**: Update `.agents/evolution.md` with new patterns/lessons learned, and update `tasks/SESSION_HANDOVER.md` with any new Firestore collections, component changes, or architectural decisions
+- **On Every Release (dev or main)**: Update `.agents/evolution.md` with new patterns/lessons learned, update `tasks/SESSION_HANDOVER.md` with any new Firestore collections, component changes, or architectural decisions, AND author `tasks/USER_GUIDE_vX.Y.Z.md` for the new operator-facing surfaces. The user guide is the companion to the release notes — release notes describe what changed for engineering; the user guide describes how a salesperson or org admin uses the new features.
 - **Release Notes Format**: Every `RELEASE_NOTES_vX.Y.Z.md` file must follow the same layout — title, date/branch header, Release Stats, feature sections with sub-sections, Files Changed at the end. **NO release checklists** — release notes describe what shipped, not what's pending.
-- **🚨 Release notes MUST ship in the same PR as the release** — `tasks/RELEASE_NOTES_vX.Y.Z.md` is required to be present on the dev branch *before* opening the dev → main PR. The in-app `/feature-tracking` Release Notes tab is rendered server-side from these files at build time, so a release that merges without its release notes will go to prod with the historical timeline showing every prior version EXCEPT the one we just shipped. Pre-merge checklist for any release PR: (1) `RELEASE_NOTES_vX.Y.Z.md` exists in `tasks/`, (2) CLAUDE.md release-state table flips that version to ✅ Shipped, (3) `tasks/vX.Y-*-status.md` Phase line records the merge intent. If you catch yourself writing release notes *after* the merge, you've already shipped a stale prod — open a tiny follow-up docs PR immediately.
+- **User Guide Format**: Every `USER_GUIDE_vX.Y.Z.md` file must follow the v1.7 template — title + audience line, at-a-glance map (table linking "what you want to do" → "where" → "section"), numbered sections per feature with "To do X" / "What this affects" / "Tips" sub-sections, a synthesis section ("How X works"), and a "What this release did NOT ship (deferred to vX.Y+1)" closer. Audience: org admins + salespeople. Tone: practical operator instructions, not engineering changelog. Same PR as the release. Historical guides: `USER_GUIDE_v1.7.0.md` (shipped with release), `USER_GUIDE_v1.8.0.md` (backfilled mid-v1.9 PR after the omission was caught), `USER_GUIDE_v1.9.0.md` (shipped with release).
+- **🚨 Release notes AND user guide MUST ship in the same PR as the release** — `tasks/RELEASE_NOTES_vX.Y.Z.md` + `tasks/USER_GUIDE_vX.Y.Z.md` are both required to be present on the dev branch *before* opening the dev → main PR. The in-app `/feature-tracking` Release Notes tab is rendered server-side from the release-notes markdown at build time, so a release that merges without its release notes will go to prod with the historical timeline showing every prior version EXCEPT the one we just shipped. The user guide isn't rendered in-app (today) but lives in the repo for stakeholder reference + future onboarding. Pre-merge checklist for any release PR: (1) `RELEASE_NOTES_vX.Y.Z.md` exists in `tasks/`, (2) `USER_GUIDE_vX.Y.Z.md` exists in `tasks/`, (3) CLAUDE.md release-state table flips that version to ✅ Shipped, (4) `tasks/vX.Y-*-status.md` Phase line records the merge intent. If you catch yourself writing release notes or the user guide *after* the merge, open a tiny follow-up docs PR immediately.
 
 ---
 
@@ -144,6 +145,8 @@ users/{userId}/quotes/{quoteId}
 
 ### Known Lessons
 - **Verify data is actually visible before telling user it's there** — always query Firestore to confirm docs exist at the correct path
+- **When asking the user to deploy `firestore.rules`, ALWAYS paste the complete current ruleset** (top of file to bottom) — never just the diff or just the new helper. The user copies the entire block straight into Firebase Console → Rules → Publish; a partial paste destroys every other rule. Read the full file with the Read tool, then output it verbatim in a fenced block.
+- **After every rules deploy, spot-check the deployed text in Firebase Console before saying "rules published" is done** — v1.9 prod regression (`organisations/{orgId}/emailTemplates` `list` denied for Bill Hull) traced to a partial paste somewhere earlier in the cycle. The repo file was correct; the deployed text had dropped `match /emailTemplates/{templateId}`, `match /auditLog/{eventId}`, and others. Open the rules editor AFTER publishing and confirm by eye that these critical paths exist: `emailTemplates`, `auditLog`, `sentEmails`, `contentBlocks`, `contentOverrides`, `compatibilityRules`, `sharePointConfig`, `pdfStructure`, `salesTeam`. Missing any = republish the full file. Better defense-in-depth than trusting select-all-paste-publish to be atomic.
 - **`orderBy('field')` in Firestore silently excludes docs without that field** — seeded docs often don't have `order`; use unordered collection queries
 - **Vendor ID matters**: app reads from `data-warehouse/LafOLpLb6QIFE856TiD4`, not `data-warehouse/highfield`
 - **Module page passes vendorId + rangeId to model editors** — always pass both props to `HighfieldModelEditor` (and others)
