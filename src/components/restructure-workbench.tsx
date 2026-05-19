@@ -29,9 +29,8 @@ import { FeatureDetailSheet, type FeatureDoc } from '@/components/feature-tracki
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle2, ExternalLink, Loader2, RefreshCw, RotateCcw, Wrench, X } from 'lucide-react';
+import { Check, CheckCircle2, ExternalLink, Loader2, RefreshCw, RotateCcw, Save, Wrench, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
     capacityTint,
@@ -51,12 +50,26 @@ interface Props {
     onOpenChange: (v: boolean) => void;
 }
 
+/**
+ * Per-row decision state machine (v1.10 workbench rework):
+ *
+ *   pending — operator hasn't acted on this row yet. NOT in the save batch.
+ *             Default for every row on seed.
+ *   apply   — operator clicked Apply. Locked in locally. Goes into the
+ *             save batch on final Save (no-op if proposal is unchanged).
+ *   skip    — operator explicitly excluded this row. Never in the save
+ *             batch even if the proposal changes later.
+ *
+ * Changing the category or new-release dropdown on an apply/skip row
+ * auto-reverts the row to pending so the operator can re-decide.
+ */
+type Decision = 'pending' | 'apply' | 'skip';
+
 interface ProposalRow {
     feature: FeatureDoc;
     category: Category;
     newRelease: string | null;
-    /** True when user has manually clicked "skip" — no move applied. */
-    skip: boolean;
+    decision: Decision;
 }
 
 const TINT_BAR: Record<'green' | 'amber' | 'red', string> = {
@@ -83,12 +96,13 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
     const [proposals, setProposals] = useState<Record<string, ProposalRow>>({});
     const [seeded, setSeeded] = useState(false);
     const [applying, setApplying] = useState(false);
-    /** Filter mode:
-     *   'moves'   — show only rows that would be written on Apply (default)
-     *   'all'     — every scoped row
-     *   'skipped' — only the rows the operator has skipped (so accidental
-     *               skips can be reviewed + unskipped) */
-    const [filterMode, setFilterMode] = useState<'all' | 'moves' | 'skipped'>('moves');
+    /** Filter mode (decision-state based):
+     *   'pending' — rows the operator hasn't acted on yet (default — what
+     *               needs walking)
+     *   'apply'   — rows locked in for the save batch
+     *   'skip'    — rows excluded from the save batch
+     *   'all'     — every scoped row regardless of decision */
+    const [filterMode, setFilterMode] = useState<'pending' | 'apply' | 'skip' | 'all'>('pending');
     /** When non-null, the FeatureDetailSheet opens for this feature id —
      *  clicked from a row's title. Stacks on top of the Workbench sheet. */
     const [detailId, setDetailId] = useState<string | null>(null);
@@ -106,7 +120,7 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
             if (isShippedRelease(f.targetRelease ?? undefined)) continue;
             const category = inferCategory(f.title);
             const newRelease = suggestTargetRelease(f.targetRelease ?? null, category);
-            seed[f.id] = { feature: f, category, newRelease, skip: false };
+            seed[f.id] = { feature: f, category, newRelease, decision: 'pending' };
         }
         setProposals(seed);
         setSeeded(true);
@@ -119,29 +133,35 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
 
     const rows = useMemo(() => Object.values(proposals), [proposals]);
 
-    // Effective new release per row (skipped rows treat newRelease as current).
-    const effectiveRelease = (r: ProposalRow): string => r.skip ? (r.feature.targetRelease ?? '') : (r.newRelease ?? r.feature.targetRelease ?? '');
-
     /**
-     * A "proposed change" is anything that will result in a Firestore
-     * write on Apply: target change, status promotion (Submitted →
-     * Planned when a target is assigned), or both. Skipped rows never
-     * count.
+     * "Pending change" — the row's proposal would be a real Firestore
+     * write IF the operator applied it. Used by the capacity dashboard
+     * (which previews APPLIED state — pending rows don't move yet) and
+     * by the row UI to show whether the Apply button would actually
+     * write something.
      */
-    const isChangeProposed = (r: ProposalRow): boolean => {
-        if (r.skip) return false;
+    const wouldWrite = (r: ProposalRow): boolean => {
         const targetChange = r.newRelease && r.newRelease !== r.feature.targetRelease;
         const statusPromotion = r.feature.status === 'submitted' && r.newRelease;
         return Boolean(targetChange || statusPromotion);
     };
 
-    const movesProposed = useMemo(
-        () => rows.filter(isChangeProposed).length,
-        [rows],
+    /** Effective release for capacity dashboard — applied rows move; pending + skipped stay put. */
+    const effectiveRelease = (r: ProposalRow): string => (
+        r.decision === 'apply' && r.newRelease
+            ? r.newRelease
+            : (r.feature.targetRelease ?? '')
     );
 
-    const skippedCount = useMemo(
-        () => rows.filter(r => r.skip).length,
+    const appliedCount = useMemo(() => rows.filter(r => r.decision === 'apply').length, [rows]);
+    const pendingCount = useMemo(() => rows.filter(r => r.decision === 'pending').length, [rows]);
+    const skippedCount = useMemo(() => rows.filter(r => r.decision === 'skip').length, [rows]);
+
+    /** Rows that will actually result in a write on Save — applied AND
+     *  the proposal is a real change. Applied rows with no diff are a
+     *  no-op and won't write. */
+    const writesQueued = useMemo(
+        () => rows.filter(r => r.decision === 'apply' && wouldWrite(r)).length,
         [rows],
     );
 
@@ -177,12 +197,13 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
     // Group rows by CURRENT release for display. Unscheduled features
     // (Submitted-column inflow) bucket under the synthetic key
     // '(unscheduled)' so they're visibly separate from real release
-    // columns.
+    // columns. Filtering is by DECISION state.
     const groupedByCurrent = useMemo(() => {
         const groups: Record<string, ProposalRow[]> = {};
         for (const r of rows) {
-            if (filterMode === 'moves' && !isChangeProposed(r)) continue;
-            if (filterMode === 'skipped' && !r.skip) continue;
+            if (filterMode === 'pending' && r.decision !== 'pending') continue;
+            if (filterMode === 'apply'   && r.decision !== 'apply')   continue;
+            if (filterMode === 'skip'    && r.decision !== 'skip')    continue;
             // 'all' shows everything
             const key = r.feature.targetRelease ?? '(unscheduled)';
             (groups[key] ??= []).push(r);
@@ -197,25 +218,54 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
         setProposals(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
     }
 
+    /** Dropdown change handler — if the new value differs from current,
+     *  also revert decision to pending (operator changed their mind). */
+    function editRowProposal(id: string, patch: Partial<Pick<ProposalRow, 'category' | 'newRelease'>>) {
+        setProposals(prev => {
+            const cur = prev[id];
+            if (!cur) return prev;
+            const next = { ...cur, ...patch };
+            const changed =
+                (patch.category    !== undefined && patch.category    !== cur.category) ||
+                (patch.newRelease  !== undefined && patch.newRelease  !== cur.newRelease);
+            if (changed && cur.decision !== 'pending') {
+                next.decision = 'pending';
+            }
+            return { ...prev, [id]: next };
+        });
+    }
+
+    function setDecision(id: string, decision: Decision) {
+        updateRow(id, { decision });
+    }
+
     function resetAll() {
         setSeeded(false);
         // The useEffect re-seeds from the features array on the next render.
     }
 
-    function unskipAll() {
+    /** Revert every non-pending row back to pending. Useful when you've
+     *  apply/skip-ed a chunk and want to re-decide. */
+    function clearAllDecisions() {
         setProposals(prev => {
             const next: Record<string, ProposalRow> = {};
             for (const [id, row] of Object.entries(prev)) {
-                next[id] = row.skip ? { ...row, skip: false } : row;
+                next[id] = row.decision !== 'pending' ? { ...row, decision: 'pending' } : row;
             }
             return next;
         });
     }
 
-    async function handleApply() {
-        const toApply = rows.filter(isChangeProposed);
-        if (toApply.length === 0) {
-            toast({ title: 'No moves to apply', description: 'Every row is either skipped or already at its proposed state.' });
+    /** Save — write every APPLIED row that has a real diff to Firestore.
+     *  Pending and skipped rows are never written. Applied rows with no
+     *  diff are silently no-ops. */
+    async function handleSave() {
+        const toSave = rows.filter(r => r.decision === 'apply' && wouldWrite(r));
+        if (toSave.length === 0) {
+            toast({
+                title: 'Nothing to save',
+                description: 'Mark rows as Apply (green check) to queue them. Nothing\'s queued yet, or every applied row is already at its target.',
+            });
             return;
         }
         setApplying(true);
@@ -223,7 +273,7 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
         let failed = 0;
         let statusBumped = 0;
         let newlyScheduled = 0;
-        for (const r of toApply) {
+        for (const r of toSave) {
             try {
                 const updates: any = { updatedAt: serverTimestamp() };
                 const targetChanged = r.newRelease && r.newRelease !== r.feature.targetRelease;
@@ -241,13 +291,13 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
                 await updateDoc(doc(firestore, 'features', r.feature.id), updates);
                 ok++;
             } catch (e) {
-                console.error('[restructure-workbench] apply failed for', r.feature.id, e);
+                console.error('[restructure-workbench] save failed for', r.feature.id, e);
                 failed++;
             }
         }
         setApplying(false);
         toast({
-            title: failed === 0 ? 'Restructure applied' : `Restructure partially applied (${failed} failed)`,
+            title: failed === 0 ? 'Restructure saved' : `Restructure partially saved (${failed} failed)`,
             description: `${ok} writes committed · ${newlyScheduled} newly scheduled from Submitted · ${statusBumped} status bumped to planned · ${failed} failed`,
             variant: failed === 0 ? 'default' : 'destructive',
         });
@@ -276,25 +326,27 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
                                     ? 'Loading features…'
                                     : (
                                         <>
-                                            {totalRows} stories scoped · {movesProposed} move{movesProposed === 1 ? '' : 's'} proposed
-                                            {skippedCount > 0 && <span className="text-amber-300"> · {skippedCount} skipped</span>}
+                                            {totalRows} stories ·
+                                            <span className="text-emerald-300"> {appliedCount} applied</span>
+                                            <span className="text-amber-300"> · {skippedCount} skipped</span>
+                                            <span className="text-slate-300"> · {pendingCount} pending</span>
                                         </>
                                     )}
                             </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        {skippedCount > 0 && (
+                        {(appliedCount > 0 || skippedCount > 0) && (
                             <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={unskipAll}
+                                onClick={clearAllDecisions}
                                 disabled={applying || isLoading}
                                 className="h-8 px-3 rounded-lg font-black uppercase tracking-widest text-[9px] border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 gap-1.5"
-                                title={`Unskip all ${skippedCount} skipped row${skippedCount === 1 ? '' : 's'}`}
+                                title={`Revert every Apply + Skip back to Pending (${appliedCount + skippedCount} row${appliedCount + skippedCount === 1 ? '' : 's'})`}
                             >
                                 <RotateCcw className="h-3.5 w-3.5" />
-                                Unskip {skippedCount}
+                                Clear decisions
                             </Button>
                         )}
                         <Button
@@ -303,19 +355,20 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
                             onClick={resetAll}
                             disabled={applying || isLoading}
                             className="h-8 px-3 rounded-lg font-black uppercase tracking-widest text-[9px] border-slate-700 bg-slate-800 hover:bg-slate-700 text-white gap-1.5"
-                            title="Re-seed all proposals from the categorisation rules"
+                            title="Re-seed every row's category + new-release proposal from the rules (resets decisions too)"
                         >
                             <RefreshCw className="h-3.5 w-3.5" />
-                            Reset
+                            Reset proposals
                         </Button>
                         <Button
                             size="sm"
-                            onClick={handleApply}
-                            disabled={applying || isLoading || movesProposed === 0}
+                            onClick={handleSave}
+                            disabled={applying || isLoading || writesQueued === 0}
                             className="h-8 px-4 rounded-lg font-black uppercase tracking-widest text-[9px] bg-emerald-500 hover:bg-emerald-400 text-white gap-1.5 disabled:bg-slate-700"
+                            title={writesQueued === 0 ? 'No applied rows have pending writes — apply at least one row first' : `Commit all ${writesQueued} applied moves to Firestore`}
                         >
-                            {applying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                            {applying ? 'Applying…' : `Apply ${movesProposed} move${movesProposed === 1 ? '' : 's'}`}
+                            {applying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                            {applying ? 'Saving…' : `Save ${writesQueued} move${writesQueued === 1 ? '' : 's'}`}
                         </Button>
                         <Button
                             size="sm"
@@ -330,13 +383,13 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
                     </div>
                 </div>
 
-                {/* Filters strip — 3-mode segmented toggle */}
+                {/* Filters strip — 4-mode segmented toggle by decision state */}
                 <div className="px-5 py-2 border-b bg-slate-50 flex items-center justify-between gap-3 shrink-0">
                     <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
-                        {(['moves', 'all', 'skipped'] as const).map(mode => {
+                        {(['pending', 'apply', 'skip', 'all'] as const).map(mode => {
                             const active = filterMode === mode;
-                            const count = mode === 'moves' ? movesProposed : mode === 'skipped' ? skippedCount : totalRows;
-                            const label = mode === 'moves' ? 'Proposed moves' : mode === 'skipped' ? 'Skipped' : 'All';
+                            const count = mode === 'pending' ? pendingCount : mode === 'apply' ? appliedCount : mode === 'skip' ? skippedCount : totalRows;
+                            const label = mode === 'pending' ? 'Pending' : mode === 'apply' ? 'Applied' : mode === 'skip' ? 'Skipped' : 'All';
                             return (
                                 <button
                                     key={mode}
@@ -356,7 +409,7 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
                         })}
                     </div>
                     <p className="text-[10px] text-slate-500">
-                        Capacity caps: green &lt;{POINTS_CAP_GREEN}pts · amber {POINTS_CAP_GREEN}-{POINTS_CAP_RED - 1}pts · red ≥{POINTS_CAP_RED}pts
+                        Capacity caps: green &lt;{POINTS_CAP_GREEN}pts · amber {POINTS_CAP_GREEN}-{POINTS_CAP_RED - 1}pts · red ≥{POINTS_CAP_RED}pts · only <strong>applied</strong> rows shift the totals
                     </p>
                 </div>
 
@@ -437,9 +490,10 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
                                         <WorkbenchRow
                                             key={r.feature.id}
                                             row={r}
-                                            onChangeCategory={(category) => updateRow(r.feature.id, { category, newRelease: suggestTargetRelease(r.feature.targetRelease ?? null, category) })}
-                                            onChangeRelease={(newRelease) => updateRow(r.feature.id, { newRelease, skip: false })}
-                                            onToggleSkip={(skip) => updateRow(r.feature.id, { skip })}
+                                            wouldWrite={wouldWrite(r)}
+                                            onChangeCategory={(category) => editRowProposal(r.feature.id, { category, newRelease: suggestTargetRelease(r.feature.targetRelease ?? null, category) })}
+                                            onChangeRelease={(newRelease) => editRowProposal(r.feature.id, { newRelease })}
+                                            onSetDecision={(decision) => setDecision(r.feature.id, decision)}
                                             onOpenDetail={(id) => setDetailId(id)}
                                             disabled={applying}
                                         />
@@ -450,19 +504,19 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
                     })}
                 </div>
 
-                {/* Footer reiterates the Apply button for long lists */}
+                {/* Footer reiterates the Save button for long lists */}
                 <div className="px-5 py-3 border-t bg-white shrink-0 flex items-center justify-between">
                     <p className="text-[11px] text-slate-500">
-                        Apply writes all proposed moves in one batch. Idempotent — re-runnable if anything looks off. Skipped rows + unchanged rows are not touched.
+                        Walk the rows: <strong>Apply</strong> to queue a move (green), <strong>Skip</strong> to exclude (amber). Editing a dropdown reverts the row to Pending. Save commits every applied row at once.
                     </p>
                     <Button
                         size="sm"
-                        onClick={handleApply}
-                        disabled={applying || isLoading || movesProposed === 0}
+                        onClick={handleSave}
+                        disabled={applying || isLoading || writesQueued === 0}
                         className="h-8 px-4 rounded-lg font-black uppercase tracking-widest text-[9px] bg-emerald-500 hover:bg-emerald-400 text-white gap-1.5 disabled:bg-slate-300 disabled:text-slate-500"
                     >
-                        {applying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                        {applying ? 'Applying…' : `Apply ${movesProposed} move${movesProposed === 1 ? '' : 's'}`}
+                        {applying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                        {applying ? 'Saving…' : `Save ${writesQueued} move${writesQueued === 1 ? '' : 's'}`}
                     </Button>
                 </div>
             </SheetContent>
@@ -481,19 +535,26 @@ export function RestructureWorkbench({ open, onOpenChange }: Props) {
 
 interface WorkbenchRowProps {
     row: ProposalRow;
+    /** Would this row actually write to Firestore if applied + saved? */
+    wouldWrite: boolean;
     onChangeCategory: (c: Category) => void;
     onChangeRelease: (r: string) => void;
-    onToggleSkip: (s: boolean) => void;
+    onSetDecision: (d: Decision) => void;
     onOpenDetail: (id: string) => void;
     disabled: boolean;
 }
 
-function WorkbenchRow({ row, onChangeCategory, onChangeRelease, onToggleSkip, onOpenDetail, disabled }: WorkbenchRowProps) {
-    const { feature, category, newRelease, skip } = row;
-    const moved = !skip && newRelease && newRelease !== feature.targetRelease;
+function WorkbenchRow({ row, wouldWrite, onChangeCategory, onChangeRelease, onSetDecision, onOpenDetail, disabled }: WorkbenchRowProps) {
+    const { feature, category, newRelease, decision } = row;
+    const moved = !!newRelease && newRelease !== feature.targetRelease;
 
     return (
-        <li className={cn('flex items-center gap-3 px-5 py-2.5', moved && 'bg-emerald-50/30', skip && 'opacity-50')}>
+        <li className={cn(
+            'flex items-center gap-3 px-5 py-2.5 transition-colors',
+            decision === 'apply' && 'bg-emerald-50/60 border-l-4 border-l-emerald-500',
+            decision === 'skip'  && 'bg-amber-50/40 opacity-60 border-l-4 border-l-amber-400',
+            decision === 'pending' && moved && 'bg-blue-50/20',
+        )}>
             {/* Title + meta — clickable, opens FeatureDetailSheet */}
             <button
                 type="button"
@@ -521,7 +582,7 @@ function WorkbenchRow({ row, onChangeCategory, onChangeRelease, onToggleSkip, on
                 <Select
                     value={category}
                     onValueChange={(v) => onChangeCategory(v as Category)}
-                    disabled={disabled || skip}
+                    disabled={disabled}
                 >
                     <SelectTrigger className={cn('h-8 text-[10px] font-bold', CATEGORY_TINT[category])}>
                         <SelectValue />
@@ -541,11 +602,11 @@ function WorkbenchRow({ row, onChangeCategory, onChangeRelease, onToggleSkip, on
                 <Select
                     value={newRelease ?? feature.targetRelease ?? ''}
                     onValueChange={(v) => onChangeRelease(v)}
-                    disabled={disabled || skip}
+                    disabled={disabled}
                 >
                     <SelectTrigger className={cn(
                         'h-8 text-[10px] font-black tracking-widest uppercase',
-                        moved ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-white text-slate-700',
+                        moved ? 'border-blue-300 bg-blue-50 text-blue-800' : 'border-slate-200 bg-white text-slate-700',
                     )}>
                         <SelectValue />
                     </SelectTrigger>
@@ -564,9 +625,12 @@ function WorkbenchRow({ row, onChangeCategory, onChangeRelease, onToggleSkip, on
             </div>
 
             {/* Diff indicator */}
-            <div className="shrink-0 w-20 text-right">
+            <div className="shrink-0 w-24 text-right">
                 {moved ? (
-                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[9px] uppercase font-black tracking-widest">
+                    <Badge className={cn(
+                        'text-[9px] uppercase font-black tracking-widest',
+                        decision === 'apply' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-blue-50 text-blue-700 border-blue-200',
+                    )}>
                         {feature.targetRelease ?? '—'} → {newRelease}
                     </Badge>
                 ) : (
@@ -574,13 +638,49 @@ function WorkbenchRow({ row, onChangeCategory, onChangeRelease, onToggleSkip, on
                 )}
             </div>
 
-            {/* Skip toggle */}
-            <label className="shrink-0 flex items-center gap-1 cursor-pointer" title={skip ? 'Click to UN-skip — restore this row to the apply set' : 'Skip this row — leave it untouched'}>
-                <Switch checked={skip} onCheckedChange={onToggleSkip} disabled={disabled} />
-                <span className={cn('text-[9px] uppercase tracking-widest font-bold', skip ? 'text-amber-700' : 'text-slate-500')}>
-                    {skip ? 'Skipped' : 'Skip'}
-                </span>
-            </label>
+            {/* Decision controls — Apply / Skip toggle pair */}
+            <div className="shrink-0 flex items-center gap-1">
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onSetDecision(decision === 'apply' ? 'pending' : 'apply')}
+                    disabled={disabled}
+                    className={cn(
+                        'h-8 px-2.5 gap-1 text-[9px] font-black uppercase tracking-widest',
+                        decision === 'apply'
+                            ? 'bg-emerald-500 text-white border-emerald-500 hover:bg-emerald-400'
+                            : 'bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50',
+                    )}
+                    title={
+                        decision === 'apply'
+                            ? 'Click to revert to Pending'
+                            : wouldWrite
+                                ? 'Queue this move for Save'
+                                : 'Mark this row as reviewed — no write needed (current = proposed)'
+                    }
+                >
+                    <Check className="h-3 w-3" />
+                    {decision === 'apply' ? 'Applied' : 'Apply'}
+                </Button>
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onSetDecision(decision === 'skip' ? 'pending' : 'skip')}
+                    disabled={disabled}
+                    className={cn(
+                        'h-8 px-2.5 gap-1 text-[9px] font-black uppercase tracking-widest',
+                        decision === 'skip'
+                            ? 'bg-amber-500 text-white border-amber-500 hover:bg-amber-400'
+                            : 'bg-white text-amber-700 border-amber-200 hover:bg-amber-50',
+                    )}
+                    title={decision === 'skip' ? 'Click to revert to Pending' : 'Exclude this row from Save'}
+                >
+                    <X className="h-3 w-3" />
+                    {decision === 'skip' ? 'Skipped' : 'Skip'}
+                </Button>
+            </div>
         </li>
     );
 }
