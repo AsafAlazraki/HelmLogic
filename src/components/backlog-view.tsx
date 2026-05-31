@@ -57,7 +57,7 @@ import {
     computeRestructurePlan,
     type RestructurePlan,
 } from '@/lib/v110-restructure-apply';
-import { capacityTint } from '@/lib/v110-restructure-rules';
+import { capacityTint, CATEGORY_EPIC_KEYWORDS, type Category } from '@/lib/v110-restructure-rules';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
 import {
@@ -127,9 +127,24 @@ export function BacklogView() {
     const [autoApplyOpen, setAutoApplyOpen] = useState(false);
     const [autoApplying, setAutoApplying] = useState(false);
 
+    /** Resolve a restructure category → epic id by matching the loaded
+     *  epics' titles against the category's keyword list. First confident
+     *  match wins; returns null when no epic matches (story stays unfiled). */
+    const resolveEpicForCategory = useMemo(() => {
+        const all = epics ?? [];
+        return (category: Category): string | null => {
+            const keywords = CATEGORY_EPIC_KEYWORDS[category] ?? [];
+            for (const kw of keywords) {
+                const hit = all.find(e => (e.title ?? '').toLowerCase().includes(kw));
+                if (hit) return hit.id;
+            }
+            return null;
+        };
+    }, [epics]);
+
     const restructurePlan = useMemo<RestructurePlan | null>(
-        () => (features ? computeRestructurePlan(features) : null),
-        [features],
+        () => (features ? computeRestructurePlan(features, resolveEpicForCategory) : null),
+        [features, resolveEpicForCategory],
     );
 
     async function handleAutoApply() {
@@ -140,8 +155,9 @@ export function BacklogView() {
             toast({
                 title: failed === 0 ? 'Restructure applied' : `Applied with ${failed} failures`,
                 description:
-                    `${ok} stories moved · ${restructurePlan.newlyScheduled} scheduled from Submitted · ` +
-                    `${restructurePlan.statusBumps} bumped to planned${failed ? ` · ${failed} failed` : ''}`,
+                    `${ok} stories updated · ${restructurePlan.newlyScheduled} scheduled from Submitted · ` +
+                    `${restructurePlan.epicAssignments} filed into epics · ${restructurePlan.statusBumps} bumped to planned` +
+                    `${failed ? ` · ${failed} failed` : ''}`,
                 variant: failed === 0 ? 'default' : 'destructive',
             });
             setAutoApplyOpen(false);
@@ -387,12 +403,13 @@ export function BacklogView() {
                                 {restructurePlan && (
                                     <>
                                         <p>
-                                            The categorisation rules will move{' '}
+                                            The categorisation rules will update{' '}
                                             <strong>{restructurePlan.moveCount}</strong> of{' '}
                                             <strong>{restructurePlan.scoped}</strong> in-scope stories
                                             ({restructurePlan.newlyScheduled} pulled from the Submitted column,{' '}
-                                            {restructurePlan.statusBumps} bumped to <em>planned</em>). Dealer-ops moves up;
-                                            customer-facing slides to v1.18+; notifications to v1.22.
+                                            {restructurePlan.epicAssignments} filed into their epic swim-lane,{' '}
+                                            {restructurePlan.statusBumps} bumped to <em>planned</em>). Dealer-ops bin-packs
+                                            across v1.10–v1.17; customer-facing slides to v1.18+; notifications to v1.22+.
                                         </p>
 
                                         {/* Capacity preview — per release after the moves */}

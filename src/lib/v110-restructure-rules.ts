@@ -48,6 +48,28 @@ export const CATEGORY_LABEL: Record<Category, string> = {
     'discard':                     'Discard (stale)',
 };
 
+/**
+ * Category → epic-title keyword priority list. A category resolves to the
+ * FIRST epic whose title (case-insensitive) contains one of these
+ * keywords. Used to file unfiled stories into the matching swim-lane on
+ * the Roadmap when the auto-apply runs with epic assignment enabled.
+ *
+ * Keep keywords broad enough to match the actual epic titles (Epic 1
+ * "Guided Config", Epic 2 "Pricing", Epic 3 "Data", Epic 8 "Sales",
+ * Epic 9 "Fit-Up & Production", Epic 10 "Notifications & Alerts") but
+ * specific enough not to cross-match. Order = preference; first hit wins.
+ */
+export const CATEGORY_EPIC_KEYWORDS: Record<Category, string[]> = {
+    'dealer-ops:fit-up':            ['fit-up', 'fit up', 'production'],
+    'dealer-ops:parts-pricing':     ['pricing', 'data', 'catalog'],
+    'dealer-ops:guided-config':     ['guided config', 'configuration', 'guided'],
+    'dealer-ops:module':            ['data', 'platform', 'module'],
+    'customer-facing':              ['sales'],
+    'customer-facing:notifications': ['notification', 'alert'],
+    'cross-cutting':                [], // never auto-filed
+    'discard':                      [], // never auto-filed
+};
+
 export const CATEGORY_TINT: Record<Category, string> = {
     'dealer-ops:fit-up':           'bg-rose-50 text-rose-700 border-rose-200',
     'dealer-ops:parts-pricing':    'bg-amber-50 text-amber-700 border-amber-200',

@@ -105,11 +105,18 @@ export interface PlannedMove {
     category: Category;
     fromRelease: string | null;
     toRelease: string;
+    /** Epic to file this (currently-unfiled) story into. undefined =
+     *  leave epic untouched (already filed, or no confident match). */
+    toEpicId?: string;
     /** True when this is a Submitted-status story getting scheduled. */
     statusBump: boolean;
     /** True when the story had no targetRelease before (Backlog inflow). */
     newlyScheduled: boolean;
 }
+
+/** Resolves a category to an epic id (or null). Built in the UI layer
+ *  from the loaded epics so this module stays free of the epics list. */
+export type EpicResolver = (category: Category) => string | null;
 
 export interface ReleaseBucket {
     release: string;
@@ -130,6 +137,8 @@ export interface RestructurePlan {
     moveCount: number;
     statusBumps: number;
     newlyScheduled: number;
+    /** How many moves also file a previously-unfiled story into an epic. */
+    epicAssignments: number;
 }
 
 /**
@@ -146,7 +155,10 @@ export interface RestructurePlan {
  *   notifications (10.x)              → v1.22 → v1.24 band
  *   cross-cutting (5.x / 6.4.x / 7.x) → left exactly where they are
  */
-export function computeRestructurePlan(features: FeatureDoc[]): RestructurePlan {
+export function computeRestructurePlan(
+    features: FeatureDoc[],
+    resolveEpic?: EpicResolver,
+): RestructurePlan {
     // 1. Partition in-scope features by category lane.
     const inScope: { f: FeatureDoc; category: Category }[] = [];
     for (const f of features) {
@@ -183,14 +195,25 @@ export function computeRestructurePlan(features: FeatureDoc[]): RestructurePlan 
             afterCounts[landing].points += points;
         }
 
+        // Epic assignment: only file stories that are currently UNFILED
+        // (no epicId) — never override a deliberate existing epic. Resolve
+        // the category to an epic id via the injected resolver.
+        let toEpicId: string | undefined;
+        if (resolveEpic && !f.epicId) {
+            const epicId = resolveEpic(category);
+            if (epicId) toEpicId = epicId;
+        }
+
         const targetChange = !!to && to !== f.targetRelease;
         const statusBump = f.status === 'submitted' && !!to;
-        if (targetChange || statusBump) {
+        const epicChange = !!toEpicId;
+        if (targetChange || statusBump || epicChange) {
             moves.push({
                 feature: f,
                 category,
                 fromRelease: f.targetRelease ?? null,
                 toRelease: to ?? (f.targetRelease ?? ''),
+                toEpicId,
                 statusBump,
                 newlyScheduled: !f.targetRelease && !!to,
             });
@@ -208,6 +231,7 @@ export function computeRestructurePlan(features: FeatureDoc[]): RestructurePlan 
         moveCount: moves.length,
         statusBumps: moves.filter(m => m.statusBump).length,
         newlyScheduled: moves.filter(m => m.newlyScheduled).length,
+        epicAssignments: moves.filter(m => !!m.toEpicId).length,
     };
 }
 
@@ -235,6 +259,9 @@ export async function applyRestructurePlan(
             }
             if (m.statusBump) {
                 updates.status = 'planned';
+            }
+            if (m.toEpicId) {
+                updates.epicId = m.toEpicId;
             }
             await updateDoc(doc(firestore, 'features', m.feature.id), updates);
             ok++;
