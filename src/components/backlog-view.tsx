@@ -28,9 +28,11 @@ import {
     ChevronRight,
     HelpCircle,
     Layers,
+    Loader2,
     Lock,
     Plus,
     Sparkles,
+    Wand2,
     Wrench,
     FileText,
     Scale,
@@ -38,7 +40,24 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 import { RestructureWorkbench } from '@/components/restructure-workbench';
+import {
+    applyRestructurePlan,
+    computeRestructurePlan,
+    type RestructurePlan,
+} from '@/lib/v110-restructure-apply';
+import { capacityTint } from '@/lib/v110-restructure-rules';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
 import {
@@ -98,6 +117,41 @@ export function BacklogView() {
      *  sheet + module removed in the follow-up commit after the user
      *  clicks Apply, per CONVENTIONS.md one-shot lifecycle. */
     const [workbenchOpen, setWorkbenchOpen] = useState(false);
+
+    /** v1.10 restructure — auto-apply confirm dialog + run state. The
+     *  non-interactive "just do it" path: rules run across every story,
+     *  the dialog previews the full destination plan, one confirm moves
+     *  everything. Computed lazily from the loaded `features` when the
+     *  dialog opens. */
+    const { toast } = useToast();
+    const [autoApplyOpen, setAutoApplyOpen] = useState(false);
+    const [autoApplying, setAutoApplying] = useState(false);
+
+    const restructurePlan = useMemo<RestructurePlan | null>(
+        () => (features ? computeRestructurePlan(features) : null),
+        [features],
+    );
+
+    async function handleAutoApply() {
+        if (!restructurePlan) return;
+        setAutoApplying(true);
+        try {
+            const { ok, failed } = await applyRestructurePlan(firestore, restructurePlan);
+            toast({
+                title: failed === 0 ? 'Restructure applied' : `Applied with ${failed} failures`,
+                description:
+                    `${ok} stories moved · ${restructurePlan.newlyScheduled} scheduled from Submitted · ` +
+                    `${restructurePlan.statusBumps} bumped to planned${failed ? ` · ${failed} failed` : ''}`,
+                variant: failed === 0 ? 'default' : 'destructive',
+            });
+            setAutoApplyOpen(false);
+        } catch (e: any) {
+            console.error('[v110 auto-apply]', e);
+            toast({ variant: 'destructive', title: 'Restructure failed', description: e?.message ?? 'See console.' });
+        } finally {
+            setAutoApplying(false);
+        }
+    }
 
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
@@ -209,17 +263,35 @@ export function BacklogView() {
                         >
                             Collapse all
                         </Button>
-                        {/* v1.10 restructure — one-shot Workbench button.
-                            Same slot the v1.1.2 / v1.3.3 / Finalise V1.9
-                            buttons used. Removed in the follow-up commit
-                            after the user clicks Apply in the Workbench. */}
+                        {/* v1.10 restructure — auto-apply ("just do it").
+                            Primary path: rules run across every story, the
+                            dialog previews the full destination plan, one
+                            confirm moves everything. The Workbench button
+                            beside it is the manual spot-check alternative.
+                            Both one-shot, removed in the cleanup commit. */}
                         <Button
                             size="sm"
-                            className="bg-indigo-500 text-white hover:bg-indigo-400 gap-1.5 shadow-sm"
+                            className="bg-emerald-500 text-white hover:bg-emerald-400 gap-1.5 shadow-sm"
+                            onClick={() => setAutoApplyOpen(true)}
+                            disabled={!restructurePlan || restructurePlan.moveCount === 0}
+                        >
+                            <Wand2 className="h-4 w-4" />
+                            Auto-Apply v1.10
+                            {restructurePlan && restructurePlan.moveCount > 0 && (
+                                <span className="ml-0.5 rounded bg-emerald-700/40 px-1.5 text-[10px] font-black tabular-nums">
+                                    {restructurePlan.moveCount}
+                                </span>
+                            )}
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 shadow-sm"
                             onClick={() => setWorkbenchOpen(true)}
+                            title="Manual spot-check / per-row override before saving"
                         >
                             <Wrench className="h-4 w-4" />
-                            v1.10 Workbench
+                            Workbench
                         </Button>
                         <Button
                             size="sm"
@@ -298,6 +370,78 @@ export function BacklogView() {
             {/* v1.10 restructure — Workbench Sheet. One-shot. Removed in
                 follow-up commit after Apply per CONVENTIONS.md. */}
             <RestructureWorkbench open={workbenchOpen} onOpenChange={setWorkbenchOpen} />
+
+            {/* v1.10 restructure — Auto-Apply confirm dialog. Shows the
+                full destination plan (every release's post-move count +
+                points, colour-coded by capacity) so the user sees the
+                impact before one confirm moves everything. One-shot. */}
+            <AlertDialog open={autoApplyOpen} onOpenChange={(v) => { if (!autoApplying) setAutoApplyOpen(v); }}>
+                <AlertDialogContent className="max-w-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <Wand2 className="h-4 w-4 text-emerald-600" />
+                            Auto-apply the v1.10 dealer-ops restructure?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-3 text-sm">
+                                {restructurePlan && (
+                                    <>
+                                        <p>
+                                            The categorisation rules will move{' '}
+                                            <strong>{restructurePlan.moveCount}</strong> of{' '}
+                                            <strong>{restructurePlan.scoped}</strong> in-scope stories
+                                            ({restructurePlan.newlyScheduled} pulled from the Submitted column,{' '}
+                                            {restructurePlan.statusBumps} bumped to <em>planned</em>). Dealer-ops moves up;
+                                            customer-facing slides to v1.18+; notifications to v1.22.
+                                        </p>
+
+                                        {/* Capacity preview — per release after the moves */}
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
+                                                Capacity after restructure
+                                            </p>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {restructurePlan.afterByRelease.map(b => {
+                                                    const tint = capacityTint(b.points);
+                                                    const cls = tint === 'red'
+                                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                                        : tint === 'amber'
+                                                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                            : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                                                    return (
+                                                        <div key={b.release} className={cn('rounded-lg border px-2 py-1 min-w-[72px]', cls)}>
+                                                            <p className="text-[10px] font-black uppercase tracking-widest">{b.release}</p>
+                                                            <p className="text-xs font-black tabular-nums">{b.points} pts</p>
+                                                            <p className="text-[9px] opacity-70">{b.count} stories</p>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <p className="text-xs text-slate-500">
+                                            Idempotent — safe to re-run. Want to override individual stories first?
+                                            Cancel and use the <strong>Workbench</strong> instead. Nothing on a shipped
+                                            release is touched.
+                                        </p>
+                                    </>
+                                )}
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={autoApplying}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={(e) => { e.preventDefault(); handleAutoApply(); }}
+                            disabled={autoApplying || !restructurePlan || restructurePlan.moveCount === 0}
+                            className="gap-1.5 bg-emerald-600 hover:bg-emerald-500"
+                        >
+                            {autoApplying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                            {autoApplying ? 'Moving…' : `Move ${restructurePlan?.moveCount ?? 0} stories`}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
         </div>
     );
