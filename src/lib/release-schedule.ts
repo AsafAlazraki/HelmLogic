@@ -54,6 +54,12 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     'v1.7':   { shipped: true },
     'v1.8':   { shipped: true },
     'v1.9':   { shipped: true },
+    // v1.9.5 — planning + groundwork release: roadmap reshuffle (dealer-ops
+    // pivot + Submitted-column drain + capacity bin-packing), Epic 11
+    // Service Quoting groundwork (NSM-Hub absorption, planned not built),
+    // clickable release-detail popups, + emailTemplates rules re-deploy.
+    // Fractional, like v1.5.1 / v1.6.1. The actual v1.10 BUILD comes next.
+    'v1.9.5': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
