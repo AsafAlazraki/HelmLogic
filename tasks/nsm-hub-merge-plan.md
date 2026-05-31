@@ -86,15 +86,20 @@ customers/{customerId}           ← reconciled with existing HL customers (link
 
 ---
 
-## Zero-downtime migration
+## Zero-downtime migration — DAILY ACTIVE USE
 
-The module is **additive** — building it never touches existing HL surfaces, so HL has zero downtime by construction. Continuity for NSM staff's service-quote data:
+> ⚠️ **Confirmed 2026-05-14: NSM staff create service quotes every day.** A single bulk-migrate-then-cutover would lose every quote created during the migration window. The migration must keep the two systems in sync until the moment of cutover.
+
+The HL module is **additive** — building it never touches existing HL surfaces, so HL itself has zero downtime by construction. The hard part is **NSM-Hub data continuity** under daily writes. Approach:
 
 1. **Build** the Service Quoting module against HL Firestore (flagged/dark until ready).
-2. **Bulk-migrate** — one-time script (Firebase Admin SDK, dual-project) reads `nsm-service-quotation` → transforms → writes HL Firestore. Order: service catalog → customers (reconcile/dedup) → service quotes (remap customer + uid refs). Idempotent, reports counts, re-runnable.
-3. **Parallel run** — NSM-Hub stays live on its project; HL module live too.
-4. **Delta-sync + cutover** — final pass for records changed since bulk; NSM staff switch to HL; NSM-Hub service-quote surface retired.
-5. **Verify + decommission** — reconcile counts + spot-check PDFs, then retire.
+2. **Bulk-migrate** — script (Firebase Admin SDK, dual-project) reads `nsm-service-quotation` → transforms → writes HL Firestore. Order: service catalog → customers (reconcile/dedup) → service quotes (remap customer + uid refs). Idempotent, reports counts, re-runnable.
+3. **Continuous delta-sync** — because of daily writes, after the bulk pass run a repeating delta-sync (poll `updatedAt > lastSync` on NSM-Hub, upsert into HL by natural key). Keeps HL current with NSM-Hub while both run. Idempotent upsert (never clear-and-replace — the v1.4 import lesson).
+4. **Cutover (tight window)** — pick a low-traffic moment: pause new NSM-Hub quote creation (or accept a short read-only window), run a final delta pass, flip NSM staff to HL's module. Because deltas have been flowing continuously, the final pass is tiny and the freeze is minutes, not hours.
+   - *Alternative if even a minutes-long freeze is unacceptable:* a **dual-write bridge** — NSM-Hub writes are mirrored to HL in real time (small shim in NSM-Hub, or a Firestore-trigger Cloud Function on the NSM project) so the two are always consistent and cutover is instant. Heavier to build; only do this if the tight-window freeze is rejected.
+5. **Verify + decommission** — reconcile counts + spot-check PDFs, confirm no NSM-Hub writes post-cutover, then retire the NSM-Hub service-quote surface.
+
+**Recommendation:** continuous delta-sync + a minutes-long off-hours cutover freeze (step 4 main path). Build the dual-write bridge only if a zero-second cutover is a hard requirement — it roughly doubles the migration-tooling effort.
 
 > 🚨 Pre-flight: a **read service-account for `nsm-service-quotation` Firestore** is required before any migration script runs. (NSM-Hub equivalent of the SharePoint/email admin tasks.)
 
@@ -128,9 +133,10 @@ Slots via the same restructure tooling once the stories are seeded.
 
 1. **Service-account** for `nsm-service-quotation` read access — who provides it?
 2. **Live data volume** — how many service quotes + how big is the service catalog in NSM-Hub today? (Sizes the migration.)
-3. **Active daily use** — are NSM staff creating service quotes daily right now? (Determines whether a dual-write bridge is needed during migration, or a single cutover suffices.)
-4. **`estimateType` (Installation / Insurance / Mechanical)** — keep all three as modes of the one service quote? (The "insurance quoting" we dropped may partly live here as just an estimateType — confirm.)
-5. **Service catalog ownership** — who maintains the predefined operations/parts library going forward (admin role)?
+3. ~~**Active daily use**~~ — ✅ CONFIRMED: daily active use. Migration uses continuous delta-sync + tight off-hours cutover (or a dual-write bridge if a zero-second cutover is mandated). See migration section.
+4. **Cutover tolerance** — is a minutes-long off-hours read-only freeze acceptable, or is a zero-second cutover (dual-write bridge) required? (Determines migration-tooling effort.)
+5. **`estimateType` (Installation / Insurance / Mechanical)** — keep all three as modes of the one service quote? (The "insurance quoting" we dropped may partly live here as just an estimateType — confirm.)
+6. **Service catalog ownership** — who maintains the predefined operations/parts library going forward (admin role)?
 
 ---
 
