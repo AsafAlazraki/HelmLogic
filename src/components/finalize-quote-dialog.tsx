@@ -322,16 +322,58 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
             } : null,
 
             // Dealer Fit
+            // v1.10 fix — widened name fallback + snapshot the part code
+            // as a render-side backup. The old single-line name chain
+            // missed common warehouse field variants ("PART DESCRIPTION",
+            // "Part Name", "Item Description", "Title", etc.), so items
+            // imported with non-standard headers snapshot as 'Item' /
+            // blank — the "No Names on Dealer Fit Options" prod bug.
+            // Both finalize + render now also have a code/SKU fallback so
+            // a missing name never leaves a blank label.
             dealerFit: (selectedDealerFitData || []).map((sel: any) => ({
                 id: sel.id || null,
                 name: sel.name || 'Dealer Fit',
                 category: sel.category || null,
-                items: (sel.items || []).map((i: any) => ({
-                    // Firestore warehouse items may use various field names for the display label
-                    name: i.data?.['OPERATION DESCRIPTION'] || i.data?.ITEM_NAME || i.data?.['Product Name'] || i.data?.name || i.data?.Name || i.data?.Description || i.data?.description || i.name || 'Item',
-                    sellPriceExclGst: resolvePrice(i.data || {}),
-                    imageUrl: i.data?.imageLink || i.data?.['Image Link'] || i.data?.imageUrl || i.data?.image || i.data?.SummaryImage || null,
-                })),
+                items: (sel.items || []).map((i: any) => {
+                    const d = i.data || {};
+                    // Try every reasonable field name a CSV/xlsx import could carry.
+                    const name = d['OPERATION DESCRIPTION']
+                        || d['PART DESCRIPTION']
+                        || d['Item Description']
+                        || d['Long Description']
+                        || d.ITEM_NAME
+                        || d['Product Name']
+                        || d['Part Name']
+                        || d.partName
+                        || d.name
+                        || d.Name
+                        || d.Title
+                        || d.Heading
+                        || d.Description
+                        || d.description
+                        || i.name
+                        || '';
+                    // Code/SKU/part-number fallback — used at render when
+                    // name comes through blank (legacy snapshots, or a
+                    // warehouse item missing every name field).
+                    const code = d['Part Number']
+                        || d['Part No']
+                        || d.PartNumber
+                        || d.partNumber
+                        || d.SKU
+                        || d.sku
+                        || d.code
+                        || d.Code
+                        || d.nsmCode
+                        || d.factoryCode
+                        || null;
+                    return {
+                        name: name || code || 'Dealer Fit Item',
+                        code,
+                        sellPriceExclGst: resolvePrice(d),
+                        imageUrl: d.imageLink || d['Image Link'] || d.imageUrl || d.image || d.SummaryImage || null,
+                    };
+                }),
             })),
 
             // Pricing

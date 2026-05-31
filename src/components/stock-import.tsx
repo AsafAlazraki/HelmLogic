@@ -277,7 +277,13 @@ export function StockImport({ moduleId, organisationId, vendorId, onComplete }: 
 
                 await addDoc(collection(firestore, 'inventory'), {
                     name: item.name || item.model || 'Imported Item',
-                    stockNumber: item.stockNumber || `IMP-${Date.now().toString().slice(-6)}`,
+                    // v1.10 fix — Date.now-based fallback collided when
+                    // multiple rows imported within the same millisecond
+                    // (which is the common case for batch xlsx imports),
+                    // producing duplicate stockNumbers + unbounded
+                    // duplicate inventory rows on re-import. Random suffix
+                    // makes the fallback per-row-unique.
+                    stockNumber: item.stockNumber || `IMP-${Date.now().toString(36).slice(-6)}-${Math.random().toString(36).slice(2, 6)}`,
                     label: item.label || '',
                     status: item.status || 'In Stock',
                     location: item.location || '',
