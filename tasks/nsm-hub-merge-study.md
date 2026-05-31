@@ -80,7 +80,21 @@ NSM-Hub's catalogue + `BMTQuote` model is strikingly parallel to HelmLogic's `da
 
 ---
 
-## Strategic fork — the decision to make together
+## ✅ DECISION (locked 2026-05-14)
+
+**NSM-Hub becomes a module within HelmLogic.** HL is the base. NSM-Hub's
+work is absorbed as new domains/modules inside HL, on a **shared data
+model + schema** (one Firestore, HL's project). **ALL existing NSM-Hub
+data is migrated** into HL with **zero downtime**.
+
+This is Option A (HL absorbs) + Option D's CPQ convergence (one shared
+CPQ schema, not two). Remaining upstream decisions (stack direction +
+duplicate-CPQ fate) are being settled before the full program plan is
+written — see `tasks/nsm-hub-merge-plan.md` once those land.
+
+---
+
+## Strategic fork — superseded by the decision above (kept for context)
 
 The overlap means this isn't a clean "add NSM-Hub's features." There's a duplicate Highfield-CPQ core to reconcile AND net-new domains to absorb. Four directions:
 
