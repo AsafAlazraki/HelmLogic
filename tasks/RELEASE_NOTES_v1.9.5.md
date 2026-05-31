@@ -69,15 +69,21 @@ Read-only drill-in; no writes.
 
 ---
 
-## 🔧 Hotfix — emailTemplates Firestore rules (prod)
+## 🔧 Hotfix — "Something went wrong" on Create Proposal (prod)
 
-A prod user (Bill Hull) hit **"Something went wrong — Missing or insufficient permissions"** going to Create Proposal: a `list` on `organisations/{orgId}/emailTemplates` was denied by Firestore Security Rules.
+A prod user (Bill Hull) hit a full-page **"Something went wrong — Missing or insufficient permissions"** crash going to Create Proposal, citing a `list` on `organisations/{orgId}/emailTemplates`.
 
-**Root cause:** the *deployed* ruleset in Firebase Console had drifted — the `emailTemplates` match block had been dropped by a partial paste in an earlier deploy. The repo `firestore.rules` is correct (the rule is present); the Console copy was stale. This is the exact recurrence the CLAUDE.md lesson warns about.
+**Root cause (NOT the rules):** the deployed Firestore rules are correct — `emailTemplates` allows `read` (covers `list`) for any signed-in user, and Bill is signed in. The real bug is in the app:
 
-**Fix:** re-deploy the complete `firestore.rules` from the repo (the full ruleset is published to Firebase Console as part of this release). Post-deploy, the critical paths must be eyeball-verified in the Console editor: `emailTemplates`, `auditLog`, `sentEmails`, `contentBlocks`, `contentOverrides`, `compatibilityRules`, `sharePointConfig`, `pdfStructure`, `salesTeam`.
+1. `SendQuoteDialog` is mounted by `proposal-view` **whether or not it's open**, and it called `useEmailTemplates(...)` **unconditionally on mount** — so the emailTemplates query fired on *every* proposal / Create-Proposal load, even though email sending is gated off in prod.
+2. That query used `orderBy('isDefault','desc').orderBy('updatedAt','desc')`, which forces a **composite index**. If the index isn't deployed (or any transient/propagation read error occurs), the query fails.
+3. The Firebase **error-emitter** promotes any such `useCollection` read failure into a throw that the **global error boundary** (`app/global-error.tsx`) renders as the full-page "Something went wrong" — so a non-critical template read white-screened the entire proposal flow.
 
-No code change was required — the repo rules already allow `read` (covers `get` + `list`) on `emailTemplates` for signed-in users. This is a deploy-state fix.
+**Fix (code, two parts):**
+- `send-quote-dialog.tsx` — only subscribe to email templates when the dialog is actually **open** (`useEmailTemplates(open ? orgId : null, …)`). On Create Proposal (dialog closed) the query no longer fires at all → no crash.
+- `email-send.ts` `useEmailTemplates` — dropped the `orderBy` clauses (single equality filter needs no composite index) and **sort client-side** instead (the list is a handful of templates). Removes the index-dependency failure mode entirely, so even when the dialog opens the read is robust.
+
+No rules change — the repo + deployed rules were already correct. (The earlier instinct to re-deploy rules was wrong; the deployed ruleset was verified identical to the repo, with `emailTemplates` present and correctly nested.)
 
 ---
 
@@ -89,8 +95,12 @@ src/lib/
 src/components/
   roadmap-view.tsx             (clickable ReleaseHeader + ReleaseDetailDialog popup)
   backlog-view.tsx             (one-shot restructure tooling added + removed within the cycle — net baseline)
+  send-quote-dialog.tsx        (HOTFIX — only subscribe to templates when dialog is open)
 
-firestore.rules                (unchanged in repo — correct; re-deployed to fix Console drift)
+src/lib/
+  email-send.ts                (HOTFIX — useEmailTemplates: drop orderBy / composite-index dep, sort client-side)
+
+firestore.rules                (unchanged — verified correct + already deployed; NOT the cause)
 
 tasks/
   RELEASE_NOTES_v1.9.5.md      (this file)

@@ -76,6 +76,7 @@ import {
     type Timestamp,
 } from 'firebase/firestore';
 import type { FirebaseStorage } from 'firebase/storage';
+import { useMemo } from 'react';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { uploadFileToStorage } from '@/firebase/storage';
@@ -194,18 +195,33 @@ function formatTotalForEmail(financials: any): string {
  */
 export function useEmailTemplates(orgId: string | null | undefined, templateType: EmailTemplateType) {
     const firestore = useFirestore();
+    // v1.9.5 fix — single equality filter only, NO orderBy. The previous
+    // `orderBy('isDefault','desc').orderBy('updatedAt','desc')` forced a
+    // composite index; if that index isn't deployed the query fails with
+    // failed-precondition, which the error-emitter promotes to a full-page
+    // crash. An equality filter alone needs no composite index. The list
+    // is tiny (a few templates per org) so we sort client-side below.
     const ref = useMemoFirebase(
         () => (orgId
             ? query(
                 collection(firestore, 'organisations', orgId, 'emailTemplates'),
                 where('templateType', '==', templateType),
-                orderBy('isDefault', 'desc'),
-                orderBy('updatedAt', 'desc'),
             )
             : null),
         [firestore, orgId, templateType],
     );
-    return useCollection<EmailTemplate>(ref);
+    const result = useCollection<EmailTemplate>(ref);
+    const sorted = useMemo<EmailTemplate[] | null>(() => {
+        if (!result.data) return null;
+        return [...result.data].sort((a, b) => {
+            // isDefault first, then most-recently-updated.
+            if (!!a.isDefault !== !!b.isDefault) return a.isDefault ? -1 : 1;
+            const au = (a as any).updatedAt?.toMillis?.() ?? 0;
+            const bu = (b as any).updatedAt?.toMillis?.() ?? 0;
+            return bu - au;
+        });
+    }, [result.data]);
+    return { ...result, data: sorted };
 }
 
 /**
