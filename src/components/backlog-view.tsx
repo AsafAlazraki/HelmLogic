@@ -28,11 +28,9 @@ import {
     ChevronRight,
     HelpCircle,
     Layers,
-    Loader2,
     Lock,
     Plus,
     Sparkles,
-    Wand2,
     Wrench,
     FileText,
     Scale,
@@ -40,30 +38,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { useToast } from '@/hooks/use-toast';
-import { RestructureWorkbench } from '@/components/restructure-workbench';
-import {
-    applyRestructurePlan,
-    computeRestructurePlan,
-    type RestructurePlan,
-} from '@/lib/v110-restructure-apply';
-import {
-    applyServiceQuotingSeed,
-    computeServiceQuotingSeed,
-    seedPointsByRelease,
-    type ServiceQuotingSeedPlan,
-} from '@/lib/v110-service-quoting-seed';
-import { capacityTint, CATEGORY_EPIC_KEYWORDS, type Category } from '@/lib/v110-restructure-rules';
 import { cn } from '@/lib/utils';
 import { isReleaseShipped } from '@/lib/release-schedule';
 import {
@@ -118,111 +92,6 @@ export function BacklogView() {
     const [createEpicOpen, setCreateEpicOpen] = useState(false);
     /** v1.6 — open Create Feature with this epic pre-filled. null = closed. */
     const [addStoryEpicId, setAddStoryEpicId] = useState<string | null>(null);
-
-    /** v1.10 restructure — one-shot Workbench sheet open state. Button +
-     *  sheet + module removed in the follow-up commit after the user
-     *  clicks Apply, per CONVENTIONS.md one-shot lifecycle. */
-    const [workbenchOpen, setWorkbenchOpen] = useState(false);
-
-    /** v1.10 restructure — auto-apply confirm dialog + run state. The
-     *  non-interactive "just do it" path: rules run across every story,
-     *  the dialog previews the full destination plan, one confirm moves
-     *  everything. Computed lazily from the loaded `features` when the
-     *  dialog opens. */
-    const { toast } = useToast();
-    const [autoApplyOpen, setAutoApplyOpen] = useState(false);
-    const [autoApplying, setAutoApplying] = useState(false);
-
-    /** Resolve a restructure category → epic id by matching the loaded
-     *  epics' titles against the category's keyword list. First confident
-     *  match wins; returns null when no epic matches (story stays unfiled). */
-    const resolveEpicForCategory = useMemo(() => {
-        const all = epics ?? [];
-        return (category: Category): string | null => {
-            const keywords = CATEGORY_EPIC_KEYWORDS[category] ?? [];
-            for (const kw of keywords) {
-                const hit = all.find(e => (e.title ?? '').toLowerCase().includes(kw));
-                if (hit) return hit.id;
-            }
-            return null;
-        };
-    }, [epics]);
-
-    /** Epic 11 — Service Quoting seed plan (NSM-Hub absorption). Folded
-     *  into the SAME Auto-Apply button so the restructure + the new
-     *  Service Quoting backlog land in one click. Computed FIRST so its
-     *  fixed-target points can pre-load the restructure's capacity tracker. */
-    const serviceQuotingSeed = useMemo<ServiceQuotingSeedPlan | null>(
-        () => (features && epics ? computeServiceQuotingSeed(features, epics) : null),
-        [features, epics],
-    );
-
-    /** Pre-load map for the unified capacity tracker: Epic 11 seed points
-     *  per release. Lets the band-packers account for these fixed-target
-     *  stories when checking capacity (so v1.10 doesn't go red from
-     *  both restructure + seed targeting it independently). */
-    const seedPreload = useMemo<Record<string, number>>(() => {
-        if (!serviceQuotingSeed) return {};
-        const out: Record<string, number> = {};
-        for (const [rel, info] of Object.entries(seedPointsByRelease(serviceQuotingSeed))) {
-            out[rel] = info.points;
-        }
-        return out;
-    }, [serviceQuotingSeed]);
-
-    const restructurePlan = useMemo<RestructurePlan | null>(
-        () => (features ? computeRestructurePlan(features, resolveEpicForCategory, seedPreload) : null),
-        [features, resolveEpicForCategory, seedPreload],
-    );
-
-    /** Capacity preview combining the restructure's post-move buckets
-     *  with the new Service Quoting stories' points, so the dialog shows
-     *  the TRUE capacity after BOTH operations. */
-    const combinedCapacity = useMemo(() => {
-        if (!restructurePlan) return [];
-        const merged: Record<string, { release: string; count: number; points: number }> = {};
-        for (const b of restructurePlan.afterByRelease) {
-            merged[b.release] = { release: b.release, count: b.count, points: b.points };
-        }
-        if (serviceQuotingSeed) {
-            for (const [rel, add] of Object.entries(seedPointsByRelease(serviceQuotingSeed))) {
-                (merged[rel] ??= { release: rel, count: 0, points: 0 });
-                merged[rel].count += add.count;
-                merged[rel].points += add.points;
-            }
-        }
-        return Object.values(merged).sort((a, b) => a.release.localeCompare(b.release, undefined, { numeric: true }));
-    }, [restructurePlan, serviceQuotingSeed]);
-
-    async function handleAutoApply() {
-        if (!restructurePlan) return;
-        setAutoApplying(true);
-        try {
-            // 1. The restructure (move existing stories).
-            const { ok, failed } = await applyRestructurePlan(firestore, restructurePlan);
-            // 2. Seed Epic 11 — Service Quoting (NSM-Hub absorption) in the
-            //    same click. Idempotent — skips anything already present.
-            let seedMsg = '';
-            if (serviceQuotingSeed && (serviceQuotingSeed.epicToCreate || serviceQuotingSeed.toCreate.length > 0)) {
-                const sr = await applyServiceQuotingSeed(firestore, serviceQuotingSeed);
-                seedMsg = ` · Epic 11${sr.epicCreated ? ' created' : ''} + ${sr.storiesCreated} service-quoting stories`;
-            }
-            toast({
-                title: failed === 0 ? 'Restructure + Service Quoting seeded' : `Applied with ${failed} failures`,
-                description:
-                    `${ok} stories updated · ${restructurePlan.newlyScheduled} scheduled from Submitted · ` +
-                    `${restructurePlan.epicAssignments} filed into epics · ${restructurePlan.statusBumps} bumped to planned` +
-                    `${seedMsg}${failed ? ` · ${failed} failed` : ''}`,
-                variant: failed === 0 ? 'default' : 'destructive',
-            });
-            setAutoApplyOpen(false);
-        } catch (e: any) {
-            console.error('[v110 auto-apply]', e);
-            toast({ variant: 'destructive', title: 'Auto-apply failed', description: e?.message ?? 'See console.' });
-        } finally {
-            setAutoApplying(false);
-        }
-    }
 
     /** Default: all groups collapsed except those with active features. */
     const [collapsedEpics, setCollapsedEpics] = useState<Set<string>>(new Set());
@@ -334,37 +203,6 @@ export function BacklogView() {
                         >
                             Collapse all
                         </Button>
-                        {/* v1.10 restructure — auto-apply ("just do it").
-                            Primary path: rules run across every story, the
-                            dialog previews the full destination plan, one
-                            confirm moves everything. The Workbench button
-                            beside it is the manual spot-check alternative.
-                            Both one-shot, removed in the cleanup commit. */}
-                        <Button
-                            size="sm"
-                            className="bg-emerald-500 text-white hover:bg-emerald-400 gap-1.5 shadow-sm"
-                            onClick={() => setAutoApplyOpen(true)}
-                            disabled={!restructurePlan || (restructurePlan.moveCount === 0 && (serviceQuotingSeed?.toCreate.length ?? 0) === 0)}
-                            title="Reshuffle the roadmap + seed the NSM-Hub Service Quoting epic, in one click"
-                        >
-                            <Wand2 className="h-4 w-4" />
-                            Auto-Apply v1.10
-                            {restructurePlan && (restructurePlan.moveCount > 0 || (serviceQuotingSeed?.toCreate.length ?? 0) > 0) && (
-                                <span className="ml-0.5 rounded bg-emerald-700/40 px-1.5 text-[10px] font-black tabular-nums">
-                                    {restructurePlan.moveCount + (serviceQuotingSeed?.toCreate.length ?? 0)}
-                                </span>
-                            )}
-                        </Button>
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            className="gap-1.5 shadow-sm"
-                            onClick={() => setWorkbenchOpen(true)}
-                            title="Manual spot-check / per-row override before saving"
-                        >
-                            <Wrench className="h-4 w-4" />
-                            Workbench
-                        </Button>
                         <Button
                             size="sm"
                             className="bg-white text-slate-800 hover:bg-slate-100 gap-1.5 shadow-sm"
@@ -439,95 +277,6 @@ export function BacklogView() {
                 initialEpicId={addStoryEpicId}
             />
 
-            {/* v1.10 restructure — Workbench Sheet. One-shot. Removed in
-                follow-up commit after Apply per CONVENTIONS.md. */}
-            <RestructureWorkbench open={workbenchOpen} onOpenChange={setWorkbenchOpen} />
-
-            {/* v1.10 restructure — Auto-Apply confirm dialog. Shows the
-                full destination plan (every release's post-move count +
-                points, colour-coded by capacity) so the user sees the
-                impact before one confirm moves everything. One-shot. */}
-            <AlertDialog open={autoApplyOpen} onOpenChange={(v) => { if (!autoApplying) setAutoApplyOpen(v); }}>
-                <AlertDialogContent className="max-w-2xl">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                            <Wand2 className="h-4 w-4 text-emerald-600" />
-                            Auto-apply restructure + seed Service Quoting?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription asChild>
-                            <div className="space-y-3 text-sm">
-                                {restructurePlan && (
-                                    <>
-                                        <p>
-                                            <strong>1. Restructure</strong> — update{' '}
-                                            <strong>{restructurePlan.moveCount}</strong> of{' '}
-                                            <strong>{restructurePlan.scoped}</strong> in-scope stories
-                                            ({restructurePlan.newlyScheduled} pulled from the Submitted column,{' '}
-                                            {restructurePlan.epicAssignments} filed into their epic swim-lane,{' '}
-                                            {restructurePlan.statusBumps} bumped to <em>planned</em>). Capacity-aware
-                                            bin-packing across sequential v1.X releases (≤20 pts each): dealer-ops first
-                                            from v1.10, customer-facing from v1.18, notifications last. No release goes
-                                            over cap; nothing left unscheduled.
-                                        </p>
-
-                                        {serviceQuotingSeed && (serviceQuotingSeed.toCreate.length > 0 || serviceQuotingSeed.epicToCreate) && (
-                                            <p>
-                                                <strong>2. NSM-Hub Service Quoting</strong> — {serviceQuotingSeed.epicToCreate ? 'create Epic 11 + ' : ''}
-                                                seed <strong>{serviceQuotingSeed.toCreate.length}</strong> new stories
-                                                ({serviceQuotingSeed.pointsToCreate} pts) across v1.10–v1.13.
-                                                {serviceQuotingSeed.alreadyPresent > 0 && ` (${serviceQuotingSeed.alreadyPresent} already present, skipped.)`}
-                                            </p>
-                                        )}
-
-                                        {/* Capacity preview — combined: restructure moves + new Service Quoting stories */}
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
-                                                Capacity after BOTH (restructure + service-quoting)
-                                            </p>
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {combinedCapacity.map(b => {
-                                                    const tint = capacityTint(b.points);
-                                                    const cls = tint === 'red'
-                                                        ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                                        : tint === 'amber'
-                                                            ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                                            : 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                                                    return (
-                                                        <div key={b.release} className={cn('rounded-lg border px-2 py-1 min-w-[72px]', cls)}>
-                                                            <p className="text-[10px] font-black uppercase tracking-widest">{b.release}</p>
-                                                            <p className="text-xs font-black tabular-nums">{b.points} pts</p>
-                                                            <p className="text-[9px] opacity-70">{b.count} stories</p>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-
-                                        <p className="text-xs text-slate-500">
-                                            Idempotent — safe to re-run (existing stories skipped). Want to override
-                                            individual moves first? Cancel and use the <strong>Workbench</strong>.
-                                            Nothing on a shipped release is touched.
-                                        </p>
-                                    </>
-                                )}
-                            </div>
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={autoApplying}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={(e) => { e.preventDefault(); handleAutoApply(); }}
-                            disabled={autoApplying || !restructurePlan || (restructurePlan.moveCount === 0 && (serviceQuotingSeed?.toCreate.length ?? 0) === 0)}
-                            className="gap-1.5 bg-emerald-600 hover:bg-emerald-500"
-                        >
-                            {autoApplying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
-                            {autoApplying
-                                ? 'Applying…'
-                                : `Move ${restructurePlan?.moveCount ?? 0} + seed ${serviceQuotingSeed?.toCreate.length ?? 0}`}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
 
         </div>
     );
