@@ -29,34 +29,72 @@ import {
 } from '@/lib/v110-restructure-rules';
 
 /* ──────────────────────────────────────────────────────────────────
- * Capacity-aware bin-packing
+ * Capacity-aware bin-packing with a UNIFIED tracker
  *
- * Bands are intentionally OVERSIZED — packBand stacks overflow on the
- * last release in the band, which would pile a 100+ pt blob on one
- * release if the band runs out of room. With release-schedule.ts now
- * carrying v1.10–v1.30 + v2.0–v2.5, the bands have plenty of headroom
- * so packing always finds an under-cap bucket.
+ * Previously each lane's bin-packer ran independently — dealer-ops
+ * filled v1.10, bugs also filled v1.10, Epic 11 seed also targeted
+ * v1.10, and the dialog showed v1.10 at 31+ pts (well over the 20-pt
+ * cap). Lanes weren't aware of each other.
  *
- * Lane bands (start release per category lane):
- *   dealer-ops        → v1.10 … v1.17   (8 releases × 20 pts = 160 pt headroom)
- *   customer-facing   → v1.18 … v1.30   (13 releases × 20 = 260 pt headroom)
- *   notifications     → v2.0  … v2.5    (6 releases, last band, low priority)
- *   bugs (unscheduled cross-cutting w/ bug heuristic)      → v1.10 … v1.14
- *   non-bug unscheduled cross-cutting / unknown            → v1.16 … v1.29
- *   already-scheduled cross-cutting                        → left exactly where it is
+ * The unified tracker fixes that: ONE shared "filled per release" map
+ * threads through every packing pass. Each story's preferred bucket is
+ * tried first; if the bucket would exceed PACK_CAP, the packer rolls
+ * forward through the band until it finds one with room. Pre-loaded
+ * with Epic 11 seed points + already-scheduled cross-cutting so those
+ * fixed-target stories are factored in before any band packs.
+ *
+ * Lane bands (preferred start release per category lane):
+ *   dealer-ops        → v1.10 … v1.30   (wide; takes priority slot first)
+ *   bugs              → v1.10 … v1.14   (rides alongside dealer-ops early)
+ *   customer-facing   → v1.18 … v1.99   (slides after dealer-ops fills mid)
+ *   non-bug cc        → v1.16 … v1.99   (mid spread)
+ *   notifications     → v1.29 … v1.99   (lowest priority, fills after rest)
+ *   already-scheduled cross-cutting     → left exactly where it is
+ *
+ * All bands span into v1.X exhaustively — NO artificial jump to v2.0.
+ * v2.x is reserved for the MVP marker + post-MVP polish, not auto-
+ * populated by the bin-packer. We reach v2.0 organically by filling
+ * v1.10 → v1.99 first.
  * ────────────────────────────────────────────────────────────────── */
 
-const DEALER_OPS_BAND     = ['v1.10', 'v1.11', 'v1.12', 'v1.13', 'v1.14', 'v1.15', 'v1.16', 'v1.17'];
-const CUSTOMER_BAND       = ['v1.18', 'v1.19', 'v1.20', 'v1.21', 'v1.22', 'v1.23', 'v1.24', 'v1.25', 'v1.26', 'v1.27', 'v1.28', 'v1.29', 'v1.30'];
-const NOTIF_BAND          = ['v2.0',  'v2.1',  'v2.2',  'v2.3',  'v2.4',  'v2.5'];
-const BUG_BAND            = ['v1.10', 'v1.11', 'v1.12', 'v1.13', 'v1.14'];
-const CROSS_CUTTING_BAND  = ['v1.16', 'v1.17', 'v1.18', 'v1.19', 'v1.20', 'v1.21', 'v1.22', 'v1.23', 'v1.24', 'v1.25', 'v1.26', 'v1.27', 'v1.28', 'v1.29'];
+/** Build a v1.X range, e.g. v1Range(10, 30) → ['v1.10', ..., 'v1.30']. */
+function v1Range(start: number, end: number): string[] {
+    const out: string[] = [];
+    for (let i = start; i <= end; i++) out.push(`v1.${i}`);
+    return out;
+}
 
-/** Safety-net release for any in-scope, unscheduled story whose category
- *  somehow leaves it un-packed. Should never be hit if the lane filters
- *  cover every category in the type union — but defensive, so nothing
- *  ever lands in UNSCHEDULED post-restructure. */
-const SAFETY_NET_RELEASE  = 'v1.30';
+const DEALER_OPS_BAND     = v1Range(10, 30);
+const CUSTOMER_BAND       = v1Range(18, 99);
+const NOTIF_BAND          = v1Range(29, 99);
+const BUG_BAND            = v1Range(10, 14);
+const CROSS_CUTTING_BAND  = v1Range(16, 99);
+
+/** Safety-net release for any in-scope, unscheduled story that escapes
+ *  every band (e.g. category 'discard'). Guarantees post-restructure
+ *  UNSCHEDULED = 0. Defensive — picks the LAST bucket so the safety net
+ *  doesn't crowd active releases. */
+const SAFETY_NET_RELEASE  = 'v1.99';
+
+/* ──────────────────────────────────────────────────────────────────
+ * CapacityTracker — shared point load per release across all bands
+ * ────────────────────────────────────────────────────────────────── */
+
+class CapacityTracker {
+    private filled: Record<string, number> = {};
+
+    addLoad(release: string, points: number): void {
+        this.filled[release] = (this.filled[release] ?? 0) + points;
+    }
+
+    canFit(release: string, points: number): boolean {
+        const cur = this.filled[release] ?? 0;
+        // Always allow at least one story per bucket even if it's huge
+        // (better than dropping). Otherwise: must not exceed PACK_CAP.
+        if (cur === 0) return true;
+        return cur + points <= PACK_CAP;
+    }
+}
 
 /** Bug detector: the explicit `type === 'bug'` first, then a title
  *  heuristic for stories that were filed as features but read as bugs
@@ -85,15 +123,18 @@ function pts(f: FeatureDoc): number {
 }
 
 /**
- * Bin-pack a category's features into its release band. Front-loads by
- * priority (critical first), then by points descending so big stories
- * land early. Rolls to the next band release when the current bucket
- * would exceed PACK_CAP. Overflow past the band's last release stacks
- * on that last release (better than dropping).
+ * Bin-pack a category's features into its release band, AWARE of what's
+ * already loaded in those releases (via the shared CapacityTracker).
+ * Front-loads by priority (critical first), then by points descending.
+ *
+ * For each story: walks the band looking for the first release that
+ * can fit; if every band release is full, stacks on the LAST release
+ * (better than dropping). Updates the tracker as it goes so subsequent
+ * stories see the new load.
  *
  * Returns a map of feature.id → assigned release.
  */
-function packBand(feats: FeatureDoc[], band: string[]): Map<string, string> {
+function packBand(feats: FeatureDoc[], band: string[], tracker: CapacityTracker): Map<string, string> {
     const sorted = [...feats].sort((a, b) => {
         const pr = priorityRank(a) - priorityRank(b);
         if (pr !== 0) return pr;
@@ -102,18 +143,19 @@ function packBand(feats: FeatureDoc[], band: string[]): Map<string, string> {
         return (a.title || '').localeCompare(b.title || '');
     });
     const out = new Map<string, string>();
-    let bandIdx = 0;
-    let bucketPts = 0;
     for (const f of sorted) {
         const p = pts(f);
-        // Roll to next release if this story would push the bucket over
-        // cap (but always place at least one story per bucket).
-        if (bucketPts > 0 && bucketPts + p > PACK_CAP && bandIdx < band.length - 1) {
-            bandIdx++;
-            bucketPts = 0;
+        // Find first band release with capacity. If none, fall back to
+        // the LAST release in the band (stack rather than drop).
+        let placed = band[band.length - 1];
+        for (const rel of band) {
+            if (tracker.canFit(rel, p)) {
+                placed = rel;
+                break;
+            }
         }
-        out.set(f.id, band[bandIdx]);
-        bucketPts += p;
+        out.set(f.id, placed);
+        tracker.addLoad(placed, p);
     }
     return out;
 }
@@ -176,6 +218,10 @@ export interface RestructurePlan {
 export function computeRestructurePlan(
     features: FeatureDoc[],
     resolveEpic?: EpicResolver,
+    /** Optional: pre-loaded points per release (e.g. Epic 11 seed). The
+     *  unified packer accounts for these so v1.10 doesn't get over-cap
+     *  when a fixed-target seed targets the same bucket. */
+    preloadCapacity?: Record<string, number>,
 ): RestructurePlan {
     // 1. Partition in-scope features by category lane.
     const inScope: { f: FeatureDoc; category: Category }[] = [];
@@ -190,28 +236,45 @@ export function computeRestructurePlan(
     const notifications = inScope.filter(x => x.category === 'customer-facing:notifications').map(x => x.f);
 
     // Cross-cutting: only re-pack the UNSCHEDULED ones (Submitted-column
-    // inflow). Already-scheduled cross-cutting stays put — don't churn
-    // existing scheduling. Split unscheduled into bugs (early) vs non-
-    // bugs (spread mid/late).
+    // inflow). Already-scheduled cross-cutting stays put.
     const ccUnscheduled = inScope.filter(x => x.category === 'cross-cutting' && !x.f.targetRelease);
     const ccBugs    = ccUnscheduled.filter(x => isBug(x.f)).map(x => x.f);
     const ccNonBugs = ccUnscheduled.filter(x => !isBug(x.f)).map(x => x.f);
+    const ccScheduled = inScope.filter(x => x.category === 'cross-cutting' && !!x.f.targetRelease);
 
-    // 2. Bin-pack each lane into its band.
+    // 2. Shared capacity tracker — pre-load with EXTERNAL fixed-target
+    //    points so the band-packers account for them when checking
+    //    capacity. Two sources:
+    //      a) Epic 11 (or any other) seed points the caller passes in
+    //      b) Already-scheduled cross-cutting stories that stay put
+    const tracker = new CapacityTracker();
+    if (preloadCapacity) {
+        for (const [rel, pts] of Object.entries(preloadCapacity)) {
+            tracker.addLoad(rel, pts);
+        }
+    }
+    for (const { f } of ccScheduled) {
+        if (f.targetRelease) tracker.addLoad(f.targetRelease, pts(f));
+    }
+
+    // 3. Pack each lane via the shared tracker (priority order = pack
+    //    order; dealer-ops + bugs first, customer-facing next, then
+    //    cross-cutting spread, notifications last).
     const assignment = new Map<string, string>();
-    for (const [id, rel] of packBand(dealerOps, DEALER_OPS_BAND))      assignment.set(id, rel);
-    for (const [id, rel] of packBand(customer, CUSTOMER_BAND))          assignment.set(id, rel);
-    for (const [id, rel] of packBand(notifications, NOTIF_BAND))        assignment.set(id, rel);
-    for (const [id, rel] of packBand(ccBugs, BUG_BAND))                assignment.set(id, rel);
-    for (const [id, rel] of packBand(ccNonBugs, CROSS_CUTTING_BAND))    assignment.set(id, rel);
+    for (const [id, rel] of packBand(dealerOps,    DEALER_OPS_BAND,    tracker))  assignment.set(id, rel);
+    for (const [id, rel] of packBand(ccBugs,       BUG_BAND,           tracker))  assignment.set(id, rel);
+    for (const [id, rel] of packBand(customer,     CUSTOMER_BAND,      tracker))  assignment.set(id, rel);
+    for (const [id, rel] of packBand(ccNonBugs,    CROSS_CUTTING_BAND, tracker))  assignment.set(id, rel);
+    for (const [id, rel] of packBand(notifications, NOTIF_BAND,         tracker))  assignment.set(id, rel);
 
-    // 2b. Safety net — sweep any UNSCHEDULED in-scope story that didn't
-    // get an assignment (e.g. category 'discard' from the Workbench, or
-    // an unforeseen category edge) into SAFETY_NET_RELEASE. Guarantees
-    // post-restructure UNSCHEDULED = 0.
+    // 4. Safety net — sweep ANY in-scope story that didn't end up with
+    //    an effective target (no assignment AND no current targetRelease)
+    //    into SAFETY_NET_RELEASE. Guarantees post-restructure UNSCHEDULED = 0.
     for (const { f } of inScope) {
-        if (!f.targetRelease && !assignment.has(f.id)) {
+        const effective = assignment.get(f.id) ?? f.targetRelease;
+        if (!effective) {
             assignment.set(f.id, SAFETY_NET_RELEASE);
+            tracker.addLoad(SAFETY_NET_RELEASE, pts(f));
         }
     }
 

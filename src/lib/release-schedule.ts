@@ -30,32 +30,26 @@ export interface ReleaseWindow {
  * shipped releases (v1.5.1, v1.6.1) that used it; new releases just
  * increment the minor.
  */
+/**
+ * Programmatically populate the v1.10 → v1.99 release window.
+ * No artificial gap to v2.0 — bands pack into v1.X sequentially until
+ * we actually reach v2.0 organically. v2.x kept for the MVP marker
+ * + post-MVP polish slots, NOT auto-populated by the restructure bands.
+ */
+function buildV1MinorReleases(): Record<string, ReleaseWindow> {
+    const out: Record<string, ReleaseWindow> = {};
+    for (let i = 10; i <= 99; i++) {
+        out[`v1.${i}`] = {};
+    }
+    return out;
+}
+
 export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     'v1.6':   { shipped: true },
     'v1.7':   { shipped: true },
     'v1.8':   { shipped: true },
     'v1.9':   { shipped: true },
-    'v1.10':  {},
-    'v1.11':  {},
-    'v1.12':  {},
-    'v1.13':  {},
-    'v1.14':  {},
-    'v1.15':  {},
-    'v1.16':  {},
-    'v1.17':  {},
-    'v1.18':  {},
-    'v1.19':  {},
-    'v1.20':  {},
-    'v1.21':  {},
-    'v1.22':  {},
-    'v1.23':  {},
-    'v1.24':  {},
-    'v1.25':  {},
-    'v1.26':  {},
-    'v1.27':  {},
-    'v1.28':  {},
-    'v1.29':  {},
-    'v1.30':  {},
+    ...buildV1MinorReleases(),
     'v2.0':   { isMVP: true },
     'v2.1':   {},
     'v2.2':   {},

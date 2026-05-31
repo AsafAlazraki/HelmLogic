@@ -148,17 +148,31 @@ export function BacklogView() {
         };
     }, [epics]);
 
-    const restructurePlan = useMemo<RestructurePlan | null>(
-        () => (features ? computeRestructurePlan(features, resolveEpicForCategory) : null),
-        [features, resolveEpicForCategory],
-    );
-
     /** Epic 11 — Service Quoting seed plan (NSM-Hub absorption). Folded
      *  into the SAME Auto-Apply button so the restructure + the new
-     *  Service Quoting backlog land in one click. */
+     *  Service Quoting backlog land in one click. Computed FIRST so its
+     *  fixed-target points can pre-load the restructure's capacity tracker. */
     const serviceQuotingSeed = useMemo<ServiceQuotingSeedPlan | null>(
         () => (features && epics ? computeServiceQuotingSeed(features, epics) : null),
         [features, epics],
+    );
+
+    /** Pre-load map for the unified capacity tracker: Epic 11 seed points
+     *  per release. Lets the band-packers account for these fixed-target
+     *  stories when checking capacity (so v1.10 doesn't go red from
+     *  both restructure + seed targeting it independently). */
+    const seedPreload = useMemo<Record<string, number>>(() => {
+        if (!serviceQuotingSeed) return {};
+        const out: Record<string, number> = {};
+        for (const [rel, info] of Object.entries(seedPointsByRelease(serviceQuotingSeed))) {
+            out[rel] = info.points;
+        }
+        return out;
+    }, [serviceQuotingSeed]);
+
+    const restructurePlan = useMemo<RestructurePlan | null>(
+        () => (features ? computeRestructurePlan(features, resolveEpicForCategory, seedPreload) : null),
+        [features, resolveEpicForCategory, seedPreload],
     );
 
     /** Capacity preview combining the restructure's post-move buckets
