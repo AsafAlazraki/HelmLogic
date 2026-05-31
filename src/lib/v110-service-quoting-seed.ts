@@ -141,7 +141,21 @@ export const SERVICE_QUOTING_STORIES: SeedStory[] = [
             'Service-quote PDF template on @react-pdf, reusing HL\'s image-preload + brand-styling patterns from renderQuotePdf.',
             'Renders per-operation labor + parts breakdown + quote totals (ex/inc GST).',
             'Org logo + brand colours; customer + asset header block.',
-            'Download + (later) attach to the existing Send pipeline.',
+            'Download from the quote view; in-memory blob reused by 11.2.4 send.',
+        ],
+    },
+    {
+        prefix: '11.2.4',
+        title: '11.2.4 — Send service quote via email (existing pipeline)',
+        points: 3, type: 'feature', priority: 'high', targetRelease: 'v1.13',
+        description: 'Wire the service-quote PDF into HL\'s existing v1.8 Send pipeline so service quotes ship end-to-end. Reuses email templates + audit-log + auto-lock-on-send patterns; new service-quote template type.',
+        acceptanceCriteria: [
+            'Send button on the service-quote view (uses existing SendQuoteDialog pattern).',
+            'New email-template type: send-service-quote (in /manage → Document Templates → Email tab).',
+            'On send: renderServiceQuotePdf → attach → mail/{id} → sentEmails/{sendId} (same shape as v1.8 1.2.4).',
+            'Audit-log entry on send; auto-lock the service quote on first successful send (same pattern as boat quotes).',
+            'Gated on NEXT_PUBLIC_EMAIL_SEND_ENABLED + recipient email present, same as boat-quote send.',
+            'DEPENDS ON 11.2.3 PDF render.',
         ],
     },
     {
