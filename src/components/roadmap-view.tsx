@@ -49,6 +49,13 @@ import {
     Scale,
     ClipboardCheck,
 } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import {
     FeatureDetailSheet,
@@ -65,6 +72,7 @@ import {
     UNSCHEDULED_KEY,
     getActiveReleaseKey,
     isReleaseShipped,
+    isMVPRelease,
 } from '@/lib/release-schedule';
 
 const EPIC_BAND_BG: Record<EpicColor, string> = {
@@ -98,6 +106,9 @@ export function RoadmapView() {
     const { data: epics } = useCollection<EpicDoc>(epicsRef);
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    /** Release-detail popup — set to a release key (or UNSCHEDULED_KEY)
+     *  when a column header is clicked; shows that release's activities. */
+    const [releaseDetailKey, setReleaseDetailKey] = useState<string | null>(null);
     const [activeId, setActiveId] = useState<string | null>(null);
     /**
      * Optimistic overlay for the dragged feature — same pattern as the
@@ -431,6 +442,7 @@ export function RoadmapView() {
                                     items={itemsByRelease[rk]}
                                     isActive={activeReleaseKey === rk}
                                     isBacklog={rk === UNSCHEDULED_KEY}
+                                    onClick={() => setReleaseDetailKey(rk)}
                                 />
                             ))}
                         </div>
@@ -524,7 +536,150 @@ export function RoadmapView() {
                 open={selectedFeature !== null}
                 onOpenChange={(v) => { if (!v) setSelectedId(null); }}
             />
+
+            {/* Release-detail popup — opened by clicking a column header.
+                Lists every activity (story) in that release, grouped by
+                epic. Clicking a story opens its detail sheet. */}
+            <ReleaseDetailDialog
+                releaseKey={releaseDetailKey}
+                epics={sortedEpics}
+                grouped={grouped}
+                points={releaseDetailKey ? pointsByRelease[releaseDetailKey] ?? 0 : 0}
+                items={releaseDetailKey ? itemsByRelease[releaseDetailKey] ?? 0 : 0}
+                onOpenChange={(v) => { if (!v) setReleaseDetailKey(null); }}
+                onOpenFeature={(id) => { setReleaseDetailKey(null); setSelectedId(id); }}
+            />
         </div>
+    );
+}
+
+/* ──────────────────────────────────────────────────────────────────
+ * ReleaseDetailDialog — "what's in this release" popup
+ * ────────────────────────────────────────────────────────────────── */
+
+const STATUS_LABEL: Record<string, string> = {
+    'submitted': 'Submitted',
+    'under-review': 'Under Review',
+    'planned': 'Planned',
+    'in-progress': 'In Progress',
+    'shipped': 'Shipped',
+};
+const STATUS_TINT: Record<string, string> = {
+    'submitted': 'bg-slate-100 text-slate-600',
+    'under-review': 'bg-violet-100 text-violet-700',
+    'planned': 'bg-blue-100 text-blue-700',
+    'in-progress': 'bg-amber-100 text-amber-700',
+    'shipped': 'bg-emerald-100 text-emerald-700',
+};
+
+function ReleaseDetailDialog({
+    releaseKey,
+    epics,
+    grouped,
+    points,
+    items,
+    onOpenChange,
+    onOpenFeature,
+}: {
+    releaseKey: string | null;
+    epics: EpicDoc[];
+    grouped: Record<string, Record<string, FeatureDoc[]>>;
+    points: number;
+    items: number;
+    onOpenChange: (v: boolean) => void;
+    onOpenFeature: (id: string) => void;
+}) {
+    const isBacklog = releaseKey === UNSCHEDULED_KEY;
+    const shipped = releaseKey ? isReleaseShipped(releaseKey) : false;
+    const mvp = releaseKey ? isMVPRelease(releaseKey) : false;
+
+    // Build epic → features for the clicked release (+ unfiled bucket),
+    // keeping only epics that actually have stories in this release.
+    const sections: { key: string; label: string; color: EpicColor | null; feats: FeatureDoc[] }[] = [];
+    if (releaseKey) {
+        for (const e of epics) {
+            const feats = grouped[e.id]?.[releaseKey] ?? [];
+            if (feats.length > 0) {
+                sections.push({ key: e.id, label: e.shortLabel || e.title, color: e.color, feats });
+            }
+        }
+        const unfiled = grouped[UNFILED_EPIC_KEY]?.[releaseKey] ?? [];
+        if (unfiled.length > 0) {
+            sections.push({ key: UNFILED_EPIC_KEY, label: 'Unfiled', color: null, feats: unfiled });
+        }
+    }
+
+    return (
+        <Dialog open={releaseKey !== null} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        {isBacklog ? 'Backlog' : releaseKey}
+                        {shipped && (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] font-black uppercase tracking-widest bg-emerald-600 text-white rounded-full px-1.5 py-0.5">
+                                <CheckCircle2 className="h-2.5 w-2.5" /> Shipped
+                            </span>
+                        )}
+                        {mvp && !shipped && (
+                            <span className="text-[9px] font-black uppercase tracking-widest bg-indigo-600 text-white rounded-full px-1.5 py-0.5">
+                                MVP target
+                            </span>
+                        )}
+                    </DialogTitle>
+                    <DialogDescription>
+                        {items} {items === 1 ? 'activity' : 'activities'} · {points} pts ·{' '}
+                        {sections.length} {sections.length === 1 ? 'epic' : 'epics'} represented.
+                        {isBacklog && ' These stories have no target release yet.'}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 space-y-4">
+                    {sections.length === 0 && (
+                        <div className="rounded-xl border-2 border-dashed bg-slate-50 p-8 text-center">
+                            <p className="text-sm font-semibold text-slate-600">No activities in this release</p>
+                            <p className="text-xs text-slate-400 mt-1">Nothing is scheduled here yet.</p>
+                        </div>
+                    )}
+                    {sections.map(sec => {
+                        const secPts = sec.feats.reduce((s, f) => s + (f.points ?? 0), 0);
+                        return (
+                            <div key={sec.key}>
+                                <div className="flex items-center gap-2 mb-1.5">
+                                    <span className={cn('h-2.5 w-2.5 rounded-full', sec.color ? EPIC_BAND_BG[sec.color] : 'bg-slate-300')} />
+                                    <p className="text-[11px] font-black uppercase tracking-widest text-slate-700">{sec.label}</p>
+                                    <span className="text-[10px] text-slate-400">· {sec.feats.length} · {secPts} pts</span>
+                                </div>
+                                <ul className="space-y-1">
+                                    {sec.feats
+                                        .slice()
+                                        .sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+                                        .map(f => {
+                                            const st = f.status ?? 'submitted';
+                                            return (
+                                                <li key={f.id}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => onOpenFeature(f.id)}
+                                                        className="w-full text-left rounded-lg border bg-white px-3 py-2 hover:border-slate-300 hover:bg-slate-50 transition-colors flex items-center gap-2"
+                                                    >
+                                                        <span className="flex-1 min-w-0 text-xs font-semibold text-slate-800 truncate">{f.title}</span>
+                                                        <span className="shrink-0 text-[9px] font-bold text-slate-600 bg-slate-100 rounded px-1.5 py-0.5">
+                                                            {f.points ?? '?'} pts
+                                                        </span>
+                                                        <span className={cn('shrink-0 text-[9px] font-black uppercase tracking-widest rounded px-1.5 py-0.5', STATUS_TINT[st] ?? STATUS_TINT.submitted)}>
+                                                            {STATUS_LABEL[st] ?? st}
+                                                        </span>
+                                                    </button>
+                                                </li>
+                                            );
+                                        })}
+                                </ul>
+                            </div>
+                        );
+                    })}
+                </div>
+            </DialogContent>
+        </Dialog>
     );
 }
 
@@ -540,19 +695,24 @@ function ReleaseHeader({
     items,
     isActive,
     isBacklog,
+    onClick,
 }: {
     releaseKey: string;
     points: number;
     items: number;
     isActive: boolean;
     isBacklog: boolean;
+    onClick?: () => void;
 }) {
     const shipped = isReleaseShipped(releaseKey);
     const overload = points >= POINTS_RED ? 'red' : points >= POINTS_AMBER ? 'amber' : 'green';
     return (
-        <div
+        <button
+            type="button"
+            onClick={onClick}
+            title={`${isBacklog ? 'Backlog' : releaseKey} — click to see this release's activities`}
             className={cn(
-                'px-3 py-2 border-l first:border-l-0 border-slate-200',
+                'w-full text-left px-3 py-2 border-l first:border-l-0 border-slate-200 transition-colors hover:bg-slate-200/40 cursor-pointer',
                 isBacklog && 'bg-slate-100/80',
                 shipped && !isBacklog && 'bg-emerald-100/80 border-l-emerald-300',
                 !shipped && overload === 'amber' && !isBacklog && 'bg-amber-50',
@@ -606,7 +766,7 @@ function ReleaseHeader({
                     )} />
                 )}
             </div>
-        </div>
+        </button>
     );
 }
 

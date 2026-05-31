@@ -30,25 +30,37 @@ export interface ReleaseWindow {
  * shipped releases (v1.5.1, v1.6.1) that used it; new releases just
  * increment the minor.
  */
+/**
+ * Forward release runway. Sequential v1.X minor versions — NO artificial
+ * jump to v2.0. We increment v1.10 → v1.11 → … and only reach v2.0 once
+ * the v1.X runway is genuinely full ("go to 2 only when we get there").
+ *
+ * Bounded at v1.40 so the Roadmap renders a sane number of columns (the
+ * restructure packs ~25 releases of work; v1.40 gives comfortable buffer
+ * without 90 empty columns). v2.x is intentionally NOT a column yet — it
+ * gets added when the v1.X runway is nearly exhausted.
+ */
+const FORWARD_RUNWAY_END = 40;
+function buildV1MinorReleases(): Record<string, ReleaseWindow> {
+    const out: Record<string, ReleaseWindow> = {};
+    for (let i = 10; i <= FORWARD_RUNWAY_END; i++) {
+        out[`v1.${i}`] = {};
+    }
+    return out;
+}
+
 export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     'v1.6':   { shipped: true },
     'v1.7':   { shipped: true },
     'v1.8':   { shipped: true },
     'v1.9':   { shipped: true },
-    'v1.10':  {},
-    'v1.11':  {},
-    'v1.12':  {},
-    'v1.13':  {},
-    'v1.14':  {},
-    'v1.15':  {},
-    'v1.16':  {},
-    'v1.17':  {},
-    'v1.18':  {},
-    'v1.19':  {},
-    'v1.20':  {},
-    'v2.0':   { isMVP: true },
-    'v2.1':   {},
-    'v2.2':   {},
+    // v1.9.5 — planning + groundwork release: roadmap reshuffle (dealer-ops
+    // pivot + Submitted-column drain + capacity bin-packing), Epic 11
+    // Service Quoting groundwork (NSM-Hub absorption, planned not built),
+    // clickable release-detail popups, + emailTemplates rules re-deploy.
+    // Fractional, like v1.5.1 / v1.6.1. The actual v1.10 BUILD comes next.
+    'v1.9.5': { shipped: true },
+    ...buildV1MinorReleases(),
 };
 
 /** Pseudo-release for features with targetRelease = null. Always rendered last. */
