@@ -31,31 +31,32 @@ import {
 /* ──────────────────────────────────────────────────────────────────
  * Capacity-aware bin-packing
  *
- * The naive "every dealer-ops story → v1.10" rule piles everything into
- * one bucket. A real restructure spreads each category's stories across
- * a band of releases, front-loading by priority and respecting the
- * per-release point cap. This is the "think about flow-on effects"
- * the stakeholder asked for — v1.10 ends up at a sane ~18-20 pts, the
- * rest flow into v1.11, v1.12, ...
+ * Bands are intentionally OVERSIZED — packBand stacks overflow on the
+ * last release in the band, which would pile a 100+ pt blob on one
+ * release if the band runs out of room. With release-schedule.ts now
+ * carrying v1.10–v1.30 + v2.0–v2.5, the bands have plenty of headroom
+ * so packing always finds an under-cap bucket.
  *
- * Bands (start release per category lane):
- *   dealer-ops      → v1.10, v1.11, v1.12, v1.13, v1.14, v1.15, ...
- *   customer-facing → v1.18, v1.19, v1.20, v1.21, ...
- *   notifications   → v1.22, v1.23, ...
- *   cross-cutting   → left where they are (not re-packed)
+ * Lane bands (start release per category lane):
+ *   dealer-ops        → v1.10 … v1.17   (8 releases × 20 pts = 160 pt headroom)
+ *   customer-facing   → v1.18 … v1.30   (13 releases × 20 = 260 pt headroom)
+ *   notifications     → v2.0  … v2.5    (6 releases, last band, low priority)
+ *   bugs (unscheduled cross-cutting w/ bug heuristic)      → v1.10 … v1.14
+ *   non-bug unscheduled cross-cutting / unknown            → v1.16 … v1.29
+ *   already-scheduled cross-cutting                        → left exactly where it is
  * ────────────────────────────────────────────────────────────────── */
 
-const DEALER_OPS_BAND = ['v1.10', 'v1.11', 'v1.12', 'v1.13', 'v1.14', 'v1.15', 'v1.16', 'v1.17'];
-const CUSTOMER_BAND    = ['v1.18', 'v1.19', 'v1.20', 'v1.21'];
-const NOTIF_BAND       = ['v1.22', 'v1.23', 'v1.24'];
+const DEALER_OPS_BAND     = ['v1.10', 'v1.11', 'v1.12', 'v1.13', 'v1.14', 'v1.15', 'v1.16', 'v1.17'];
+const CUSTOMER_BAND       = ['v1.18', 'v1.19', 'v1.20', 'v1.21', 'v1.22', 'v1.23', 'v1.24', 'v1.25', 'v1.26', 'v1.27', 'v1.28', 'v1.29', 'v1.30'];
+const NOTIF_BAND          = ['v2.0',  'v2.1',  'v2.2',  'v2.3',  'v2.4',  'v2.5'];
+const BUG_BAND            = ['v1.10', 'v1.11', 'v1.12', 'v1.13', 'v1.14'];
+const CROSS_CUTTING_BAND  = ['v1.16', 'v1.17', 'v1.18', 'v1.19', 'v1.20', 'v1.21', 'v1.22', 'v1.23', 'v1.24', 'v1.25', 'v1.26', 'v1.27', 'v1.28', 'v1.29'];
 
-/** Unscheduled bugs → fix early (ride alongside dealer-ops; most are
- *  unestimated/small so they don't blow the cap). Unscheduled non-bug
- *  cross-cutting → spread across a mid/late band so no single release
- *  absorbs them all. Per the stakeholder: "bugs in earlier releases,
- *  non-bugs spread out across releases in sensible places." */
-const BUG_BAND          = ['v1.10', 'v1.11', 'v1.12', 'v1.13', 'v1.14'];
-const CROSS_CUTTING_BAND = ['v1.16', 'v1.17', 'v1.18', 'v1.19', 'v1.20', 'v1.21'];
+/** Safety-net release for any in-scope, unscheduled story whose category
+ *  somehow leaves it un-packed. Should never be hit if the lane filters
+ *  cover every category in the type union — but defensive, so nothing
+ *  ever lands in UNSCHEDULED post-restructure. */
+const SAFETY_NET_RELEASE  = 'v1.30';
 
 /** Bug detector: the explicit `type === 'bug'` first, then a title
  *  heuristic for stories that were filed as features but read as bugs
@@ -203,6 +204,16 @@ export function computeRestructurePlan(
     for (const [id, rel] of packBand(notifications, NOTIF_BAND))        assignment.set(id, rel);
     for (const [id, rel] of packBand(ccBugs, BUG_BAND))                assignment.set(id, rel);
     for (const [id, rel] of packBand(ccNonBugs, CROSS_CUTTING_BAND))    assignment.set(id, rel);
+
+    // 2b. Safety net — sweep any UNSCHEDULED in-scope story that didn't
+    // get an assignment (e.g. category 'discard' from the Workbench, or
+    // an unforeseen category edge) into SAFETY_NET_RELEASE. Guarantees
+    // post-restructure UNSCHEDULED = 0.
+    for (const { f } of inScope) {
+        if (!f.targetRelease && !assignment.has(f.id)) {
+            assignment.set(f.id, SAFETY_NET_RELEASE);
+        }
+    }
 
     // 3. Build moves + post-restructure capacity tally.
     const moves: PlannedMove[] = [];
