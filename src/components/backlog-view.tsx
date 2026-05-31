@@ -464,8 +464,10 @@ export function BacklogView() {
                                             <strong>{restructurePlan.scoped}</strong> in-scope stories
                                             ({restructurePlan.newlyScheduled} pulled from the Submitted column,{' '}
                                             {restructurePlan.epicAssignments} filed into their epic swim-lane,{' '}
-                                            {restructurePlan.statusBumps} bumped to <em>planned</em>). Dealer-ops bin-packs
-                                            across v1.10–v1.17; customer-facing slides to v1.18+; notifications to v1.22+.
+                                            {restructurePlan.statusBumps} bumped to <em>planned</em>). Capacity-aware
+                                            bin-packing across sequential v1.X releases (≤20 pts each): dealer-ops first
+                                            from v1.10, customer-facing from v1.18, notifications last. No release goes
+                                            over cap; nothing left unscheduled.
                                         </p>
 
                                         {serviceQuotingSeed && (serviceQuotingSeed.toCreate.length > 0 || serviceQuotingSeed.epicToCreate) && (

@@ -64,17 +64,20 @@ function v1Range(start: number, end: number): string[] {
     return out;
 }
 
-const DEALER_OPS_BAND     = v1Range(10, 30);
-const CUSTOMER_BAND       = v1Range(18, 99);
-const NOTIF_BAND          = v1Range(29, 99);
+// Bands all end at the forward-runway end (v1.40) — sequential v1.X,
+// no jump to v2.0. Distinct START releases give each lane its preferred
+// region; the shared tracker handles overflow into the common tail.
+const DEALER_OPS_BAND     = v1Range(10, 40);
+const CUSTOMER_BAND       = v1Range(18, 40);
+const NOTIF_BAND          = v1Range(30, 40);
 const BUG_BAND            = v1Range(10, 14);
-const CROSS_CUTTING_BAND  = v1Range(16, 99);
+const CROSS_CUTTING_BAND  = v1Range(16, 40);
 
 /** Safety-net release for any in-scope, unscheduled story that escapes
  *  every band (e.g. category 'discard'). Guarantees post-restructure
- *  UNSCHEDULED = 0. Defensive — picks the LAST bucket so the safety net
- *  doesn't crowd active releases. */
-const SAFETY_NET_RELEASE  = 'v1.99';
+ *  UNSCHEDULED = 0. Last bucket in the runway so it doesn't crowd active
+ *  releases but stays within the rendered range. */
+const SAFETY_NET_RELEASE  = 'v1.40';
 
 /* ──────────────────────────────────────────────────────────────────
  * CapacityTracker — shared point load per release across all bands

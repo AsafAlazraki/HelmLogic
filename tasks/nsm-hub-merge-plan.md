@@ -140,9 +140,25 @@ Slots via the same restructure tooling once the stories are seeded.
 
 ---
 
+## Prod release naming — this ships as v1.9.5, NOT v1.10
+
+> 🚨 Per stakeholder (2026-05-14): **the prod release that ships the restructure + Epic 11 seed is v1.9.5, not v1.10.** v1.10 is the *future* release where the dealer-ops + Service Quoting stories actually get BUILT. What we're shipping now is the planning reshuffle + the restructure tooling having run + the backend groundwork — that's a fractional planning release (same pattern as the historical v1.5.1 / v1.6.1).
+>
+> When we do the prod release:
+> - Add `v1.9.5` to `RELEASE_WINDOWS` as `{ shipped: true }`.
+> - Author `tasks/RELEASE_NOTES_v1.9.5.md` + `tasks/USER_GUIDE_v1.9.5.md` (per the every-release ritual).
+> - The button/module names say "v1.10" because that's the restructure's TARGET window — the release vehicle is v1.9.5. Don't confuse the two.
+
+## Release notes must describe the backend setup we're preparing for
+
+> Per stakeholder (2026-05-14): the v1.9.5 release notes must articulate **all the backend groundwork being prepared**, not just the visible reshuffle. Specifically:
+> - The **roadmap reshuffle**: dealer-ops pivot, Submitted-column drain, capacity-aware bin-packing across sequential v1.X releases.
+> - The **NSM-Hub Service Quoting absorption groundwork**: Epic 11 seeded; the planned shared-schema collections (serviceQuotes / serviceOperations / serviceParts); the **zero-downtime migration architecture** (dual-project Admin-SDK reader → transform → HL writer, continuous delta-sync under daily use, tight cutover); the **service-account pre-flight** for `nsm-service-quotation`; customer reconciliation + uid-mapping strategy; the decision to drop NSM-Hub's duplicate CPQ.
+> - In short: the notes should read as "here is the intensive backend setup we've designed + prepared for the Service Quoting migration," so stakeholders see the engineering groundwork, not just moved cards.
+
 ## Final step (deferred — do LAST, once everything is built)
 
-> Per stakeholder (2026-05-14): after the restructure + Epic 11 seeding + the actual Service Quoting build are all done, **ship the whole thing to prod** with comprehensive release notes that articulate the full intensive effort — the multi-release roadmap reshuffle (dealer-ops pivot + Submitted-column drain + capacity bin-packing) AND the NSM-Hub Service Quoting absorption (module rebuild + zero-downtime data migration). This is the closing act of the program, not done now.
+> After the restructure + Epic 11 seeding + the actual Service Quoting build are all done, **ship to prod as v1.9.5** with the comprehensive release notes described above — the full intensive effort: roadmap reshuffle AND the NSM-Hub Service Quoting absorption groundwork (module rebuild plan + zero-downtime data-migration architecture). Closing act of the program, not done now.
 
 ---
 

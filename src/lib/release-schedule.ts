@@ -31,14 +31,19 @@ export interface ReleaseWindow {
  * increment the minor.
  */
 /**
- * Programmatically populate the v1.10 → v1.99 release window.
- * No artificial gap to v2.0 — bands pack into v1.X sequentially until
- * we actually reach v2.0 organically. v2.x kept for the MVP marker
- * + post-MVP polish slots, NOT auto-populated by the restructure bands.
+ * Forward release runway. Sequential v1.X minor versions — NO artificial
+ * jump to v2.0. We increment v1.10 → v1.11 → … and only reach v2.0 once
+ * the v1.X runway is genuinely full ("go to 2 only when we get there").
+ *
+ * Bounded at v1.40 so the Roadmap renders a sane number of columns (the
+ * restructure packs ~25 releases of work; v1.40 gives comfortable buffer
+ * without 90 empty columns). v2.x is intentionally NOT a column yet — it
+ * gets added when the v1.X runway is nearly exhausted.
  */
+const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
-    for (let i = 10; i <= 99; i++) {
+    for (let i = 10; i <= FORWARD_RUNWAY_END; i++) {
         out[`v1.${i}`] = {};
     }
     return out;
@@ -50,12 +55,6 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     'v1.8':   { shipped: true },
     'v1.9':   { shipped: true },
     ...buildV1MinorReleases(),
-    'v2.0':   { isMVP: true },
-    'v2.1':   {},
-    'v2.2':   {},
-    'v2.3':   {},
-    'v2.4':   {},
-    'v2.5':   {},
 };
 
 /** Pseudo-release for features with targetRelease = null. Always rendered last. */
