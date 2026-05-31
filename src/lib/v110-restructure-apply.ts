@@ -49,6 +49,23 @@ const DEALER_OPS_BAND = ['v1.10', 'v1.11', 'v1.12', 'v1.13', 'v1.14', 'v1.15', '
 const CUSTOMER_BAND    = ['v1.18', 'v1.19', 'v1.20', 'v1.21'];
 const NOTIF_BAND       = ['v1.22', 'v1.23', 'v1.24'];
 
+/** Unscheduled bugs → fix early (ride alongside dealer-ops; most are
+ *  unestimated/small so they don't blow the cap). Unscheduled non-bug
+ *  cross-cutting → spread across a mid/late band so no single release
+ *  absorbs them all. Per the stakeholder: "bugs in earlier releases,
+ *  non-bugs spread out across releases in sensible places." */
+const BUG_BAND          = ['v1.10', 'v1.11', 'v1.12', 'v1.13', 'v1.14'];
+const CROSS_CUTTING_BAND = ['v1.16', 'v1.17', 'v1.18', 'v1.19', 'v1.20', 'v1.21'];
+
+/** Bug detector: the explicit `type === 'bug'` first, then a title
+ *  heuristic for stories that were filed as features but read as bugs
+ *  ("X not appearing", "wrong price", "broken", "difference", ...). */
+function isBug(f: FeatureDoc): boolean {
+    if (f.type === 'bug') return true;
+    const t = (f.title || '').toLowerCase();
+    return /\b(bug|broken|error|incorrect|wrong|fix|issue|missing|difference)\b|not (appearing|working|showing|saving|loading)|does ?n'?t|won'?t/.test(t);
+}
+
 /** Per-bucket soft cap. Bin-packer rolls to the next release once a
  *  bucket would exceed this. Uses the standard 20-pt cap (POINTS_CAP_RED
  *  is the "over" threshold, so pack up to but not over it). */
@@ -170,13 +187,22 @@ export function computeRestructurePlan(
     const dealerOps    = inScope.filter(x => x.category.startsWith('dealer-ops')).map(x => x.f);
     const customer     = inScope.filter(x => x.category === 'customer-facing').map(x => x.f);
     const notifications = inScope.filter(x => x.category === 'customer-facing:notifications').map(x => x.f);
-    // cross-cutting + anything else: not re-packed (stay put).
+
+    // Cross-cutting: only re-pack the UNSCHEDULED ones (Submitted-column
+    // inflow). Already-scheduled cross-cutting stays put — don't churn
+    // existing scheduling. Split unscheduled into bugs (early) vs non-
+    // bugs (spread mid/late).
+    const ccUnscheduled = inScope.filter(x => x.category === 'cross-cutting' && !x.f.targetRelease);
+    const ccBugs    = ccUnscheduled.filter(x => isBug(x.f)).map(x => x.f);
+    const ccNonBugs = ccUnscheduled.filter(x => !isBug(x.f)).map(x => x.f);
 
     // 2. Bin-pack each lane into its band.
     const assignment = new Map<string, string>();
-    for (const [id, rel] of packBand(dealerOps, DEALER_OPS_BAND))     assignment.set(id, rel);
-    for (const [id, rel] of packBand(customer, CUSTOMER_BAND))         assignment.set(id, rel);
-    for (const [id, rel] of packBand(notifications, NOTIF_BAND))       assignment.set(id, rel);
+    for (const [id, rel] of packBand(dealerOps, DEALER_OPS_BAND))      assignment.set(id, rel);
+    for (const [id, rel] of packBand(customer, CUSTOMER_BAND))          assignment.set(id, rel);
+    for (const [id, rel] of packBand(notifications, NOTIF_BAND))        assignment.set(id, rel);
+    for (const [id, rel] of packBand(ccBugs, BUG_BAND))                assignment.set(id, rel);
+    for (const [id, rel] of packBand(ccNonBugs, CROSS_CUTTING_BAND))    assignment.set(id, rel);
 
     // 3. Build moves + post-restructure capacity tally.
     const moves: PlannedMove[] = [];
