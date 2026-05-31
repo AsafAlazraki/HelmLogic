@@ -140,6 +140,12 @@ Slots via the same restructure tooling once the stories are seeded.
 
 ---
 
+## Final step (deferred — do LAST, once everything is built)
+
+> Per stakeholder (2026-05-14): after the restructure + Epic 11 seeding + the actual Service Quoting build are all done, **ship the whole thing to prod** with comprehensive release notes that articulate the full intensive effort — the multi-release roadmap reshuffle (dealer-ops pivot + Submitted-column drain + capacity bin-packing) AND the NSM-Hub Service Quoting absorption (module rebuild + zero-downtime data migration). This is the closing act of the program, not done now.
+
+---
+
 ## Next step
 
 Deeper read of NSM-Hub's `service-hub` + `new-quote` + `quote/[id]` pages + the `form/` and `QuoteView`/`QuoteCard` components to size each story precisely, then seed Epic 11 — Service Quoting into the planning system and slot it via the restructure tooling. No merge code until sizing + the service-account pre-flight are cleared.
