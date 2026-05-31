@@ -70,7 +70,16 @@ export function SendQuoteDialog({
     const storage = useStorage();
     const { toast } = useToast();
 
-    const { data: templates } = useEmailTemplates(quote?.organisationId ?? null, 'send-quote');
+    // v1.9.5 fix — only subscribe to email templates when the dialog is
+    // actually OPEN. The dialog is mounted by proposal-view regardless of
+    // open state, so an unconditional subscription fired this query on
+    // every proposal/Create-Proposal load — and any read error there
+    // (rules propagation, missing composite index, transient auth) was
+    // promoted by the Firebase error-emitter into a full-page
+    // "Something went wrong" crash. Passing null until open = no
+    // subscription = no crash on Create Proposal. Templates load the
+    // moment the operator opens Send.
+    const { data: templates } = useEmailTemplates(open ? (quote?.organisationId ?? null) : null, 'send-quote');
 
     /* ──────────── state ──────────── */
 

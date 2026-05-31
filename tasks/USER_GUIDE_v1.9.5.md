@@ -67,15 +67,13 @@ A new **Epic 11 — Service Quoting** appears on the Roadmap (v1.10–v1.13). Th
 
 ## 4. The Create Proposal fix
 
-Some users saw **"Something went wrong — Missing or insufficient permissions"** when moving a quote to **Create Proposal**. This was a Firestore Security Rules issue — the deployed rules in Firebase Console had drifted and were missing the email-templates permission that the proposal flow needs.
+Some users saw **"Something went wrong"** when moving a quote to **Create Proposal**. This is **fixed in code in v1.9.5 — no action needed from you** once this release is deployed.
 
-### What an org admin / HelmLogic admin needs to do
-Re-publish the **complete** `firestore.rules` to Firebase Console (Firestore → Rules → paste the full ruleset → Publish). After publishing, eyeball-confirm these paths exist in the deployed editor: `emailTemplates`, `auditLog`, `sentEmails`, `contentBlocks`, `contentOverrides`, `compatibilityRules`, `sharePointConfig`, `pdfStructure`, `salesTeam`.
+### What was actually wrong
+It was *not* a permissions/rules problem (the rules were correct). The Send-Quote dialog was loading its email-template list on every proposal screen — even when it wasn't open and even though email sending is switched off — and if that background load hit any hiccup, the whole page crashed to the error screen.
 
-Once re-deployed, Create Proposal works normally again — no app change needed.
-
-### Why it happened
-Firestore rules are published by pasting the whole ruleset into the Console; a partial paste in a prior deploy dropped the email-templates block. The repo's rules file was always correct — only the deployed copy had drifted. (We've reinforced the "always paste the full file + verify after publish" discipline in our process notes.)
+### The fix
+The app now only loads email templates when you actually open the Send dialog, and the template lookup was made more robust. Create Proposal no longer depends on that load, so it can't crash the page. Nothing for an admin to deploy — it ships with v1.9.5.
 
 ---
 

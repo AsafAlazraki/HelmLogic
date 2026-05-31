@@ -21,9 +21,9 @@
 | v1.7 | 2026-05-04 | ✅ Shipped | main |
 | v1.8 | 2026-05-11 | ✅ Shipped | main |
 | v1.9 | 2026-05-12 | ✅ Shipped (PR #35) | main |
-| **v1.9.5** | **2026-05-14** | 🚢 **Ready on branch — planning + groundwork + emailTemplates rules hotfix; awaiting PR green-light** | `claude/app-overview-wKiZ1` |
+| **v1.9.5** | **2026-05-14** | 🚢 **Ready on branch — planning + groundwork + Create-Proposal crash hotfix (code); awaiting PR green-light** | `claude/app-overview-wKiZ1` |
 
-> **v1.9.5 = planning + groundwork + hotfix** (fractional, like v1.5.1/v1.6.1). Roadmap reshuffled to dealer-ops priority (157 stories re-targeted, Submitted drained, sequential v1.10–v1.40 runway); Epic 11 Service Quoting seeded as backlog (NSM-Hub absorption — PLANNED, not built); clickable release-detail popups; emailTemplates rules re-deploy. **The actual dealer-ops + Service Quoting BUILD starts at v1.10.** Plans: `tasks/nsm-hub-merge-study.md` + `tasks/nsm-hub-merge-plan.md` + `tasks/v1.10-restructure-plan.md`. 🔧 Hotfix needs the FULL `firestore.rules` re-deployed to Console.
+> **v1.9.5 = planning + groundwork + hotfix** (fractional, like v1.5.1/v1.6.1). Roadmap reshuffled to dealer-ops priority (157 stories re-targeted, Submitted drained, sequential v1.10–v1.40 runway); Epic 11 Service Quoting seeded as backlog (NSM-Hub absorption — PLANNED, not built); clickable release-detail popups; emailTemplates Create-Proposal crash (CODE fix — SendQuoteDialog subscribed to templates unconditionally; not a rules issue). **The actual dealer-ops + Service Quoting BUILD starts at v1.10.** Plans: `tasks/nsm-hub-merge-study.md` + `tasks/nsm-hub-merge-plan.md` + `tasks/v1.10-restructure-plan.md`. 🔧 Hotfix is a CODE fix (SendQuoteDialog template subscription) — NOT a rules re-deploy; deployed rules were verified correct.
 
 > **Note**: this table was backfilled at v1.9 from a stale v1.4-era state. Canonical release state lives in **`CLAUDE.md`** top-of-file table; per-release detail lives in **`tasks/RELEASE_NOTES_vX.Y.Z.md`**.
 
