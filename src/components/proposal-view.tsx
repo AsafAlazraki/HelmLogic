@@ -44,6 +44,7 @@ import {
     Edit3,
     Percent,
     Clock,
+    Wrench,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -70,6 +71,15 @@ import {
     LIFECYCLE_STATE_TINT,
     type LifecycleState,
 } from '@/lib/quote-lifecycle';
+import {
+    FIT_UP_STATUSES,
+    FIT_UP_STATUS_LABEL,
+    FIT_UP_STATUS_DESC,
+    FIT_UP_STATUS_TINT,
+    getFitUpStatus,
+    transitionFitUpStatus,
+    type FitUpStatus,
+} from '@/lib/fit-up-status';
 import { useSiblingScenarios } from '@/lib/quote-scenarios';
 import {
     AlertDialog,
@@ -313,15 +323,26 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
             + (quote.trailer?.options || []).reduce((a: number, o: any) => a + (o.sellPriceExclGst || 0), 0);
         const dealerFitTotal = (quote.dealerFit || []).reduce((a: number, sel: any) =>
             a + (sel.items || []).reduce((b: number, i: any) => b + (i.sellPriceExclGst || 0), 0), 0);
-        // v1.11 (Epic 9.2.2) — Fit-Up totals on the on-screen proposal.
-        // Mirrors the dealerFit pattern: sum sell prices from the
-        // snapshot, cost defaults to 60% of sell unless explicitly set.
+        // v1.11 (Epic 9.2.2 + v1.11 expansion) — Fit-Up totals on the
+        // on-screen proposal. Quantity × (override ?? sellPrice ?? cost).
+        // Cost: quantity × (cost ?? sellPrice × 60%). Older snapshots
+        // without quantity default to qty=1.
         const fitUpTotal = (quote.fitUpSelections || []).reduce(
-            (a: number, sel: any) => a + (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0)),
+            (a: number, sel: any) => {
+                const qty = Math.max(1, sel.quantity ?? 1);
+                const unit = sel.priceOverride != null
+                    ? sel.priceOverride
+                    : (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0));
+                return a + (qty * unit);
+            },
             0,
         );
         const fitUpCost = (quote.fitUpSelections || []).reduce(
-            (a: number, sel: any) => a + (sel.cost != null ? sel.cost : (sel.sellPrice || 0) * 0.6),
+            (a: number, sel: any) => {
+                const qty = Math.max(1, sel.quantity ?? 1);
+                const unit = sel.cost != null ? sel.cost : (sel.sellPrice || 0) * 0.6;
+                return a + (qty * unit);
+            },
             0,
         );
         const subtotalExclGst = boatBasePrice + optionsTotal + regoTotal + motorTotal + trailerTotal + dealerFitTotal + fitUpTotal;
@@ -480,6 +501,28 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         }
     }
 
+    /** v1.11 expansion — Fit-Up workshop status click handler. */
+    const handleFitUpStatusTransition = async (next: FitUpStatus) => {
+        if (!quote?.id || !auditOwnerUid || !user) return;
+        try {
+            await transitionFitUpStatus(firestore, auditOwnerUid, quote.id, next, {
+                byUid: user.uid,
+                byName: userProfile?.displayName || user.displayName || user.email || 'Someone',
+            });
+            toast({
+                title: `Fit-up: ${FIT_UP_STATUS_LABEL[next]}`,
+                description: 'Workshop status updated and logged to the Activity tab.',
+            });
+        } catch (e: any) {
+            console.error('[fit-up-status] failed', e);
+            toast({
+                variant: 'destructive',
+                title: 'Could not update fit-up status',
+                description: e?.message ?? 'See console.',
+            });
+        }
+    };
+
     /** v1.9 (story 1.4.1) — Lifecycle picker click handler. */
     const handleLifecycleTransition = async (next: LifecycleState) => {
         if (!quote?.id || !auditOwnerUid || !user) return;
@@ -628,6 +671,63 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                                             </span>
                                                         </div>
                                                         <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">{LIFECYCLE_STATE_DESC[s]}</p>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </PopoverContent>
+                                </Popover>
+                            )}
+                            {/* v1.11 expansion — Fit-Up workshop status pill.
+                                Only renders when the quote actually has fit-up
+                                selections (otherwise it's noise on plain
+                                vessel-only quotes). Same Popover-pick pattern
+                                as the lifecycle picker. */}
+                            {(quote.fitUpSelections?.length ?? 0) > 0 && (
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <button
+                                            type="button"
+                                            className={cn(
+                                                'rounded-md border text-[8px] font-black uppercase tracking-widest px-2.5 py-0.5 shrink-0 hidden sm:inline-flex items-center gap-1 transition-opacity hover:opacity-80',
+                                                FIT_UP_STATUS_TINT[getFitUpStatus(quote)],
+                                            )}
+                                            aria-label="Change fit-up workshop status"
+                                            title="Workshop status for the fit-up scope on this quote"
+                                        >
+                                            <Wrench className="h-2.5 w-2.5" />
+                                            FIT-UP: {FIT_UP_STATUS_LABEL[getFitUpStatus(quote)]}
+                                            <ChevronDown className="h-3 w-3 opacity-70" />
+                                        </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent align="start" className="w-72 p-1">
+                                        <div className="px-3 py-2 border-b mb-1">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Fit-up workshop status</p>
+                                            <p className="text-[10px] text-slate-500 mt-0.5">Tracks the build progress of the fit-up scope — independent of the sales lifecycle.</p>
+                                        </div>
+                                        {FIT_UP_STATUSES.map((s) => {
+                                            const isCurrent = s === getFitUpStatus(quote);
+                                            return (
+                                                <button
+                                                    key={s}
+                                                    type="button"
+                                                    onClick={() => handleFitUpStatusTransition(s)}
+                                                    disabled={isCurrent}
+                                                    className={cn(
+                                                        'w-full text-left px-2 py-2 rounded-md flex items-start gap-2 hover:bg-slate-50 disabled:opacity-100 disabled:cursor-default',
+                                                    )}
+                                                >
+                                                    <Check className={cn('h-3.5 w-3.5 mt-0.5 shrink-0', isCurrent ? 'text-emerald-600' : 'text-transparent')} />
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className={cn(
+                                                                'text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border',
+                                                                FIT_UP_STATUS_TINT[s],
+                                                            )}>
+                                                                {FIT_UP_STATUS_LABEL[s]}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">{FIT_UP_STATUS_DESC[s]}</p>
                                                     </div>
                                                 </button>
                                             );
@@ -1659,6 +1759,7 @@ const ACTIVITY_META: Record<AuditEventType, { icon: any; label: string; tint: st
     'discount-changed':   { icon: Percent,     label: 'Discount changed',       tint: 'bg-rose-50 text-rose-700 border-rose-200' },
     'lifecycle-transitioned': { icon: Activity, label: 'Status updated',         tint: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
     'scenario-created':   { icon: Layers,      label: 'Scenario created',       tint: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+    'fit-up-status-changed': { icon: Wrench,   label: 'Fit-up status updated',  tint: 'bg-teal-50 text-teal-700 border-teal-200' },
 };
 
 function ActivityRow({ event }: { event: QuoteAuditEvent }) {
@@ -1710,6 +1811,8 @@ function renderSummary(event: QuoteAuditEvent): string | null {
             return m.fromLifecycle && m.toLifecycle
                 ? `${m.fromLifecycle} → ${m.toLifecycle}`
                 : null;
+        case 'fit-up-status-changed':
+            return m.toValue ? `Now: ${m.toValue}` : null;
         case 'scenario-created':
             return m.scenarioLabel
                 ? `Label: "${m.scenarioLabel}"`

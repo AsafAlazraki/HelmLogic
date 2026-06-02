@@ -57,16 +57,24 @@ interface FinalizeQuoteDialogProps {
         selectedTrailerOptionsData: any[];
         customTrailerOptions?: any[];
         selectedDealerFitData: any[];
-        /** v1.11 (Epic 9.2.2) — fit-up items selected for this quote.
-         *  Each carries id + name + tier + cost + sellPrice + notes.
+        /** v1.11 (Epic 9.2.2 + v1.11 expansion) — fit-up selections
+         *  for this quote. Wrapper around a catalog item with per-quote
+         *  quantity, optional price override, and optional operator note.
          *  Snapshotted to quote.fitUpSelections at finalize. */
         selectedFitUpData?: Array<{
-            id: string;
-            name: string;
-            tier: 'simple' | 'medium' | 'complex';
-            cost: number;
-            sellPrice?: number | null;
-            notes?: string | null;
+            item: {
+                id: string;
+                name: string;
+                tier: 'simple' | 'medium' | 'complex';
+                cost: number;
+                sellPrice?: number | null;
+                notes?: string | null;
+                category?: string | null;
+                customerDescription?: string | null;
+            };
+            quantity: number;
+            priceOverride: number | null;
+            quoteNote: string | null;
         }>;
         totalPrice: number;
         isRegoSelected: boolean;
@@ -387,20 +395,29 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 }),
             })),
 
-            // v1.11 (Epic 9.2.2) — Fit-Up snapshots. Each line carries
-            // id + name + tier + cost + sellPrice + notes locked at
-            // finalize time so later catalog edits don't retroactively
-            // change a sent quote. Customer PDF aggregates these into
-            // a single "Fit-up & rigging" summary line per Story 9.2.3
-            // — no per-item breakdown on the customer-facing surface
-            // by deliberate product decision. Notes are operator-only.
-            fitUpSelections: (selectedFitUpData || []).map(item => ({
-                id: item.id,
-                name: item.name,
-                tier: item.tier,
-                cost: item.cost ?? 0,
-                sellPrice: item.sellPrice != null ? item.sellPrice : (item.cost ?? 0),
-                notes: item.notes ?? null,
+            // v1.11 (Epic 9.2.2 + v1.11 expansion) — Fit-Up snapshots.
+            // Each line carries id + name + tier + cost + sellPrice +
+            // category + customerDescription + notes (catalog) + quantity
+            // + priceOverride + quoteNote (per-quote) locked at finalize
+            // time so later catalog edits don't retroactively change a
+            // sent quote. Customer PDF aggregates these into a single
+            // "Fit-up & rigging" summary line per Story 9.2.3 — no
+            // per-item breakdown on the customer-facing surface by
+            // deliberate product decision. Notes + quoteNote are
+            // operator-only. The financial helper multiplies sellPrice
+            // by quantity and honours priceOverride.
+            fitUpSelections: (selectedFitUpData || []).map(sel => ({
+                id: sel.item.id,
+                name: sel.item.name,
+                tier: sel.item.tier,
+                cost: sel.item.cost ?? 0,
+                sellPrice: sel.item.sellPrice != null ? sel.item.sellPrice : (sel.item.cost ?? 0),
+                category: sel.item.category ?? null,
+                customerDescription: sel.item.customerDescription ?? null,
+                notes: sel.item.notes ?? null,
+                quantity: Math.max(1, sel.quantity ?? 1),
+                priceOverride: sel.priceOverride ?? null,
+                quoteNote: sel.quoteNote ?? null,
             })),
 
             // Pricing

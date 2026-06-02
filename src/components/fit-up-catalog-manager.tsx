@@ -43,7 +43,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Plus, Pencil, Trash2, Wrench, Loader2, Upload, Download, Percent, ArrowUpRight } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Plus, Pencil, Trash2, Wrench, Loader2, Upload, Download, Percent, ArrowUpRight, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const TIERS = ['simple', 'medium', 'complex'] as const;
@@ -55,7 +56,18 @@ interface FitUpItem {
     tier: Tier;
     cost: number;
     sellPrice?: number | null;
+    /** Operator-only note. Shown to dealers in admin + the quote selector,
+     *  NEVER on the customer PDF. */
     notes?: string | null;
+    /** v1.11 expansion — free-text category (e.g. "Rigging", "Electronics",
+     *  "Safety"). Drives the category-filter chips in both admin and the
+     *  quote selector. Empty string / null = uncategorised. */
+    category?: string | null;
+    /** v1.11 expansion — customer-facing description. When present,
+     *  shows on the proposal-view's expanded fit-up breakdown in place
+     *  of `name`. PDF stays a single summary line per the locked
+     *  product decision (Story 9.2.3) regardless. */
+    customerDescription?: string | null;
     /** v1.11 (Epic 9.2.1) — assignment allowlists. Empty array on a
      *  field = "no restriction at this level". When two or more lists
      *  are non-empty, ALL non-empty lists must match the current quote
@@ -123,6 +135,8 @@ const TIER_KEYS = ['tier', 'complexity', 'level'];
 const COST_KEYS = ['cost', 'dealer cost', 'buy', 'buy price', 'act ctd'];
 const SELL_KEYS = ['sell', 'sell price', 'retail', 'act sell'];
 const NOTES_KEYS = ['notes', 'note', 'comment'];
+const CATEGORY_KEYS = ['category', 'group', 'section'];
+const CUSTOMER_DESC_KEYS = ['customer description', 'customer-facing description', 'customer name', 'public description'];
 
 function pickField(row: Record<string, any>, candidates: readonly string[]): any {
     const lowered: Record<string, any> = {};
@@ -160,16 +174,33 @@ export function FitUpCatalogManager({ organisationId }: FitUpCatalogManagerProps
     const { data: items, isLoading } = useCollection<FitUpItem>(itemsRef);
 
     const [tierFilter, setTierFilter] = useState<Tier | 'all'>('all');
+    const [categoryFilter, setCategoryFilter] = useState<string | 'all'>('all');
     const [editorOpen, setEditorOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<FitUpItem | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [bulkAction, setBulkAction] = useState<'markup' | 'retier' | 'delete' | null>(null);
     const [importing, setImporting] = useState(false);
 
+    // v1.11 expansion — dynamic list of distinct categories that
+    // actually exist in the catalog. Drives the filter chip row.
+    // Uncategorised items aren't given an explicit chip; "All" surfaces them.
+    const categories = useMemo(() => {
+        const set = new Set<string>();
+        for (const item of items ?? []) {
+            const c = (item.category ?? '').trim();
+            if (c) set.add(c);
+        }
+        return Array.from(set).sort((a, b) => a.localeCompare(b));
+    }, [items]);
+
     const filtered = useMemo(() => {
-        const list = items ?? [];
-        return tierFilter === 'all' ? list : list.filter(i => i.tier === tierFilter);
-    }, [items, tierFilter]);
+        let list = items ?? [];
+        if (tierFilter !== 'all') list = list.filter(i => i.tier === tierFilter);
+        if (categoryFilter !== 'all') {
+            list = list.filter(i => (i.category ?? '').trim().toLowerCase() === categoryFilter.toLowerCase());
+        }
+        return list;
+    }, [items, tierFilter, categoryFilter]);
 
     const tierCounts = useMemo(() => {
         const counts: Record<Tier, number> = { simple: 0, medium: 0, complex: 0 };
@@ -236,9 +267,11 @@ export function FitUpCatalogManager({ organisationId }: FitUpCatalogManagerProps
         }
         const rows = list.map(i => ({
             Name: i.name,
+            Category: i.category ?? '',
             Tier: TIER_LABEL[i.tier],
             Cost: i.cost,
             'Sell Price': i.sellPrice ?? '',
+            'Customer Description': i.customerDescription ?? '',
             Notes: i.notes ?? '',
         }));
         const ws = XLSX.utils.json_to_sheet(rows);
@@ -283,6 +316,10 @@ export function FitUpCatalogManager({ organisationId }: FitUpCatalogManagerProps
                 const sellPrice = asNumber(pickField(row, SELL_KEYS));
                 const notesRaw = pickField(row, NOTES_KEYS);
                 const notes = notesRaw != null ? String(notesRaw).trim() : null;
+                const categoryRaw = pickField(row, CATEGORY_KEYS);
+                const category = categoryRaw != null ? String(categoryRaw).trim() : null;
+                const customerDescRaw = pickField(row, CUSTOMER_DESC_KEYS);
+                const customerDescription = customerDescRaw != null ? String(customerDescRaw).trim() : null;
 
                 const existingItem = byNameKey.get(name.toLowerCase());
                 if (existingItem) {
@@ -293,6 +330,8 @@ export function FitUpCatalogManager({ organisationId }: FitUpCatalogManagerProps
                             cost,
                             sellPrice,
                             notes: notes || null,
+                            category: category || null,
+                            customerDescription: customerDescription || null,
                             updatedAt: serverTimestamp(),
                         }),
                     );
@@ -305,6 +344,8 @@ export function FitUpCatalogManager({ organisationId }: FitUpCatalogManagerProps
                             cost,
                             sellPrice,
                             notes: notes || null,
+                            category: category || null,
+                            customerDescription: customerDescription || null,
                             createdAt: serverTimestamp(),
                             updatedAt: serverTimestamp(),
                         }),
@@ -335,6 +376,19 @@ export function FitUpCatalogManager({ organisationId }: FitUpCatalogManagerProps
     };
 
     return (
+        <Tabs defaultValue="items" className="space-y-4">
+            <TabsList className="rounded-xl">
+                <TabsTrigger value="items" className="rounded-lg text-xs gap-1.5">
+                    <Wrench className="h-3 w-3" /> Items
+                </TabsTrigger>
+                <TabsTrigger value="packages" className="rounded-lg text-xs gap-1.5">
+                    <Package className="h-3 w-3" /> Packages
+                </TabsTrigger>
+            </TabsList>
+            <TabsContent value="packages" className="m-0">
+                <FitUpPackagesManager organisationId={organisationId} items={items ?? []} />
+            </TabsContent>
+            <TabsContent value="items" className="m-0">
         <Card className="rounded-2xl border-2">
             <CardHeader>
                 <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -404,6 +458,31 @@ export function FitUpCatalogManager({ organisationId }: FitUpCatalogManagerProps
                         </Button>
                     ))}
                 </div>
+
+                {categories.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-2 items-center">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Category</span>
+                        <Button
+                            size="sm"
+                            variant={categoryFilter === 'all' ? 'secondary' : 'outline'}
+                            onClick={() => setCategoryFilter('all')}
+                            className="rounded-full h-6 text-[10px] px-2"
+                        >
+                            All
+                        </Button>
+                        {categories.map(cat => (
+                            <Button
+                                key={cat}
+                                size="sm"
+                                variant={categoryFilter === cat ? 'secondary' : 'outline'}
+                                onClick={() => setCategoryFilter(cat)}
+                                className="rounded-full h-6 text-[10px] px-2"
+                            >
+                                {cat}
+                            </Button>
+                        ))}
+                    </div>
+                )}
             </CardHeader>
 
             {selectedIds.size > 0 && (
@@ -484,6 +563,8 @@ export function FitUpCatalogManager({ organisationId }: FitUpCatalogManagerProps
                 }}
             />
         </Card>
+            </TabsContent>
+        </Tabs>
     );
 }
 
@@ -503,6 +584,11 @@ function FitUpItemRow({
                 <Badge variant="outline" className={`${TIER_TONE[item.tier]} text-[10px] font-bold uppercase`}>
                     {TIER_LABEL[item.tier]}
                 </Badge>
+                {item.category && (
+                    <Badge variant="outline" className="text-[10px] font-semibold bg-slate-50 text-slate-700 border-slate-200">
+                        {item.category}
+                    </Badge>
+                )}
                 <div className="min-w-0">
                     <p className="text-sm font-semibold truncate">{item.name}</p>
                     {item.notes && (
@@ -554,6 +640,8 @@ function FitUpItemEditor({
     const [cost, setCost] = useState('');
     const [sellPrice, setSellPrice] = useState('');
     const [notes, setNotes] = useState('');
+    const [category, setCategory] = useState('');
+    const [customerDescription, setCustomerDescription] = useState('');
     const [moduleIds, setModuleIds] = useState<string[]>([]);
     const [brandIds, setBrandIds] = useState<string[]>([]);
     const [rangeIds, setRangeIds] = useState<string[]>([]);
@@ -634,6 +722,8 @@ function FitUpItemEditor({
             setCost(editingItem?.cost != null ? String(editingItem.cost) : '');
             setSellPrice(editingItem?.sellPrice != null ? String(editingItem.sellPrice) : '');
             setNotes(editingItem?.notes ?? '');
+            setCategory(editingItem?.category ?? '');
+            setCustomerDescription(editingItem?.customerDescription ?? '');
             setModuleIds(editingItem?.moduleIds ?? []);
             setBrandIds(editingItem?.brandIds ?? []);
             setRangeIds(editingItem?.rangeIds ?? []);
@@ -694,6 +784,8 @@ function FitUpItemEditor({
                 cost: parsedCost,
                 sellPrice: parsedSell,
                 notes: notes.trim() || null,
+                category: category.trim() || null,
+                customerDescription: customerDescription.trim() || null,
                 // v1.11 — assignment allowlists; empty = no restriction
                 // at that level; the selector AND-combines non-empty
                 // allowlists against the current quote context.
@@ -789,11 +881,39 @@ function FitUpItemEditor({
                     </div>
 
                     <div className="space-y-1.5">
-                        <label className="text-xs font-semibold">Notes — optional</label>
+                        <label className="text-xs font-semibold">Category — optional</label>
+                        <Input
+                            value={category}
+                            onChange={e => setCategory(e.target.value)}
+                            placeholder="e.g., Rigging, Electronics, Safety"
+                            className="rounded-xl border-2"
+                            list="fit-up-category-suggestions"
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                            Groups items in admin + the salesperson selector. Free-text — type to add a new one.
+                        </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-semibold">Customer description — optional</label>
+                        <Textarea
+                            value={customerDescription}
+                            onChange={e => setCustomerDescription(e.target.value)}
+                            placeholder="What the customer should see on the quote (defaults to Name)"
+                            className="rounded-xl border-2 text-xs"
+                            rows={2}
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                            Shown on the proposal's fit-up breakdown when expanded. Customer PDF still rolls up to a single "Fit-up &amp; Rigging" line by product decision.
+                        </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-semibold">Internal notes — optional</label>
                         <Textarea
                             value={notes}
                             onChange={e => setNotes(e.target.value)}
-                            placeholder="Anything operators need to know"
+                            placeholder="Operator-only — never shown to the customer"
                             className="rounded-xl border-2 text-xs"
                             rows={2}
                         />
@@ -1050,6 +1170,321 @@ function BulkActionDialog({
                         {action === 'markup' && 'Apply markup'}
                         {action === 'retier' && 'Change tier'}
                         {action === 'delete' && 'Delete'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+// v1.11 expansion — Fit-Up packages.
+//
+// A package is a named bundle of fit-up item ids that a salesperson can
+// toggle as a unit in the quote flow. Each package row stores the
+// `itemIds` snapshot; the selector resolves them against the live catalog
+// at pick time (so renaming / re-pricing an item is reflected in any
+// quote built AFTER the change — already-finalised quotes still snapshot
+// the resolved items individually). Deleting an item leaves a dangling
+// reference in the package; we filter dangling ids at render time rather
+// than maintaining referential integrity.
+
+export interface FitUpPackage {
+    id: string;
+    name: string;
+    description?: string | null;
+    itemIds: string[];
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+function FitUpPackagesManager({ organisationId, items }: { organisationId: string; items: FitUpItem[] }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const packagesRef = useMemoFirebase(
+        () => query(collection(firestore, 'organisations', organisationId, 'fitUpPackages'), orderBy('name', 'asc')),
+        [firestore, organisationId],
+    );
+    const { data: packages, isLoading } = useCollection<FitUpPackage>(packagesRef);
+
+    const [editorOpen, setEditorOpen] = useState(false);
+    const [editingPackage, setEditingPackage] = useState<FitUpPackage | null>(null);
+
+    const itemById = useMemo(() => {
+        const map = new Map<string, FitUpItem>();
+        for (const item of items) map.set(item.id, item);
+        return map;
+    }, [items]);
+
+    const openCreate = () => {
+        setEditingPackage(null);
+        setEditorOpen(true);
+    };
+    const openEdit = (pkg: FitUpPackage) => {
+        setEditingPackage(pkg);
+        setEditorOpen(true);
+    };
+    const handleDelete = async (pkg: FitUpPackage) => {
+        try {
+            await deleteDoc(doc(firestore, 'organisations', organisationId, 'fitUpPackages', pkg.id));
+            toast({ title: 'Package removed', description: pkg.name });
+        } catch (err) {
+            console.error(err);
+            toast({ variant: 'destructive', title: 'Failed to remove package' });
+        }
+    };
+
+    return (
+        <Card className="rounded-2xl border-2">
+            <CardHeader>
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div>
+                        <CardTitle className="flex items-center gap-2 text-base font-bold">
+                            <Package className="h-4 w-4" />
+                            Fit-Up Packages
+                        </CardTitle>
+                        <CardDescription className="text-xs">
+                            Bundle catalog items into named packages (e.g. "Coastal Setup"). Adding a package on a quote toggles every member item.
+                        </CardDescription>
+                    </div>
+                    <Button size="sm" onClick={openCreate} className="rounded-xl" disabled={items.length === 0}>
+                        <Plus className="h-3.5 w-3.5 mr-1" /> Add package
+                    </Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-12 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <span className="text-xs">Loading packages…</span>
+                    </div>
+                ) : items.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center gap-2 border-2 border-dashed rounded-2xl text-muted-foreground">
+                        <Package className="h-8 w-8 opacity-30" />
+                        <p className="text-xs font-semibold">Add some items first — packages bundle items together.</p>
+                    </div>
+                ) : (packages ?? []).length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center gap-2 border-2 border-dashed rounded-2xl text-muted-foreground">
+                        <Package className="h-8 w-8 opacity-30" />
+                        <p className="text-xs font-semibold">No packages yet.</p>
+                        <p className="text-[10px]">Click "Add package" to bundle items into a named set.</p>
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {(packages ?? []).map(pkg => {
+                            const resolved = pkg.itemIds.map(id => itemById.get(id)).filter(Boolean) as FitUpItem[];
+                            const dangling = pkg.itemIds.length - resolved.length;
+                            const total = resolved.reduce(
+                                (a, i) => a + (i.sellPrice != null ? i.sellPrice : (i.cost ?? 0)),
+                                0,
+                            );
+                            return (
+                                <div key={pkg.id} className="p-3 rounded-xl border-2 hover:border-primary/40 transition-colors">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-bold truncate">{pkg.name}</p>
+                                            {pkg.description && <p className="text-[10px] text-muted-foreground mt-0.5">{pkg.description}</p>}
+                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                {resolved.map(item => (
+                                                    <Badge key={item.id} variant="outline" className="text-[10px] font-semibold">
+                                                        {item.name}
+                                                    </Badge>
+                                                ))}
+                                                {dangling > 0 && (
+                                                    <Badge variant="outline" className="text-[10px] font-semibold bg-amber-50 text-amber-800 border-amber-200">
+                                                        {dangling} deleted item{dangling === 1 ? '' : 's'}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <p className="text-xs font-bold tabular-nums">${total.toLocaleString()}</p>
+                                            <p className="text-[9px] text-muted-foreground">{resolved.length} item{resolved.length === 1 ? '' : 's'}</p>
+                                        </div>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={() => openEdit(pkg)}>
+                                                <Pencil className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-destructive" onClick={() => handleDelete(pkg)}>
+                                                <Trash2 className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </CardContent>
+
+            <FitUpPackageEditor
+                open={editorOpen}
+                onOpenChange={setEditorOpen}
+                organisationId={organisationId}
+                editingPackage={editingPackage}
+                items={items}
+            />
+        </Card>
+    );
+}
+
+function FitUpPackageEditor({
+    open, onOpenChange, organisationId, editingPackage, items,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    organisationId: string;
+    editingPackage: FitUpPackage | null;
+    items: FitUpItem[];
+}) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const isEdit = editingPackage !== null;
+
+    const [name, setName] = useState('');
+    const [description, setDescription] = useState('');
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [saving, setSaving] = useState(false);
+    const [search, setSearch] = useState('');
+
+    useEffect(() => {
+        if (open) {
+            setName(editingPackage?.name ?? '');
+            setDescription(editingPackage?.description ?? '');
+            setSelectedIds(new Set(editingPackage?.itemIds ?? []));
+            setSearch('');
+        }
+    }, [open, editingPackage]);
+
+    const visibleItems = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return items;
+        return items.filter(i =>
+            i.name.toLowerCase().includes(q)
+            || (i.category ?? '').toLowerCase().includes(q)
+            || (i.customerDescription ?? '').toLowerCase().includes(q),
+        );
+    }, [items, search]);
+
+    const toggleItem = (id: string) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
+
+    const handleSave = async () => {
+        const trimmed = name.trim();
+        if (!trimmed) {
+            toast({ variant: 'destructive', title: 'Name required' });
+            return;
+        }
+        if (selectedIds.size === 0) {
+            toast({ variant: 'destructive', title: 'Pick at least one item' });
+            return;
+        }
+        setSaving(true);
+        try {
+            const payload = {
+                name: trimmed,
+                description: description.trim() || null,
+                itemIds: Array.from(selectedIds),
+                updatedAt: serverTimestamp(),
+            };
+            if (isEdit && editingPackage) {
+                await updateDoc(doc(firestore, 'organisations', organisationId, 'fitUpPackages', editingPackage.id), payload);
+                toast({ title: 'Package updated', description: trimmed });
+            } else {
+                await addDoc(collection(firestore, 'organisations', organisationId, 'fitUpPackages'), {
+                    ...payload,
+                    createdAt: serverTimestamp(),
+                });
+                toast({ title: 'Package added', description: trimmed });
+            }
+            onOpenChange(false);
+        } catch (err) {
+            console.error(err);
+            toast({ variant: 'destructive', title: 'Failed to save package' });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>{isEdit ? 'Edit package' : 'Add package'}</DialogTitle>
+                    <DialogDescription className="text-xs">
+                        Bundle catalog items into a named package. Salespeople pick the package and every item turns on at once.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-2">
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-semibold">Name</label>
+                        <Input
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            placeholder="e.g., Coastal Setup"
+                            className="rounded-xl border-2"
+                            autoFocus
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-semibold">Description — optional</label>
+                        <Textarea
+                            value={description}
+                            onChange={e => setDescription(e.target.value)}
+                            placeholder="What the salesperson should know about this package"
+                            className="rounded-xl border-2 text-xs"
+                            rows={2}
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-semibold">Items ({selectedIds.size} selected)</label>
+                        <Input
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            placeholder="Filter items…"
+                            className="rounded-xl border-2 h-8 text-xs"
+                        />
+                        <div className="border-2 rounded-xl max-h-64 overflow-y-auto divide-y">
+                            {visibleItems.length === 0 ? (
+                                <p className="p-3 text-[10px] text-muted-foreground text-center italic">No matching items.</p>
+                            ) : visibleItems.map(item => {
+                                const isSelected = selectedIds.has(item.id);
+                                return (
+                                    <label
+                                        key={item.id}
+                                        className={`flex items-center gap-3 p-2 cursor-pointer hover:bg-slate-50 ${isSelected ? 'bg-primary/5' : ''}`}
+                                    >
+                                        <Checkbox checked={isSelected} onCheckedChange={() => toggleItem(item.id)} />
+                                        <Badge variant="outline" className={`${TIER_TONE[item.tier]} text-[9px] font-bold uppercase shrink-0`}>
+                                            {TIER_LABEL[item.tier]}
+                                        </Badge>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-xs font-semibold truncate">{item.name}</p>
+                                            {item.category && <p className="text-[9px] text-muted-foreground">{item.category}</p>}
+                                        </div>
+                                        <p className="text-xs font-bold tabular-nums shrink-0">
+                                            ${(item.sellPrice != null ? item.sellPrice : (item.cost ?? 0)).toLocaleString()}
+                                        </p>
+                                    </label>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className="rounded-xl">
+                        Cancel
+                    </Button>
+                    <Button onClick={handleSave} disabled={saving} className="rounded-xl">
+                        {saving && <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />}
+                        {isEdit ? 'Save changes' : 'Add package'}
                     </Button>
                 </DialogFooter>
             </DialogContent>

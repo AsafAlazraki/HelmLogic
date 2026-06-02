@@ -62,14 +62,29 @@ function buildSheetSpecs(orgId: string): SheetSpec[] {
             naturalKey: 'name',
             rowShape: d => ({
                 name: d.name ?? '',
+                category: d.category ?? '',
                 tier: d.tier ?? 'simple',
                 cost: d.cost ?? 0,
                 sellPrice: d.sellPrice ?? '',
+                customerDescription: d.customerDescription ?? '',
                 notes: d.notes ?? '',
                 moduleIds: Array.isArray(d.moduleIds) ? d.moduleIds.join('|') : '',
                 brandIds: Array.isArray(d.brandIds) ? d.brandIds.join('|') : '',
                 rangeIds: Array.isArray(d.rangeIds) ? d.rangeIds.join('|') : '',
                 modelIds: Array.isArray(d.modelIds) ? d.modelIds.join('|') : '',
+            }),
+        },
+        {
+            // v1.11 expansion — fit-up packages, bundles of catalog items.
+            // itemIds serialised pipe-separated so a single CSV cell can
+            // round-trip through Excel.
+            sheetName: 'Fit-Up Packages',
+            collectionPath: `organisations/${orgId}/fitUpPackages`,
+            naturalKey: 'name',
+            rowShape: d => ({
+                name: d.name ?? '',
+                description: d.description ?? '',
+                itemIds: Array.isArray(d.itemIds) ? d.itemIds.join('|') : '',
             }),
         },
         {

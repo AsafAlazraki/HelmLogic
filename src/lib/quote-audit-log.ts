@@ -53,7 +53,8 @@ export type AuditEventType =
     | 'content-overridden'      // 1.2.3 — per-quote content-block override saved
     | 'discount-changed'        // proposal-view audit drawer
     | 'lifecycle-transitioned'  // v1.9 (1.4.1) — sales-journey state change
-    | 'scenario-created';       // v1.9 (1.1.3) — sibling scenario spawned
+    | 'scenario-created'        // v1.9 (1.1.3) — sibling scenario spawned
+    | 'fit-up-status-changed';  // v1.11 expansion — workshop fit-up status
 
 export interface AuditEventMetadata {
     /** discount-changed: previous + new values for fast diff render */

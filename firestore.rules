@@ -201,6 +201,19 @@ service cloud.firestore {
       match /fitUpItems/{itemId} {
         allow read, write: if isSignedIn();
       }
+      // v1.11 expansion — Fit-Up packages. Named bundles of fit-up
+      // item ids (e.g. "Coastal Setup" = SUP rack + GPS install +
+      // safety pack). Selecting a package in the quote flow toggles
+      // every member item on/off. Lives at
+      // /organisations/{orgId}/fitUpPackages/{packageId}. Shape:
+      //   { name: string, description?: string,
+      //     itemIds: string[]  // ids in /fitUpItems
+      //     createdAt, updatedAt }
+      // Reads + writes signed-in; UI-layer org-admin gate via /manage's
+      // can_access_settings permission (matches /fitUpItems).
+      match /fitUpPackages/{packageId} {
+        allow read, write: if isSignedIn();
+      }
       // v1.10 (Epic 11.1.1 — Service-quote schema) — Service-quoting
       // catalogue. Two sister subcollections that hold the labor codes
       // and parts catalog used by the service-quote flow (Epic 11.2+,

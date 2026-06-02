@@ -74,7 +74,7 @@ import {
     DialogClose
 } from "@/components/ui/dialog";
 import { FinalizeQuoteDialog } from '@/components/finalize-quote-dialog';
-import { FitUpQuoteSelector, resolveFitUpSell, type FitUpItem } from '@/components/fit-up-quote-selector';
+import { FitUpQuoteSelector, resolveFitUpLineSell, type FitUpItem, type FitUpSelection } from '@/components/fit-up-quote-selector';
 import {
     Table,
     TableBody,
@@ -158,9 +158,11 @@ interface DuplicateInitialState {
     catalogTrailerSnapshot?: TrailerSnapshot | null;
     customTrailerOptions?: CustomOption[];
     selectedDealerFitIds: string[];
-    /** v1.11 (Epic 9.2.2) — fit-up snapshots already on the quote
-     *  when forking / restoring. */
-    selectedFitUpItems?: FitUpItem[];
+    /** v1.11 (Epic 9.2.2 + v1.11 expansion) — fit-up selections
+     *  already on the quote when forking / restoring. Note: the shape
+     *  is the per-quote FitUpSelection (item + qty + override + note),
+     *  NOT the raw FitUpItem from the catalog. */
+    selectedFitUpItems?: FitUpSelection[];
     isRegoSelected: boolean;
     isStickerSelected: boolean;
     isTenderToSelected: boolean;
@@ -253,7 +255,7 @@ export function HighfieldQuoteFlow({
     // not just IDs) so the parent always has the price/cost/tier in
     // scope without needing a second resolve at finalize time. Drains
     // straight into selectedFitUpData on the finalize payload.
-    const [selectedFitUpItems, setSelectedFitUpItems] = useState<FitUpItem[]>(initialState?.selectedFitUpItems ?? []);
+    const [selectedFitUpItems, setSelectedFitUpItems] = useState<FitUpSelection[]>(initialState?.selectedFitUpItems ?? []);
 
     // Custom Option Form State (Boat)
     const [newCustomName, setNewCustomName] = useState('');
@@ -826,11 +828,12 @@ export function HighfieldQuoteFlow({
         selectedDealerFitData.forEach(s => {
             s.items?.forEach((i: any) => { total += getPriceForLevel(i.data, priceLevel); });
         });
-        // v1.11 (Epic 9.2.2) — Fit-Up items contribute to the running
-        // total. Sell-price resolves via resolveFitUpSell (sellPrice
-        // override → cost fallback). Cost-side numbers are computed in
+        // v1.11 (Epic 9.2.2 + v1.11 expansion) — Fit-Up selections
+        // contribute to the running total. Each line is quantity ×
+        // (priceOverride ?? catalog sellPrice ?? cost) — see
+        // resolveFitUpLineSell. Cost-side numbers are computed in
         // quote-financials.ts at finalize/render time, not here.
-        selectedFitUpItems.forEach(item => { total += resolveFitUpSell(item); });
+        selectedFitUpItems.forEach(sel => { total += resolveFitUpLineSell(sel); });
         return total;
     }, [activeVariant, selectedOptionsData, customOptions, customTrailerOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, effectiveTrailerConfig, selectedTrailerOptionsData, selectedDealerFitData, selectedFitUpItems, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, boatRegoSnapshot, trailerRegoSnapshot, model.registration, priceLevel]);
 
@@ -1040,12 +1043,31 @@ export function HighfieldQuoteFlow({
 
     const toggleFitUpItem = (item: FitUpItem) => {
         setSelectedFitUpItems(prev => {
-            const isSelected = prev.some(i => i.id === item.id);
-            return isSelected ? prev.filter(i => i.id !== item.id) : [...prev, item];
+            const isSelected = prev.some(s => s.item.id === item.id);
+            if (isSelected) return prev.filter(s => s.item.id !== item.id);
+            return [...prev, { item, quantity: 1, priceOverride: null, quoteNote: null }];
         });
     };
 
-    const selectedFitUpIds = useMemo(() => selectedFitUpItems.map(i => i.id), [selectedFitUpItems]);
+    // v1.11 expansion — adding a package: union the package's items with
+    // anything already selected. Items already on the quote keep their
+    // qty/override/note untouched; new items get the defaults.
+    const addFitUpPackage = (items: FitUpItem[]) => {
+        setSelectedFitUpItems(prev => {
+            const existingIds = new Set(prev.map(s => s.item.id));
+            const additions = items
+                .filter(i => !existingIds.has(i.id))
+                .map(i => ({ item: i, quantity: 1, priceOverride: null, quoteNote: null }));
+            return [...prev, ...additions];
+        });
+    };
+
+    // v1.11 expansion — per-line patch from the selector's row controls.
+    const updateFitUpSelection = (itemId: string, patch: Partial<Omit<FitUpSelection, 'item'>>) => {
+        setSelectedFitUpItems(prev => prev.map(s => s.item.id === itemId ? { ...s, ...patch } : s));
+    };
+
+    const selectedFitUpIds = useMemo(() => selectedFitUpItems.map(s => s.item.id), [selectedFitUpItems]);
 
     const scrollPanelToTop = () => {
         setTimeout(() => {
@@ -2223,8 +2245,10 @@ export function HighfieldQuoteFlow({
                                     {orgId && (
                                         <FitUpQuoteSelector
                                             organisationId={orgId}
-                                            selectedIds={selectedFitUpIds}
+                                            selections={selectedFitUpItems}
                                             onToggle={toggleFitUpItem}
+                                            onAddPackage={addFitUpPackage}
+                                            onUpdateSelection={updateFitUpSelection}
                                             moduleId={module.id}
                                             vendorId={vendor.id}
                                             rangeId={rangeId}

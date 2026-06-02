@@ -25,15 +25,24 @@ export function buildQuoteFinancials(quote: any, discount = 0) {
     (a: number, sel: any) => a + (sel.items || []).reduce((b: number, i: any) => b + (i.sellPriceExclGst || 0), 0),
     0
   );
-  // v1.11 (Epic 9.2.2) — Fit-Up selections on a quote. Stored as a
-  // flat array of FitUpSnapshot at finalize time (see
-  // finalize-quote-dialog.tsx → fitUpSelections). Each snapshot
-  // captures id + name + tier + cost + sellPrice + notes at the
-  // moment of finalize so later catalogue edits don't retroactively
-  // change a sent quote.
+  // v1.11 (Epic 9.2.2 + v1.11 expansion) — Fit-Up selections on a quote.
+  // Stored as a flat array of FitUpSnapshot at finalize time (see
+  // finalize-quote-dialog.tsx → fitUpSelections). Each snapshot captures
+  // id + name + tier + cost + sellPrice + category + customerDescription
+  // + notes (catalog fields) PLUS quantity + priceOverride + quoteNote
+  // (per-quote fields). Line total = quantity × (priceOverride ??
+  // sellPrice ?? cost). Older quotes (pre-v1.11-expansion) don't have
+  // quantity/priceOverride — default to qty=1, no override, which
+  // matches the original semantics.
   const fitUpTotal = (quote.fitUpSelections || []).reduce(
-    (a: number, sel: any) => a + (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0)),
-    0
+    (a: number, sel: any) => {
+      const qty = Math.max(1, sel.quantity ?? 1);
+      const unit = sel.priceOverride != null
+        ? sel.priceOverride
+        : (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0));
+      return a + (qty * unit);
+    },
+    0,
   );
 
   const subtotalExclGst = boatBasePrice + optionsTotal + regoTotal + motorTotal + trailerTotal + dealerFitTotal + fitUpTotal;
@@ -51,12 +60,18 @@ export function buildQuoteFinancials(quote: any, discount = 0) {
     (quote.motor?.accessories || []).reduce((a: number, acc: any) => a + (acc.cost || (acc.sellPriceExclGst || 0) * 0.7), 0);
   const trailerCost = quote.trailer?.cost || (quote.trailer?.sellPriceExclGst || 0) * 0.8;
   const dealerFitCost = dealerFitTotal * 0.6;
-  // v1.11 — Fit-Up cost: prefer the per-snapshot cost field
-  // (catalogued explicitly), otherwise 60% of sell as a fallback
-  // (matches the dealerFit cost-fallback heuristic).
+  // v1.11 (+ expansion) — Fit-Up cost: prefer the per-snapshot cost
+  // field (catalogued explicitly), otherwise 60% of catalog sell as a
+  // fallback (matches the dealerFit cost-fallback heuristic). Multiplied
+  // by quantity. Per-quote price overrides do NOT affect cost — cost is
+  // a catalog property.
   const fitUpCost = (quote.fitUpSelections || []).reduce(
-    (a: number, sel: any) => a + (sel.cost != null ? sel.cost : (sel.sellPrice || 0) * 0.6),
-    0
+    (a: number, sel: any) => {
+      const qty = Math.max(1, sel.quantity ?? 1);
+      const unit = sel.cost != null ? sel.cost : (sel.sellPrice || 0) * 0.6;
+      return a + (qty * unit);
+    },
+    0,
   );
   const totalDealCostExclGst = boatCost + optionsCost + motorCost + trailerCost + dealerFitCost + fitUpCost + regoTotal;
   const grossProfit = finalTotalPriceExclGst - totalDealCostExclGst;
