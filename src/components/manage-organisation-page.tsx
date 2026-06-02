@@ -49,6 +49,8 @@ import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
 import { ContentBlockManager } from '@/components/content-block-manager';
 import { EmailTemplatesTab } from '@/components/email-template-manager';
 import { SharePointConfigEditor } from '@/components/sharepoint-config-editor';
+import { FitUpCatalogManager } from '@/components/fit-up-catalog-manager';
+import { ServiceCatalogManager } from '@/components/service-catalog-manager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -344,6 +346,13 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     const [isAddingUser, setIsAddingUser] = useState(false);
     const [primaryLogoPreview, setPrimaryLogoPreview] = useState<string | null>(null);
     const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
+    // v1.10 — controlled Tabs value so we can lazy-mount heavy /
+    // permission-sensitive tab content (FitUpCatalogManager subscribes
+    // to organisations/{orgId}/fitUpItems on mount; with eager Radix
+    // mounting, a missing rule on that path crashed the whole /manage
+    // page via the global error boundary). Same systemic lesson as the
+    // v1.9 SendQuoteDialog emailTemplates crash.
+    const [activeTab, setActiveTab] = useState<string>('details');
     
     const firestore = useFirestore();
     const storage = useStorage();
@@ -515,14 +524,16 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                     </Button>
                 </div>
 
-                <Tabs defaultValue="details" className="space-y-4">
-                    <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-7' : 'grid-cols-6')}>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+                    <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-9' : 'grid-cols-8')}>
                         <TabsTrigger value="details">Company Details</TabsTrigger>
                         <TabsTrigger value="users">Users & Permissions</TabsTrigger>
                         <TabsTrigger value="templates">Document Templates</TabsTrigger>
                         <TabsTrigger value="integrations">Integrations</TabsTrigger>
                         <TabsTrigger value="margins">Margins</TabsTrigger>
                         <TabsTrigger value="modules">Modules</TabsTrigger>
+                        <TabsTrigger value="fit-up">Fit-Up Catalog</TabsTrigger>
+                        <TabsTrigger value="service-catalog">Service Catalog</TabsTrigger>
                         {organisation?.subDealersEnabled && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
                     </TabsList>
                     
@@ -870,6 +881,18 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                 </div>
                             </CardContent>
                         </Card>
+                    </TabsContent>
+
+                    <TabsContent value="fit-up" className="space-y-4">
+                        {activeTab === 'fit-up' && (
+                            <FitUpCatalogManager organisationId={orgId} />
+                        )}
+                    </TabsContent>
+
+                    <TabsContent value="service-catalog" className="space-y-4">
+                        {activeTab === 'service-catalog' && (
+                            <ServiceCatalogManager organisationId={orgId} />
+                        )}
                     </TabsContent>
 
                     {organisation?.subDealersEnabled && (

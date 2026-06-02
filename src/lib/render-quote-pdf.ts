@@ -61,12 +61,14 @@ export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<Rende
         { resolveContentBlocksForQuote, resolveContentBlockSubHeadersForQuote },
         { extractImgUrlsFromHtml, preloadImages, swapImgUrlsInHtml },
         { createElement },
+        { doc, getDoc },
     ] = await Promise.all([
         import('@react-pdf/renderer'),
         import('@/components/proposal-pdf'),
         import('@/lib/content-blocks'),
         import('@/lib/image-preload'),
         import('react'),
+        import('firebase/firestore'),
     ]);
 
     // v1.8 (1.2.3.c) — per-quote content override context. The resolver
@@ -83,19 +85,39 @@ export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<Rende
     // 1 + 2. Resolve content blocks + sub-headers in parallel. Skip when
     // the quote has no organisationId (stock-only flows) — the PDF
     // renderer handles `undefined` cleanly via legacy fallbacks.
-    const [contentBlocks, contentBlockSubHeaders] = quote.organisationId
+    // 1c (v1.10 cover-letter fix) — fetch the SalespersonProfile for the
+    // quote's creator. Without this the 'salesperson-message' block in
+    // proposal-pdf.tsx silently returns null (it's hard-gated on
+    // salespersonProfile being present), which presented as the
+    // "cover letter not appearing in Proposal" prod bug. Source-of-
+    // truth is organisations/{orgId}/salesTeam/{quote.createdByUid}
+    // per sales-team.ts. Keyed by the QUOTE'S creator (not the current
+    // user) because a PDF rendered by anyone must still show the
+    // salesperson assigned to that quote.
+    const [contentBlocks, contentBlockSubHeaders, salespersonProfile] = quote.organisationId
         ? await Promise.all([
             resolveContentBlocksForQuote(firestore, quote.organisationId, quote.vendorId ?? null, documentType, quoteOverrideCtx),
             resolveContentBlockSubHeadersForQuote(firestore, quote.organisationId, documentType, quoteOverrideCtx),
+            quote.createdByUid
+                ? getDoc(doc(firestore, 'organisations', quote.organisationId, 'salesTeam', quote.createdByUid))
+                    .then(snap => (snap.exists() ? snap.data() as any : null))
+                    .catch(() => null)
+                : Promise.resolve(null),
         ])
-        : [undefined, undefined];
+        : [undefined, undefined, null];
 
     // 3. Collect every URL the PDF will reference, pre-load to data URLs.
+    // Includes the salesperson photo + any inline images in their message
+    // (mirrors the preview's image-preload coverage).
     const inlineUrls = contentBlocks
         ? Object.values(contentBlocks).flatMap(html => extractImgUrlsFromHtml(html ?? ''))
         : [];
+    const salespersonInlineUrls = salespersonProfile?.messageHtml
+        ? extractImgUrlsFromHtml(salespersonProfile.messageHtml)
+        : [];
     const candidateUrls: (string | null | undefined)[] = [
         ...inlineUrls,
+        ...salespersonInlineUrls,
         quote.coverImageUrl,
         quote.vendorLogoUrl,
         quote.motor?.imageUrl,
@@ -105,6 +127,7 @@ export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<Rende
         quote.trailer?.catalog?.imageUrl,
         organisation?.primaryLogoUrl,
         organisation?.secondaryLogoUrl,
+        salespersonProfile?.photoUrl,
     ];
     const dataUrls = await preloadImages(candidateUrls);
 
@@ -117,6 +140,15 @@ export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<Rende
             Object.entries(contentBlocks).map(([k, v]) => [k, v ? swapImgUrlsInHtml(v, dataUrls) : v]),
         )
         : contentBlocks;
+    const mappedSalespersonProfile = salespersonProfile
+        ? {
+              ...salespersonProfile,
+              photoUrl: swap(salespersonProfile.photoUrl) ?? null,
+              messageHtml: salespersonProfile.messageHtml
+                  ? swapImgUrlsInHtml(salespersonProfile.messageHtml, dataUrls)
+                  : salespersonProfile.messageHtml,
+          }
+        : null;
     const swappedQuote = {
         ...quote,
         coverImageUrl: swap(quote.coverImageUrl),
@@ -147,6 +179,20 @@ export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<Rende
           }
         : organisation;
 
+    // v1.10 cover-letter fix — dev-only canary so the next instance of a
+    // "block authored but invisible on the PDF" bug screams instead of
+    // silently dropping. Fires when a content block is in the resolved
+    // map with non-empty html (operator did author content) but the
+    // dependency the renderer needs is missing.
+    if (process.env.NODE_ENV === 'development') {
+        if (contentBlocks?.['salesperson-message']?.trim() && !mappedSalespersonProfile?.messageHtml?.trim()) {
+            console.warn(
+                '[renderQuotePdf] salesperson-message block resolved but salespersonProfile.messageHtml is empty/missing — block will not render. quote.createdByUid =',
+                quote.createdByUid,
+            );
+        }
+    }
+
     // 5. Render via @react-pdf.
     const blob = await pdf(
         createElement(ProposalPDFDocument, {
@@ -155,6 +201,7 @@ export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<Rende
             financials,
             contentBlocks: mappedBlocks,
             contentBlockSubHeaders,
+            salespersonProfile: mappedSalespersonProfile,
         }) as any,
     ).toBlob();
 

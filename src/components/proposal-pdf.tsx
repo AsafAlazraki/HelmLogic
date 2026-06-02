@@ -793,7 +793,8 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                             {item.imageUrl && (
                                                 <Image src={item.imageUrl} style={{ width: 24, height: 24, objectFit: 'contain', marginRight: 7, borderRadius: 2, flexShrink: 0 }} />
                                             )}
-                                            <Text style={{ fontSize: 7.5, color: SLATE }}>{item.name}</Text>
+                                            {/* v1.10 fix — fall back to code/SKU then to 'Dealer Fit Item' so legacy snapshots (pre-fix) never render a blank label. */}
+                                            <Text style={{ fontSize: 7.5, color: SLATE }}>{item.name || item.code || 'Dealer Fit Item'}</Text>
                                         </View>
                                         <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY, flexShrink: 0, marginLeft: 12 }}>{currency(item.sellPriceExclGst || 0)}</Text>
                                     </View>

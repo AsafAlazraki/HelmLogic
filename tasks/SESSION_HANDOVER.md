@@ -21,9 +21,30 @@
 | v1.7 | 2026-05-04 | ✅ Shipped | main |
 | v1.8 | 2026-05-11 | ✅ Shipped | main |
 | v1.9 | 2026-05-12 | ✅ Shipped (PR #35) | main |
-| **v1.9.5** | **2026-05-14** | 🚢 **Ready on branch — planning + groundwork + Create-Proposal crash hotfix (code); awaiting PR green-light** | `claude/app-overview-wKiZ1` |
+| v1.9.5 | 2026-05-14 | ✅ Shipped (PR #36) | main |
+| **v1.10** | **2026-06-02** | 🚢 **Ready for dev → main — Phase A bug pass + Phase B Fit-Up admin + Phase C Service Quoting catalogue + Story 3.7.2 Boats read-view + FirebaseErrorListener denylist defense + v1.9.5 backfill** | `claude/app-overview-wKiZ1` |
 
-> **v1.9.5 = planning + groundwork + hotfix** (fractional, like v1.5.1/v1.6.1). Roadmap reshuffled to dealer-ops priority (157 stories re-targeted, Submitted drained, sequential v1.10–v1.40 runway); Epic 11 Service Quoting seeded as backlog (NSM-Hub absorption — PLANNED, not built); clickable release-detail popups; emailTemplates Create-Proposal crash (CODE fix — SendQuoteDialog subscribed to templates unconditionally; not a rules issue). **The actual dealer-ops + Service Quoting BUILD starts at v1.10.** Plans: `tasks/nsm-hub-merge-study.md` + `tasks/nsm-hub-merge-plan.md` + `tasks/v1.10-restructure-plan.md`. 🔧 Hotfix is a CODE fix (SendQuoteDialog template subscription) — NOT a rules re-deploy; deployed rules were verified correct.
+> **v1.9.5 = planning + groundwork + hotfix** (fractional, like v1.5.1/v1.6.1). Roadmap reshuffled to dealer-ops priority (157 stories re-targeted, Submitted drained, sequential v1.10–v1.40 runway); Epic 11 Service Quoting seeded as backlog (NSM-Hub absorption — PLANNED, not built); clickable release-detail popups; emailTemplates Create-Proposal crash (CODE fix — SendQuoteDialog subscribed to templates unconditionally; not a rules issue). **The actual dealer-ops + Service Quoting BUILD starts at v1.10.**
+
+> **v1.10 in progress** — three phases on one dev branch: (A) prod-bug pass (4 fixes, shipped b516d4e); (B) Fit-Up admin — full 9.1.x scope (schema + add/edit/delete + CSV import/export via xlsx + bulk markup/retier/delete) on new `Manage → Fit-Up Catalog` tab; (C) Service Quoting catalogue — Epic 11.1.1 + 11.1.2 (labor-code + parts collections + admin UI with sub-tabs, CRUD, CSV in/out, bulk operations) on new `Manage → Service Catalog` tab. NOT in v1.10: Epic 11.2.x service-quote flow (create form / dashboard / PDF / lifecycle = v1.11+); Epic 11.3.x customer reconciliation + NSM-Hub migration (deferred — needs service-account access); module x3 + parts x1 stories from original v1.10 plan (retargeting to v1.11 — specific stories to be selected at v1.11 kickoff); quote-flow fit-up integration (Epic 9.2 = v1.16+); auto-classification (9.3.1 = v2.2). Plans: `tasks/nsm-hub-merge-study.md` + `tasks/nsm-hub-merge-plan.md` + `tasks/v1.10-restructure-plan.md`.
+
+**v1.10 new Firestore surface (Phase B — Fit-Up admin):**
+- `organisations/{orgId}/fitUpItems/{itemId}` — org-level master catalog of fit-up items. Schema: `{ name, tier: 'simple'|'medium'|'complex', cost: number, sellPrice?: number|null, notes?: string|null, createdAt, updatedAt }`. Reads + writes signed-in (UI-layer org-admin gate via `can_access_settings`). Quote-flow integration is Epic 9.2 (v1.16+).
+- New components: `src/components/fit-up-catalog-manager.tsx` (FitUpCatalogManager + FitUpItemEditor + BulkActionDialog) + one-shot `src/components/v110-retarget-button.tsx`.
+- CSV import: detects `name` column from multiple aliases, normalises tier with first-letter detection, upserts by name (case-insensitive). Toast: `N updated · M created · K skipped (no name)`.
+- Bulk actions (require selection): apply markup % (overwrites sellPrice = cost × (1 + pct/100)), change tier, delete. All gated by confirm dialog with explicit overwrite-warning copy.
+
+**v1.10 new Firestore surface (Phase C — Service Quoting catalogue):**
+- `organisations/{orgId}/serviceOperations/{opId}` — labor-code catalog. Schema: `{ code, name, flatRateHours: number, hourlyRate: number, cost?: number|null, sellPrice?: number|null, notes?: string|null, createdAt, updatedAt }`. **Sell-price derivation**: `flatRateHours × hourlyRate` unless `sellPrice` is explicitly set (override). Natural key = `code` (UPPERCASE on import match). Bulk markup applies to `hourlyRate` (not sellPrice override) — keeps the derivation transparent.
+- `organisations/{orgId}/serviceParts/{partId}` — parts catalog. Schema: `{ partNumber, name, cost: number, sellPrice?: number|null, stockLevel?: number|null, notes?: string|null, createdAt, updatedAt }`. Natural key = `partNumber` (UPPERCASE on import match). Bulk markup overwrites `sellPrice = cost × (1 + pct/100)` (same pattern as fit-up).
+- New components: `src/components/service-catalog-manager.tsx` (ServiceCatalogManager + ServiceOperationsTab + ServicePartsTab + ServiceOperationEditor + ServicePartEditor + OperationBulkDialog + PartBulkDialog). Mirrors the Fit-Up pattern but two-tabbed for Operations vs. Parts.
+- `/manage` tab list: bumped to 8/9 (Company Details, Users & Permissions, Document Templates, Integrations, Margins, Modules, **Fit-Up Catalog**, **Service Catalog**, +Sub Dealers).
+- Both new tabs lazy-mount via the controlled-Tabs gating from `ef16825` — a missing rule on `fitUpItems`, `serviceOperations`, or `serviceParts` only impacts that tab, not the page.
+
+**v1.10 NOT shipped (deferred):**
+- Service-quote flow itself (Epic 11.2.x — create form / dashboard / PDF / lifecycle): deferred to v1.11+. Catalogue is the foundation; quote consumption is the next phase.
+- Customer reconciliation + NSM-Hub data migration (Epic 11.3.x): deferred — needs the `nsm-service-quotation` service-account pre-flight.
+- Module x3 + parts x1 stories from the original v1.10 restructure plan: retargeting to v1.11 (specific stories TBD at v1.11 kickoff — the planning workbench will surface them).
 
 > **Note**: this table was backfilled at v1.9 from a stale v1.4-era state. Canonical release state lives in **`CLAUDE.md`** top-of-file table; per-release detail lives in **`tasks/RELEASE_NOTES_vX.Y.Z.md`**.
 

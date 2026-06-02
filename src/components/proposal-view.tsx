@@ -428,6 +428,19 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
 
     async function handleSaveDiscount(newDiscount: number) {
         if (!user || !quote) return;
+        // v1.10 fix — fail fast + honestly on locked quotes. Without this
+        // guard the updateDoc fires, the optimistic toast says "Saved",
+        // but the v1.8 firestore rule rejects the write (discountExclGst
+        // isn't in the lock whitelist) and the change reverts on next
+        // load. Surfaces as a class of "HL Error on saving project" pain.
+        if (quote.isLocked === true) {
+            toast({
+                variant: 'destructive',
+                title: 'Quote is locked',
+                description: 'Discounts can\'t be changed on a locked quote. Create v2 to make changes.',
+            });
+            return;
+        }
         setIsSaving(true);
         try {
             const ownerUid = quote.createdByUid || user.uid;
@@ -1098,7 +1111,8 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                         {quote.dealerFit.map((group: any, gi: number) => (
                                             group.items?.map((item: any, ii: number) => (
                                                 <div key={`${gi}-${ii}`} className="flex items-center justify-between px-6 py-3 hover:bg-slate-50/50 transition-colors">
-                                                    <p className="text-sm font-bold text-slate-700 uppercase tracking-tight">{item.name}</p>
+                                                    {/* v1.10 fix — fall back to code/SKU then to 'Dealer Fit Item' so legacy snapshots (pre-fix) never render blank. */}
+                                                    <p className="text-sm font-bold text-slate-700 uppercase tracking-tight">{item.name || item.code || 'Dealer Fit Item'}</p>
                                                     <span className="font-black text-xs tabular-nums text-slate-700">{formatCurrency(item.sellPriceExclGst || 0)}</span>
                                                 </div>
                                             ))

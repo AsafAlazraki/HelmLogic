@@ -39,11 +39,21 @@ export interface ReleaseWindow {
  * restructure packs ~25 releases of work; v1.40 gives comfortable buffer
  * without 90 empty columns). v2.x is intentionally NOT a column yet — it
  * gets added when the v1.X runway is nearly exhausted.
+ *
+ * Loop START INDEX: starts at v1.11, NOT v1.10. Once a release ships
+ * (gets its own explicit `'vX.Y': { shipped: true }` entry above the
+ * spread), it must be EXCLUDED from this generator — otherwise the
+ * spread's empty `{}` would clobber the shipped flag. When v1.11 ships,
+ * bump this constant to 12. (v1.10 close-out post-mortem: I shipped
+ * v1.10 with the start index still at 10, the spread silently
+ * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
+ * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
+const FORWARD_RUNWAY_START = 11;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
-    for (let i = 10; i <= FORWARD_RUNWAY_END; i++) {
+    for (let i = FORWARD_RUNWAY_START; i <= FORWARD_RUNWAY_END; i++) {
         out[`v1.${i}`] = {};
     }
     return out;
@@ -60,6 +70,16 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // clickable release-detail popups, + emailTemplates rules re-deploy.
     // Fractional, like v1.5.1 / v1.6.1. The actual v1.10 BUILD comes next.
     'v1.9.5': { shipped: true },
+    // v1.10 — Dealer-ops + Service Quoting foundation cycle. Three
+    // phases: (A) prod-bug pass (cover letter, dealer-fit names,
+    // locked-discount, stock-import race); (B) Fit-Up admin (full
+    // Epic 9.1.x — schema, CRUD, CSV in/out, bulk markup); (C) Service
+    // Quoting catalogue (Epic 11.1.1 + 11.1.2 — serviceOperations +
+    // serviceParts collections + admin UI). Plus Story 3.7.2 Boats
+    // Catalogue read-view. NOT in v1.10: Epic 9.2 quote-flow fit-up
+    // integration (v1.16+), Epic 11.2 service-quote flow (v1.11+),
+    // Epic 11.3 NSM-Hub migration (v1.11, needs service-account).
+    'v1.10': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
