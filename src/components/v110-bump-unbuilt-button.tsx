@@ -24,17 +24,38 @@
  */
 
 import { useState } from 'react';
-import { collection, doc, getDocs, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, doc, deleteField, getDocs, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Loader2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 /** Stories that DID ship at v1.10 (matches V110RetargetButton). Title-prefix match. */
-const SHIPPED_AT_V110_REFS = ['9.1.1', '9.1.2', '9.1.3', '9.1.4', '11.1.1', '11.1.2'] as const;
+const SHIPPED_AT_V110_REFS = ['9.1.1', '9.1.2', '9.1.3', '9.1.4', '11.1.1', '11.1.2', '3.7.2'] as const;
+const SHIPPED_AT_V110_TITLES = [
+    'Cover letter not appearing in Proposal',
+    'No Names on Dealer Fit Options - Summary Quote',
+] as const;
 
 const FROM_RELEASE = 'v1.10';
-const TO_RELEASE = 'v1.11';
+
+/** Per-story destination. Story-prefix or exact-title match. Unmatched stories
+ *  default to v1.11. Two specific cases:
+ *   - 9.2.x stories belong with Epic 9.2 (v1.16+) per the locked product plan
+ *   - "Test level of proposals -" is junk — soft-delete instead of bump
+ */
+const PREFIX_DESTINATIONS: Record<string, string> = {
+    '9.2.1': 'v1.16',
+    '9.2.2': 'v1.16',
+    '9.2.3': 'v1.16',
+};
+
+const TITLES_TO_ARCHIVE: readonly string[] = [
+    'Test level of proposals -',
+    'Test level of proposals —',
+];
+
+const DEFAULT_DESTINATION = 'v1.11';
 
 export function V110BumpUnbuiltButton() {
     const firestore = useFirestore();
@@ -48,7 +69,9 @@ export function V110BumpUnbuiltButton() {
             const snap = await getDocs(query(collection(firestore, 'features')));
 
             let bumped = 0;
+            let archived = 0;
             let keptAtV110 = 0;
+            const bumpCounts: Record<string, number> = {};
             const updates: Promise<void>[] = [];
 
             for (const docSnap of snap.docs) {
@@ -62,28 +85,56 @@ export function V110BumpUnbuiltButton() {
                 if (data.targetRelease !== FROM_RELEASE) continue;
 
                 const title = (data.title ?? '').trim();
-                const isKnownV110Ship = SHIPPED_AT_V110_REFS.some(ref =>
-                    title.startsWith(`${ref} —`) || title.startsWith(`${ref} -`),
-                );
+
+                // (A) Known v1.10 ships — leave alone (the retarget button handles them).
+                const isKnownV110Ship =
+                    SHIPPED_AT_V110_REFS.some(ref =>
+                        title.startsWith(`${ref} —`) || title.startsWith(`${ref} -`),
+                    ) ||
+                    SHIPPED_AT_V110_TITLES.some(t => title === t);
                 if (isKnownV110Ship) {
                     keptAtV110++;
                     continue;
                 }
 
+                // (B) Archive list — soft-delete instead of bumping.
+                if (TITLES_TO_ARCHIVE.some(t => title === t)) {
+                    updates.push(
+                        updateDoc(doc(firestore, 'features', docSnap.id), {
+                            deletedAt: serverTimestamp(),
+                            updatedAt: serverTimestamp(),
+                        }),
+                    );
+                    archived++;
+                    continue;
+                }
+
+                // (C) Story-prefix-based destination (e.g. 9.2.x → v1.16).
+                let destination = DEFAULT_DESTINATION;
+                const explicitPrefix = Object.keys(PREFIX_DESTINATIONS).find(prefix =>
+                    title.startsWith(`${prefix} —`) || title.startsWith(`${prefix} -`),
+                );
+                if (explicitPrefix) destination = PREFIX_DESTINATIONS[explicitPrefix];
+
                 updates.push(
                     updateDoc(doc(firestore, 'features', docSnap.id), {
-                        targetRelease: TO_RELEASE,
+                        targetRelease: destination,
                         updatedAt: serverTimestamp(),
                     }),
                 );
+                bumpCounts[destination] = (bumpCounts[destination] ?? 0) + 1;
                 bumped++;
             }
 
             await Promise.all(updates);
 
+            const bumpSummary = Object.entries(bumpCounts)
+                .map(([rel, n]) => `${n} → ${rel}`)
+                .join(' · ');
+
             toast({
-                title: `Bumped to ${TO_RELEASE}`,
-                description: `${bumped} unbuilt story/stories moved · ${keptAtV110} known-shipped kept at ${FROM_RELEASE}.`,
+                title: `v1.10 close-out applied`,
+                description: `${bumped} bumped (${bumpSummary || 'none'}) · ${archived} archived · ${keptAtV110} kept at ${FROM_RELEASE}.`,
             });
             setDone(true);
         } catch (err) {
@@ -98,12 +149,12 @@ export function V110BumpUnbuiltButton() {
         <div className="flex items-start gap-3 p-3 rounded-xl border-2 border-dashed border-sky-300 bg-sky-50/40">
             <ArrowRight className="h-4 w-4 text-sky-700 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-sky-900">One-shot: bump unbuilt v1.10 stories → v1.11 (close-out)</p>
+                <p className="text-xs font-bold text-sky-900">One-shot: close-out v1.10 (bump residue + archive junk)</p>
                 <p className="text-[10px] text-sky-800/80">
-                    Click after V110RetargetButton. Moves any story still parked at <code>v1.10</code> that we did NOT
-                    build (module / parts / cross-cutting residue from the original v1.10 restructure plan) forward to{' '}
-                    <code>v1.11</code>. Known v1.10 ships (Fit-Up 9.1.x + Service Catalog 11.1.x) stay put. Idempotent.
-                    Removed in the cleanup commit.
+                    Click after V110RetargetButton. Moves every story still parked at <code>v1.10</code> that we did NOT
+                    ship: <strong>9.2.x</strong> → <code>v1.16</code> (Epic 9.2 quote-flow batch); awaiting-repro bugs +
+                    deferred items → <code>v1.11</code>; <em>"Test level of proposals -"</em> → soft-deleted (archive).
+                    Known v1.10 ships stay put. Idempotent. Removed in the cleanup commit.
                 </p>
             </div>
             <Button

@@ -19,7 +19,18 @@ import { Button } from '@/components/ui/button';
 import { Wrench, Loader2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const TARGET_STORY_REFS = ['9.1.1', '9.1.2', '9.1.3', '9.1.4', '11.1.1', '11.1.2'] as const;
+/** Story-ID prefixes that are SHIPPED at v1.10 (title-prefix match). */
+const TARGET_STORY_REFS = ['9.1.1', '9.1.2', '9.1.3', '9.1.4', '11.1.1', '11.1.2', '3.7.2'] as const;
+
+/** Stories WITHOUT a canonical number prefix that we also need to flip to
+ *  shipped at v1.10. Matched by exact title string (trim) — the user
+ *  curated these as free-text bug entries before the planning system
+ *  enforced numbered prefixes. */
+const TARGET_FREEFORM_TITLES = [
+    'Cover letter not appearing in Proposal',           // shipped in b516d4e
+    'No Names on Dealer Fit Options - Summary Quote',   // shipped in b516d4e
+] as const;
+
 const TARGET_RELEASE = 'v1.10';
 
 export function V110RetargetButton() {
@@ -41,10 +52,11 @@ export function V110RetargetButton() {
                 const data = docSnap.data() as { title?: string; targetRelease?: string; status?: string; deletedAt?: any };
                 if (data.deletedAt != null) continue;
                 const title = (data.title ?? '').trim();
-                const match = TARGET_STORY_REFS.find(ref =>
+                const prefixMatch = TARGET_STORY_REFS.find(ref =>
                     title.startsWith(`${ref} —`) || title.startsWith(`${ref} -`),
                 );
-                if (!match) continue;
+                const freeformMatch = TARGET_FREEFORM_TITLES.some(t => title === t);
+                if (!prefixMatch && !freeformMatch) continue;
 
                 if (data.targetRelease === TARGET_RELEASE && data.status === 'shipped') {
                     alreadyShipped++;
@@ -80,13 +92,15 @@ export function V110RetargetButton() {
         <div className="flex items-start gap-3 p-3 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/40">
             <Wrench className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-amber-900">One-shot: mark v1.10 shipped stories (Fit-Up 9.1.x + Service Catalog 11.1.x)</p>
+                <p className="text-xs font-bold text-amber-900">One-shot: mark v1.10 shipped stories</p>
                 <p className="text-[10px] text-amber-800/80">
-                    Click once after deploy. Updates Epic 9 stories <strong>9.1.1 Master Fit-Up Catalog</strong>,{' '}
-                    <strong>9.1.2 Item Editor</strong>, <strong>9.1.3 Import/Export</strong>,{' '}
-                    <strong>9.1.4 Bulk Update + Markup</strong>, AND Epic 11 stories{' '}
-                    <strong>11.1.1 Service-quote schema</strong> and <strong>11.1.2 Service catalogue admin</strong>{' '}
-                    to <code>targetRelease: 'v1.10'</code> and <code>status: 'shipped'</code>. This button is removed in the follow-up cleanup commit.
+                    Click once after deploy. Flips to <code>targetRelease: 'v1.10' / status: 'shipped'</code>:{' '}
+                    <strong>9.1.1 / 9.1.2 / 9.1.3 / 9.1.4</strong> (Fit-Up admin),{' '}
+                    <strong>11.1.1 / 11.1.2</strong> (Service Catalog),{' '}
+                    <strong>3.7.2</strong> (Boats table read view),{' '}
+                    plus <strong>Cover letter not appearing in Proposal</strong> and{' '}
+                    <strong>No Names on Dealer Fit Options</strong> (both fixed in b516d4e bug pass).
+                    Idempotent. Removed in the follow-up cleanup commit.
                 </p>
             </div>
             <Button
