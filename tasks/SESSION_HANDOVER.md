@@ -22,7 +22,7 @@
 | v1.8 | 2026-05-11 | ✅ Shipped | main |
 | v1.9 | 2026-05-12 | ✅ Shipped (PR #35) | main |
 | v1.9.5 | 2026-05-14 | ✅ Shipped (PR #36) | main |
-| **v1.10** | **2026-06-02 (in flight)** | 🛠️ **Building on branch — Phase A bug pass done (b516d4e), Phase B Fit-Up admin done (full 9.1.x), Phase C Service Quoting foundation next** | `claude/app-overview-wKiZ1` |
+| **v1.10** | **2026-06-02** | 🚢 **Ready for dev → main — Phase A bug pass + Phase B Fit-Up admin + Phase C Service Quoting catalogue + Story 3.7.2 Boats read-view + FirebaseErrorListener denylist defense + v1.9.5 backfill** | `claude/app-overview-wKiZ1` |
 
 > **v1.9.5 = planning + groundwork + hotfix** (fractional, like v1.5.1/v1.6.1). Roadmap reshuffled to dealer-ops priority (157 stories re-targeted, Submitted drained, sequential v1.10–v1.40 runway); Epic 11 Service Quoting seeded as backlog (NSM-Hub absorption — PLANNED, not built); clickable release-detail popups; emailTemplates Create-Proposal crash (CODE fix — SendQuoteDialog subscribed to templates unconditionally; not a rules issue). **The actual dealer-ops + Service Quoting BUILD starts at v1.10.**
 

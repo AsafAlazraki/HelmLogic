@@ -60,6 +60,16 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // clickable release-detail popups, + emailTemplates rules re-deploy.
     // Fractional, like v1.5.1 / v1.6.1. The actual v1.10 BUILD comes next.
     'v1.9.5': { shipped: true },
+    // v1.10 — Dealer-ops + Service Quoting foundation cycle. Three
+    // phases: (A) prod-bug pass (cover letter, dealer-fit names,
+    // locked-discount, stock-import race); (B) Fit-Up admin (full
+    // Epic 9.1.x — schema, CRUD, CSV in/out, bulk markup); (C) Service
+    // Quoting catalogue (Epic 11.1.1 + 11.1.2 — serviceOperations +
+    // serviceParts collections + admin UI). Plus Story 3.7.2 Boats
+    // Catalogue read-view. NOT in v1.10: Epic 9.2 quote-flow fit-up
+    // integration (v1.16+), Epic 11.2 service-quote flow (v1.11+),
+    // Epic 11.3 NSM-Hub migration (v1.11, needs service-account).
+    'v1.10': { shipped: true },
     ...buildV1MinorReleases(),
 };
 

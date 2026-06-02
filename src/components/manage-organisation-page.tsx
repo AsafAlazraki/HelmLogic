@@ -51,7 +51,6 @@ import { EmailTemplatesTab } from '@/components/email-template-manager';
 import { SharePointConfigEditor } from '@/components/sharepoint-config-editor';
 import { FitUpCatalogManager } from '@/components/fit-up-catalog-manager';
 import { ServiceCatalogManager } from '@/components/service-catalog-manager';
-import { V110RetargetButton } from '@/components/v110-retarget-button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -886,10 +885,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
 
                     <TabsContent value="fit-up" className="space-y-4">
                         {activeTab === 'fit-up' && (
-                            <>
-                                <V110RetargetButton />
-                                <FitUpCatalogManager organisationId={orgId} />
-                            </>
+                            <FitUpCatalogManager organisationId={orgId} />
                         )}
                     </TabsContent>
 

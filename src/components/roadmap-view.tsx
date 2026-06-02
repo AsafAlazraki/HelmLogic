@@ -57,8 +57,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { V110RetargetButton } from '@/components/v110-retarget-button';
-import { V110BumpUnbuiltButton } from '@/components/v110-bump-unbuilt-button';
+import { V195StoriesSeedButton } from '@/components/v195-stories-seed-button';
 import {
     FeatureDetailSheet,
     type EpicColor,
@@ -389,8 +388,7 @@ export function RoadmapView() {
                         </div>
                     </div>
                     <div className="flex flex-col gap-2 max-w-2xl">
-                        <V110RetargetButton />
-                        <V110BumpUnbuiltButton />
+                        <V195StoriesSeedButton />
                     </div>
                 </div>
             </div>
