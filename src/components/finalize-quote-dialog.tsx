@@ -57,6 +57,17 @@ interface FinalizeQuoteDialogProps {
         selectedTrailerOptionsData: any[];
         customTrailerOptions?: any[];
         selectedDealerFitData: any[];
+        /** v1.11 (Epic 9.2.2) — fit-up items selected for this quote.
+         *  Each carries id + name + tier + cost + sellPrice + notes.
+         *  Snapshotted to quote.fitUpSelections at finalize. */
+        selectedFitUpData?: Array<{
+            id: string;
+            name: string;
+            tier: 'simple' | 'medium' | 'complex';
+            cost: number;
+            sellPrice?: number | null;
+            notes?: string | null;
+        }>;
         totalPrice: number;
         isRegoSelected: boolean;
         isStickerSelected: boolean;
@@ -139,7 +150,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     };
 
     const buildQuotePayload = () => {
-        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, catalogTrailerSnapshot, boatRegoSnapshot, trailerRegoSnapshot, priceLevelUsed, appliedPromotions, promotionDiscount, dealerServices, adminDetails } = quoteData;
+        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, selectedFitUpData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, catalogTrailerSnapshot, boatRegoSnapshot, trailerRegoSnapshot, priceLevelUsed, appliedPromotions, promotionDiscount, dealerServices, adminDetails } = quoteData;
 
         // Trailer data source: catalog snapshot wins over model's own trailerConfig.
         // The snapshot is frozen at selection time so quote totals never drift.
@@ -374,6 +385,22 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                         imageUrl: d.imageLink || d['Image Link'] || d.imageUrl || d.image || d.SummaryImage || null,
                     };
                 }),
+            })),
+
+            // v1.11 (Epic 9.2.2) — Fit-Up snapshots. Each line carries
+            // id + name + tier + cost + sellPrice + notes locked at
+            // finalize time so later catalog edits don't retroactively
+            // change a sent quote. Customer PDF aggregates these into
+            // a single "Fit-up & rigging" summary line per Story 9.2.3
+            // — no per-item breakdown on the customer-facing surface
+            // by deliberate product decision. Notes are operator-only.
+            fitUpSelections: (selectedFitUpData || []).map(item => ({
+                id: item.id,
+                name: item.name,
+                tier: item.tier,
+                cost: item.cost ?? 0,
+                sellPrice: item.sellPrice != null ? item.sellPrice : (item.cost ?? 0),
+                notes: item.notes ?? null,
             })),
 
             // Pricing

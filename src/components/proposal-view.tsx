@@ -313,7 +313,18 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
             + (quote.trailer?.options || []).reduce((a: number, o: any) => a + (o.sellPriceExclGst || 0), 0);
         const dealerFitTotal = (quote.dealerFit || []).reduce((a: number, sel: any) =>
             a + (sel.items || []).reduce((b: number, i: any) => b + (i.sellPriceExclGst || 0), 0), 0);
-        const subtotalExclGst = boatBasePrice + optionsTotal + regoTotal + motorTotal + trailerTotal + dealerFitTotal;
+        // v1.11 (Epic 9.2.2) — Fit-Up totals on the on-screen proposal.
+        // Mirrors the dealerFit pattern: sum sell prices from the
+        // snapshot, cost defaults to 60% of sell unless explicitly set.
+        const fitUpTotal = (quote.fitUpSelections || []).reduce(
+            (a: number, sel: any) => a + (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0)),
+            0,
+        );
+        const fitUpCost = (quote.fitUpSelections || []).reduce(
+            (a: number, sel: any) => a + (sel.cost != null ? sel.cost : (sel.sellPrice || 0) * 0.6),
+            0,
+        );
+        const subtotalExclGst = boatBasePrice + optionsTotal + regoTotal + motorTotal + trailerTotal + dealerFitTotal + fitUpTotal;
         const finalTotalPriceExclGst = subtotalExclGst - localDiscount;
         const gstAmount = finalTotalPriceExclGst * 0.1;
         const totalInclGst = finalTotalPriceExclGst + gstAmount;
@@ -324,13 +335,13 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
             + (quote.motor?.accessories || []).reduce((a: number, acc: any) => a + (acc.cost || (acc.sellPriceExclGst * 0.7)), 0);
         const trailerCost = (quote.trailer?.cost || (quote.trailer?.sellPriceExclGst * 0.8));
         const dealerFitCost = dealerFitTotal * 0.6;
-        const totalDealCostExclGst = boatCost + optionsCost + motorCost + trailerCost + dealerFitCost + regoTotal;
+        const totalDealCostExclGst = boatCost + optionsCost + motorCost + trailerCost + dealerFitCost + fitUpCost + regoTotal;
         const grossProfit = finalTotalPriceExclGst - totalDealCostExclGst;
         const marginPercent = finalTotalPriceExclGst > 0 ? (grossProfit / finalTotalPriceExclGst) * 100 : 0;
         return {
-            boatBasePrice, optionsTotal, regoTotal, motorTotal, trailerTotal, dealerFitTotal,
+            boatBasePrice, optionsTotal, regoTotal, motorTotal, trailerTotal, dealerFitTotal, fitUpTotal,
             subtotalExclGst, finalTotalPriceExclGst, gstAmount, totalInclGst,
-            boatCost, optionsCost, motorCost, trailerCost, dealerFitCost,
+            boatCost, optionsCost, motorCost, trailerCost, dealerFitCost, fitUpCost,
             totalDealCostExclGst, grossProfit, marginPercent
         };
     }, [quote, strategy, activeExchangeRate, localDiscount, organisation]);
@@ -1181,6 +1192,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     <PricingRow label="Power Pack" value={f.motorTotal} showIfZero />
                                     <PricingRow label="Trailer" value={f.trailerTotal} />
                                     <PricingRow label="Dealer Fit" value={f.dealerFitTotal} />
+                                    <PricingRow label="Fit-up & Rigging" value={f.fitUpTotal} />
                                     <PricingRow label="Registration" value={f.regoTotal} />
 
                                     {localDiscount > 0 && (
@@ -1303,6 +1315,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     { label: 'Propulsion', cost: f.motorCost, sell: f.motorTotal },
                                     { label: 'Trailer', cost: f.trailerCost, sell: f.trailerTotal },
                                     { label: 'Dealer Fitout', cost: f.dealerFitCost, sell: f.dealerFitTotal },
+                                    { label: 'Fit-up & Rigging', cost: f.fitUpCost, sell: f.fitUpTotal },
                                 ].filter(r => r.sell > 0).map((row, i) => (
                                     <div key={i} className="px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-all">
                                         <p className="text-xs font-black uppercase text-slate-700">{row.label}</p>

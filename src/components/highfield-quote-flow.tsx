@@ -74,6 +74,7 @@ import {
     DialogClose
 } from "@/components/ui/dialog";
 import { FinalizeQuoteDialog } from '@/components/finalize-quote-dialog';
+import { FitUpQuoteSelector, resolveFitUpSell, type FitUpItem } from '@/components/fit-up-quote-selector';
 import {
     Table,
     TableBody,
@@ -157,6 +158,9 @@ interface DuplicateInitialState {
     catalogTrailerSnapshot?: TrailerSnapshot | null;
     customTrailerOptions?: CustomOption[];
     selectedDealerFitIds: string[];
+    /** v1.11 (Epic 9.2.2) — fit-up snapshots already on the quote
+     *  when forking / restoring. */
+    selectedFitUpItems?: FitUpItem[];
     isRegoSelected: boolean;
     isStickerSelected: boolean;
     isTenderToSelected: boolean;
@@ -244,6 +248,12 @@ export function HighfieldQuoteFlow({
     const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>(initialState?.selectedTrailerOptionIds ?? []);
     const [catalogTrailerSnapshot, setCatalogTrailerSnapshot] = useState<TrailerSnapshot | null>(initialState?.catalogTrailerSnapshot ?? null);
     const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>(initialState?.selectedDealerFitIds ?? []);
+    // v1.11 (Epic 9.2.1 + 9.2.2) — Fit-Up selections on the in-progress
+    // quote. Stored as a flat array of FitUpItem snapshots (full data,
+    // not just IDs) so the parent always has the price/cost/tier in
+    // scope without needing a second resolve at finalize time. Drains
+    // straight into selectedFitUpData on the finalize payload.
+    const [selectedFitUpItems, setSelectedFitUpItems] = useState<FitUpItem[]>(initialState?.selectedFitUpItems ?? []);
 
     // Custom Option Form State (Boat)
     const [newCustomName, setNewCustomName] = useState('');
@@ -816,8 +826,13 @@ export function HighfieldQuoteFlow({
         selectedDealerFitData.forEach(s => {
             s.items?.forEach((i: any) => { total += getPriceForLevel(i.data, priceLevel); });
         });
+        // v1.11 (Epic 9.2.2) — Fit-Up items contribute to the running
+        // total. Sell-price resolves via resolveFitUpSell (sellPrice
+        // override → cost fallback). Cost-side numbers are computed in
+        // quote-financials.ts at finalize/render time, not here.
+        selectedFitUpItems.forEach(item => { total += resolveFitUpSell(item); });
         return total;
-    }, [activeVariant, selectedOptionsData, customOptions, customTrailerOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, effectiveTrailerConfig, selectedTrailerOptionsData, selectedDealerFitData, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, boatRegoSnapshot, trailerRegoSnapshot, model.registration, priceLevel]);
+    }, [activeVariant, selectedOptionsData, customOptions, customTrailerOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, effectiveTrailerConfig, selectedTrailerOptionsData, selectedDealerFitData, selectedFitUpItems, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, boatRegoSnapshot, trailerRegoSnapshot, model.registration, priceLevel]);
 
     // Promotions Derived Memos
     const appliedPromotions = useMemo(() => {
@@ -1022,6 +1037,15 @@ export function HighfieldQuoteFlow({
         const isSelected = selectedDealerFitIds.includes(id);
         setSelectedDealerFitIds(isSelected ? selectedDealerFitIds.filter(i => i !== id) : [...selectedDealerFitIds, id]);
     };
+
+    const toggleFitUpItem = (item: FitUpItem) => {
+        setSelectedFitUpItems(prev => {
+            const isSelected = prev.some(i => i.id === item.id);
+            return isSelected ? prev.filter(i => i.id !== item.id) : [...prev, item];
+        });
+    };
+
+    const selectedFitUpIds = useMemo(() => selectedFitUpItems.map(i => i.id), [selectedFitUpItems]);
 
     const scrollPanelToTop = () => {
         setTimeout(() => {
@@ -2189,6 +2213,20 @@ export function HighfieldQuoteFlow({
                                             </div>
                                         ))
                                     ) : <div className="py-16 text-center border-2 border-dashed rounded-xl opacity-20"><Box className="h-10 w-10 mx-auto mb-3" /><p className="text-[9px] font-black uppercase tracking-widest">No dealer fit options configured.</p></div>}
+                                    {/*
+                                      v1.11 (Epic 9.2.1 + 9.2.2) — Fit-Up section under Dealer Fit on the
+                                      same step. Catalog-wide picker (per-module filtering deferred). Each
+                                      selected item flows into the finalize payload via
+                                      selectedFitUpData and gets snapshotted onto quote.fitUpSelections at
+                                      finalize. Customer PDF renders a single summary line per Story 9.2.3.
+                                    */}
+                                    {orgId && (
+                                        <FitUpQuoteSelector
+                                            organisationId={orgId}
+                                            selectedIds={selectedFitUpIds}
+                                            onToggle={toggleFitUpItem}
+                                        />
+                                    )}
                                 </div>
                             )}
                             {currentStep === 6 && (
@@ -2745,6 +2783,7 @@ export function HighfieldQuoteFlow({
                     selectedTrailerOptionsData,
                     customTrailerOptions,
                     selectedDealerFitData,
+                    selectedFitUpData: selectedFitUpItems,
                     totalPrice,
                     isRegoSelected,
                     isStickerSelected,

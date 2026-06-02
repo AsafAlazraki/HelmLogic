@@ -25,8 +25,18 @@ export function buildQuoteFinancials(quote: any, discount = 0) {
     (a: number, sel: any) => a + (sel.items || []).reduce((b: number, i: any) => b + (i.sellPriceExclGst || 0), 0),
     0
   );
+  // v1.11 (Epic 9.2.2) — Fit-Up selections on a quote. Stored as a
+  // flat array of FitUpSnapshot at finalize time (see
+  // finalize-quote-dialog.tsx → fitUpSelections). Each snapshot
+  // captures id + name + tier + cost + sellPrice + notes at the
+  // moment of finalize so later catalogue edits don't retroactively
+  // change a sent quote.
+  const fitUpTotal = (quote.fitUpSelections || []).reduce(
+    (a: number, sel: any) => a + (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0)),
+    0
+  );
 
-  const subtotalExclGst = boatBasePrice + optionsTotal + regoTotal + motorTotal + trailerTotal + dealerFitTotal;
+  const subtotalExclGst = boatBasePrice + optionsTotal + regoTotal + motorTotal + trailerTotal + dealerFitTotal + fitUpTotal;
   const finalTotalPriceExclGst = subtotalExclGst - discount;
   const totalInclGst = Math.ceil(finalTotalPriceExclGst * 1.1);
   const gstAmount = totalInclGst - finalTotalPriceExclGst;
@@ -41,7 +51,14 @@ export function buildQuoteFinancials(quote: any, discount = 0) {
     (quote.motor?.accessories || []).reduce((a: number, acc: any) => a + (acc.cost || (acc.sellPriceExclGst || 0) * 0.7), 0);
   const trailerCost = quote.trailer?.cost || (quote.trailer?.sellPriceExclGst || 0) * 0.8;
   const dealerFitCost = dealerFitTotal * 0.6;
-  const totalDealCostExclGst = boatCost + optionsCost + motorCost + trailerCost + dealerFitCost + regoTotal;
+  // v1.11 — Fit-Up cost: prefer the per-snapshot cost field
+  // (catalogued explicitly), otherwise 60% of sell as a fallback
+  // (matches the dealerFit cost-fallback heuristic).
+  const fitUpCost = (quote.fitUpSelections || []).reduce(
+    (a: number, sel: any) => a + (sel.cost != null ? sel.cost : (sel.sellPrice || 0) * 0.6),
+    0
+  );
+  const totalDealCostExclGst = boatCost + optionsCost + motorCost + trailerCost + dealerFitCost + fitUpCost + regoTotal;
   const grossProfit = finalTotalPriceExclGst - totalDealCostExclGst;
   const marginPercent = finalTotalPriceExclGst > 0 ? (grossProfit / finalTotalPriceExclGst) * 100 : 0;
 
@@ -52,6 +69,7 @@ export function buildQuoteFinancials(quote: any, discount = 0) {
     motorTotal,
     trailerTotal,
     dealerFitTotal,
+    fitUpTotal,
     subtotalExclGst,
     finalTotalPriceExclGst,
     gstAmount,
@@ -61,6 +79,7 @@ export function buildQuoteFinancials(quote: any, discount = 0) {
     motorCost,
     trailerCost,
     dealerFitCost,
+    fitUpCost,
     totalDealCostExclGst,
     grossProfit,
     marginPercent,
