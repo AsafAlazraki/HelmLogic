@@ -57,6 +57,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { V110RetargetButton } from '@/components/v110-retarget-button';
 import {
     FeatureDetailSheet,
     type EpicColor,
@@ -386,6 +387,7 @@ export function RoadmapView() {
                             </p>
                         </div>
                     </div>
+                    <V110RetargetButton />
                 </div>
             </div>
 
