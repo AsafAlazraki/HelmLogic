@@ -55,24 +55,50 @@ export interface FitUpItem {
     cost: number;
     sellPrice?: number | null;
     notes?: string | null;
-    /** v1.11 (Epic 9.2.1) — per-module restriction. Empty/missing
-     *  means "available across all modules". */
+    /** v1.11 (Epic 9.2.1) — assignment allowlists. Empty array on a
+     *  field = "no restriction at this level". When two or more lists
+     *  are non-empty, ALL non-empty lists must match the current quote
+     *  context (AND semantics). */
     moduleIds?: string[];
+    brandIds?: string[];
+    rangeIds?: string[];
+    modelIds?: string[];
 }
 
 interface FitUpQuoteSelectorProps {
     organisationId: string;
     selectedIds: string[];
     onToggle: (item: FitUpItem) => void;
-    /** v1.11 (Epic 9.2.1) — current boat module id. Items with a
-     *  non-empty `moduleIds` whitelist are filtered to only those
-     *  matching this module. Empty/missing moduleIds on an item =
-     *  available everywhere. */
+    /** v1.11 (Epic 9.2.1) — assignment context. AND-combined against
+     *  each item's non-empty allowlist. */
     moduleId?: string;
+    vendorId?: string;
+    rangeId?: string;
+    modelId?: string;
     /** v1.11 (Epic 9.3.1 simplified) — boat motor HP for the
-     *  Suggested filter heuristic. ≥150hp suggests Complex, 50-149
-     *  suggests Medium, <50 suggests Simple. */
+     *  Suggested filter heuristic. */
     motorHp?: number;
+}
+
+/** Returns true if every non-empty allowlist on `item` includes the
+ *  matching context value. Empty allowlists = "no restriction at that
+ *  level" → pass through. */
+function itemMatchesContext(
+    item: FitUpItem,
+    ctx: { moduleId?: string; vendorId?: string; rangeId?: string; modelId?: string },
+): boolean {
+    const checks: [string[] | undefined, string | undefined][] = [
+        [item.moduleIds, ctx.moduleId],
+        [item.brandIds, ctx.vendorId],
+        [item.rangeIds, ctx.rangeId],
+        [item.modelIds, ctx.modelId],
+    ];
+    for (const [allowlist, value] of checks) {
+        if (allowlist && allowlist.length > 0) {
+            if (!value || !allowlist.includes(value)) return false;
+        }
+    }
+    return true;
 }
 
 /** Resolve the displayed sell price for an item. If sellPrice is set
@@ -94,7 +120,7 @@ function suggestedTierForMotorHp(hp: number | undefined): Tier | null {
     return 'simple';
 }
 
-export function FitUpQuoteSelector({ organisationId, selectedIds, onToggle, moduleId, motorHp }: FitUpQuoteSelectorProps) {
+export function FitUpQuoteSelector({ organisationId, selectedIds, onToggle, moduleId, vendorId, rangeId, modelId, motorHp }: FitUpQuoteSelectorProps) {
     const firestore = useFirestore();
 
     const itemsRef = useMemoFirebase(
@@ -112,16 +138,12 @@ export function FitUpQuoteSelector({ organisationId, selectedIds, onToggle, modu
 
     const suggestedTier = useMemo(() => suggestedTierForMotorHp(motorHp), [motorHp]);
 
-    // v1.11 Epic 9.2.1 — filter by module first (allowlist semantics),
-    // then by tier chip, then by Suggested heuristic if active.
+    // v1.11 Epic 9.2.1 — filter by assignment context first (multi-
+    // level AND), then by tier chip, then by Suggested heuristic.
     const moduleFiltered = useMemo(() => {
         const list = items ?? [];
-        if (!moduleId) return list;
-        return list.filter(i => {
-            const mods = i.moduleIds ?? [];
-            return mods.length === 0 || mods.includes(moduleId);
-        });
-    }, [items, moduleId]);
+        return list.filter(item => itemMatchesContext(item, { moduleId, vendorId, rangeId, modelId }));
+    }, [items, moduleId, vendorId, rangeId, modelId]);
 
     const filtered = useMemo(() => {
         let list = moduleFiltered;

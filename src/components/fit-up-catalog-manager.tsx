@@ -31,7 +31,7 @@
  */
 
 import { useMemo, useState, useEffect } from 'react';
-import { addDoc, collection, deleteDoc, doc, orderBy, query, serverTimestamp, updateDoc, writeBatch } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, updateDoc, where, writeBatch } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -56,11 +56,17 @@ interface FitUpItem {
     cost: number;
     sellPrice?: number | null;
     notes?: string | null;
-    /** v1.11 (Epic 9.2.1) — per-module restriction. Each entry is a
-     *  module doc id. Empty/missing array = available across all modules
-     *  (legacy default). Populated entries = only that boat module's
-     *  quote builder shows this item. */
+    /** v1.11 (Epic 9.2.1) — assignment allowlists. Empty array on a
+     *  field = "no restriction at this level". When two or more lists
+     *  are non-empty, ALL non-empty lists must match the current quote
+     *  context (AND semantics) — so brandIds=[Highfield] +
+     *  rangeIds=[Sport] means "Highfield Sport quotes only". This is
+     *  intentionally restrictive: dealer-admins opt-into a scope, then
+     *  narrow further if they want. Empty everywhere = universal. */
     moduleIds?: string[];
+    brandIds?: string[];   // data-warehouse vendor ids (Boat Brand vendors)
+    rangeIds?: string[];   // data-warehouse/{vendorId}/ranges/{rangeId}
+    modelIds?: string[];   // data-warehouse/{vendorId}/ranges/{rangeId}/models/{modelId}
     createdAt?: any;
     updatedAt?: any;
 }
@@ -69,6 +75,31 @@ interface ModuleOption {
     id: string;
     name?: string;
     slug?: string;
+}
+
+interface BrandOption {
+    id: string;
+    name?: string;
+    slug?: string;
+    vendorType?: string;
+}
+
+interface RangeOption {
+    id: string;
+    name?: string;
+    code?: string;
+    vendorId: string;
+    vendorName?: string;
+}
+
+interface ModelOption2 {
+    id: string;
+    name?: string;
+    modelCode?: string;
+    vendorId: string;
+    rangeId: string;
+    rangeName?: string;
+    vendorName?: string;
 }
 
 interface FitUpCatalogManagerProps {
@@ -524,7 +555,12 @@ function FitUpItemEditor({
     const [sellPrice, setSellPrice] = useState('');
     const [notes, setNotes] = useState('');
     const [moduleIds, setModuleIds] = useState<string[]>([]);
+    const [brandIds, setBrandIds] = useState<string[]>([]);
+    const [rangeIds, setRangeIds] = useState<string[]>([]);
+    const [modelIds, setModelIds] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
+    const [scopeData, setScopeData] = useState<{ brands: BrandOption[]; ranges: RangeOption[]; models: ModelOption2[] }>({ brands: [], ranges: [], models: [] });
+    const [loadingScope, setLoadingScope] = useState(false);
 
     const isEdit = editingItem !== null;
 
@@ -541,6 +577,56 @@ function FitUpItemEditor({
         [modules],
     );
 
+    // v1.11 (Epic 9.2.1 wider) — load brand / range / model options on
+    // editor open. Single fetch; tied to dialog open so we don't keep
+    // refreshing during list nav. Boat Brand vendors only.
+    useEffect(() => {
+        if (!open) return;
+        let cancelled = false;
+        (async () => {
+            setLoadingScope(true);
+            try {
+                const vendorsSnap = await getDocs(query(collection(firestore, 'data-warehouse'), where('vendorType', '==', 'Boat Brand')));
+                const brands: BrandOption[] = [];
+                vendorsSnap.forEach(d => brands.push({ id: d.id, ...(d.data() as any) }));
+                if (cancelled) return;
+
+                const ranges: RangeOption[] = [];
+                const models: ModelOption2[] = [];
+                for (const brand of brands) {
+                    const rangesSnap = await getDocs(collection(firestore, 'data-warehouse', brand.id, 'ranges'));
+                    const rangeDocs: { id: string; name?: string; code?: string }[] = [];
+                    rangesSnap.forEach(r => {
+                        const rd = r.data() as any;
+                        rangeDocs.push({ id: r.id, ...rd });
+                        ranges.push({ id: r.id, name: rd.name, code: rd.code, vendorId: brand.id, vendorName: brand.name });
+                    });
+                    for (const range of rangeDocs) {
+                        const modelsSnap = await getDocs(collection(firestore, 'data-warehouse', brand.id, 'ranges', range.id, 'models'));
+                        modelsSnap.forEach(m => {
+                            const md = m.data() as any;
+                            models.push({
+                                id: m.id,
+                                name: md.name,
+                                modelCode: md.modelCode,
+                                vendorId: brand.id,
+                                rangeId: range.id,
+                                rangeName: range.name ?? range.code,
+                                vendorName: brand.name,
+                            });
+                        });
+                    }
+                }
+                if (!cancelled) setScopeData({ brands, ranges, models });
+            } catch (err) {
+                console.error('Scope load failed', err);
+            } finally {
+                if (!cancelled) setLoadingScope(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [open, firestore]);
+
     useEffect(() => {
         if (open) {
             setName(editingItem?.name ?? '');
@@ -549,12 +635,39 @@ function FitUpItemEditor({
             setSellPrice(editingItem?.sellPrice != null ? String(editingItem.sellPrice) : '');
             setNotes(editingItem?.notes ?? '');
             setModuleIds(editingItem?.moduleIds ?? []);
+            setBrandIds(editingItem?.brandIds ?? []);
+            setRangeIds(editingItem?.rangeIds ?? []);
+            setModelIds(editingItem?.modelIds ?? []);
         }
     }, [open, editingItem]);
 
     const toggleModule = (id: string) => {
         setModuleIds(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
     };
+    const toggleBrand = (id: string) => {
+        setBrandIds(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
+    };
+    const toggleRange = (id: string) => {
+        setRangeIds(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
+    };
+    const toggleModel = (id: string) => {
+        setModelIds(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
+    };
+
+    // Cascade narrowing: if brands are picked, only show ranges/models
+    // under those brands. If ranges are picked, only show models under
+    // those ranges. Operator can still toggle anything but the visible
+    // list focuses where they're working.
+    const visibleRanges = useMemo(() => {
+        if (brandIds.length === 0) return scopeData.ranges;
+        return scopeData.ranges.filter(r => brandIds.includes(r.vendorId));
+    }, [scopeData.ranges, brandIds]);
+    const visibleModels = useMemo(() => {
+        let list = scopeData.models;
+        if (brandIds.length > 0) list = list.filter(m => brandIds.includes(m.vendorId));
+        if (rangeIds.length > 0) list = list.filter(m => rangeIds.includes(m.rangeId));
+        return list;
+    }, [scopeData.models, brandIds, rangeIds]);
 
     const handleSave = async () => {
         const trimmedName = name.trim();
@@ -581,9 +694,13 @@ function FitUpItemEditor({
                 cost: parsedCost,
                 sellPrice: parsedSell,
                 notes: notes.trim() || null,
-                // v1.11 — empty array = "all modules"; the selector
-                // treats an empty/missing moduleIds as no restriction.
+                // v1.11 — assignment allowlists; empty = no restriction
+                // at that level; the selector AND-combines non-empty
+                // allowlists against the current quote context.
                 moduleIds,
+                brandIds,
+                rangeIds,
+                modelIds,
                 updatedAt: serverTimestamp(),
             };
             if (isEdit && editingItem) {
@@ -682,35 +799,52 @@ function FitUpItemEditor({
                         />
                     </div>
 
-                    {/* v1.11 Epic 9.2.1 — per-module restriction. */}
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-semibold">Available on modules — optional</label>
-                        <p className="text-[10px] text-muted-foreground">
-                            Leave empty to make this item available on every boat module's quote builder. Pick specific
-                            modules to restrict.
-                        </p>
-                        <div className="flex flex-wrap gap-1.5 p-2 rounded-xl border-2 max-h-32 overflow-y-auto">
-                            {sortedModules.length === 0 ? (
-                                <span className="text-[10px] text-muted-foreground italic">No modules loaded yet…</span>
-                            ) : sortedModules.map(m => {
-                                const isOn = moduleIds.includes(m.id);
-                                return (
-                                    <button
-                                        key={m.id}
-                                        type="button"
-                                        onClick={() => toggleModule(m.id)}
-                                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${isOn ? 'bg-primary text-white border-primary' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
-                                    >
-                                        {m.name ?? m.slug ?? m.id}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        {moduleIds.length > 0 && (
-                            <p className="text-[10px] text-primary font-semibold">
-                                Restricted to {moduleIds.length} module{moduleIds.length === 1 ? '' : 's'}.
+                    {/* v1.11 Epic 9.2.1 — multi-level assignment. */}
+                    <div className="rounded-xl border-2 p-3 space-y-3 bg-slate-50/50">
+                        <div>
+                            <p className="text-xs font-bold">Assignment scope</p>
+                            <p className="text-[10px] text-muted-foreground">
+                                Leave any level empty for "no restriction at that level". When two or more levels have
+                                picks, the item shows only when ALL non-empty levels match the current quote
+                                (Modules AND Brands AND Ranges AND Models).
                             </p>
-                        )}
+                            {loadingScope && (
+                                <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+                                    <Loader2 className="h-3 w-3 animate-spin" /> Loading brands / ranges / models…
+                                </p>
+                            )}
+                        </div>
+
+                        <ChipSection
+                            label="Modules"
+                            options={sortedModules.map(m => ({ id: m.id, label: m.name ?? m.slug ?? m.id }))}
+                            selected={moduleIds}
+                            onToggle={toggleModule}
+                        />
+                        <ChipSection
+                            label="Brands"
+                            options={scopeData.brands.map(b => ({ id: b.id, label: b.name ?? b.slug ?? b.id }))}
+                            selected={brandIds}
+                            onToggle={toggleBrand}
+                        />
+                        <ChipSection
+                            label="Ranges"
+                            options={visibleRanges.map(r => ({ id: r.id, label: `${r.vendorName ?? ''}${r.vendorName ? ' • ' : ''}${r.name ?? r.code ?? r.id}` }))}
+                            selected={rangeIds}
+                            onToggle={toggleRange}
+                            hint={brandIds.length > 0 ? `Narrowed by ${brandIds.length} brand${brandIds.length === 1 ? '' : 's'}` : undefined}
+                        />
+                        <ChipSection
+                            label="Models"
+                            options={visibleModels.map(m => ({ id: m.id, label: `${m.modelCode ?? m.name ?? m.id}${m.name && m.modelCode ? ` — ${m.name}` : ''}` }))}
+                            selected={modelIds}
+                            onToggle={toggleModel}
+                            hint={
+                                modelIds.length === 0 && (brandIds.length > 0 || rangeIds.length > 0)
+                                    ? 'Narrowed by selected brand/range'
+                                    : undefined
+                            }
+                        />
                     </div>
                 </div>
 
@@ -725,6 +859,46 @@ function FitUpItemEditor({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    );
+}
+
+/** Multi-select chip row for the assignment-scope sections. */
+function ChipSection({
+    label, options, selected, onToggle, hint,
+}: {
+    label: string;
+    options: { id: string; label: string }[];
+    selected: string[];
+    onToggle: (id: string) => void;
+    hint?: string;
+}) {
+    return (
+        <div className="space-y-1">
+            <div className="flex items-center justify-between">
+                <label className="text-[10px] font-bold uppercase tracking-widest">{label}</label>
+                <span className="text-[9px] text-muted-foreground">
+                    {selected.length > 0 ? `${selected.length} selected` : `${options.length} available · empty = any`}
+                </span>
+            </div>
+            {hint && <p className="text-[9px] text-muted-foreground italic">{hint}</p>}
+            <div className="flex flex-wrap gap-1 p-1.5 rounded-lg border bg-white max-h-24 overflow-y-auto">
+                {options.length === 0 ? (
+                    <span className="text-[10px] text-muted-foreground italic px-1">—</span>
+                ) : options.map(opt => {
+                    const isOn = selected.includes(opt.id);
+                    return (
+                        <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => onToggle(opt.id)}
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${isOn ? 'bg-primary text-white border-primary' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                        >
+                            {opt.label}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
     );
 }
 

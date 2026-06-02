@@ -33,7 +33,7 @@
  */
 
 import { useState } from 'react';
-import { addDoc, collection, doc, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { useFirestore } from '@/firebase';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -67,6 +67,9 @@ function buildSheetSpecs(orgId: string): SheetSpec[] {
                 sellPrice: d.sellPrice ?? '',
                 notes: d.notes ?? '',
                 moduleIds: Array.isArray(d.moduleIds) ? d.moduleIds.join('|') : '',
+                brandIds: Array.isArray(d.brandIds) ? d.brandIds.join('|') : '',
+                rangeIds: Array.isArray(d.rangeIds) ? d.rangeIds.join('|') : '',
+                modelIds: Array.isArray(d.modelIds) ? d.modelIds.join('|') : '',
             }),
         },
         {
@@ -152,6 +155,154 @@ export function CatalogExportImport({ organisationId }: CatalogExportImportProps
     const { toast } = useToast();
     const [busy, setBusy] = useState<'export' | 'import' | null>(null);
 
+    /** v1.11 wider — also dumps the global data-warehouse boat
+     *  hierarchy (vendors, ranges, models, variants, options) to its
+     *  own sheets. These are global (cross-org) and ARE imported back
+     *  on `Import` because the team's workflow is to author externally
+     *  and sync to Firestore. Each is upsert by natural key (id where
+     *  present, slug fallback for vendors). */
+    async function exportDataWarehouseSheets(wb: XLSX.WorkBook, sheetSummaries: string[]) {
+        const vendorsSnap = await getDocs(query(collection(firestore, 'data-warehouse'), where('vendorType', '==', 'Boat Brand')));
+        const vendorRows: Record<string, any>[] = [];
+        const rangeRows: Record<string, any>[] = [];
+        const modelRows: Record<string, any>[] = [];
+        const variantRows: Record<string, any>[] = [];
+        const optionRows: Record<string, any>[] = [];
+
+        for (const vDoc of vendorsSnap.docs) {
+            const v = vDoc.data();
+            vendorRows.push({
+                vendorId: vDoc.id,
+                name: v.name ?? '',
+                slug: v.slug ?? '',
+                vendorType: v.vendorType ?? '',
+                currency: v.currency ?? '',
+            });
+
+            const rangesSnap = await getDocs(collection(firestore, 'data-warehouse', vDoc.id, 'ranges'));
+            for (const rDoc of rangesSnap.docs) {
+                const r = rDoc.data();
+                rangeRows.push({
+                    vendorId: vDoc.id,
+                    rangeId: rDoc.id,
+                    name: r.name ?? '',
+                    code: r.code ?? '',
+                });
+
+                const modelsSnap = await getDocs(collection(firestore, 'data-warehouse', vDoc.id, 'ranges', rDoc.id, 'models'));
+                for (const mDoc of modelsSnap.docs) {
+                    const m = mDoc.data();
+                    modelRows.push({
+                        vendorId: vDoc.id,
+                        rangeId: rDoc.id,
+                        modelId: mDoc.id,
+                        name: m.name ?? '',
+                        modelCode: m.modelCode ?? '',
+                        cost: m.cost ?? '',
+                        sellPriceExclGst: m.sellPriceExclGst ?? '',
+                    });
+
+                    const variantsSnap = await getDocs(collection(firestore, 'data-warehouse', vDoc.id, 'ranges', rDoc.id, 'models', mDoc.id, 'variants'));
+                    variantsSnap.forEach(varDoc => {
+                        const v2 = varDoc.data();
+                        variantRows.push({
+                            vendorId: vDoc.id,
+                            rangeId: rDoc.id,
+                            modelId: mDoc.id,
+                            variantId: varDoc.id,
+                            name: v2.name ?? '',
+                            sku: v2.sku ?? '',
+                            material: v2.material ?? '',
+                            color: v2.color ?? '',
+                            cost: v2.cost ?? '',
+                            sellPriceExclGst: v2.sellPriceExclGst ?? '',
+                        });
+                    });
+
+                    // Optional features per model.
+                    const optsSnap = await getDocs(collection(firestore, 'data-warehouse', vDoc.id, 'ranges', rDoc.id, 'models', mDoc.id, 'optionalFeatures'));
+                    optsSnap.forEach(oDoc => {
+                        const o = oDoc.data();
+                        optionRows.push({
+                            vendorId: vDoc.id,
+                            rangeId: rDoc.id,
+                            modelId: mDoc.id,
+                            optionId: oDoc.id,
+                            name: o.name ?? '',
+                            code: o.code ?? '',
+                            category: o.category ?? '',
+                            cost: o.cost ?? '',
+                            sellPriceExclGst: o.sellPriceExclGst ?? '',
+                            applicableVariantIds: Array.isArray(o.applicableVariantIds) ? o.applicableVariantIds.join('|') : '',
+                        });
+                    });
+                }
+            }
+        }
+
+        const dwSpec: { name: string; rows: Record<string, any>[] }[] = [
+            { name: 'Vendors', rows: vendorRows },
+            { name: 'Ranges', rows: rangeRows },
+            { name: 'Models', rows: modelRows },
+            { name: 'Variants', rows: variantRows },
+            { name: 'Optional Features', rows: optionRows },
+        ];
+
+        for (const d of dwSpec) {
+            const ws = d.rows.length > 0
+                ? XLSX.utils.json_to_sheet(d.rows)
+                : XLSX.utils.aoa_to_sheet([[`No rows in ${d.name}`]]);
+            XLSX.utils.book_append_sheet(wb, ws, d.name);
+            sheetSummaries.push(`${d.name}: ${d.rows.length}`);
+        }
+    }
+
+    /** v1.11 wider — import the data-warehouse sheets back. UPSERT by
+     *  the id columns (vendorId / rangeId / modelId / variantId /
+     *  optionId). Uses setDoc with merge:true so we don't clobber
+     *  fields not in the sheet (per the v1.4 lesson). */
+    async function importDataWarehouseSheets(wb: XLSX.WorkBook, summaries: string[]) {
+        const dwSheets: { name: string; idCol: string; pathFromRow: (row: any) => string }[] = [
+            { name: 'Vendors',           idCol: 'vendorId',  pathFromRow: r => `data-warehouse/${r.vendorId}` },
+            { name: 'Ranges',            idCol: 'rangeId',   pathFromRow: r => `data-warehouse/${r.vendorId}/ranges/${r.rangeId}` },
+            { name: 'Models',            idCol: 'modelId',   pathFromRow: r => `data-warehouse/${r.vendorId}/ranges/${r.rangeId}/models/${r.modelId}` },
+            { name: 'Variants',          idCol: 'variantId', pathFromRow: r => `data-warehouse/${r.vendorId}/ranges/${r.rangeId}/models/${r.modelId}/variants/${r.variantId}` },
+            { name: 'Optional Features', idCol: 'optionId',  pathFromRow: r => `data-warehouse/${r.vendorId}/ranges/${r.rangeId}/models/${r.modelId}/optionalFeatures/${r.optionId}` },
+        ];
+
+        for (const ds of dwSheets) {
+            if (!wb.SheetNames.includes(ds.name)) {
+                summaries.push(`${ds.name}: missing`);
+                continue;
+            }
+            const sheet = wb.Sheets[ds.name];
+            const rows = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
+            let written = 0;
+            let skipped = 0;
+            const writes: Promise<unknown>[] = [];
+
+            for (const row of rows) {
+                if (!row[ds.idCol]) { skipped++; continue; }
+                const payload: Record<string, any> = {};
+                for (const [k, v] of Object.entries(row)) {
+                    const cleaned = parseImportValue(v);
+                    if (cleaned == null) continue;
+                    if (k === 'applicableVariantIds' && typeof cleaned === 'string') {
+                        payload[k] = cleaned.split('|').map(s => s.trim()).filter(Boolean);
+                    } else {
+                        payload[k] = cleaned;
+                    }
+                }
+                payload.updatedAt = serverTimestamp();
+                const path = ds.pathFromRow(row);
+                writes.push(setDoc(doc(firestore, path), payload, { merge: true }));
+                written++;
+            }
+            await Promise.all(writes);
+            summaries.push(`${ds.name}: ${written}w/${skipped}s`);
+        }
+    }
+
     const handleExport = async () => {
         setBusy('export');
         try {
@@ -169,6 +320,8 @@ export function CatalogExportImport({ organisationId }: CatalogExportImportProps
                 XLSX.utils.book_append_sheet(wb, ws, spec.sheetName);
                 sheetSummaries.push(`${spec.sheetName}: ${rows.length}`);
             }
+
+            await exportDataWarehouseSheets(wb, sheetSummaries);
 
             const stamp = new Date().toISOString().slice(0, 10);
             XLSX.writeFile(wb, `catalog-export-${stamp}.xlsx`);
@@ -228,8 +381,9 @@ export function CatalogExportImport({ organisationId }: CatalogExportImportProps
                     for (const [k, v] of Object.entries(row)) {
                         const cleaned = parseImportValue(v);
                         if (cleaned == null) continue;
-                        // moduleIds is stored as `|`-separated string in xlsx; back to array.
-                        if (k === 'moduleIds' && typeof cleaned === 'string') {
+                        // moduleIds / brandIds / rangeIds / modelIds stored as
+                        // `|`-separated strings in xlsx; back to array on import.
+                        if (['moduleIds', 'brandIds', 'rangeIds', 'modelIds'].includes(k) && typeof cleaned === 'string') {
                             payload[k] = cleaned.split('|').map(s => s.trim()).filter(Boolean);
                         } else {
                             payload[k] = cleaned;
@@ -253,6 +407,9 @@ export function CatalogExportImport({ organisationId }: CatalogExportImportProps
                 await Promise.all(writes);
                 summaries.push(`${spec.sheetName}: ${updated}u/${created}c/${skipped}s`);
             }
+
+            // v1.11 wider — also handle the data-warehouse sheets.
+            await importDataWarehouseSheets(wb, summaries);
 
             toast({
                 title: 'Catalog import complete',
@@ -281,8 +438,10 @@ export function CatalogExportImport({ organisationId }: CatalogExportImportProps
                     Global Catalog Export / Import
                 </CardTitle>
                 <CardDescription className="text-xs">
-                    Snapshot or restore the org's catalogue in one xlsx file. Sheets:
-                    Fit-Up · Service Operations · Service Parts · Model Overrides · Trailer Overrides.
+                    Snapshot or restore the org's catalogue + the global boat data-warehouse in one xlsx file.
+                    Sheets: <strong>Fit-Up</strong> · <strong>Service Operations</strong> · <strong>Service Parts</strong> ·
+                    <strong> Model Overrides</strong> · <strong>Trailer Overrides</strong> · <strong>Vendors</strong> ·
+                    <strong> Ranges</strong> · <strong>Models</strong> · <strong>Variants</strong> · <strong>Optional Features</strong>.
                     Import is upsert-by-natural-key — partial files won't clobber what's already there.
                 </CardDescription>
             </CardHeader>
@@ -318,11 +477,12 @@ export function CatalogExportImport({ organisationId }: CatalogExportImportProps
                     <p><strong>Export format:</strong> multi-sheet xlsx — each sheet is one collection.</p>
                     <p><strong>Import format:</strong> same shape as export. Unknown sheet names are ignored. Per-sheet natural keys:</p>
                     <ul className="list-disc list-inside ml-2">
-                        <li>Fit-Up: <code>name</code> (case-insensitive)</li>
+                        <li>Fit-Up: <code>name</code> (case-insensitive); <code>moduleIds</code> / <code>brandIds</code> / <code>rangeIds</code> / <code>modelIds</code> are <code>|</code>-separated.</li>
                         <li>Service Operations: <code>code</code></li>
                         <li>Service Parts: <code>partNumber</code></li>
                         <li>Model Overrides: <code>modelId</code></li>
                         <li>Trailer Overrides: <code>trailerId</code></li>
+                        <li>Vendors / Ranges / Models / Variants / Optional Features: id columns (setDoc + merge).</li>
                     </ul>
                 </div>
             </CardContent>
