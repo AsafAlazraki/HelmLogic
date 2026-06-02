@@ -118,7 +118,10 @@ export default function PricingManagerPage() {
             <div className="shrink-0 flex items-start justify-between">
                 <div>
                     <h1 className="text-3xl font-black uppercase tracking-tight">Pricing Manager</h1>
-                    <p className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 mt-1">Strategic Profitability Matrix</p>
+                    <p className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 mt-1">
+                        Strategic Profitability Matrix · {' '}
+                        <a href="/catalog-manager" className="text-primary underline hover:opacity-70">Catalog Manager →</a>
+                    </p>
                 </div>
 
                 {/* Exchange Rates Strategic Card */}

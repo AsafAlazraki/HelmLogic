@@ -2225,6 +2225,8 @@ export function HighfieldQuoteFlow({
                                             organisationId={orgId}
                                             selectedIds={selectedFitUpIds}
                                             onToggle={toggleFitUpItem}
+                                            moduleId={module.id}
+                                            motorHp={selectedMotor ? (parseFloat(String(selectedMotor['HP Rating'] || '0').replace(/[^\d.]/g, '')) || undefined) : undefined}
                                         />
                                     )}
                                 </div>

@@ -56,8 +56,19 @@ interface FitUpItem {
     cost: number;
     sellPrice?: number | null;
     notes?: string | null;
+    /** v1.11 (Epic 9.2.1) — per-module restriction. Each entry is a
+     *  module doc id. Empty/missing array = available across all modules
+     *  (legacy default). Populated entries = only that boat module's
+     *  quote builder shows this item. */
+    moduleIds?: string[];
     createdAt?: any;
     updatedAt?: any;
+}
+
+interface ModuleOption {
+    id: string;
+    name?: string;
+    slug?: string;
 }
 
 interface FitUpCatalogManagerProps {
@@ -512,9 +523,23 @@ function FitUpItemEditor({
     const [cost, setCost] = useState('');
     const [sellPrice, setSellPrice] = useState('');
     const [notes, setNotes] = useState('');
+    const [moduleIds, setModuleIds] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
 
     const isEdit = editingItem !== null;
+
+    // v1.11 (Epic 9.2.1) — module list for per-item module assignment.
+    // Pulled from the top-level `modules` collection; only renders when
+    // the editor is open to keep the parent tab snappy.
+    const modulesRef = useMemoFirebase(
+        () => (open ? collection(firestore, 'modules') : null),
+        [firestore, open],
+    );
+    const { data: modules } = useCollection<ModuleOption>(modulesRef);
+    const sortedModules = useMemo(
+        () => [...(modules ?? [])].sort((a, b) => (a.name ?? a.slug ?? a.id).localeCompare(b.name ?? b.slug ?? b.id)),
+        [modules],
+    );
 
     useEffect(() => {
         if (open) {
@@ -523,8 +548,13 @@ function FitUpItemEditor({
             setCost(editingItem?.cost != null ? String(editingItem.cost) : '');
             setSellPrice(editingItem?.sellPrice != null ? String(editingItem.sellPrice) : '');
             setNotes(editingItem?.notes ?? '');
+            setModuleIds(editingItem?.moduleIds ?? []);
         }
     }, [open, editingItem]);
+
+    const toggleModule = (id: string) => {
+        setModuleIds(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
+    };
 
     const handleSave = async () => {
         const trimmedName = name.trim();
@@ -551,6 +581,9 @@ function FitUpItemEditor({
                 cost: parsedCost,
                 sellPrice: parsedSell,
                 notes: notes.trim() || null,
+                // v1.11 — empty array = "all modules"; the selector
+                // treats an empty/missing moduleIds as no restriction.
+                moduleIds,
                 updatedAt: serverTimestamp(),
             };
             if (isEdit && editingItem) {
@@ -647,6 +680,37 @@ function FitUpItemEditor({
                             className="rounded-xl border-2 text-xs"
                             rows={2}
                         />
+                    </div>
+
+                    {/* v1.11 Epic 9.2.1 — per-module restriction. */}
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-semibold">Available on modules — optional</label>
+                        <p className="text-[10px] text-muted-foreground">
+                            Leave empty to make this item available on every boat module's quote builder. Pick specific
+                            modules to restrict.
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 p-2 rounded-xl border-2 max-h-32 overflow-y-auto">
+                            {sortedModules.length === 0 ? (
+                                <span className="text-[10px] text-muted-foreground italic">No modules loaded yet…</span>
+                            ) : sortedModules.map(m => {
+                                const isOn = moduleIds.includes(m.id);
+                                return (
+                                    <button
+                                        key={m.id}
+                                        type="button"
+                                        onClick={() => toggleModule(m.id)}
+                                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${isOn ? 'bg-primary text-white border-primary' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                                    >
+                                        {m.name ?? m.slug ?? m.id}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        {moduleIds.length > 0 && (
+                            <p className="text-[10px] text-primary font-semibold">
+                                Restricted to {moduleIds.length} module{moduleIds.length === 1 ? '' : 's'}.
+                            </p>
+                        )}
                     </div>
                 </div>
 

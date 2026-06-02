@@ -55,12 +55,24 @@ export interface FitUpItem {
     cost: number;
     sellPrice?: number | null;
     notes?: string | null;
+    /** v1.11 (Epic 9.2.1) — per-module restriction. Empty/missing
+     *  means "available across all modules". */
+    moduleIds?: string[];
 }
 
 interface FitUpQuoteSelectorProps {
     organisationId: string;
     selectedIds: string[];
     onToggle: (item: FitUpItem) => void;
+    /** v1.11 (Epic 9.2.1) — current boat module id. Items with a
+     *  non-empty `moduleIds` whitelist are filtered to only those
+     *  matching this module. Empty/missing moduleIds on an item =
+     *  available everywhere. */
+    moduleId?: string;
+    /** v1.11 (Epic 9.3.1 simplified) — boat motor HP for the
+     *  Suggested filter heuristic. ≥150hp suggests Complex, 50-149
+     *  suggests Medium, <50 suggests Simple. */
+    motorHp?: number;
 }
 
 /** Resolve the displayed sell price for an item. If sellPrice is set
@@ -71,7 +83,18 @@ export function resolveFitUpSell(item: Pick<FitUpItem, 'sellPrice' | 'cost'>): n
     return item.sellPrice != null ? item.sellPrice : (item.cost ?? 0);
 }
 
-export function FitUpQuoteSelector({ organisationId, selectedIds, onToggle }: FitUpQuoteSelectorProps) {
+/** v1.11 (Epic 9.3.1 simplified) — bucket motor HP into a suggested
+ *  tier. Heuristic, not a rule engine: ≥150hp implies a bigger /
+ *  more complex install; <50 implies straightforward. Operators
+ *  catalogue real items and the suggester just biases the list. */
+function suggestedTierForMotorHp(hp: number | undefined): Tier | null {
+    if (hp == null || !Number.isFinite(hp)) return null;
+    if (hp >= 150) return 'complex';
+    if (hp >= 50) return 'medium';
+    return 'simple';
+}
+
+export function FitUpQuoteSelector({ organisationId, selectedIds, onToggle, moduleId, motorHp }: FitUpQuoteSelectorProps) {
     const firestore = useFirestore();
 
     const itemsRef = useMemoFirebase(
@@ -85,19 +108,35 @@ export function FitUpQuoteSelector({ organisationId, selectedIds, onToggle }: Fi
     const { data: items, isLoading } = useCollection<FitUpItem>(itemsRef);
 
     const [tierFilter, setTierFilter] = useState<Tier | 'all'>('all');
+    const [suggestedOnly, setSuggestedOnly] = useState(false);
+
+    const suggestedTier = useMemo(() => suggestedTierForMotorHp(motorHp), [motorHp]);
+
+    // v1.11 Epic 9.2.1 — filter by module first (allowlist semantics),
+    // then by tier chip, then by Suggested heuristic if active.
+    const moduleFiltered = useMemo(() => {
+        const list = items ?? [];
+        if (!moduleId) return list;
+        return list.filter(i => {
+            const mods = i.moduleIds ?? [];
+            return mods.length === 0 || mods.includes(moduleId);
+        });
+    }, [items, moduleId]);
 
     const filtered = useMemo(() => {
-        const list = items ?? [];
-        return tierFilter === 'all' ? list : list.filter(i => i.tier === tierFilter);
-    }, [items, tierFilter]);
+        let list = moduleFiltered;
+        if (tierFilter !== 'all') list = list.filter(i => i.tier === tierFilter);
+        if (suggestedOnly && suggestedTier) list = list.filter(i => i.tier === suggestedTier);
+        return list;
+    }, [moduleFiltered, tierFilter, suggestedOnly, suggestedTier]);
 
     const tierCounts = useMemo(() => {
         const counts: Record<Tier, number> = { simple: 0, medium: 0, complex: 0 };
-        for (const item of items ?? []) {
+        for (const item of moduleFiltered) {
             if (TIERS.includes(item.tier)) counts[item.tier]++;
         }
         return counts;
-    }, [items]);
+    }, [moduleFiltered]);
 
     const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
@@ -109,14 +148,20 @@ export function FitUpQuoteSelector({ organisationId, selectedIds, onToggle }: Fi
         );
     }
 
-    const total = items?.length ?? 0;
+    const total = moduleFiltered.length;
     if (total === 0) {
         return (
             <div className="py-12 text-center border-2 border-dashed rounded-xl opacity-30">
                 <Wrench className="h-8 w-8 mx-auto mb-2" />
-                <p className="text-[9px] font-black uppercase tracking-widest">No fit-up items catalogued yet.</p>
+                <p className="text-[9px] font-black uppercase tracking-widest">
+                    {moduleId && (items?.length ?? 0) > 0
+                        ? 'No fit-up items assigned to this boat module.'
+                        : 'No fit-up items catalogued yet.'}
+                </p>
                 <p className="text-[9px] text-muted-foreground mt-1 normal-case font-normal">
-                    Org admins: populate from Manage → Fit-Up Catalog.
+                    Org admins: {moduleId && (items?.length ?? 0) > 0
+                        ? 'open the item in Manage → Fit-Up Catalog and add this module to its "Available on modules" list.'
+                        : 'populate from Manage → Fit-Up Catalog.'}
                 </p>
             </div>
         );
@@ -131,6 +176,11 @@ export function FitUpQuoteSelector({ organisationId, selectedIds, onToggle }: Fi
                     Fit-Up & Rigging
                 </h3>
                 <div className="ml-auto flex items-center gap-1 flex-wrap">
+                    {suggestedTier && (
+                        <FilterChip active={suggestedOnly} onClick={() => setSuggestedOnly(s => !s)}>
+                            ✦ Suggested ({TIER_LABEL[suggestedTier]})
+                        </FilterChip>
+                    )}
                     <FilterChip active={tierFilter === 'all'} onClick={() => setTierFilter('all')}>
                         All ({total})
                     </FilterChip>
