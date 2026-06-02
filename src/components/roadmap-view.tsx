@@ -432,7 +432,25 @@ export function RoadmapView() {
                     onDragStart={onDragStart}
                     onDragEnd={onDragEnd}
                 >
-                    <div className="min-w-[1370px] p-2">
+                    {/*
+                      v1.10 bug fix — the container width MUST scale with the
+                      visible column count. Pre-fix, this was hardcoded to
+                      min-w-[1370px] which fit ~7 release columns. After the
+                      restructure (v1.9.5) the runway extends to v1.40, so we
+                      had 32 columns × 150px min + 170px epic label ≈ 4970px.
+                      The header grid's intrinsic min-width pushed the parent
+                      to the right size for HEADER rendering, but the
+                      EpicSwimLane's overflow-hidden + BFC suppressed that
+                      same propagation for swimlane rendering — swimlanes
+                      visually stopped at ~v1.15 even though the headers
+                      extended to v1.40. Fix: compute the min-width
+                      explicitly from visibleColumns.length so both header
+                      and swimlanes share the same intrinsic size.
+                    */}
+                    <div
+                        className="p-2"
+                        style={{ minWidth: `${170 + visibleColumns.length * 150 + 32}px` }}
+                    >
                         {/* Header row */}
                         <div className="grid sticky top-0 z-10 bg-slate-50/95 backdrop-blur" style={gridTemplate(visibleColumns.length)}>
                             <div className="px-2 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
