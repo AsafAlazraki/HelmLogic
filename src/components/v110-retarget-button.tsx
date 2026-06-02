@@ -2,26 +2,27 @@
 'use client';
 
 /**
- * One-shot button (v1.9.5.1). Retargets Epic-9 stories 9.1.1 + 9.1.2
- * to `targetRelease: 'v1.9.5.1'` and `status: 'shipped'`, since the
- * schema + admin UI for those two stories landed in this release.
+ * One-shot button (v1.10 — Fit-Up groundwork). Marks Epic-9 stories
+ * 9.1.1, 9.1.2, 9.1.3, 9.1.4 as `targetRelease: 'v1.10'` and
+ * `status: 'shipped'` once the v1.10 release lands.
  *
- * Follow-up commit removes this button + this file once the user has
- * clicked it on the deployed dev branch (per CONVENTIONS.md "one-shot
- * seed lifecycle"). Idempotent — re-clicking it after the retarget
- * has already applied is a no-op (matches existing values).
+ * Idempotent — re-clicking after the retarget has already applied is
+ * a no-op. Follow-up cleanup commit removes this button + file once
+ * the user has clicked it on the deployed dev branch (per
+ * CONVENTIONS.md "one-shot seed lifecycle").
  */
 
 import { useState } from 'react';
-import { collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocs, query, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Wrench, Loader2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const TARGET_STORY_REFS = ['9.1.1', '9.1.2'] as const;
+const TARGET_STORY_REFS = ['9.1.1', '9.1.2', '9.1.3', '9.1.4'] as const;
+const TARGET_RELEASE = 'v1.10';
 
-export function V1951RetargetButton() {
+export function V110RetargetButton() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [running, setRunning] = useState(false);
@@ -30,8 +31,7 @@ export function V1951RetargetButton() {
     const apply = async () => {
         setRunning(true);
         try {
-            const featuresQuery = query(collection(firestore, 'features'));
-            const snap = await getDocs(featuresQuery);
+            const snap = await getDocs(query(collection(firestore, 'features')));
 
             let updated = 0;
             let alreadyShipped = 0;
@@ -46,14 +46,14 @@ export function V1951RetargetButton() {
                 );
                 if (!match) continue;
 
-                if (data.targetRelease === 'v1.9.5.1' && data.status === 'shipped') {
+                if (data.targetRelease === TARGET_RELEASE && data.status === 'shipped') {
                     alreadyShipped++;
                     continue;
                 }
 
                 updates.push(
                     updateDoc(doc(firestore, 'features', docSnap.id), {
-                        targetRelease: 'v1.9.5.1',
+                        targetRelease: TARGET_RELEASE,
                         status: 'shipped',
                         updatedAt: serverTimestamp(),
                     }),
@@ -64,8 +64,8 @@ export function V1951RetargetButton() {
             await Promise.all(updates);
 
             toast({
-                title: 'v1.9.5.1 retarget applied',
-                description: `${updated} story/stories retargeted · ${alreadyShipped} already on v1.9.5.1.`,
+                title: 'v1.10 Fit-Up retarget applied',
+                description: `${updated} story/stories retargeted · ${alreadyShipped} already on ${TARGET_RELEASE}.`,
             });
             setDone(true);
         } catch (err) {
@@ -80,10 +80,11 @@ export function V1951RetargetButton() {
         <div className="flex items-start gap-3 p-3 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/40">
             <Wrench className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-amber-900">One-shot: mark 9.1.1 + 9.1.2 as shipped in v1.9.5.1</p>
+                <p className="text-xs font-bold text-amber-900">One-shot: mark Fit-Up Epic 9.1.x stories as shipped in v1.10</p>
                 <p className="text-[10px] text-amber-800/80">
-                    Click once after deploy. Updates Epic 9 stories <strong>9.1.1 — Master Fit-Up Catalog</strong> and{' '}
-                    <strong>9.1.2 — Fit-Up Item Editor</strong> to <code>targetRelease: 'v1.9.5.1'</code> and{' '}
+                    Click once after deploy. Updates Epic 9 stories <strong>9.1.1 Master Fit-Up Catalog</strong>,{' '}
+                    <strong>9.1.2 Item Editor</strong>, <strong>9.1.3 Import/Export</strong>, and{' '}
+                    <strong>9.1.4 Bulk Update + Markup</strong> to <code>targetRelease: 'v1.10'</code> and{' '}
                     <code>status: 'shipped'</code>. This button is removed in the follow-up cleanup commit.
                 </p>
             </div>

@@ -22,16 +22,18 @@
 | v1.8 | 2026-05-11 | ✅ Shipped | main |
 | v1.9 | 2026-05-12 | ✅ Shipped (PR #35) | main |
 | v1.9.5 | 2026-05-14 | ✅ Shipped (PR #36) | main |
-| **v1.9.5.1** | **2026-06-02** | 🚢 **Ready on branch — prod-bug pass (4 fixes) + Epic 9 Fit-Up first slice (9.1.1 + 9.1.2 schema + admin); awaiting PR green-light** | `claude/app-overview-wKiZ1` |
+| **v1.10** | **2026-06-02 (in flight)** | 🛠️ **Building on branch — Phase A bug pass done (b516d4e), Phase B Fit-Up admin done (full 9.1.x), Phase C Service Quoting foundation next** | `claude/app-overview-wKiZ1` |
 
-> **v1.9.5 = planning + groundwork + hotfix** (fractional, like v1.5.1/v1.6.1). Roadmap reshuffled to dealer-ops priority (157 stories re-targeted, Submitted drained, sequential v1.10–v1.40 runway); Epic 11 Service Quoting seeded as backlog (NSM-Hub absorption — PLANNED, not built); clickable release-detail popups; emailTemplates Create-Proposal crash (CODE fix — SendQuoteDialog subscribed to templates unconditionally; not a rules issue). **The actual dealer-ops + Service Quoting BUILD starts at v1.10.** Plans: `tasks/nsm-hub-merge-study.md` + `tasks/nsm-hub-merge-plan.md` + `tasks/v1.10-restructure-plan.md`. 🔧 Hotfix is a CODE fix (SendQuoteDialog template subscription) — NOT a rules re-deploy; deployed rules were verified correct.
+> **v1.9.5 = planning + groundwork + hotfix** (fractional, like v1.5.1/v1.6.1). Roadmap reshuffled to dealer-ops priority (157 stories re-targeted, Submitted drained, sequential v1.10–v1.40 runway); Epic 11 Service Quoting seeded as backlog (NSM-Hub absorption — PLANNED, not built); clickable release-detail popups; emailTemplates Create-Proposal crash (CODE fix — SendQuoteDialog subscribed to templates unconditionally; not a rules issue). **The actual dealer-ops + Service Quoting BUILD starts at v1.10.**
 
-> **v1.9.5.1 = bug pass + Fit-Up groundwork** — four prod bugs (cover letter PDF, dealer-fit names, locked-discount, stock-import race) + the first slice of Epic 9 Fit-Up: a new org-level `fitUpItems` collection + admin CRUD on `/manage → Fit-Up Catalog`. Pulled Epic 9 stories 9.1.1 + 9.1.2 forward from v1.10–13. NOT shipped: quote-flow fit-up integration (Epic 9.2 = v1.16+), HL Save error / Import error (awaiting repros), RU200KAM $76.82 delta (→v1.11). One-shot `V1951RetargetButton` in the new tab marks 9.1.1 + 9.1.2 as shipped in Firestore; cleanup commit removes it on the next dev push. See `tasks/RELEASE_NOTES_v1.9.5.1.md` + `tasks/USER_GUIDE_v1.9.5.1.md`.
+> **v1.10 in progress** — three phases on one dev branch: (A) prod-bug pass (4 fixes, shipped b516d4e); (B) Fit-Up admin — full 9.1.x scope (schema + add/edit/delete + CSV import/export via xlsx + bulk markup/retier/delete) on new `Manage → Fit-Up Catalog` tab; (C) Service Quoting foundation (11.1.1 schema + 11.1.2 catalogue admin + 11.3.1 customer reconciliation) — NEXT. Quote-flow fit-up integration (Epic 9.2) stays at v1.16+; auto-classification (9.3.1) at v2.2. Plans: `tasks/nsm-hub-merge-study.md` + `tasks/nsm-hub-merge-plan.md` + `tasks/v1.10-restructure-plan.md`.
 
-**v1.9.5.1 new Firestore surface:**
+**v1.10 new Firestore surface (Phase B — Fit-Up admin):**
 - `organisations/{orgId}/fitUpItems/{itemId}` — org-level master catalog of fit-up items. Schema: `{ name, tier: 'simple'|'medium'|'complex', cost: number, sellPrice?: number|null, notes?: string|null, createdAt, updatedAt }`. Reads + writes signed-in (UI-layer org-admin gate via `can_access_settings`). Quote-flow integration is Epic 9.2 (v1.16+).
-- New components: `src/components/fit-up-catalog-manager.tsx` + the one-shot `src/components/v1951-retarget-button.tsx`.
+- New components: `src/components/fit-up-catalog-manager.tsx` (FitUpCatalogManager + FitUpItemEditor + BulkActionDialog) + one-shot `src/components/v110-retarget-button.tsx`.
 - `/manage` tab list: bumped from 6/7 → 7/8 (Company Details, Users & Permissions, Document Templates, Integrations, Margins, Modules, **Fit-Up Catalog**, +Sub Dealers).
+- CSV import: detects `name` column from multiple aliases (Name, Item Name, Title, Description, Part Description), normalises tier (Simple/Medium/Complex with first-letter detection), upserts by name (case-insensitive). Toast: `N updated · M created · K skipped (no name)`.
+- Bulk actions (require selection): apply markup % (overwrites sellPrice = cost × (1 + pct/100)), change tier, delete. All gated by confirm dialog with explicit overwrite-warning copy.
 
 > **Note**: this table was backfilled at v1.9 from a stale v1.4-era state. Canonical release state lives in **`CLAUDE.md`** top-of-file table; per-release detail lives in **`tasks/RELEASE_NOTES_vX.Y.Z.md`**.
 
