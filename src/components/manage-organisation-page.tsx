@@ -49,6 +49,8 @@ import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
 import { ContentBlockManager } from '@/components/content-block-manager';
 import { EmailTemplatesTab } from '@/components/email-template-manager';
 import { SharePointConfigEditor } from '@/components/sharepoint-config-editor';
+import { FitUpCatalogManager } from '@/components/fit-up-catalog-manager';
+import { V1951RetargetButton } from '@/components/v1951-retarget-button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -516,13 +518,14 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 </div>
 
                 <Tabs defaultValue="details" className="space-y-4">
-                    <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-7' : 'grid-cols-6')}>
+                    <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-8' : 'grid-cols-7')}>
                         <TabsTrigger value="details">Company Details</TabsTrigger>
                         <TabsTrigger value="users">Users & Permissions</TabsTrigger>
                         <TabsTrigger value="templates">Document Templates</TabsTrigger>
                         <TabsTrigger value="integrations">Integrations</TabsTrigger>
                         <TabsTrigger value="margins">Margins</TabsTrigger>
                         <TabsTrigger value="modules">Modules</TabsTrigger>
+                        <TabsTrigger value="fit-up">Fit-Up Catalog</TabsTrigger>
                         {organisation?.subDealersEnabled && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
                     </TabsList>
                     
@@ -870,6 +873,11 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                 </div>
                             </CardContent>
                         </Card>
+                    </TabsContent>
+
+                    <TabsContent value="fit-up" className="space-y-4">
+                        <V1951RetargetButton />
+                        <FitUpCatalogManager organisationId={orgId} />
                     </TabsContent>
 
                     {organisation?.subDealersEnabled && (

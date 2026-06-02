@@ -192,6 +192,15 @@ service cloud.firestore {
       match /dealerFitSelections/{selectionId} {
         allow read, write: if isSignedIn();
       }
+      // v1.9.5.1 (Epic 9.1.1 + 9.1.2) — Master Fit-Up Catalog. Org-level
+      // library of fit-up items (name, tier, cost, sellPrice?, notes?).
+      // Reads + writes signed-in; UI-layer org-admin gate enforced via
+      // /manage's can_access_settings permission (matches the rest of
+      // the org subcollection pattern). Quote-flow integration ships
+      // with Epic 9.2 in v1.16+.
+      match /fitUpItems/{itemId} {
+        allow read, write: if isSignedIn();
+      }
       // v1.7 (story 1.8.1) — Quote Content Block Manager.
       // Reads open to all org members so the PDF render works for
       // every salesperson; writes nominally signed-in to match the

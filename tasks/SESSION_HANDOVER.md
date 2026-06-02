@@ -21,9 +21,17 @@
 | v1.7 | 2026-05-04 | ✅ Shipped | main |
 | v1.8 | 2026-05-11 | ✅ Shipped | main |
 | v1.9 | 2026-05-12 | ✅ Shipped (PR #35) | main |
-| **v1.9.5** | **2026-05-14** | 🚢 **Ready on branch — planning + groundwork + Create-Proposal crash hotfix (code); awaiting PR green-light** | `claude/app-overview-wKiZ1` |
+| v1.9.5 | 2026-05-14 | ✅ Shipped (PR #36) | main |
+| **v1.9.5.1** | **2026-06-02** | 🚢 **Ready on branch — prod-bug pass (4 fixes) + Epic 9 Fit-Up first slice (9.1.1 + 9.1.2 schema + admin); awaiting PR green-light** | `claude/app-overview-wKiZ1` |
 
 > **v1.9.5 = planning + groundwork + hotfix** (fractional, like v1.5.1/v1.6.1). Roadmap reshuffled to dealer-ops priority (157 stories re-targeted, Submitted drained, sequential v1.10–v1.40 runway); Epic 11 Service Quoting seeded as backlog (NSM-Hub absorption — PLANNED, not built); clickable release-detail popups; emailTemplates Create-Proposal crash (CODE fix — SendQuoteDialog subscribed to templates unconditionally; not a rules issue). **The actual dealer-ops + Service Quoting BUILD starts at v1.10.** Plans: `tasks/nsm-hub-merge-study.md` + `tasks/nsm-hub-merge-plan.md` + `tasks/v1.10-restructure-plan.md`. 🔧 Hotfix is a CODE fix (SendQuoteDialog template subscription) — NOT a rules re-deploy; deployed rules were verified correct.
+
+> **v1.9.5.1 = bug pass + Fit-Up groundwork** — four prod bugs (cover letter PDF, dealer-fit names, locked-discount, stock-import race) + the first slice of Epic 9 Fit-Up: a new org-level `fitUpItems` collection + admin CRUD on `/manage → Fit-Up Catalog`. Pulled Epic 9 stories 9.1.1 + 9.1.2 forward from v1.10–13. NOT shipped: quote-flow fit-up integration (Epic 9.2 = v1.16+), HL Save error / Import error (awaiting repros), RU200KAM $76.82 delta (→v1.11). One-shot `V1951RetargetButton` in the new tab marks 9.1.1 + 9.1.2 as shipped in Firestore; cleanup commit removes it on the next dev push. See `tasks/RELEASE_NOTES_v1.9.5.1.md` + `tasks/USER_GUIDE_v1.9.5.1.md`.
+
+**v1.9.5.1 new Firestore surface:**
+- `organisations/{orgId}/fitUpItems/{itemId}` — org-level master catalog of fit-up items. Schema: `{ name, tier: 'simple'|'medium'|'complex', cost: number, sellPrice?: number|null, notes?: string|null, createdAt, updatedAt }`. Reads + writes signed-in (UI-layer org-admin gate via `can_access_settings`). Quote-flow integration is Epic 9.2 (v1.16+).
+- New components: `src/components/fit-up-catalog-manager.tsx` + the one-shot `src/components/v1951-retarget-button.tsx`.
+- `/manage` tab list: bumped from 6/7 → 7/8 (Company Details, Users & Permissions, Document Templates, Integrations, Margins, Modules, **Fit-Up Catalog**, +Sub Dealers).
 
 > **Note**: this table was backfilled at v1.9 from a stale v1.4-era state. Canonical release state lives in **`CLAUDE.md`** top-of-file table; per-release detail lives in **`tasks/RELEASE_NOTES_vX.Y.Z.md`**.
 

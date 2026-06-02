@@ -60,6 +60,13 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // clickable release-detail popups, + emailTemplates rules re-deploy.
     // Fractional, like v1.5.1 / v1.6.1. The actual v1.10 BUILD comes next.
     'v1.9.5': { shipped: true },
+    // v1.9.5.1 — patch on the v1.9.5 line: prod bug pass (cover letter,
+    // dealer-fit names, locked-discount guard, stock-import race) + the
+    // first slice of Epic 9 Fit-Up (9.1.1 Master Fit-Up Catalog + 9.1.2
+    // Fit-Up Item Editor — schema + admin UI only, no quote-flow wiring
+    // yet). Pulls 9.1.1 / 9.1.2 forward from v1.10–13; Service Quoting
+    // (Epic 11) still ships at v1.10 unchanged.
+    'v1.9.5.1': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
