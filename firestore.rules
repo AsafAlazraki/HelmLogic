@@ -223,6 +223,14 @@ service cloud.firestore {
       match /serviceParts/{partId} {
         allow read, write: if isSignedIn();
       }
+      // v1.11 (Epic 11.2.1 — Service-quote flow) — Service quotes
+      // composed from serviceOperations + serviceParts on a customer.
+      // Owned by the org so multiple service advisors can collaborate.
+      // Reads + writes signed-in; UI-layer gates editing on
+      // can_access_settings (org-admin / service-advisor role).
+      match /serviceQuotes/{quoteId} {
+        allow read, write: if isSignedIn();
+      }
       // v1.7 (story 1.8.1) — Quote Content Block Manager.
       // Reads open to all org members so the PDF render works for
       // every salesperson; writes nominally signed-in to match the

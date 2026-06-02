@@ -23,6 +23,7 @@ import { BreadcrumbNav } from '@/components/breadcrumb-nav';
 import { HelmLogicLoading } from '@/components/helmlogic-loading';
 import { CatalogExportImport } from '@/components/catalog-export-import';
 import { BoatsTableView } from '@/components/boats-table-view';
+import { MotorsTableView } from '@/components/motors-table-view';
 import { FitUpCatalogManager } from '@/components/fit-up-catalog-manager';
 import { ServiceCatalogManager } from '@/components/service-catalog-manager';
 import { useState } from 'react';
@@ -114,14 +115,18 @@ export default function CatalogManagerPage() {
             <CatalogExportImport organisationId={orgId} />
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="boats">Boats</TabsTrigger>
+                    <TabsTrigger value="motors">Motors</TabsTrigger>
                     <TabsTrigger value="fit-up">Fit-Up</TabsTrigger>
                     <TabsTrigger value="service">Service</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="boats">
                     {activeTab === 'boats' && <BoatsTableView />}
+                </TabsContent>
+                <TabsContent value="motors">
+                    {activeTab === 'motors' && <MotorsTableView />}
                 </TabsContent>
                 <TabsContent value="fit-up">
                     {activeTab === 'fit-up' && <FitUpCatalogManager organisationId={orgId} />}

@@ -61,6 +61,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/firebase/auth/use-user';
 import { ModelConfigurationEditor } from '@/components/model-configuration-editor';
 import { FitUpCatalogManager } from '@/components/fit-up-catalog-manager';
+import { ServiceQuoteDashboard } from '@/components/service-quote-flow';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -795,6 +796,41 @@ export default function ModuleDetailsPage() {
                 </div>
                 <main className="flex-1 overflow-y-auto p-8 max-w-6xl mx-auto w-full">
                     <FitUpCatalogManager organisationId={currentMemberOrg.id} />
+                </main>
+            </div>
+        );
+    }
+
+    // v1.11 (Epic 11.2.1) — Service module surface. Hosts the
+    // ServiceQuoteDashboard. Customer-facing PDF + Send + NSM-Hub
+    // migration arrive in v1.12+.
+    if (moduleType === 'service' && moduleData && currentMemberOrg) {
+        return (
+            <div className="flex flex-col h-screen overflow-hidden bg-background">
+                <div className="relative shrink-0 overflow-hidden bg-primary px-12 text-primary-foreground z-20 h-44 border-b-2 border-white/10">
+                    <div className="absolute inset-0 z-0 bg-primary/95">
+                        <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-emerald-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
+                        <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-teal-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
+                    </div>
+                    <div className="relative z-10 flex flex-col h-full justify-center">
+                        <div className="flex items-center justify-between w-full gap-12">
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-white/50 leading-none">
+                                    <Navigation className="h-2.5 w-2.5" />
+                                    <span>SERVICE MODULE</span>
+                                </div>
+                                <h1 className="text-3xl sm:text-5xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl">
+                                    {moduleData.name?.toUpperCase() ?? 'SERVICE'}
+                                </h1>
+                                <p className="text-xs text-white/70 max-w-2xl">
+                                    Service quote dashboard + 4-step create wizard. Powered by the Operations + Parts catalogue at /manage → Service Catalog.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <main className="flex-1 overflow-y-auto p-8 max-w-6xl mx-auto w-full">
+                    <ServiceQuoteDashboard organisationId={currentMemberOrg.id} />
                 </main>
             </div>
         );
