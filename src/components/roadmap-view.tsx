@@ -57,7 +57,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { V195StoriesSeedButton } from '@/components/v195-stories-seed-button';
 import {
     FeatureDetailSheet,
     type EpicColor,
@@ -386,9 +385,6 @@ export function RoadmapView() {
                                 )}
                             </p>
                         </div>
-                    </div>
-                    <div className="flex flex-col gap-2 max-w-2xl">
-                        <V195StoriesSeedButton />
                     </div>
                 </div>
             </div>
