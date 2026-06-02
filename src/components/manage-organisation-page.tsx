@@ -346,6 +346,13 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
     const [isAddingUser, setIsAddingUser] = useState(false);
     const [primaryLogoPreview, setPrimaryLogoPreview] = useState<string | null>(null);
     const [secondaryLogoPreview, setSecondaryLogoPreview] = useState<string | null>(null);
+    // v1.10 — controlled Tabs value so we can lazy-mount heavy /
+    // permission-sensitive tab content (FitUpCatalogManager subscribes
+    // to organisations/{orgId}/fitUpItems on mount; with eager Radix
+    // mounting, a missing rule on that path crashed the whole /manage
+    // page via the global error boundary). Same systemic lesson as the
+    // v1.9 SendQuoteDialog emailTemplates crash.
+    const [activeTab, setActiveTab] = useState<string>('details');
     
     const firestore = useFirestore();
     const storage = useStorage();
@@ -517,7 +524,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                     </Button>
                 </div>
 
-                <Tabs defaultValue="details" className="space-y-4">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
                     <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-8' : 'grid-cols-7')}>
                         <TabsTrigger value="details">Company Details</TabsTrigger>
                         <TabsTrigger value="users">Users & Permissions</TabsTrigger>
@@ -876,8 +883,12 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                     </TabsContent>
 
                     <TabsContent value="fit-up" className="space-y-4">
-                        <V110RetargetButton />
-                        <FitUpCatalogManager organisationId={orgId} />
+                        {activeTab === 'fit-up' && (
+                            <>
+                                <V110RetargetButton />
+                                <FitUpCatalogManager organisationId={orgId} />
+                            </>
+                        )}
                     </TabsContent>
 
                     {organisation?.subDealersEnabled && (
