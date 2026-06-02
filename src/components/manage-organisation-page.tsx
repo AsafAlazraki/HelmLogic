@@ -50,6 +50,7 @@ import { ContentBlockManager } from '@/components/content-block-manager';
 import { EmailTemplatesTab } from '@/components/email-template-manager';
 import { SharePointConfigEditor } from '@/components/sharepoint-config-editor';
 import { FitUpCatalogManager } from '@/components/fit-up-catalog-manager';
+import { ServiceCatalogManager } from '@/components/service-catalog-manager';
 import { V110RetargetButton } from '@/components/v110-retarget-button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -525,7 +526,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                 </div>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-                    <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-8' : 'grid-cols-7')}>
+                    <TabsList className={cn("grid w-full", organisation?.subDealersEnabled ? 'grid-cols-9' : 'grid-cols-8')}>
                         <TabsTrigger value="details">Company Details</TabsTrigger>
                         <TabsTrigger value="users">Users & Permissions</TabsTrigger>
                         <TabsTrigger value="templates">Document Templates</TabsTrigger>
@@ -533,6 +534,7 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                         <TabsTrigger value="margins">Margins</TabsTrigger>
                         <TabsTrigger value="modules">Modules</TabsTrigger>
                         <TabsTrigger value="fit-up">Fit-Up Catalog</TabsTrigger>
+                        <TabsTrigger value="service-catalog">Service Catalog</TabsTrigger>
                         {organisation?.subDealersEnabled && <TabsTrigger value="sub-dealers">Sub Dealers</TabsTrigger>}
                     </TabsList>
                     
@@ -888,6 +890,12 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                 <V110RetargetButton />
                                 <FitUpCatalogManager organisationId={orgId} />
                             </>
+                        )}
+                    </TabsContent>
+
+                    <TabsContent value="service-catalog" className="space-y-4">
+                        {activeTab === 'service-catalog' && (
+                            <ServiceCatalogManager organisationId={orgId} />
                         )}
                     </TabsContent>
 

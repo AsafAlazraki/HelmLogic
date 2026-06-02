@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Wrench, Loader2, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const TARGET_STORY_REFS = ['9.1.1', '9.1.2', '9.1.3', '9.1.4'] as const;
+const TARGET_STORY_REFS = ['9.1.1', '9.1.2', '9.1.3', '9.1.4', '11.1.1', '11.1.2'] as const;
 const TARGET_RELEASE = 'v1.10';
 
 export function V110RetargetButton() {
@@ -80,12 +80,13 @@ export function V110RetargetButton() {
         <div className="flex items-start gap-3 p-3 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/40">
             <Wrench className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" />
             <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-amber-900">One-shot: mark Fit-Up Epic 9.1.x stories as shipped in v1.10</p>
+                <p className="text-xs font-bold text-amber-900">One-shot: mark v1.10 shipped stories (Fit-Up 9.1.x + Service Catalog 11.1.x)</p>
                 <p className="text-[10px] text-amber-800/80">
                     Click once after deploy. Updates Epic 9 stories <strong>9.1.1 Master Fit-Up Catalog</strong>,{' '}
-                    <strong>9.1.2 Item Editor</strong>, <strong>9.1.3 Import/Export</strong>, and{' '}
-                    <strong>9.1.4 Bulk Update + Markup</strong> to <code>targetRelease: 'v1.10'</code> and{' '}
-                    <code>status: 'shipped'</code>. This button is removed in the follow-up cleanup commit.
+                    <strong>9.1.2 Item Editor</strong>, <strong>9.1.3 Import/Export</strong>,{' '}
+                    <strong>9.1.4 Bulk Update + Markup</strong>, AND Epic 11 stories{' '}
+                    <strong>11.1.1 Service-quote schema</strong> and <strong>11.1.2 Service catalogue admin</strong>{' '}
+                    to <code>targetRelease: 'v1.10'</code> and <code>status: 'shipped'</code>. This button is removed in the follow-up cleanup commit.
                 </p>
             </div>
             <Button

@@ -201,6 +201,28 @@ service cloud.firestore {
       match /fitUpItems/{itemId} {
         allow read, write: if isSignedIn();
       }
+      // v1.10 (Epic 11.1.1 — Service-quote schema) — Service-quoting
+      // catalogue. Two sister subcollections that hold the labor codes
+      // and parts catalog used by the service-quote flow (Epic 11.2+,
+      // v1.11+) and populated by the NSM-Hub migration (Epic 11.3+).
+      //
+      // serviceOperations/{opId}: labor codes — { code, name,
+      //   flatRateHours, hourlyRate, cost?, sellPrice?, notes? }.
+      //   Sell price derives from flatRateHours × hourlyRate unless
+      //   sellPrice is explicitly overridden.
+      // serviceParts/{partId}: parts catalog — { partNumber, name,
+      //   cost, sellPrice?, stockLevel?, notes? }. Part number is the
+      //   natural key on import (upsert match, never clear-and-replace).
+      //
+      // Reads + writes signed-in (matches the rest of the org
+      // subcollection pattern); UI-layer org-admin gate via
+      // /manage's can_access_settings permission.
+      match /serviceOperations/{opId} {
+        allow read, write: if isSignedIn();
+      }
+      match /serviceParts/{partId} {
+        allow read, write: if isSignedIn();
+      }
       // v1.7 (story 1.8.1) — Quote Content Block Manager.
       // Reads open to all org members so the PDF render works for
       // every salesperson; writes nominally signed-in to match the
