@@ -414,8 +414,10 @@ export function HighfieldQuoteFlow({
     const trailerAtmKg = useMemo<number | undefined>(() => {
         const snap = catalogTrailerSnapshot;
         if (!snap) return undefined;
-        const specs = snap.specifications || {};
-        const raw = specs.atm || specs.ATM || specs.aggregateTrailerMass || '';
+        const specs: any = snap.specifications || {};
+        // Real trailer docs store ATM as a numeric `atmKg` field.
+        if (typeof specs.atmKg === 'number') return specs.atmKg;
+        const raw = specs.atm || specs.ATM || specs.aggregateTrailerMass || specs.atmKg || '';
         const fromSpec = String(raw).replace(/[, ]/g, '').match(/(\d+(?:\.\d+)?)/);
         if (fromSpec) return parseFloat(fromSpec[1]);
         const fromName = String(snap.name || '').replace(/[, ]/g, '').match(/(\d{3,4})kg/i);
