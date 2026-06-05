@@ -1434,13 +1434,13 @@ export function HighfieldQuoteFlow({
 
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
-            <div className="sticky top-0 z-[100] px-12 h-20 bg-card border-b border-slate-100 shrink-0 flex items-center">
+            <div className="sticky top-0 z-[100] px-4 sm:px-12 h-16 sm:h-20 bg-card border-b border-slate-100 shrink-0 flex items-center">
                 <div className="w-full flex items-center justify-between">
-                    <div className="flex-1 flex items-center justify-between mr-24">
+                    <div className="flex-1 flex items-center justify-between mr-4 sm:mr-24 min-w-0 overflow-x-auto">
                         {STEPS.map((step) => (
                             <div key={step.id} className="flex items-center gap-2">
                                 <div className={cn("h-7 w-7 rounded-full flex items-center justify-center text-[9px] font-black transition-all border-2", currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-md" : currentStep > step.id ? "bg-green-500 border-green-500 text-white" : "bg-muted border-transparent text-muted-foreground")}>{currentStep > step.id ? <CheckCircle2 className="h-3.5 w-3.5" /> : step.id}</div>
-                                <span className={cn("text-[8px] font-black uppercase tracking-[0.2em] hidden sm:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-muted-foreground")}>{step.label}</span>
+                                <span className={cn("text-[8px] font-black uppercase tracking-[0.2em] hidden md:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-muted-foreground")}>{step.label}</span>
                             </div>
                         ))}
                     </div>
@@ -1451,7 +1451,7 @@ export function HighfieldQuoteFlow({
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
                 {/* Left Side: Render Area */}
                 <div className="w-full lg:w-7/12 relative flex flex-col bg-slate-50/50 overflow-hidden">
-                    <div className="flex-1 px-8 pt-8 pb-0 flex flex-col">
+                    <div className="flex-1 px-4 sm:px-8 pt-4 sm:pt-8 pb-0 flex flex-col min-w-0">
                         <div className="relative flex-1 w-full bg-white rounded-[2rem] border-2 border-slate-100 shadow-xl overflow-hidden group">
                             <Carousel className="w-full h-full" opts={{ loop: true }} setApi={setApi}>
                                 <CarouselContent className="h-full">
@@ -1478,7 +1478,7 @@ export function HighfieldQuoteFlow({
                             </Carousel>
                         </div>
                     </div>
-                    <div className="px-8 pt-4 pb-8 shrink-0">
+                    <div className="px-4 sm:px-8 pt-4 pb-4 sm:pb-8 shrink-0">
                         <div className="bg-white border-2 border-white shadow-xl p-6 rounded-[2rem] flex items-center justify-between min-h-[92px]">
                             <div className="flex flex-col items-start px-1 gap-3">
                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] leading-none">Technical Utilities</span>
@@ -1520,20 +1520,20 @@ export function HighfieldQuoteFlow({
                 </div>
 
                 {/* Right Side: Configuration Panel */}
-                <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20">
-                    <div className="pt-8 px-8 pb-4 shrink-0 bg-transparent min-h-[80px] flex flex-col justify-start">
-                        <h2 className="text-xl font-black uppercase tracking-tighter italic text-slate-900 leading-tight">{STEPS[currentStep - 1].label.toUpperCase()}<span className="text-primary"> - {range?.name?.toUpperCase()} {model?.name?.toUpperCase()}</span></h2>
+                <div className="w-full lg:w-5/12 h-full flex flex-col overflow-hidden bg-slate-50/20 min-w-0">
+                    <div className="pt-6 px-4 sm:px-8 pb-4 shrink-0 bg-transparent min-h-[80px] flex flex-col justify-start">
+                        <h2 className="text-base sm:text-xl font-black uppercase tracking-tighter italic text-slate-900 leading-tight break-words">{STEPS[currentStep - 1].label.toUpperCase()}<span className="text-primary"> - {range?.name?.toUpperCase()} {model?.name?.toUpperCase()}</span></h2>
                     </div>
                     <ScrollArea ref={scrollAreaRef} className="flex-1">
-                        <div className="px-8 pb-48 space-y-6 mt-4">
+                        <div className="px-4 sm:px-8 pb-32 sm:pb-48 space-y-6 mt-4 min-w-0">
                             {currentStep === 1 && (
                                 <div className="space-y-8 animate-in fade-in duration-1000">
                                     <div ref={materialSectionRef} className="space-y-4 scroll-mt-10">
-                                        <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                        <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                             <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Tube Material</h3>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                             {availableMaterials.map((mat) => (
                                                 <button key={mat} onClick={() => handleMaterialChange(mat as any)} className={cn("group flex flex-col items-center justify-center p-1 rounded-[2rem] transition-all bg-white shadow-xl border-2 border-transparent h-32", selectedMaterial === mat ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
                                                     <span className={cn("text-xs font-black uppercase tracking-widest transition-colors", selectedMaterial === mat ? "text-primary" : "text-slate-600")}>{mat}</span>
@@ -1543,11 +1543,11 @@ export function HighfieldQuoteFlow({
                                     </div>
                                     {selectedMaterial && (
                                         <div ref={colorSectionRef} className="mt-12 space-y-6 animate-in slide-in-from-bottom-4 duration-1000 scroll-mt-10">
-                                            <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                            <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                                 <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Hull & Tube Color</h3>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                 {availableColors.map((color) => (
                                                     <button key={color.id} onClick={() => handleColorChange(color.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent p-1", selectedColor === color.id ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
                                                         <div className="relative aspect-video w-full bg-white">{color.imageUrl && <Image src={color.imageUrl} alt="Color" fill className="object-contain mix-blend-multiply p-1" />}</div>
@@ -1559,7 +1559,7 @@ export function HighfieldQuoteFlow({
                                     )}
                                     {selectedColor && (
                                         <div ref={registrationSectionRef} className="mt-12 space-y-6 animate-in slide-in-from-bottom-4 duration-1000 scroll-mt-24">
-                                            <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                            <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                                 <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Registration</h3>
                                             </div>
@@ -1582,7 +1582,7 @@ export function HighfieldQuoteFlow({
                                                 </div>
                                                 )}
                                                 {(isRegoSelected || !!boatRegoSnapshot) && (
-                                                    <div className="grid grid-cols-2 gap-3 pt-2 animate-in slide-in-from-top-2 duration-500">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 animate-in slide-in-from-top-2 duration-500">
                                                         {/* Registration Stickers */}
                                                         <div className={cn("flex flex-col gap-3 p-4 rounded-2xl border-2 transition-all cursor-pointer", isStickerSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={handleStickerToggle}>
                                                             <div className="flex items-center gap-3">
@@ -1648,7 +1648,7 @@ export function HighfieldQuoteFlow({
                                             if (!lockedSeatId) {
                                                 return (
                                                     <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 scroll-mt-10">
-                                                        <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                        <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                                             <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
                                                         </div>
@@ -1667,11 +1667,11 @@ export function HighfieldQuoteFlow({
 
                                         return (
                                         <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 scroll-mt-10">
-                                            <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                            <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                                 <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                 {displayOpts.map((opt: any) => {
                                                     const isLocked = lockedSeatId === opt.id;
                                                     const isSelected = selectedOptionIds.includes(opt.id);
@@ -1707,7 +1707,7 @@ export function HighfieldQuoteFlow({
                                                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Addition Label</Label>
                                                     <Input placeholder="e.g. Custom Hull Wrap" value={newCustomName} onChange={e => setNewCustomName(e.target.value)} className="h-11 font-bold border-2 rounded-xl" />
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                     <div className="space-y-2">
                                                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Sell Price (Excl.)</Label>
                                                         <div className="relative">
@@ -1750,7 +1750,7 @@ export function HighfieldQuoteFlow({
                             {currentStep === 3 && (
                                 <div className="space-y-12 animate-in fade-in duration-1000 mt-4">
                                     <div className="space-y-6">
-                                        <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                        <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                             <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Motor Selection</h3>
                                         </div>
@@ -1932,11 +1932,11 @@ export function HighfieldQuoteFlow({
 
                                             {groupedMotorAccessories.map(([cat, opts]) => (
                                                 <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
-                                                    <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                    <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                                         <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
                                                     </div>
-                                                    <div className="grid grid-cols-2 gap-4">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                         {opts.map((opt: any) => (
                                                             <button key={opt.id} onClick={() => { toggleMotorAccessory(opt.id); if ((opt.category || '').toLowerCase() === 'propeller' && !selectedMotorAccessoryIds.includes(opt.id)) setPropComesStandard(false); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-md border-transparent h-full p-1 group", selectedMotorAccessoryIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-sm ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                                 <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(opt) && "hidden")}>{resolveImageUrl(opt) && <Image src={resolveImageUrl(opt)!} alt={opt.name} fill unoptimized className="object-contain p-2 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
@@ -1965,7 +1965,7 @@ export function HighfieldQuoteFlow({
                                                                 <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
                                                             </div>
-                                                            <div className="grid grid-cols-2 gap-4">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                                 {opts.map((sel: any) => {
                                                                     const isSelected = selectedDealerFitIds.includes(sel.id);
                                                                     const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
@@ -2064,7 +2064,7 @@ export function HighfieldQuoteFlow({
                             {currentStep === 4 && (
                                 <div className="space-y-12 animate-in fade-in duration-1000 mt-4">
                                     <div className="space-y-6">
-                                        <div className="flex items-center justify-between gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                        <div className="flex items-center justify-between flex-wrap gap-x-3 gap-y-1 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                             <div className="flex items-center gap-3">
                                                 <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Base</h3>
@@ -2081,7 +2081,7 @@ export function HighfieldQuoteFlow({
                                             boat model editor. Tick to switch the active trailer (only one
                                             selected at a time). Untick clears the selection entirely. */}
                                         {trailerAssignments.length > 0 ? (
-                                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                                                 {trailerAssignments.map((a: any) => {
                                                     const isActive = catalogTrailerSnapshot?.trailerId === a.trailerId
                                                         && catalogTrailerSnapshot?.brandVendorId === a.brandVendorId
@@ -2146,7 +2146,7 @@ export function HighfieldQuoteFlow({
                                         ) : effectiveTrailerConfig ? (
                                             // Legacy: model has no assignments but has a `trailerConfig`.
                                             // Render the legacy single-trailer card so old data still works.
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                 <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); if (!isSelected) setSelectedTrailerOptionIds((effectiveTrailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                     {effectiveTrailerConfig.imageUrl ? (
                                                         <div className="relative aspect-video w-full bg-slate-50 shrink-0">
@@ -2171,11 +2171,11 @@ export function HighfieldQuoteFlow({
                                         <>
                                             {effectiveTrailerConfig?.options?.length > 0 && (
                                                 <div ref={el => { categoryRefs.current['Trailer Hardware'] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
-                                                    <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                    <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                                         <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                         <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Hardware</h3>
                                                     </div>
-                                                    <div className="grid grid-cols-2 gap-4">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                         {effectiveTrailerConfig.options.map((opt: any) => (
                                                             <button key={opt.id} onClick={() => toggleTrailerOption(opt.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-md border-transparent h-full p-1", selectedTrailerOptionIds.includes(opt.id) ? "bg-primary/5 border-primary shadow-sm ring-2 ring-primary/20" : "hover:border-primary/20")}>
                                                                 <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
@@ -2201,7 +2201,7 @@ export function HighfieldQuoteFlow({
                                                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Addition Label</Label>
                                                             <Input placeholder="e.g. Spare Wheel Mount" value={newCustomTrailerName} onChange={e => setNewCustomTrailerName(e.target.value)} className="h-11 font-bold border-2 rounded-xl" />
                                                         </div>
-                                                        <div className="grid grid-cols-2 gap-4">
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                             <div className="space-y-2">
                                                                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Sell Price (Excl.)</Label>
                                                                 <div className="relative">
@@ -2254,7 +2254,7 @@ export function HighfieldQuoteFlow({
                                                                 <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
                                                             </div>
-                                                            <div className="grid grid-cols-2 gap-4">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                                 {opts.map((sel: any) => {
                                                                     const isSelected = selectedDealerFitIds.includes(sel.id);
                                                                     const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
@@ -2275,7 +2275,7 @@ export function HighfieldQuoteFlow({
                                                 </>
                                             )}
                                             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-24">
-                                                <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                                     <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Registration</h3>
                                                 </div>
@@ -2307,11 +2307,11 @@ export function HighfieldQuoteFlow({
                                     {dealerFitLoading ? <div className="flex justify-center py-16"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div> : groupedDealerFit.length > 0 ? (
                                         groupedDealerFit.map(([cat, opts]) => (
                                             <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 scroll-mt-10">
-                                                <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                                     <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                     {opts.map((sel: any) => {
                                                         const isSelected = selectedDealerFitIds.includes(sel.id);
                                                         // Detect if items in this (unselected) selection are already included via another category
@@ -2357,7 +2357,7 @@ export function HighfieldQuoteFlow({
                             )}
                             {currentStep === 6 && (
                                 <div className="space-y-8 animate-in fade-in duration-1000 mt-4">
-                                    <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full"><div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /><h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Project Build Summary</h3></div>
+                                    <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0"><div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /><h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Project Build Summary</h3></div>
                                     <div className="space-y-4">
                                         <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Ship className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Base Vessel</CardTitle></div><div className="flex items-center gap-1.5"><input ref={boatPdfRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setSectionPdfs(prev => ({ ...prev, boat: f })); }} />{sectionPdfs.boat ? (<span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><Paperclip className="h-2.5 w-2.5" />{sectionPdfs.boat.name.length > 18 ? sectionPdfs.boat.name.slice(0, 15) + '...' : sectionPdfs.boat.name}<button type="button" className="ml-0.5 hover:text-destructive" onClick={() => { setSectionPdfs(prev => ({ ...prev, boat: null })); if (boatPdfRef.current) boatPdfRef.current.value = ''; }}><X className="h-2.5 w-2.5" /></button></span>) : (<button type="button" onClick={() => boatPdfRef.current?.click()} className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors"><Paperclip className="h-2.5 w-2.5" />Attach PDF</button>)}</div></div></CardHeader><CardContent className="p-4">
                                             <div className="flex items-center justify-between">
@@ -2790,9 +2790,9 @@ export function HighfieldQuoteFlow({
                             )}
                         </div>
                     </ScrollArea>
-                    <div className="p-8 pt-4 bg-slate-50/80 backdrop-blur-xl shrink-0 flex gap-3">
+                    <div className="p-4 sm:p-8 sm:pt-4 bg-slate-50/80 backdrop-blur-xl shrink-0 flex gap-3">
                         {currentStep > 1 && <Button variant="outline" className="h-12 w-20 rounded-xl border-2 border-slate-200 hover:bg-slate-100 shadow-sm" onClick={prevStep}><ChevronLeft className="h-5 w-5" /></Button>}
-                        <Button size="lg" className="flex-1 h-12 rounded-xl font-black uppercase text-xs shadow-xl bg-primary text-white hover:scale-[1.02] active:scale-95" onClick={currentStep === STEPS.length ? () => setShowFinalizeDialog(true) : nextStep}>{currentStep === STEPS.length ? 'Finalize Project' : `Next Step: ${STEPS[currentStep].label.toUpperCase()}`}</Button>
+                        <Button size="lg" className="flex-1 h-12 rounded-xl font-black uppercase text-[10px] sm:text-xs shadow-xl bg-primary text-white hover:scale-[1.02] active:scale-95 whitespace-normal leading-tight px-2" onClick={currentStep === STEPS.length ? () => setShowFinalizeDialog(true) : nextStep}>{currentStep === STEPS.length ? 'Finalize Project' : `Next Step: ${STEPS[currentStep].label.toUpperCase()}`}</Button>
                     </div>
                 </div>
             </div>

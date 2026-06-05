@@ -229,15 +229,15 @@ export function RegoPicker({
     }, [options, value, autoApplied, autoMatchLengthM, autoMatchAtmKg]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-0 w-full">
             {/* Invisible loaders — one per vendor. They push types into state. */}
             {(vendors || []).map(v => (
                 <VendorTypesLoader key={v.id} vendor={v} onLoaded={handleVendorTypes} />
             ))}
 
             {label && (
-                <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</span>
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex-1 min-w-0 truncate">{label}</span>
                     {value && (
                         <Button
                             type="button"
