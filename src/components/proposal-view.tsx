@@ -543,6 +543,25 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         }
     };
 
+    /** v1.11 ("Toggle detailed view for customer") — flip whether the
+     *  customer PDF itemises fit-up lines or rolls them to a single
+     *  summary line. Writes `customerDetailedView` on the quote. */
+    const handleToggleDetailedView = async () => {
+        if (!quote?.id || !auditOwnerUid || !user) return;
+        if (quote.isLocked === true) {
+            toast({ variant: 'destructive', title: 'Quote is locked', description: 'Create a new version to change customer presentation.' });
+            return;
+        }
+        try {
+            const ref = doc(firestore, `users/${auditOwnerUid}/quotes`, quote.id);
+            await updateDoc(ref, { customerDetailedView: !quote.customerDetailedView, lastUpdateAt: serverTimestamp() });
+            toast({ title: quote.customerDetailedView ? 'Fit-up shown as summary line' : 'Fit-up itemised for customer' });
+        } catch (e: any) {
+            console.error('[detailed-view] failed', e);
+            toast({ variant: 'destructive', title: 'Could not update', description: e?.message ?? 'See console.' });
+        }
+    };
+
     /** v1.9 (story 1.4.1) — Lifecycle picker click handler. */
     const handleLifecycleTransition = async (next: LifecycleState) => {
         if (!quote?.id || !auditOwnerUid || !user) return;
@@ -1346,6 +1365,26 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     <PricingRow label="Trailer" value={f.trailerTotal} />
                                     <PricingRow label="Dealer Fit" value={f.dealerFitTotal} />
                                     <PricingRow label="Fit-up & Rigging" value={f.fitUpTotal} />
+                                    {/* v1.11 — customer detailed-view toggle. When on, the
+                                        customer PDF itemises each fit-up line; off = single
+                                        summary line (the locked 9.2.3 default). Only shown
+                                        when the quote actually has fit-up selections. */}
+                                    {(quote.fitUpSelections?.length ?? 0) > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={handleToggleDetailedView}
+                                            className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
+                                            title="Toggle whether the customer PDF itemises fit-up or shows one summary line"
+                                        >
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Itemise fit-up for customer</span>
+                                            <span className={cn(
+                                                'text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border',
+                                                quote.customerDetailedView ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200',
+                                            )}>
+                                                {quote.customerDetailedView ? 'Itemised' : 'Summary'}
+                                            </span>
+                                        </button>
+                                    )}
                                     <PricingRow label="Registration" value={f.regoTotal} />
 
                                     {localDiscount > 0 && (

@@ -293,12 +293,27 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
     if (quote.motor) lineItems.push({ label: quote.motor.name, sub: `${quote.motor.brand} — Propulsion`, amount: f.motorTotal });
     if (quote.trailer) lineItems.push({ label: quote.trailer.name || 'Trailer Package', sub: 'Trailer & Options', amount: f.trailerTotal });
     if (f.dealerFitTotal > 0) lineItems.push({ label: 'Dealer Accessories & Preparation', sub: 'Dealer Fitout', amount: f.dealerFitTotal });
-    // v1.11 (Story 9.2.3) — Fit-Up & rigging shows as a SINGLE summary
-    // line on the customer PDF. No itemised breakdown by deliberate
-    // product decision (locked at v1.7 planning restructure). Operators
-    // who need the line-by-line view can look at the proposal-view
-    // Activity tab where the snapshot is preserved.
-    if (f.fitUpTotal > 0) lineItems.push({ label: 'Fit-up & Rigging', sub: 'Installation & Preparation', amount: f.fitUpTotal });
+    // v1.11 (Story 9.2.3 + "Toggle detailed view for customer") — Fit-Up
+    // defaults to a SINGLE summary line on the customer PDF. When the
+    // operator flips `customerDetailedView` on the quote, each fit-up
+    // selection renders as its own line (customer-facing description,
+    // qty × resolved unit price) — the opt-in to the locked 9.2.3
+    // summary default. Operator-only notes never render either way.
+    if (f.fitUpTotal > 0) {
+        const sels = quote.fitUpSelections || [];
+        if (quote.customerDetailedView && sels.length > 0) {
+            sels.forEach((sel: any) => {
+                const qty = Math.max(1, sel.quantity ?? 1);
+                const unit = sel.priceOverride != null
+                    ? sel.priceOverride
+                    : (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0));
+                const label = sel.customerDescription || sel.name || 'Fit-up item';
+                lineItems.push({ label: qty > 1 ? `${label} ×${qty}` : label, sub: 'Fit-up & Rigging', amount: qty * unit });
+            });
+        } else {
+            lineItems.push({ label: 'Fit-up & Rigging', sub: 'Installation & Preparation', amount: f.fitUpTotal });
+        }
+    }
     if (f.regoTotal > 0) lineItems.push({ label: 'Registration & Compliance', sub: 'Government Fees', amount: f.regoTotal });
 
     const variantLabel = quote.variant?.name && quote.variant.name !== 'Standard'
