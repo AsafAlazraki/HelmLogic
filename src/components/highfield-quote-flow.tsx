@@ -392,6 +392,37 @@ export function HighfieldQuoteFlow({
 
     // 3. Derived Memos (CRITICAL: Order of initialization to prevent ReferenceErrors)
 
+    // v1.11 — auto-match context for the QLD rego pickers.
+    // Boat hull length: parse the metres from the model code (e.g. CL260
+    // -> 2.60m, SP700 -> 7.00m) — Highfield codes encode length×100.
+    // Falls back to a Length spec if present.
+    const boatLengthM = useMemo<number | undefined>(() => {
+        const code = String(model?.modelCode || model?.name || '');
+        const m = code.match(/(\d{3})/);
+        if (m) return parseInt(m[1], 10) / 100;
+        const lenSpec = (model?.specifications?.otherSpecs || []).find((s: any) => /length/i.test(s?.label || ''));
+        if (lenSpec) {
+            const lm = String(lenSpec.value || '').match(/(\d+(?:\.\d+)?)/);
+            if (lm) return parseFloat(lm[1]);
+        }
+        return undefined;
+    }, [model?.modelCode, model?.name, model?.specifications?.otherSpecs]);
+
+    // Trailer ATM (kg): parse from the selected trailer's specifications /
+    // name (e.g. "1,450kg", "ATM 1990kg"). Used to auto-match a trailer
+    // rego band. Undefined until a trailer is loaded.
+    const trailerAtmKg = useMemo<number | undefined>(() => {
+        const snap = catalogTrailerSnapshot;
+        if (!snap) return undefined;
+        const specs = snap.specifications || {};
+        const raw = specs.atm || specs.ATM || specs.aggregateTrailerMass || '';
+        const fromSpec = String(raw).replace(/[, ]/g, '').match(/(\d+(?:\.\d+)?)/);
+        if (fromSpec) return parseFloat(fromSpec[1]);
+        const fromName = String(snap.name || '').replace(/[, ]/g, '').match(/(\d{3,4})kg/i);
+        if (fromName) return parseFloat(fromName[1]);
+        return undefined;
+    }, [catalogTrailerSnapshot]);
+
     // When the user picks a trailer from the catalog, shadow model.trailerConfig with
     // the snapshot so pricing/options/image all flow from the chosen trailer while
     // leaving the original model doc untouched. Snapshot is frozen on select.
@@ -1509,6 +1540,7 @@ export function HighfieldQuoteFlow({
                                                     value={boatRegoSnapshot}
                                                     onChange={setBoatRegoSnapshot}
                                                     label="Boat Registration (Rego Module)"
+                                                    autoMatchLengthM={boatLengthM}
                                                 />
                                                 {!boatRegoSnapshot && (
                                                 <div className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", isRegoSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "bg-slate-50 border-slate-100 hover:border-primary/20")} onClick={handleRegoToggle}>
@@ -2223,6 +2255,7 @@ export function HighfieldQuoteFlow({
                                                         value={trailerRegoSnapshot}
                                                         onChange={setTrailerRegoSnapshot}
                                                         label="Trailer Registration (Rego Module)"
+                                                        autoMatchAtmKg={trailerAtmKg}
                                                     />
                                                     {!trailerRegoSnapshot && (
                                                         <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", isTrailerRegoSelected ? "bg-primary/5 border-primary ring-2 ring-primary/20 shadow-md" : "border-transparent hover:border-primary/20")} onClick={() => setIsTrailerRegoSelected(!isTrailerRegoSelected)}>
