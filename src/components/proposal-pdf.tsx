@@ -215,9 +215,12 @@ function pdfImg(url: string | undefined | null, w = 700): string | undefined {
  *  "MT605GAUS") with no human-readable text. These items have no real
  *  description in the source data — rendering them on the customer PDF
  *  is worse than hiding them, so dealer-fit filters them out. */
-function isCodeOnlyLabel(s: string | undefined | null): boolean {
-    if (!s) return true;  // empty = also nothing useful
-    const t = s.trim();
+function isCodeOnlyLabel(s: unknown): boolean {
+    if (s == null) return true;
+    // Coerce non-strings (number/object/etc.) — they crash .trim() and
+    // are also clearly not human-readable labels.
+    const str = typeof s === 'string' ? s : String(s);
+    const t = str.trim();
     if (!t) return true;
     // Codey: all-caps, digits, dashes only — no lowercase letters.
     return /^[A-Z0-9-]+$/.test(t) || /^\d{3,}-/.test(t);
