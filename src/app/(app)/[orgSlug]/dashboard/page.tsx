@@ -13,6 +13,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { HelmLogicLoading } from "@/components/helmlogic-loading";
+import { SeedEverythingButton } from "@/components/seed-everything-button";
 
 import {
   DndContext,
@@ -217,6 +218,11 @@ function EmployeeDashboard({ organisationId, userProfile, orgSlug }: { organisat
                     </div>
                 </div>
             </div>
+
+            {/* One-shot demo seed — builds a complete end-to-end quote
+                setup (boat + motors + trailer + dealer-fit + fit-up) wired
+                to this org under demo-* ids. Removed at close-out. */}
+            <SeedEverythingButton />
 
             <div className="space-y-6">
                 <div className="flex items-center justify-between px-1">
