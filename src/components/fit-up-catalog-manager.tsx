@@ -34,7 +34,9 @@ import { useMemo, useState, useEffect } from 'react';
 import { addDoc, collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, updateDoc, where, writeBatch } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import { useFirestore, useMemoFirebase } from '@/firebase';
+import { useUser } from '@/firebase/auth/use-user';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { logFitUpAuditEvent, shallowDiff } from '@/lib/fit-up-catalog-audit';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -79,8 +81,30 @@ interface FitUpItem {
     brandIds?: string[];   // data-warehouse vendor ids (Boat Brand vendors)
     rangeIds?: string[];   // data-warehouse/{vendorId}/ranges/{rangeId}
     modelIds?: string[];   // data-warehouse/{vendorId}/ranges/{rangeId}/models/{modelId}
+    /** v1.11 expansion-2 — variant-level (SKU) allowlist. Empty = no
+     *  restriction. AND-combined with the other allowlists. */
+    variantIds?: string[];
+    /** v1.11 expansion-2 — image url for the catalog row + quote selector
+     *  card. External-CDN-safe (native <img>, not next/Image — see lesson). */
+    imageUrl?: string | null;
+    /** v1.11 expansion-2 — soft dependency hint. When the operator selects
+     *  this item on a quote, items in this list get an ✦ "often paired with"
+     *  highlight in the selector. Not a hard rule — full operator-authored
+     *  rule engine (Epic 9.3.1) is still v2.2. */
+    oftenPairedWith?: string[];
     createdAt?: any;
     updatedAt?: any;
+}
+
+interface VariantOption {
+    id: string;
+    name?: string;
+    modelCode?: string;
+    material?: string;
+    colorName?: string;
+    vendorId: string;
+    rangeId: string;
+    modelId: string;
 }
 
 interface ModuleOption {
@@ -165,6 +189,7 @@ function asNumber(raw: any): number | null {
 
 export function FitUpCatalogManager({ organisationId }: FitUpCatalogManagerProps) {
     const firestore = useFirestore();
+    const { user } = useUser();
     const { toast } = useToast();
 
     const itemsRef = useMemoFirebase(
@@ -223,6 +248,14 @@ export function FitUpCatalogManager({ organisationId }: FitUpCatalogManagerProps
     const handleDelete = async (item: FitUpItem) => {
         try {
             await deleteDoc(doc(firestore, 'organisations', organisationId, 'fitUpItems', item.id));
+            void logFitUpAuditEvent(firestore, organisationId, {
+                actorUid: user?.uid || 'unknown',
+                actorName: user?.displayName || user?.email || 'Someone',
+                resource: 'fitUpItem',
+                resourceId: item.id,
+                resourceName: item.name,
+                action: 'deleted',
+            });
             toast({ title: 'Item removed', description: item.name });
             setSelectedIds(prev => {
                 const next = new Set(prev);
@@ -581,6 +614,16 @@ function FitUpItemRow({
         <div className={`flex items-center justify-between p-3 rounded-xl border ${selected ? 'border-primary bg-primary/5' : 'border-transparent hover:bg-slate-50 hover:border-slate-200'}`}>
             <div className="flex items-center gap-3 min-w-0">
                 <Checkbox checked={selected} onCheckedChange={onToggleSelect} />
+                {item.imageUrl && (
+                    // Native <img> per CLAUDE.md lesson — Next/Image breaks external CDNs.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="h-10 w-10 object-contain rounded-lg border bg-white shrink-0"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                    />
+                )}
                 <Badge variant="outline" className={`${TIER_TONE[item.tier]} text-[10px] font-bold uppercase`}>
                     {TIER_LABEL[item.tier]}
                 </Badge>
@@ -633,6 +676,7 @@ function FitUpItemEditor({
     editingItem: FitUpItem | null;
 }) {
     const firestore = useFirestore();
+    const { user } = useUser();
     const { toast } = useToast();
 
     const [name, setName] = useState('');
@@ -642,12 +686,15 @@ function FitUpItemEditor({
     const [notes, setNotes] = useState('');
     const [category, setCategory] = useState('');
     const [customerDescription, setCustomerDescription] = useState('');
+    const [imageUrl, setImageUrl] = useState('');
     const [moduleIds, setModuleIds] = useState<string[]>([]);
     const [brandIds, setBrandIds] = useState<string[]>([]);
     const [rangeIds, setRangeIds] = useState<string[]>([]);
     const [modelIds, setModelIds] = useState<string[]>([]);
+    const [variantIds, setVariantIds] = useState<string[]>([]);
+    const [oftenPairedWith, setOftenPairedWith] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
-    const [scopeData, setScopeData] = useState<{ brands: BrandOption[]; ranges: RangeOption[]; models: ModelOption2[] }>({ brands: [], ranges: [], models: [] });
+    const [scopeData, setScopeData] = useState<{ brands: BrandOption[]; ranges: RangeOption[]; models: ModelOption2[]; variants: VariantOption[] }>({ brands: [], ranges: [], models: [], variants: [] });
     const [loadingScope, setLoadingScope] = useState(false);
 
     const isEdit = editingItem !== null;
@@ -705,7 +752,7 @@ function FitUpItemEditor({
                         });
                     }
                 }
-                if (!cancelled) setScopeData({ brands, ranges, models });
+                if (!cancelled) setScopeData(prev => ({ brands, ranges, models, variants: prev.variants }));
             } catch (err) {
                 console.error('Scope load failed', err);
             } finally {
@@ -714,6 +761,49 @@ function FitUpItemEditor({
         })();
         return () => { cancelled = true; };
     }, [open, firestore]);
+
+    // v1.11 expansion-2 — lazy-load variants ONLY for currently-selected
+    // models. Avoids the N×M×K read explosion that would happen if we
+    // eagerly fetched variants for every model in every range. Triggered
+    // when the operator picks a model. Variants section in the UI is
+    // gated on modelIds.length > 0 + the underlying model docs being known.
+    useEffect(() => {
+        if (!open) return;
+        if (modelIds.length === 0) {
+            setScopeData(prev => ({ ...prev, variants: [] }));
+            return;
+        }
+        let cancelled = false;
+        (async () => {
+            const variants: VariantOption[] = [];
+            // Index models so we can resolve vendor + range from a modelId.
+            const modelIndex = new Map(scopeData.models.map(m => [m.id, m]));
+            for (const modelId of modelIds) {
+                const m = modelIndex.get(modelId);
+                if (!m) continue;
+                try {
+                    const variantsSnap = await getDocs(collection(firestore, 'data-warehouse', m.vendorId, 'ranges', m.rangeId, 'models', modelId, 'variants'));
+                    variantsSnap.forEach(v => {
+                        const vd = v.data() as any;
+                        variants.push({
+                            id: v.id,
+                            name: vd.name,
+                            modelCode: vd.modelCode ?? m.modelCode,
+                            material: vd.material,
+                            colorName: vd.colorName,
+                            vendorId: m.vendorId,
+                            rangeId: m.rangeId,
+                            modelId,
+                        });
+                    });
+                } catch (err) {
+                    console.error('Variant load failed for model', modelId, err);
+                }
+            }
+            if (!cancelled) setScopeData(prev => ({ ...prev, variants }));
+        })();
+        return () => { cancelled = true; };
+    }, [open, firestore, modelIds, scopeData.models]);
 
     useEffect(() => {
         if (open) {
@@ -724,15 +814,24 @@ function FitUpItemEditor({
             setNotes(editingItem?.notes ?? '');
             setCategory(editingItem?.category ?? '');
             setCustomerDescription(editingItem?.customerDescription ?? '');
+            setImageUrl(editingItem?.imageUrl ?? '');
             setModuleIds(editingItem?.moduleIds ?? []);
             setBrandIds(editingItem?.brandIds ?? []);
             setRangeIds(editingItem?.rangeIds ?? []);
             setModelIds(editingItem?.modelIds ?? []);
+            setVariantIds(editingItem?.variantIds ?? []);
+            setOftenPairedWith(editingItem?.oftenPairedWith ?? []);
         }
     }, [open, editingItem]);
 
     const toggleModule = (id: string) => {
         setModuleIds(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
+    };
+    const toggleVariant = (id: string) => {
+        setVariantIds(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
+    };
+    const togglePairedWith = (id: string) => {
+        setOftenPairedWith(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
     };
     const toggleBrand = (id: string) => {
         setBrandIds(prev => prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]);
@@ -758,6 +857,11 @@ function FitUpItemEditor({
         if (rangeIds.length > 0) list = list.filter(m => rangeIds.includes(m.rangeId));
         return list;
     }, [scopeData.models, brandIds, rangeIds]);
+    // v1.11 expansion-2 — variants are lazy-loaded per selected modelId.
+    // The chip section only shows variants for currently-picked models.
+    const visibleVariants = useMemo(() => {
+        return scopeData.variants.filter(v => modelIds.includes(v.modelId));
+    }, [scopeData.variants, modelIds]);
 
     const handleSave = async () => {
         const trimmedName = name.trim();
@@ -786,6 +890,7 @@ function FitUpItemEditor({
                 notes: notes.trim() || null,
                 category: category.trim() || null,
                 customerDescription: customerDescription.trim() || null,
+                imageUrl: imageUrl.trim() || null,
                 // v1.11 — assignment allowlists; empty = no restriction
                 // at that level; the selector AND-combines non-empty
                 // allowlists against the current quote context.
@@ -793,15 +898,41 @@ function FitUpItemEditor({
                 brandIds,
                 rangeIds,
                 modelIds,
+                variantIds,
+                oftenPairedWith,
                 updatedAt: serverTimestamp(),
             };
+            const actorName = user?.displayName || user?.email || 'Someone';
+            const actorUid = user?.uid || 'unknown';
             if (isEdit && editingItem) {
                 await updateDoc(doc(firestore, 'organisations', organisationId, 'fitUpItems', editingItem.id), payload);
+                // v1.11 expansion-2 — audit log (fire-and-forget; failures
+                // surface in console, never roll back the catalog write).
+                const diff = shallowDiff(
+                    editingItem as any,
+                    payload,
+                    ['name', 'tier', 'cost', 'sellPrice', 'category', 'customerDescription', 'imageUrl'],
+                );
+                void logFitUpAuditEvent(firestore, organisationId, {
+                    actorUid, actorName,
+                    resource: 'fitUpItem',
+                    resourceId: editingItem.id,
+                    resourceName: trimmedName,
+                    action: 'updated',
+                    diff: Object.keys(diff).length > 0 ? diff : undefined,
+                });
                 toast({ title: 'Item updated', description: trimmedName });
             } else {
-                await addDoc(collection(firestore, 'organisations', organisationId, 'fitUpItems'), {
+                const newRef = await addDoc(collection(firestore, 'organisations', organisationId, 'fitUpItems'), {
                     ...payload,
                     createdAt: serverTimestamp(),
+                });
+                void logFitUpAuditEvent(firestore, organisationId, {
+                    actorUid, actorName,
+                    resource: 'fitUpItem',
+                    resourceId: newRef.id,
+                    resourceName: trimmedName,
+                    action: 'created',
                 });
                 toast({ title: 'Item added', description: trimmedName });
             }
@@ -909,6 +1040,22 @@ function FitUpItemEditor({
                     </div>
 
                     <div className="space-y-1.5">
+                        <label className="text-xs font-semibold">Image URL — optional</label>
+                        <Input
+                            value={imageUrl}
+                            onChange={e => setImageUrl(e.target.value)}
+                            placeholder="https://… (renders on catalog row + quote selector card)"
+                            className="rounded-xl border-2"
+                            type="url"
+                        />
+                        {imageUrl.trim() && (
+                            // Native <img> per CLAUDE.md lesson — Next/Image breaks external CDNs.
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={imageUrl.trim()} alt="Preview" className="h-16 w-16 object-contain rounded-lg border bg-white" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                        )}
+                    </div>
+
+                    <div className="space-y-1.5">
                         <label className="text-xs font-semibold">Internal notes — optional</label>
                         <Textarea
                             value={notes}
@@ -965,7 +1112,28 @@ function FitUpItemEditor({
                                     : undefined
                             }
                         />
+                        {modelIds.length > 0 && (
+                            <ChipSection
+                                label="Variants (sub-models)"
+                                options={visibleVariants.map(v => ({
+                                    id: v.id,
+                                    label: `${v.modelCode ?? ''}${v.modelCode ? ' • ' : ''}${[v.material, v.colorName].filter(Boolean).join(' / ') || v.name || v.id}`,
+                                }))}
+                                selected={variantIds}
+                                onToggle={toggleVariant}
+                                hint={visibleVariants.length === 0 ? 'Loading variants for the selected models…' : `Per-SKU restriction — leave empty to allow any variant of the selected models`}
+                            />
+                        )}
                     </div>
+
+                    {/* v1.11 expansion-2 — soft "often paired with" hints.
+                        Optional. References other catalog items by id. */}
+                    <OftenPairedWithSection
+                        organisationId={organisationId}
+                        currentItemId={editingItem?.id ?? null}
+                        selected={oftenPairedWith}
+                        onToggle={togglePairedWith}
+                    />
                 </div>
 
                 <DialogFooter>
@@ -1489,5 +1657,79 @@ function FitUpPackageEditor({
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+    );
+}
+
+/**
+ * v1.11 expansion-2 — Soft "often paired with" hints.
+ *
+ * Lets the catalog operator pick a few sibling items that "tend to be
+ * sold together". The quote selector reads `oftenPairedWith` on each
+ * SELECTED item and highlights the suggestions in the grid — NOT a
+ * hard rule (no auto-add), just an ✦ visual cue. The full operator-
+ * authored conditional rule engine remains Epic 9.3.1 / v2.2.
+ *
+ * Self-references are excluded — editing item X never shows X in its
+ * own paired-with picker.
+ */
+function OftenPairedWithSection({
+    organisationId, currentItemId, selected, onToggle,
+}: {
+    organisationId: string;
+    currentItemId: string | null;
+    selected: string[];
+    onToggle: (id: string) => void;
+}) {
+    const firestore = useFirestore();
+    const itemsRef = useMemoFirebase(
+        () => query(collection(firestore, 'organisations', organisationId, 'fitUpItems'), orderBy('name', 'asc')),
+        [firestore, organisationId],
+    );
+    const { data: allItems } = useCollection<FitUpItem>(itemsRef);
+    const [search, setSearch] = useState('');
+
+    const candidates = useMemo(() => {
+        const list = (allItems ?? []).filter(i => i.id !== currentItemId);
+        const q = search.trim().toLowerCase();
+        if (!q) return list;
+        return list.filter(i =>
+            i.name.toLowerCase().includes(q)
+            || (i.category ?? '').toLowerCase().includes(q),
+        );
+    }, [allItems, currentItemId, search]);
+
+    return (
+        <div className="rounded-xl border-2 p-3 space-y-2 bg-slate-50/50">
+            <div>
+                <p className="text-xs font-bold">Often paired with — optional</p>
+                <p className="text-[10px] text-muted-foreground">
+                    Sibling items that tend to be sold together. When this item is selected on a quote, the selector highlights the paired items with an ✦. Soft hint — never auto-adds.
+                </p>
+            </div>
+            <Input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Filter sibling items…"
+                className="rounded-lg border-2 h-8 text-xs"
+            />
+            <div className="flex flex-wrap gap-1 p-1.5 rounded-lg border bg-white max-h-28 overflow-y-auto">
+                {candidates.length === 0 ? (
+                    <span className="text-[10px] text-muted-foreground italic px-1">—</span>
+                ) : candidates.map(item => {
+                    const isOn = selected.includes(item.id);
+                    return (
+                        <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => onToggle(item.id)}
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${isOn ? 'bg-primary text-white border-primary' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+                            title={`${item.tier} · $${(item.sellPrice ?? item.cost ?? 0).toLocaleString()}`}
+                        >
+                            {item.name}
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
     );
 }

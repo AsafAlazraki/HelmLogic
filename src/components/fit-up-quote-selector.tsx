@@ -69,6 +69,19 @@ export interface FitUpItem {
     brandIds?: string[];
     rangeIds?: string[];
     modelIds?: string[];
+    /** v1.11 expansion-2 — variant-level (sub-model SKU) allowlist.
+     *  Same AND-combined semantics as the other levels. variantIds are
+     *  the doc ids under data-warehouse/{vendor}/ranges/{range}/models/{model}/variants. */
+    variantIds?: string[];
+    /** v1.11 expansion-2 — image url for the catalog row + quote selector
+     *  card. Native <img> (external CDN-safe, per CLAUDE.md lesson). */
+    imageUrl?: string | null;
+    /** v1.11 expansion-2 — soft "often paired with" hints. Stores ids
+     *  into the same fitUpItems collection. The selector highlights any
+     *  hinted items when the source item is selected. NOT a hard rule —
+     *  the operator can ignore. The full operator-authored rule engine
+     *  (Epic 9.3.1) remains v2.2. */
+    oftenPairedWith?: string[];
 }
 
 export interface FitUpPackage {
@@ -131,6 +144,9 @@ interface FitUpQuoteSelectorProps {
     vendorId?: string;
     rangeId?: string;
     modelId?: string;
+    /** v1.11 expansion-2 — active variant id (SKU level). AND-combined
+     *  with the other allowlists in the same itemMatchesContext check. */
+    variantId?: string;
     /** v1.11 (Epic 9.3.1 simplified) — boat motor HP for the
      *  Suggested filter heuristic. */
     motorHp?: number;
@@ -141,13 +157,14 @@ interface FitUpQuoteSelectorProps {
  *  level" → pass through. */
 function itemMatchesContext(
     item: FitUpItem,
-    ctx: { moduleId?: string; vendorId?: string; rangeId?: string; modelId?: string },
+    ctx: { moduleId?: string; vendorId?: string; rangeId?: string; modelId?: string; variantId?: string },
 ): boolean {
     const checks: [string[] | undefined, string | undefined][] = [
         [item.moduleIds, ctx.moduleId],
         [item.brandIds, ctx.vendorId],
         [item.rangeIds, ctx.rangeId],
         [item.modelIds, ctx.modelId],
+        [item.variantIds, ctx.variantId],
     ];
     for (const [allowlist, value] of checks) {
         if (allowlist && allowlist.length > 0) {
@@ -179,7 +196,7 @@ function suggestedTierForMotorHp(hp: number | undefined): Tier | null {
 
 export function FitUpQuoteSelector({
     organisationId, selections, onToggle, onAddPackage, onUpdateSelection,
-    moduleId, vendorId, rangeId, modelId, motorHp,
+    moduleId, vendorId, rangeId, modelId, variantId, motorHp,
 }: FitUpQuoteSelectorProps) {
     const firestore = useFirestore();
 
@@ -213,8 +230,8 @@ export function FitUpQuoteSelector({
     // level AND), then by tier chip + category chip + Suggested + search.
     const moduleFiltered = useMemo(() => {
         const list = items ?? [];
-        return list.filter(item => itemMatchesContext(item, { moduleId, vendorId, rangeId, modelId }));
-    }, [items, moduleId, vendorId, rangeId, modelId]);
+        return list.filter(item => itemMatchesContext(item, { moduleId, vendorId, rangeId, modelId, variantId }));
+    }, [items, moduleId, vendorId, rangeId, modelId, variantId]);
 
     const categories = useMemo(() => {
         const set = new Set<string>();

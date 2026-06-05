@@ -28,6 +28,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 const NON_ESSENTIAL_PATH_SUFFIXES = [
   '/fitUpItems',          // v1.10 Epic 9.1.x
   '/fitUpPackages',       // v1.11 expansion
+  '/fitUpCatalogAudit',   // v1.11 expansion-2
   '/serviceOperations',   // v1.10 Epic 11.1.x
   '/serviceParts',        // v1.10 Epic 11.1.x
 ];

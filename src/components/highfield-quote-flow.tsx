@@ -2253,6 +2253,7 @@ export function HighfieldQuoteFlow({
                                             vendorId={vendor.id}
                                             rangeId={rangeId}
                                             modelId={model.id}
+                                            variantId={activeVariant?.id}
                                             motorHp={selectedMotor ? (parseFloat(String(selectedMotor['HP Rating'] || '0').replace(/[^\d.]/g, '')) || undefined) : undefined}
                                         />
                                     )}

@@ -214,6 +214,16 @@ service cloud.firestore {
       match /fitUpPackages/{packageId} {
         allow read, write: if isSignedIn();
       }
+      // v1.11 expansion-2 — Fit-Up catalog audit log. Append-only log of
+      // catalog mutations (item/package created / updated / deleted).
+      // Reads + writes signed-in; UI-layer org-admin gate via /manage's
+      // can_access_settings permission. Pattern mirrors per-quote
+      // auditLog. Log writes are fire-and-forget (see
+      // src/lib/fit-up-catalog-audit.ts) — a denied write on this path
+      // must not roll back the underlying catalog mutation.
+      match /fitUpCatalogAudit/{eventId} {
+        allow read, write: if isSignedIn();
+      }
       // v1.10 (Epic 11.1.1 — Service-quote schema) — Service-quoting
       // catalogue. Two sister subcollections that hold the labor codes
       // and parts catalog used by the service-quote flow (Epic 11.2+,

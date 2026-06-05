@@ -59,6 +59,7 @@ import {
 import { cn } from '@/lib/utils';
 import { V111FitUpRetargetButton } from '@/components/v111-fitup-retarget-button';
 import { V111ExpansionRetargetButton } from '@/components/v111-expansion-retarget-button';
+import { V111SeedFitUpDummyDataButton } from '@/components/v111-seed-fitup-dummy-data-button';
 import {
     FeatureDetailSheet,
     type EpicColor,
@@ -390,6 +391,7 @@ export function RoadmapView() {
                     </div>
                     <V111FitUpRetargetButton />
                     <V111ExpansionRetargetButton />
+                    <V111SeedFitUpDummyDataButton />
                 </div>
             </div>
 
