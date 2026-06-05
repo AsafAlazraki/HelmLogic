@@ -125,6 +125,58 @@ New orthogonal state machine: `fitUpStatus: 'pending' | 'scheduled' | 'in-progre
 
 ---
 
+---
+
+## Phase C — Fit-Up expansion-2 (demo unblocker + extended scope)
+
+Mid-cycle scope bump: the team needs to walk an end-to-end quote with real fit-up data NOW, and the fit-up module needs to be "complete" before we move to the next release.
+
+### Demo unblocker — `V111SeedFitUpDummyDataButton`
+
+One-shot button on the Roadmap header. Click once → 15 catalog items spanning 6 categories (Rigging / Electronics / Safety / Sound / Plumbing / Trim) across all 3 tiers, 3 packages (Coastal Setup / Offshore Power Pack / First-Time Owner Kit). Items are catalogue-wide (no allowlist restrictions) so every quote sees them. Placeholder images, customer descriptions, prices included. Idempotent. Removed in close-out cleanup.
+
+### Variant-level (sub-model SKU) assignment
+
+`FitUpItem.variantIds?: string[]` AND-combined with the existing module / brand / range / model allowlists. Admin editor renders a Variants chip section only when at least one model is picked (variants lazy-load per selected model to avoid N×M×K Firestore reads). Quote selector passes `activeVariant.id` through the same `itemMatchesContext` chain.
+
+### Item images
+
+`FitUpItem.imageUrl?: string | null`. Editor input with live preview; catalog row renders a small thumbnail. Native `<img>` per CLAUDE.md lesson (Next/Image breaks external CDNs). `onError` hides broken images silently.
+
+### Soft dependency hints (`oftenPairedWith`)
+
+`FitUpItem.oftenPairedWith?: string[]` references other catalog items. Editor's `OftenPairedWithSection` is a searchable chip picker over all catalog items (self-references excluded). The quote-selector ✦ highlight on hinted items lands in a follow-up — schema + admin authoring shipped now. **NOT the operator-authored conditional rule engine — Epic 9.3.1 still v2.2.**
+
+### Catalog audit log (`/organisations/{orgId}/fitUpCatalogAudit`)
+
+Append-only log of catalog mutations. Logged on create/update/delete of both items and packages. Shallow before/after diff on key fields (name, tier, cost, sellPrice, category, customerDescription, imageUrl). Fire-and-forget — failed audit writes never roll back the catalog mutation. New `firestore.rules` path (signed-in read+write); `FirebaseErrorListener` denylist absorbs missing-rule edge case.
+
+### Package-level price override
+
+`FitUpPackage.packagePrice?: number | null`. When set, selecting the package on a quote distributes this amount across the member items as per-line `priceOverride` PROPORTIONALLY (each member gets `(catalog_sell / catalog_total) × packagePrice`). Margin still allocates correctly per line. Operator can nudge any single line back via the per-line override input. Package row in the admin shows an amber `(bundle)` tag when override is set; the selector strip shows the package price as the visible total + `(bundle)` tag.
+
+### Fit-up scheduling (date + technician)
+
+New quote fields `fitUpScheduledDate` (ISO yyyy-mm-dd) + `fitUpAssignedTechnician` (free-text — no roster yet). Stored alongside the workshop status. UI lives INSIDE the existing fit-up status popover on the proposal-view — `<input type="date">` + `<input type="text">` for the technician; both save on blur. Operator-only — never on customer PDF. Audit-logged via the existing `fit-up-status-changed` event type with a `note` summarising the change.
+
+### Pricing + Configurator Audit Workbook (extended `catalog-export-import.tsx`)
+
+Renamed from "Global Catalog Export / Import" to make the purpose explicit. Single xlsx now contains:
+
+**Round-trippable sheets (upsert-by-natural-key on import):**
+- Fit-Up · Fit-Up Packages · Service Operations · Service Parts · Model Overrides · Trailer Overrides · Vendors · Ranges · Models · Variants · Optional Features
+
+**New export-only sheets (read-only audit):**
+- Exchange Rates (per-currency rate + source + timestamp)
+- Dealer Fit Selections (per-org package + single selections with item rowIds rolled up)
+- Dealer Fit Categories (global)
+- Motor Vendors (Motor Brand vendor metadata)
+- Motor Models (with flat `hull_cash` / `hull_trade` / `hull_subdealer` / `hull_commercial` / `hull_boating_alliance` price-level columns)
+
+Export-only sheets are skipped on import (their shape isn't safely round-trippable — `exportOnly: true` flag on the SheetSpec). Output filename: `pricing-configurator-audit-YYYY-MM-DD.xlsx`.
+
+---
+
 ## v1.11 NOT in scope (deferred to v1.12)
 
 The dev branch carries several things built during the v1.11 cycle that BELONG to other epics. They keep their code (and ship to prod when v1.11 merges) but the planning-system rows have been pushed to v1.12 so they get the headline they deserve:

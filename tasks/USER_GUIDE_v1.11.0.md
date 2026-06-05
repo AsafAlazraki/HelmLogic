@@ -127,6 +127,68 @@ The Activity tab on the proposal-view picks up a new event type. Wrench icon, te
 
 ---
 
+---
+
+## 5. Demo seed (admin one-shot)
+
+A button **Seed demo data** lives on the Roadmap header. One click populates your org with:
+- 15 fit-up items spanning Rigging / Electronics / Safety / Sound / Plumbing / Trim (all 3 tiers)
+- 3 packages: Coastal Setup, Offshore Power Pack, First-Time Owner Kit
+- Placeholder images, customer descriptions, prices
+
+Items are catalogue-wide (no module/brand restrictions) so they show on EVERY quote — ideal for demos. Re-clicks are safe (idempotent — items / packages with the same names are skipped).
+
+## 6. Sub-model (variant) assignment
+
+The catalog editor's Assignment scope section gains a new **Variants (sub-models)** chip row, only visible when at least one model is picked. Variants are SKUs (material × colour) — pick specific variants of a model to lock the item to those SKUs only. Leave empty to allow any variant of the selected models.
+
+## 7. Item images
+
+The catalog editor has an **Image URL** field — paste any public image URL. A live preview renders below the input + the catalog row shows a small thumbnail. Broken images hide silently.
+
+## 8. Soft "often paired with" hints
+
+The catalog editor's **Often paired with** section lets you tag sibling items that tend to be sold together (e.g. tag "GPS Chartplotter" on the VHF Radio item, and vice versa). At quote time, the selector highlights paired items when the source item is selected. **Soft hint — never auto-adds.** Operators can ignore.
+
+## 9. Catalog audit log
+
+Every create / update / delete on items and packages is recorded in a new `/organisations/{orgId}/fitUpCatalogAudit` log. Includes actor + timestamp + a before/after diff on key fields (name, tier, cost, sellPrice, category, customerDescription, imageUrl). The Activity drawer surface for this lands in a follow-up; today the data is captured. Use it to answer "who changed the price on X last week?"
+
+## 10. Package-level price override
+
+In the Package editor, a new **Package price** field. Set a single bundle price (e.g. "Coastal Setup — $1,200 all-in"). At quote time:
+- The Packages strip shows the bundle price + an amber **(bundle)** tag instead of the catalog sum
+- Adding the package distributes the price PROPORTIONALLY across member items as per-line overrides
+- Margin still allocates correctly per item (the override only affects revenue; cost stays at catalog cost × qty)
+
+Leave blank to use the catalog sum (original behaviour).
+
+## 11. Fit-up scheduling (date + technician)
+
+The fit-up workshop status popover on the proposal-view gains a **Schedule** block:
+- **Scheduled date** — date picker (yyyy-mm-dd). Save on blur.
+- **Assigned technician** — free text (name / initials). Save on blur. No roster yet — type whatever.
+
+Both are operator-only. Never on customer PDF. Audit-logged.
+
+## 12. Pricing + Configurator audit workbook
+
+The catalog export / import surface (`Manage → Catalog Export / Import`) is rebranded as a **Pricing + Configurator Audit Workbook**. One click produces an xlsx with:
+
+**Round-trippable sheets** (upsert on import):
+- Fit-Up · Fit-Up Packages · Service Operations · Service Parts · Model Overrides · Trailer Overrides · Vendors · Ranges · Models · Variants · Optional Features
+
+**Export-only sheets** (read-only audit):
+- Exchange Rates
+- Dealer Fit Selections (with item count + rowIds)
+- Dealer Fit Categories (global)
+- Motor Vendors
+- Motor Models — with the **full price-level matrix** (hull_cash / hull_trade / hull_subdealer / hull_commercial / hull_boating_alliance) flattened to columns for fast audit
+
+Output filename: `pricing-configurator-audit-YYYY-MM-DD.xlsx`. Partial files on import won't clobber what's already there (upsert-by-natural-key).
+
+---
+
 ## What this release did NOT ship (deferred to v1.12+)
 
 - **Fit-up scheduling** (assign a specific date + technician) — only the workshop STATUS is in v1.11; date + assignee is its own slice and lands in v1.12+.

@@ -50,6 +50,11 @@ interface SheetSpec {
     collectionPath: string;
     naturalKey: string;
     rowShape: (data: any) => Record<string, any>;
+    /** v1.11 expansion-2 — when true, the sheet is included in export
+     *  but SKIPPED on import. Use for sheets whose shape isn't safely
+     *  round-trippable (e.g. flattened nested arrays) or that operators
+     *  shouldn't bulk-edit through xlsx. */
+    exportOnly?: boolean;
 }
 
 /** Build a SheetSpec list — each describes a collection + how to
@@ -138,6 +143,42 @@ function buildSheetSpecs(orgId: string): SheetSpec[] {
                 pricingSource: d.pricingSource ?? '',
             }),
         },
+        {
+            // v1.11 expansion-2 — exchange rates per currency code. Sheet
+            // is keyed on the docId (the currency code itself, e.g. USD).
+            // Export-only: rate-history (changeLog) lives in a subcollection
+            // and updatedAt is a server-side timestamp — round-trip would
+            // corrupt either.
+            sheetName: 'Exchange Rates',
+            collectionPath: `organisations/${orgId}/exchangeRates`,
+            naturalKey: 'currencyCode',
+            exportOnly: true,
+            rowShape: d => ({
+                currencyCode: d.currencyCode ?? d.id ?? '',
+                rate: d.rate ?? '',
+                source: d.source ?? '',
+                updatedAt: d.updatedAt?.toDate ? d.updatedAt.toDate().toISOString() : '',
+            }),
+        },
+        {
+            // v1.11 expansion-2 — per-org dealer-fit selections (category
+            // groupings + selected items). One row per selection doc;
+            // items roll up as pipe-separated rowIds for visibility.
+            // Export-only: the nested items array is complex (rowId +
+            // qty + override fields per line) and flat re-import would
+            // lose the qty/override metadata.
+            sheetName: 'Dealer Fit Selections',
+            collectionPath: `organisations/${orgId}/dealerFitSelections`,
+            naturalKey: 'name',
+            exportOnly: true,
+            rowShape: d => ({
+                name: d.name ?? '',
+                categoryId: d.categoryId ?? '',
+                type: d.type ?? '',  // 'package' | 'single' etc.
+                itemCount: Array.isArray(d.items) ? d.items.length : 0,
+                itemRowIds: Array.isArray(d.items) ? d.items.map((i: any) => i.rowId).filter(Boolean).join('|') : '',
+            }),
+        },
     ];
 }
 
@@ -177,6 +218,84 @@ export function CatalogExportImport({ organisationId }: CatalogExportImportProps
      *  and sync to Firestore. Each is upsert by natural key (id where
      *  present, slug fallback for vendors). */
     async function exportDataWarehouseSheets(wb: XLSX.WorkBook, sheetSummaries: string[]) {
+        // v1.11 expansion-2 — also export the global dealerFitCategories
+        // collection (catalogue-wide names dealers see in the picker).
+        try {
+            const dfcSnap = await getDocs(collection(firestore, 'dealerFitCategories'));
+            const rows: Record<string, any>[] = [];
+            dfcSnap.forEach(d => {
+                const data = d.data() as any;
+                rows.push({
+                    categoryId: d.id,
+                    name: data.name ?? '',
+                    order: data.order ?? '',
+                });
+            });
+            const ws = rows.length > 0
+                ? XLSX.utils.json_to_sheet(rows)
+                : XLSX.utils.aoa_to_sheet([['No rows in Dealer Fit Categories']]);
+            XLSX.utils.book_append_sheet(wb, ws, 'Dealer Fit Categories');
+            sheetSummaries.push(`Dealer Fit Categories: ${rows.length}`);
+        } catch (err) {
+            console.error('Dealer fit categories export failed', err);
+            sheetSummaries.push('Dealer Fit Categories: failed');
+        }
+
+        // v1.11 expansion-2 — Motor Brand vendors with their models +
+        // priceLevels (hull_cash / hull_trade / hull_subdealer /
+        // hull_commercial / hull_boating_alliance). Pricing audit
+        // depends on having every motor's full price-level matrix in
+        // one sheet.
+        const motorVendorsSnap = await getDocs(query(collection(firestore, 'data-warehouse'), where('vendorType', '==', 'Motor Brand')));
+        const motorVendorRows: Record<string, any>[] = [];
+        const motorModelRows: Record<string, any>[] = [];
+        for (const mvDoc of motorVendorsSnap.docs) {
+            const mv = mvDoc.data() as any;
+            motorVendorRows.push({
+                vendorId: mvDoc.id,
+                name: mv.name ?? '',
+                slug: mv.slug ?? '',
+                vendorType: mv.vendorType ?? '',
+                currency: mv.currency ?? '',
+            });
+            try {
+                const mmSnap = await getDocs(collection(firestore, 'data-warehouse', mvDoc.id, 'models'));
+                mmSnap.forEach(mDoc => {
+                    const m = mDoc.data() as any;
+                    const pl = m.priceLevels ?? {};
+                    motorModelRows.push({
+                        vendorId: mvDoc.id,
+                        modelId: mDoc.id,
+                        name: m['Model Name'] ?? m.name ?? '',
+                        partNumber: m['Part Number'] ?? m.partNumber ?? '',
+                        hpRating: m['HP Rating'] ?? m.hpRating ?? '',
+                        steeringType: m.steeringType ?? '',
+                        category: m.category ?? '',
+                        cost: m.cost ?? '',
+                        // Price levels — flattened to top-level columns for
+                        // a clean audit view; null/missing renders as empty.
+                        hull_cash: pl.hull_cash ?? '',
+                        hull_trade: pl.hull_trade ?? '',
+                        hull_subdealer: pl.hull_subdealer ?? '',
+                        hull_commercial: pl.hull_commercial ?? '',
+                        hull_boating_alliance: pl.hull_boating_alliance ?? '',
+                    });
+                });
+            } catch (err) {
+                console.error('Motor models export failed for vendor', mvDoc.id, err);
+            }
+        }
+        const motorVendorWs = motorVendorRows.length > 0
+            ? XLSX.utils.json_to_sheet(motorVendorRows)
+            : XLSX.utils.aoa_to_sheet([['No Motor Brand vendors']]);
+        XLSX.utils.book_append_sheet(wb, motorVendorWs, 'Motor Vendors');
+        sheetSummaries.push(`Motor Vendors: ${motorVendorRows.length}`);
+        const motorModelWs = motorModelRows.length > 0
+            ? XLSX.utils.json_to_sheet(motorModelRows)
+            : XLSX.utils.aoa_to_sheet([['No Motor models']]);
+        XLSX.utils.book_append_sheet(wb, motorModelWs, 'Motor Models');
+        sheetSummaries.push(`Motor Models: ${motorModelRows.length}`);
+
         const vendorsSnap = await getDocs(query(collection(firestore, 'data-warehouse'), where('vendorType', '==', 'Boat Brand')));
         const vendorRows: Record<string, any>[] = [];
         const rangeRows: Record<string, any>[] = [];
@@ -339,10 +458,10 @@ export function CatalogExportImport({ organisationId }: CatalogExportImportProps
             await exportDataWarehouseSheets(wb, sheetSummaries);
 
             const stamp = new Date().toISOString().slice(0, 10);
-            XLSX.writeFile(wb, `catalog-export-${stamp}.xlsx`);
+            XLSX.writeFile(wb, `pricing-configurator-audit-${stamp}.xlsx`);
 
             toast({
-                title: 'Catalog exported',
+                title: 'Audit workbook exported',
                 description: sheetSummaries.join(' · '),
             });
         } catch (err) {
@@ -362,6 +481,10 @@ export function CatalogExportImport({ organisationId }: CatalogExportImportProps
             const summaries: string[] = [];
 
             for (const spec of specs) {
+                if (spec.exportOnly) {
+                    summaries.push(`${spec.sheetName}: export-only`);
+                    continue;
+                }
                 if (!wb.SheetNames.includes(spec.sheetName)) {
                     summaries.push(`${spec.sheetName}: missing`);
                     continue;
@@ -450,14 +573,13 @@ export function CatalogExportImport({ organisationId }: CatalogExportImportProps
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base font-bold">
                     <Database className="h-4 w-4" />
-                    Global Catalog Export / Import
+                    Pricing + Configurator Audit Workbook
                 </CardTitle>
                 <CardDescription className="text-xs">
-                    Snapshot or restore the org's catalogue + the global boat data-warehouse in one xlsx file.
-                    Sheets: <strong>Fit-Up</strong> · <strong>Service Operations</strong> · <strong>Service Parts</strong> ·
-                    <strong> Model Overrides</strong> · <strong>Trailer Overrides</strong> · <strong>Vendors</strong> ·
-                    <strong> Ranges</strong> · <strong>Models</strong> · <strong>Variants</strong> · <strong>Optional Features</strong>.
-                    Import is upsert-by-natural-key — partial files won't clobber what's already there.
+                    Single-click snapshot of every pricing + configurator surface an org admin needs to audit.
+                    <strong> Round-trippable sheets</strong> (upsert-by-natural-key on import): Fit-Up · Fit-Up Packages · Service Operations · Service Parts · Model Overrides · Trailer Overrides · Vendors · Ranges · Models · Variants · Optional Features.
+                    <strong> Export-only sheets</strong> (read-only audit): Exchange Rates · Dealer Fit Selections · Dealer Fit Categories · Motor Vendors · Motor Models (with hull_cash / hull_trade / hull_subdealer / hull_commercial / hull_boating_alliance price levels).
+                    Partial files on import won't clobber what's already in Firestore.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -466,7 +588,7 @@ export function CatalogExportImport({ organisationId }: CatalogExportImportProps
                         {busy === 'export' ? (
                             <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Exporting…</>
                         ) : (
-                            <><Download className="h-4 w-4 mr-2" /> Export entire catalog</>
+                            <><Download className="h-4 w-4 mr-2" /> Export audit workbook</>
                         )}
                     </Button>
                     <Button

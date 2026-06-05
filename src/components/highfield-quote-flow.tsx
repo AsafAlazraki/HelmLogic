@@ -1049,16 +1049,49 @@ export function HighfieldQuoteFlow({
         });
     };
 
-    // v1.11 expansion — adding a package: union the package's items with
-    // anything already selected. Items already on the quote keep their
-    // qty/override/note untouched; new items get the defaults.
-    const addFitUpPackage = (items: FitUpItem[]) => {
+    // v1.11 expansion (+ expansion-2) — adding a package.
+    //
+    // Step 1: union the package's items with anything already on the quote.
+    //   Items already selected stay; missing items get appended with
+    //   defaults (qty=1, no override, no note).
+    //
+    // Step 2 (expansion-2): if the package has a package-level price
+    //   override, distribute it PROPORTIONALLY across all member items
+    //   as per-line priceOverrides. The ratio is each item's catalog
+    //   sell / (sum of member catalog sells). Rounded to cents. If the
+    //   catalog sells are all zero (shouldn't happen but defend), split
+    //   the override equally.
+    //
+    //   Distribution applies to ALL package members regardless of whether
+    //   they were already on the quote — the package "wins" the override.
+    //   Operator can then nudge any single line back via the per-line
+    //   override input if needed.
+    const addFitUpPackage = (items: FitUpItem[], packagePrice: number | null) => {
         setSelectedFitUpItems(prev => {
             const existingIds = new Set(prev.map(s => s.item.id));
-            const additions = items
-                .filter(i => !existingIds.has(i.id))
-                .map(i => ({ item: i, quantity: 1, priceOverride: null, quoteNote: null }));
-            return [...prev, ...additions];
+            const next: FitUpSelection[] = [...prev];
+            for (const item of items) {
+                if (!existingIds.has(item.id)) {
+                    next.push({ item, quantity: 1, priceOverride: null, quoteNote: null });
+                }
+            }
+            if (packagePrice != null && packagePrice >= 0 && items.length > 0) {
+                const memberIds = new Set(items.map(i => i.id));
+                const catalogTotal = items.reduce(
+                    (a, i) => a + (i.sellPrice != null ? i.sellPrice : (i.cost ?? 0)),
+                    0,
+                );
+                const equalShare = packagePrice / items.length;
+                return next.map(s => {
+                    if (!memberIds.has(s.item.id)) return s;
+                    const catSell = s.item.sellPrice != null ? s.item.sellPrice : (s.item.cost ?? 0);
+                    const allocated = catalogTotal > 0
+                        ? Math.round(packagePrice * (catSell / catalogTotal) * 100) / 100
+                        : Math.round(equalShare * 100) / 100;
+                    return { ...s, priceOverride: allocated };
+                });
+            }
+            return next;
         });
     };
 

@@ -64,6 +64,52 @@ export function getFitUpStatus(quote: any): FitUpStatus {
  * Activity tab on the proposal-view shows the transition. Mirrors the
  * pattern in quote-lifecycle.transitionQuoteLifecycle().
  */
+/**
+ * v1.11 expansion-2 — Scheduling fields on the quote (sister to status).
+ *
+ * Tracks WHEN the workshop will do the work and WHO is assigned. Both
+ * are operator-only — never on the customer PDF. Stored on the quote
+ * doc as:
+ *   fitUpScheduledDate: string | null   // ISO-8601 yyyy-mm-dd (date only)
+ *   fitUpAssignedTechnician: string | null   // free text (no roster yet)
+ *
+ * UI lives next to the workshop status popover on the proposal-view.
+ */
+export async function updateFitUpScheduling(
+    firestore: Firestore,
+    ownerUid: string,
+    quoteId: string,
+    patch: { scheduledDate?: string | null; assignedTechnician?: string | null },
+    actor: { byUid: string; byName: string },
+): Promise<void> {
+    const update: { [key: string]: any } = {
+        fitUpSchedulingUpdatedAt: serverTimestamp(),
+        fitUpSchedulingUpdatedByUid: actor.byUid,
+        fitUpSchedulingUpdatedByName: actor.byName,
+        updatedAt: serverTimestamp(),
+    };
+    if (patch.scheduledDate !== undefined) update.fitUpScheduledDate = patch.scheduledDate;
+    if (patch.assignedTechnician !== undefined) update.fitUpAssignedTechnician = patch.assignedTechnician;
+    const ref = doc(firestore, `users/${ownerUid}/quotes`, quoteId);
+    await updateDoc(ref, update);
+    try {
+        const { logAuditEvent } = await import('@/lib/quote-audit-log');
+        await logAuditEvent(firestore, ownerUid, quoteId, {
+            eventType: 'fit-up-status-changed',
+            byUid: actor.byUid,
+            byName: actor.byName,
+            metadata: {
+                note: [
+                    patch.scheduledDate !== undefined ? `date: ${patch.scheduledDate ?? '—'}` : null,
+                    patch.assignedTechnician !== undefined ? `tech: ${patch.assignedTechnician ?? '—'}` : null,
+                ].filter(Boolean).join(' · '),
+            },
+        });
+    } catch (err) {
+        console.error('[fit-up-status] audit log failed', err);
+    }
+}
+
 export async function transitionFitUpStatus(
     firestore: Firestore,
     ownerUid: string,

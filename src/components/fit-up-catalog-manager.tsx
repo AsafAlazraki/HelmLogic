@@ -1361,12 +1361,18 @@ export interface FitUpPackage {
     name: string;
     description?: string | null;
     itemIds: string[];
+    /** v1.11 expansion-2 — package-level sell-price override. When set,
+     *  selecting the package on a quote distributes this amount across
+     *  the member items proportionally as per-line priceOverrides. Null
+     *  = sum of catalog member sells. */
+    packagePrice?: number | null;
     createdAt?: any;
     updatedAt?: any;
 }
 
 function FitUpPackagesManager({ organisationId, items }: { organisationId: string; items: FitUpItem[] }) {
     const firestore = useFirestore();
+    const { user } = useUser();
     const { toast } = useToast();
 
     const packagesRef = useMemoFirebase(
@@ -1395,6 +1401,14 @@ function FitUpPackagesManager({ organisationId, items }: { organisationId: strin
     const handleDelete = async (pkg: FitUpPackage) => {
         try {
             await deleteDoc(doc(firestore, 'organisations', organisationId, 'fitUpPackages', pkg.id));
+            void logFitUpAuditEvent(firestore, organisationId, {
+                actorUid: user?.uid || 'unknown',
+                actorName: user?.displayName || user?.email || 'Someone',
+                resource: 'fitUpPackage',
+                resourceId: pkg.id,
+                resourceName: pkg.name,
+                action: 'deleted',
+            });
             toast({ title: 'Package removed', description: pkg.name });
         } catch (err) {
             console.error(err);
@@ -1442,10 +1456,12 @@ function FitUpPackagesManager({ organisationId, items }: { organisationId: strin
                         {(packages ?? []).map(pkg => {
                             const resolved = pkg.itemIds.map(id => itemById.get(id)).filter(Boolean) as FitUpItem[];
                             const dangling = pkg.itemIds.length - resolved.length;
-                            const total = resolved.reduce(
+                            const memberTotal = resolved.reduce(
                                 (a, i) => a + (i.sellPrice != null ? i.sellPrice : (i.cost ?? 0)),
                                 0,
                             );
+                            const hasOverride = pkg.packagePrice != null;
+                            const total = hasOverride ? pkg.packagePrice! : memberTotal;
                             return (
                                 <div key={pkg.id} className="p-3 rounded-xl border-2 hover:border-primary/40 transition-colors">
                                     <div className="flex items-start justify-between gap-3">
@@ -1467,7 +1483,10 @@ function FitUpPackagesManager({ organisationId, items }: { organisationId: strin
                                         </div>
                                         <div className="text-right shrink-0">
                                             <p className="text-xs font-bold tabular-nums">${total.toLocaleString()}</p>
-                                            <p className="text-[9px] text-muted-foreground">{resolved.length} item{resolved.length === 1 ? '' : 's'}</p>
+                                            <p className="text-[9px] text-muted-foreground">
+                                                {resolved.length} item{resolved.length === 1 ? '' : 's'}
+                                                {hasOverride && <span className="ml-1 text-amber-700 font-bold" title={`Bundle override: $${pkg.packagePrice!.toLocaleString()} (members sum to $${memberTotal.toLocaleString()})`}>(bundle)</span>}
+                                            </p>
                                         </div>
                                         <div className="flex items-center gap-1 shrink-0">
                                             <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={() => openEdit(pkg)}>
@@ -1506,12 +1525,14 @@ function FitUpPackageEditor({
     items: FitUpItem[];
 }) {
     const firestore = useFirestore();
+    const { user } = useUser();
     const { toast } = useToast();
     const isEdit = editingPackage !== null;
 
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [packagePrice, setPackagePrice] = useState('');
     const [saving, setSaving] = useState(false);
     const [search, setSearch] = useState('');
 
@@ -1520,6 +1541,7 @@ function FitUpPackageEditor({
             setName(editingPackage?.name ?? '');
             setDescription(editingPackage?.description ?? '');
             setSelectedIds(new Set(editingPackage?.itemIds ?? []));
+            setPackagePrice(editingPackage?.packagePrice != null ? String(editingPackage.packagePrice) : '');
             setSearch('');
         }
     }, [open, editingPackage]);
@@ -1552,21 +1574,48 @@ function FitUpPackageEditor({
             toast({ variant: 'destructive', title: 'Pick at least one item' });
             return;
         }
+        // v1.11 expansion-2 — package-level price override. Empty input
+        // means "no override" (members sum at quote time). Invalid input
+        // honest-fails with a toast rather than silently dropping.
+        const parsedPackagePrice = packagePrice.trim() === '' ? null : parseFloat(packagePrice);
+        if (parsedPackagePrice !== null && (!Number.isFinite(parsedPackagePrice) || parsedPackagePrice < 0)) {
+            toast({ variant: 'destructive', title: 'Package price must be a non-negative number' });
+            return;
+        }
         setSaving(true);
         try {
             const payload = {
                 name: trimmed,
                 description: description.trim() || null,
                 itemIds: Array.from(selectedIds),
+                packagePrice: parsedPackagePrice,
                 updatedAt: serverTimestamp(),
             };
+            const actorUid = user?.uid || 'unknown';
+            const actorName = user?.displayName || user?.email || 'Someone';
             if (isEdit && editingPackage) {
                 await updateDoc(doc(firestore, 'organisations', organisationId, 'fitUpPackages', editingPackage.id), payload);
+                const diff = shallowDiff(editingPackage as any, payload, ['name', 'description', 'itemIds', 'packagePrice']);
+                void logFitUpAuditEvent(firestore, organisationId, {
+                    actorUid, actorName,
+                    resource: 'fitUpPackage',
+                    resourceId: editingPackage.id,
+                    resourceName: trimmed,
+                    action: 'updated',
+                    diff: Object.keys(diff).length > 0 ? diff : undefined,
+                });
                 toast({ title: 'Package updated', description: trimmed });
             } else {
-                await addDoc(collection(firestore, 'organisations', organisationId, 'fitUpPackages'), {
+                const newRef = await addDoc(collection(firestore, 'organisations', organisationId, 'fitUpPackages'), {
                     ...payload,
                     createdAt: serverTimestamp(),
+                });
+                void logFitUpAuditEvent(firestore, organisationId, {
+                    actorUid, actorName,
+                    resource: 'fitUpPackage',
+                    resourceId: newRef.id,
+                    resourceName: trimmed,
+                    action: 'created',
                 });
                 toast({ title: 'Package added', description: trimmed });
             }
@@ -1609,6 +1658,22 @@ function FitUpPackageEditor({
                             className="rounded-xl border-2 text-xs"
                             rows={2}
                         />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-semibold">Package price ($) — optional</label>
+                        <Input
+                            type="number"
+                            inputMode="decimal"
+                            value={packagePrice}
+                            onChange={e => setPackagePrice(e.target.value)}
+                            placeholder="Blank = sum member items at quote time"
+                            className="rounded-xl border-2 tabular-nums"
+                            min="0"
+                            step="0.01"
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                            Set a single bundled price (e.g. "Coastal Setup — $1,200 all-in"). At quote time it's distributed proportionally across the member items as per-line overrides, so the margin still allocates correctly.
+                        </p>
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold">Items ({selectedIds.size} selected)</label>

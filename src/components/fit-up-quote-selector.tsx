@@ -89,6 +89,14 @@ export interface FitUpPackage {
     name: string;
     description?: string | null;
     itemIds: string[];
+    /** v1.11 expansion-2 — package-level sell-price override. When set,
+     *  selecting the package on a quote charges THIS amount rather than
+     *  the sum of member items' sell prices. Operators use this for
+     *  bundled-discount packages ("Coastal Setup — $1,200 all-in"). The
+     *  override flows through to each line as a proportional discount
+     *  at finalize time so margin still allocates per item. Null = sum
+     *  of members (current behaviour). */
+    packagePrice?: number | null;
 }
 
 /**
@@ -134,8 +142,11 @@ interface FitUpQuoteSelectorProps {
     selections: FitUpSelection[];
     onToggle: (item: FitUpItem) => void;
     /** Bulk-add every member of a package. The caller resolves the
-     *  package against the live catalog before invoking. */
-    onAddPackage: (items: FitUpItem[]) => void;
+     *  package against the live catalog before invoking. `packagePrice`
+     *  is the optional package-level override — when non-null, callers
+     *  distribute it proportionally across the member items as a
+     *  priceOverride per line (see highfield-quote-flow.addFitUpPackage). */
+    onAddPackage: (items: FitUpItem[], packagePrice: number | null) => void;
     /** Per-line patch — qty / override / note. */
     onUpdateSelection: (itemId: string, patch: Partial<Omit<FitUpSelection, 'item'>>) => void;
     /** v1.11 (Epic 9.2.1) — assignment context. AND-combined against
@@ -396,11 +407,13 @@ export function FitUpQuoteSelector({
                         {relevantPackages.map(pkg => {
                             const resolvedItems = pkg.itemIds.map(id => itemById.get(id)).filter(Boolean) as FitUpItem[];
                             const allOn = resolvedItems.length > 0 && resolvedItems.every(i => selectedSet.has(i.id));
-                            const total = resolvedItems.reduce((a, i) => a + resolveFitUpSell(i), 0);
+                            const catalogTotal = resolvedItems.reduce((a, i) => a + resolveFitUpSell(i), 0);
+                            const hasPackagePrice = pkg.packagePrice != null && pkg.packagePrice >= 0;
+                            const displayTotal = hasPackagePrice ? pkg.packagePrice! : catalogTotal;
                             return (
                                 <button
                                     key={pkg.id}
-                                    onClick={() => onAddPackage(resolvedItems)}
+                                    onClick={() => onAddPackage(resolvedItems, hasPackagePrice ? pkg.packagePrice! : null)}
                                     className={cn(
                                         'flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-left transition-colors',
                                         allOn ? 'bg-primary text-white border-primary' : 'bg-white border-slate-200 hover:border-primary/40',
@@ -411,7 +424,12 @@ export function FitUpQuoteSelector({
                                     <div className="flex flex-col">
                                         <span className="text-[11px] font-black uppercase tracking-tight">{pkg.name}</span>
                                         <span className={cn('text-[9px]', allOn ? 'text-white/80' : 'text-muted-foreground')}>
-                                            {resolvedItems.length} item{resolvedItems.length === 1 ? '' : 's'} · ${total.toLocaleString()}
+                                            {resolvedItems.length} item{resolvedItems.length === 1 ? '' : 's'} · ${displayTotal.toLocaleString()}
+                                            {hasPackagePrice && (
+                                                <span className={cn('ml-1 font-bold', allOn ? 'text-amber-200' : 'text-amber-700')} title="Package price overrides the catalog sum proportionally">
+                                                    (bundle)
+                                                </span>
+                                            )}
                                         </span>
                                     </div>
                                     {allOn && <Check className="h-3 w-3" />}

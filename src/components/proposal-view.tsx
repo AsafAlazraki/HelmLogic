@@ -78,6 +78,7 @@ import {
     FIT_UP_STATUS_TINT,
     getFitUpStatus,
     transitionFitUpStatus,
+    updateFitUpScheduling,
     type FitUpStatus,
 } from '@/lib/fit-up-status';
 import { useSiblingScenarios } from '@/lib/quote-scenarios';
@@ -523,6 +524,25 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         }
     };
 
+    /** v1.11 expansion-2 — Fit-Up scheduling save (date + technician). */
+    const handleFitUpSchedulingUpdate = async (patch: { scheduledDate?: string | null; assignedTechnician?: string | null }) => {
+        if (!quote?.id || !auditOwnerUid || !user) return;
+        try {
+            await updateFitUpScheduling(firestore, auditOwnerUid, quote.id, patch, {
+                byUid: user.uid,
+                byName: userProfile?.displayName || user.displayName || user.email || 'Someone',
+            });
+            toast({ title: 'Fit-up schedule updated' });
+        } catch (e: any) {
+            console.error('[fit-up-scheduling] failed', e);
+            toast({
+                variant: 'destructive',
+                title: 'Could not update fit-up schedule',
+                description: e?.message ?? 'See console.',
+            });
+        }
+    };
+
     /** v1.9 (story 1.4.1) — Lifecycle picker click handler. */
     const handleLifecycleTransition = async (next: LifecycleState) => {
         if (!quote?.id || !auditOwnerUid || !user) return;
@@ -732,6 +752,39 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                                 </button>
                                             );
                                         })}
+                                        {/* v1.11 expansion-2 — Scheduling block: date + technician.
+                                            Both save on blur. Operator-only — never on customer PDF. */}
+                                        <div className="border-t mt-2 pt-2 px-2 space-y-2">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Schedule</p>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-semibold text-slate-600">Scheduled date</label>
+                                                <Input
+                                                    type="date"
+                                                    defaultValue={quote.fitUpScheduledDate ?? ''}
+                                                    onBlur={(e) => {
+                                                        const v = e.target.value.trim();
+                                                        if ((quote.fitUpScheduledDate ?? '') === v) return;
+                                                        void handleFitUpSchedulingUpdate({ scheduledDate: v || null });
+                                                    }}
+                                                    className="h-7 rounded-md border-2 text-xs"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-semibold text-slate-600">Assigned technician</label>
+                                                <Input
+                                                    type="text"
+                                                    defaultValue={quote.fitUpAssignedTechnician ?? ''}
+                                                    onBlur={(e) => {
+                                                        const v = e.target.value.trim();
+                                                        if ((quote.fitUpAssignedTechnician ?? '') === v) return;
+                                                        void handleFitUpSchedulingUpdate({ assignedTechnician: v || null });
+                                                    }}
+                                                    placeholder="Name or initials"
+                                                    className="h-7 rounded-md border-2 text-xs"
+                                                />
+                                            </div>
+                                            <p className="text-[9px] text-muted-foreground italic">Operator-only — never on customer PDF.</p>
+                                        </div>
                                     </PopoverContent>
                                 </Popover>
                             )}
