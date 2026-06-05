@@ -36,10 +36,16 @@ test('CL380 fully specced', async ({ page }) => {
   await page.waitForTimeout(3500);
 
   // New quote -> Classic -> CL380
-  await page.locator('button:has-text("New Quote")').first().click();
+  const newQ = page.locator('button:has-text("New Quote"), button:has-text("New Proposal")').first();
+  await newQ.waitFor({ state: 'visible', timeout: 30000 });
+  await newQ.click();
   const dialog = page.locator('[role="dialog"]');
+  // Wait for the dialog itself, then for Classic to render inside it
+  await dialog.waitFor({ state: 'visible', timeout: 20000 });
   await page.waitForTimeout(1200);
-  await dialog.locator('.cursor-pointer:has-text("Classic")').first().click({ force: true });
+  const classicCard = dialog.locator('.cursor-pointer:has-text("Classic")').first();
+  await classicCard.waitFor({ state: 'visible', timeout: 20000 });
+  await classicCard.click({ force: true });
   await page.waitForTimeout(1500);
   const cl380 = dialog.locator('.cursor-pointer:has-text("CL380")').first();
   await cl380.waitFor({ timeout: 15000 });
