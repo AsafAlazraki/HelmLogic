@@ -78,11 +78,16 @@ function InnerHeader({ title, sub, quoteNumber }: { title: string; sub: string; 
 function InnerFooter({ organisation, quoteNumber }: { organisation: any; quoteNumber: string }) {
     return (
         <View style={S.pageFooter}>
-            <View style={{ flexDirection: 'row', gap: 16 }}>
+            <View style={{ flexDirection: 'row', gap: 16, flex: 1 }}>
                 <Text style={S.pageFooterText}>{organisation?.name}</Text>
                 {organisation?.phoneNumber && <Text style={S.pageFooterMuted}>{organisation.phoneNumber}</Text>}
             </View>
-            <Text style={S.pageFooterMuted}>{quoteNumber}</Text>
+            <Text
+                style={[S.pageFooterMuted, { flex: 1, textAlign: 'center' }]}
+                render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+                fixed
+            />
+            <Text style={[S.pageFooterMuted, { flex: 1, textAlign: 'right' }]}>{quoteNumber}</Text>
         </View>
     );
 }
@@ -181,6 +186,21 @@ interface Props {
     salespersonProfile?: SalespersonProfile | null;
 }
 
+/** Replace customer-name placeholder tokens in authored content (e.g. the
+ *  salesperson message's "Dear [Customer First Name],") with the real
+ *  customer name from the quote. Case/space-insensitive. */
+function substituteCustomerTokens(html: string | undefined, quote: any): string {
+    if (!html) return html || '';
+    const full = String(quote?.customer?.name || quote?.customerName || '').trim();
+    const first = full.split(/\s+/)[0] || 'there';
+    const last = full.split(/\s+/).slice(1).join(' ');
+    return html
+        .replace(/\[\s*customer\s+first\s+name\s*\]/gi, first)
+        .replace(/\[\s*customer\s+last\s+name\s*\]/gi, last)
+        .replace(/\[\s*customer\s+(?:full\s+)?name\s*\]/gi, full || first)
+        .replace(/\[\s*first\s+name\s*\]/gi, first);
+}
+
 export function ProposalPDFDocument({ quote, organisation, financials, contentBlocks, contentBlockSubHeaders, pdfSections, salespersonProfile }: Props) {
     const zones = partitionContentBlocks(pdfSections ?? DEFAULT_SECTIONS);
 
@@ -215,7 +235,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                     <Image src={sp.photoUrl} style={{ height: 110, width: 110, borderRadius: 55, objectFit: 'cover' }} />
                                 ) : null}
                                 <View style={{ flex: 1 }}>
-                                    <TipTapHtmlPdf html={spHtml} fontSize={10} color={SLATE} />
+                                    <TipTapHtmlPdf html={substituteCustomerTokens(spHtml, quote)} fontSize={10} color={SLATE} />
                                     {sp.signOff ? (
                                         <Text style={{ fontSize: 10, fontStyle: 'italic', color: SLATE, marginTop: 12 }}>{sp.signOff}</Text>
                                     ) : null}
@@ -821,6 +841,29 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                     </View>
                                 ))
                             )}
+                        </View>
+                    </View>
+                )}
+
+                {/* Fit-Up & Rigging — dedicated itemised section. Shown when the
+                    operator enables the "Itemise fit-up for customer" toggle on the
+                    proposal (customerDetailedView). When off, fit-up rolls up to the
+                    single Investment-Summary line per the locked 9.2.3 default. */}
+                {quote.customerDetailedView && (quote.fitUpSelections?.length ?? 0) > 0 && (
+                    <View style={{ marginBottom: 14 }}>
+                        <Text style={S.sectionLabel}>Fit-Up & Rigging</Text>
+                        <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 5, overflow: 'hidden' }}>
+                            {(quote.fitUpSelections as any[]).map((sel: any, i: number) => {
+                                const qty = Math.max(1, sel.quantity ?? 1);
+                                const unit = sel.priceOverride != null ? sel.priceOverride : (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0));
+                                const label = sel.customerDescription || sel.name || 'Fit-up item';
+                                return (
+                                    <View key={sel.id || i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: '#f1f5f9' }}>
+                                        <Text style={{ fontSize: 7.5, color: SLATE }}>{label}{qty > 1 ? ` x${qty}` : ''}</Text>
+                                        <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY, marginLeft: 12 }}>{currency(qty * unit)}</Text>
+                                    </View>
+                                );
+                            })}
                         </View>
                     </View>
                 )}

@@ -77,13 +77,17 @@ test('SP560 maximal full quote (1920)', async ({ page }) => {
   await shot('s1-boat');
 
   // STEPS 2–6 — advance, clicking every option card on each.
+  // On the Trailer step we DON'T click cards: the correct trailer is
+  // already auto-assigned (size-matched Dunbier) with its standard
+  // options pre-ticked; clicking every card would jump to a wrong
+  // trailer (e.g. a PA600 unit) with coded option names.
   const names = ['s2-factory-options', 's3-motor', 's4-trailer', 's5-dealerfit-fitup', 's6-summary'];
   for (const nm of names) {
     const next = page.locator('button:has-text("Next Step")').first();
     if (!(await next.isVisible().catch(() => false))) break;
     await next.click().catch(() => {});
     await page.waitForTimeout(2800);
-    if (nm !== 's6-summary') await clickAllCards(nm);
+    if (nm !== 's6-summary' && nm !== 's4-trailer') await clickAllCards(nm);
     await shot(nm);
   }
 
