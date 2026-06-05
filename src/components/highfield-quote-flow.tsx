@@ -639,7 +639,7 @@ export function HighfieldQuoteFlow({
             <div className={cn("h-full w-full grid bg-white", itemsToShow.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
                 {itemsToShow.map((item: any, i) => (
                     <div key={item.id} className={cn("relative flex items-center justify-center hover:bg-slate-50", i === 0 && itemsToShow.length === 2 && "border-r")}>
-                        {item.imageUrl && <Image src={item.imageUrl} alt={item.name} fill className="object-contain p-8 mix-blend-multiply" />}
+                        {item.imageUrl && <Image src={item.imageUrl} alt={item.name} fill unoptimized className="object-contain p-8 mix-blend-multiply" />}
                         <div className="absolute bottom-8 left-8 px-3 py-1 bg-slate-900/5 rounded-full text-[8px] font-black uppercase tracking-widest text-slate-400">{item.name}</div>
                     </div>
                 ))}
@@ -1449,7 +1449,10 @@ export function HighfieldQuoteFlow({
                                                         live on media.highfieldboats.com which Cloudflare anti-hotlinking
                                                         blocks through the Next optimisation proxy → blank slide). See
                                                         CLAUDE.md lesson. */}
-                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill unoptimized className={cn("transition-all", (slide.type === 'motor' || slide.type === 'trailer') ? "object-contain p-6" : "object-cover")} priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
+                                                    {/* object-CONTAIN (not cover) so the whole boat fits inside the
+                                                        card with breathing room instead of being cropped edge-to-edge.
+                                                        `unoptimized` keeps external-CDN covers from being proxy-blocked. */}
+                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill unoptimized className={cn("transition-all", (slide.type === 'motor' || slide.type === 'trailer') ? "object-contain p-6" : "object-contain p-4")} priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
                                                     <Button variant="ghost" size="icon" className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20" onClick={() => setLightboxUrl(slide.url || null)}><Maximize2 className="h-5 w-5" /></Button>
                                                 </>
                                             )}
