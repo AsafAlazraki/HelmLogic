@@ -1,5 +1,6 @@
 'use client';
 
+import { formatMetres } from '@/lib/units';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, doc, where, getDoc, getDocs } from 'firebase/firestore';
@@ -2869,8 +2870,8 @@ export function HighfieldQuoteFlow({
                                 if (cfg?.name && cfg.name !== code) rows.push({ label: 'Name', value: cfg.name });
                                 if (brand) rows.push({ label: 'Brand', value: brand });
                                 if (series) rows.push({ label: 'Series', value: series });
-                                if (specs.boatSizeMtr != null) rows.push({ label: 'Boat Size', value: `${specs.boatSizeMtr}m` });
-                                if (specs.lengthMtr != null) rows.push({ label: 'Trailer Length', value: `${specs.lengthMtr}m` });
+                                if (specs.boatSizeMtr != null) rows.push({ label: 'Boat Size', value: formatMetres(specs.boatSizeMtr) });
+                                if (specs.lengthMtr != null) rows.push({ label: 'Trailer Length', value: formatMetres(specs.lengthMtr) });
                                 if (specs.atmKg != null) rows.push({ label: 'ATM', value: `${specs.atmKg} kg` });
                                 if (specs.tareKg != null) rows.push({ label: 'Tare', value: `${specs.tareKg} kg` });
                                 if (specs.wheelSize) rows.push({ label: 'Wheel Size', value: specs.wheelSize });

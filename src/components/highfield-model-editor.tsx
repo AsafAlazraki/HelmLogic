@@ -1,5 +1,6 @@
 'use client';
 
+import { formatMetres } from '@/lib/units';
 import { useState, useMemo } from 'react';
 import { useFieldArray, useWatch, useFormContext } from 'react-hook-form';
 import { useToast } from '@/hooks/use-toast';
@@ -890,8 +891,8 @@ function TrailerAssignmentCard({
                         <div className="space-y-1.5">
                             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Specifications</p>
                             <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
-                                {specs.boatSizeMtr != null && <SpecRow label="Boat size" value={`${specs.boatSizeMtr}m`} />}
-                                {specs.lengthMtr != null && <SpecRow label="Length" value={`${specs.lengthMtr}m`} />}
+                                {specs.boatSizeMtr != null && <SpecRow label="Boat size" value={formatMetres(specs.boatSizeMtr)} />}
+                                {specs.lengthMtr != null && <SpecRow label="Length" value={formatMetres(specs.lengthMtr)} />}
                                 {specs.atmKg != null && <SpecRow label="ATM" value={`${specs.atmKg} kg`} />}
                                 {specs.tareKg != null && <SpecRow label="Tare" value={`${specs.tareKg} kg`} />}
                                 {specs.wheelSize && <SpecRow label="Wheels" value={String(specs.wheelSize)} />}

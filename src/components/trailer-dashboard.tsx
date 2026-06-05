@@ -1,5 +1,6 @@
 'use client';
 
+import { formatMetres } from '@/lib/units';
 import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { useFirestore, useStorage } from '@/firebase/provider';
@@ -722,8 +723,8 @@ function TrailerTable({
                                         <span className="font-medium">{t.vendorName}</span>
                                         {t.seriesName && <span className="text-slate-400"> · {t.seriesName}</span>}
                                     </td>
-                                    <td className="px-3 py-2">{t.specifications?.boatSizeMtr != null ? `${t.specifications.boatSizeMtr}m` : '—'}</td>
-                                    <td className="px-3 py-2">{t.specifications?.lengthMtr != null ? `${t.specifications.lengthMtr}m` : '—'}</td>
+                                    <td className="px-3 py-2">{t.specifications?.boatSizeMtr != null ? formatMetres(t.specifications.boatSizeMtr) : '—'}</td>
+                                    <td className="px-3 py-2">{t.specifications?.lengthMtr != null ? formatMetres(t.specifications.lengthMtr) : '—'}</td>
                                     <td className="px-3 py-2">{t.specifications?.atmKg != null ? `${t.specifications.atmKg} kg` : '—'}</td>
                                     <td className="px-3 py-2 text-right font-semibold text-blue-700">
                                         {t.sellPriceExclGst ? formatCurrency(t.sellPriceExclGst) : <span className="text-slate-300 font-normal">—</span>}
@@ -845,8 +846,8 @@ function TrailerDetailSheet({
                         <Ruler className="h-3 w-3" /> Specifications
                     </h4>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                        {specs.boatSizeMtr != null && <div><span className="text-slate-400">Boat size:</span> <span className="font-medium">{specs.boatSizeMtr}m</span></div>}
-                        {specs.lengthMtr != null && <div><span className="text-slate-400">Trailer length:</span> <span className="font-medium">{specs.lengthMtr}m</span></div>}
+                        {specs.boatSizeMtr != null && <div><span className="text-slate-400">Boat size:</span> <span className="font-medium">{formatMetres(specs.boatSizeMtr)}</span></div>}
+                        {specs.lengthMtr != null && <div><span className="text-slate-400">Trailer length:</span> <span className="font-medium">{formatMetres(specs.lengthMtr)}</span></div>}
                         {specs.tareKg != null && <div><span className="text-slate-400">Tare:</span> <span className="font-medium">{specs.tareKg} kg</span></div>}
                         {specs.atmKg != null && <div><span className="text-slate-400">ATM:</span> <span className="font-medium">{specs.atmKg} kg</span></div>}
                         {specs.wheelSize && <div><span className="text-slate-400">Wheels:</span> <span className="font-medium">{specs.wheelSize}</span></div>}

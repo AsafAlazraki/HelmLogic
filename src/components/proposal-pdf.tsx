@@ -4,6 +4,7 @@ import { Document, Page, View, Text, Image, StyleSheet, Svg, Defs, LinearGradien
 import type { BlockType } from '@/lib/content-blocks';
 import { BLOCK_TYPE_LABEL } from '@/lib/content-blocks';
 import { TipTapHtmlPdf } from '@/lib/tiptap-pdf';
+import { formatMetres } from '@/lib/units';
 import {
     DEFAULT_SECTIONS,
     partitionContentBlocks,
@@ -730,9 +731,9 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     const trailerBrand = quote.trailer.brand || catalog?.brandName || '';
 
                     const trailerSpecs: { label: string; value: any }[] = [];
-                    if (specs?.boatSizeMtr != null) trailerSpecs.push({ label: 'Suits Boat', value: `${specs.boatSizeMtr} m` });
-                    if (specs?.lengthMtr != null) trailerSpecs.push({ label: 'Trailer Length', value: `${specs.lengthMtr} m` });
-                    if (specs?.widthMtr != null) trailerSpecs.push({ label: 'Width', value: `${specs.widthMtr} m` });
+                    if (specs?.boatSizeMtr != null) trailerSpecs.push({ label: 'Suits Boat', value: formatMetres(specs.boatSizeMtr) });
+                    if (specs?.lengthMtr != null) trailerSpecs.push({ label: 'Trailer Length', value: formatMetres(specs.lengthMtr) });
+                    if (specs?.widthMtr != null) trailerSpecs.push({ label: 'Width', value: formatMetres(specs.widthMtr) });
                     if (specs?.atmKg != null) trailerSpecs.push({ label: 'ATM', value: `${specs.atmKg} kg` });
                     if (specs?.tareKg != null) trailerSpecs.push({ label: 'Tare', value: `${specs.tareKg} kg` });
                     if (specs?.axleType) trailerSpecs.push({ label: 'Axle', value: specs.axleType });

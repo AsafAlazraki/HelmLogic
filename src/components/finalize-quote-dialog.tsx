@@ -473,9 +473,23 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     const handleFinalize = async () => {
         if (!user) return;
 
-        if (mode === 'customer' && !customerName.trim()) {
-            toast({ variant: 'destructive', title: 'Customer name is required' });
-            return;
+        if (mode === 'customer') {
+            if (!customerName.trim()) {
+                toast({ variant: 'destructive', title: 'Customer name is required' });
+                return;
+            }
+            // Require at least one contact channel — email OR phone — so the
+            // dealer can actually follow up. Both encouraged but only one
+            // required (sometimes a phone-only or email-only customer).
+            if (!customerEmail.trim() && !customerPhone.trim()) {
+                toast({ variant: 'destructive', title: 'Customer email or phone required', description: 'Add at least one contact channel so you can follow up.' });
+                return;
+            }
+            // Basic email shape check when provided.
+            if (customerEmail.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(customerEmail.trim())) {
+                toast({ variant: 'destructive', title: 'Invalid email address' });
+                return;
+            }
         }
 
         setIsSaving(true);
