@@ -1006,7 +1006,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                     </div>
                 )}
 
-                <div className="max-w-6xl mx-auto px-4 sm:px-8 py-8 md:py-12 space-y-6 md:space-y-8">
+                <div className="max-w-screen-2xl mx-auto px-6 sm:px-10 py-8 md:py-12 space-y-6 md:space-y-8">
                     {/* HERO */}
                     <div className="relative rounded-[2rem] md:rounded-[3rem] overflow-hidden border-2 bg-white shadow-xl">
                         {quote.coverImageUrl && (
@@ -1300,6 +1300,29 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                                 </div>
                                             ))
                                         ))}
+                                    </div>
+                                </SectionCard>
+                            )}
+
+                            {/* Fit-Up & Rigging — itemised section so the fit-up scope
+                                is visible on the proposal (the Investment Summary only
+                                shows the rolled-up total). */}
+                            {quote.fitUpSelections?.length > 0 && (
+                                <SectionCard icon={Wrench} label="Fit-Up & Rigging">
+                                    <div className="divide-y">
+                                        {quote.fitUpSelections.map((sel: any, i: number) => {
+                                            const qty = Math.max(1, sel.quantity ?? 1);
+                                            const unit = sel.priceOverride != null ? sel.priceOverride : (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0));
+                                            return (
+                                                <div key={sel.id || i} className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50/40 transition-colors">
+                                                    <div>
+                                                        <p className="text-sm font-black uppercase tracking-tight text-slate-900">{(sel.customerDescription || sel.name)}{qty > 1 ? ` ×${qty}` : ''}</p>
+                                                        <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{sel.tier}{sel.category ? ` · ${sel.category}` : ''}</p>
+                                                    </div>
+                                                    <span className="font-black text-sm tabular-nums">{formatCurrency(qty * unit)}</span>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </SectionCard>
                             )}

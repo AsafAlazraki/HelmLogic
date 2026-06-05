@@ -145,6 +145,19 @@ const STEPS: Step[] = [
 
 const HARDWARE_BLOCKLIST = ['MOTOR', 'ENGINE', 'FUEL', 'TRAILER', 'OUTBOARD', 'RAM SUPPORT', 'PROP'];
 
+/** Trailer option source data is messy — the readable label sometimes
+ *  lives in `name`, sometimes in `description`, and `name` often holds a
+ *  bare part code ("GFAB-0010", "2200"). Pick the most descriptive label
+ *  by word count so the customer never sees a raw code like "2200". */
+function prettyOptionLabel(f: any): string {
+    const cands = [f?.name, f?.description, f?.code]
+        .map((x: any) => (x == null ? '' : String(x).trim()))
+        .filter(Boolean);
+    const words = (s: string) => (s.match(/[A-Za-z]{2,}/g) || []).length;
+    const best = [...cands].sort((a, b) => words(b) - words(a))[0];
+    return best || cands[0] || 'Option';
+}
+
 interface DuplicateInitialState {
     material: 'PVC' | 'HYP' | null;
     colorVariantId: string | null;
@@ -577,7 +590,7 @@ export function HighfieldQuoteFlow({
                     specifications: data.specifications || {},
                     options: (data.optionalFeatures || []).map((f: any) => ({
                         id: f.id,
-                        name: f.name,
+                        name: prettyOptionLabel(f),
                         description: f.description || '',
                         sellPriceExclGst: f.sellExclGst || f.sellPriceExclGst || 0,
                         cost: f.cost || 0,
