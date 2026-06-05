@@ -415,6 +415,10 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 category: sel.item.category ?? null,
                 customerDescription: sel.item.customerDescription ?? null,
                 notes: sel.item.notes ?? null,
+                // Snapshot the image URL so PDF + proposal can render it
+                // without re-querying the catalog (catalogue mutations
+                // after finalize must not retroactively change a sent quote).
+                imageUrl: (sel.item as any).imageUrl ?? null,
                 quantity: Math.max(1, sel.quantity ?? 1),
                 priceOverride: sel.priceOverride ?? null,
                 quoteNote: sel.quoteNote ?? null,
