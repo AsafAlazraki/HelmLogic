@@ -186,6 +186,21 @@ interface Props {
     salespersonProfile?: SalespersonProfile | null;
 }
 
+/** Route every embedded image through the weserv resizing proxy. This:
+ *  (1) downscales to a sane width so the PDF isn't tens of MB of full-res
+ *  photos, (2) fetches server-side so Cloudflare-hotlink-protected CDN
+ *  images (e.g. media.highfieldboats.com) actually resolve, and (3)
+ *  normalises everything to JPEG. Returns undefined for empty/missing so
+ *  the conditional `{url && <Image/>}` guards still collapse the slot. */
+function pdfImg(url: string | undefined | null, w = 700): string | undefined {
+    if (!url || typeof url !== 'string') return undefined;
+    const u = url.trim();
+    if (!u) return undefined;
+    if (u.startsWith('data:')) return u;
+    const noProto = u.replace(/^https?:\/\//i, '');
+    return `https://images.weserv.nl/?url=${encodeURIComponent(noProto)}&w=${w}&output=jpg&q=72`;
+}
+
 /** Replace customer-name placeholder tokens in authored content (e.g. the
  *  salesperson message's "Dear [Customer First Name],") with the real
  *  customer name from the quote. Case/space-insensitive. */
@@ -232,7 +247,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                             <InnerHeader title={label} sub={spSub} quoteNumber={quote.quoteNumber} />
                             <View style={{ flexDirection: 'row', gap: 18 }}>
                                 {sp.photoUrl ? (
-                                    <Image src={sp.photoUrl} style={{ height: 110, width: 110, borderRadius: 55, objectFit: 'cover' }} />
+                                    <Image src={pdfImg(sp.photoUrl, 240)} style={{ height: 110, width: 110, borderRadius: 55, objectFit: 'cover' }} />
                                 ) : null}
                                 <View style={{ flex: 1 }}>
                                     <TipTapHtmlPdf html={substituteCustomerTokens(spHtml, quote)} fontSize={10} color={SLATE} />
@@ -359,7 +374,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     {/* Background — full-bleed image OR deep navy fallback */}
                     {quote.coverImageUrl ? (
                         <Image
-                            src={quote.coverImageUrl}
+                            src={pdfImg(quote.coverImageUrl, 1200)}
                             style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                     ) : null}
@@ -395,7 +410,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 48, paddingTop: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 80 }}>
                         {/* Org logo */}
                         {organisation?.primaryLogoUrl ? (
-                            <Image src={organisation.primaryLogoUrl} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
+                            <Image src={pdfImg(organisation.primaryLogoUrl, 320)} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
                         ) : (
                             <Text style={{ fontSize: 13, fontWeight: 'bold', color: NAVY, letterSpacing: 1 }}>
                                 {(organisation?.name ?? '').toUpperCase()}
@@ -404,7 +419,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
 
                         {/* Vendor (boat brand) logo on the right */}
                         {quote.vendorLogoUrl ? (
-                            <Image src={quote.vendorLogoUrl} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
+                            <Image src={pdfImg(quote.vendorLogoUrl, 320)} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
                         ) : quote.vendorName ? (
                             <Text style={{ fontSize: 13, fontWeight: 'bold', color: NAVY, letterSpacing: 1 }}>
                                 {quote.vendorName.toUpperCase()}
@@ -589,7 +604,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                             }}>
                                                 <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
                                                     {opt.imageUrl ? (
-                                                        <Image src={opt.imageUrl} style={{ width: 24, height: 24, objectFit: 'contain', marginRight: 7, borderRadius: 2, flexShrink: 0 }} />
+                                                        <Image src={pdfImg(opt.imageUrl, 120)} style={{ width: 24, height: 24, objectFit: 'contain', marginRight: 7, borderRadius: 2, flexShrink: 0 }} />
                                                     ) : (
                                                         <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: GREEN, marginRight: 7, flexShrink: 0 }} />
                                                     )}
@@ -630,7 +645,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                             <View style={{ flexShrink: 1, flex: 1, paddingRight: 14 }}>
                                 <Text style={[S.sectionLabel, { marginBottom: 4 }]}>Propulsion System</Text>
                                 {quote.motor.brandLogoUrl && (
-                                    <Image src={quote.motor.brandLogoUrl} style={{ height: 16, maxWidth: 70, objectFit: 'contain', marginBottom: 4 }} />
+                                    <Image src={pdfImg(quote.motor.brandLogoUrl, 160)} style={{ height: 16, maxWidth: 70, objectFit: 'contain', marginBottom: 4 }} />
                                 )}
                                 <Text style={{ fontSize: 15, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.3, color: NAVY, marginBottom: 2 }}>
                                     {quote.motor.name}
@@ -642,7 +657,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                             <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY, flexShrink: 0 }}>{currency(quote.motor.sellPriceExclGst || 0)}</Text>
                         </View>
                         {quote.motor.imageUrl && (
-                            <Image src={quote.motor.imageUrl} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 4, marginBottom: 6 }} />
+                            <Image src={pdfImg(quote.motor.imageUrl, 600)} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 4, marginBottom: 6 }} />
                         )}
 
                         {/* Motor Specifications */}
@@ -678,7 +693,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                             <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2, paddingHorizontal: 4 }}>
                                                 <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
                                                     {acc.imageUrl ? (
-                                                        <Image src={acc.imageUrl} style={{ width: 20, height: 20, objectFit: 'contain', marginRight: 5, borderRadius: 2, flexShrink: 0 }} />
+                                                        <Image src={pdfImg(acc.imageUrl, 80)} style={{ width: 20, height: 20, objectFit: 'contain', marginRight: 5, borderRadius: 2, flexShrink: 0 }} />
                                                     ) : (
                                                         <View style={S.dot} />
                                                     )}
@@ -739,7 +754,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                 <View style={{ flexShrink: 1, flex: 1, paddingRight: 14 }}>
                                     <Text style={[S.sectionLabel, { marginBottom: 4 }]}>Trailer Package</Text>
                                     {quote.trailer.brandLogoUrl && (
-                                        <Image src={quote.trailer.brandLogoUrl} style={{ height: 16, maxWidth: 70, objectFit: 'contain', marginBottom: 4 }} />
+                                        <Image src={pdfImg(quote.trailer.brandLogoUrl, 160)} style={{ height: 16, maxWidth: 70, objectFit: 'contain', marginBottom: 4 }} />
                                     )}
                                     <Text style={{ fontSize: 15, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.3, color: NAVY, marginBottom: 2 }}>
                                         {quote.trailer.name || 'Trailer'}
@@ -753,7 +768,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                 <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY, flexShrink: 0 }}>{currency(quote.trailer.sellPriceExclGst || 0)}</Text>
                             </View>
                             {trailerImg && (
-                                <Image src={trailerImg} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 4, marginBottom: 6 }} />
+                                <Image src={pdfImg(trailerImg, 600)} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 4, marginBottom: 6 }} />
                             )}
 
                             {/* Trailer Specifications */}
@@ -789,7 +804,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                                 <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2, paddingHorizontal: 4 }}>
                                                     <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
                                                         {o.imageUrl ? (
-                                                            <Image src={o.imageUrl} style={{ width: 20, height: 20, objectFit: 'contain', marginRight: 5, borderRadius: 2, flexShrink: 0 }} />
+                                                            <Image src={pdfImg(o.imageUrl, 80)} style={{ width: 20, height: 20, objectFit: 'contain', marginRight: 5, borderRadius: 2, flexShrink: 0 }} />
                                                         ) : (
                                                             <View style={S.dot} />
                                                         )}
@@ -832,7 +847,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                     }}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
                                             {item.imageUrl && (
-                                                <Image src={item.imageUrl} style={{ width: 24, height: 24, objectFit: 'contain', marginRight: 7, borderRadius: 2, flexShrink: 0 }} />
+                                                <Image src={pdfImg(item.imageUrl, 80)} style={{ width: 24, height: 24, objectFit: 'contain', marginRight: 7, borderRadius: 2, flexShrink: 0 }} />
                                             )}
                                             {/* v1.10 fix — fall back to code/SKU then to 'Dealer Fit Item' so legacy snapshots (pre-fix) never render a blank label. */}
                                             <Text style={{ fontSize: 7.5, color: SLATE }}>{item.name || item.code || 'Dealer Fit Item'}</Text>
