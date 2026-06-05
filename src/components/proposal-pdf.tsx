@@ -193,13 +193,34 @@ interface Props {
  *  images (e.g. media.highfieldboats.com) actually resolve, and (3)
  *  normalises everything to JPEG. Returns undefined for empty/missing so
  *  the conditional `{url && <Image/>}` guards still collapse the slot. */
+/** Domains we KNOW block hotlinking even through the weserv proxy →
+ *  treat as if the image is missing so the conditional render collapses
+ *  the slot instead of reserving 140px of blank space. */
+const BLOCKED_IMAGE_DOMAINS = [
+    'yamaha-motor.com.au',  // Yamaha CDN returns 404 to weserv
+    'yamaha-motor.com',
+];
+
 function pdfImg(url: string | undefined | null, w = 700): string | undefined {
     if (!url || typeof url !== 'string') return undefined;
     const u = url.trim();
     if (!u) return undefined;
     if (u.startsWith('data:')) return u;
+    if (BLOCKED_IMAGE_DOMAINS.some(d => u.includes(d))) return undefined;
     const noProto = u.replace(/^https?:\/\//i, '');
     return `https://images.weserv.nl/?url=${encodeURIComponent(noProto)}&w=${w}&output=jpg&q=72`;
+}
+
+/** Decide if a label IS just a part-code (e.g. "010-02093-02", "BBB-FE1",
+ *  "MT605GAUS") with no human-readable text. These items have no real
+ *  description in the source data — rendering them on the customer PDF
+ *  is worse than hiding them, so dealer-fit filters them out. */
+function isCodeOnlyLabel(s: string | undefined | null): boolean {
+    if (!s) return true;  // empty = also nothing useful
+    const t = s.trim();
+    if (!t) return true;
+    // Codey: all-caps, digits, dashes only — no lowercase letters.
+    return /^[A-Z0-9-]+$/.test(t) || /^\d{3,}-/.test(t);
 }
 
 /** Replace customer-name placeholder tokens in authored content (e.g. the
@@ -833,19 +854,23 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
 
                 {/* Dealer Fit — wrap={false} keeps the heading + first row together;
                     longer lists can still flow across pages, but at minimum each
-                    line stays atomic (no row split mid-text). */}
-                {quote.dealerFit?.length > 0 && (
+                    line stays atomic (no row split mid-text).
+                    Code-only / empty items are filtered out: showing the customer
+                    "010-02093-02  $7,269" with no real name is worse than nothing. */}
+                {(() => {
+                    const allItems = (quote.dealerFit as any[] || []).flatMap((group: any, gi: number) =>
+                        (group.items || []).map((item: any, ii: number) => {
+                            const candidates = [item.description, item.label, item.name].filter(Boolean) as string[];
+                            const realLabel = candidates.find(c => !isCodeOnlyLabel(c));
+                            return { gi, ii, item, label: realLabel || null };
+                        })
+                    ).filter(x => x.label !== null);  // hide code-only / empty rows
+                    if (allItems.length === 0) return null;
+                    return (
                     <View style={{ marginBottom: 14 }} wrap>
                         <Text style={S.sectionLabel} wrap={false}>Dealer Accessories & Preparation</Text>
                         <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 5, overflow: 'hidden' }}>
-                            {(quote.dealerFit as any[]).map((group: any, gi: number) =>
-                                (group.items || []).map((item: any, ii: number) => {
-                                    // Pick the most descriptive label — many dealer-fit items have
-                                    // a code in `name` (e.g. "010-02093-02") with the real label in
-                                    // the data row. Prefer description over code-looking strings.
-                                    const looksLikeCode = (s: any) => typeof s === 'string' && /^[A-Z0-9-]{3,}$/i.test(s.trim());
-                                    const candidates = [item.description, item.label, item.name, item.code].filter(Boolean);
-                                    const label = candidates.find(c => !looksLikeCode(c)) || candidates[0] || 'Dealer Fit Item';
+                            {allItems.map(({ gi, ii, item, label }, idx) => {
                                     return (
                                         <View key={`${gi}-${ii}`} wrap={false} style={{
                                             flexDirection: 'row',
@@ -853,7 +878,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                             alignItems: 'center',
                                             paddingHorizontal: 10,
                                             paddingVertical: 6,
-                                            borderTopWidth: (gi > 0 || ii > 0) ? 1 : 0,
+                                            borderTopWidth: idx > 0 ? 1 : 0,
                                             borderTopColor: '#f1f5f9',
                                         }}>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, gap: 8 }}>
@@ -867,11 +892,11 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                             <Text style={{ fontSize: 8, fontWeight: 'bold', color: NAVY, flexShrink: 0, marginLeft: 12 }}>{currency(item.sellPriceExclGst || 0)}</Text>
                                         </View>
                                     );
-                                })
-                            )}
+                                })}
                         </View>
                     </View>
-                )}
+                    );
+                })()}
 
                 {/* Fit-Up & Rigging — itemised section. Renders WHENEVER there are
                     fit-up selections so the customer sees their workshop scope on the
