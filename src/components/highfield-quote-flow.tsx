@@ -1171,8 +1171,11 @@ export function HighfieldQuoteFlow({
         return () => { clearTimeout(timer); api.off('reInit', scroll); };
     }, [activeVariant, api, carouselSlides]);
 
+    // Auto-scroll to the motor slide only while the operator is on the
+    // Motor step (3) — otherwise a pre-selected/auto-loaded motor would
+    // hijack the carousel on the Boat step.
     useEffect(() => {
-        if (!api || !selectedMotor) return;
+        if (!api || !selectedMotor || currentStep !== 3) return;
         const scroll = () => {
             const motorIdx = carouselSlides.findIndex(s => s.type === 'motor');
             if (motorIdx !== -1) api.scrollTo(motorIdx);
@@ -1180,10 +1183,14 @@ export function HighfieldQuoteFlow({
         const timer = setTimeout(scroll, 150);
         api.on('reInit', scroll);
         return () => { clearTimeout(timer); api.off('reInit', scroll); };
-    }, [selectedMotor, api, carouselSlides]);
+    }, [selectedMotor, api, carouselSlides, currentStep]);
 
+    // Auto-scroll to the trailer slide only while on the Trailer step (4).
+    // The trailer auto-loads on mount (default assignment), so without this
+    // step gate the carousel jumped to the trailer on the Boat step — the
+    // "why is the trailer image always showing" bug.
     useEffect(() => {
-        if (!api || !selectedTrailerId) return;
+        if (!api || !selectedTrailerId || currentStep !== 4) return;
         const scroll = () => {
             const trailerIdx = carouselSlides.findIndex(s => s.type === 'trailer');
             if (trailerIdx !== -1) api.scrollTo(trailerIdx);
@@ -1191,7 +1198,7 @@ export function HighfieldQuoteFlow({
         const timer = setTimeout(scroll, 150);
         api.on('reInit', scroll);
         return () => { clearTimeout(timer); api.off('reInit', scroll); };
-    }, [selectedTrailerId, api, carouselSlides]);
+    }, [selectedTrailerId, api, carouselSlides, currentStep]);
 
     useEffect(() => {
         const parseHpRating = (rating?: any): { count: number, hp: number } | null => {
@@ -1438,7 +1445,11 @@ export function HighfieldQuoteFlow({
                                         <CarouselItem key={idx} className="h-full w-full relative group/img bg-white">
                                             {slide.type === 'build' ? slide.content : (
                                                 <>
-                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill className={cn("transition-all", (slide.type === 'motor' || slide.type === 'trailer') ? "object-contain p-6" : "object-cover")} priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
+                                                    {/* `unoptimized` is REQUIRED for external CDN images (boat covers
+                                                        live on media.highfieldboats.com which Cloudflare anti-hotlinking
+                                                        blocks through the Next optimisation proxy → blank slide). See
+                                                        CLAUDE.md lesson. */}
+                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill unoptimized className={cn("transition-all", (slide.type === 'motor' || slide.type === 'trailer') ? "object-contain p-6" : "object-cover")} priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
                                                     <Button variant="ghost" size="icon" className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20" onClick={() => setLightboxUrl(slide.url || null)}><Maximize2 className="h-5 w-5" /></Button>
                                                 </>
                                             )}

@@ -62,21 +62,34 @@ test('SP560 e2e walkthrough (screenshots)', async ({ page }) => {
   await dialog.getByText('SP560', { exact: true }).first().click();
   await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(5000);
+
+  // Step 1 — select a tube material (PVC) then the first colour swatch so
+  // "Next Step" enables.
+  await page.locator('text=PVC').first().click().catch(() => {});
+  await page.waitForTimeout(1500);
+  // colour swatches render after material; click the first image/colour tile
+  const colour = page.locator('button:has(img), [role="button"]:has(img)').filter({ hasNotText: 'PVC' }).first();
+  await colour.click().catch(() => {});
+  await page.waitForTimeout(1500);
   await shot(page, '03-step1-config');
 
-  // Walk the steps. On each, opportunistically click a motor/option/fit-up
-  // tile to populate the build, then screenshot.
-  const stepNames = ['04-step2', '05-step3', '06-step4', '07-step5', '08-step6'];
+  // Walk steps 2-6. On each, engage the first selectable item (motor card,
+  // dealer-fit, fit-up) to populate the build, then screenshot.
+  const stepNames = ['04-factory-options', '05-motor', '06-trailer', '07-dealerfit-fitup', '08-summary'];
   for (const nm of stepNames) {
-    const next = page.locator('button:has-text("Next Step"), button:has-text("Next")').first();
-    if (!(await next.isEnabled().catch(() => false))) break;
+    const next = page.locator('button:has-text("Next Step")').first();
+    if (!(await next.isEnabled().catch(() => false))) { await shot(page, nm + '-NEXT-DISABLED'); break; }
     await next.click().catch(() => {});
-    await page.waitForTimeout(2800);
-    // engage first selectable card on this step (motor/dealer-fit/fit-up)
-    const pick = page.locator('button:has-text("Select"), button:has-text("Add")').first();
-    if (await pick.isVisible().catch(() => false)) { await pick.click().catch(() => {}); await page.waitForTimeout(1500); }
+    await page.waitForTimeout(3000);
+    // engage content: motor "Select", fit-up/dealer-fit cards, "Add"
+    const pick = page.locator('button:has-text("Select"), button:has-text("Add"), [class*="cursor-pointer"]:has(img)').first();
+    if (await pick.isVisible().catch(() => false)) { await pick.click().catch(() => {}); await page.waitForTimeout(1800); }
     await shot(page, nm);
   }
+
+  // Finalize screen if reachable.
+  const fin = page.locator('button:has-text("Finalize"), button:has-text("Finalise"), button:has-text("Generate")').first();
+  if (await fin.isVisible().catch(() => false)) await shot(page, '09-finalize-visible');
 
   console.log('  page errors:', errors.length);
   errors.slice(0, 6).forEach((e) => console.log('   ⚠', e.slice(0, 140)));
