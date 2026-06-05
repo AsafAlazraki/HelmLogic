@@ -24,24 +24,32 @@ test('SP560 maximal full quote (1920)', async ({ page }) => {
   fs.mkdirSync(OUT, { recursive: true });
   const shot = async (n: string) => { await page.waitForTimeout(800); await page.screenshot({ path: `${OUT}/${n}.png` }); console.log('  📸', n); };
 
-  // Click every option card currently on screen (best-effort, re-queried).
+  // Select every option card ONCE. These are toggles — clicking a card
+  // twice deselects it — so we click indices [0..n), then only the NEWLY
+  // revealed cards (e.g. motor accessories that appear after a motor is
+  // picked) on a second pass. Never re-click an already-selected card.
   async function clickAllCards(label: string) {
-    for (let pass = 0; pass < 2; pass++) {
-      const cards = page.locator(CARD);
-      const count = await cards.count().catch(() => 0);
-      let clicked = 0;
-      for (let i = 0; i < count; i++) {
-        const c = cards.nth(i);
-        if (await c.isVisible().catch(() => false)) {
-          await c.scrollIntoViewIfNeeded().catch(() => {});
-          await c.click().catch(() => {});
-          clicked++;
-          await page.waitForTimeout(250);
-        }
+    const cards = page.locator(CARD);
+    const first = await cards.count().catch(() => 0);
+    for (let i = 0; i < first; i++) {
+      const c = cards.nth(i);
+      if (await c.isVisible().catch(() => false)) {
+        await c.scrollIntoViewIfNeeded().catch(() => {});
+        await c.click().catch(() => {});
+        await page.waitForTimeout(250);
       }
-      await page.waitForTimeout(900);
-      console.log(`     ${label} pass${pass}: clicked ${clicked} cards`);
     }
+    await page.waitForTimeout(900);
+    const grown = await cards.count().catch(() => first);
+    for (let i = first; i < grown; i++) {
+      const c = cards.nth(i);
+      if (await c.isVisible().catch(() => false)) {
+        await c.scrollIntoViewIfNeeded().catch(() => {});
+        await c.click().catch(() => {});
+        await page.waitForTimeout(250);
+      }
+    }
+    console.log(`     ${label}: selected ${first} + ${Math.max(0, grown - first)} revealed`);
   }
 
   await login(page);
@@ -79,9 +87,47 @@ test('SP560 maximal full quote (1920)', async ({ page }) => {
     await shot(nm);
   }
 
-  // Finalize screen (don't submit — just capture the gate).
+  // Finalize -> create proposal -> proposal view -> PDF.
   const fin = page.locator('button:has-text("Finalize Project"), button:has-text("Finalize")').first();
-  if (await fin.isVisible().catch(() => false)) await shot('s7-finalize-ready');
+  if (await fin.isVisible().catch(() => false)) {
+    await fin.click().catch(() => {});
+    await page.waitForTimeout(2000);
+    await shot('s7-finalize-dialog');
+    // Customer name is required.
+    const name = page.locator('#cust-name, input[placeholder="John Smith"]').first();
+    if (await name.isVisible().catch(() => false)) {
+      await name.fill('E2E Test Customer');
+      await page.waitForTimeout(500);
+      const create = page.locator('button:has-text("Create Proposal")').first();
+      await create.click().catch(() => {});
+      // Wait for navigation to the proposal view.
+      await page.waitForURL(/\/proposals\//, { timeout: 30000 }).catch(() => {});
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(5000);
+      await shot('s8-proposal-top');
+      // Scroll down to capture the investment summary / line items.
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight / 2));
+      await page.waitForTimeout(1500);
+      await shot('s9-proposal-mid');
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await page.waitForTimeout(1500);
+      await shot('s10-proposal-bottom');
+
+      // Capture the PDF if a Download button exists.
+      const dl = page.locator('button:has-text("Download"), button:has-text("PDF")').first();
+      if (await dl.isVisible().catch(() => false)) {
+        const dlPromise = page.waitForEvent('download', { timeout: 30000 }).catch(() => null);
+        await dl.click().catch(() => {});
+        const download = await dlPromise;
+        if (download) {
+          const p = `${OUT}/SP560-proposal.pdf`;
+          await download.saveAs(p).catch(() => {});
+          console.log('  💾 PDF saved:', p);
+        }
+        await shot('s11-after-pdf');
+      }
+    }
+  }
 
   expect(true).toBeTruthy();
 });

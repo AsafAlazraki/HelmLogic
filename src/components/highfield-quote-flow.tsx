@@ -2585,6 +2585,37 @@ export function HighfieldQuoteFlow({
                                             </Card>
                                         )}
 
+                                        {/* v1.11 — Fit-Up & Rigging summary section (mirrors Dealer
+                                            Fitments). Lists every selected fit-up line with tier, qty
+                                            and line total so the build summary + downstream proposal
+                                            reflect the fit-up scope. */}
+                                        {selectedFitUpItems.length > 0 && (
+                                            <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
+                                                <CardHeader className="bg-muted/30 border-b p-4">
+                                                    <div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Fit-Up &amp; Rigging</CardTitle></div>
+                                                </CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="divide-y">
+                                                        {selectedFitUpItems.map((sel) => (
+                                                            <div key={sel.item.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="group/remove h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
+                                                                        <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
+                                                                        <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => toggleFitUpItem(sel.item)}><X className="h-3 w-3" /></Button>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-black uppercase tracking-tight">{sel.item.name}{sel.quantity > 1 ? ` ×${sel.quantity}` : ''}</p>
+                                                                        <Badge variant="outline" className="text-[7px] font-black h-3.5 px-1 uppercase">{sel.item.tier}{sel.item.category ? ` · ${sel.item.category}` : ''}</Badge>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-slate-600">${resolveFitUpLineSell(sel).toLocaleString()}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        )}
+
                                         {appliedPromotions.length > 0 && (
                                             <Card className="rounded-[1.5rem] border-2 border-emerald-200 shadow-lg overflow-hidden bg-emerald-50/30">
                                                 <CardHeader className="bg-emerald-600 border-b p-4"><div className="flex items-center gap-2"><Gift className="h-4 w-4 text-white" /><CardTitle className="text-xs font-black uppercase tracking-widest text-white">Applied Promotions</CardTitle></div></CardHeader>
