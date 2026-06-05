@@ -213,8 +213,8 @@ function QuoteInitializationDialog({
 
     const ranges = useMemo(() =>
         [...(rawRanges ?? [])].sort((a, b) => {
-            const aOrder = RANGE_CATALOG_ORDER[a.slug ?? a.name.toLowerCase()] ?? (a.order ?? 99);
-            const bOrder = RANGE_CATALOG_ORDER[b.slug ?? b.name.toLowerCase()] ?? (b.order ?? 99);
+            const aOrder = RANGE_CATALOG_ORDER[a.slug ?? (a.name ?? "").toLowerCase()] ?? (a.order ?? 99);
+            const bOrder = RANGE_CATALOG_ORDER[b.slug ?? (b.name ?? "").toLowerCase()] ?? (b.order ?? 99);
             return aOrder - bOrder;
         }),
     [rawRanges]);
@@ -300,7 +300,7 @@ function QuoteInitializationDialog({
                                 <div className="overflow-y-auto max-h-[480px] pr-1">
                                     <div className="grid grid-cols-5 gap-6">
                                         {(models ?? [])
-                                            .filter(m => !modelSearch || m.name.toLowerCase().includes(modelSearch.toLowerCase()) || m.modelCode?.toLowerCase().includes(modelSearch.toLowerCase()))
+                                            .filter(m => !modelSearch || (m.name ?? "").toLowerCase().includes(modelSearch.toLowerCase()) || m.modelCode?.toLowerCase().includes(modelSearch.toLowerCase()))
                                             .map(model => (
                                             <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => onModelSelect(model, selectedRange)}>
                                                 <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
@@ -314,7 +314,7 @@ function QuoteInitializationDialog({
                                                 </div>
                                             </Card>
                                         ))}
-                                        {(models ?? []).filter(m => !modelSearch || m.name.toLowerCase().includes(modelSearch.toLowerCase()) || m.modelCode?.toLowerCase().includes(modelSearch.toLowerCase())).length === 0 && (
+                                        {(models ?? []).filter(m => !modelSearch || (m.name ?? "").toLowerCase().includes(modelSearch.toLowerCase()) || m.modelCode?.toLowerCase().includes(modelSearch.toLowerCase())).length === 0 && (
                                             <div className="col-span-5 py-16 text-center text-slate-400 text-sm font-medium">No models match &ldquo;{modelSearch}&rdquo;</div>
                                         )}
                                     </div>
