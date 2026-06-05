@@ -25,7 +25,7 @@
  */
 
 import { useMemo, useState } from 'react';
-import { collection, orderBy, query } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Badge } from '@/components/ui/badge';
@@ -211,21 +211,18 @@ export function FitUpQuoteSelector({
 }: FitUpQuoteSelectorProps) {
     const firestore = useFirestore();
 
+    // Plain collection() (no orderBy) — the composite `tier`+`name` orderBy
+    // requires a Firestore index that isn't deployed, AND orderBy silently
+    // excludes docs missing that field (documented CLAUDE.md lesson). We
+    // sort client-side in `filtered` below instead.
     const itemsRef = useMemoFirebase(
-        () => query(
-            collection(firestore, 'organisations', organisationId, 'fitUpItems'),
-            orderBy('tier', 'asc'),
-            orderBy('name', 'asc'),
-        ),
+        () => collection(firestore, 'organisations', organisationId, 'fitUpItems'),
         [firestore, organisationId],
     );
     const { data: items, isLoading } = useCollection<FitUpItem>(itemsRef);
 
     const packagesRef = useMemoFirebase(
-        () => query(
-            collection(firestore, 'organisations', organisationId, 'fitUpPackages'),
-            orderBy('name', 'asc'),
-        ),
+        () => collection(firestore, 'organisations', organisationId, 'fitUpPackages'),
         [firestore, organisationId],
     );
     const { data: packages } = useCollection<FitUpPackage>(packagesRef);
@@ -241,7 +238,15 @@ export function FitUpQuoteSelector({
     // level AND), then by tier chip + category chip + Suggested + search.
     const moduleFiltered = useMemo(() => {
         const list = items ?? [];
-        return list.filter(item => itemMatchesContext(item, { moduleId, vendorId, rangeId, modelId, variantId }));
+        const TIER_ORDER: Record<string, number> = { simple: 0, medium: 1, complex: 2 };
+        return list
+            .filter(item => itemMatchesContext(item, { moduleId, vendorId, rangeId, modelId, variantId }))
+            .sort((a, b) => {
+                // Client-side sort: tier asc, then name asc (replaces the
+                // Firestore orderBy that broke the query — see CLAUDE.md).
+                const t = (TIER_ORDER[a.tier] ?? 9) - (TIER_ORDER[b.tier] ?? 9);
+                return t !== 0 ? t : (a.name ?? '').localeCompare(b.name ?? '');
+            });
     }, [items, moduleId, vendorId, rangeId, modelId, variantId]);
 
     const categories = useMemo(() => {

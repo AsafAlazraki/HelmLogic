@@ -192,8 +192,11 @@ export function FitUpCatalogManager({ organisationId }: FitUpCatalogManagerProps
     const { user } = useUser();
     const { toast } = useToast();
 
+    // No orderBy — composite-index requirement breaks the live query
+    // (HTTP 400) AND orderBy silently excludes docs without that field
+    // (CLAUDE.md lesson). Sort client-side instead.
     const itemsRef = useMemoFirebase(
-        () => query(collection(firestore, 'organisations', organisationId, 'fitUpItems'), orderBy('tier', 'asc'), orderBy('name', 'asc')),
+        () => collection(firestore, 'organisations', organisationId, 'fitUpItems'),
         [firestore, organisationId],
     );
     const { data: items, isLoading } = useCollection<FitUpItem>(itemsRef);
@@ -1747,7 +1750,7 @@ function OftenPairedWithSection({
 }) {
     const firestore = useFirestore();
     const itemsRef = useMemoFirebase(
-        () => query(collection(firestore, 'organisations', organisationId, 'fitUpItems'), orderBy('name', 'asc')),
+        () => collection(firestore, 'organisations', organisationId, 'fitUpItems'),
         [firestore, organisationId],
     );
     const { data: allItems } = useCollection<FitUpItem>(itemsRef);
