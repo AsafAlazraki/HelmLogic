@@ -248,10 +248,19 @@ export function SeedEverythingButton() {
             }
 
             // ── 4. Trailers — use existing wired trailer, else create + wire ──
+            // Real setups wire trailer vendors into associatedVendorIds (NOT
+            // a separate trailerBrandVendorIds field), mixed with the motor +
+            // MPF vendors. So scan BOTH, classify by vendorType === 'Trailer
+            // Brand', and use the first that actually has a series/trailer.
             let trailerSource: 'existing' | 'created' = 'created';
             let pairingTrailer: { brandVendorId: string; seriesId: string; trailerId: string; code: string; name: string } | null = null;
-            const trailerVendorIds: string[] = [...(moduleData?.trailerBrandVendorIds || [])].filter(Boolean);
-            for (const tvId of trailerVendorIds) {
+            const trailerCandidateIds: string[] = [
+                ...(moduleData?.trailerBrandVendorIds || []),
+                ...(moduleData?.associatedVendorIds || []),
+            ].filter(Boolean);
+            for (const tvId of trailerCandidateIds) {
+                const vSnap = await getDoc(doc(firestore, 'data-warehouse', tvId));
+                if (!vSnap.exists() || (vSnap.data() as any).vendorType !== 'Trailer Brand') continue;
                 const found = await firstTrailerOf(tvId);
                 if (found) { pairingTrailer = found; break; }
             }
