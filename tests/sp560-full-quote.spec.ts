@@ -117,6 +117,14 @@ test('SP560 maximal full quote (1920)', async ({ page }) => {
       await page.waitForTimeout(1500);
       await shot('s10-proposal-bottom');
 
+      // Enable itemised fit-up so the dedicated Fit-Up PDF section renders.
+      const fitToggle = page.locator('button:has-text("Itemise fit-up")').first();
+      if (await fitToggle.isVisible().catch(() => false)) {
+        await fitToggle.click().catch(() => {});
+        await page.waitForTimeout(1800);
+        await shot('s10b-fitup-itemised');
+      }
+
       // Capture the PDF if a Download button exists.
       const dl = page.locator('button:has-text("Download"), button:has-text("PDF")').first();
       if (await dl.isVisible().catch(() => false)) {
