@@ -63,15 +63,19 @@ test('SP560 maximal full quote (1920)', async ({ page }) => {
   await newQuote.waitFor({ state: 'visible', timeout: 45000 });
   await newQuote.click();
   const dialog = page.locator('[role="dialog"]');
-  const sportTile = dialog.getByText('Sport', { exact: true }).first();
-  await sportTile.waitFor({ timeout: 20000 });
-  await page.waitForTimeout(1000); // let dialog enter-anim settle
-  await sportTile.click({ force: true });
-  await page.waitForTimeout(1500);
-  const sp560 = dialog.getByText('SP560', { exact: true }).first();
-  await sp560.waitFor({ timeout: 15000 });
+  // The text inside each range card has a hover-scale animation that
+  // detaches the span mid-click. Target the wrapping cursor-pointer Card
+  // instead — that's the actual onClick handler and it doesn't animate.
+  const sportCard = dialog.locator('.cursor-pointer:has-text("Sport")').first();
+  await sportCard.waitFor({ timeout: 20000 });
+  await page.waitForTimeout(800);
+  await sportCard.click({ force: true });
+  await page.waitForTimeout(1800);
+  // After picking the range, models render as cards (also cursor-pointer).
+  const sp560Card = dialog.locator('.cursor-pointer:has-text("SP560")').first();
+  await sp560Card.waitFor({ timeout: 15000 });
   await page.waitForTimeout(600);
-  await sp560.click({ force: true });
+  await sp560Card.click({ force: true });
   await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(4500);
 
