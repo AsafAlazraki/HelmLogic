@@ -18,10 +18,9 @@ const CARD = 'button.rounded-\\[1\\.5rem\\]';
 
 test.use({ viewport: { width: 1920, height: 1080 } });
 
-test('CL380 fully specced', async ({ page, context }) => {
+test('CL380 fully specced', async ({ page }) => {
   test.setTimeout(360000);
   fs.mkdirSync(OUT, { recursive: true });
-  await context.clearCookies();
   const shot = async (n: string, full = false) => {
     await page.waitForTimeout(800);
     await page.screenshot({ path: `${OUT}/${n}.png`, fullPage: full });
