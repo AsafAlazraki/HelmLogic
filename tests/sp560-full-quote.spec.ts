@@ -63,10 +63,15 @@ test('SP560 maximal full quote (1920)', async ({ page }) => {
   await newQuote.waitFor({ state: 'visible', timeout: 45000 });
   await newQuote.click();
   const dialog = page.locator('[role="dialog"]');
-  await dialog.getByText('Sport', { exact: true }).first().waitFor({ timeout: 20000 });
-  await dialog.getByText('Sport', { exact: true }).first().click();
-  await page.waitForTimeout(1200);
-  await dialog.getByText('SP560', { exact: true }).first().click();
+  const sportTile = dialog.getByText('Sport', { exact: true }).first();
+  await sportTile.waitFor({ timeout: 20000 });
+  await page.waitForTimeout(1000); // let dialog enter-anim settle
+  await sportTile.click({ force: true });
+  await page.waitForTimeout(1500);
+  const sp560 = dialog.getByText('SP560', { exact: true }).first();
+  await sp560.waitFor({ timeout: 15000 });
+  await page.waitForTimeout(600);
+  await sp560.click({ force: true });
   await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(4500);
 
