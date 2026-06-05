@@ -21,12 +21,15 @@ export function formatMetres(v: unknown, opts: { unit?: string; decimals?: numbe
 export function asMetres(v: unknown): number | null {
     const n = typeof v === 'string' ? parseFloat(v) : (typeof v === 'number' ? v : NaN);
     if (!Number.isFinite(n)) return null;
-    // Marine-domain tiered heuristic — recreational boats/trailers are
-    // always 3-15m. Anything outside that range is mis-encoded.
-    //  - 0–15    → already in metres ✓ (5.7m boat, 12m yacht)
-    //  - 15–50   → ÷10 (e.g. lengthMtr: 42.4 → 4.24m for Dunbier 4M-13SL)
-    //  - 50+     → ÷100 (e.g. boatSizeMtr: 600 → 6.00m for GFAB PA600)
-    if (n >= 50) return n / 100;
-    if (n > 15) return n / 10;
+    // Marine-domain four-tier heuristic. Source trailer/boat data stores
+    // length fields in 4 different formats across vendors — we detect by
+    // magnitude since rec boats/trailers are always 3-15m:
+    //   < 15       → already in metres ✓        (5.7m boat, 3.9m trailer)
+    //   15–49      → decimal misplaced, ÷10     (42.4 means 4.24m on old Dunbier)
+    //   50–999     → centimetres, ÷100          (600 means 6.00m on GFAB PA600)
+    //   ≥ 1000     → millimetres, ÷1000         (4240 means 4.24m on Dunbier Sports)
+    if (n >= 1000) return n / 1000;
+    if (n >= 50)   return n / 100;
+    if (n > 15)    return n / 10;
     return n;
 }

@@ -662,11 +662,12 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                         { label: 'Warranty', value: quote.motor.warranty || quote.motor['Warranty'] },
                     ].filter(s => s.value);
                     return (
-                    <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }} wrap={false}>
+                    <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
                         {/* Motor header — left: title + brand. Right: price.
                             Photo (when present) sits as a banner ABOVE the
                             specs grid so it doesn't crash into the price.
-                            wrap={false} keeps the whole motor card atomic. */}
+                            Card can flow across pages; individual sub-views
+                            below carry their own wrap={false} where needed. */}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: quote.motor.imageUrl ? 10 : 0 }}>
                             <View style={{ flexShrink: 1, flex: 1, paddingRight: 14 }}>
                                 <Text style={[S.sectionLabel, { marginBottom: 4 }]}>Propulsion System</Text>
@@ -772,7 +773,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     const trailerOptions: any[] = Array.isArray(quote.trailer.options) ? quote.trailer.options : [];
 
                     return (
-                        <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }} wrap={false}>
+                        <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
                             {/* Trailer header — left: title + brand. Right: price.
                                 Photo (when present) is a banner above the
                                 specs grid (matches motor section layout). */}
