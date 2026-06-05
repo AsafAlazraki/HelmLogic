@@ -638,10 +638,11 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                         { label: 'Warranty', value: quote.motor.warranty || quote.motor['Warranty'] },
                     ].filter(s => s.value);
                     return (
-                    <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
+                    <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }} wrap={false}>
                         {/* Motor header — left: title + brand. Right: price.
                             Photo (when present) sits as a banner ABOVE the
-                            specs grid so it doesn't crash into the price. */}
+                            specs grid so it doesn't crash into the price.
+                            wrap={false} keeps the whole motor card atomic. */}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: quote.motor.imageUrl ? 10 : 0 }}>
                             <View style={{ flexShrink: 1, flex: 1, paddingRight: 14 }}>
                                 <Text style={[S.sectionLabel, { marginBottom: 4 }]}>Propulsion System</Text>
@@ -747,7 +748,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     const trailerOptions: any[] = Array.isArray(quote.trailer.options) ? quote.trailer.options : [];
 
                     return (
-                        <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
+                        <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }} wrap={false}>
                             {/* Trailer header — left: title + brand. Right: price.
                                 Photo (when present) is a banner above the
                                 specs grid (matches motor section layout). */}
@@ -830,53 +831,81 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     );
                 })()}
 
-                {/* Dealer Fit */}
+                {/* Dealer Fit — wrap={false} keeps the heading + first row together;
+                    longer lists can still flow across pages, but at minimum each
+                    line stays atomic (no row split mid-text). */}
                 {quote.dealerFit?.length > 0 && (
-                    <View style={{ marginBottom: 14 }}>
-                        <Text style={S.sectionLabel}>Dealer Accessories & Preparation</Text>
+                    <View style={{ marginBottom: 14 }} wrap>
+                        <Text style={S.sectionLabel} wrap={false}>Dealer Accessories & Preparation</Text>
                         <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 5, overflow: 'hidden' }}>
                             {(quote.dealerFit as any[]).map((group: any, gi: number) =>
-                                (group.items || []).map((item: any, ii: number) => (
-                                    <View key={`${gi}-${ii}`} style={{
-                                        flexDirection: 'row',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        paddingHorizontal: 10,
-                                        paddingVertical: 5,
-                                        borderTopWidth: (gi > 0 || ii > 0) ? 1 : 0,
-                                        borderTopColor: '#f1f5f9',
-                                    }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
-                                            {item.imageUrl && (
-                                                <Image src={pdfImg(item.imageUrl, 80)} style={{ width: 24, height: 24, objectFit: 'contain', marginRight: 7, borderRadius: 2, flexShrink: 0 }} />
-                                            )}
-                                            {/* v1.10 fix — fall back to code/SKU then to 'Dealer Fit Item' so legacy snapshots (pre-fix) never render a blank label. */}
-                                            <Text style={{ fontSize: 7.5, color: SLATE }}>{item.name || item.code || 'Dealer Fit Item'}</Text>
+                                (group.items || []).map((item: any, ii: number) => {
+                                    // Pick the most descriptive label — many dealer-fit items have
+                                    // a code in `name` (e.g. "010-02093-02") with the real label in
+                                    // the data row. Prefer description over code-looking strings.
+                                    const looksLikeCode = (s: any) => typeof s === 'string' && /^[A-Z0-9-]{3,}$/i.test(s.trim());
+                                    const candidates = [item.description, item.label, item.name, item.code].filter(Boolean);
+                                    const label = candidates.find(c => !looksLikeCode(c)) || candidates[0] || 'Dealer Fit Item';
+                                    return (
+                                        <View key={`${gi}-${ii}`} wrap={false} style={{
+                                            flexDirection: 'row',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            paddingHorizontal: 10,
+                                            paddingVertical: 6,
+                                            borderTopWidth: (gi > 0 || ii > 0) ? 1 : 0,
+                                            borderTopColor: '#f1f5f9',
+                                        }}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, gap: 8 }}>
+                                                {item.imageUrl ? (
+                                                    <Image src={pdfImg(item.imageUrl, 120)} style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 3, flexShrink: 0 }} />
+                                                ) : (
+                                                    <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: GREEN, flexShrink: 0 }} />
+                                                )}
+                                                <Text style={{ fontSize: 8, color: SLATE, flexShrink: 1 }}>{label}</Text>
+                                            </View>
+                                            <Text style={{ fontSize: 8, fontWeight: 'bold', color: NAVY, flexShrink: 0, marginLeft: 12 }}>{currency(item.sellPriceExclGst || 0)}</Text>
                                         </View>
-                                        <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY, flexShrink: 0, marginLeft: 12 }}>{currency(item.sellPriceExclGst || 0)}</Text>
-                                    </View>
-                                ))
+                                    );
+                                })
                             )}
                         </View>
                     </View>
                 )}
 
-                {/* Fit-Up & Rigging — dedicated itemised section. Shown when the
-                    operator enables the "Itemise fit-up for customer" toggle on the
-                    proposal (customerDetailedView). When off, fit-up rolls up to the
-                    single Investment-Summary line per the locked 9.2.3 default. */}
-                {quote.customerDetailedView && (quote.fitUpSelections?.length ?? 0) > 0 && (
-                    <View style={{ marginBottom: 14 }}>
-                        <Text style={S.sectionLabel}>Fit-Up & Rigging</Text>
+                {/* Fit-Up & Rigging — itemised section. Renders WHENEVER there are
+                    fit-up selections so the customer sees their workshop scope on the
+                    PDF. (The `customerDetailedView` toggle previously gated this,
+                    making the section silently disappear — bad default. Now it always
+                    appears when fit-up is on the quote.) */}
+                {(quote.fitUpSelections?.length ?? 0) > 0 && (
+                    <View style={{ marginBottom: 14 }} wrap>
+                        <Text style={S.sectionLabel} wrap={false}>Fit-Up & Rigging</Text>
                         <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 5, overflow: 'hidden' }}>
                             {(quote.fitUpSelections as any[]).map((sel: any, i: number) => {
                                 const qty = Math.max(1, sel.quantity ?? 1);
                                 const unit = sel.priceOverride != null ? sel.priceOverride : (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0));
                                 const label = sel.customerDescription || sel.name || 'Fit-up item';
                                 return (
-                                    <View key={sel.id || i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderTopWidth: i > 0 ? 1 : 0, borderTopColor: '#f1f5f9' }}>
-                                        <Text style={{ fontSize: 7.5, color: SLATE }}>{label}{qty > 1 ? ` x${qty}` : ''}</Text>
-                                        <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY, marginLeft: 12 }}>{currency(qty * unit)}</Text>
+                                    <View key={sel.id || i} wrap={false} style={{
+                                        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                                        paddingHorizontal: 10, paddingVertical: 6,
+                                        borderTopWidth: i > 0 ? 1 : 0, borderTopColor: '#f1f5f9',
+                                    }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, gap: 8 }}>
+                                            {sel.imageUrl ? (
+                                                <Image src={pdfImg(sel.imageUrl, 120)} style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 3, flexShrink: 0 }} />
+                                            ) : (
+                                                <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: GREEN, flexShrink: 0 }} />
+                                            )}
+                                            <View style={{ flexShrink: 1 }}>
+                                                <Text style={{ fontSize: 8, color: SLATE }}>{label}{qty > 1 ? ` × ${qty}` : ''}</Text>
+                                                {sel.category ? (
+                                                    <Text style={{ fontSize: 6, color: MUTED, marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>{sel.category}</Text>
+                                                ) : null}
+                                            </View>
+                                        </View>
+                                        <Text style={{ fontSize: 8, fontWeight: 'bold', color: NAVY, marginLeft: 12 }}>{currency(qty * unit)}</Text>
                                     </View>
                                 );
                             })}
