@@ -110,8 +110,10 @@ test('CL380 fully specced', async ({ page }) => {
   await page.waitForTimeout(6000);
   await shot('s09-proposal', true);
 
-  // Download PDF
-  const dlPromise = page.waitForEvent('download', { timeout: 60000 });
+  // Download PDF — bumped to 120s; new PDF render with wrap={false} +
+  // code-filter logic + image proxy fetches can take >60s on first hit
+  // (server-side React-PDF compile + weserv warmup).
+  const dlPromise = page.waitForEvent('download', { timeout: 120000 });
   await page.locator('button:has-text("Download"), button:has-text("PDF")').first().click({ force: true });
   const dl = await dlPromise;
   const pdfPath = `${OUT}/CL380-fully-specced.pdf`;
