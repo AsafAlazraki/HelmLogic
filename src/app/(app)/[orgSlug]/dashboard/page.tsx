@@ -4,11 +4,13 @@ import { useUser } from "@/firebase/auth/use-user";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useFirestore, useMemoFirebase } from "@/firebase/provider";
-import { doc, collection, updateDoc } from "firebase/firestore";
+import { doc, collection, updateDoc, setDoc, arrayUnion } from "firebase/firestore";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Blocks, LayoutGrid, Ship, ArrowRight, ShieldCheck, User, GripVertical } from "lucide-react";
+import { Loader2, Blocks, LayoutGrid, Ship, ArrowRight, ShieldCheck, User, GripVertical, Wrench } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
@@ -113,6 +115,54 @@ function SortableModuleCard({ module, orgSlug }: { module: Module; orgSlug: stri
                 <GripVertical className="h-4 w-4 text-muted-foreground" />
             </div>
         </div>
+    );
+}
+
+/**
+ * One-shot seed for the Fit-Up dashboard module (v1.11 follow-up).
+ *
+ * The Fit-Up catalogue already has a first-class module surface
+ * (moduleType === 'fit-up' branch in /modules/[id]) but no `modules`
+ * doc was ever seeded, so it never appeared as a dashboard tile next
+ * to Registration. The Firestore REST API is blocked from the build
+ * sandbox (API-key referrer restriction), so this runs client-side:
+ * one idempotent upsert + arrayUnion subscription. The button renders
+ * ONLY while the module isn't subscribed yet, so it self-clears on the
+ * live snapshot the instant the write lands. Remove this block once the
+ * tile is confirmed live.
+ */
+const FIT_UP_MODULE_ID = 'fit-up-module';
+function SeedFitUpModuleButton({ organisationId, alreadySubscribed }: { organisationId: string; alreadySubscribed: boolean }) {
+    const firestore = useFirestore();
+    const [busy, setBusy] = useState(false);
+    if (alreadySubscribed) return null;
+    const seed = async () => {
+        setBusy(true);
+        try {
+            await setDoc(doc(firestore, 'modules', FIT_UP_MODULE_ID), {
+                name: 'Fit-Up & Rigging',
+                slug: 'fit-up',
+                moduleType: 'fit-up',
+                mainVendorId: null,
+                associatedVendorIds: [],
+                logoUrl: null,
+            }, { merge: true });
+            await updateDoc(doc(firestore, 'organisations', organisationId), {
+                enabledModuleSubscriptions: arrayUnion(FIT_UP_MODULE_ID),
+            });
+            toast({ title: 'Fit-Up module added', description: 'It now appears as a dashboard tile.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Seed failed', description: e?.message || 'Unknown error' });
+        } finally {
+            setBusy(false);
+        }
+    };
+    return (
+        <Button onClick={seed} disabled={busy} size="sm" variant="outline"
+            className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest gap-1.5">
+            {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wrench className="h-3 w-3" />}
+            Add Fit-Up Module
+        </Button>
     );
 }
 
@@ -227,12 +277,18 @@ function EmployeeDashboard({ organisationId, userProfile, orgSlug }: { organisat
                         <h2 className="text-xl font-black uppercase tracking-tight">My Modules</h2>
                     </div>
                     <div className="h-[1px] flex-1 mx-6 bg-border hidden sm:block" />
-                    {userPermissions.can_access_settings && (
-                        <Link href={`/${orgSlug}/manage`} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors flex items-center gap-2 group">
-                            Settings
-                            <ArrowRight className="h-3 w-3 transform transition-transform group-hover:translate-x-1" />
-                        </Link>
-                    )}
+                    <div className="flex items-center gap-4">
+                        <SeedFitUpModuleButton
+                            organisationId={organisationId}
+                            alreadySubscribed={subscribedModuleIds.includes(FIT_UP_MODULE_ID)}
+                        />
+                        {userPermissions.can_access_settings && (
+                            <Link href={`/${orgSlug}/manage`} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors flex items-center gap-2 group">
+                                Settings
+                                <ArrowRight className="h-3 w-3 transform transition-transform group-hover:translate-x-1" />
+                            </Link>
+                        )}
+                    </div>
                 </div>
 
                 {orderedModules.length > 0 ? (
