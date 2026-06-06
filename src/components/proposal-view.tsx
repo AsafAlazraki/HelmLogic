@@ -648,7 +648,13 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
             <div className="web-view">
                 {/* Top Navigation */}
                 {!hideNav && (
-                    <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b shadow-sm no-print w-full px-6 sm:px-10 h-16 flex items-center justify-between gap-4">
+                    /* Sticky action bar — at narrow widths the 6+ action buttons
+                       overlap the left status chip ("AWORDIING" garbage at 768/
+                       1093px). Drop the fixed h-16, let it grow vertically,
+                       wrap the right-side button cluster onto a second line
+                       below lg, and add overflow-x-auto as the last-resort
+                       fallback so the bar can scroll if a label runs long. */
+                    <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b shadow-sm no-print w-full px-4 sm:px-6 lg:px-10 py-2 lg:py-0 lg:h-16 flex flex-col lg:flex-row lg:items-center justify-between gap-2 lg:gap-4 overflow-x-auto">
                         <div className="flex items-center gap-3 min-w-0">
                             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl border-2 shrink-0" onClick={() => router.back()}>
                                 <ArrowLeft className="h-4 w-4" />

@@ -291,8 +291,13 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     );
                 }
 
-                // T&Cs fallback chain — always renders even if no block is authored.
-                if (blockType === 'terms-and-conditions' && (!html || !html.trim())) {
+                // T&Cs fallback chain — always renders even if no block is
+                // authored. Treats tag-only content ("<p></p>", "<p><br></p>")
+                // as empty too so the page doesn't render blank when an org
+                // has an "empty" authored block left over from a previous
+                // version of the content manager.
+                const htmlEmpty = !html || !html.trim() || !html.replace(/<[^>]+>/g, '').trim();
+                if (blockType === 'terms-and-conditions' && htmlEmpty) {
                     const DEFAULT_TERMS = [
                         '1. This proposal is valid for 30 days from the date of issue.',
                         '2. Prices are subject to change without notice after the validity period.',
@@ -314,8 +319,9 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     );
                 }
 
-                // Generic content block — only render if html present.
-                if (!html || !html.trim()) return null;
+                // Generic content block — only render if html has real content
+                // (tag-only HTML counts as empty so we don't emit blank pages).
+                if (htmlEmpty) return null;
                 return (
                     <Page key={s.id} size="A4" style={{ ...S.page, padding: 44 }}>
                         <InnerHeader title={label} sub={sub} quoteNumber={quote.quoteNumber} />
