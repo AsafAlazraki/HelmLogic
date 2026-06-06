@@ -1359,6 +1359,18 @@ function BulkActionDialog({
 // reference in the package; we filter dangling ids at render time rather
 // than maintaining referential integrity.
 
+/** v1.11 follow-up — soft tag the salesperson flips at Step 5 to bias
+ *  the suggested package toward the customer's actual boating context.
+ *  Optional everywhere — leaving it null = "any". */
+export type FitUpUseCase = 'offshore' | 'coastal' | 'inland' | 'tender';
+export const USE_CASES: FitUpUseCase[] = ['offshore', 'coastal', 'inland', 'tender'];
+export const USE_CASE_LABEL: Record<FitUpUseCase, string> = {
+    offshore: 'Offshore',
+    coastal: 'Coastal',
+    inland: 'Inland',
+    tender: 'Tender',
+};
+
 export interface FitUpPackage {
     id: string;
     name: string;
@@ -1371,12 +1383,26 @@ export interface FitUpPackage {
     packagePrice?: number | null;
     /** v1.11 follow-up — when true, this package is one of the three
      *  primary tier choices (Simple / Medium / Complex) shown as the big
-     *  cards at the top of Step 5. `tier` says which slot it fills. Only
-     *  one package per tier should be flagged; the quote selector picks
-     *  the first it finds per tier. Non-tier packages stay in the "bonus
-     *  bundles" strip. */
+     *  cards at the top of Step 5. `tier` says which slot it fills. The
+     *  quote selector picks the MOST SPECIFIC matching tier package per
+     *  slot (modelIds > rangeIds > brandIds > moduleIds > unrestricted),
+     *  so orgs can layer overrides without dropping a generic fallback. */
     isTierPackage?: boolean;
     tier?: Tier;
+    /** v1.11 follow-up — scope allowlists. Same semantics as FitUpItem:
+     *  empty array = no restriction at that level. When two or more lists
+     *  are non-empty, all must match (AND). At quote time, each tier slot
+     *  picks the most specific matching package. Lets orgs configure:
+     *   - org-wide fallback (all lists empty)
+     *   - per-range overrides (rangeIds: ['sport'])
+     *   - per-model overrides (modelIds: ['sp560'])
+     *   - per-brand / per-module scoping
+     *   - per-use-case variants (useCase: 'offshore') */
+    moduleIds?: string[];
+    brandIds?: string[];
+    rangeIds?: string[];
+    modelIds?: string[];
+    useCase?: FitUpUseCase | null;
     createdAt?: any;
     updatedAt?: any;
 }
@@ -1553,6 +1579,13 @@ function FitUpPackageEditor({
     const [packagePrice, setPackagePrice] = useState('');
     const [isTierPackage, setIsTierPackage] = useState(false);
     const [tier, setTier] = useState<Tier>('simple');
+    // v1.11 follow-up — scope allowlists. Comma-separated id input for now
+    // (clean UI is a future iteration; the structured field types are correct).
+    const [moduleIdsCsv, setModuleIdsCsv] = useState('');
+    const [brandIdsCsv, setBrandIdsCsv] = useState('');
+    const [rangeIdsCsv, setRangeIdsCsv] = useState('');
+    const [modelIdsCsv, setModelIdsCsv] = useState('');
+    const [useCase, setUseCase] = useState<FitUpUseCase | ''>('');
     const [saving, setSaving] = useState(false);
     const [search, setSearch] = useState('');
 
@@ -1564,6 +1597,11 @@ function FitUpPackageEditor({
             setPackagePrice(editingPackage?.packagePrice != null ? String(editingPackage.packagePrice) : '');
             setIsTierPackage(editingPackage?.isTierPackage ?? false);
             setTier((editingPackage?.tier as Tier) ?? 'simple');
+            setModuleIdsCsv((editingPackage?.moduleIds ?? []).join(', '));
+            setBrandIdsCsv((editingPackage?.brandIds ?? []).join(', '));
+            setRangeIdsCsv((editingPackage?.rangeIds ?? []).join(', '));
+            setModelIdsCsv((editingPackage?.modelIds ?? []).join(', '));
+            setUseCase((editingPackage?.useCase as FitUpUseCase) ?? '');
             setSearch('');
         }
     }, [open, editingPackage]);
@@ -1606,6 +1644,8 @@ function FitUpPackageEditor({
         }
         setSaving(true);
         try {
+            const csvToList = (s: string) =>
+                s.split(',').map(x => x.trim()).filter(Boolean);
             const payload = {
                 name: trimmed,
                 description: description.trim() || null,
@@ -1616,6 +1656,13 @@ function FitUpPackageEditor({
                 // package cleanly demotes it back to a bonus bundle.
                 isTierPackage,
                 tier: isTierPackage ? tier : null,
+                // v1.11 follow-up — scope allowlists. Empty arrays = unrestricted
+                // at that level. Resolution picks the most specific match per tier.
+                moduleIds: csvToList(moduleIdsCsv),
+                brandIds: csvToList(brandIdsCsv),
+                rangeIds: csvToList(rangeIdsCsv),
+                modelIds: csvToList(modelIdsCsv),
+                useCase: useCase || null,
                 updatedAt: serverTimestamp(),
             };
             const actorUid = user?.uid || 'unknown';
@@ -1730,9 +1777,52 @@ function FitUpPackageEditor({
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                <p className="text-[10px] text-muted-foreground">One package per tier. If two are flagged for the same tier, the quote picks the first.</p>
+                                <p className="text-[10px] text-muted-foreground">If multiple packages share a tier slot, the quote picks the most specific scope match (model &gt; range &gt; brand &gt; module &gt; unrestricted).</p>
                             </div>
                         )}
+                    </div>
+
+                    {/* v1.11 follow-up — scope allowlists. Per-range, per-model,
+                        per-brand, per-module overrides + soft use-case tag.
+                        Empty = applies everywhere (the org-wide fallback). */}
+                    <div className="rounded-xl border-2 p-3 space-y-3 bg-slate-50/40">
+                        <div>
+                            <p className="text-xs font-semibold">Scope — where this package applies</p>
+                            <p className="text-[10px] text-muted-foreground leading-tight">
+                                Leave blank to apply org-wide (the fallback). Add IDs to override per range / model / brand / module. Comma-separated.
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Ranges</label>
+                                <Input value={rangeIdsCsv} onChange={e => setRangeIdsCsv(e.target.value)} placeholder="e.g., sport, patrol" className="rounded-lg border-2 h-8 text-xs" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Models</label>
+                                <Input value={modelIdsCsv} onChange={e => setModelIdsCsv(e.target.value)} placeholder="e.g., sp560, cl380" className="rounded-lg border-2 h-8 text-xs" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Brands</label>
+                                <Input value={brandIdsCsv} onChange={e => setBrandIdsCsv(e.target.value)} placeholder="vendor IDs" className="rounded-lg border-2 h-8 text-xs" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Modules</label>
+                                <Input value={moduleIdsCsv} onChange={e => setModuleIdsCsv(e.target.value)} placeholder="module IDs" className="rounded-lg border-2 h-8 text-xs" />
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Use case (soft tag)</label>
+                            <Select value={useCase || 'none'} onValueChange={v => setUseCase(v === 'none' ? '' : v as FitUpUseCase)}>
+                                <SelectTrigger className="rounded-lg border-2 h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">No tag — any use case</SelectItem>
+                                    {USE_CASES.map(uc => (
+                                        <SelectItem key={uc} value={uc}>{USE_CASE_LABEL[uc]}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-[10px] text-muted-foreground">Salesperson flips the use-case at Step 5; the matching variant gets the Suggested badge.</p>
+                        </div>
                     </div>
 
                     <div className="space-y-1.5">

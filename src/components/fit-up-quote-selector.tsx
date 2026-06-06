@@ -84,25 +84,81 @@ export interface FitUpItem {
     oftenPairedWith?: string[];
 }
 
+export type FitUpUseCase = 'offshore' | 'coastal' | 'inland' | 'tender';
+export const USE_CASES: FitUpUseCase[] = ['offshore', 'coastal', 'inland', 'tender'];
+export const USE_CASE_LABEL: Record<FitUpUseCase, string> = {
+    offshore: 'Offshore',
+    coastal: 'Coastal',
+    inland: 'Inland',
+    tender: 'Tender',
+};
+
 export interface FitUpPackage {
     id: string;
     name: string;
     description?: string | null;
     itemIds: string[];
-    /** v1.11 expansion-2 — package-level sell-price override. When set,
-     *  selecting the package on a quote charges THIS amount rather than
-     *  the sum of member items' sell prices. Operators use this for
-     *  bundled-discount packages ("Coastal Setup — $1,200 all-in"). The
-     *  override flows through to each line as a proportional discount
-     *  at finalize time so margin still allocates per item. Null = sum
-     *  of members (current behaviour). */
     packagePrice?: number | null;
-    /** v1.11 follow-up — marks a tier-defining bundle (Simple / Medium /
-     *  Complex). These render as the LARGE primary cards at the top of
-     *  Step 5; the rest of the catalog drops into a "Custom Fit-Up"
-     *  section below for à-la-carte additions. */
     isTierPackage?: boolean;
     tier?: Tier;
+    // v1.11 follow-up — scope allowlists. Empty = applies everywhere.
+    moduleIds?: string[];
+    brandIds?: string[];
+    rangeIds?: string[];
+    modelIds?: string[];
+    useCase?: FitUpUseCase | null;
+}
+
+/** Score a package's specificity for a given quote context. Higher score
+ *  = more specific match (model-level beats range-level beats unrestricted).
+ *  Returns null when the package doesn't match the context. */
+function packageMatchScore(
+    pkg: FitUpPackage,
+    ctx: { moduleId?: string; vendorId?: string; rangeId?: string; modelId?: string; useCase?: FitUpUseCase | null },
+): number | null {
+    // Each restriction must either be empty (no opinion) or include the
+    // current ctx value. Otherwise reject.
+    const checks: [string[] | undefined, string | undefined, number][] = [
+        [pkg.moduleIds, ctx.moduleId, 1],
+        [pkg.brandIds, ctx.vendorId, 2],
+        [pkg.rangeIds, ctx.rangeId, 4],
+        [pkg.modelIds, ctx.modelId, 8],
+    ];
+    let score = 0;
+    for (const [allowlist, value, weight] of checks) {
+        if (allowlist && allowlist.length > 0) {
+            if (!value || !allowlist.includes(value)) return null;
+            score += weight;
+        }
+    }
+    // Use-case is a soft layer. Matching = +score, mismatching = reject.
+    if (pkg.useCase) {
+        if (ctx.useCase && pkg.useCase === ctx.useCase) score += 16;
+        else if (ctx.useCase && pkg.useCase !== ctx.useCase) return null;
+        // ctx.useCase null = no opinion → use-case-tagged packages can still match
+    }
+    return score;
+}
+
+/** Pick the most-specific tier package for each Simple/Medium/Complex slot
+ *  given the current quote context. Falls back to the org-wide unrestricted
+ *  package when no override matches. */
+export function resolveTierPackages(
+    packages: FitUpPackage[],
+    ctx: { moduleId?: string; vendorId?: string; rangeId?: string; modelId?: string; useCase?: FitUpUseCase | null },
+): Record<Tier, FitUpPackage | null> {
+    const out: Record<Tier, FitUpPackage | null> = { simple: null, medium: null, complex: null };
+    const bestScore: Record<Tier, number> = { simple: -1, medium: -1, complex: -1 };
+    for (const pkg of packages) {
+        if (!pkg.isTierPackage || !pkg.tier || !TIERS.includes(pkg.tier)) continue;
+        const score = packageMatchScore(pkg, ctx);
+        if (score == null) continue;
+        if (score > bestScore[pkg.tier]) {
+            bestScore[pkg.tier] = score;
+            out[pkg.tier] = pkg;
+        }
+    }
+    return out;
 }
 
 /**
@@ -259,6 +315,11 @@ export function FitUpQuoteSelector({
     // primary surface. Auto-opens once the operator picks any item that
     // isn't part of a tier package (so their work stays visible).
     const [customOpen, setCustomOpen] = useState(false);
+    /** v1.11 follow-up — salesperson-flipped use case. When set, the tier
+     *  resolver filters / prefers packages tagged with that use case (so
+     *  e.g. "Offshore" reveals the offshore-specific Complex package over
+     *  the generic Complex package). Null = no opinion. */
+    const [useCase, setUseCase] = useState<FitUpUseCase | null>(null);
 
     // Boat-level complexity from catalog wins; HP heuristic is the fallback.
     // 'auto' on the boat means "let HP decide" → defer to motorHp path.
@@ -325,15 +386,18 @@ export function FitUpQuoteSelector({
         return (packages ?? []).filter(p => p.itemIds.some(id => ctxIds.has(id)));
     }, [packages, moduleFiltered]);
 
-    // Tier packages render as 3 big primary cards in fixed Simple → Medium
-    // → Complex order. Anything else is a "bonus" package shown under them.
-    const tierPackages = useMemo(() => {
-        const byTier = new Map<Tier, FitUpPackage>();
-        for (const p of relevantPackages) {
-            if (p.isTierPackage && p.tier && TIERS.includes(p.tier)) byTier.set(p.tier, p);
-        }
-        return TIERS.map(t => byTier.get(t) ?? null);
-    }, [relevantPackages]);
+    // Tier packages — pick the MOST SPECIFIC matching package per slot
+    // (model > range > brand > module > unrestricted), AND-combined with
+    // the salesperson-flipped use case. Falls back to the org-wide
+    // unrestricted Simple/Medium/Complex when no override matches.
+    const tierPackagesMap = useMemo(() => resolveTierPackages(
+        relevantPackages,
+        { moduleId, vendorId, rangeId, modelId, useCase },
+    ), [relevantPackages, moduleId, vendorId, rangeId, modelId, useCase]);
+    const tierPackages = useMemo(
+        () => TIERS.map(t => tierPackagesMap[t]),
+        [tierPackagesMap],
+    );
     const bonusPackages = useMemo(
         () => relevantPackages.filter(p => !p.isTierPackage),
         [relevantPackages],
@@ -379,6 +443,42 @@ export function FitUpQuoteSelector({
                     </Badge>
                 )}
             </div>
+
+            {/* Use-case chips — salesperson flips one to pull in scope-tagged
+                variants (Offshore-specific Complex package, etc.). Only renders
+                when the org has actually tagged ≥1 package with a use case. */}
+            {(() => {
+                const taggedCount = relevantPackages.filter(p => p.useCase).length;
+                if (taggedCount === 0) return null;
+                return (
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Use case</span>
+                        <button
+                            type="button"
+                            onClick={() => setUseCase(null)}
+                            className={cn(
+                                'rounded-full px-2.5 py-0.5 text-[10px] font-bold border',
+                                useCase == null ? 'bg-primary text-white border-primary' : 'bg-white border-slate-200 text-slate-700 hover:border-slate-400',
+                            )}
+                        >
+                            Any
+                        </button>
+                        {USE_CASES.map(uc => (
+                            <button
+                                key={uc}
+                                type="button"
+                                onClick={() => setUseCase(uc)}
+                                className={cn(
+                                    'rounded-full px-2.5 py-0.5 text-[10px] font-bold border',
+                                    useCase === uc ? 'bg-primary text-white border-primary' : 'bg-white border-slate-200 text-slate-700 hover:border-slate-400',
+                                )}
+                            >
+                                {USE_CASE_LABEL[uc]}
+                            </button>
+                        ))}
+                    </div>
+                );
+            })()}
 
             {/* PRIMARY — 3 tier package cards. Pick one.
                 Always 3-col so the salesperson sees the three tiers at a
