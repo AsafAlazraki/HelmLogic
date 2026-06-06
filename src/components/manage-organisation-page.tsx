@@ -47,6 +47,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
 import { ContentBlockManager } from '@/components/content-block-manager';
+import { DocumentDefaultsCard } from '@/components/document-defaults-card';
 import { EmailTemplatesTab } from '@/components/email-template-manager';
 import { SharePointConfigEditor } from '@/components/sharepoint-config-editor';
 import { FitUpCatalogManager } from '@/components/fit-up-catalog-manager';
@@ -776,6 +777,13 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                     </div>
                                 </CardHeader>
                             </Card>
+
+                            {/* v1.11 follow-up — Document Defaults card. Org-level
+                                deposit / payment schedule / quote validity that
+                                cascade onto new quotes + contracts. */}
+                            {orgId && organisation && (
+                                <DocumentDefaultsCard organisationId={orgId} organisation={organisation} />
+                            )}
 
                             {/* v1.7 (1.8.5) — Document Templates is the unified surface for
                                 Quote + Contract content. Sub-tabs filter the same content-block
