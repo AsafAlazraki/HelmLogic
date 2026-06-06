@@ -373,7 +373,16 @@ export function CatalogExportImport({ organisationId }: CatalogExportImportProps
 
                 const modelsSnap = await getDocs(collection(firestore, 'data-warehouse', vDoc.id, 'ranges', rDoc.id, 'models'));
                 for (const mDoc of modelsSnap.docs) {
-                    const m = mDoc.data();
+                    const m = mDoc.data() as any;
+                    // v1.11 follow-up — wide model row: specs + registration +
+                    // standard features + trailer assignments + fit-up
+                    // complexity all flat so the boat can be edited in Excel.
+                    const specs: any[] = Array.isArray(m.specifications?.otherSpecs) ? m.specifications.otherSpecs : [];
+                    const specBy = (re: RegExp) => specs.find(s => re.test(String(s?.label || '')))?.value ?? '';
+                    const stdFeatures: string[] = Array.isArray(m.standardFeatures) ? m.standardFeatures : [];
+                    const trailerAssignments: any[] = Array.isArray(m.trailerAssignments) ? m.trailerAssignments : [];
+                    const motorCfg = m.specifications?.motorConfigurations?.[0]?.engines?.[0] ?? {};
+                    const reg = m.registration ?? {};
                     modelRows.push({
                         vendorId: vDoc.id,
                         rangeId: rDoc.id,
@@ -382,11 +391,40 @@ export function CatalogExportImport({ organisationId }: CatalogExportImportProps
                         modelCode: m.modelCode ?? '',
                         cost: m.cost ?? '',
                         sellPriceExclGst: m.sellPriceExclGst ?? '',
+                        coverImageUrl: m.coverImageUrl ?? '',
+                        // Specs
+                        overallLength: specBy(/overall length|length overall|\blength\b/i),
+                        overallBeam: specBy(/beam/i),
+                        tubeDiameter: specBy(/tube/i),
+                        deadrise: specBy(/deadrise/i),
+                        dryWeight: specBy(/dry weight|hull weight|\bweight\b/i),
+                        maxLoad: specBy(/max load|load capacity/i),
+                        persons: specBy(/persons|capacity|people/i),
+                        fuelTank: specBy(/fuel/i),
+                        // Motor compatibility
+                        motorMinHp: motorCfg.minHp ?? '',
+                        motorMaxHp: motorCfg.maxHp ?? '',
+                        motorRecommendedHp: motorCfg.recommendedHp ?? '',
+                        // Registration prices
+                        regPrice12Months: reg.price12Months ?? '',
+                        regStickerPrice: reg.stickerPrice ?? '',
+                        regTenderToStickerPrice: reg.tenderToStickerPrice ?? '',
+                        regTrailerPrice12Months: reg.trailerPrice12Months ?? '',
+                        // Standard features (pipe-separated; round-trippable)
+                        standardFeatures: stdFeatures.join('|'),
+                        standardFeaturesCount: stdFeatures.length,
+                        // Trailer assignments — pipe-separated trailerId|brandVendorId pairs
+                        trailerAssignments: trailerAssignments.map(t => `${t?.trailerId ?? ''}@${t?.brandVendorId ?? ''}`).filter(s => s !== '@').join('|'),
+                        trailerAssignmentsCount: trailerAssignments.length,
+                        defaultTrailerId: trailerAssignments.find(t => t?.isDefault)?.trailerId ?? trailerAssignments[0]?.trailerId ?? '',
+                        // Fit-up complexity (v1.11 follow-up — drives Step 5 Suggested badge)
+                        fitUpComplexity: m.fitUpComplexity ?? 'auto',
                     });
 
                     const variantsSnap = await getDocs(collection(firestore, 'data-warehouse', vDoc.id, 'ranges', rDoc.id, 'models', mDoc.id, 'variants'));
                     variantsSnap.forEach(varDoc => {
-                        const v2 = varDoc.data();
+                        const v2 = varDoc.data() as any;
+                        const pl = v2.priceLevels ?? {};
                         variantRows.push({
                             vendorId: vDoc.id,
                             rangeId: rDoc.id,
@@ -396,8 +434,17 @@ export function CatalogExportImport({ organisationId }: CatalogExportImportProps
                             sku: v2.sku ?? '',
                             material: v2.material ?? '',
                             color: v2.color ?? '',
+                            colorName: v2.colorName ?? '',
                             cost: v2.cost ?? '',
                             sellPriceExclGst: v2.sellPriceExclGst ?? '',
+                            imageUrl: v2.imageUrl ?? '',
+                            // v1.11 follow-up — every price level on the variant so
+                            // an operator can audit / adjust per-tier pricing in Excel.
+                            hull_cash: pl.hull_cash ?? '',
+                            hull_trade: pl.hull_trade ?? '',
+                            hull_subdealer: pl.hull_subdealer ?? '',
+                            hull_commercial: pl.hull_commercial ?? '',
+                            hull_boating_alliance: pl.hull_boating_alliance ?? '',
                         });
                     });
 
