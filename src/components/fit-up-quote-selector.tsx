@@ -31,7 +31,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Wrench, Check, Loader2, Search, Package, Plus, Minus, DollarSign, StickyNote, X } from 'lucide-react';
+import { Wrench, Check, Loader2, Search, Package, Plus, Minus, DollarSign, StickyNote, X, ChevronDown, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TIERS = ['simple', 'medium', 'complex'] as const;
@@ -97,6 +97,12 @@ export interface FitUpPackage {
      *  at finalize time so margin still allocates per item. Null = sum
      *  of members (current behaviour). */
     packagePrice?: number | null;
+    /** v1.11 follow-up — marks a tier-defining bundle (Simple / Medium /
+     *  Complex). These render as the LARGE primary cards at the top of
+     *  Step 5; the rest of the catalog drops into a "Custom Fit-Up"
+     *  section below for à-la-carte additions. */
+    isTierPackage?: boolean;
+    tier?: Tier;
 }
 
 /**
@@ -227,10 +233,12 @@ export function FitUpQuoteSelector({
     );
     const { data: packages } = useCollection<FitUpPackage>(packagesRef);
 
-    const [tierFilter, setTierFilter] = useState<Tier | 'all'>('all');
     const [categoryFilter, setCategoryFilter] = useState<string | 'all'>('all');
-    const [suggestedOnly, setSuggestedOnly] = useState(false);
     const [search, setSearch] = useState('');
+    // The custom-items section is collapsed by default — packages are the
+    // primary surface. Auto-opens once the operator picks any item that
+    // isn't part of a tier package (so their work stays visible).
+    const [customOpen, setCustomOpen] = useState(false);
 
     const suggestedTier = useMemo(() => suggestedTierForMotorHp(motorHp), [motorHp]);
 
@@ -260,11 +268,9 @@ export function FitUpQuoteSelector({
 
     const filtered = useMemo(() => {
         let list = moduleFiltered;
-        if (tierFilter !== 'all') list = list.filter(i => i.tier === tierFilter);
         if (categoryFilter !== 'all') {
             list = list.filter(i => (i.category ?? '').trim().toLowerCase() === categoryFilter.toLowerCase());
         }
-        if (suggestedOnly && suggestedTier) list = list.filter(i => i.tier === suggestedTier);
         const q = search.trim().toLowerCase();
         if (q) {
             list = list.filter(i =>
@@ -275,15 +281,7 @@ export function FitUpQuoteSelector({
             );
         }
         return list;
-    }, [moduleFiltered, tierFilter, categoryFilter, suggestedOnly, suggestedTier, search]);
-
-    const tierCounts = useMemo(() => {
-        const counts: Record<Tier, number> = { simple: 0, medium: 0, complex: 0 };
-        for (const item of moduleFiltered) {
-            if (TIERS.includes(item.tier)) counts[item.tier]++;
-        }
-        return counts;
-    }, [moduleFiltered]);
+    }, [moduleFiltered, categoryFilter, search]);
 
     const selectedSet = useMemo(() => new Set(selections.map(s => s.item.id)), [selections]);
     const itemById = useMemo(() => {
@@ -300,6 +298,20 @@ export function FitUpQuoteSelector({
         return (packages ?? []).filter(p => p.itemIds.some(id => ctxIds.has(id)));
     }, [packages, moduleFiltered]);
 
+    // Tier packages render as 3 big primary cards in fixed Simple → Medium
+    // → Complex order. Anything else is a "bonus" package shown under them.
+    const tierPackages = useMemo(() => {
+        const byTier = new Map<Tier, FitUpPackage>();
+        for (const p of relevantPackages) {
+            if (p.isTierPackage && p.tier && TIERS.includes(p.tier)) byTier.set(p.tier, p);
+        }
+        return TIERS.map(t => byTier.get(t) ?? null);
+    }, [relevantPackages]);
+    const bonusPackages = useMemo(
+        () => relevantPackages.filter(p => !p.isTierPackage),
+        [relevantPackages],
+    );
+
     if (isLoading) {
         return (
             <div className="flex justify-center py-12">
@@ -308,8 +320,7 @@ export function FitUpQuoteSelector({
         );
     }
 
-    const total = moduleFiltered.length;
-    if (total === 0) {
+    if (moduleFiltered.length === 0) {
         return (
             <div className="py-12 text-center border-2 border-dashed rounded-xl opacity-30">
                 <Wrench className="h-8 w-8 mx-auto mb-2" />
@@ -329,87 +340,56 @@ export function FitUpQuoteSelector({
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
-                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white flex items-center gap-2">
-                    <Wrench className="h-3.5 w-3.5" />
-                    Fit-Up & Rigging
+            <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
+                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white flex items-center gap-2 min-w-0">
+                    <Wrench className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Fit-Up & Rigging</span>
                 </h3>
-                <div className="ml-auto flex items-center gap-1 flex-wrap">
-                    {suggestedTier && (
-                        <FilterChip active={suggestedOnly} onClick={() => setSuggestedOnly(s => !s)}>
-                            ✦ Suggested ({TIER_LABEL[suggestedTier]})
-                        </FilterChip>
-                    )}
-                    <FilterChip active={tierFilter === 'all'} onClick={() => setTierFilter('all')}>
-                        All ({total})
-                    </FilterChip>
-                    {TIERS.map(tier => (
-                        <FilterChip key={tier} active={tierFilter === tier} onClick={() => setTierFilter(tier)}>
-                            {TIER_LABEL[tier]} ({tierCounts[tier]})
-                        </FilterChip>
-                    ))}
-                </div>
-            </div>
-
-            {/* Search + category chips */}
-            <div className="space-y-2">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        placeholder="Search fit-up items by name, description, or notes…"
-                        className="pl-9 h-9 rounded-xl border-2 text-xs"
-                    />
-                    {search && (
-                        <button
-                            onClick={() => setSearch('')}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded"
-                            aria-label="Clear search"
-                        >
-                            <X className="h-3 w-3" />
-                        </button>
-                    )}
-                </div>
-
-                {categories.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 items-center">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Category</span>
-                        <button
-                            onClick={() => setCategoryFilter('all')}
-                            className={cn(
-                                'rounded-full px-2.5 py-0.5 text-[10px] font-bold border',
-                                categoryFilter === 'all' ? 'bg-primary text-white border-primary' : 'bg-white border-slate-200 text-slate-700 hover:border-slate-400',
-                            )}
-                        >
-                            All
-                        </button>
-                        {categories.map(cat => (
-                            <button
-                                key={cat}
-                                onClick={() => setCategoryFilter(cat)}
-                                className={cn(
-                                    'rounded-full px-2.5 py-0.5 text-[10px] font-bold border',
-                                    categoryFilter === cat ? 'bg-primary text-white border-primary' : 'bg-white border-slate-200 text-slate-700 hover:border-slate-400',
-                                )}
-                            >
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
+                {suggestedTier && (
+                    <Badge variant="secondary" className="ml-auto bg-white/15 text-white border-white/20 text-[8px] font-black uppercase tracking-widest gap-1">
+                        <Sparkles className="h-2.5 w-2.5" /> {TIER_LABEL[suggestedTier]} suggested
+                    </Badge>
                 )}
             </div>
 
-            {/* Packages strip — only when packages exist + at least one is relevant in context. */}
-            {relevantPackages.length > 0 && (
-                <div className="rounded-2xl border-2 bg-slate-50/60 p-3">
-                    <div className="flex items-center gap-2 mb-2">
+            {/* PRIMARY — 3 big tier package cards. Pick one. */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+                {tierPackages.map((pkg, idx) => {
+                    const tier = TIERS[idx];
+                    if (!pkg) {
+                        return (
+                            <div key={tier} className="rounded-2xl border-2 border-dashed border-slate-200 p-4 bg-slate-50/40 flex flex-col gap-2 opacity-60">
+                                <Badge variant="outline" className={`${TIER_TONE[tier]} text-[9px] font-black uppercase tracking-widest w-fit`}>
+                                    {TIER_LABEL[tier]} fit-up
+                                </Badge>
+                                <p className="text-[10px] font-bold text-slate-500 italic">Not configured for this org yet — add a {TIER_LABEL[tier].toLowerCase()} package in Manage → Fit-Up Catalog → Packages.</p>
+                            </div>
+                        );
+                    }
+                    return (
+                        <TierPackageCard
+                            key={pkg.id}
+                            pkg={pkg}
+                            tier={tier}
+                            isSuggested={suggestedTier === tier}
+                            itemById={itemById}
+                            selectedSet={selectedSet}
+                            onAddPackage={onAddPackage}
+                        />
+                    );
+                })}
+            </div>
+
+            {/* Bonus packages — non-tier curated bundles (e.g. Coastal Setup) */}
+            {bonusPackages.length > 0 && (
+                <div className="rounded-2xl border-2 bg-slate-50/40 p-3 sm:p-4 space-y-2">
+                    <div className="flex items-center gap-2">
                         <Package className="h-3.5 w-3.5 text-slate-700" />
-                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-700">Packages — one click, multiple items</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-700">Bonus bundles — add on top of any tier</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        {relevantPackages.map(pkg => {
+                        {bonusPackages.map(pkg => {
                             const resolvedItems = pkg.itemIds.map(id => itemById.get(id)).filter(Boolean) as FitUpItem[];
                             const allOn = resolvedItems.length > 0 && resolvedItems.every(i => selectedSet.has(i.id));
                             const catalogTotal = resolvedItems.reduce((a, i) => a + resolveFitUpSell(i), 0);
@@ -418,6 +398,7 @@ export function FitUpQuoteSelector({
                             return (
                                 <button
                                     key={pkg.id}
+                                    type="button"
                                     onClick={() => onAddPackage(resolvedItems, hasPackagePrice ? pkg.packagePrice! : null)}
                                     className={cn(
                                         'flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-left transition-colors',
@@ -431,7 +412,7 @@ export function FitUpQuoteSelector({
                                         <span className={cn('text-[9px]', allOn ? 'text-white/80' : 'text-muted-foreground')}>
                                             {resolvedItems.length} item{resolvedItems.length === 1 ? '' : 's'} · ${displayTotal.toLocaleString()}
                                             {hasPackagePrice && (
-                                                <span className={cn('ml-1 font-bold', allOn ? 'text-amber-200' : 'text-amber-700')} title="Package price overrides the catalog sum proportionally">
+                                                <span className={cn('ml-1 font-bold', allOn ? 'text-amber-200' : 'text-amber-700')} title="Bundle price overrides catalog sum">
                                                     (bundle)
                                                 </span>
                                             )}
@@ -445,59 +426,122 @@ export function FitUpQuoteSelector({
                 </div>
             )}
 
-            {filtered.length === 0 ? (
-                <div className="py-12 text-center border-2 border-dashed rounded-xl opacity-50">
-                    <Search className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                    <p className="text-[10px] text-muted-foreground">No items match the current filters.</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-2 gap-4">
-                    {filtered.map(item => {
-                        const isSelected = selectedSet.has(item.id);
-                        const sell = resolveFitUpSell(item);
-                        return (
-                            <button
-                                key={item.id}
-                                onClick={() => onToggle(item)}
-                                className={cn(
-                                    'flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1 relative text-left',
-                                    isSelected ? 'bg-primary/5 border-primary shadow-md ring-2 ring-primary/20' : 'hover:border-primary/20',
-                                )}
-                            >
-                                {isSelected && (
-                                    <div className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-primary text-white rounded-full px-2 py-0.5">
-                                        <Check className="h-3 w-3" />
-                                        <span className="text-[7px] font-black uppercase tracking-wide">Added</span>
-                                    </div>
-                                )}
-                                <div className="p-4 flex flex-col gap-2 flex-grow">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                        <Badge variant="outline" className={`${TIER_TONE[item.tier]} text-[9px] font-black uppercase tracking-widest`}>
-                                            {TIER_LABEL[item.tier]}
-                                        </Badge>
-                                        {item.category && (
-                                            <Badge variant="outline" className="text-[9px] font-semibold bg-slate-50 text-slate-700 border-slate-200">
-                                                {item.category}
-                                            </Badge>
-                                        )}
-                                    </div>
-                                    <p className={cn('text-[11px] font-black uppercase tracking-tight leading-tight', isSelected ? 'text-primary' : 'text-slate-900')}>
-                                        {item.name}
-                                    </p>
-                                    {item.notes && (
-                                        <p className="text-[9px] text-muted-foreground leading-tight line-clamp-2">
-                                            {item.notes}
-                                        </p>
-                                    )}
-                                    <p className={cn('text-[9px] font-black uppercase tracking-widest mt-auto', isSelected ? 'text-primary/70' : 'text-slate-400')}>
-                                        ${sell.toLocaleString()}
-                                    </p>
-                                </div>
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
+            {/* CUSTOM section — à-la-carte items. Collapsed by default
+                (matches the "pick one of three packages" primary flow), opens
+                when the operator wants to add or replace individual items. */}
+            <div className="rounded-2xl border-2 overflow-hidden">
+                <button
+                    type="button"
+                    onClick={() => setCustomOpen(o => !o)}
+                    className={cn(
+                        'w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors',
+                        customOpen ? 'bg-primary text-white' : 'bg-white hover:bg-slate-50',
+                    )}
+                >
+                    <div className="flex items-center gap-2 min-w-0">
+                        <Wrench className="h-3.5 w-3.5 shrink-0" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.25em] truncate">Custom Fit-Up — pick individual items</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <span className={cn('text-[9px] font-black uppercase tracking-widest', customOpen ? 'text-white/70' : 'text-muted-foreground')}>
+                            {moduleFiltered.length} item{moduleFiltered.length === 1 ? '' : 's'} available
+                        </span>
+                        <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', customOpen && 'rotate-180')} />
+                    </div>
+                </button>
+
+                {customOpen && (
+                    <div className="p-3 sm:p-4 space-y-3 bg-slate-50/40 border-t-2">
+                        {/* Search + category chips — only when custom is open */}
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                            <Input
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                placeholder="Search fit-up items by name, description, or notes…"
+                                className="pl-9 h-9 rounded-xl border-2 text-xs"
+                            />
+                            {search && (
+                                <button
+                                    onClick={() => setSearch('')}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-100 rounded"
+                                    aria-label="Clear search"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            )}
+                        </div>
+
+                        {categories.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 items-center">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Category</span>
+                                <button onClick={() => setCategoryFilter('all')} className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold border', categoryFilter === 'all' ? 'bg-primary text-white border-primary' : 'bg-white border-slate-200 text-slate-700 hover:border-slate-400')}>
+                                    All
+                                </button>
+                                {categories.map(cat => (
+                                    <button key={cat} onClick={() => setCategoryFilter(cat)} className={cn('rounded-full px-2.5 py-0.5 text-[10px] font-bold border', categoryFilter === cat ? 'bg-primary text-white border-primary' : 'bg-white border-slate-200 text-slate-700 hover:border-slate-400')}>
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {filtered.length === 0 ? (
+                            <div className="py-10 text-center border-2 border-dashed rounded-xl opacity-50">
+                                <Search className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                                <p className="text-[10px] text-muted-foreground">No items match the current filters.</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                {filtered.map(item => {
+                                    const isSelected = selectedSet.has(item.id);
+                                    const sell = resolveFitUpSell(item);
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => onToggle(item)}
+                                            className={cn(
+                                                'flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-md border-transparent h-full p-1 relative text-left',
+                                                isSelected ? 'bg-primary/5 border-primary shadow-md ring-2 ring-primary/20' : 'hover:border-primary/20',
+                                            )}
+                                        >
+                                            {isSelected && (
+                                                <div className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-primary text-white rounded-full px-2 py-0.5">
+                                                    <Check className="h-3 w-3" />
+                                                    <span className="text-[7px] font-black uppercase tracking-wide">Added</span>
+                                                </div>
+                                            )}
+                                            <div className="p-4 flex flex-col gap-2 flex-grow">
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <Badge variant="outline" className={`${TIER_TONE[item.tier]} text-[9px] font-black uppercase tracking-widest`}>
+                                                        {TIER_LABEL[item.tier]}
+                                                    </Badge>
+                                                    {item.category && (
+                                                        <Badge variant="outline" className="text-[9px] font-semibold bg-slate-50 text-slate-700 border-slate-200">
+                                                            {item.category}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <p className={cn('text-[11px] font-black uppercase tracking-tight leading-tight', isSelected ? 'text-primary' : 'text-slate-900')}>
+                                                    {item.name}
+                                                </p>
+                                                {item.notes && (
+                                                    <p className="text-[9px] text-muted-foreground leading-tight line-clamp-2">
+                                                        {item.notes}
+                                                    </p>
+                                                )}
+                                                <p className={cn('text-[9px] font-black uppercase tracking-widest mt-auto', isSelected ? 'text-primary/70' : 'text-slate-400')}>
+                                                    ${sell.toLocaleString()}
+                                                </p>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
 
             {/* v1.11 expansion — Selected items detail: qty stepper,
                 price override, per-quote note. Operator-only — none of
@@ -651,25 +695,86 @@ function SelectionRow({
     );
 }
 
-function FilterChip({
-    active, onClick, children,
+function TierPackageCard({
+    pkg, tier, isSuggested, itemById, selectedSet, onAddPackage,
 }: {
-    active: boolean;
-    onClick: () => void;
-    children: React.ReactNode;
+    pkg: FitUpPackage;
+    tier: Tier;
+    isSuggested: boolean;
+    itemById: Map<string, FitUpItem>;
+    selectedSet: Set<string>;
+    onAddPackage: (items: FitUpItem[], packagePrice: number | null) => void;
 }) {
+    const resolvedItems = pkg.itemIds
+        .map(id => itemById.get(id))
+        .filter(Boolean) as FitUpItem[];
+    const allOn = resolvedItems.length > 0 && resolvedItems.every(i => selectedSet.has(i.id));
+    const someOn = !allOn && resolvedItems.some(i => selectedSet.has(i.id));
+    const catalogTotal = resolvedItems.reduce((a, i) => a + resolveFitUpSell(i), 0);
+    const hasOverride = pkg.packagePrice != null && pkg.packagePrice >= 0;
+    const displayTotal = hasOverride ? pkg.packagePrice! : catalogTotal;
+
     return (
-        <Button
+        <button
             type="button"
-            size="sm"
-            variant={active ? 'secondary' : 'ghost'}
-            onClick={onClick}
+            onClick={() => onAddPackage(resolvedItems, hasOverride ? pkg.packagePrice! : null)}
             className={cn(
-                'h-6 px-2 rounded-full text-[9px] font-black uppercase tracking-widest',
-                active ? 'bg-white text-primary' : 'text-white/80 hover:text-white hover:bg-white/10',
+                'group relative flex flex-col text-left border-4 rounded-[1.75rem] overflow-hidden transition-all bg-white shadow-xl p-5 gap-3 min-h-[16rem]',
+                allOn
+                    ? 'border-primary ring-4 ring-primary/15 bg-primary/5'
+                    : someOn
+                        ? 'border-primary/40 ring-2 ring-primary/10'
+                        : 'border-transparent hover:border-primary/30 hover:shadow-2xl',
             )}
         >
-            {children}
-        </Button>
+            {isSuggested && !allOn && (
+                <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-amber-400 text-amber-950 rounded-full px-2.5 py-1 shadow-md">
+                    <Sparkles className="h-3 w-3" />
+                    <span className="text-[8px] font-black uppercase tracking-widest">Suggested</span>
+                </div>
+            )}
+            {allOn && (
+                <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-primary text-white rounded-full px-2.5 py-1 shadow-md">
+                    <Check className="h-3 w-3" />
+                    <span className="text-[8px] font-black uppercase tracking-widest">All Added</span>
+                </div>
+            )}
+            <div className="flex items-center gap-2">
+                <Badge variant="outline" className={`${TIER_TONE[tier]} text-[9px] font-black uppercase tracking-widest`}>
+                    {TIER_LABEL[tier]} fit-up
+                </Badge>
+                {someOn && !allOn && (
+                    <Badge variant="outline" className="text-[8px] font-black uppercase border-primary/40 text-primary/70">
+                        Partial
+                    </Badge>
+                )}
+            </div>
+            <h4 className={cn('text-base sm:text-lg font-black uppercase tracking-tight leading-tight', allOn ? 'text-primary' : 'text-slate-900')}>
+                {pkg.name}
+            </h4>
+            {pkg.description && (
+                <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-3">
+                    {pkg.description}
+                </p>
+            )}
+            <div className="mt-auto pt-3 border-t border-dashed flex items-end justify-between gap-2">
+                <div className="flex flex-col">
+                    <span className="text-[8px] font-black uppercase tracking-[0.25em] text-muted-foreground">
+                        {resolvedItems.length} item{resolvedItems.length === 1 ? '' : 's'} included
+                    </span>
+                    <p className={cn('font-black italic text-xl tabular-nums', allOn ? 'text-primary' : 'text-slate-800')}>
+                        ${displayTotal.toLocaleString()}
+                    </p>
+                    {hasOverride && (
+                        <span className="text-[8px] font-black uppercase tracking-widest text-amber-700">
+                            Bundle price · saves ${(catalogTotal - displayTotal).toLocaleString()}
+                        </span>
+                    )}
+                </div>
+                <div className={cn('flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest', allOn ? 'text-primary' : 'text-slate-500 group-hover:text-primary transition-colors')}>
+                    {allOn ? <>Selected</> : <>Pick this<ChevronDown className="h-3 w-3 -rotate-90" /></>}
+                </div>
+            </div>
+        </button>
     );
 }
