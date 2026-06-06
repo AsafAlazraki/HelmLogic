@@ -47,23 +47,31 @@ test('Service Quoting — dashboard + create wizard with seeded catalogs', async
     await page.waitForTimeout(2000);
     await page.screenshot({ path: `${OUT}/02-wizard-step1.png`, fullPage: true });
 
-    // Step 1 customer fields
-    const customerInput = page.locator('input[placeholder*="customer" i], input[placeholder*="name" i]').first();
+    // Step 1 — four step tabs visible
+    const tabs = ['Customer', 'Operations', 'Parts', 'Review'];
+    for (const t of tabs) {
+        await expect(page.locator(`:text("${t}")`).first(), `${t} step indicator visible`).toBeVisible();
+    }
+    // Customer step has the John Smith placeholder
+    const customerInput = page.locator('input[placeholder="John Smith"]').first();
     await expect(customerInput, 'customer name input on step 1').toBeVisible({ timeout: 10000 });
     await customerInput.fill('Service Test Customer');
-    await page.waitForTimeout(500);
-
-    // Find a Next / Continue button if there is one
-    const nextBtn = page.locator('button:has-text("Next"), button:has-text("Continue")').first();
-    if (await nextBtn.isVisible().catch(() => false)) {
-        await nextBtn.click({ force: true });
-        await page.waitForTimeout(1500);
-        await page.screenshot({ path: `${OUT}/03-wizard-step2.png`, fullPage: true });
+    await page.waitForTimeout(400);
+    const vehicleInput = page.locator('input[placeholder*="Yamaha F150" i]').first();
+    if (await vehicleInput.isVisible().catch(() => false)) {
+        await vehicleInput.fill('Test Vessel');
+        await page.waitForTimeout(300);
     }
 
-    // Confirm seeded ops are visible somewhere in the wizard
-    const yamahaOp = await page.locator(':text("Yamaha"), :text("100hr")').count();
-    console.log('▶ Yamaha/100hr op references in wizard:', yamahaOp);
+    // Walk to Operations step
+    await page.locator('button:has-text("Next")').first().click({ force: true });
+    await page.waitForTimeout(2000);
+    await page.screenshot({ path: `${OUT}/03-wizard-ops.png`, fullPage: true });
+
+    // Confirm seeded ops render (we seeded YAM-100/YAM-200/WINTER/DIAG/IMP-REP)
+    const yamahaOp = await page.locator(':text("YAM-100"), :text("100hr Yamaha"), :text("Winterise")').count();
+    console.log('▶ seeded op references on Operations step:', yamahaOp);
+    expect(yamahaOp, 'seeded operations should render on the Operations step').toBeGreaterThan(0);
 
     console.log('▶ service quoting verified live');
 });
