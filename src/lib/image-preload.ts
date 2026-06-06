@@ -38,9 +38,36 @@ export type ImageLoadStatus =
  *  Round-11: shares the direct-then-proxy fallback with the status
  *  variant so the simpler call-sites (customer PDF download, finalize
  *  snapshot) get the proxy bypass too. */
-export async function fetchImageAsDataUrl(url: string): Promise<string | null> {
+/** v1.11 follow-up — route fetches through the weserv resizing proxy
+ *  when a `maxWidth` is provided. This was the missing piece that let
+ *  21MB Highfield CDN cover photos land in the PDF intact: the
+ *  preload pipeline fetched the *original* URL, base64'd the bytes,
+ *  then ProposalPDFDocument's pdfImg() returned the data URL as-is
+ *  (since it can't resize a data URL). Routing through weserv at
+ *  preload time means we fetch ~100KB instead of 21MB.
+ *
+ *  Falls back to the original URL when no maxWidth is requested (so
+ *  call sites that don't care about size — preview iframe, etc. —
+ *  keep their existing behaviour).
+ *
+ *  Data / SharePoint URLs short-circuit before this so the wrapping
+ *  only kicks in for real http(s) URLs. */
+const WESERV_BLOCKED = ['yamaha-motor.com.au', 'yamaha-motor.com'];
+function viaResizingProxy(url: string, maxWidth: number): string {
+    if (WESERV_BLOCKED.some(d => url.includes(d))) return url;
+    const noProto = url.replace(/^https?:\/\//i, '');
+    return `https://images.weserv.nl/?url=${encodeURIComponent(noProto)}&w=${maxWidth}&output=jpg&q=72`;
+}
+
+export interface FetchImageOpts {
+    /** When set, fetches the URL via the weserv resizing proxy so the
+     *  decoded data URL is at most `maxWidth` pixels wide. */
+    maxWidth?: number;
+}
+
+export async function fetchImageAsDataUrl(url: string, opts?: FetchImageOpts): Promise<string | null> {
     if (!url) return null;
-    const status = await fetchImageAsDataUrlWithStatus(url);
+    const status = await fetchImageAsDataUrlWithStatus(url, opts);
     return status.state === 'success' ? status.dataUrl : null;
 }
 
@@ -57,7 +84,7 @@ export async function fetchImageAsDataUrl(url: string): Promise<string | null> {
  * them as a data URL. This is what finally bypasses Firebase Storage
  * / Yamaha CDN / SharePoint not having CORS headers configured.
  */
-async function fetchImageAsDataUrlWithStatus(url: string): Promise<ImageLoadStatus> {
+async function fetchImageAsDataUrlWithStatus(url: string, opts?: FetchImageOpts): Promise<ImageLoadStatus> {
     if (url.startsWith('data:')) {
         return { state: 'success', url, dataUrl: url, bytes: url.length };
     }
@@ -78,11 +105,16 @@ async function fetchImageAsDataUrlWithStatus(url: string): Promise<ImageLoadStat
         };
     }
 
+    // v1.11 follow-up — wrap the URL with the weserv resizing proxy when a
+    // maxWidth was requested. Keeps the eventual data URL small so a 21MB
+    // Highfield CDN cover doesn't end up embedded full-resolution in the PDF.
+    const fetchUrl = opts?.maxWidth ? viaResizingProxy(url, opts.maxWidth) : url;
+
     // 1. Try direct fetch first (fast path for same-origin or CORS-friendly origins).
     let resp: Response | null = null;
     let directFailed = false;
     try {
-        resp = await fetch(url, { mode: 'cors' });
+        resp = await fetch(fetchUrl, { mode: 'cors' });
         if (!resp.ok) {
             // Non-OK from the direct fetch — try the proxy in case the proxy
             // can handle it (e.g. some origins return 401 to anonymous browser
@@ -99,7 +131,9 @@ async function fetchImageAsDataUrlWithStatus(url: string): Promise<ImageLoadStat
     // 2. CORS / direct-fetch failure: retry via the server-side proxy.
     if (!resp) {
         try {
-            const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(url)}`;
+            // Use the resized URL for the server-side proxy too — the proxy
+            // streams whatever weserv returns, so this stays consistent.
+            const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(fetchUrl)}`;
             resp = await fetch(proxyUrl);
             if (!resp.ok) {
                 // Try to parse a structured error from the proxy.
@@ -137,10 +171,13 @@ async function fetchImageAsDataUrlWithStatus(url: string): Promise<ImageLoadStat
  * URLs that fail to fetch are absent from the result so callers can
  * fall back to the original URL.
  */
-export async function preloadImages(urls: (string | null | undefined)[]): Promise<Map<string, string>> {
+export async function preloadImages(
+    urls: (string | null | undefined)[],
+    opts?: FetchImageOpts,
+): Promise<Map<string, string>> {
     const unique = Array.from(new Set(urls.filter((u): u is string => !!u && u.trim().length > 0)));
     const out = new Map<string, string>();
-    const results = await Promise.all(unique.map(async u => ({ url: u, data: await fetchImageAsDataUrl(u) })));
+    const results = await Promise.all(unique.map(async u => ({ url: u, data: await fetchImageAsDataUrl(u, opts) })));
     for (const r of results) {
         if (r.data) out.set(r.url, r.data);
     }

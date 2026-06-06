@@ -129,7 +129,12 @@ export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<Rende
         organisation?.secondaryLogoUrl,
         salespersonProfile?.photoUrl,
     ];
-    const dataUrls = await preloadImages(candidateUrls);
+    // v1.11 follow-up — route preload through the resizing proxy so a 21MB
+    // Highfield CDN cover ends up as ~100KB in the PDF, not 21MB. 1400px
+    // is wider than the A4 cover render target (~1200px) so we still get
+    // crisp prints. Smaller images pass through untouched (weserv is a no-op
+    // when the source is already smaller than the requested width).
+    const dataUrls = await preloadImages(candidateUrls, { maxWidth: 1400 });
 
     // 4. Swap URLs everywhere they appear, leaving original URLs intact
     // when preload couldn't resolve them (@react-pdf will silent-fail on
