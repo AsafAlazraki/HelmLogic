@@ -3,12 +3,14 @@
 
 import { useState, useMemo } from 'react';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useStorage } from '@/firebase/provider';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from './ui/badge';
 import Image from 'next/image';
-import { Ship, Wrench, Package, ShieldCheck, Globe, DollarSign, Save, Loader2, PlusCircle, Trash2 } from 'lucide-react';
+import { Ship, Wrench, Package, ShieldCheck, Globe, DollarSign, Save, Loader2, PlusCircle, Trash2, Upload, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { MasterDataBrowserDialog } from './master-data-browser-dialog';
@@ -18,11 +20,16 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 export function MotorConfigurationDetails({ motor, module, vendorId, dataSetId }: { motor: any, module: any, vendorId: string, dataSetId: string }) {
     const { toast } = useToast();
     const firestore = useFirestore();
+    const storage = useStorage();
     const [isSaving, setIsSaving] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    /** Local override so a fresh upload is reflected immediately without
+     *  waiting for the parent's motor doc to re-fetch. */
+    const [imageOverride, setImageOverride] = useState<string | null>(null);
     const [isBrowserOpen, setIsBrowserOpen] = useState(false);
     const [activeCategory, setActiveCategory] = useState<'Propeller' | 'Rigging' | 'Other'>('Other');
 
-    const imgPath = motor.SummaryImage || motor.imageUrl;
+    const imgPath = imageOverride ?? motor.SummaryImage ?? motor.imageUrl;
     const getImageUrl = (path: string) => {
         if (!path) return null;
         const clean = path.trim().replace(/\\/g, '/');
@@ -31,6 +38,47 @@ export function MotorConfigurationDetails({ motor, module, vendorId, dataSetId }
         return `https://www.yamaha-motor.com.au${prefix}${clean}`;
     };
     const imgUrl = getImageUrl(imgPath);
+
+    /** v1.11 follow-up — upload a motor product photo into Firebase Storage
+     *  and write the public URL onto SummaryImage. This is the data-side
+     *  fix for the Yamaha-Incapsula problem: their .ashx CDN blocks all
+     *  server-side fetch so the PDF can't pull a product photo, but once
+     *  it's mirrored to our Storage it just works. */
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file || !storage) return;
+        setIsUploading(true);
+        try {
+            const path = `data-warehouse/${vendorId}/motors/${motor.id}-${Date.now()}-${file.name}`;
+            const url = await uploadFileToStorage(storage, file, path);
+            await updateDoc(
+                doc(firestore, `data-warehouse/${vendorId}/dataSets/${dataSetId}/rows`, motor.id),
+                { SummaryImage: url, imageUrl: url, lastConfiguredAt: serverTimestamp() },
+            );
+            setImageOverride(url);
+            toast({ title: 'Photo uploaded', description: 'The motor catalog now uses your new photo.' });
+        } catch (err: any) {
+            console.error(err);
+            toast({ title: 'Upload failed', description: err?.message ?? 'Could not upload', variant: 'destructive' });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleClearImage = async () => {
+        if (!confirm('Remove the current motor photo? The PDF will fall back to a placeholder.')) return;
+        try {
+            await updateDoc(
+                doc(firestore, `data-warehouse/${vendorId}/dataSets/${dataSetId}/rows`, motor.id),
+                { SummaryImage: '', imageUrl: '' },
+            );
+            setImageOverride('');
+            toast({ title: 'Photo removed' });
+        } catch (err: any) {
+            toast({ title: 'Failed to remove', description: err?.message, variant: 'destructive' });
+        }
+    };
 
     const accessories = motor.masterAccessories || [];
 
@@ -113,10 +161,25 @@ export function MotorConfigurationDetails({ motor, module, vendorId, dataSetId }
                     <div className="grid md:grid-cols-3 gap-0">
                         <div className="relative aspect-video md:aspect-auto bg-white border-r-2 flex items-center justify-center p-8">
                             {imgUrl ? (
-                                <Image src={imgUrl} alt="Motor" fill className="object-contain p-6" />
+                                <Image src={imgUrl} alt="Motor" fill className="object-contain p-6" unoptimized />
                             ) : (
                                 <Ship className="h-24 w-24 opacity-10" />
                             )}
+                            {/* v1.11 follow-up — upload / replace overlay so operators
+                                can fix the Yamaha-CDN gap (Incapsula blocks server-side
+                                fetch; mirroring to our Storage lets the PDF render). */}
+                            <div className="absolute bottom-2 right-2 flex gap-2 z-10">
+                                <label className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 cursor-pointer transition-all ${isUploading ? 'bg-slate-200 text-slate-400 border-slate-200 cursor-wait' : 'bg-white text-primary border-primary/30 hover:bg-primary hover:text-white shadow-md'}`}>
+                                    {isUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                                    {imgUrl ? 'Replace' : 'Upload Photo'}
+                                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={isUploading} />
+                                </label>
+                                {imgUrl && !isUploading && (
+                                    <Button variant="ghost" size="sm" onClick={handleClearImage} className="h-7 px-3 rounded-full text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive hover:text-white">
+                                        <X className="h-3 w-3 mr-1" /> Remove
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                         <div className="md:col-span-2 p-8 space-y-6 flex flex-col justify-center">
                             <div className="flex flex-wrap items-center gap-3">

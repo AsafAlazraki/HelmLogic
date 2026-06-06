@@ -845,15 +845,26 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     }
                     const trailerOptions: any[] = quote.trailer && Array.isArray(quote.trailer.options) ? quote.trailer.options : [];
 
-                    // dealer fit — flatten + filter code-only labels
+                    // v1.11 follow-up — dealer fit is bucketed by scope (motor /
+                    // trailer / boat) so the right items appear under the right
+                    // build band. Older quotes without a scope field default to
+                    // 'boat' so they stay in the dedicated dealer-fit band.
                     const dealerGroups: any[] = Array.isArray(quote.dealerFit) ? quote.dealerFit : [];
-                    const dealerItems = dealerGroups.flatMap((g: any) => (Array.isArray(g?.items) ? g.items : []).map((it: any) => {
-                        const cand = [it.description, it.label, it.name].filter(Boolean) as string[];
-                        const real = cand.find(c => !isCodeOnlyLabel(c));
-                        return real ? { label: real, category: g?.category || g?.name || '', amount: it.sellPriceExclGst || 0 } : null;
-                    })).filter(Boolean) as any[];
+                    const dealerByScope: Record<'motor' | 'trailer' | 'boat', any[]> = { motor: [], trailer: [], boat: [] };
+                    dealerGroups.forEach((g: any) => {
+                        const scope: 'motor' | 'trailer' | 'boat' = (g?.scope === 'motor' || g?.scope === 'trailer') ? g.scope : 'boat';
+                        (Array.isArray(g?.items) ? g.items : []).forEach((it: any) => {
+                            const cand = [it.description, it.label, it.name].filter(Boolean) as string[];
+                            const real = cand.find(c => !isCodeOnlyLabel(c));
+                            if (!real) return;
+                            dealerByScope[scope].push({ label: real, category: g?.category || g?.name || '', amount: it.sellPriceExclGst || 0 });
+                        });
+                    });
                     const customDealerFit: any[] = Array.isArray(quote.customDealerFit) ? quote.customDealerFit : [];
-                    customDealerFit.forEach((it: any) => dealerItems.push({ label: it.name || it.label || 'Custom item', category: it.category || 'Custom', amount: it.sellPriceExclGst || it.amount || 0 }));
+                    customDealerFit.forEach((it: any) => dealerByScope.boat.push({ label: it.name || it.label || 'Custom item', category: it.category || 'Custom', amount: it.sellPriceExclGst || it.amount || 0 }));
+                    const dealerItems = dealerByScope.boat;
+                    const motorDealerItems = dealerByScope.motor;
+                    const trailerDealerItems = dealerByScope.trailer;
 
                     // fit-up — group by package
                     const fitSels: any[] = Array.isArray(quote.fitUpSelections) ? quote.fitUpSelections : [];
@@ -927,7 +938,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                         ].filter(s => s.value).map((s, i) => <SpecPill key={i} label={s.label} value={String(s.value)} />)}
                                     </View>
                                     {motorAccs.length > 0 && (
-                                        <View>
+                                        <View style={{ marginBottom: motorDealerItems.length > 0 ? 6 : 0 }}>
                                             <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: BRAND, marginBottom: 3 }}>Rigging & Accessories</Text>
                                             {motorAccs.map((a: any, i: number) => (
                                                 <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 1.5 }}>
@@ -942,19 +953,52 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                             ))}
                                         </View>
                                     )}
+                                    {/* Motor-scope dealer fit (v1.11 follow-up) — items the
+                                        operator picked under motor-specific dealer-fit
+                                        categories appear under the motor band, not in a
+                                        separate dump at the bottom. */}
+                                    {motorDealerItems.length > 0 && (
+                                        <View>
+                                            <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: BRAND, marginBottom: 3 }}>Motor Dealer Fit</Text>
+                                            {motorDealerItems.map((it: any, i: number) => (
+                                                <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 1.5 }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
+                                                        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: GREEN, marginRight: 4, flexShrink: 0 }} />
+                                                        <Text style={{ fontSize: 7.5, color: SLATE, flexShrink: 1 }}>{it.label}</Text>
+                                                    </View>
+                                                    <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: (it.amount || 0) > 0 ? NAVY : MUTED, marginLeft: 8 }}>
+                                                        {(it.amount || 0) > 0 ? currency(it.amount) : 'Incl.'}
+                                                    </Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    )}
                                 </BuildBand>
                             )}
 
-                            {/* ③ TRAILER */}
-                            {quote.trailer && (
+                            {/* ③ TRAILER — also shows trailer-scope dealer-fit items
+                                ("trailer dealer fit") under the trailer band. Image
+                                rendered when present + not a brand-logo URL. */}
+                            {quote.trailer && (() => {
+                                const rawTrailerImg = quote.trailer.imageUrl || tCatalog?.imageUrl || null;
+                                const brandLogo = quote.trailer.brandLogoUrl || '';
+                                const looksLikeBrandLogo = !!rawTrailerImg && (
+                                    rawTrailerImg === brandLogo
+                                    || /\/logos?\//i.test(rawTrailerImg)
+                                    || /[?&]logo=/i.test(rawTrailerImg)
+                                );
+                                const trailerBandImg = looksLikeBrandLogo ? undefined : pdfImg(rawTrailerImg, 400);
+                                return (
                                 <BuildBand
                                     n={++bandNo}
                                     title={`Trailer — ${quote.trailer.name || 'Trailer Package'}`}
                                     subtitle={quote.trailer.brand || tCatalog?.brandName || ''}
                                     price={currency(f.trailerTotal)}
+                                    image={trailerBandImg}
+                                    imagePlaceholder={<Text style={{ fontSize: 6, color: MUTED, textTransform: 'uppercase', letterSpacing: 1 }}>Trailer</Text>}
                                 >
                                     {trailerSpecPills.length > 0 && (
-                                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: trailerOptions.length > 0 ? 8 : 0 }}>
+                                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: (trailerOptions.length > 0 || trailerDealerItems.length > 0) ? 8 : 0 }}>
                                             {trailerSpecPills.map((s, i) => <SpecPill key={i} label={s.label} value={s.value} />)}
                                         </View>
                                     )}
@@ -974,8 +1018,28 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                             ))}
                                         </View>
                                     )}
+                                    {/* Trailer-scope dealer fit (v1.11 follow-up) — items
+                                        the operator picked under trailer-specific dealer-fit
+                                        categories live here under the trailer band. */}
+                                    {trailerDealerItems.length > 0 && (
+                                        <View style={{ marginTop: trailerOptions.length > 0 ? 6 : 0 }}>
+                                            <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: BRAND, marginBottom: 3 }}>Trailer Dealer Fit</Text>
+                                            {trailerDealerItems.map((it: any, i: number) => (
+                                                <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 1.5 }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
+                                                        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: GREEN, marginRight: 4, flexShrink: 0 }} />
+                                                        <Text style={{ fontSize: 7.5, color: SLATE, flexShrink: 1 }}>{it.label}</Text>
+                                                    </View>
+                                                    <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: (it.amount || 0) > 0 ? NAVY : MUTED, marginLeft: 8 }}>
+                                                        {(it.amount || 0) > 0 ? currency(it.amount) : 'Incl.'}
+                                                    </Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    )}
                                 </BuildBand>
-                            )}
+                                );
+                            })()}
 
                             {/* ④ DEALER FIT */}
                             {dealerItems.length > 0 && (

@@ -352,10 +352,27 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
             // blank — the "No Names on Dealer Fit Options" prod bug.
             // Both finalize + render now also have a code/SKU fallback so
             // a missing name never leaves a blank label.
-            dealerFit: (selectedDealerFitData || []).map((sel: any) => ({
+            // v1.11 follow-up — categoryNames lists are snapshotted so the PDF
+            // can route motor-specific + trailer-specific dealer-fit items to
+            // their build bands instead of lumping everything together.
+            motorDealerFitCategoryNames: Array.isArray((module as any)?.motorDealerFitCategories) ? (module as any).motorDealerFitCategories : [],
+            trailerDealerFitCategoryNames: Array.isArray((module as any)?.trailerDealerFitCategories) ? (module as any).trailerDealerFitCategories : [],
+            dealerFit: (selectedDealerFitData || []).map((sel: any) => {
+                const motorCats: string[] = Array.isArray((module as any)?.motorDealerFitCategories) ? (module as any).motorDealerFitCategories : [];
+                const trailerCats: string[] = Array.isArray((module as any)?.trailerDealerFitCategories) ? (module as any).trailerDealerFitCategories : [];
+                const cat = sel.category || '';
+                const scope = motorCats.some(c => c.toLowerCase() === cat.toLowerCase())
+                    ? 'motor'
+                    : trailerCats.some(c => c.toLowerCase() === cat.toLowerCase())
+                        ? 'trailer'
+                        : 'boat';
+                return ({
                 id: sel.id || null,
                 name: sel.name || 'Dealer Fit',
                 category: sel.category || null,
+                /** v1.11 follow-up — 'motor' / 'trailer' / 'boat' so PDF Your-Build
+                 *  bands can route the right accessories under the right component. */
+                scope,
                 items: (sel.items || []).map((i: any) => {
                     const d = i.data || {};
                     // Try every reasonable field name a CSV/xlsx import could carry.
@@ -396,7 +413,8 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                         imageUrl: d.imageLink || d['Image Link'] || d.imageUrl || d.image || d.SummaryImage || null,
                     };
                 }),
-            })),
+            });
+            }),
 
             // v1.11 (Epic 9.2.2 + v1.11 expansion) — Fit-Up snapshots.
             // Each line carries id + name + tier + cost + sellPrice +
