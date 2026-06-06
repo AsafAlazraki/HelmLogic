@@ -298,11 +298,26 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                 // version of the content manager.
                 const htmlEmpty = !html || !html.trim() || !html.replace(/<[^>]+>/g, '').trim();
                 if (blockType === 'terms-and-conditions' && htmlEmpty) {
+                    /* Substantial fallback T&Cs — the previous 4-line default
+                       left the page 75% empty. Now covers validity, deposit
+                       handling, delivery, finance, warranty, ownership and
+                       statutory references so the page reads as a complete
+                       set of terms rather than a placeholder. Orgs that
+                       author their own T&Cs in the Content Manager still
+                       override this fallback entirely. */
                     const DEFAULT_TERMS = [
-                        '1. This proposal is valid for 30 days from the date of issue.',
-                        '2. Prices are subject to change without notice after the validity period.',
-                        '3. A non-refundable deposit may be required to secure this package.',
-                        '4. Final delivery dates will be confirmed upon order acceptance.',
+                        '1. Quote Validity — This proposal is valid for 30 days from the date of issue. Prices are subject to change without notice after the validity period and may be re-confirmed in writing on request.',
+                        '2. Deposit — A non-refundable deposit (typically 10% of the total Investment, or as agreed in writing) is required to secure this package and reserve stock. The deposit is applied against the final invoice on delivery.',
+                        '3. Payment Terms — The balance of the Investment is payable in cleared funds prior to delivery or vessel handover. The dealership reserves the right to delay handover until cleared funds are received.',
+                        '4. Delivery & Handover — Final delivery dates will be confirmed in writing on order acceptance. The dealership uses reasonable endeavours to meet stated dates but is not liable for delays caused by suppliers, freight, or events outside its control.',
+                        '5. Inclusions — The Investment Summary on this proposal sets out the complete inclusions for the package. Items shown as INCLUDED carry no additional cost. Items not listed are not part of the package and may be quoted separately on request.',
+                        '6. Warranty — Manufacturer warranties apply to the vessel, outboard motor, trailer, and factory-fitted accessories per each manufacturer\'s published terms. Dealer-fitted accessories carry the dealership\'s standard 12-month workmanship warranty unless otherwise stated.',
+                        '7. Variations — Any variation to the specified package after deposit will be confirmed in writing and may attract additional charges. Stock substitutions (where unavoidable) will be communicated in advance.',
+                        '8. Title & Risk — Title and risk in the goods pass on payment in full and physical handover. Until then, the dealership retains a security interest in the package.',
+                        '9. Insurance — The customer is responsible for arranging marine insurance prior to handover. Recommendations to leading providers can be made on request.',
+                        '10. Privacy — Personal information collected in connection with this quote is handled in accordance with the dealership\'s Privacy Policy and the Australian Privacy Principles.',
+                        '11. Governing Law — This proposal and any subsequent contract is governed by the laws of the State of Queensland, Australia.',
+                        '12. Acceptance — The acceptance signature on the final page constitutes the customer\'s acknowledgement of these terms in full.',
                     ];
                     const customTerms = organisation?.termsAndConditions
                         ? (organisation.termsAndConditions as string).split('\n').filter((l: string) => l.trim())
@@ -361,9 +376,10 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
         const color = extractFirstColor(opt.name);
         lineItems.push({ label: color ? `${base} (${color})` : base, sub: opt.category, amount: opt.sellPriceExclGst || 0 });
     });
-    // Motor — base + each accessory as its own line so the customer sees the
-    // full propulsion build. quote.motor.accessories[] is the v1.11 accessory
-    // snapshot (props, rigging, controls, etc.).
+    // Motor — base + every accessory ON ITS OWN LINE. v1.11 follow-up: items
+    // that are "Included" (price 0, factory-standard with the engine) now also
+    // get a line with the INCLUDED label so the customer sees the complete
+    // build, not just billable extras.
     if (quote.motor) {
         const motorAccs: any[] = Array.isArray(quote.motor.accessories) ? quote.motor.accessories : [];
         const accsTotal = motorAccs.reduce((s, a) => s + (a.sellPriceExclGst || 0), 0);
@@ -374,15 +390,19 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             amount: motorBase > 0 ? motorBase : (f.motorTotal ?? 0),
         });
         motorAccs.forEach(a => {
-            if ((a.sellPriceExclGst || 0) <= 0) return;
+            const amount = a.sellPriceExclGst || 0;
+            const isStandard = !!(a.isStandard || a.isInclusion);
             lineItems.push({
                 label: a.name || a.label || 'Motor accessory',
-                sub: a.category ? `Motor · ${a.category}` : 'Motor accessory',
-                amount: a.sellPriceExclGst || 0,
+                sub: isStandard || amount === 0
+                    ? (a.category ? `Motor · ${a.category} · Included` : 'Motor · Included')
+                    : (a.category ? `Motor · ${a.category}` : 'Motor accessory'),
+                amount,
             });
         });
     }
-    // Trailer — base + each option as its own line.
+    // Trailer — base + every option line by line. Options with no price get
+    // an "Included" annotation too.
     if (quote.trailer) {
         const tOpts: any[] = Array.isArray(quote.trailer.options) ? quote.trailer.options : [];
         const optsTotal = tOpts.reduce((s, o) => s + (o.sellPriceExclGst || 0), 0);
@@ -393,18 +413,20 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             amount: trailerBase > 0 ? trailerBase : (f.trailerTotal ?? 0),
         });
         tOpts.forEach(o => {
-            if ((o.sellPriceExclGst || 0) <= 0) return;
+            const amount = o.sellPriceExclGst || 0;
             lineItems.push({
                 label: o.name || 'Trailer option',
-                sub: o.category ? `Trailer · ${o.category}` : 'Trailer option',
-                amount: o.sellPriceExclGst || 0,
+                sub: amount === 0
+                    ? (o.category ? `Trailer · ${o.category} · Included` : 'Trailer · Included')
+                    : (o.category ? `Trailer · ${o.category}` : 'Trailer option'),
+                amount,
             });
         });
     }
-    // Dealer fit — every selection as its own line (was a single rollup).
-    // Filters code-only labels the same way the Vessel Configuration section
-    // does so noise doesn't bleed into the Investment Summary.
-    if (f.dealerFitTotal > 0) {
+    // Dealer fit — every selection on its own line (was a single rollup).
+    // Code-only labels filtered the same way the Vessel Configuration block
+    // does so junk part-codes don't bleed into the Investment Summary.
+    if (f.dealerFitTotal > 0 || (Array.isArray(quote.dealerFit) && quote.dealerFit.length > 0)) {
         const groups: any[] = Array.isArray(quote.dealerFit) ? quote.dealerFit : [];
         let pushedAny = false;
         groups.forEach((g: any) => {
@@ -414,7 +436,6 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                 const real = labelCandidates.find(c => !isCodeOnlyLabel(c));
                 if (!real) return;
                 const amount = it.sellPriceExclGst || 0;
-                if (amount <= 0) return;
                 lineItems.push({
                     label: real,
                     sub: (g?.category || g?.name) ? `Dealer Fit · ${g.category || g.name}` : 'Dealer Fit',
@@ -423,9 +444,19 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                 pushedAny = true;
             });
         });
-        // Fallback to the rollup line if we couldn't itemise (legacy quotes
-        // with no dealerFit groups array) so the total still appears.
-        if (!pushedAny) {
+        // Custom dealer-fit additions (operator-added items at quote time)
+        const customDealerFit: any[] = Array.isArray(quote.customDealerFit) ? quote.customDealerFit : [];
+        customDealerFit.forEach((it: any) => {
+            const amount = it.sellPriceExclGst || it.amount || 0;
+            lineItems.push({
+                label: it.name || it.label || 'Dealer Fit (custom)',
+                sub: it.category ? `Dealer Fit · ${it.category} · Custom` : 'Dealer Fit · Custom',
+                amount,
+            });
+        });
+        // Fallback rollup if we couldn't itemise (legacy quotes with no
+        // dealerFit groups array) so the total still appears.
+        if (!pushedAny && customDealerFit.length === 0 && f.dealerFitTotal > 0) {
             lineItems.push({ label: 'Dealer Accessories & Preparation', sub: 'Dealer Fitout', amount: f.dealerFitTotal });
         }
     }
@@ -496,7 +527,37 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             lineItems.push({ label: 'Fit-up & Rigging', sub: 'Installation & Preparation', amount: f.fitUpTotal });
         }
     }
-    if (f.regoTotal > 0) lineItems.push({ label: 'Registration & Compliance', sub: 'Government Fees', amount: f.regoTotal });
+    // Registration & Compliance — itemised by component (boat rego, stickers,
+    // tender-to decals, trailer rego) so the customer sees what every dollar
+    // pays for. Falls back to a single rollup if none of the components have
+    // an amount (defensive — legacy quotes might have only the rollup).
+    if (f.regoTotal > 0) {
+        const reg = quote.registration || {};
+        const pushed: number[] = [];
+        const tryPush = (label: string, amount: number) => {
+            if (amount > 0) { lineItems.push({ label, sub: 'Government Fees', amount }); pushed.push(amount); }
+        };
+        tryPush('Boat Registration (12 months)', reg.boatRegoPrice || 0);
+        tryPush('Registration Stickers (supply & fit)', reg.stickerPrice || 0);
+        tryPush('"Tender To" Decals', reg.tenderToPrice || 0);
+        tryPush('Trailer Registration (12 months)', reg.trailerRegoPrice || 0);
+        if (pushed.length === 0) {
+            lineItems.push({ label: 'Registration & Compliance', sub: 'Government Fees', amount: f.regoTotal });
+        }
+    }
+    // Promotions / discounts — each applied promotion as its own NEGATIVE line
+    // so the customer sees exactly which campaign saved them money. Renders
+    // green at the table level via a sub-tag we'll look for at render time.
+    const appliedPromos: any[] = Array.isArray(quote.appliedPromotions) ? quote.appliedPromotions : [];
+    appliedPromos.forEach((p: any) => {
+        const amount = p.fixedAmount || p.perHpAmount || 0;
+        if (amount <= 0) return;
+        lineItems.push({
+            label: p.name || 'Promotion',
+            sub: p.description ? `Discount · ${p.description}` : 'Discount',
+            amount: -amount,
+        });
+    });
 
     const variantLabel = quote.variant?.name && quote.variant.name !== 'Standard'
         ? quote.variant.name
@@ -518,11 +579,16 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             <Page size="A4" style={S.page}>
                 <View style={{ width: '100%', height: '100%', position: 'relative', backgroundColor: NAVY }}>
 
-                    {/* Background — full-bleed image OR deep navy fallback */}
+                    {/* Background — full-bleed image OR deep navy fallback.
+                        objectFit:'contain' so whole boat is always visible;
+                        the deep-navy backdrop fills any letterbox bars left
+                        by aspect-ratio differences. Previously 'cover' was
+                        cropping landscape boat photos so aggressively that
+                        only the cockpit floor remained. */}
                     {quote.coverImageUrl ? (
                         <Image
                             src={pdfImg(quote.coverImageUrl, 1200)}
-                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain' }}
                         />
                     ) : null}
 
@@ -597,9 +663,14 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                         <Text style={{ fontSize: 56, fontWeight: 'bold', fontStyle: 'italic', color: 'white', letterSpacing: -2, lineHeight: 1.05, marginBottom: 14 }}>
                             {quote.modelName}
                         </Text>
-                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: 'rgba(255,255,255,0.45)', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 22 }}>
-                            {quote.modelCode}
-                        </Text>
+                        {/* Model code only when it's distinct from the name —
+                            CL380 / SP560 etc. have name === code, so showing
+                            both was a confusing visual repeat ("SP560 / SP560"). */}
+                        {quote.modelCode && quote.modelCode !== quote.modelName ? (
+                            <Text style={{ fontSize: 10, fontWeight: 'bold', color: 'rgba(255,255,255,0.45)', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 22 }}>
+                                {quote.modelCode}
+                            </Text>
+                        ) : <View style={{ marginBottom: 22 }} />}
 
                         {/* Premium accent — thin gold hairline + a thicker brand bar
                             below for visual hierarchy */}
@@ -813,9 +884,15 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                             </View>
                             <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY, flexShrink: 0 }}>{currency(quote.motor.sellPriceExclGst || 0)}</Text>
                         </View>
-                        {quote.motor.imageUrl && (
-                            <Image src={pdfImg(quote.motor.imageUrl, 600)} style={{ width: '100%', height: 140, objectFit: 'contain', backgroundColor: LIGHT, borderRadius: 4, marginBottom: 6 }} />
-                        )}
+                        {/* v1.11 follow-up — guard on the RESOLVED url, not the
+                            raw input. pdfImg returns undefined for Yamaha CDN
+                            (blocked from weserv) — without this guard the slot
+                            reserved 140px of blank space. */}
+                        {(() => {
+                            const motorSrc = pdfImg(quote.motor.imageUrl, 600);
+                            if (!motorSrc) return null;
+                            return <Image src={motorSrc} style={{ width: '100%', height: 140, objectFit: 'contain', backgroundColor: LIGHT, borderRadius: 4, marginBottom: 6 }} />;
+                        })()}
 
                         {/* Motor Specifications */}
                         {motorSpecs.length > 0 && (
@@ -883,7 +960,22 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                 {quote.trailer && (() => {
                     const catalog = (quote.trailer as any).catalog || null;
                     const specs = catalog?.specifications || null;
-                    const trailerImg = quote.trailer.imageUrl || catalog?.imageUrl || null;
+                    // v1.11 follow-up — the trailer's imageUrl in the catalog
+                    // snapshot is often the brand LOGO (REDCO/TINKA graphic),
+                    // not a real trailer photo. Skip the image slot when:
+                    //   1. the URL matches the brand-logo URL field, OR
+                    //   2. the URL hits a data-warehouse `vendors/.../logos`
+                    //      path (Firebase Storage layout for brand logos)
+                    // Better an empty slot than a giant brand logo cropping
+                    // the trailer info off the page.
+                    const rawTrailerImg = quote.trailer.imageUrl || catalog?.imageUrl || null;
+                    const brandLogo = quote.trailer.brandLogoUrl || '';
+                    const looksLikeBrandLogo = !!rawTrailerImg && (
+                        rawTrailerImg === brandLogo
+                        || /\/logos?\//i.test(rawTrailerImg)
+                        || /[?&]logo=/i.test(rawTrailerImg)
+                    );
+                    const trailerImg = looksLikeBrandLogo ? null : rawTrailerImg;
                     const trailerBrand = quote.trailer.brand || catalog?.brandName || '';
 
                     const trailerSpecs: { label: string; value: any }[] = [];
@@ -924,9 +1016,15 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                 </View>
                                 <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY, flexShrink: 0 }}>{currency(quote.trailer.sellPriceExclGst || 0)}</Text>
                             </View>
-                            {trailerImg && (
-                                <Image src={pdfImg(trailerImg, 600)} style={{ width: '100%', height: 140, objectFit: 'contain', backgroundColor: LIGHT, borderRadius: 4, marginBottom: 6 }} />
-                            )}
+                            {/* Same resolved-URL guard as the motor block: only
+                                reserve a 140px image slot if pdfImg actually
+                                returned a renderable URL. */}
+                            {(() => {
+                                if (!trailerImg) return null;
+                                const trailerSrc = pdfImg(trailerImg, 600);
+                                if (!trailerSrc) return null;
+                                return <Image src={trailerSrc} style={{ width: '100%', height: 140, objectFit: 'contain', backgroundColor: LIGHT, borderRadius: 4, marginBottom: 6 }} />;
+                            })()}
 
                             {/* Trailer Specifications */}
                             {trailerSpecs.length > 0 && (
@@ -1144,16 +1242,27 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                         <Text style={{ fontSize: 7, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE }}>Amount</Text>
                     </View>
 
-                    {/* Line items — atomic per row so a row never splits across pages */}
-                    {lineItems.map((item, i) => (
-                        <View key={i} wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
-                            <View style={{ flexShrink: 1, paddingRight: 12 }}>
-                                <Text style={{ fontSize: 8.5, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.3, color: NAVY }}>{item.label}</Text>
-                                {item.sub && <Text style={{ fontSize: 7, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: MUTED, marginTop: 1.5 }}>{item.sub}</Text>}
+                    {/* Line items — atomic per row so a row never splits across
+                        pages. Three value styles:
+                          - INCLUDED (amount === 0): grey "Included" tag
+                          - DISCOUNT (amount < 0):   green negative number
+                          - REGULAR (amount > 0):    navy currency */}
+                    {lineItems.map((item, i) => {
+                        const isIncluded = item.amount === 0;
+                        const isDiscount = item.amount < 0;
+                        const valueColor = isDiscount ? GREEN : (isIncluded ? MUTED : NAVY);
+                        return (
+                            <View key={i} wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
+                                <View style={{ flexShrink: 1, paddingRight: 12 }}>
+                                    <Text style={{ fontSize: 8.5, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.3, color: NAVY }}>{item.label}</Text>
+                                    {item.sub && <Text style={{ fontSize: 7, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: MUTED, marginTop: 1.5 }}>{item.sub}</Text>}
+                                </View>
+                                <Text style={{ fontSize: 8.5, fontWeight: 'bold', color: valueColor, flexShrink: 0 }}>
+                                    {isIncluded ? 'INCLUDED' : currency(item.amount)}
+                                </Text>
                             </View>
-                            <Text style={{ fontSize: 8.5, fontWeight: 'bold', color: NAVY, flexShrink: 0 }}>{currency(item.amount)}</Text>
-                        </View>
-                    ))}
+                        );
+                    })}
 
                     {/* Subtotal (if discount) */}
                     {f.subtotalExclGst !== f.finalTotalPriceExclGst && (
@@ -1204,18 +1313,71 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             <Page size="A4" style={{ ...S.page, padding: 44 }}>
                 <InnerHeader title="Acceptance" sub="Signatures & Confirmation" quoteNumber={quote.quoteNumber} />
 
-                <View style={{ flexDirection: 'row', gap: 40, marginTop: 40, marginBottom: 24 }}>
+                {/* Quote summary recap — a final at-a-glance reminder of what
+                    the customer is signing off on, so the Acceptance page is
+                    not just two signature boxes floating in white space. */}
+                <View style={{ marginTop: 20, marginBottom: 24, padding: 16, borderWidth: 1, borderColor: BORDER, borderRadius: 6, backgroundColor: LIGHT }}>
+                    <Text style={{ fontSize: 6.5, fontWeight: 'bold', letterSpacing: 2.5, textTransform: 'uppercase', color: MUTED, marginBottom: 8 }}>Quote Summary</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                        <View style={{ minWidth: 140 }}>
+                            <Text style={{ fontSize: 6.5, fontWeight: 'bold', color: MUTED, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Vessel</Text>
+                            <Text style={{ fontSize: 9, fontWeight: 'bold', color: NAVY }}>{quote.modelName}</Text>
+                            {variantLabel && <Text style={{ fontSize: 7.5, color: SLATE }}>{variantLabel}</Text>}
+                        </View>
+                        <View style={{ minWidth: 140 }}>
+                            <Text style={{ fontSize: 6.5, fontWeight: 'bold', color: MUTED, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Quote No.</Text>
+                            <Text style={{ fontSize: 9, fontWeight: 'bold', color: NAVY }}>{quote.quoteNumber}</Text>
+                            <Text style={{ fontSize: 7.5, color: SLATE }}>Valid until {fmt(validUntil)}</Text>
+                        </View>
+                        <View style={{ minWidth: 140 }}>
+                            <Text style={{ fontSize: 6.5, fontWeight: 'bold', color: MUTED, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Total Investment</Text>
+                            <Text style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(f.totalInclGst)}</Text>
+                            <Text style={{ fontSize: 7, color: MUTED }}>Inclusive of GST</Text>
+                        </View>
+                    </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 40, marginBottom: 24 }}>
                     <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 2, color: MUTED, marginBottom: 12 }}>Merchant Authorisation</Text>
-                        <View style={{ height: 80, borderBottomWidth: 1, borderBottomColor: '#cbd5e1' }} />
+                        <View style={{ height: 70, borderBottomWidth: 1, borderBottomColor: '#cbd5e1' }} />
                         <Text style={{ fontSize: 8, fontWeight: 'bold', color: SLATE, marginTop: 8 }}>{quote.createdByName} — {organisation?.name}</Text>
                         <Text style={{ fontSize: 7, color: MUTED, marginTop: 2 }}>Date: _____ / _____ / _____</Text>
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={{ fontSize: 7, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 2, color: MUTED, marginBottom: 12 }}>Client Acceptance</Text>
-                        <View style={{ height: 80, borderBottomWidth: 1, borderBottomColor: '#cbd5e1' }} />
+                        <View style={{ height: 70, borderBottomWidth: 1, borderBottomColor: '#cbd5e1' }} />
                         <Text style={{ fontSize: 8, fontWeight: 'bold', color: SLATE, marginTop: 8 }}>{quote.customer?.name}</Text>
                         <Text style={{ fontSize: 7, color: MUTED, marginTop: 2 }}>Date: _____ / _____ / _____</Text>
+                    </View>
+                </View>
+
+                {/* "Questions?" closing block — gives the page a meaningful body
+                    instead of a sea of whitespace below the signature lines. */}
+                <View style={{ padding: 16, borderWidth: 1, borderColor: BORDER, borderRadius: 6 }}>
+                    <Text style={{ fontSize: 6.5, fontWeight: 'bold', letterSpacing: 2.5, textTransform: 'uppercase', color: MUTED, marginBottom: 8 }}>Questions about this proposal?</Text>
+                    <Text style={{ fontSize: 9, color: NAVY, marginBottom: 6 }}>
+                        Your consultant {quote.createdByName ?? 'at ' + (organisation?.name ?? 'the dealership')} is the best person to walk you through any details — pricing, specifications, delivery timing, finance options or trade-ins.
+                    </Text>
+                    <View style={{ flexDirection: 'row', gap: 18, marginTop: 6 }}>
+                        {organisation?.phoneNumber && (
+                            <View>
+                                <Text style={{ fontSize: 6.5, fontWeight: 'bold', color: MUTED, letterSpacing: 1.5, textTransform: 'uppercase' }}>Phone</Text>
+                                <Text style={{ fontSize: 9, color: NAVY, marginTop: 1 }}>{organisation.phoneNumber}</Text>
+                            </View>
+                        )}
+                        {organisation?.email && (
+                            <View>
+                                <Text style={{ fontSize: 6.5, fontWeight: 'bold', color: MUTED, letterSpacing: 1.5, textTransform: 'uppercase' }}>Email</Text>
+                                <Text style={{ fontSize: 9, color: NAVY, marginTop: 1 }}>{organisation.email}</Text>
+                            </View>
+                        )}
+                        {organisation?.address && (
+                            <View style={{ flexShrink: 1 }}>
+                                <Text style={{ fontSize: 6.5, fontWeight: 'bold', color: MUTED, letterSpacing: 1.5, textTransform: 'uppercase' }}>Visit</Text>
+                                <Text style={{ fontSize: 9, color: NAVY, marginTop: 1 }}>{organisation.address}</Text>
+                            </View>
+                        )}
                     </View>
                 </View>
 

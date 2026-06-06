@@ -38,6 +38,23 @@ export type ImageLoadStatus =
  *  Round-11: shares the direct-then-proxy fallback with the status
  *  variant so the simpler call-sites (customer PDF download, finalize
  *  snapshot) get the proxy bypass too. */
+/** v1.11 follow-up — origins that weserv can't handle well so we route
+ *  them direct (or via our local /api/image-proxy server-side fetcher).
+ *  - Firebase Storage URLs include a `?alt=media&token=...` query that
+ *    weserv either strips or fails to authenticate against, returning
+ *    404 every time. Direct fetch works because Storage's signed-token
+ *    URL is publicly fetchable as long as the token is intact.
+ *  - Yamaha CDN refuses weserv outright (returns 404 to its UA). */
+const WESERV_SKIP_HOSTS = [
+    'firebasestorage.googleapis.com',
+    'firebasestorage.app',
+    'yamaha-motor.com.au',
+    'yamaha-motor.com',
+];
+function shouldSkipWeserv(url: string): boolean {
+    return WESERV_SKIP_HOSTS.some(h => url.includes(h));
+}
+
 /** v1.11 follow-up — route fetches through the weserv resizing proxy
  *  when a `maxWidth` is provided. This was the missing piece that let
  *  21MB Highfield CDN cover photos land in the PDF intact: the
@@ -51,10 +68,11 @@ export type ImageLoadStatus =
  *  keep their existing behaviour).
  *
  *  Data / SharePoint URLs short-circuit before this so the wrapping
- *  only kicks in for real http(s) URLs. */
-const WESERV_BLOCKED = ['yamaha-motor.com.au', 'yamaha-motor.com'];
+ *  only kicks in for real http(s) URLs. Hosts known to fail weserv
+ *  (Firebase Storage, Yamaha CDN) also short-circuit so they get
+ *  fetched directly. */
 function viaResizingProxy(url: string, maxWidth: number): string {
-    if (WESERV_BLOCKED.some(d => url.includes(d))) return url;
+    if (shouldSkipWeserv(url)) return url;
     const noProto = url.replace(/^https?:\/\//i, '');
     return `https://images.weserv.nl/?url=${encodeURIComponent(noProto)}&w=${maxWidth}&output=jpg&q=72`;
 }
