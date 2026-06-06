@@ -361,9 +361,74 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
         const color = extractFirstColor(opt.name);
         lineItems.push({ label: color ? `${base} (${color})` : base, sub: opt.category, amount: opt.sellPriceExclGst || 0 });
     });
-    if (quote.motor) lineItems.push({ label: quote.motor.name, sub: `${quote.motor.brand} — Propulsion`, amount: f.motorTotal });
-    if (quote.trailer) lineItems.push({ label: quote.trailer.name || 'Trailer Package', sub: 'Trailer & Options', amount: f.trailerTotal });
-    if (f.dealerFitTotal > 0) lineItems.push({ label: 'Dealer Accessories & Preparation', sub: 'Dealer Fitout', amount: f.dealerFitTotal });
+    // Motor — base + each accessory as its own line so the customer sees the
+    // full propulsion build. quote.motor.accessories[] is the v1.11 accessory
+    // snapshot (props, rigging, controls, etc.).
+    if (quote.motor) {
+        const motorAccs: any[] = Array.isArray(quote.motor.accessories) ? quote.motor.accessories : [];
+        const accsTotal = motorAccs.reduce((s, a) => s + (a.sellPriceExclGst || 0), 0);
+        const motorBase = (f.motorTotal ?? 0) - accsTotal;
+        lineItems.push({
+            label: quote.motor.name,
+            sub: `${quote.motor.brand ?? 'Outboard'} — Propulsion`,
+            amount: motorBase > 0 ? motorBase : (f.motorTotal ?? 0),
+        });
+        motorAccs.forEach(a => {
+            if ((a.sellPriceExclGst || 0) <= 0) return;
+            lineItems.push({
+                label: a.name || a.label || 'Motor accessory',
+                sub: a.category ? `Motor · ${a.category}` : 'Motor accessory',
+                amount: a.sellPriceExclGst || 0,
+            });
+        });
+    }
+    // Trailer — base + each option as its own line.
+    if (quote.trailer) {
+        const tOpts: any[] = Array.isArray(quote.trailer.options) ? quote.trailer.options : [];
+        const optsTotal = tOpts.reduce((s, o) => s + (o.sellPriceExclGst || 0), 0);
+        const trailerBase = (f.trailerTotal ?? 0) - optsTotal;
+        lineItems.push({
+            label: quote.trailer.name || 'Trailer Package',
+            sub: 'Trailer — Base',
+            amount: trailerBase > 0 ? trailerBase : (f.trailerTotal ?? 0),
+        });
+        tOpts.forEach(o => {
+            if ((o.sellPriceExclGst || 0) <= 0) return;
+            lineItems.push({
+                label: o.name || 'Trailer option',
+                sub: o.category ? `Trailer · ${o.category}` : 'Trailer option',
+                amount: o.sellPriceExclGst || 0,
+            });
+        });
+    }
+    // Dealer fit — every selection as its own line (was a single rollup).
+    // Filters code-only labels the same way the Vessel Configuration section
+    // does so noise doesn't bleed into the Investment Summary.
+    if (f.dealerFitTotal > 0) {
+        const groups: any[] = Array.isArray(quote.dealerFit) ? quote.dealerFit : [];
+        let pushedAny = false;
+        groups.forEach((g: any) => {
+            const items: any[] = Array.isArray(g?.items) ? g.items : [];
+            items.forEach((it: any) => {
+                const labelCandidates = [it.description, it.label, it.name].filter(Boolean) as string[];
+                const real = labelCandidates.find(c => !isCodeOnlyLabel(c));
+                if (!real) return;
+                const amount = it.sellPriceExclGst || 0;
+                if (amount <= 0) return;
+                lineItems.push({
+                    label: real,
+                    sub: (g?.category || g?.name) ? `Dealer Fit · ${g.category || g.name}` : 'Dealer Fit',
+                    amount,
+                });
+                pushedAny = true;
+            });
+        });
+        // Fallback to the rollup line if we couldn't itemise (legacy quotes
+        // with no dealerFit groups array) so the total still appears.
+        if (!pushedAny) {
+            lineItems.push({ label: 'Dealer Accessories & Preparation', sub: 'Dealer Fitout', amount: f.dealerFitTotal });
+        }
+    }
     // v1.11 (Story 9.2.3 + "Toggle detailed view for customer") — Fit-Up
     // defaults to a SINGLE summary line on the customer PDF. When the
     // operator flips `customerDetailedView` on the quote, each fit-up
@@ -749,7 +814,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                             <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY, flexShrink: 0 }}>{currency(quote.motor.sellPriceExclGst || 0)}</Text>
                         </View>
                         {quote.motor.imageUrl && (
-                            <Image src={pdfImg(quote.motor.imageUrl, 600)} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 4, marginBottom: 6 }} />
+                            <Image src={pdfImg(quote.motor.imageUrl, 600)} style={{ width: '100%', height: 140, objectFit: 'contain', backgroundColor: LIGHT, borderRadius: 4, marginBottom: 6 }} />
                         )}
 
                         {/* Motor Specifications */}
@@ -860,7 +925,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                 <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY, flexShrink: 0 }}>{currency(quote.trailer.sellPriceExclGst || 0)}</Text>
                             </View>
                             {trailerImg && (
-                                <Image src={pdfImg(trailerImg, 600)} style={{ width: '100%', height: 140, objectFit: 'cover', borderRadius: 4, marginBottom: 6 }} />
+                                <Image src={pdfImg(trailerImg, 600)} style={{ width: '100%', height: 140, objectFit: 'contain', backgroundColor: LIGHT, borderRadius: 4, marginBottom: 6 }} />
                             )}
 
                             {/* Trailer Specifications */}

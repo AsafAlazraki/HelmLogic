@@ -1231,6 +1231,21 @@ export function HighfieldQuoteFlow({
         return () => { clearTimeout(timer); api.off('reInit', scroll); };
     }, [selectedTrailerId, api, carouselSlides, currentStep]);
 
+    // On Step 5 (Dealer Fit + Fit-Up) and Step 6 (Summary), scroll the
+    // carousel back to the BOAT slide — at Step 4 we left it on the trailer
+    // (REDCO/TINKA brand logo) which is jarring once the operator has moved
+    // past the trailer pick.
+    useEffect(() => {
+        if (!api || currentStep < 5) return;
+        const scroll = () => {
+            const boatIdx = carouselSlides.findIndex(s => s.type === 'boat' || s.type === 'variant');
+            if (boatIdx !== -1) api.scrollTo(boatIdx);
+        };
+        const timer = setTimeout(scroll, 150);
+        api.on('reInit', scroll);
+        return () => { clearTimeout(timer); api.off('reInit', scroll); };
+    }, [currentStep, api, carouselSlides]);
+
     useEffect(() => {
         const parseHpRating = (rating?: any): { count: number, hp: number } | null => {
             if (!rating) return null;
