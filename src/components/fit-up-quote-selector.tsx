@@ -367,21 +367,26 @@ export function FitUpQuoteSelector({
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
+            <div className="flex items-center gap-2 bg-primary px-3 sm:px-5 py-2.5 rounded-2xl shadow-xl w-full min-w-0">
                 <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse shrink-0" />
-                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white flex items-center gap-2 min-w-0">
-                    <Wrench className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">Fit-Up & Rigging</span>
+                <Wrench className="h-3.5 w-3.5 shrink-0 text-white" />
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-white truncate min-w-0">
+                    Fit-Up & Rigging
                 </h3>
                 {suggestedTier && (
-                    <Badge variant="secondary" className="ml-auto bg-white/15 text-white border-white/20 text-[8px] font-black uppercase tracking-widest gap-1">
-                        <Sparkles className="h-2.5 w-2.5" /> {TIER_LABEL[suggestedTier]} suggested
+                    <Badge variant="secondary" className="ml-auto bg-white/15 text-white border-white/20 text-[8px] font-black uppercase tracking-wider gap-1 shrink-0">
+                        <Sparkles className="h-2.5 w-2.5" /> {TIER_LABEL[suggestedTier]}
                     </Badge>
                 )}
             </div>
 
-            {/* PRIMARY — 3 big tier package cards. Pick one. */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+            {/* PRIMARY — 3 tier package cards. Pick one.
+                Always 3-col so the salesperson sees the three tiers at a
+                glance. Card internals are compact enough to read clean at
+                the narrowest container width the quote flow uses (~480px
+                right-column). Below 480 the parent stacks the right column
+                under the preview pane so cards get full viewport width. */}
+            <div className="grid grid-cols-3 gap-2">
                 {tierPackages.map((pkg, idx) => {
                     const tier = TIERS[idx];
                     if (!pkg) {
@@ -745,66 +750,89 @@ function TierPackageCard({
     const hasOverride = pkg.packagePrice != null && pkg.packagePrice >= 0;
     const displayTotal = hasOverride ? pkg.packagePrice! : catalogTotal;
 
+    // Title is just the tier name (Simple / Medium / Complex). The section
+    // header above already says "Fit-Up & Rigging" so repeating it on each
+    // card wasted horizontal space and forced a mid-word wrap at narrow
+    // widths. We still read pkg.name for non-tier "bonus" packages, but
+    // when it's exactly "<Tier> Fit-Up" we shorten to just the tier word.
+    const shortTitle = pkg.name.replace(/\s*fit[-\s]?up\s*$/i, '').trim() || pkg.name;
+
     return (
         <button
             type="button"
             onClick={() => onAddPackage(resolvedItems, hasOverride ? pkg.packagePrice! : null, { id: pkg.id, name: pkg.name, tier: tier ?? null })}
             className={cn(
-                'group relative flex flex-col text-left border-4 rounded-[1.75rem] overflow-hidden transition-all bg-white shadow-xl p-5 gap-3 min-h-[16rem]',
+                'group relative flex flex-col text-left border-2 rounded-2xl overflow-hidden transition-all bg-white shadow-md p-3 gap-2 min-w-0',
                 allOn
-                    ? 'border-primary ring-4 ring-primary/15 bg-primary/5'
+                    ? 'border-primary ring-2 ring-primary/15 bg-primary/5'
                     : someOn
-                        ? 'border-primary/40 ring-2 ring-primary/10'
-                        : 'border-transparent hover:border-primary/30 hover:shadow-2xl',
+                        ? 'border-primary/40 ring-1 ring-primary/10'
+                        : 'border-slate-200 hover:border-primary/40 hover:shadow-lg',
             )}
+            title={pkg.description ?? undefined}
         >
-            {isSuggested && !allOn && (
-                <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-amber-400 text-amber-950 rounded-full px-2.5 py-1 shadow-md">
-                    <Sparkles className="h-3 w-3" />
-                    <span className="text-[8px] font-black uppercase tracking-widest">Suggested</span>
-                </div>
-            )}
-            {allOn && (
-                <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-primary text-white rounded-full px-2.5 py-1 shadow-md">
-                    <Check className="h-3 w-3" />
-                    <span className="text-[8px] font-black uppercase tracking-widest">All Added</span>
-                </div>
-            )}
-            <div className="flex items-center gap-2">
-                <Badge variant="outline" className={`${TIER_TONE[tier]} text-[9px] font-black uppercase tracking-widest`}>
-                    {TIER_LABEL[tier]} fit-up
+            {/* Top row — tier badge + status pill (Suggested / Partial / All Added).
+                Single row keeps the card compact; pills wrap onto the next
+                line only if absolutely necessary. */}
+            <div className="flex items-center gap-1 flex-wrap">
+                <Badge variant="outline" className={`${TIER_TONE[tier]} text-[8px] font-black uppercase tracking-wider px-1.5 py-0`}>
+                    {TIER_LABEL[tier]}
                 </Badge>
+                {isSuggested && !allOn && (
+                    <span className="inline-flex items-center gap-0.5 bg-amber-400 text-amber-950 rounded-full px-1.5 py-0.5">
+                        <Sparkles className="h-2.5 w-2.5" />
+                        <span className="text-[7px] font-black uppercase tracking-wider">Suggested</span>
+                    </span>
+                )}
+                {allOn && (
+                    <span className="inline-flex items-center gap-0.5 bg-primary text-white rounded-full px-1.5 py-0.5">
+                        <Check className="h-2.5 w-2.5" />
+                        <span className="text-[7px] font-black uppercase tracking-wider">Added</span>
+                    </span>
+                )}
                 {someOn && !allOn && (
-                    <Badge variant="outline" className="text-[8px] font-black uppercase border-primary/40 text-primary/70">
+                    <span className="text-[7px] font-black uppercase tracking-wider border border-primary/40 text-primary/70 rounded-full px-1.5">
                         Partial
-                    </Badge>
+                    </span>
                 )}
             </div>
-            <h4 className={cn('text-base sm:text-lg font-black uppercase tracking-tight leading-tight', allOn ? 'text-primary' : 'text-slate-900')}>
-                {pkg.name}
+
+            <h4 className={cn(
+                'text-sm font-black uppercase tracking-tight leading-tight break-words',
+                allOn ? 'text-primary' : 'text-slate-900',
+            )}>
+                {shortTitle}
             </h4>
+
+            {/* Description — hidden on the narrowest container widths (under
+                ~480px the right column is too tight); reappears once each
+                card has ~160px+ to breathe. */}
             {pkg.description && (
-                <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-3">
+                <p className="hidden sm:block text-[9px] text-muted-foreground leading-snug line-clamp-2 min-w-0">
                     {pkg.description}
                 </p>
             )}
-            <div className="mt-auto pt-3 border-t border-dashed flex items-end justify-between gap-2">
-                <div className="flex flex-col">
-                    <span className="text-[8px] font-black uppercase tracking-[0.25em] text-muted-foreground">
-                        {resolvedItems.length} item{resolvedItems.length === 1 ? '' : 's'} included
-                    </span>
-                    <p className={cn('font-black italic text-xl tabular-nums', allOn ? 'text-primary' : 'text-slate-800')}>
-                        ${displayTotal.toLocaleString()}
+
+            {/* Footer — stacked vertically so price and CTA never collide
+                in narrow cards. CTA is whisper-text under the price. */}
+            <div className="mt-auto pt-2 border-t border-dashed border-slate-200 space-y-0.5 min-w-0">
+                <p className="text-[7px] font-black uppercase tracking-widest text-muted-foreground">
+                    {resolvedItems.length} item{resolvedItems.length === 1 ? '' : 's'}
+                </p>
+                <p className={cn('font-black italic text-base sm:text-lg tabular-nums leading-none', allOn ? 'text-primary' : 'text-slate-800')}>
+                    ${displayTotal.toLocaleString()}
+                </p>
+                {hasOverride && (
+                    <p className="text-[7px] font-black uppercase tracking-widest text-amber-700 leading-tight">
+                        Saves ${(catalogTotal - displayTotal).toLocaleString()}
                     </p>
-                    {hasOverride && (
-                        <span className="text-[8px] font-black uppercase tracking-widest text-amber-700">
-                            Bundle price · saves ${(catalogTotal - displayTotal).toLocaleString()}
-                        </span>
-                    )}
-                </div>
-                <div className={cn('flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest', allOn ? 'text-primary' : 'text-slate-500 group-hover:text-primary transition-colors')}>
-                    {allOn ? <>Selected</> : <>Pick this<ChevronDown className="h-3 w-3 -rotate-90" /></>}
-                </div>
+                )}
+                <p className={cn(
+                    'text-[7px] font-black uppercase tracking-widest pt-0.5',
+                    allOn ? 'text-primary' : 'text-slate-400 group-hover:text-primary transition-colors',
+                )}>
+                    {allOn ? 'Selected ✓' : 'Tap to pick →'}
+                </p>
             </div>
         </button>
     );
