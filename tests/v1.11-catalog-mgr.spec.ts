@@ -21,7 +21,9 @@ fs.mkdirSync(OUT, { recursive: true });
 test.use({ viewport: { width: 1440, height: 900 } });
 
 test('Catalog Manager — rename + I/O panel + audit history mount', async ({ page }) => {
-    test.setTimeout(360_000);
+    // Generous test timeout because the wide-row v1.11 export iterates every
+    // boat × variant × option in the data-warehouse for real prod-shape data.
+    test.setTimeout(600_000);
 
     await login(page);
     const m = page.url().match(/\/([^/]+)\/(dashboard|modules|$)/);
@@ -54,10 +56,10 @@ test('Catalog Manager — rename + I/O panel + audit history mount', async ({ pa
     await expect(exportBtn).toBeVisible({ timeout: 10000 });
     await expect(importBtn).toBeVisible({ timeout: 10000 });
 
-    // 4. Click Export — produces a download. Allow up to 3 minutes because
-    //    the export dumps the entire data-warehouse hierarchy + several
-    //    org-level collections on a real prod-shape catalog.
-    const dlPromise = page.waitForEvent('download', { timeout: 180_000 }).catch(() => null);
+    // 4. Click Export — produces a download. Allow up to 5 minutes because
+    //    the wide-row v1.11 export iterates every variant × option × spec on
+    //    a real prod-shape catalog (~100 boats, ~600 variants).
+    const dlPromise = page.waitForEvent('download', { timeout: 300_000 }).catch(() => null);
     await exportBtn.click();
     const download = await dlPromise;
     expect(download, 'Export should trigger a download').not.toBeNull();
