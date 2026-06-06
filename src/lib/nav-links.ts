@@ -16,7 +16,7 @@ export type NavLink = {
 
 export const navLinks: NavLink[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/pricing-manager', label: 'Pricing Manager', icon: Coins },
+  { href: '/pricing-manager', label: 'Catalog Manager', icon: Coins },
   { href: '/feature-tracking', label: 'Feature Tracking', icon: Lightbulb },
   { href: '/manage', label: 'Settings', icon: Settings },
   {

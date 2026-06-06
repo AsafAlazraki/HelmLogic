@@ -117,9 +117,9 @@ export default function PricingManagerPage() {
         <div className="flex flex-col h-[calc(100vh-theme(spacing.24))] space-y-6 overflow-hidden">
             <div className="shrink-0 flex items-start justify-between">
                 <div>
-                    <h1 className="text-3xl font-black uppercase tracking-tight">Pricing Manager</h1>
+                    <h1 className="text-3xl font-black uppercase tracking-tight">Catalog Manager</h1>
                     <p className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 mt-1">
-                        Strategic Profitability Matrix
+                        Boats · Motors · Trailers · Dealer Fit · Fit-Up · Pricing
                     </p>
                 </div>
 
