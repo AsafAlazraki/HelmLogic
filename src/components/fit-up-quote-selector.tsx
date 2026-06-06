@@ -182,6 +182,11 @@ interface FitUpQuoteSelectorProps {
     /** v1.11 (Epic 9.3.1 simplified) — boat motor HP for the
      *  Suggested filter heuristic. */
     motorHp?: number;
+    /** v1.11 follow-up — boat-level fit-up complexity from the catalog
+     *  model's `fitUpComplexity` field. When provided AND not 'auto',
+     *  takes priority over motorHp for the Suggested badge. When 'auto'
+     *  or omitted, falls back to the motorHp heuristic. */
+    boatComplexity?: 'auto' | 'simple' | 'medium' | 'complex' | null;
 }
 
 /** Returns true if every non-empty allowlist on `item` includes the
@@ -228,7 +233,7 @@ function suggestedTierForMotorHp(hp: number | undefined): Tier | null {
 
 export function FitUpQuoteSelector({
     organisationId, selections, onToggle, onAddPackage, onUpdateSelection,
-    moduleId, vendorId, rangeId, modelId, variantId, motorHp,
+    moduleId, vendorId, rangeId, modelId, variantId, motorHp, boatComplexity,
 }: FitUpQuoteSelectorProps) {
     const firestore = useFirestore();
 
@@ -255,7 +260,14 @@ export function FitUpQuoteSelector({
     // isn't part of a tier package (so their work stays visible).
     const [customOpen, setCustomOpen] = useState(false);
 
-    const suggestedTier = useMemo(() => suggestedTierForMotorHp(motorHp), [motorHp]);
+    // Boat-level complexity from catalog wins; HP heuristic is the fallback.
+    // 'auto' on the boat means "let HP decide" → defer to motorHp path.
+    const suggestedTier = useMemo(() => {
+        if (boatComplexity && boatComplexity !== 'auto' && TIERS.includes(boatComplexity)) {
+            return boatComplexity;
+        }
+        return suggestedTierForMotorHp(motorHp);
+    }, [boatComplexity, motorHp]);
 
     // v1.11 Epic 9.2.1 — filter by assignment context first (multi-
     // level AND), then by tier chip + category chip + Suggested + search.

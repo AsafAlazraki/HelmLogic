@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
     Loader2, X, Trash2, Upload, Image as ImageIcon, Plus, Hash, Tag, PlusCircle, ShieldCheck, Star, ChevronDown,
-    DollarSign, Ship, Check, Search, ListChecks, ExternalLink, RefreshCw, FileText, Zap, ListCheck, Truck
+    DollarSign, Ship, Check, Search, ListChecks, ExternalLink, RefreshCw, FileText, Zap, ListCheck, Truck, Wrench, Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TrailerCatalogPicker } from '@/components/trailer-catalog-picker';
@@ -89,6 +89,13 @@ export const highfieldModelSchema = z.object({
         url: z.string().nullable().optional().default(''),
     }).passthrough()).optional().default([]),
     rules: z.array(z.any()).optional().default([]),
+    /** v1.11 follow-up — boat-level fit-up complexity. Drives the suggested
+     *  package on Step 5 of the quote flow (Simple / Medium / Complex card
+     *  gets the ✨ Suggested badge). `auto` defers to a runtime heuristic
+     *  based on overall hull length + motor maxHp range. Org admins set
+     *  this in the model editor; the value snapshots onto the quote so the
+     *  customer PDF reflects the bundle's identity. */
+    fitUpComplexity: z.enum(['auto', 'simple', 'medium', 'complex']).optional().default('auto'),
     trailerConfig: z.object({
         name: z.string().nullable().optional(),
         imageUrl: z.string().nullable().optional(),
@@ -556,6 +563,93 @@ function RegistrationCard() {
       </CardContent>
     </Card>
   );
+}
+
+// ── Fit-Up Complexity ────────────────────────────────────────────────────────
+/**
+ * Heuristic that resolves `fitUpComplexity: 'auto'` into a concrete tier
+ * (simple / medium / complex) by looking at the boat's first motor config
+ * maxHp and any length spec. Same buckets the quote-flow uses so admin +
+ * runtime stay consistent:
+ *   • simple   — hull < 4m  OR  motor maxHp < 60
+ *   • complex  — hull ≥ 5m  OR  motor maxHp ≥ 150
+ *   • medium   — everything in between
+ */
+export function inferFitUpComplexity(model: any): 'simple' | 'medium' | 'complex' {
+    const motorCfg = model?.specifications?.motorConfigurations?.[0];
+    const maxHp = Number(motorCfg?.engines?.[0]?.maxHp || 0);
+    const lenSpec = (model?.specifications?.otherSpecs || []).find((s: any) =>
+        /overall\s*length|hull\s*length|length/i.test(s?.label || ''));
+    const lenStr = String(lenSpec?.value || '').match(/[\d.]+/)?.[0];
+    const lenN = lenStr ? parseFloat(lenStr) : NaN;
+    const lenM = Number.isFinite(lenN) ? (lenN >= 1000 ? lenN / 1000 : (lenN >= 50 ? lenN / 100 : lenN)) : NaN;
+
+    const simpleByLen = Number.isFinite(lenM) && lenM < 4;
+    const simpleByHp = maxHp > 0 && maxHp < 60;
+    const complexByLen = Number.isFinite(lenM) && lenM >= 5;
+    const complexByHp = maxHp >= 150;
+    if (complexByLen || complexByHp) return 'complex';
+    if (simpleByLen || simpleByHp) return 'simple';
+    return 'medium';
+}
+
+function FitUpComplexityCard({ model }: { model: any }) {
+    const { control } = useFormContext<ModelFormData>();
+    const value = useWatch({ control, name: 'fitUpComplexity' }) as 'auto' | 'simple' | 'medium' | 'complex' | undefined;
+    const resolved = inferFitUpComplexity(model);
+    const effective = value && value !== 'auto' ? value : resolved;
+    const tone: Record<string, string> = {
+        simple: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+        medium: 'bg-amber-50 text-amber-800 border-amber-200',
+        complex: 'bg-rose-50 text-rose-800 border-rose-200',
+    };
+    return (
+        <Card className="rounded-xl border-2 shadow-sm text-left overflow-hidden">
+            <CardHeader className="bg-muted/10 border-b py-4 text-left">
+                <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 text-left">
+                    <Wrench className="h-4 w-4 text-primary" />
+                    Fit-Up Complexity
+                </CardTitle>
+                <CardDescription className="text-[10px] mt-1">
+                    Drives the Suggested badge on the Simple / Medium / Complex tier package cards at quote time.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4 text-left">
+                <FormField
+                    control={control}
+                    name="fitUpComplexity"
+                    render={({ field }) => (
+                        <FormItem className="space-y-3">
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Complexity</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value ?? 'auto'}>
+                                <FormControl>
+                                    <SelectTrigger className="h-11 border-2 font-bold rounded-xl">
+                                        <SelectValue placeholder="Auto (length + HP)" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="auto">Auto — infer from length + motor HP</SelectItem>
+                                    <SelectItem value="simple">Simple — entry-level fit-up</SelectItem>
+                                    <SelectItem value="medium">Medium — mid-tier fit-up</SelectItem>
+                                    <SelectItem value="complex">Complex — premium / offshore fit-up</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </FormItem>
+                    )}
+                />
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-slate-50 border-2">
+                    <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Quote Step 5 will suggest</span>
+                    <Badge variant="outline" className={`${tone[effective]} text-[10px] font-black uppercase tracking-widest`}>
+                        {effective}
+                    </Badge>
+                    {value === 'auto' || !value ? (
+                        <span className="text-[9px] text-muted-foreground italic ml-auto">(auto)</span>
+                    ) : null}
+                </div>
+            </CardContent>
+        </Card>
+    );
 }
 
 // ── Standard Features ────────────────────────────────────────────────────────
@@ -1180,6 +1274,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                 <div className="lg:col-span-4 space-y-8 min-w-0 text-left">
                     <VariantsSection model={model} vendorId={vendorId} rangeId={rangeId} />
                     <RegistrationCard />
+                    <FitUpComplexityCard model={model} />
                     <StandardFeaturesSection />
                     <SpecsSection />
                     <MotorConfigurationsSection />

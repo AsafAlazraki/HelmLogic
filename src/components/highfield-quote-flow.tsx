@@ -76,6 +76,7 @@ import {
 } from "@/components/ui/dialog";
 import { FinalizeQuoteDialog } from '@/components/finalize-quote-dialog';
 import { FitUpQuoteSelector, resolveFitUpLineSell, type FitUpItem, type FitUpSelection } from '@/components/fit-up-quote-selector';
+import { inferFitUpComplexity } from '@/components/highfield-model-editor';
 import {
     Table,
     TableBody,
@@ -2399,6 +2400,11 @@ export function HighfieldQuoteFlow({
                                             modelId={model.id}
                                             variantId={activeVariant?.id}
                                             motorHp={selectedMotor ? (parseFloat(String(selectedMotor['HP Rating'] || '0').replace(/[^\d.]/g, '')) || undefined) : undefined}
+                                            boatComplexity={
+                                                ((model as any).fitUpComplexity && (model as any).fitUpComplexity !== 'auto')
+                                                    ? (model as any).fitUpComplexity
+                                                    : inferFitUpComplexity(model)
+                                            }
                                         />
                                     )}
                                 </div>
