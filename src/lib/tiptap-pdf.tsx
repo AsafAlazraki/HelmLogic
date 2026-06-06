@@ -32,13 +32,16 @@ interface Props {
     fontSize?: number;
     /** Default text colour. */
     color?: string;
+    /** v1.11 follow-up — default horizontal alignment for body paragraphs.
+     *  Per-block style overrides land here from proposal-pdf. */
+    align?: 'left' | 'center' | 'justify' | 'right';
 }
 
 /* ──────────────────────────────────────────────────────────────────
  * Public component
  * ────────────────────────────────────────────────────────────────── */
 
-export function TipTapHtmlPdf({ html, style, fontSize = 9, color = '#334155' }: Props) {
+export function TipTapHtmlPdf({ html, style, fontSize = 9, color = '#334155', align = 'left' }: Props) {
     if (!html || !html.trim()) return null;
     /**
      * v1.7 (1.8.2) — split on <img> so images render as @react-pdf
@@ -126,7 +129,7 @@ export function TipTapHtmlPdf({ html, style, fontSize = 9, color = '#334155' }: 
         );
     }
 
-    return <View style={style}>{out}</View>;
+    return <View style={[{ textAlign: align } as any, style as any]}>{out}</View>;
 }
 
 /**

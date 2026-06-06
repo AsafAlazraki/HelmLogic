@@ -152,6 +152,27 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
      *  the Personalise side sheet on proposal-view hides this block
      *  and the resolver skips per-quote overrides for it. */
     const [draftIsLocked, setDraftIsLocked] = useState<boolean>(false);
+    /** v1.11 follow-up — PDF presentation overrides for this block.
+     *  Operators tune accent colour, body colour, sizes, alignment + a
+     *  card background for their authored content. Org-default only —
+     *  brand overrides inherit the style. Empty values fall back to the
+     *  PDF's global defaults. */
+    type BlockStyleDraft = {
+        accentColor: string;
+        backgroundColor: string;
+        textColor: string;
+        titleSize: 'sm' | 'md' | 'lg' | 'xl';
+        bodySize: 'sm' | 'md' | 'lg';
+        titleAlign: 'left' | 'center';
+        bodyAlign: 'left' | 'center' | 'justify';
+        titleItalic: boolean;
+    };
+    const DEFAULT_STYLE_DRAFT: BlockStyleDraft = {
+        accentColor: '', backgroundColor: '', textColor: '',
+        titleSize: 'md', bodySize: 'md', titleAlign: 'left',
+        bodyAlign: 'left', titleItalic: true,
+    };
+    const [draftStyle, setDraftStyle] = useState<BlockStyleDraft>(DEFAULT_STYLE_DRAFT);
     const [saving, setSaving] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -162,6 +183,17 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
         setDraftDocTypes(initialDocTypes);
         setDraftSubHeader((block?.subHeader ?? '') as string);
         setDraftIsLocked(!!block?.isLockedForQuotes);
+        const s = block?.style ?? {};
+        setDraftStyle({
+            accentColor: s?.accentColor ?? '',
+            backgroundColor: s?.backgroundColor ?? '',
+            textColor: s?.textColor ?? '',
+            titleSize: (s?.titleSize as any) ?? 'md',
+            bodySize: (s?.bodySize as any) ?? 'md',
+            titleAlign: (s?.titleAlign as any) ?? 'left',
+            bodyAlign: (s?.bodyAlign as any) ?? 'left',
+            titleItalic: s?.titleItalic ?? true,
+        });
     }, [blockType, block?.id, selectedBrand, currentHtml, initialDocTypes, block?.subHeader, block?.isLockedForQuotes]);
 
     const formattedUpdatedAt = (
@@ -179,6 +211,17 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
         setDraftDocTypes(initialDocTypes);
         setDraftSubHeader((block?.subHeader ?? '') as string);
         setDraftIsLocked(!!block?.isLockedForQuotes);
+        const s = block?.style ?? {};
+        setDraftStyle({
+            accentColor: s?.accentColor ?? '',
+            backgroundColor: s?.backgroundColor ?? '',
+            textColor: s?.textColor ?? '',
+            titleSize: (s?.titleSize as any) ?? 'md',
+            bodySize: (s?.bodySize as any) ?? 'md',
+            titleAlign: (s?.titleAlign as any) ?? 'left',
+            bodyAlign: (s?.bodyAlign as any) ?? 'left',
+            titleItalic: s?.titleItalic ?? true,
+        });
         setEditMode(true);
     }
 
@@ -187,6 +230,17 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
         setDraftDocTypes(initialDocTypes);
         setDraftSubHeader((block?.subHeader ?? '') as string);
         setDraftIsLocked(!!block?.isLockedForQuotes);
+        const s = block?.style ?? {};
+        setDraftStyle({
+            accentColor: s?.accentColor ?? '',
+            backgroundColor: s?.backgroundColor ?? '',
+            textColor: s?.textColor ?? '',
+            titleSize: (s?.titleSize as any) ?? 'md',
+            bodySize: (s?.bodySize as any) ?? 'md',
+            titleAlign: (s?.titleAlign as any) ?? 'left',
+            bodyAlign: (s?.bodyAlign as any) ?? 'left',
+            titleItalic: s?.titleItalic ?? true,
+        });
         setEditMode(false);
     }
 
@@ -262,6 +316,19 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                         // unlocking actually overwrites a previously locked
                         // flag (merge: true wouldn't drop an existing true).
                         isLockedForQuotes: draftIsLocked,
+                        // v1.11 follow-up — persist the presentation style for
+                        // this block. Empty strings → null so the PDF falls
+                        // back to global defaults.
+                        style: {
+                            accentColor: draftStyle.accentColor.trim() || null,
+                            backgroundColor: draftStyle.backgroundColor.trim() || null,
+                            textColor: draftStyle.textColor.trim() || null,
+                            titleSize: draftStyle.titleSize || null,
+                            bodySize: draftStyle.bodySize || null,
+                            titleAlign: draftStyle.titleAlign || null,
+                            bodyAlign: draftStyle.bodyAlign || null,
+                            titleItalic: draftStyle.titleItalic,
+                        },
                         updatedAt: serverTimestamp(),
                         updatedByUid: user.uid,
                         updatedByName: submitterName,
@@ -422,6 +489,73 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                                 }
                                 imageStoragePathPrefix={`contentBlocks/${orgId}/${blockType}/inline-images`}
                             />
+
+                            {/* v1.11 follow-up — Presentation overrides (org-level
+                                only; brand overrides inherit styling). Each input
+                                empty/default = falls back to PDF global. */}
+                            {!selectedBrand && (
+                                <details className="rounded-xl border-2 bg-slate-50/40 mt-3 group" open>
+                                    <summary className="cursor-pointer list-none flex items-center justify-between px-4 py-3">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-700">PDF presentation</span>
+                                        <span className="text-[9px] text-muted-foreground italic">accent · background · alignment · sizes</span>
+                                    </summary>
+                                    <div className="px-4 pb-4 space-y-3 border-t pt-3">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Accent (title rule)</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input type="color" value={draftStyle.accentColor || '#0c2a4d'} onChange={e => setDraftStyle(s => ({...s, accentColor: e.target.value}))} className="h-8 w-12 rounded border-2" />
+                                                    <input type="text" value={draftStyle.accentColor} onChange={e => setDraftStyle(s => ({...s, accentColor: e.target.value}))} placeholder="default" className="h-8 flex-1 px-2 rounded-lg border-2 font-mono text-xs" />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Card background</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input type="color" value={draftStyle.backgroundColor || '#ffffff'} onChange={e => setDraftStyle(s => ({...s, backgroundColor: e.target.value}))} className="h-8 w-12 rounded border-2" />
+                                                    <input type="text" value={draftStyle.backgroundColor} onChange={e => setDraftStyle(s => ({...s, backgroundColor: e.target.value}))} placeholder="transparent" className="h-8 flex-1 px-2 rounded-lg border-2 font-mono text-xs" />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Body text colour</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input type="color" value={draftStyle.textColor || '#475569'} onChange={e => setDraftStyle(s => ({...s, textColor: e.target.value}))} className="h-8 w-12 rounded border-2" />
+                                                    <input type="text" value={draftStyle.textColor} onChange={e => setDraftStyle(s => ({...s, textColor: e.target.value}))} placeholder="default" className="h-8 flex-1 px-2 rounded-lg border-2 font-mono text-xs" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Title size</label>
+                                                <select value={draftStyle.titleSize} onChange={e => setDraftStyle(s => ({...s, titleSize: e.target.value as any}))} className="h-8 w-full rounded-lg border-2 text-xs font-bold px-2">
+                                                    <option value="sm">Small</option><option value="md">Medium</option><option value="lg">Large</option><option value="xl">Extra large</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Title align</label>
+                                                <select value={draftStyle.titleAlign} onChange={e => setDraftStyle(s => ({...s, titleAlign: e.target.value as any}))} className="h-8 w-full rounded-lg border-2 text-xs font-bold px-2">
+                                                    <option value="left">Left</option><option value="center">Centre</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Body size</label>
+                                                <select value={draftStyle.bodySize} onChange={e => setDraftStyle(s => ({...s, bodySize: e.target.value as any}))} className="h-8 w-full rounded-lg border-2 text-xs font-bold px-2">
+                                                    <option value="sm">Small</option><option value="md">Medium</option><option value="lg">Large</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Body align</label>
+                                                <select value={draftStyle.bodyAlign} onChange={e => setDraftStyle(s => ({...s, bodyAlign: e.target.value as any}))} className="h-8 w-full rounded-lg border-2 text-xs font-bold px-2">
+                                                    <option value="left">Left</option><option value="center">Centre</option><option value="justify">Justify</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" checked={draftStyle.titleItalic} onChange={e => setDraftStyle(s => ({...s, titleItalic: e.target.checked}))} />
+                                            <span className="text-xs">Italic title</span>
+                                        </label>
+                                    </div>
+                                </details>
+                            )}
 
                             {/* 1.8.6 — documentTypes chip multi-select. Hidden in brand-override
                                 mode because doc-type membership is parent-block scope, not per-brand. */}

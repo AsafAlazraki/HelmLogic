@@ -248,6 +248,10 @@ interface Props {
      *  Quote Content Block Manager. When set, replaces the SECTION_SUB
      *  default for that block type. */
     contentBlockSubHeaders?: Partial<Record<BlockType, string | null>>;
+    /** v1.11 follow-up — per-block presentation overrides (accent colour,
+     *  background, alignment, sizes). When set, renderBlockPages applies
+     *  the override on top of the default styling. */
+    contentBlockStyles?: Partial<Record<BlockType, NonNullable<import('@/lib/content-blocks').ContentBlock['style']>>>;
     /** v1.7 (1.8.11) — user-defined ordering of content blocks. */
     pdfSections?: PdfStructureSection[];
     /** v1.7 (1.8.12) — per-salesperson message + photo. When present, the
@@ -311,7 +315,7 @@ function substituteCustomerTokens(html: string | undefined, quote: any): string 
         .replace(/\[\s*first\s+name\s*\]/gi, first);
 }
 
-export function ProposalPDFDocument({ quote, organisation, financials, contentBlocks, contentBlockSubHeaders, pdfSections, salespersonProfile }: Props) {
+export function ProposalPDFDocument({ quote, organisation, financials, contentBlocks, contentBlockSubHeaders, contentBlockStyles, pdfSections, salespersonProfile }: Props) {
     const zones = partitionContentBlocks(pdfSections ?? DEFAULT_SECTIONS);
 
     /** v1.7 round-5 — each content block now renders as its OWN PAGE
@@ -392,10 +396,37 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                 // Generic content block — only render if html has real content
                 // (tag-only HTML counts as empty so we don't emit blank pages).
                 if (htmlEmpty) return null;
+                // v1.11 follow-up — apply per-block presentation overrides.
+                const style = contentBlockStyles?.[blockType] || {};
+                const titleSizeMap = { sm: 14, md: 18, lg: 22, xl: 28 } as const;
+                const bodySizeMap = { sm: 8.5, md: 10, lg: 12 } as const;
+                const titleSize = titleSizeMap[(style.titleSize as 'sm' | 'md' | 'lg' | 'xl') || 'md'];
+                const bodySize = bodySizeMap[(style.bodySize as 'sm' | 'md' | 'lg') || 'md'];
+                const accent = style.accentColor || NAVY;
+                const textColor = style.textColor || SLATE;
+                const titleAlign = (style.titleAlign as 'left' | 'center') || 'left';
+                const bodyAlign = (style.bodyAlign as 'left' | 'center' | 'justify') || 'left';
+                const cardBg = style.backgroundColor || undefined;
+                const titleItalic = style.titleItalic !== false; // default italic
                 return (
                     <Page key={s.id} size="A4" style={{ ...S.page, padding: 44 }}>
-                        <InnerHeader title={label} sub={sub} quoteNumber={quote.quoteNumber} />
-                        <TipTapHtmlPdf html={html} fontSize={10} color={SLATE} />
+                        <View style={{ borderBottomWidth: 2, borderBottomColor: accent, paddingBottom: 10, marginBottom: 18 }}>
+                            <Text style={{ fontSize: titleSize, fontWeight: 'bold', fontStyle: titleItalic ? 'italic' : 'normal', textTransform: 'uppercase', letterSpacing: -0.4, lineHeight: 1.1, color: accent, textAlign: titleAlign }}>
+                                {label}
+                            </Text>
+                            {sub ? (
+                                <Text style={{ fontSize: 6.5, letterSpacing: 2.5, fontWeight: 'bold', textTransform: 'uppercase', color: MUTED, marginTop: 4, textAlign: titleAlign }}>
+                                    {sub}
+                                </Text>
+                            ) : null}
+                        </View>
+                        {cardBg ? (
+                            <View style={{ backgroundColor: cardBg, padding: 14, borderRadius: 6 }}>
+                                <TipTapHtmlPdf html={html} fontSize={bodySize} color={textColor} align={bodyAlign} />
+                            </View>
+                        ) : (
+                            <TipTapHtmlPdf html={html} fontSize={bodySize} color={textColor} align={bodyAlign} />
+                        )}
                         <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
                     </Page>
                 );
