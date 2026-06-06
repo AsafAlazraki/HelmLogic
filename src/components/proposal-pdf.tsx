@@ -152,6 +152,71 @@ function ContentBlockSection({
     );
 }
 
+/* ─── Build-band helpers (v1.11 — "Your Build" redesign) ─────────────────
+ * The vessel-configuration page was a dump of disconnected boxed sections
+ * (tech-spec grid · standard-features list · propulsion card · trailer card
+ * · dealer-fit table · fit-up table). The redesign consolidates the whole
+ * package into one numbered card-stack — every major component is a single
+ * atomic "band" so the customer reads their build top-to-bottom like a
+ * receipt of what they're getting. Each band is wrap={false}.
+ * ──────────────────────────────────────────────────────────────────────── */
+function BandNumber({ n }: { n: number }) {
+    return (
+        <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: 9, fontWeight: 'bold', color: 'white' }}>{n}</Text>
+        </View>
+    );
+}
+
+/** A small label/value pill used for headline specs inside a band. */
+function SpecPill({ label, value }: { label: string; value: string }) {
+    return (
+        <View style={{ marginRight: 14, marginBottom: 4 }}>
+            <Text style={{ fontSize: 5.5, fontWeight: 'bold', letterSpacing: 1.2, textTransform: 'uppercase', color: MUTED, marginBottom: 1 }}>{label}</Text>
+            <Text style={{ fontSize: 8.5, fontWeight: 'bold', color: NAVY }}>{value}</Text>
+        </View>
+    );
+}
+
+/** One numbered band in the Your-Build stack. `accent` colours the number
+ *  rail; `right` is the headline price (or any node). */
+function BuildBand({
+    n, title, subtitle, price, image, imagePlaceholder, children,
+}: {
+    n: number;
+    title: string;
+    subtitle?: string;
+    price?: string;
+    image?: string;             // resolved (already-pdfImg'd) url or undefined
+    imagePlaceholder?: React.ReactNode;
+    children?: React.ReactNode;
+}) {
+    return (
+        <View wrap={false} style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 8, marginBottom: 10, overflow: 'hidden' }}>
+            {/* Header strip */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: LIGHT, borderBottomWidth: 1, borderBottomColor: BORDER }}>
+                <BandNumber n={n} />
+                <View style={{ flexShrink: 1, flex: 1 }}>
+                    <Text style={{ fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5, color: NAVY }}>{title}</Text>
+                    {subtitle ? <Text style={{ fontSize: 7, fontWeight: 'bold', letterSpacing: 0.8, textTransform: 'uppercase', color: MUTED, marginTop: 1 }}>{subtitle}</Text> : null}
+                </View>
+                {price ? <Text style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{price}</Text> : null}
+            </View>
+            {/* Body */}
+            <View style={{ flexDirection: 'row', gap: 12, padding: 12 }}>
+                {image ? (
+                    <Image src={image} style={{ width: 92, height: 70, objectFit: 'contain', backgroundColor: LIGHT, borderRadius: 4, flexShrink: 0 }} />
+                ) : imagePlaceholder ? (
+                    <View style={{ width: 92, height: 70, backgroundColor: LIGHT, borderRadius: 4, flexShrink: 0, alignItems: 'center', justifyContent: 'center' }}>
+                        {imagePlaceholder}
+                    </View>
+                ) : null}
+                <View style={{ flex: 1, flexShrink: 1 }}>{children}</View>
+            </View>
+        </View>
+    );
+}
+
 /* ─── Main Document ────────────────────────────────────────────────────── */
 /**
  * `contentBlocks` is the resolved-per-quote map from
@@ -361,10 +426,18 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             : [quote.variant?.material, quote.variant?.colorName].filter(Boolean).join(' · '),
         amount: f.boatBasePrice,
     });
+    // v1.11 — every standard factory inclusion as a $0 INCLUDED line so the
+    // Investment Summary is a literal itemisation of everything in the build,
+    // not just the billable extras. Grouped right under the base vessel.
+    const standardInclusions: string[] = Array.isArray(quote.standardFeatures) ? quote.standardFeatures : [];
+    standardInclusions.forEach((feat: string) => {
+        if (!feat || !feat.trim()) return;
+        lineItems.push({ label: feat.trim(), sub: 'Standard Inclusion', amount: 0 });
+    });
     factoryOptions.forEach((opt: any) => {
         const base = formatOptionName(opt.name.replace(/\s*\([^)]+\)\s*$/, '').trim());
         const color = extractFirstColor(opt.name);
-        lineItems.push({ label: color ? `${base} (${color})` : base, sub: opt.category, amount: opt.sellPriceExclGst || 0 });
+        lineItems.push({ label: color ? `${base} (${color})` : base, sub: opt.category || 'Factory Option', amount: opt.sellPriceExclGst || 0 });
     });
     // Motor — base + every accessory ON ITS OWN LINE. v1.11 follow-up: items
     // that are "Included" (price 0, factory-standard with the engine) now also
@@ -735,477 +808,225 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                 PAGE — VESSEL CONFIGURATION (system, anchored)
             ═══════════════════════════════════════════════════════════ */}
             <Page size="A4" style={{ ...S.page, padding: 44 }}>
-                <InnerHeader title="Vessel Configuration" sub="Technical Data & Standard Inclusions" quoteNumber={quote.quoteNumber} />
+                <InnerHeader title="Your Build" sub="Every component of your package" quoteNumber={quote.quoteNumber} />
 
-                {/* Specs + Standard Features */}
-                {(quote.specifications?.otherSpecs?.length > 0 || quote.standardFeatures?.length > 0) && (
-                    <View style={{ flexDirection: 'row', gap: 24, marginBottom: 22 }}>
-                        {/* Tech specs */}
-                        {quote.specifications?.otherSpecs?.length > 0 && (
-                            <View style={{ flex: 1 }}>
-                                <Text style={S.sectionLabel}>Technical Data</Text>
-                                <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 5, overflow: 'hidden' }}>
-                                    {quote.specifications.otherSpecs.map((s: any, i: number) => (
-                                        <View key={i} style={{
-                                            flexDirection: 'row',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            padding: '5 10',
-                                            backgroundColor: i % 2 === 0 ? LIGHT : 'white',
-                                            borderTopWidth: i > 0 ? 1 : 0,
-                                            borderTopColor: '#f1f5f9',
-                                        }}>
-                                            <Text style={{ fontSize: 7.5, color: SLATE, fontStyle: 'italic' }}>{s.label}</Text>
-                                            <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY }}>{s.value}</Text>
-                                        </View>
-                                    ))}
-                                </View>
-                            </View>
-                        )}
+                {/* ════ YOUR BUILD — numbered card-stack of every component ════ */}
+                {(() => {
+                    const motorImg = quote.motor ? pdfImg(quote.motor.imageUrl, 400) : undefined;
+                    const vesselImg = pdfImg(quote.variant?.imageUrl || quote.coverImageUrl, 600);
 
-                        {/* Standard features */}
-                        {quote.standardFeatures?.length > 0 && (
-                            <View style={{ flex: 1 }}>
-                                <Text style={S.sectionLabel}>Standard Features</Text>
-                                {quote.standardFeatures.slice(0, 22).map((feat: string, i: number) => (
-                                    <View key={i} style={{ flexDirection: 'row', marginBottom: 3 }}>
-                                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN, marginRight: 6, marginTop: 1.5, flexShrink: 0 }} />
-                                        <Text style={{ fontSize: 7.5, color: SLATE, lineHeight: 1.4, flexShrink: 1 }}>{feat}</Text>
-                                    </View>
-                                ))}
-                                {quote.standardFeatures.length > 22 && (
-                                    <Text style={{ fontSize: 7, fontStyle: 'italic', color: MUTED, marginTop: 3, marginLeft: 12 }}>
-                                        +{quote.standardFeatures.length - 22} additional standard features
-                                    </Text>
-                                )}
-                            </View>
-                        )}
-                    </View>
-                )}
+                    // headline vessel specs — pick the ones customers care about
+                    const allSpecs: any[] = Array.isArray(quote.specifications?.otherSpecs) ? quote.specifications.otherSpecs : [];
+                    const findSpec = (re: RegExp) => allSpecs.find((s: any) => re.test(String(s?.label || '')));
+                    const headlineSpecs = [
+                        findSpec(/overall length|length overall|\blength\b/i),
+                        findSpec(/beam/i),
+                        findSpec(/persons|capacity|people/i),
+                        findSpec(/max\s*hp|maximum hp|max power/i),
+                        findSpec(/dry weight|hull weight|\bweight\b/i),
+                        findSpec(/fuel/i),
+                    ].filter(Boolean) as any[];
+                    const standardFeatures: string[] = Array.isArray(quote.standardFeatures) ? quote.standardFeatures : [];
 
-                {/* Factory Options */}
-                {factoryOptions.length > 0 && (
-                    <View style={{ marginBottom: 20 }}>
-                        <Text style={S.sectionLabel}>Selected Factory Options</Text>
-                        <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 5, overflow: 'hidden' }}>
-                            {Object.entries(optionGroups).map(([cat, opts], gi) => (
-                                <View key={cat}>
-                                    <View style={{
-                                        backgroundColor: '#f1f5f9',
-                                        paddingHorizontal: 10,
-                                        paddingVertical: 5,
-                                        flexDirection: 'row',
-                                        alignItems: 'center',
-                                        borderTopWidth: gi > 0 ? 1 : 0,
-                                        borderTopColor: BORDER,
-                                    }}>
-                                        <Text style={{ fontSize: 6.5, fontWeight: 'bold', letterSpacing: 2, color: BRAND, textTransform: 'uppercase' }}>{cat}</Text>
-                                        <View style={{ marginLeft: 8, backgroundColor: BRAND, borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 }}>
-                                            <Text style={{ fontSize: 5.5, fontWeight: 'bold', color: 'white' }}>{(opts as any[]).length}</Text>
-                                        </View>
-                                    </View>
-                                    {(opts as any[]).map((opt: any, i: number) => {
-                                        const base = formatOptionName(opt.name.replace(/\s*\([^)]+\)\s*$/, '').trim());
-                                        const color = extractFirstColor(opt.name);
-                                        return (
-                                            <View key={opt.id || i} style={{
-                                                flexDirection: 'row',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                paddingHorizontal: 10,
-                                                paddingVertical: 5,
-                                                borderTopWidth: 1,
-                                                borderTopColor: '#f8fafc',
-                                            }}>
-                                                <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
-                                                    {opt.imageUrl ? (
-                                                        <Image src={pdfImg(opt.imageUrl, 120)} style={{ width: 24, height: 24, objectFit: 'contain', marginRight: 7, borderRadius: 2, flexShrink: 0 }} />
-                                                    ) : (
-                                                        <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: GREEN, marginRight: 7, flexShrink: 0 }} />
-                                                    )}
-                                                    <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY, flexShrink: 1, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                                                        {base}{color ? ` (${color})` : ''}
-                                                    </Text>
-                                                </View>
-                                                <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: SLATE, flexShrink: 0, marginLeft: 12 }}>
-                                                    {opt.sellPriceExclGst ? currency(opt.sellPriceExclGst) : 'Incl.'}
-                                                </Text>
-                                            </View>
-                                        );
-                                    })}
-                                </View>
-                            ))}
-                        </View>
-                    </View>
-                )}
+                    // motor accessories
+                    const motorAccs: any[] = quote.motor && Array.isArray(quote.motor.accessories) ? quote.motor.accessories : [];
 
-                {/* Motor */}
-                {quote.motor && (() => {
-                    const motorSpecs = [
-                        { label: 'HP Rating', value: quote.motor.hpRating || quote.motor['HP Rating'] },
-                        { label: 'Shaft Length', value: quote.motor.shaftLength || quote.motor['Shaft Length'] },
-                        { label: 'Control', value: quote.motor.control || quote.motor['Control'] },
-                        { label: 'Starting', value: quote.motor.starting || quote.motor['Starting'] },
-                        { label: 'Tilt & Trim', value: quote.motor.tiltTrim || quote.motor['Tilt & Trim'] },
-                        { label: 'Fuel Tank', value: quote.motor.fuelTank || quote.motor['Fuel Tank'] },
-                        { label: 'Propeller', value: quote.motor.prop || quote.motor['Prop'] },
-                        { label: 'Warranty', value: quote.motor.warranty || quote.motor['Warranty'] },
-                    ].filter(s => s.value);
+                    // trailer specs
+                    const tCatalog = (quote.trailer as any)?.catalog || null;
+                    const tSpecs = tCatalog?.specifications || null;
+                    const trailerSpecPills: { label: string; value: string }[] = [];
+                    if (quote.trailer) {
+                        if (tSpecs?.suitsBoatM != null || tSpecs?.suitsBoat) trailerSpecPills.push({ label: 'Suits Boat', value: String(tSpecs.suitsBoat ?? tSpecs.suitsBoatM + ' m') });
+                        if (tSpecs?.atmKg != null) trailerSpecPills.push({ label: 'ATM', value: `${tSpecs.atmKg} kg` });
+                        if (tSpecs?.tareKg != null) trailerSpecPills.push({ label: 'Tare', value: `${tSpecs.tareKg} kg` });
+                        if (tSpecs?.wheelSize) trailerSpecPills.push({ label: 'Wheels', value: String(tSpecs.wheelSize) });
+                        if (tSpecs?.brakes) trailerSpecPills.push({ label: 'Brakes', value: String(tSpecs.brakes) });
+                        if (tSpecs?.couplingType) trailerSpecPills.push({ label: 'Coupling', value: String(tSpecs.couplingType) });
+                    }
+                    const trailerOptions: any[] = quote.trailer && Array.isArray(quote.trailer.options) ? quote.trailer.options : [];
+
+                    // dealer fit — flatten + filter code-only labels
+                    const dealerGroups: any[] = Array.isArray(quote.dealerFit) ? quote.dealerFit : [];
+                    const dealerItems = dealerGroups.flatMap((g: any) => (Array.isArray(g?.items) ? g.items : []).map((it: any) => {
+                        const cand = [it.description, it.label, it.name].filter(Boolean) as string[];
+                        const real = cand.find(c => !isCodeOnlyLabel(c));
+                        return real ? { label: real, category: g?.category || g?.name || '', amount: it.sellPriceExclGst || 0 } : null;
+                    })).filter(Boolean) as any[];
+                    const customDealerFit: any[] = Array.isArray(quote.customDealerFit) ? quote.customDealerFit : [];
+                    customDealerFit.forEach((it: any) => dealerItems.push({ label: it.name || it.label || 'Custom item', category: it.category || 'Custom', amount: it.sellPriceExclGst || it.amount || 0 }));
+
+                    // fit-up — group by package
+                    const fitSels: any[] = Array.isArray(quote.fitUpSelections) ? quote.fitUpSelections : [];
+                    const fitGroups = new Map<string, { name: string | null; items: any[]; total: number }>();
+                    for (const sel of fitSels) {
+                        const key = sel.packageId || '__loose__';
+                        if (!fitGroups.has(key)) fitGroups.set(key, { name: sel.packageName ?? null, items: [], total: 0 });
+                        const g = fitGroups.get(key)!;
+                        const unit = sel.priceOverride != null ? sel.priceOverride : (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0));
+                        const line = Math.max(1, sel.quantity ?? 1) * unit;
+                        g.items.push(sel); g.total += line;
+                    }
+
+                    let bandNo = 0;
                     return (
-                    /* wrap={false} keeps motor block atomic so the header
-                       doesn't strand on page X with the specs grid on page X+1. */
-                    <View wrap={false} style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
-                        {/* Motor header — left: title + brand. Right: price.
-                            Photo (when present) sits as a banner ABOVE the
-                            specs grid so it doesn't crash into the price.
-                            Card can flow across pages; individual sub-views
-                            below carry their own wrap={false} where needed. */}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: quote.motor.imageUrl ? 10 : 0 }}>
-                            <View style={{ flexShrink: 1, flex: 1, paddingRight: 14 }}>
-                                <Text style={[S.sectionLabel, { marginBottom: 4 }]}>Propulsion System</Text>
-                                {quote.motor.brandLogoUrl && (
-                                    <Image src={pdfImg(quote.motor.brandLogoUrl, 160)} style={{ height: 16, maxWidth: 70, objectFit: 'contain', marginBottom: 4 }} />
-                                )}
-                                <Text style={{ fontSize: 15, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.3, color: NAVY, marginBottom: 2 }}>
-                                    {quote.motor.name}
-                                </Text>
-                                <Text style={{ fontSize: 8, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE }}>
-                                    {quote.motor.brand}
-                                </Text>
-                            </View>
-                            <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY, flexShrink: 0 }}>{currency(quote.motor.sellPriceExclGst || 0)}</Text>
-                        </View>
-                        {/* v1.11 follow-up — guard on the RESOLVED url, not the
-                            raw input. pdfImg returns undefined for Yamaha CDN
-                            (blocked from weserv) — without this guard the slot
-                            reserved 140px of blank space. */}
-                        {(() => {
-                            const motorSrc = pdfImg(quote.motor.imageUrl, 600);
-                            if (!motorSrc) return null;
-                            return <Image src={motorSrc} style={{ width: '100%', height: 140, objectFit: 'contain', backgroundColor: LIGHT, borderRadius: 4, marginBottom: 6 }} />;
-                        })()}
-
-                        {/* Motor Specifications */}
-                        {motorSpecs.length > 0 && (
-                            <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER }}>
-                                <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: BRAND, marginBottom: 6 }}>Motor Specifications</Text>
-                                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                                    {motorSpecs.map((spec, i) => (
-                                        <View key={i} style={{ width: '25%', marginBottom: 6, paddingRight: 8 }}>
-                                            <Text style={{ fontSize: 5.5, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: MUTED, marginBottom: 1.5 }}>{spec.label}</Text>
-                                            <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY }}>{spec.value}</Text>
-                                        </View>
-                                    ))}
-                                </View>
-                            </View>
-                        )}
-
-                        {/* Motor Accessories */}
-                        {(quote.motor.accessories?.length > 0) && (
-                            <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER }}>
-                                <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: BRAND, marginBottom: 4 }}>Motor Accessories</Text>
-                                {Object.entries(
-                                    (quote.motor.accessories as any[]).reduce((acc: Record<string, any[]>, a: any) => {
-                                        const cat = a.category || 'Accessories';
-                                        if (!acc[cat]) acc[cat] = [];
-                                        acc[cat].push(a);
-                                        return acc;
-                                    }, {})
-                                ).map(([cat, items]) => (
-                                    <View key={cat} style={{ marginBottom: 5 }}>
-                                        <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE, marginBottom: 4 }}>{cat}</Text>
-                                        {(items as any[]).map((acc: any, i: number) => (
-                                            <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2, paddingHorizontal: 4 }}>
-                                                <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
-                                                    {acc.imageUrl ? (
-                                                        <Image src={pdfImg(acc.imageUrl, 80)} style={{ width: 20, height: 20, objectFit: 'contain', marginRight: 5, borderRadius: 2, flexShrink: 0 }} />
-                                                    ) : (
-                                                        <View style={S.dot} />
-                                                    )}
-                                                    <Text style={{ fontSize: 7, color: SLATE }}>{acc.name}</Text>
-                                                </View>
-                                                <Text style={{ fontSize: 7, fontWeight: 'bold', color: NAVY, flexShrink: 0, marginLeft: 8 }}>
-                                                    {acc.sellPriceExclGst ? currency(acc.sellPriceExclGst) : 'Incl.'}
-                                                </Text>
-                                            </View>
+                        <View>
+                            {/* ① VESSEL */}
+                            <BuildBand
+                                n={++bandNo}
+                                title={`Vessel — ${quote.modelName}`}
+                                subtitle={[quote.rangeName ? `${quote.rangeName} Series` : '', variantLabel].filter(Boolean).join(' · ')}
+                                price={currency(f.boatBasePrice)}
+                                image={vesselImg}
+                                imagePlaceholder={<Text style={{ fontSize: 6, color: MUTED, textTransform: 'uppercase', letterSpacing: 1 }}>Vessel</Text>}
+                            >
+                                {headlineSpecs.length > 0 && (
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: standardFeatures.length > 0 ? 8 : 0 }}>
+                                        {headlineSpecs.map((s: any, i: number) => (
+                                            <SpecPill key={i} label={String(s.label)} value={String(s.value)} />
                                         ))}
                                     </View>
-                                ))}
-                            </View>
-                        )}
-
-                        {/* Motor Subtotal */}
-                        <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Text style={{ fontSize: 7, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE }}>Motor Total</Text>
-                            <Text style={{ fontSize: 11, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(f.motorTotal)}</Text>
-                        </View>
-                    </View>
-                    );
-                })()}
-
-                {/* Trailer — fully-specced layout matching the motor block:
-                    photo + brand + name + price · specifications grid ·
-                    options list · subtotal. Mirrors the motor layout so the
-                    customer sees a consistent treatment for every major
-                    component of the package. */}
-                {quote.trailer && (() => {
-                    const catalog = (quote.trailer as any).catalog || null;
-                    const specs = catalog?.specifications || null;
-                    // v1.11 follow-up — the trailer's imageUrl in the catalog
-                    // snapshot is often the brand LOGO (REDCO/TINKA graphic),
-                    // not a real trailer photo. Skip the image slot when:
-                    //   1. the URL matches the brand-logo URL field, OR
-                    //   2. the URL hits a data-warehouse `vendors/.../logos`
-                    //      path (Firebase Storage layout for brand logos)
-                    // Better an empty slot than a giant brand logo cropping
-                    // the trailer info off the page.
-                    const rawTrailerImg = quote.trailer.imageUrl || catalog?.imageUrl || null;
-                    const brandLogo = quote.trailer.brandLogoUrl || '';
-                    const looksLikeBrandLogo = !!rawTrailerImg && (
-                        rawTrailerImg === brandLogo
-                        || /\/logos?\//i.test(rawTrailerImg)
-                        || /[?&]logo=/i.test(rawTrailerImg)
-                    );
-                    const trailerImg = looksLikeBrandLogo ? null : rawTrailerImg;
-                    const trailerBrand = quote.trailer.brand || catalog?.brandName || '';
-
-                    const trailerSpecs: { label: string; value: any }[] = [];
-                    if (specs?.boatSizeMtr != null) trailerSpecs.push({ label: 'Suits Boat', value: formatMetres(specs.boatSizeMtr) });
-                    if (specs?.lengthMtr != null) trailerSpecs.push({ label: 'Trailer Length', value: formatMetres(specs.lengthMtr) });
-                    if (specs?.widthMtr != null) trailerSpecs.push({ label: 'Width', value: formatMetres(specs.widthMtr) });
-                    if (specs?.atmKg != null) trailerSpecs.push({ label: 'ATM', value: `${specs.atmKg} kg` });
-                    if (specs?.tareKg != null) trailerSpecs.push({ label: 'Tare', value: `${specs.tareKg} kg` });
-                    if (specs?.axleType) trailerSpecs.push({ label: 'Axle', value: specs.axleType });
-                    if (specs?.wheelSize) trailerSpecs.push({ label: 'Wheels', value: specs.wheelSize });
-                    if (specs?.brakes) trailerSpecs.push({ label: 'Brakes', value: specs.brakes });
-                    if (specs?.winch) trailerSpecs.push({ label: 'Winch', value: specs.winch });
-                    if (specs?.couplingType) trailerSpecs.push({ label: 'Coupling', value: specs.couplingType });
-                    if (specs?.lights) trailerSpecs.push({ label: 'Lights', value: specs.lights });
-                    if (specs?.construction) trailerSpecs.push({ label: 'Construction', value: specs.construction });
-
-                    const trailerOptions: any[] = Array.isArray(quote.trailer.options) ? quote.trailer.options : [];
-
-                    return (
-                        /* wrap={false} keeps the whole trailer block atomic
-                           — header + specs + subtotal stay together. The
-                           previous behaviour split the title onto one page
-                           and the specs grid onto the next with a giant
-                           blank gap between them. */
-                        <View wrap={false} style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
-                            {/* Trailer header — left: title + brand. Right: price.
-                                Photo (when present) is a banner above the
-                                specs grid (matches motor section layout). */}
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: trailerImg ? 10 : 0 }}>
-                                <View style={{ flexShrink: 1, flex: 1, paddingRight: 14 }}>
-                                    <Text style={[S.sectionLabel, { marginBottom: 4 }]}>Trailer Package</Text>
-                                    {quote.trailer.brandLogoUrl && (
-                                        <Image src={pdfImg(quote.trailer.brandLogoUrl, 160)} style={{ height: 16, maxWidth: 70, objectFit: 'contain', marginBottom: 4 }} />
-                                    )}
-                                    <Text style={{ fontSize: 15, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.3, color: NAVY, marginBottom: 2 }}>
-                                        {quote.trailer.name || 'Trailer'}
-                                    </Text>
-                                    {trailerBrand ? (
-                                        <Text style={{ fontSize: 8, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE }}>
-                                            {trailerBrand}
-                                        </Text>
-                                    ) : null}
-                                </View>
-                                <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY, flexShrink: 0 }}>{currency(quote.trailer.sellPriceExclGst || 0)}</Text>
-                            </View>
-                            {/* v1.11 follow-up — trailer image intentionally
-                                omitted from the customer PDF. The catalog
-                                snapshot saves brand-logo graphics (REDCO/TINKA,
-                                DUNBIER badges) into trailer.imageUrl when no
-                                proper trailer photo is uploaded, and those
-                                brand logos dominated the page. The trailer
-                                name + brand badge + specs grid below convey
-                                everything the customer needs without the
-                                risk of brand-logo bleed-through. */}
-
-                            {/* Trailer Specifications */}
-                            {trailerSpecs.length > 0 && (
-                                <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER }}>
-                                    <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: BRAND, marginBottom: 6 }}>Trailer Specifications</Text>
-                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                                        {trailerSpecs.map((spec, i) => (
-                                            <View key={i} style={{ width: '25%', marginBottom: 6, paddingRight: 8 }}>
-                                                <Text style={{ fontSize: 5.5, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: MUTED, marginBottom: 1.5 }}>{spec.label}</Text>
-                                                <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: NAVY }}>{spec.value}</Text>
-                                            </View>
-                                        ))}
+                                )}
+                                {standardFeatures.length > 0 && (
+                                    <View>
+                                        <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: BRAND, marginBottom: 4 }}>Standard Inclusions</Text>
+                                        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                                            {standardFeatures.map((feat: string, i: number) => (
+                                                <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', width: '50%', marginBottom: 2, paddingRight: 8 }}>
+                                                    <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: GREEN, marginTop: 3, marginRight: 4, flexShrink: 0 }} />
+                                                    <Text style={{ fontSize: 7, color: SLATE, flexShrink: 1 }}>{feat}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
                                     </View>
-                                </View>
-                            )}
+                                )}
+                            </BuildBand>
 
-                            {/* Trailer Options */}
-                            {trailerOptions.length > 0 && (
-                                <View style={{ marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER }}>
-                                    <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: BRAND, marginBottom: 4 }}>Trailer Options</Text>
-                                    {Object.entries(
-                                        trailerOptions.reduce((acc: Record<string, any[]>, o: any) => {
-                                            const cat = o.category || 'Options';
-                                            if (!acc[cat]) acc[cat] = [];
-                                            acc[cat].push(o);
-                                            return acc;
-                                        }, {})
-                                    ).map(([cat, items]) => (
-                                        <View key={cat} style={{ marginBottom: 5 }}>
-                                            <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE, marginBottom: 4 }}>{cat}</Text>
-                                            {(items as any[]).map((o: any, i: number) => (
-                                                <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2, paddingHorizontal: 4 }}>
+                            {/* ② PROPULSION */}
+                            {quote.motor && (
+                                <BuildBand
+                                    n={++bandNo}
+                                    title={`Propulsion — ${quote.motor.name}`}
+                                    subtitle={quote.motor.brand || 'Outboard'}
+                                    price={currency(f.motorTotal)}
+                                    image={motorImg}
+                                    imagePlaceholder={
+                                        <View style={{ alignItems: 'center' }}>
+                                            <Text style={{ fontSize: 11, fontWeight: 'bold', fontStyle: 'italic', color: SLATE }}>{quote.motor.hpRating || quote.motor['HP Rating'] || ''}</Text>
+                                            <Text style={{ fontSize: 5.5, color: MUTED, textTransform: 'uppercase', letterSpacing: 1, marginTop: 1 }}>Outboard</Text>
+                                        </View>
+                                    }
+                                >
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: motorAccs.length > 0 ? 8 : 0 }}>
+                                        {[
+                                            { label: 'HP', value: quote.motor.hpRating || quote.motor['HP Rating'] },
+                                            { label: 'Shaft', value: quote.motor.shaftLength || quote.motor['Shaft Length'] },
+                                            { label: 'Control', value: quote.motor.control || quote.motor['Control'] },
+                                            { label: 'Starting', value: quote.motor.starting || quote.motor['Starting'] },
+                                            { label: 'Tilt & Trim', value: quote.motor.tiltTrim || quote.motor['Tilt & Trim'] },
+                                            { label: 'Propeller', value: quote.motor.prop || quote.motor['Prop'] },
+                                        ].filter(s => s.value).map((s, i) => <SpecPill key={i} label={s.label} value={String(s.value)} />)}
+                                    </View>
+                                    {motorAccs.length > 0 && (
+                                        <View>
+                                            <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: BRAND, marginBottom: 3 }}>Rigging & Accessories</Text>
+                                            {motorAccs.map((a: any, i: number) => (
+                                                <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 1.5 }}>
                                                     <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
-                                                        {o.imageUrl ? (
-                                                            <Image src={pdfImg(o.imageUrl, 80)} style={{ width: 20, height: 20, objectFit: 'contain', marginRight: 5, borderRadius: 2, flexShrink: 0 }} />
-                                                        ) : (
-                                                            <View style={S.dot} />
-                                                        )}
-                                                        <Text style={{ fontSize: 7, color: SLATE }}>{o.name}</Text>
+                                                        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: GREEN, marginRight: 4, flexShrink: 0 }} />
+                                                        <Text style={{ fontSize: 7.5, color: SLATE, flexShrink: 1 }}>{a.name || a.label}</Text>
                                                     </View>
-                                                    <Text style={{ fontSize: 7, fontWeight: 'bold', color: NAVY, flexShrink: 0, marginLeft: 8 }}>
-                                                        {o.sellPriceExclGst ? currency(o.sellPriceExclGst) : 'Incl.'}
+                                                    <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: (a.sellPriceExclGst || 0) > 0 ? NAVY : MUTED, marginLeft: 8 }}>
+                                                        {(a.sellPriceExclGst || 0) > 0 ? currency(a.sellPriceExclGst) : 'Incl.'}
                                                     </Text>
                                                 </View>
                                             ))}
                                         </View>
-                                    ))}
-                                </View>
+                                    )}
+                                </BuildBand>
                             )}
 
-                            {/* Trailer Subtotal */}
-                            <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: BORDER, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Text style={{ fontSize: 7, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE }}>Trailer Total</Text>
-                                <Text style={{ fontSize: 11, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(f.trailerTotal)}</Text>
-                            </View>
-                        </View>
-                    );
-                })()}
-
-                {/* Dealer Fit — wrap={false} keeps the heading + first row together;
-                    longer lists can still flow across pages, but at minimum each
-                    line stays atomic (no row split mid-text).
-                    Code-only / empty items are filtered out: showing the customer
-                    "010-02093-02  $7,269" with no real name is worse than nothing. */}
-                {(() => {
-                    const allItems = (quote.dealerFit as any[] || []).flatMap((group: any, gi: number) =>
-                        (group.items || []).map((item: any, ii: number) => {
-                            const candidates = [item.description, item.label, item.name].filter(Boolean) as string[];
-                            const realLabel = candidates.find(c => !isCodeOnlyLabel(c));
-                            return { gi, ii, item, label: realLabel || null };
-                        })
-                    ).filter(x => x.label !== null);  // hide code-only / empty rows
-                    if (allItems.length === 0) return null;
-                    return (
-                    <View style={{ marginBottom: 14 }} wrap>
-                        <Text style={S.sectionLabel} wrap={false}>Dealer Accessories & Preparation</Text>
-                        <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 5, overflow: 'hidden' }}>
-                            {allItems.map(({ gi, ii, item, label }, idx) => {
-                                    return (
-                                        <View key={`${gi}-${ii}`} wrap={false} style={{
-                                            flexDirection: 'row',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            paddingHorizontal: 10,
-                                            paddingVertical: 6,
-                                            borderTopWidth: idx > 0 ? 1 : 0,
-                                            borderTopColor: '#f1f5f9',
-                                        }}>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, gap: 8 }}>
-                                                {item.imageUrl ? (
-                                                    <Image src={pdfImg(item.imageUrl, 120)} style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 3, flexShrink: 0 }} />
-                                                ) : (
-                                                    <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: GREEN, flexShrink: 0 }} />
-                                                )}
-                                                <Text style={{ fontSize: 8, color: SLATE, flexShrink: 1 }}>{label}</Text>
-                                            </View>
-                                            <Text style={{ fontSize: 8, fontWeight: 'bold', color: NAVY, flexShrink: 0, marginLeft: 12 }}>{currency(item.sellPriceExclGst || 0)}</Text>
+                            {/* ③ TRAILER */}
+                            {quote.trailer && (
+                                <BuildBand
+                                    n={++bandNo}
+                                    title={`Trailer — ${quote.trailer.name || 'Trailer Package'}`}
+                                    subtitle={quote.trailer.brand || tCatalog?.brandName || ''}
+                                    price={currency(f.trailerTotal)}
+                                >
+                                    {trailerSpecPills.length > 0 && (
+                                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: trailerOptions.length > 0 ? 8 : 0 }}>
+                                            {trailerSpecPills.map((s, i) => <SpecPill key={i} label={s.label} value={s.value} />)}
                                         </View>
-                                    );
-                                })}
-                        </View>
-                    </View>
-                    );
-                })()}
-
-                {/* Fit-Up & Rigging — package-aware itemised section.
-                    Groups items by source package (Simple / Medium / Complex Fit-Up
-                    packages) so the customer sees the bundle they were sold rather
-                    than a flat list of each member item. À-la-carte additions sit
-                    in an "Additional Items" group at the bottom. */}
-                {(() => {
-                    const sels = (quote.fitUpSelections as any[] | undefined) || [];
-                    if (sels.length === 0) return null;
-                    const unitOf = (sel: any) => sel.priceOverride != null ? sel.priceOverride : (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0));
-                    const lineOf = (sel: any) => Math.max(1, sel.quantity ?? 1) * unitOf(sel);
-
-                    // Maintain insertion order so the first selected package
-                    // sorts first. Use a Map for stable iteration.
-                    const groups = new Map<string, { name: string | null; items: any[]; total: number }>();
-                    for (const sel of sels) {
-                        const key = sel.packageId || '__loose__';
-                        if (!groups.has(key)) {
-                            groups.set(key, { name: sel.packageName ?? null, items: [], total: 0 });
-                        }
-                        const g = groups.get(key)!;
-                        g.items.push(sel);
-                        g.total += lineOf(sel);
-                    }
-
-                    return (
-                        <View style={{ marginBottom: 14 }} wrap>
-                            <Text style={S.sectionLabel} wrap={false}>Fit-Up & Rigging</Text>
-                            {Array.from(groups.entries()).map(([key, g], gi) => (
-                                <View key={key} style={{
-                                    borderWidth: 1, borderColor: BORDER, borderRadius: 5,
-                                    overflow: 'hidden', marginTop: gi === 0 ? 0 : 8,
-                                }}>
-                                    {/* Group header — visible only when the items came
-                                        from a named package. À-la-carte items use a
-                                        plain "Additional Items" label. */}
-                                    <View wrap={false} style={{
-                                        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-                                        paddingHorizontal: 10, paddingVertical: 7, backgroundColor: LIGHT,
-                                        borderBottomWidth: 1, borderBottomColor: BORDER,
-                                    }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
-                                            <View style={{ width: 4, height: 12, borderRadius: 1, backgroundColor: BRAND, flexShrink: 0 }} />
-                                            <Text style={{ fontSize: 7.5, fontWeight: 'bold', letterSpacing: 1.4, textTransform: 'uppercase', color: NAVY, flexShrink: 1 }}>
-                                                {g.name ? `${g.name} Package` : 'Additional Items'}
-                                            </Text>
-                                            <Text style={{ fontSize: 6.5, fontWeight: 'bold', letterSpacing: 1.2, textTransform: 'uppercase', color: MUTED }}>
-                                                · {g.items.length} item{g.items.length === 1 ? '' : 's'}
-                                            </Text>
-                                        </View>
-                                        <Text style={{ fontSize: 8.5, fontWeight: 'bold', color: NAVY, marginLeft: 10 }}>{currency(g.total)}</Text>
-                                    </View>
-
-                                    {/* Items in this group */}
-                                    {g.items.map((sel: any, i: number) => {
-                                        const qty = Math.max(1, sel.quantity ?? 1);
-                                        const label = sel.customerDescription || sel.name || 'Fit-up item';
-                                        return (
-                                            <View key={sel.id || i} wrap={false} style={{
-                                                flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-                                                paddingHorizontal: 10, paddingVertical: 5,
-                                                borderTopWidth: i > 0 ? 1 : 0, borderTopColor: '#f1f5f9',
-                                            }}>
-                                                <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, gap: 8 }}>
-                                                    {sel.imageUrl ? (
-                                                        <Image src={pdfImg(sel.imageUrl, 120)} style={{ width: 30, height: 30, objectFit: 'contain', borderRadius: 3, flexShrink: 0 }} />
-                                                    ) : (
-                                                        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: MUTED, flexShrink: 0, marginLeft: 4 }} />
-                                                    )}
-                                                    <View style={{ flexShrink: 1 }}>
-                                                        <Text style={{ fontSize: 7.5, color: SLATE }}>{label}{qty > 1 ? ` × ${qty}` : ''}</Text>
-                                                        {sel.category ? (
-                                                            <Text style={{ fontSize: 5.5, color: MUTED, marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>{sel.category}</Text>
-                                                        ) : null}
+                                    )}
+                                    {trailerOptions.length > 0 && (
+                                        <View>
+                                            <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: BRAND, marginBottom: 3 }}>Trailer Options</Text>
+                                            {trailerOptions.map((o: any, i: number) => (
+                                                <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 1.5 }}>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
+                                                        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: GREEN, marginRight: 4, flexShrink: 0 }} />
+                                                        <Text style={{ fontSize: 7.5, color: SLATE, flexShrink: 1 }}>{o.name}</Text>
                                                     </View>
+                                                    <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: (o.sellPriceExclGst || 0) > 0 ? NAVY : MUTED, marginLeft: 8 }}>
+                                                        {(o.sellPriceExclGst || 0) > 0 ? currency(o.sellPriceExclGst) : 'Incl.'}
+                                                    </Text>
                                                 </View>
+                                            ))}
+                                        </View>
+                                    )}
+                                </BuildBand>
+                            )}
+
+                            {/* ④ DEALER FIT */}
+                            {dealerItems.length > 0 && (
+                                <BuildBand
+                                    n={++bandNo}
+                                    title="Dealer Accessories & Preparation"
+                                    subtitle={`${dealerItems.length} item${dealerItems.length === 1 ? '' : 's'}`}
+                                    price={currency(f.dealerFitTotal)}
+                                >
+                                    {dealerItems.map((it: any, i: number) => (
+                                        <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
+                                                <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: GREEN, marginRight: 4, flexShrink: 0 }} />
+                                                <Text style={{ fontSize: 7.5, color: SLATE, flexShrink: 1 }}>{it.label}</Text>
                                             </View>
-                                        );
-                                    })}
-                                </View>
-                            ))}
+                                            <Text style={{ fontSize: 7.5, fontWeight: 'bold', color: (it.amount || 0) > 0 ? NAVY : MUTED, marginLeft: 8 }}>
+                                                {(it.amount || 0) > 0 ? currency(it.amount) : 'Incl.'}
+                                            </Text>
+                                        </View>
+                                    ))}
+                                </BuildBand>
+                            )}
+
+                            {/* ⑤ FIT-UP & RIGGING */}
+                            {fitSels.length > 0 && (
+                                <BuildBand
+                                    n={++bandNo}
+                                    title="Fit-Up & Rigging"
+                                    subtitle={Array.from(fitGroups.values())[0]?.name ? `${Array.from(fitGroups.values())[0]?.name} Package` : `${fitSels.length} item${fitSels.length === 1 ? '' : 's'}`}
+                                    price={currency(f.fitUpTotal)}
+                                >
+                                    {Array.from(fitGroups.values()).map((g, gi) => (
+                                        <View key={gi} style={{ marginBottom: gi < fitGroups.size - 1 ? 6 : 0 }}>
+                                            {g.name && (
+                                                <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 1.2, textTransform: 'uppercase', color: BRAND, marginBottom: 3 }}>
+                                                    {g.name} Package · {g.items.length} item{g.items.length === 1 ? '' : 's'}
+                                                </Text>
+                                            )}
+                                            {g.items.map((sel: any, i: number) => {
+                                                const label = sel.customerDescription || sel.name || 'Fit-up item';
+                                                return (
+                                                    <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 1.5 }}>
+                                                        <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: GREEN, marginRight: 4, flexShrink: 0 }} />
+                                                        <Text style={{ fontSize: 7.5, color: SLATE, flexShrink: 1 }}>{label}</Text>
+                                                    </View>
+                                                );
+                                            })}
+                                        </View>
+                                    ))}
+                                </BuildBand>
+                            )}
                         </View>
                     );
                 })()}
