@@ -1009,24 +1009,18 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
 
                             {/* ③ TRAILER — also shows trailer-scope dealer-fit items
                                 ("trailer dealer fit") under the trailer band. Image
-                                rendered when present + not a brand-logo URL. */}
+                                slot intentionally omitted — most trailer.imageUrl
+                                values in the catalog are brand-logo graphics
+                                (REDCO/TINKA-style) rather than real trailer photos,
+                                and the pattern-detect heuristic kept catching the
+                                long tail wrong. The brand is shown in the subtitle. */}
                             {quote.trailer && (() => {
-                                const rawTrailerImg = quote.trailer.imageUrl || tCatalog?.imageUrl || null;
-                                const brandLogo = quote.trailer.brandLogoUrl || '';
-                                const looksLikeBrandLogo = !!rawTrailerImg && (
-                                    rawTrailerImg === brandLogo
-                                    || /\/logos?\//i.test(rawTrailerImg)
-                                    || /[?&]logo=/i.test(rawTrailerImg)
-                                );
-                                const trailerBandImg = looksLikeBrandLogo ? undefined : pdfImg(rawTrailerImg, 400);
                                 return (
                                 <BuildBand
                                     n={++bandNo}
                                     title={`Trailer — ${quote.trailer.name || 'Trailer Package'}`}
                                     subtitle={quote.trailer.brand || tCatalog?.brandName || ''}
                                     price={currency(f.trailerTotal)}
-                                    image={trailerBandImg}
-                                    imagePlaceholder={<Text style={{ fontSize: 6, color: MUTED, textTransform: 'uppercase', letterSpacing: 1 }}>Trailer</Text>}
                                 >
                                     {trailerSpecPills.length > 0 && (
                                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: (trailerOptions.length > 0 || trailerDealerItems.length > 0) ? 8 : 0 }}>
