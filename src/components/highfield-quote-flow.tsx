@@ -260,6 +260,10 @@ export function HighfieldQuoteFlow({
     }, [firestore, module?.id]);
     const [selectedMotor, setSelectedMotor] = useState<any | null>(initialState?.selectedMotorObj ?? null);
     const [selectedMotorAccessoryIds, setSelectedMotorAccessoryIds] = useState<string[]>(initialState?.selectedMotorAccessoryIds ?? []);
+    // Tracks whether the operator clicked-off the auto-selected motor. The
+    // auto-select effect won't re-fire while this is true, so deselect stays
+    // sticky. Clears the moment they pick any motor again.
+    const [motorExplicitlyDeselected, setMotorExplicitlyDeselected] = useState(false);
     const [selectedTrailerId, setSelectedTrailerId] = useState<string | null>(initialState?.selectedTrailerId ?? null);
     const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>(initialState?.selectedTrailerOptionIds ?? []);
     const [catalogTrailerSnapshot, setCatalogTrailerSnapshot] = useState<TrailerSnapshot | null>(initialState?.catalogTrailerSnapshot ?? null);
@@ -1328,9 +1332,11 @@ export function HighfieldQuoteFlow({
         fetchMotors();
     }, [currentStep, firestore, module, model, selectedOptionIds]);
 
-    // Auto-select the motor closest to maxHp when motors first load
+    // Auto-select the motor closest to maxHp when motors first load.
+    // Skips when the operator has explicitly clicked-off the default — a
+    // boat-only quote stays motor-less until they pick one.
     useEffect(() => {
-        if (motors.length === 0 || selectedMotor) return;
+        if (motors.length === 0 || selectedMotor || motorExplicitlyDeselected) return;
         const maxHp = Number(model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 0);
         const parseHp = (rating?: any): number => {
             if (!rating) return 0;
@@ -1350,7 +1356,7 @@ export function HighfieldQuoteFlow({
                 .map((a: any) => a.id);
             if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds);
         }
-    }, [motors]);
+    }, [motors, motorExplicitlyDeselected]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // When duplicating: once fresh motors load, swap in the matching motor with current price
     useEffect(() => {
@@ -1763,7 +1769,13 @@ export function HighfieldQuoteFlow({
                                         {motorsLoading ? <div className="flex flex-col items-center py-16 gap-3"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Scanning Factory Datasets...</p></div> : selectedMotor ? (
                                             /* --- SELECTED MOTOR HERO --- */
                                             <div ref={motorDetailRef} className="animate-in fade-in duration-700">
-                                                <div className="relative border-4 border-primary rounded-[2rem] overflow-hidden bg-white shadow-2xl ring-8 ring-primary/10">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(true); }}
+                                                    className="relative w-full text-left border-4 border-primary rounded-[2rem] overflow-hidden bg-white shadow-2xl ring-8 ring-primary/10 group/motor-hero"
+                                                    aria-label="Click to remove motor from quote"
+                                                    title="Click to remove motor (boat-only quote)"
+                                                >
                                                     <div className="relative aspect-[21/9] w-full bg-slate-50 border-b flex items-center justify-center">
                                                         {resolveImageUrl(selectedMotor) ? (
                                                             <Image src={resolveImageUrl(selectedMotor)!} alt="Motor" fill unoptimized className="object-contain p-8 mix-blend-multiply" />
@@ -1771,7 +1783,15 @@ export function HighfieldQuoteFlow({
                                                             <Ship className="h-16 w-16 text-slate-200" />
                                                         )}
                                                         <div className="absolute top-4 right-4">
-                                                            <div className="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg"><Check className="h-5 w-5" /></div>
+                                                            <div className="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg transition-all group-hover/motor-hero:bg-rose-500 group-hover/motor-hero:rotate-90">
+                                                                <Check className="h-5 w-5 group-hover/motor-hero:hidden" />
+                                                                <X className="h-5 w-5 hidden group-hover/motor-hero:block" />
+                                                            </div>
+                                                        </div>
+                                                        <div className="absolute top-4 left-4 opacity-0 group-hover/motor-hero:opacity-100 transition-opacity">
+                                                            <Badge className="bg-rose-500 text-white font-black text-[9px] uppercase px-3 py-1 rounded-full shadow-lg tracking-widest">
+                                                                Click to remove
+                                                            </Badge>
                                                         </div>
                                                         <Badge className="absolute bottom-4 left-4 bg-primary text-white font-black text-[10px] uppercase px-3 py-1 rounded-full shadow-lg">
                                                             {selectedMotor['HP Rating']} HP PERFORMANCE
@@ -1791,21 +1811,36 @@ export function HighfieldQuoteFlow({
                                                             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Excl. GST</span>
                                                         </div>
                                                     </div>
-                                                </div>
-                                                <div className="flex justify-center mt-4">
-                                                    <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-6" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); }}>
+                                                </button>
+                                                <div className="flex items-center justify-center gap-2 mt-4">
+                                                    <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-6" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(false); }}>
                                                         <ArrowRight className="h-3 w-3 mr-2 rotate-180" /> Choose Another Motor
+                                                    </Button>
+                                                    <Button variant="ghost" className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-4 text-rose-600 hover:bg-rose-50 hover:text-rose-700" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(true); }}>
+                                                        <X className="h-3 w-3 mr-2" /> No Motor
                                                     </Button>
                                                 </div>
                                             </div>
                                         ) : (
                                             /* --- MOTOR GRID --- */
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                            <div className="space-y-4">
+                                                {motorExplicitlyDeselected && (
+                                                    <div className="flex items-center justify-between gap-3 px-5 py-3 bg-rose-50 border-2 border-rose-200 rounded-2xl text-rose-800">
+                                                        <div className="flex items-center gap-3 min-w-0">
+                                                            <X className="h-4 w-4 shrink-0" />
+                                                            <p className="text-[10px] font-black uppercase tracking-widest truncate">Boat-only quote — no motor selected. Pick one below to add a motor.</p>
+                                                        </div>
+                                                        <Button variant="ghost" size="sm" onClick={() => setMotorExplicitlyDeselected(false)} className="rounded-lg text-[10px] font-black uppercase tracking-widest text-rose-700 hover:bg-rose-100 shrink-0">
+                                                            Restore default
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                                 {motors.map(m => {
                                                     const mUrl = resolveImageUrl(m);
                                                     const displayName = getMotorDisplayName(m);
                                                     return (
-                                                        <button key={m.id} onClick={() => { setSelectedMotor(m); setPropComesStandard(false); const standardIds = (m.masterAccessories || []).filter((a: any) => a.isStandard).map((a: any) => a.id); if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds); setTimeout(() => motorDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400); }} className="group relative flex flex-col border-4 rounded-[2rem] overflow-hidden transition-all bg-white shadow-2xl h-full border-transparent hover:border-primary/20">
+                                                        <button key={m.id} onClick={() => { setSelectedMotor(m); setMotorExplicitlyDeselected(false); setPropComesStandard(false); const standardIds = (m.masterAccessories || []).filter((a: any) => a.isStandard).map((a: any) => a.id); if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds); setTimeout(() => motorDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400); }} className="group relative flex flex-col border-4 rounded-[2rem] overflow-hidden transition-all bg-white shadow-2xl h-full border-transparent hover:border-primary/20">
                                                             <div className="relative aspect-video w-full bg-slate-50 border-b flex items-center justify-center">
                                                                 {mUrl ? (
                                                                     <Image src={mUrl} alt="Motor" fill className="object-contain p-6 mix-blend-multiply transition-transform group-hover:scale-110" />
@@ -1826,6 +1861,7 @@ export function HighfieldQuoteFlow({
                                                         </button>
                                                     );
                                                 })}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -2449,7 +2485,7 @@ export function HighfieldQuoteFlow({
                                                         <div className="flex items-center gap-3">
                                                             <div className="group/remove h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
                                                                 <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
-                                                                <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => setSelectedMotor(null)}><X className="h-3 w-3" /></Button>
+                                                                <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(true); }}><X className="h-3 w-3" /></Button>
                                                             </div>
                                                             <div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{getMotorDisplayName(selectedMotor)}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Performance</p></div>
                                                         </div>
