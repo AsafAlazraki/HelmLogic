@@ -991,13 +991,13 @@ export default function ModuleDetailsPage() {
 
                 {/* Single Tabs wrapping both bar and content */}
                 <Tabs value={validSubDealerTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-                    <div className="bg-white border-b shrink-0 z-10 px-10">
-                        <TabsList className={cn("grid w-full h-12 bg-transparent p-0 gap-4", `grid-cols-${subDealerTabs.length}`)}>
+                    <div className="bg-white border-b shrink-0 z-10 px-4 sm:px-10 overflow-x-auto">
+                        <TabsList className="flex md:grid w-max md:w-full h-12 bg-transparent p-0 gap-3 sm:gap-4" style={{ gridTemplateColumns: `repeat(${subDealerTabs.length}, minmax(0, 1fr))` }}>
                             {subDealerTabs.map((t) => (
                                 <TabsTrigger
                                     key={t.id}
                                     value={t.id}
-                                    className="rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-[0.2em] h-full transition-all duration-300 text-slate-500 data-[state=active]:text-slate-950 hover:text-slate-700"
+                                    className="shrink-0 whitespace-nowrap rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-[0.15em] sm:tracking-[0.2em] px-2 sm:px-0 h-full transition-all duration-300 text-slate-500 data-[state=active]:text-slate-950 hover:text-slate-700"
                                 >
                                     {t.label}
                                 </TabsTrigger>
@@ -1295,13 +1295,16 @@ export default function ModuleDetailsPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-                <div className="bg-white border-b shrink-0 z-10 px-10">
-                    <TabsList className={cn("grid w-full h-12 bg-transparent p-0 gap-4", `grid-cols-${navTabs.length}`)}>
+                {/* Scrollable on narrow screens — 5 wide-tracked uppercase tabs
+                    can't fit at phone widths, so we scroll horizontally instead
+                    of letting them collide. Grid (even spread) once there's room. */}
+                <div className="bg-white border-b shrink-0 z-10 px-4 sm:px-10 overflow-x-auto">
+                    <TabsList className="flex md:grid w-max md:w-full h-12 bg-transparent p-0 gap-3 sm:gap-4" style={{ gridTemplateColumns: `repeat(${navTabs.length}, minmax(0, 1fr))` }}>
                         {navTabs.map((t) => (
                             <TabsTrigger
                                 key={t.id}
                                 value={t.id}
-                                className="rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-[0.2em] h-full transition-all duration-300 text-slate-500 data-[state=active]:text-slate-950 hover:text-slate-700"
+                                className="shrink-0 whitespace-nowrap rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-[0.15em] sm:tracking-[0.2em] px-2 sm:px-0 h-full transition-all duration-300 text-slate-500 data-[state=active]:text-slate-950 hover:text-slate-700"
                             >
                                 {t.label}
                             </TabsTrigger>

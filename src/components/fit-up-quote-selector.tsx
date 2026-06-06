@@ -646,7 +646,10 @@ function SelectionRow({
                 </Button>
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
+            {/* Controls — stack on narrow cards (the quote-flow right column
+                can be ~480px) so the qty stepper buttons + inputs never get
+                crushed into an unusable row; 3-up once there's room. */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 {/* Qty stepper */}
                 <div className="flex items-center gap-1">
                     <Button

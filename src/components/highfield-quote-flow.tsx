@@ -1498,10 +1498,10 @@ export function HighfieldQuoteFlow({
                         </div>
                     </div>
                     <div className="px-4 sm:px-8 pt-4 pb-4 sm:pb-8 shrink-0">
-                        <div className="bg-white border-2 border-white shadow-xl p-6 rounded-[2rem] flex items-center justify-between min-h-[92px]">
-                            <div className="flex flex-col items-start px-1 gap-3">
+                        <div className="bg-white border-2 border-white shadow-xl p-4 sm:p-6 rounded-[2rem] flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 min-h-[92px] min-w-0">
+                            <div className="flex flex-col items-start px-1 gap-3 min-w-0">
                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em] leading-none">Technical Utilities</span>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
                                     <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowFeatures(true)}><ListChecks className="h-3.5 w-3.5 mr-2 text-primary" /> Features</Button>
                                     <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowSpecs(true)}><ClipboardList className="h-3.5 w-3.5 mr-2 text-primary" /> Specs</Button>
                                     <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowDocs(true)}><FileText className="h-3.5 w-3.5 mr-2 text-primary" /> Docs</Button>
@@ -1509,8 +1509,8 @@ export function HighfieldQuoteFlow({
                                     {selectedTrailerId && <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowTrailerSpecs(true)}><Truck className="h-3.5 w-3.5 mr-2 text-primary" /> Trailer Specs</Button>}
                                 </div>
                             </div>
-                            <div className="flex flex-col items-end px-1 gap-1">
-                                <div className="flex items-center gap-2 mb-1">
+                            <div className="flex flex-col items-start xl:items-end px-1 gap-1 shrink-0">
+                                <div className="flex items-center gap-2 mb-1 flex-wrap">
                                     <span className="text-[9px] uppercase tracking-widest font-black text-slate-400">Price Level</span>
                                     <select
                                         value={priceLevel}

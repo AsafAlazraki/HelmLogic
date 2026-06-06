@@ -1369,6 +1369,14 @@ export interface FitUpPackage {
      *  the member items proportionally as per-line priceOverrides. Null
      *  = sum of catalog member sells. */
     packagePrice?: number | null;
+    /** v1.11 follow-up — when true, this package is one of the three
+     *  primary tier choices (Simple / Medium / Complex) shown as the big
+     *  cards at the top of Step 5. `tier` says which slot it fills. Only
+     *  one package per tier should be flagged; the quote selector picks
+     *  the first it finds per tier. Non-tier packages stay in the "bonus
+     *  bundles" strip. */
+    isTierPackage?: boolean;
+    tier?: Tier;
     createdAt?: any;
     updatedAt?: any;
 }
@@ -1469,7 +1477,14 @@ function FitUpPackagesManager({ organisationId, items }: { organisationId: strin
                                 <div key={pkg.id} className="p-3 rounded-xl border-2 hover:border-primary/40 transition-colors">
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-bold truncate">{pkg.name}</p>
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <p className="text-sm font-bold truncate">{pkg.name}</p>
+                                                {pkg.isTierPackage && pkg.tier && (
+                                                    <Badge variant="outline" className={`${TIER_TONE[pkg.tier]} text-[8px] font-black uppercase tracking-widest shrink-0`}>
+                                                        ★ {TIER_LABEL[pkg.tier]} tier
+                                                    </Badge>
+                                                )}
+                                            </div>
                                             {pkg.description && <p className="text-[10px] text-muted-foreground mt-0.5">{pkg.description}</p>}
                                             <div className="flex flex-wrap gap-1 mt-2">
                                                 {resolved.map(item => (
@@ -1536,6 +1551,8 @@ function FitUpPackageEditor({
     const [description, setDescription] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [packagePrice, setPackagePrice] = useState('');
+    const [isTierPackage, setIsTierPackage] = useState(false);
+    const [tier, setTier] = useState<Tier>('simple');
     const [saving, setSaving] = useState(false);
     const [search, setSearch] = useState('');
 
@@ -1545,6 +1562,8 @@ function FitUpPackageEditor({
             setDescription(editingPackage?.description ?? '');
             setSelectedIds(new Set(editingPackage?.itemIds ?? []));
             setPackagePrice(editingPackage?.packagePrice != null ? String(editingPackage.packagePrice) : '');
+            setIsTierPackage(editingPackage?.isTierPackage ?? false);
+            setTier((editingPackage?.tier as Tier) ?? 'simple');
             setSearch('');
         }
     }, [open, editingPackage]);
@@ -1592,6 +1611,11 @@ function FitUpPackageEditor({
                 description: description.trim() || null,
                 itemIds: Array.from(selectedIds),
                 packagePrice: parsedPackagePrice,
+                // v1.11 follow-up — tier-package flags. When isTierPackage is
+                // false we still persist tier:null so toggling off a tier
+                // package cleanly demotes it back to a bonus bundle.
+                isTierPackage,
+                tier: isTierPackage ? tier : null,
                 updatedAt: serverTimestamp(),
             };
             const actorUid = user?.uid || 'unknown';
@@ -1678,6 +1702,39 @@ function FitUpPackageEditor({
                             Set a single bundled price (e.g. "Coastal Setup — $1,200 all-in"). At quote time it's distributed proportionally across the member items as per-line overrides, so the margin still allocates correctly.
                         </p>
                     </div>
+
+                    {/* v1.11 follow-up — tier-package promotion. A tier package
+                        is one of the three big primary cards (Simple / Medium /
+                        Complex) at the top of Step 5. Non-tier packages stay in
+                        the bonus-bundle strip. */}
+                    <div className="rounded-xl border-2 p-3 space-y-3 bg-slate-50/40">
+                        <label className="flex items-center gap-2.5 cursor-pointer">
+                            <Checkbox checked={isTierPackage} onCheckedChange={v => setIsTierPackage(!!v)} />
+                            <div className="min-w-0">
+                                <p className="text-xs font-semibold">Primary tier package</p>
+                                <p className="text-[10px] text-muted-foreground leading-tight">
+                                    Show this as one of the three big Simple / Medium / Complex cards at the top of Step 5 (instead of a bonus bundle).
+                                </p>
+                            </div>
+                        </label>
+                        {isTierPackage && (
+                            <div className="space-y-1.5 pl-7">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Which tier slot</label>
+                                <Select value={tier} onValueChange={v => setTier(v as Tier)}>
+                                    <SelectTrigger className="rounded-xl border-2 h-9 font-bold">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {TIERS.map(t => (
+                                            <SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-[10px] text-muted-foreground">One package per tier. If two are flagged for the same tier, the quote picks the first.</p>
+                            </div>
+                        )}
+                    </div>
+
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold">Items ({selectedIds.size} selected)</label>
                         <Input
