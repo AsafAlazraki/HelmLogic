@@ -1016,15 +1016,15 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                 </View>
                                 <Text style={{ fontSize: 14, fontWeight: 'bold', fontStyle: 'italic', color: NAVY, flexShrink: 0 }}>{currency(quote.trailer.sellPriceExclGst || 0)}</Text>
                             </View>
-                            {/* Same resolved-URL guard as the motor block: only
-                                reserve a 140px image slot if pdfImg actually
-                                returned a renderable URL. */}
-                            {(() => {
-                                if (!trailerImg) return null;
-                                const trailerSrc = pdfImg(trailerImg, 600);
-                                if (!trailerSrc) return null;
-                                return <Image src={trailerSrc} style={{ width: '100%', height: 140, objectFit: 'contain', backgroundColor: LIGHT, borderRadius: 4, marginBottom: 6 }} />;
-                            })()}
+                            {/* v1.11 follow-up — trailer image intentionally
+                                omitted from the customer PDF. The catalog
+                                snapshot saves brand-logo graphics (REDCO/TINKA,
+                                DUNBIER badges) into trailer.imageUrl when no
+                                proper trailer photo is uploaded, and those
+                                brand logos dominated the page. The trailer
+                                name + brand badge + specs grid below convey
+                                everything the customer needs without the
+                                risk of brand-logo bleed-through. */}
 
                             {/* Trailer Specifications */}
                             {trailerSpecs.length > 0 && (
