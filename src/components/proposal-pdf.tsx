@@ -298,26 +298,16 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                 // version of the content manager.
                 const htmlEmpty = !html || !html.trim() || !html.replace(/<[^>]+>/g, '').trim();
                 if (blockType === 'terms-and-conditions' && htmlEmpty) {
-                    /* Substantial fallback T&Cs — the previous 4-line default
-                       left the page 75% empty. Now covers validity, deposit
-                       handling, delivery, finance, warranty, ownership and
-                       statutory references so the page reads as a complete
-                       set of terms rather than a placeholder. Orgs that
-                       author their own T&Cs in the Content Manager still
-                       override this fallback entirely. */
+                    /* Bare-minimum fallback. T&Cs content is operator-authored
+                       in the Content Manager — never invent terms here. Orgs
+                       that haven't filled it in get this short stub and a
+                       prompt; orgs that have filled it in skip this branch
+                       entirely. */
                     const DEFAULT_TERMS = [
-                        '1. Quote Validity — This proposal is valid for 30 days from the date of issue. Prices are subject to change without notice after the validity period and may be re-confirmed in writing on request.',
-                        '2. Deposit — A non-refundable deposit (typically 10% of the total Investment, or as agreed in writing) is required to secure this package and reserve stock. The deposit is applied against the final invoice on delivery.',
-                        '3. Payment Terms — The balance of the Investment is payable in cleared funds prior to delivery or vessel handover. The dealership reserves the right to delay handover until cleared funds are received.',
-                        '4. Delivery & Handover — Final delivery dates will be confirmed in writing on order acceptance. The dealership uses reasonable endeavours to meet stated dates but is not liable for delays caused by suppliers, freight, or events outside its control.',
-                        '5. Inclusions — The Investment Summary on this proposal sets out the complete inclusions for the package. Items shown as INCLUDED carry no additional cost. Items not listed are not part of the package and may be quoted separately on request.',
-                        '6. Warranty — Manufacturer warranties apply to the vessel, outboard motor, trailer, and factory-fitted accessories per each manufacturer\'s published terms. Dealer-fitted accessories carry the dealership\'s standard 12-month workmanship warranty unless otherwise stated.',
-                        '7. Variations — Any variation to the specified package after deposit will be confirmed in writing and may attract additional charges. Stock substitutions (where unavoidable) will be communicated in advance.',
-                        '8. Title & Risk — Title and risk in the goods pass on payment in full and physical handover. Until then, the dealership retains a security interest in the package.',
-                        '9. Insurance — The customer is responsible for arranging marine insurance prior to handover. Recommendations to leading providers can be made on request.',
-                        '10. Privacy — Personal information collected in connection with this quote is handled in accordance with the dealership\'s Privacy Policy and the Australian Privacy Principles.',
-                        '11. Governing Law — This proposal and any subsequent contract is governed by the laws of the State of Queensland, Australia.',
-                        '12. Acceptance — The acceptance signature on the final page constitutes the customer\'s acknowledgement of these terms in full.',
+                        '1. This proposal is valid for 30 days from the date of issue.',
+                        '2. Prices are subject to change without notice after the validity period.',
+                        '3. A non-refundable deposit may be required to secure this package.',
+                        '4. Final delivery dates will be confirmed upon order acceptance.',
                     ];
                     const customTerms = organisation?.termsAndConditions
                         ? (organisation.termsAndConditions as string).split('\n').filter((l: string) => l.trim())
@@ -579,16 +569,15 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             <Page size="A4" style={S.page}>
                 <View style={{ width: '100%', height: '100%', position: 'relative', backgroundColor: NAVY }}>
 
-                    {/* Background — full-bleed image OR deep navy fallback.
-                        objectFit:'contain' so whole boat is always visible;
-                        the deep-navy backdrop fills any letterbox bars left
-                        by aspect-ratio differences. Previously 'cover' was
-                        cropping landscape boat photos so aggressively that
-                        only the cockpit floor remained. */}
+                    {/* Background — full-bleed cover crop. The 'contain' fit
+                        we tried earlier letterboxed landscape photos with a
+                        big grey gradient at the top that looked broken;
+                        'cover' fills the page and matches the design's
+                        intent (image-as-backdrop, gradients overlaying). */}
                     {quote.coverImageUrl ? (
                         <Image
                             src={pdfImg(quote.coverImageUrl, 1200)}
-                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain' }}
+                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                     ) : null}
 
@@ -863,7 +852,9 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                         { label: 'Warranty', value: quote.motor.warranty || quote.motor['Warranty'] },
                     ].filter(s => s.value);
                     return (
-                    <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
+                    /* wrap={false} keeps motor block atomic so the header
+                       doesn't strand on page X with the specs grid on page X+1. */
+                    <View wrap={false} style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
                         {/* Motor header — left: title + brand. Right: price.
                             Photo (when present) sits as a banner ABOVE the
                             specs grid so it doesn't crash into the price.
@@ -995,7 +986,12 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     const trailerOptions: any[] = Array.isArray(quote.trailer.options) ? quote.trailer.options : [];
 
                     return (
-                        <View style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
+                        /* wrap={false} keeps the whole trailer block atomic
+                           — header + specs + subtotal stay together. The
+                           previous behaviour split the title onto one page
+                           and the specs grid onto the next with a giant
+                           blank gap between them. */
+                        <View wrap={false} style={{ backgroundColor: LIGHT, borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 14, marginBottom: 14 }}>
                             {/* Trailer header — left: title + brand. Right: price.
                                 Photo (when present) is a banner above the
                                 specs grid (matches motor section layout). */}
