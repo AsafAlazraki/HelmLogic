@@ -16,6 +16,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import NextImage from "next/image";
 import { HighfieldPricingWorkspace } from "@/components/highfield-pricing-workspace";
+import { MotorsTableView } from "@/components/motors-table-view";
+import { BoatsTableView } from "@/components/boats-table-view";
 import { ExchangeRateManager } from "@/components/exchange-rate-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -269,10 +271,23 @@ export default function PricingManagerPage() {
                 <Card className="flex-1 min-w-0 shadow-lg border-2 overflow-hidden flex flex-col bg-muted/5">
                     {activeVendor ? (
                         activeVendor.slug === 'highfield' ? (
-                            <HighfieldPricingWorkspace 
-                                vendor={activeVendor} 
-                                organisationId={organisationId} 
+                            <HighfieldPricingWorkspace
+                                vendor={activeVendor}
+                                organisationId={organisationId}
                             />
+                        ) : activeVendor.vendorType === 'Motor Brand' ? (
+                            /* v1.11 follow-up — Story 3.7.3 Motors Table mounted
+                               here so motor brands have a read view inside the
+                               Catalog Manager instead of "coming soon". */
+                            <div className="p-6 overflow-y-auto">
+                                <MotorsTableView />
+                            </div>
+                        ) : activeVendor.vendorType === 'Boat Brand' ? (
+                            /* v1.11 follow-up — non-Highfield Boat Brand vendors
+                               get the Boats Table read view instead of "coming soon". */
+                            <div className="p-6 overflow-y-auto">
+                                <BoatsTableView />
+                            </div>
                         ) : (
                             <div className="flex flex-col h-full overflow-hidden">
                                 <CardHeader className="p-6 border-b bg-background shrink-0">
