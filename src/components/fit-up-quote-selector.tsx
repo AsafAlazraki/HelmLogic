@@ -125,6 +125,14 @@ export interface FitUpSelection {
     quantity: number;
     priceOverride: number | null;
     quoteNote: string | null;
+    /** v1.11 follow-up — when an item is added via a package, we stamp
+     *  the source package so the PDF can group items under their bundle
+     *  name ("Simple Fit-Up Package · 4 items"). Null when the item was
+     *  picked à la carte from the Custom section. Carries through to
+     *  the finalize snapshot + customer PDF. */
+    packageId?: string | null;
+    packageName?: string | null;
+    packageTier?: Tier | null;
 }
 
 /** Resolve the unit sell price for a selection, honouring (in order):
@@ -151,8 +159,15 @@ interface FitUpQuoteSelectorProps {
      *  package against the live catalog before invoking. `packagePrice`
      *  is the optional package-level override — when non-null, callers
      *  distribute it proportionally across the member items as a
-     *  priceOverride per line (see highfield-quote-flow.addFitUpPackage). */
-    onAddPackage: (items: FitUpItem[], packagePrice: number | null) => void;
+     *  priceOverride per line (see highfield-quote-flow.addFitUpPackage).
+     *  `packageMeta` (added v1.11 follow-up) carries the package's
+     *  identity so each new selection can be stamped with `packageId` +
+     *  `packageName` for PDF grouping. */
+    onAddPackage: (
+        items: FitUpItem[],
+        packagePrice: number | null,
+        packageMeta?: { id: string; name: string; tier?: Tier | null },
+    ) => void;
     /** Per-line patch — qty / override / note. */
     onUpdateSelection: (itemId: string, patch: Partial<Omit<FitUpSelection, 'item'>>) => void;
     /** v1.11 (Epic 9.2.1) — assignment context. AND-combined against
@@ -399,7 +414,7 @@ export function FitUpQuoteSelector({
                                 <button
                                     key={pkg.id}
                                     type="button"
-                                    onClick={() => onAddPackage(resolvedItems, hasPackagePrice ? pkg.packagePrice! : null)}
+                                    onClick={() => onAddPackage(resolvedItems, hasPackagePrice ? pkg.packagePrice! : null, { id: pkg.id, name: pkg.name, tier: pkg.tier ?? null })}
                                     className={cn(
                                         'flex items-center gap-2 px-3 py-2 rounded-xl border-2 text-left transition-colors',
                                         allOn ? 'bg-primary text-white border-primary' : 'bg-white border-slate-200 hover:border-primary/40',
@@ -703,7 +718,11 @@ function TierPackageCard({
     isSuggested: boolean;
     itemById: Map<string, FitUpItem>;
     selectedSet: Set<string>;
-    onAddPackage: (items: FitUpItem[], packagePrice: number | null) => void;
+    onAddPackage: (
+        items: FitUpItem[],
+        packagePrice: number | null,
+        packageMeta?: { id: string; name: string; tier?: Tier | null },
+    ) => void;
 }) {
     const resolvedItems = pkg.itemIds
         .map(id => itemById.get(id))
@@ -717,7 +736,7 @@ function TierPackageCard({
     return (
         <button
             type="button"
-            onClick={() => onAddPackage(resolvedItems, hasOverride ? pkg.packagePrice! : null)}
+            onClick={() => onAddPackage(resolvedItems, hasOverride ? pkg.packagePrice! : null, { id: pkg.id, name: pkg.name, tier: tier ?? null })}
             className={cn(
                 'group relative flex flex-col text-left border-4 rounded-[1.75rem] overflow-hidden transition-all bg-white shadow-xl p-5 gap-3 min-h-[16rem]',
                 allOn

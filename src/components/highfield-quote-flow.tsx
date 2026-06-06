@@ -1117,13 +1117,25 @@ export function HighfieldQuoteFlow({
     //   they were already on the quote — the package "wins" the override.
     //   Operator can then nudge any single line back via the per-line
     //   override input if needed.
-    const addFitUpPackage = (items: FitUpItem[], packagePrice: number | null) => {
+    const addFitUpPackage = (
+        items: FitUpItem[],
+        packagePrice: number | null,
+        packageMeta?: { id: string; name: string; tier?: 'simple' | 'medium' | 'complex' | null },
+    ) => {
         setSelectedFitUpItems(prev => {
             const existingIds = new Set(prev.map(s => s.item.id));
             const next: FitUpSelection[] = [...prev];
             for (const item of items) {
                 if (!existingIds.has(item.id)) {
-                    next.push({ item, quantity: 1, priceOverride: null, quoteNote: null });
+                    next.push({
+                        item,
+                        quantity: 1,
+                        priceOverride: null,
+                        quoteNote: null,
+                        packageId: packageMeta?.id ?? null,
+                        packageName: packageMeta?.name ?? null,
+                        packageTier: packageMeta?.tier ?? null,
+                    });
                 }
             }
             if (packagePrice != null && packagePrice >= 0 && items.length > 0) {

@@ -11,14 +11,19 @@ import {
     type PdfStructureSection,
 } from '@/lib/pdf-structure';
 
-/* ─── Palette ──────────────────────────────────────────────────────────── */
-const BRAND  = '#0066cc';
+/* ─── Palette ────────────────────────────────────────────────────────────
+ * Deeper, more authoritative palette than the earlier Pacific-blue (#0066cc).
+ * BRAND is now a deep navy-blue closer to "executive proposal" tone;
+ * GOLD provides a thin accent rule on the cover for premium feel.
+ * ──────────────────────────────────────────────────────────────────────── */
+const BRAND  = '#0c2a4d'; // deep navy-blue — primary
 const NAVY   = '#0f172a';
-const SLATE  = '#64748b';
+const SLATE  = '#475569';
 const MUTED  = '#94a3b8';
 const BORDER = '#e2e8f0';
 const LIGHT  = '#f8fafc';
 const GREEN  = '#10b981';
+const GOLD   = '#a07a2c'; // hairline gold accent on cover
 
 /* ─── Helpers ──────────────────────────────────────────────────────────── */
 function currency(n: number): string {
@@ -359,18 +364,64 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
     // selection renders as its own line (customer-facing description,
     // qty × resolved unit price) — the opt-in to the locked 9.2.3
     // summary default. Operator-only notes never render either way.
+    // v1.11 follow-up — package-aware fit-up rendering. When the operator
+    // picked a tier package (Simple / Medium / Complex Fit-Up), the items
+    // ride into the snapshot with packageId + packageName stamped. The PDF
+    // groups by package so the customer sees the bundle they were sold
+    // ("Medium Fit-Up Package — 4 items") instead of a flat dump of every
+    // member item. À-la-carte items (no packageId) appear after the bundles.
     if (f.fitUpTotal > 0) {
         const sels = quote.fitUpSelections || [];
+        const unitOf = (sel: any) => sel.priceOverride != null
+            ? sel.priceOverride
+            : (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0));
+        const totalOf = (sel: any) => Math.max(1, sel.quantity ?? 1) * unitOf(sel);
+
         if (quote.customerDetailedView && sels.length > 0) {
+            // Operator opted into full itemisation — every line.
             sels.forEach((sel: any) => {
                 const qty = Math.max(1, sel.quantity ?? 1);
-                const unit = sel.priceOverride != null
-                    ? sel.priceOverride
-                    : (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0));
                 const label = sel.customerDescription || sel.name || 'Fit-up item';
-                lineItems.push({ label: qty > 1 ? `${label} ×${qty}` : label, sub: 'Fit-up & Rigging', amount: qty * unit });
+                lineItems.push({
+                    label: qty > 1 ? `${label} ×${qty}` : label,
+                    sub: sel.packageName ?? 'Fit-up & Rigging',
+                    amount: qty * unitOf(sel),
+                });
             });
+        } else if (sels.length > 0 && sels.some((s: any) => s.packageId)) {
+            // Default — bundle-aware rollup. Group by packageId; everything
+            // without a packageId stays as a single "Additional Fit-up" line.
+            const byPackage = new Map<string, { name: string; items: any[]; total: number }>();
+            const loose: any[] = [];
+            for (const sel of sels) {
+                if (sel.packageId && sel.packageName) {
+                    if (!byPackage.has(sel.packageId)) {
+                        byPackage.set(sel.packageId, { name: sel.packageName, items: [], total: 0 });
+                    }
+                    const e = byPackage.get(sel.packageId)!;
+                    e.items.push(sel);
+                    e.total += totalOf(sel);
+                } else {
+                    loose.push(sel);
+                }
+            }
+            for (const e of byPackage.values()) {
+                lineItems.push({
+                    label: `${e.name} Package`,
+                    sub: `Fit-up & Rigging · ${e.items.length} component${e.items.length === 1 ? '' : 's'}`,
+                    amount: e.total,
+                });
+            }
+            if (loose.length > 0) {
+                const looseTotal = loose.reduce((a, s) => a + totalOf(s), 0);
+                lineItems.push({
+                    label: 'Additional Fit-up & Rigging',
+                    sub: `${loose.length} item${loose.length === 1 ? '' : 's'}`,
+                    amount: looseTotal,
+                });
+            }
         } else {
+            // Legacy / no packages — single rollup line.
             lineItems.push({ label: 'Fit-up & Rigging', sub: 'Installation & Preparation', amount: f.fitUpTotal });
         }
     }
@@ -454,9 +505,11 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
 
                     {/* ── Bottom hero block ── */}
                     <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 48, paddingBottom: 52, flexDirection: 'column' }}>
-                        {/* Badge */}
-                        <View style={{ backgroundColor: BRAND, borderRadius: 3, paddingHorizontal: 12, paddingVertical: 5, alignSelf: 'flex-start', marginBottom: 18 }}>
-                            <Text style={{ fontSize: 7, fontWeight: 'bold', color: 'white', letterSpacing: 2.5, textTransform: 'uppercase' }}>
+                        {/* Premium badge — gold-rule + thin border on transparent fill
+                            (was solid brand-blue rectangle) */}
+                        <View style={{ alignSelf: 'flex-start', marginBottom: 18, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <View style={{ width: 18, height: 1.5, backgroundColor: GOLD }} />
+                            <Text style={{ fontSize: 7, fontWeight: 'bold', color: 'rgba(255,255,255,0.92)', letterSpacing: 3.5, textTransform: 'uppercase' }}>
                                 Official Proposal
                             </Text>
                         </View>
@@ -477,8 +530,12 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                             {quote.modelCode}
                         </Text>
 
-                        {/* Accent rule */}
-                        <View style={{ width: 48, height: 3, backgroundColor: BRAND, marginBottom: 26 }} />
+                        {/* Premium accent — thin gold hairline + a thicker brand bar
+                            below for visual hierarchy */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 26 }}>
+                            <View style={{ width: 36, height: 1, backgroundColor: GOLD }} />
+                            <View style={{ width: 80, height: 2, backgroundColor: 'rgba(255,255,255,0.4)' }} />
+                        </View>
 
                         {/* Two-col: client + price */}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -531,7 +588,9 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                         </View>
                     </View>
 
-                    {/* Bottom accent bar */}
+                    {/* Bottom accent — brand bar with thin gold hairline above for
+                        the premium-publication feel. */}
+                    <View style={{ position: 'absolute', bottom: 4, left: 0, right: 0, height: 1, backgroundColor: GOLD }} />
                     <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 4, backgroundColor: BRAND }} />
                 </View>
             </Page>
@@ -902,45 +961,89 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     );
                 })()}
 
-                {/* Fit-Up & Rigging — itemised section. Renders WHENEVER there are
-                    fit-up selections so the customer sees their workshop scope on the
-                    PDF. (The `customerDetailedView` toggle previously gated this,
-                    making the section silently disappear — bad default. Now it always
-                    appears when fit-up is on the quote.) */}
-                {(quote.fitUpSelections?.length ?? 0) > 0 && (
-                    <View style={{ marginBottom: 14 }} wrap>
-                        <Text style={S.sectionLabel} wrap={false}>Fit-Up & Rigging</Text>
-                        <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 5, overflow: 'hidden' }}>
-                            {(quote.fitUpSelections as any[]).map((sel: any, i: number) => {
-                                const qty = Math.max(1, sel.quantity ?? 1);
-                                const unit = sel.priceOverride != null ? sel.priceOverride : (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0));
-                                const label = sel.customerDescription || sel.name || 'Fit-up item';
-                                return (
-                                    <View key={sel.id || i} wrap={false} style={{
+                {/* Fit-Up & Rigging — package-aware itemised section.
+                    Groups items by source package (Simple / Medium / Complex Fit-Up
+                    packages) so the customer sees the bundle they were sold rather
+                    than a flat list of each member item. À-la-carte additions sit
+                    in an "Additional Items" group at the bottom. */}
+                {(() => {
+                    const sels = (quote.fitUpSelections as any[] | undefined) || [];
+                    if (sels.length === 0) return null;
+                    const unitOf = (sel: any) => sel.priceOverride != null ? sel.priceOverride : (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0));
+                    const lineOf = (sel: any) => Math.max(1, sel.quantity ?? 1) * unitOf(sel);
+
+                    // Maintain insertion order so the first selected package
+                    // sorts first. Use a Map for stable iteration.
+                    const groups = new Map<string, { name: string | null; items: any[]; total: number }>();
+                    for (const sel of sels) {
+                        const key = sel.packageId || '__loose__';
+                        if (!groups.has(key)) {
+                            groups.set(key, { name: sel.packageName ?? null, items: [], total: 0 });
+                        }
+                        const g = groups.get(key)!;
+                        g.items.push(sel);
+                        g.total += lineOf(sel);
+                    }
+
+                    return (
+                        <View style={{ marginBottom: 14 }} wrap>
+                            <Text style={S.sectionLabel} wrap={false}>Fit-Up & Rigging</Text>
+                            {Array.from(groups.entries()).map(([key, g], gi) => (
+                                <View key={key} style={{
+                                    borderWidth: 1, borderColor: BORDER, borderRadius: 5,
+                                    overflow: 'hidden', marginTop: gi === 0 ? 0 : 8,
+                                }}>
+                                    {/* Group header — visible only when the items came
+                                        from a named package. À-la-carte items use a
+                                        plain "Additional Items" label. */}
+                                    <View wrap={false} style={{
                                         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-                                        paddingHorizontal: 10, paddingVertical: 6,
-                                        borderTopWidth: i > 0 ? 1 : 0, borderTopColor: '#f1f5f9',
+                                        paddingHorizontal: 10, paddingVertical: 7, backgroundColor: LIGHT,
+                                        borderBottomWidth: 1, borderBottomColor: BORDER,
                                     }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, gap: 8 }}>
-                                            {sel.imageUrl ? (
-                                                <Image src={pdfImg(sel.imageUrl, 120)} style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 3, flexShrink: 0 }} />
-                                            ) : (
-                                                <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: GREEN, flexShrink: 0 }} />
-                                            )}
-                                            <View style={{ flexShrink: 1 }}>
-                                                <Text style={{ fontSize: 8, color: SLATE }}>{label}{qty > 1 ? ` × ${qty}` : ''}</Text>
-                                                {sel.category ? (
-                                                    <Text style={{ fontSize: 6, color: MUTED, marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>{sel.category}</Text>
-                                                ) : null}
-                                            </View>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 }}>
+                                            <View style={{ width: 4, height: 12, borderRadius: 1, backgroundColor: BRAND, flexShrink: 0 }} />
+                                            <Text style={{ fontSize: 7.5, fontWeight: 'bold', letterSpacing: 1.4, textTransform: 'uppercase', color: NAVY, flexShrink: 1 }}>
+                                                {g.name ? `${g.name} Package` : 'Additional Items'}
+                                            </Text>
+                                            <Text style={{ fontSize: 6.5, fontWeight: 'bold', letterSpacing: 1.2, textTransform: 'uppercase', color: MUTED }}>
+                                                · {g.items.length} item{g.items.length === 1 ? '' : 's'}
+                                            </Text>
                                         </View>
-                                        <Text style={{ fontSize: 8, fontWeight: 'bold', color: NAVY, marginLeft: 12 }}>{currency(qty * unit)}</Text>
+                                        <Text style={{ fontSize: 8.5, fontWeight: 'bold', color: NAVY, marginLeft: 10 }}>{currency(g.total)}</Text>
                                     </View>
-                                );
-                            })}
+
+                                    {/* Items in this group */}
+                                    {g.items.map((sel: any, i: number) => {
+                                        const qty = Math.max(1, sel.quantity ?? 1);
+                                        const label = sel.customerDescription || sel.name || 'Fit-up item';
+                                        return (
+                                            <View key={sel.id || i} wrap={false} style={{
+                                                flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                                                paddingHorizontal: 10, paddingVertical: 5,
+                                                borderTopWidth: i > 0 ? 1 : 0, borderTopColor: '#f1f5f9',
+                                            }}>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, gap: 8 }}>
+                                                    {sel.imageUrl ? (
+                                                        <Image src={pdfImg(sel.imageUrl, 120)} style={{ width: 30, height: 30, objectFit: 'contain', borderRadius: 3, flexShrink: 0 }} />
+                                                    ) : (
+                                                        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: MUTED, flexShrink: 0, marginLeft: 4 }} />
+                                                    )}
+                                                    <View style={{ flexShrink: 1 }}>
+                                                        <Text style={{ fontSize: 7.5, color: SLATE }}>{label}{qty > 1 ? ` × ${qty}` : ''}</Text>
+                                                        {sel.category ? (
+                                                            <Text style={{ fontSize: 5.5, color: MUTED, marginTop: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>{sel.category}</Text>
+                                                        ) : null}
+                                                    </View>
+                                                </View>
+                                            </View>
+                                        );
+                                    })}
+                                </View>
+                            ))}
                         </View>
-                    </View>
-                )}
+                    );
+                })()}
 
                 {/* v1.7 (1.8.11) — page 2 ends after the system vessel-config block.
                     Content blocks that used to live here (brand-story, after-sales)
@@ -963,15 +1066,16 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
 
                 {/* Pricing table */}
                 <View style={{ marginBottom: 28 }}>
-                    {/* Header row */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: NAVY, marginBottom: 0 }}>
+                    {/* Header row — wrap={false} so the column labels stay attached
+                        to the first line item when the table flows pages. */}
+                    <View wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: NAVY, marginBottom: 0 }}>
                         <Text style={{ fontSize: 7, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE }}>Description</Text>
                         <Text style={{ fontSize: 7, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE }}>Amount</Text>
                     </View>
 
-                    {/* Line items */}
+                    {/* Line items — atomic per row so a row never splits across pages */}
                     {lineItems.map((item, i) => (
-                        <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
+                        <View key={i} wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
                             <View style={{ flexShrink: 1, paddingRight: 12 }}>
                                 <Text style={{ fontSize: 8.5, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.3, color: NAVY }}>{item.label}</Text>
                                 {item.sub && <Text style={{ fontSize: 7, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: MUTED, marginTop: 1.5 }}>{item.sub}</Text>}
@@ -994,22 +1098,25 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                         </View>
                     )}
 
-                    {/* Net total */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderTopWidth: 1, borderTopColor: BORDER }}>
-                        <Text style={{ fontSize: 7.5, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE, flexShrink: 0, marginLeft: 'auto', marginRight: 16 }}>Net Total Excl. GST</Text>
-                        <Text style={{ fontSize: 11, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(f.finalTotalPriceExclGst)}</Text>
-                    </View>
+                    {/* Totals block — wrapped together so Net + GST + Grand Total
+                        never split across pages mid-summary. */}
+                    <View wrap={false}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderTopWidth: 1, borderTopColor: BORDER }}>
+                            <Text style={{ fontSize: 7.5, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: SLATE, flexShrink: 0, marginLeft: 'auto', marginRight: 16 }}>Net Total Excl. GST</Text>
+                            <Text style={{ fontSize: 11, fontWeight: 'bold', fontStyle: 'italic', color: NAVY }}>{currency(f.finalTotalPriceExclGst)}</Text>
+                        </View>
 
-                    {/* GST */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderTopWidth: 1, borderTopColor: '#f1f5f9' }}>
-                        <Text style={{ fontSize: 7.5, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: MUTED, flexShrink: 0, marginLeft: 'auto', marginRight: 16 }}>GST (10%)</Text>
-                        <Text style={{ fontSize: 8.5, fontWeight: 'bold', color: SLATE }}>{currency(f.gstAmount)}</Text>
-                    </View>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderTopWidth: 1, borderTopColor: '#f1f5f9' }}>
+                            <Text style={{ fontSize: 7.5, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: MUTED, flexShrink: 0, marginLeft: 'auto', marginRight: 16 }}>GST (10%)</Text>
+                            <Text style={{ fontSize: 8.5, fontWeight: 'bold', color: SLATE }}>{currency(f.gstAmount)}</Text>
+                        </View>
 
-                    {/* Grand total row */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: NAVY, borderRadius: 5, paddingHorizontal: 16, paddingVertical: 14, marginTop: 4 }}>
-                        <Text style={{ fontSize: 8, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: 'white' }}>Total Investment (Incl. GST)</Text>
-                        <Text style={{ fontSize: 22, fontWeight: 'bold', fontStyle: 'italic', color: 'white', letterSpacing: -0.5 }}>{currency(f.totalInclGst)}</Text>
+                        {/* Grand total — gold hairline on top for the premium signal */}
+                        <View style={{ height: 1, backgroundColor: GOLD, marginTop: 6 }} />
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: NAVY, borderRadius: 5, paddingHorizontal: 16, paddingVertical: 14, marginTop: 2 }}>
+                            <Text style={{ fontSize: 8, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: 'white' }}>Total Investment (Incl. GST)</Text>
+                            <Text style={{ fontSize: 22, fontWeight: 'bold', fontStyle: 'italic', color: 'white', letterSpacing: -0.5 }}>{currency(f.totalInclGst)}</Text>
+                        </View>
                     </View>
                 </View>
 

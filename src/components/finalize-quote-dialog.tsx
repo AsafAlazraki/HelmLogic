@@ -75,6 +75,9 @@ interface FinalizeQuoteDialogProps {
             quantity: number;
             priceOverride: number | null;
             quoteNote: string | null;
+            packageId?: string | null;
+            packageName?: string | null;
+            packageTier?: 'simple' | 'medium' | 'complex' | null;
         }>;
         totalPrice: number;
         isRegoSelected: boolean;
@@ -422,6 +425,11 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 quantity: Math.max(1, sel.quantity ?? 1),
                 priceOverride: sel.priceOverride ?? null,
                 quoteNote: sel.quoteNote ?? null,
+                // v1.11 follow-up — package provenance carried so PDF can
+                // group items by bundle. Null when item was à-la-carte.
+                packageId: sel.packageId ?? null,
+                packageName: sel.packageName ?? null,
+                packageTier: sel.packageTier ?? null,
             })),
 
             // Pricing
