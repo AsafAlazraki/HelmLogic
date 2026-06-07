@@ -64,8 +64,11 @@ async function enterQuoteFlow(page: Page): Promise<void> {
 }
 
 async function clickNextUntilStep(page: Page, targetStep: number): Promise<number> {
+  // We always start on step 1 after enterQuoteFlow. Land on `targetStep`
+  // by clicking Next exactly `targetStep - 1` times.
   let attempts = 0;
-  while (attempts < targetStep) {
+  const maxClicks = Math.max(0, targetStep - 1);
+  while (attempts < maxClicks) {
     const nextBtn = page.locator('button:has-text("Next Step")').first();
     const visible = await nextBtn.isVisible().catch(() => false);
     if (!visible) break;
