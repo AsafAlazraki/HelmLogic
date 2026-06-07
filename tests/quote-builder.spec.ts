@@ -17,10 +17,21 @@ async function enterQuoteFlow(page: Page): Promise<void> {
     await entryButton.click();
     await page.waitForTimeout(1500);
 
-    const dialogItem = page.locator('[role="dialog"] text=/^(CL|SP|RU|AL|PA|UL)\\d{3}/').first();
-    if (await dialogItem.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await dialogItem.click();
-      await page.waitForTimeout(2000);
+    // v1.11 — the New Quote dialog is two-step (range → model). Click a
+    // range first, then a model.
+    const dlg = page.locator('[role="dialog"]');
+    if (await dlg.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await page.waitForTimeout(1000);
+      const rangeOpt = dlg.locator('.cursor-pointer:has-text("Classic")').first();
+      if (await rangeOpt.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await rangeOpt.click({ force: true });
+        await page.waitForTimeout(1500);
+      }
+      const dialogItem = dlg.locator('.cursor-pointer:has-text("CL380"), text=/^(CL|SP|RU|AL|PA|UL)\\d{3}/').first();
+      if (await dialogItem.isVisible({ timeout: 5000 }).catch(() => false)) {
+        await dialogItem.click({ force: true });
+        await page.waitForTimeout(3000);
+      }
     }
   } else {
     // Fallback: catalog → range → model → Start Quote
