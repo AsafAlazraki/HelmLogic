@@ -186,8 +186,11 @@ test.describe('Quote Builder', () => {
   test('step 3 — price level selector is present', async ({ page }) => {
     await clickNextUntilStep(page, 3);
 
+    // v1.11 — the price-level selector is either a Radix combobox or a
+    // native <select>. Match both. The visible label "PRICE LEVEL" sits
+    // alongside the control.
     const priceLevelSelector = page
-      .locator('[role="combobox"], button:has-text("NSM Retail"), button:has-text("Trade Price"), button:has-text("Price Level")')
+      .locator('[role="combobox"], select, button:has-text("NSM Retail"), button:has-text("Trade Price"), button:has-text("Cash Price"), text=/PRICE LEVEL/i')
       .first();
 
     await expect(
