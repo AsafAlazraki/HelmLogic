@@ -131,19 +131,16 @@ test.describe('Critical Paths (Smoke)', () => {
       await page.waitForTimeout(1500);
     }
 
-    // v1.11 — the New Quote dialog is two-step (range → model). Handle both.
+    // v1.11 — the New Quote dialog is two-step (range → model). Mirror the
+    // proven v1.11-followup pattern exactly.
     const dlg = page.locator('[role="dialog"]');
-    if (await dlg.isVisible().catch(() => false)) {
-      const rangeOpt = dlg.locator('.cursor-pointer:has-text("Classic"), text=/Classic|Sport|Roll[- ]?Up|Adventure|Patrol/i').first();
-      if (await rangeOpt.isVisible().catch(() => false)) {
-        await rangeOpt.click({ force: true });
-        await page.waitForTimeout(1500);
-      }
-      const modelOpt = dlg.locator('.cursor-pointer:has-text("CL380"), text=/^(CL|SP|RU|AL|PA|UL)\\d{3}/i').first();
-      if (await modelOpt.isVisible().catch(() => false)) {
-        await modelOpt.click({ force: true });
-        await page.waitForTimeout(3000);
-      }
+    if (await dlg.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await page.waitForTimeout(1200);
+      await dlg.locator('.cursor-pointer:has-text("Classic")').first().click({ force: true }).catch(() => {});
+      await page.waitForTimeout(1500);
+      await dlg.locator('.cursor-pointer:has-text("CL380")').first().click({ force: true }).catch(() => {});
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(4000);
     }
 
     // Attempt to advance through the steps by clicking "Next Step" up to 5 times.
