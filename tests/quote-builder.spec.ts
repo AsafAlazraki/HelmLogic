@@ -17,21 +17,17 @@ async function enterQuoteFlow(page: Page): Promise<void> {
     await entryButton.click();
     await page.waitForTimeout(1500);
 
-    // v1.11 — the New Quote dialog is two-step (range → model). Click a
-    // range first, then a model.
+    // v1.11 — the New Quote dialog is two-step (range → model). Click
+    // Classic, then CL380 — the same pattern as v1.11-followup.spec.ts
+    // which exercises this flow reliably.
     const dlg = page.locator('[role="dialog"]');
     if (await dlg.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await page.waitForTimeout(1000);
-      const rangeOpt = dlg.locator('.cursor-pointer:has-text("Classic")').first();
-      if (await rangeOpt.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await rangeOpt.click({ force: true });
-        await page.waitForTimeout(1500);
-      }
-      const dialogItem = dlg.locator('.cursor-pointer:has-text("CL380"), text=/^(CL|SP|RU|AL|PA|UL)\\d{3}/').first();
-      if (await dialogItem.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await dialogItem.click({ force: true });
-        await page.waitForTimeout(3000);
-      }
+      await page.waitForTimeout(1200);
+      await dlg.locator('.cursor-pointer:has-text("Classic")').first().click({ force: true }).catch(() => {});
+      await page.waitForTimeout(1500);
+      await dlg.locator('.cursor-pointer:has-text("CL380")').first().click({ force: true }).catch(() => {});
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(4000);
     }
   } else {
     // Fallback: catalog → range → model → Start Quote
