@@ -121,16 +121,20 @@ test('v1.11 follow-up — motor toggle, tier packages, PDF', async ({ page }) =>
 
   // ── TEST 2: tier package cards visible ──
   // Each card has both a tier badge and the package title
-  const simpleHits = await page.locator(':has-text("Simple Fit-Up")').count();
-  const mediumHits = await page.locator(':has-text("Medium Fit-Up")').count();
-  const complexHits = await page.locator(':has-text("Complex Fit-Up")').count();
+  // v1.11 redesign — tier card titles shortened to just SIMPLE/MEDIUM/
+  // COMPLEX (the section header above says "Fit-Up & Rigging" so the
+  // redundant suffix was dropped). Cards still carry a "$XXX" price so
+  // anchor on "<TIER>" + price.
+  const simpleHits = await page.locator('button:has-text("SIMPLE"):has-text("$")').count();
+  const mediumHits = await page.locator('button:has-text("MEDIUM"):has-text("$")').count();
+  const complexHits = await page.locator('button:has-text("COMPLEX"):has-text("$")').count();
   console.log('▶ tier card text matches — Simple:', simpleHits, 'Medium:', mediumHits, 'Complex:', complexHits);
-  expect(simpleHits, 'Simple Fit-Up package card should render').toBeGreaterThan(0);
-  expect(mediumHits, 'Medium Fit-Up package card should render').toBeGreaterThan(0);
-  expect(complexHits, 'Complex Fit-Up package card should render').toBeGreaterThan(0);
+  expect(simpleHits, 'Simple tier card should render').toBeGreaterThan(0);
+  expect(mediumHits, 'Medium tier card should render').toBeGreaterThan(0);
+  expect(complexHits, 'Complex tier card should render').toBeGreaterThan(0);
 
-  // Click Medium Fit-Up — the BUTTON wrapping the card
-  const medBtn = page.locator('button:has-text("Medium Fit-Up")').first();
+  // Click Medium tier — the BUTTON wrapping the card
+  const medBtn = page.locator('button:has-text("MEDIUM"):has-text("$")').first();
   await medBtn.scrollIntoViewIfNeeded().catch(() => {});
   await page.waitForTimeout(600);
   await medBtn.click({ force: true });

@@ -100,20 +100,26 @@ test.describe('Quote Builder', () => {
     const reached = await clickNextUntilStep(page, 3);
     expect(reached).toBeGreaterThanOrEqual(3);
 
-    const motorCard = page.locator('button:has-text("HP"), [class*="card"]:has-text("HP")').first();
-    const hasMotor = await motorCard.isVisible({ timeout: 10000 }).catch(() => false);
-
-    if (!hasMotor) {
-      // Org may not have Yamaha associated. This is a data-seed issue, not a feature failure.
-      console.warn('No motors visible on step 3 — Yamaha module not associated with test org');
+    // v1.11 (commit a66781c) — a motor auto-selects on load (closest to
+    // max HP), so the hero + "Choose Another Motor" should already be
+    // visible without us clicking. Verify the hero is up; fall back to
+    // grid-click only if auto-default didn't fire (data shape edge).
+    let chooseAnother = page.locator('button:has-text("Choose Another Motor")').first();
+    const heroAlreadyShown = await chooseAnother.isVisible({ timeout: 10000 }).catch(() => false);
+    if (heroAlreadyShown) {
+      await expect(chooseAnother).toBeVisible();
       return;
     }
 
+    const motorCard = page.locator('button:has-text("HP"), [class*="card"]:has-text("HP")').first();
+    const hasMotor = await motorCard.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasMotor) {
+      console.warn('No motors visible on step 3 — Yamaha module not associated with test org');
+      return;
+    }
     await motorCard.click();
     await page.waitForTimeout(1500);
-
-    // v1.2 UX: after selection, grid collapses and "Choose Another Motor" appears.
-    const chooseAnother = page.locator('button:has-text("Choose Another Motor")').first();
+    chooseAnother = page.locator('button:has-text("Choose Another Motor")').first();
     await expect(chooseAnother, 'Motor hero UX must show Choose Another Motor after selection').toBeVisible({ timeout: 10000 });
   });
 
