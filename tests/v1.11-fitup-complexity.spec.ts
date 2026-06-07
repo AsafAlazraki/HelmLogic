@@ -48,12 +48,13 @@ test('Fit-Up Complexity card renders + drives Suggested badge', async ({ page })
 
   // ── PART 1: editor card ──
   // The model editor renders inline on the module page when range + model
-  // are present in URL params (?range=X&model=Y&view=bmt).
-  // CL380 model id = 'cl380' (lowercase doc id under the Classic range).
-  const editorUrl = `${BASE_URL}/modules/${MODULE_ID}?tab=bmt&range=${RANGE_ID_CLASSIC}&model=cl380&_t=${Date.now()}`;
+  // are present in URL params. Without an orgSlug prefix the URL has
+  // started routing to the quote view in v1.11 (catalog-mgr changes), so
+  // we go via the org-scoped path which is stable.
+  const editorUrl = `${BASE_URL}/${orgSlug}/modules/${MODULE_ID}?tab=bmt&range=${RANGE_ID_CLASSIC}&model=cl380&_t=${Date.now()}`;
   await page.goto(editorUrl);
   await page.waitForLoadState('domcontentloaded');
-  await page.waitForTimeout(5500);
+  await page.waitForTimeout(6000);
   await shot('00-cl380-editor', true);
 
   // Scroll for the Fit-Up Complexity card
