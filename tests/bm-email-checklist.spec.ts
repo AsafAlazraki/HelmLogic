@@ -119,6 +119,16 @@ test("Mark's checklist — 8/8 items pass end-to-end", async ({ page }) => {
     expect(regoOnStep1, 'rego / compliance section should be present on Step 1 once a colour is picked').toBeGreaterThan(0);
     ticks['7-rego-step1'] = true;
 
+    // Tick the legacy 12-month rego toggle so a registration line surfaces on
+    // the Step 6 Summary later (item 7 summary side). Cheaper than picking a
+    // RegoPicker entry which depends on the state catalog being seeded.
+    const legacyRego = page.locator('text=/12 Months Registration/i').first();
+    if (await legacyRego.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await legacyRego.click({ force: true }).catch(() => {});
+        await page.waitForTimeout(1200);
+        await shot('s1c-rego-ticked');
+    }
+
     // ── Step 2: factory options ──
     await page.locator('button:has-text("Next Step")').first().click({ force: true });
     await page.waitForTimeout(3500);
