@@ -7,6 +7,23 @@ This release is the **Fit-Up release, end-to-end**. The v1.10 master Fit-Up Cata
 
 ---
 
+## §0 — Walking a customer through a complete quote (Mark's signoff path)
+
+The 8 items Mark asked for in his 8/06/2026 email map to a single happy-path walk-through. Follow it once and you've used every surface in v1.11.
+
+1. **Dashboard → New Quote → Classic → CL380** — opens the build flow on Step 1.
+2. **Step 1 (BOAT BASE)** — pick PVC + a colour. Item 2: the carousel shows only the hull, no trailer images. Item 7: the **Rego picker** is right below, state-aware on `boatLengthM`.
+3. **Step 1 → Next Step** advances to **Step 2 (FACTORY OPTIONS)**. Item 3: Standard Inclusions render across the top, the Factory Options grid is in the middle, and **Additional Factory Boat Notes/Options** lets you add a one-off note + price.
+4. **Step 2 → Next Step** advances to **Step 3 (MOTOR)**. Item 4 (engine half): a default Yamaha auto-selects on load. **Choose Another Motor** swaps it. **Dealer Services** has Extended Warranty + Service Plan toggles, **Prop Comes Standard** is opt-in.
+5. **Step 3 → Next Step** advances to **Step 4 (TRAILER)**. Item 5: Trailer Base assignment matrix, Trailer Hardware grid, and Additional Factory Trailer Notes for custom rigging. The carousel now picks up the trailer image.
+6. **Step 4 → Next Step** advances to **Step 5 (DEALER FIT + FIT-UP)**. Item 6: dealer-fit categories grouped by scope (motor / boat / trailer). Item 8: under that, **SIMPLE / MEDIUM / COMPLEX** tier package cards. Item 4 (rigging half): clicking a tier loads its members into the *Selected fit-up items* panel below.
+7. **Step 5 → Next Step** advances to **Step 6 (SUMMARY)**. Item 7 (summary side): registration is itemised in the Investment Summary.
+8. **Finalize Project → enter customer name → Create Proposal** lands on the proposal view. Item 1: the customer's name renders on the cover + in the body, and every section (Build / Motor / Trailer / Dealer Fit / Fit-Up / Investment Summary) is present in order. **Download** produces the customer-facing PDF.
+
+The Playwright spec `tests/bm-email-checklist.spec.ts` drives this exact walk and asserts each item is visible at its step. Re-run after any change to the quote flow and the matrix at the end will tell you what regressed.
+
+---
+
 ## At a glance
 
 | What you want to do | Where | Section |

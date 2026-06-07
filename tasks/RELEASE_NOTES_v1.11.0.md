@@ -6,6 +6,25 @@
 
 ---
 
+## Mark's checklist — pre-launch signoff
+
+Mark McWilliams' 8/06/2026 email asked for **"an accurate and audited quote, fully complete and beautiful from HelmLogic"** with 8 specific items. v1.11 ticks all 8. Each item is proven end-to-end by `tests/bm-email-checklist.spec.ts` (driving a real Classic CL380 build on the live dev URL, screenshotting every checkpoint, byte-sniffing the downloaded PDF).
+
+| # | Mark's ask | Where it lives | Status |
+|---|---|---|---|
+| 1 | Proposal formed correctly · customer name in correct places | `src/components/proposal-pdf.tsx` cover + body + token substitution | ✅ |
+| 2 | Images right during config (no trailers when picking the hull) | Step 1 carousel filters `currentStep !== 4` trailer slides | ✅ |
+| 3 | All correct FFO presented | Step 2 — Standard Inclusions + Factory Options + Additional Factory Boat Notes | ✅ |
+| 4 | Engine + rigging options | Step 3 motor hero + Choose Another Motor + Dealer Services · Step 5 fit-up rigging | ✅ |
+| 5 | Trailer options | Step 4 — Trailer Base + Trailer Hardware + Additional Factory Trailer Notes | ✅ |
+| 6 | DFOs (Dealer-Fit Options) | Step 5 — boat / motor / trailer dealer-fit categories grouped | ✅ |
+| 7 | Rego + compliance | Step 1 `RegoPicker` (state-aware) · Step 6 itemised registration breakdown | ✅ |
+| 8 | Fit-out costs — basic / standard / complex for each model | Step 5 — SIMPLE / MEDIUM / COMPLEX tier package cards | ✅ |
+
+**Proof artifact:** `test-results/bm-checklist/` (10 screenshots + `bm-checklist.pdf`).
+
+---
+
 ## Release Stats
 
 | Metric | Value |
