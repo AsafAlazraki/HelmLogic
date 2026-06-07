@@ -51,6 +51,16 @@ async function enterQuoteFlow(page: Page): Promise<void> {
     }
   }
   await assertNoCrash(page);
+
+  // v1.11 — Step 1 requires material + color to enable Next Step. Pick PVC
+  // and the first rounded colour swatch so clickNextUntilStep can advance.
+  const pvc = page.locator('button:has-text("PVC")').first();
+  if (await pvc.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await pvc.click().catch(() => {});
+    await page.waitForTimeout(1200);
+  }
+  await page.locator('button.rounded-\\[1\\.5rem\\]').first().click({ force: true }).catch(() => {});
+  await page.waitForTimeout(1200);
 }
 
 async function clickNextUntilStep(page: Page, targetStep: number): Promise<number> {
