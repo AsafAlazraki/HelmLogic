@@ -46,6 +46,14 @@ The Add / Edit dialog on `Manage → Fit-Up Catalog` got a presentation rework. 
 - Cost + Sell laid out side-by-side on the same row
 - Section labels use the same uppercase tracking-widest treatment as the rest of the admin surface
 
+### Proposal PDF polish (also under "beautiful")
+
+Three fixes in `src/components/proposal-pdf.tsx`:
+
+- **Trailer image restored.** Was suppressed earlier in the cycle because catalog entries with vendor logos were bleeding through. New fallback chain `imageUrl → catalog.imageUrl → catalog.coverImageUrl → BuildBand placeholder` — real trailer photos render, logo-shaped CDN URLs fall back to a clean placeholder.
+- **Motor image fallback.** Now also tries the `SummaryImage` field — motors uploaded via the catalog UI (mirrored to Firebase Storage to dodge the Yamaha CDN's Incapsula block) render even when the primary `imageUrl` points at a blocked source.
+- **Investment Summary nesting.** Standard Inclusions, Factory Options, Motor Accessories, Trailer Options, and Dealer Fit lines now indent under their parent (Vessel / Propulsion / Trailer) with a smaller font, lighter colour, and an L-tick. Maths unchanged. Reads like a real itemised quote now.
+
 ---
 
 ## Release Stats
@@ -216,6 +224,92 @@ Renamed from "Global Catalog Export / Import" to make the purpose explicit. Sing
 - Motor Models (with flat `hull_cash` / `hull_trade` / `hull_subdealer` / `hull_commercial` / `hull_boating_alliance` price-level columns)
 
 Export-only sheets are skipped on import (their shape isn't safely round-trippable — `exportOnly: true` flag on the SheetSpec). Output filename: `pricing-configurator-audit-YYYY-MM-DD.xlsx`.
+
+---
+
+## Other v1.11 work (non Fit-Up)
+
+The Fit-Up phases above are the headline, but v1.11 also lands meaningful work on the broader admin surface, the proposal PDF, and the customer-defaults plumbing. Each shipped in its own commit on the same dev branch.
+
+### Catalog Manager (Pricing Manager rename · `src/app/(app)/[orgSlug]/pricing-manager/page.tsx`)
+
+The page title flipped from **Pricing Manager** to **Catalog Manager** — the surface had grown well past "pricing" (Fit-Up, Service Operations, Trailer Overrides, Boats + Motors read-views, audit history). The sidebar URL stayed `/pricing-manager` so deep links and bookmarks still work. Two new strategy cards on the landing view:
+
+- **Catalog xlsx** — opens the Catalog Import / Export sheet (see Phase C workbook)
+- **Catalog Audit** — opens the unified audit history panel (see Phase D audit unification)
+
+Vendor-type routing on the catalog rows: `vendorType === 'Motor Brand'` → MotorsTableView, `'Boat Brand'` → BoatsTableView, otherwise the established Highfield workspace.
+
+### "Your Build" PDF redesign (`src/components/proposal-pdf.tsx`)
+
+The proposal PDF got a card-stack rework consolidating boat / motor / trailer / dealer-fit / fit-up onto a single page (the "Your Build" stack):
+
+- New `BuildBand` + `BandNumber` + `SpecPill` helpers — uniform numbered band headers (① Vessel · ② Propulsion · ③ Trailer · ④ Dealer Fit · ⑤ Fit-Up & Rigging) with title, subtitle, price, and an image slot.
+- Scope-routed dealer-fit — items the operator picked under a motor-specific dealer-fit category render under the Propulsion band, trailer-specific items under the Trailer band, the rest under their own Dealer Fit band. No more separate dump at the bottom.
+- Fuller Investment Summary — every standard inclusion appears as an INCLUDED line, motor accessories itemised, trailer options itemised, dealer fit itemised, registration broken into its 4 components, promotions as negative lines. The Phase D nesting (sub-items under parent) sits on top of this.
+
+### Per-block content-block PDF styling (`src/lib/content-blocks.ts`)
+
+Operator-authored content blocks now carry presentation hints:
+
+```
+ContentBlock.style: {
+  accentColor?, backgroundColor?, textColor?,
+  titleSize?, bodySize?,
+  titleAlign?, bodyAlign?,
+  titleItalic?,
+}
+```
+
+A new resolver `resolveContentBlockStylesForQuote()` walks the same scope chain as the content resolver (org → module → range → model) so the most-specific style wins. PDF render reads from a `contentBlockStyles` prop. Defaults preserved — unstyled blocks render exactly as before.
+
+### Motor image upload (`src/components/motor-configuration-details.tsx`)
+
+Adds an Upload Photo / Replace overlay to motor configuration details. Uses `uploadFileToStorage` and writes both `SummaryImage` and `imageUrl` to `data-warehouse/{vendorId}/dataSets/{dsId}/rows/{motorId}` so the proposal PDF (see Phase D fallback chain) and the quote-flow hero card both pick it up. **This is the documented workaround for Yamaha's Incapsula bot-protection** — we can't fetch their CDN server-side, so admins mirror the image to Firebase Storage instead.
+
+### Boats + Motors table views (Story 3.7.2 + 3.7.3)
+
+- **Boats**: read-view at `/boats` with a vendor dropdown + expandable variant rows. The first slice of the boats-catalogue surface that v1.10 introduced.
+- **Motors**: read-view mounted by vendor type on the Catalog Manager landing. Story 3.7.3 (planning row parked at v1.12, but the code ships in this PR).
+
+### Per-scope tier packages (`src/components/fit-up-quote-selector.tsx`)
+
+The tier-package resolver now walks a scope specificity chain: model (weight 8) > range (4) > brand (2) > module (1), with a +16 boost for `useCase` matches. The highest-scoring package per tier wins. Lets one admin define a "Coastal Setup" Complex package that overrides the default Complex at the brand level for, say, all Highfield Patrol models specifically.
+
+### Customer Defaults card (`src/components/customer-defaults-card.tsx`)
+
+New org-level config card on Manage → Company Details:
+
+- **Customer source dropdown options** — drives the source picker on the customer-create dialog (default: Boat show / Referral / Website / Walk-in / Repeat customer / Social media / Other)
+- **Pipeline stages** — drives the columns on the customer Kanban (default: Lead → Contacted → Qualified → Quoted → Contracted → Won → Delivered)
+- **Trade-in valuation rule** — external appraisal / internal formula / pending decision
+
+Persists to `organisation.customerDefaults`. Empty / missing field on the org doc falls back to the v1.11 defaults above.
+
+### Document Defaults card (`src/components/document-defaults-card.tsx`)
+
+New org-level config card on Manage → Document Templates:
+
+- **Deposit** — fixed $ or % of total
+- **Quote validity** — days
+- **Payment schedule template** — named milestones (default: Deposit / Production / Pre-delivery / Final), each with a percentage. Live "100% balanced" badge when percentages sum to 100, "Out of balance" warning otherwise.
+
+Persists to `organisation.documentDefaults`. The finalize-quote dialog reads from here so a fresh quote starts pre-populated.
+
+### Permission flags (`src/components/manage-organisation-page.tsx`)
+
+Two new role-permission flags surfaced on Manage → Users & Permissions:
+
+- `can_override_margin` — gate the per-line price-override input on Step 5 fit-up
+- `can_approve_suggestions` — gate the Suggestion Approval Queue (v1.12 surface, flag wired now so the queue ships with permissions intact)
+
+### Other small fixes shipping in v1.11
+
+- Image-preload routing through the weserv resizing proxy — kills the 21 MB PDF regression caused by full-resolution cover-image preload. PDF back to ~500-650 KB.
+- `WESERV_SKIP_HOSTS` denylist (`firebasestorage.googleapis.com`, `firebasestorage.app`, `yamaha-motor.com.au`, `yamaha-motor.com`) — bypasses the proxy for already-fast hosts.
+- `/api/image-proxy` fallback for direct-fetch failures.
+- Service Quoting end-to-end spec — `tests/v1.11-service-quoting.spec.ts` (verifies the Phase A scaffolding; full feature ships in v1.12).
+- Catalog export wide-row enrichment — Models sheet expanded from 7 → 30 cols; Variants sheet adds full priceLevels matrix.
 
 ---
 

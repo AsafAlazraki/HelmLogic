@@ -82,6 +82,18 @@ Two unified views answer "who did what when" without anyone needing to look at F
 
 If a price ever looks wrong on a quote, the audit answers two questions in two clicks: **who set it on the catalog** (Catalog Audit), and **who applied it to the quote** (Activity tab on the proposal).
 
+## ⚙️ Other v1.11 work (not Fit-Up — but you'll notice it)
+
+- **Catalog Manager** — the page formerly known as Pricing Manager. Same URL, two new strategy cards on the landing view (Catalog xlsx · Catalog Audit). Vendor rows now route by type: Motor Brand → Motors table, Boat Brand → Boats table.
+- **"Your Build" PDF redesign** — boat / motor / trailer / dealer-fit / fit-up consolidated onto one card-stack page (numbered bands ① — ⑤). Dealer-fit picks now sit under the band they belong to (motor dealer-fit under Propulsion, trailer dealer-fit under Trailer) instead of a dump at the bottom.
+- **Per-block content-block styling** — operator-authored content blocks (cover letter, terms, etc.) can carry colour / size / alignment / italic per block. The most-specific scope wins (org → module → range → model).
+- **Motor photo upload** — Catalog → click a motor row → Upload Photo. The image mirrors to Firebase Storage and renders on the PDF via the new SummaryImage fallback (workaround for Yamaha's Incapsula bot-protection).
+- **Boats + Motors catalogue read-views** — `/boats` and the Motors table on Catalog Manager.
+- **Customer Defaults card** (Manage → Company Details) — edit the customer-source dropdown options + pipeline stages + trade-in valuation rule. Defaults are sensible; tweak if your dealership does things differently.
+- **Document Defaults card** (Manage → Document Templates) — pre-populate every new quote with deposit + payment schedule + validity. Live "100% balanced" badge on the payment schedule.
+- **Permission flags** — new `can_override_margin` (gates Step-5 fit-up price overrides) + `can_approve_suggestions` (pre-wires the v1.12 Suggestion Approval Queue).
+- **Per-scope tier packages** — a Complex package can now be defined at brand level (e.g. all Highfield Patrol) and it'll automatically override the catalogue-wide Complex for those models.
+
 ## ✅ Mark's 8-item checklist — 11/11
 
 The pre-launch pass tested every item on Mark's email end-to-end on two ranges (CL380 + SP600). All 11 ticks green. Headline: proposal sections + customer name placement + no-trailer-on-hull + FFO + motor + rigging + trailer + DFOs + rego (Step 1 picker + PDF) + fit-out tiers.

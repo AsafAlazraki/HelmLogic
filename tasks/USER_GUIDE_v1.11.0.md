@@ -233,6 +233,66 @@ The catalog export / import surface (`Manage → Catalog Export / Import`) is re
 
 Output filename: `pricing-configurator-audit-YYYY-MM-DD.xlsx`. Partial files on import won't clobber what's already there (upsert-by-natural-key).
 
+### Importing — what the diff-preview dialog does
+
+Imports aren't fire-and-forget. When you upload an edited xlsx:
+
+1. The system reads every sheet and computes a **per-row diff** against current Firestore data
+2. A **diff preview dialog** opens listing every change — green for creates, amber for updates, slate for skips (no natural key), with the exact before → after on each field
+3. **Tick the rows you want to commit** (all selected by default; untick to skip individual rows)
+4. Click **Commit** — only ticked rows write to Firestore
+5. **One summary entry per commit** is written to the Catalog Audit feed so the audit answers "who imported what when" with the per-row diff preserved
+
+This is what makes the workbook safe to hand to a dealer principal for editing in Excel and back — review the diff, untick what you don't want, commit, done. Hardware-store-honest.
+
+---
+
+## 13. PDF — what's different on the customer-facing proposal
+
+Three changes on the customer PDF since the last release:
+
+- **Trailer image is back.** Was suppressed in an earlier v1.11 build because some catalog entries had vendor brand logos slipping through the image slot. The new fallback chain prefers the trailer photo, then the catalog cover, and only falls back to a clean placeholder if neither exists. If your trailer PDF has a brand logo where the photo should be, it means the catalog entry's `imageUrl` points at a logo — update it on Manage → Trailers.
+- **Motor image** now also tries the `SummaryImage` field. If you upload a motor photo via the catalog editor (Manage → Motors → click a row → Upload Photo), it lands in `SummaryImage` and renders on the PDF even when the Yamaha CDN blocks the source.
+- **Investment Summary is now nested.** Standard Inclusions, Factory Options, Motor Accessories, Trailer Options, and Dealer Fit lines indent under their parent line (Vessel / Propulsion / Trailer). Smaller font, lighter colour, L-tick. The maths is identical — it just reads cleanly.
+
+## 14. Catalog Manager — what changed
+
+The page formerly known as **Pricing Manager** is now **Catalog Manager** (sidebar URL stays the same so old bookmarks still work). The landing view has two strategy cards:
+
+- **Catalog xlsx** — opens the Pricing + Configurator Audit Workbook sheet (§12)
+- **Catalog Audit** — opens the unified audit history panel (Activity-tab equivalent for catalog edits)
+
+Vendor catalogue rows route by type — clicking a Motor Brand opens the Motors table view, a Boat Brand opens the Boats table view, anything else opens the Highfield-style workspace.
+
+## 15. Org defaults — Customer Defaults + Document Defaults cards
+
+Two new org-level config cards on Manage. Both have sensible defaults so you only need to touch them if your dealership does things differently.
+
+### Customer Defaults (Manage → Company Details)
+
+Drives the customer-create dialog + the pipeline Kanban:
+
+- **Source dropdown options** — where you record "how did this customer find us?" Defaults: Boat show / Referral / Website / Walk-in / Repeat customer / Social media / Other. Edit the list to add a source specific to your dealership (e.g. "Sponsorship event").
+- **Pipeline stages** — the columns on the customer Kanban. Defaults: Lead → Contacted → Qualified → Quoted → Contracted → Won → Delivered. Drag to reorder, edit names, delete unused stages.
+- **Trade-in valuation rule** — pick one of External appraisal / Internal formula / Pending decision. Surfaces when a trade-in is recorded against a contract.
+
+### Document Defaults (Manage → Document Templates)
+
+Pre-populates new quotes so salespeople don't have to fill the same numbers every time:
+
+- **Deposit** — either a fixed dollar amount or a percentage of the total
+- **Quote validity** — how many days the quote is valid for (default 30)
+- **Payment schedule template** — named milestones, each with a percentage. Default: Deposit 10% · Production 40% · Pre-delivery 40% · Final 10%. The page shows a **"100% balanced"** badge when the percentages sum to 100, **"Out of balance"** otherwise — fix it before saving.
+
+The finalize-quote dialog reads from here, so every new quote starts pre-populated.
+
+## 16. Permission flags — admin gating
+
+Two new role permissions on Manage → Users & Permissions:
+
+- **Can override margin** — controls whether a user can override a line price on Step 5 fit-up. Set OFF for salespeople; ON for managers / admins.
+- **Can approve suggestions** — pre-wires the Suggestion Approval Queue (which lands in v1.12). Set this on the admin users who'll triage inbound feature suggestions.
+
 ---
 
 ## What this release did NOT ship (deferred to v1.12+)
