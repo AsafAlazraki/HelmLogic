@@ -23,6 +23,18 @@ Mark McWilliams' 8/06/2026 email asked for **"an accurate and audited quote, ful
 
 **Proof artifact:** `test-results/bm-checklist/` (10 screenshots + `bm-checklist.pdf`).
 
+### Audit-trail completeness (also under "audited")
+
+Three audit-trail gaps caught during the pre-launch sweep and fixed in the same PR:
+
+| Gap | Fix |
+|---|---|
+| `fitUpCatalogAudit` events were written but nothing READ them — admins couldn't see who changed a fit-up price | `CatalogAuditHistory` (the audit panel on Catalog Manager) now merges `catalogAudit` + `fitUpCatalogAudit` into one chronological feed with a Wrench icon for fit-up rows |
+| `fit-up-catalog-manager.tsx` CSV bulk-import path was missing its audit write (only 6 of 7 mutation sites had one) | Adds a single summary event per import — "50 updated · 30 created" — rather than 80 individual rows |
+| No spec covered the audit surface | New `tests/v1.11-audit-trail.spec.ts` exercises the unified panel, the Fit-Up Catalog edit affordance, and the proposal-view Activity tab |
+
+Together with the existing per-quote `auditLog` (created · finalised · sent · locked · unlocked · version-forked · content-overridden · discount-changed · lifecycle-transitioned · scenario-created · fit-up-status-changed) the operator can answer "who did what when" without inspecting Firestore.
+
 ---
 
 ## Release Stats

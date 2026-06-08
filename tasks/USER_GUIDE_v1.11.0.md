@@ -22,6 +22,24 @@ The 8 items Mark asked for in his 8/06/2026 email map to a single happy-path wal
 
 The Playwright spec `tests/bm-email-checklist.spec.ts` drives this exact walk and asserts each item is visible at its step. Re-run after any change to the quote flow and the matrix at the end will tell you what regressed.
 
+### Auditability — who did what, when
+
+Two unified audit views cover "the audited part" of Mark's ask:
+
+**Per-quote audit** lives on each proposal's **Activity tab** (open a proposal → click Activity). Every lifecycle event surfaces with the actor's name + timestamp + a one-line summary:
+- Quote created · Finalised · Sent to customer · Locked / Unlocked · Forked to new version
+- Content personalised · Discount changed · Status updated · Scenario created
+- Fit-up status updated (workshop side)
+
+**Catalog audit** lives on **Manage → Catalog Manager → Catalog Audit** (the History card). The panel renders a chronological feed of:
+- Every catalog xlsx import (with per-row diff: before → after)
+- Every Fit-Up Item add / edit / delete (with field-level diff)
+- Every Fit-Up Package add / edit / delete
+
+Click any row to expand the diff. Rose strike-through = current; green = next. Items the import marked "skipped" badge in slate.
+
+If a price is wrong on a quote, the audit answers **two** questions: who set it on the catalog (Catalog Audit), and who applied it to the quote (Activity tab on the proposal). Together they give you the full chain.
+
 ---
 
 ## At a glance
