@@ -9,7 +9,7 @@
  * quote totals never drift when the catalog changes later.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { collection, query, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -44,6 +44,15 @@ interface RegoType {
     appliesTo?: 'boat' | 'trailer' | 'both';
     description?: string;
     isActive?: boolean;
+    /** v1.11 — band rules for auto-association with boats at scale.
+     *  Boat bands use minLengthM/maxLengthM (hull length); trailer bands
+     *  use minAtmKg/maxAtmKg (aggregate trailer mass). A type matches a
+     *  context value when min <= value < max. Empty = no auto-match
+     *  (manual pick only). */
+    minLengthM?: number;
+    maxLengthM?: number;
+    minAtmKg?: number;
+    maxAtmKg?: number;
 }
 
 interface RegoModuleDoc {
@@ -81,11 +90,17 @@ export function RegoPicker({
     value,
     onChange,
     label,
+    autoMatchLengthM,
+    autoMatchAtmKg,
 }: {
     filter?: 'boat' | 'trailer' | 'both' | 'any';
     value: RegoTypeSnapshot | null;
     onChange: (snap: RegoTypeSnapshot | null) => void;
     label?: string;
+    /** v1.11 — boat hull length (m) for auto-matching a boat rego band. */
+    autoMatchLengthM?: number;
+    /** v1.11 — trailer ATM (kg) for auto-matching a trailer rego band. */
+    autoMatchAtmKg?: number;
 }) {
     const firestore = useFirestore();
 
@@ -158,10 +173,8 @@ export function RegoPicker({
 
     const selectedKey = value ? value.id : '';
 
-    function handleChange(key: string) {
-        const match = options.find(o => o.key === key);
-        if (!match) return;
-        onChange({
+    function snapOf(match: Option): RegoTypeSnapshot {
+        return {
             id: match.key,
             vendorId: match.vendor.id,
             vendorName: match.vendor.name,
@@ -171,19 +184,60 @@ export function RegoPicker({
             appliesTo: match.type.appliesTo || 'both',
             description: match.type.description,
             capturedAt: Date.now(),
-        });
+        };
     }
 
+    function handleChange(key: string) {
+        const match = options.find(o => o.key === key);
+        if (!match) return;
+        onChange(snapOf(match));
+    }
+
+    // v1.11 — auto-match a rego band from the boat length / trailer ATM.
+    // Fires once per distinct context value (so clearing the selection
+    // within the same boat doesn't immediately re-add it, but switching
+    // to a different boat / trailer re-applies). Only auto-applies when
+    // nothing is currently selected.
+    const autoCtxKey = `${filter}|${autoMatchLengthM ?? ''}|${autoMatchAtmKg ?? ''}`;
+    const lastAutoCtx = useRef<string>('');
+    const [autoApplied, setAutoApplied] = useState(false);
+    useEffect(() => {
+        if (lastAutoCtx.current !== autoCtxKey) {
+            lastAutoCtx.current = autoCtxKey;
+            setAutoApplied(false);
+        }
+    }, [autoCtxKey]);
+    useEffect(() => {
+        if (value || autoApplied) return;
+        const len = autoMatchLengthM;
+        const atm = autoMatchAtmKg;
+        if (len == null && atm == null) return;
+        const hit = options.find(o => {
+            const t = o.type;
+            if (len != null && t.minLengthM != null && t.maxLengthM != null) {
+                if (len >= t.minLengthM && len < t.maxLengthM) return true;
+            }
+            if (atm != null && t.minAtmKg != null && t.maxAtmKg != null) {
+                if (atm >= t.minAtmKg && atm <= t.maxAtmKg) return true;
+            }
+            return false;
+        });
+        if (hit) {
+            setAutoApplied(true);
+            onChange(snapOf(hit));
+        }
+    }, [options, value, autoApplied, autoMatchLengthM, autoMatchAtmKg]); // eslint-disable-line react-hooks/exhaustive-deps
+
     return (
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-0 w-full">
             {/* Invisible loaders — one per vendor. They push types into state. */}
             {(vendors || []).map(v => (
                 <VendorTypesLoader key={v.id} vendor={v} onLoaded={handleVendorTypes} />
             ))}
 
             {label && (
-                <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</span>
+                <div className="flex items-center justify-between gap-2 min-w-0">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex-1 min-w-0 truncate">{label}</span>
                     {value && (
                         <Button
                             type="button"

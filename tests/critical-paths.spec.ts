@@ -131,11 +131,16 @@ test.describe('Critical Paths (Smoke)', () => {
       await page.waitForTimeout(1500);
     }
 
-    // If a quote initialization dialog appears, pick the first option(s) to enter flow.
-    const dialogFirstModel = page.locator('[role="dialog"] text=/^(CL|SP|RU|AL|PA|UL)\\d{3}/').first();
-    if (await dialogFirstModel.isVisible().catch(() => false)) {
-      await dialogFirstModel.click();
+    // v1.11 — the New Quote dialog is two-step (range → model). Mirror the
+    // proven v1.11-followup pattern exactly.
+    const dlg = page.locator('[role="dialog"]');
+    if (await dlg.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await page.waitForTimeout(1200);
+      await dlg.locator('.cursor-pointer:has-text("Classic")').first().click({ force: true }).catch(() => {});
       await page.waitForTimeout(1500);
+      await dlg.locator('.cursor-pointer:has-text("CL380")').first().click({ force: true }).catch(() => {});
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(4000);
     }
 
     // Attempt to advance through the steps by clicking "Next Step" up to 5 times.
@@ -146,15 +151,15 @@ test.describe('Critical Paths (Smoke)', () => {
       const enabled = await nextBtn.isEnabled().catch(() => false);
       if (!enabled) break;
       await nextBtn.click();
-      await page.waitForTimeout(1200);
+      await page.waitForTimeout(1500);
     }
 
-    // Either we reached step 6 (Finalize Project button) OR we're in the flow (step indicators visible).
+    // Strongest signal we're in the quote flow: Next Step button anywhere on the
+    // page (every step 1–5 has one) OR Finalize Project (step 6).
+    const nextBtn = page.locator('button:has-text("Next Step")').first();
     const finalizeBtn = page.locator('button:has-text("Finalize")').first();
-    const stepIndicator = page.locator('text=/Step [1-6]|SUMMARY|Trailer|Dealer Fit/i').first();
-
+    const inFlow = await nextBtn.isVisible().catch(() => false);
     const atFinalize = await finalizeBtn.isVisible().catch(() => false);
-    const inFlow = await stepIndicator.isVisible().catch(() => false);
 
     expect(atFinalize || inFlow).toBeTruthy();
   });

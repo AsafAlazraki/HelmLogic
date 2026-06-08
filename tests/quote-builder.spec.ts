@@ -17,10 +17,17 @@ async function enterQuoteFlow(page: Page): Promise<void> {
     await entryButton.click();
     await page.waitForTimeout(1500);
 
-    const dialogItem = page.locator('[role="dialog"] text=/^(CL|SP|RU|AL|PA|UL)\\d{3}/').first();
-    if (await dialogItem.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await dialogItem.click();
-      await page.waitForTimeout(2000);
+    // v1.11 — the New Quote dialog is two-step (range → model). Click
+    // Classic, then CL380 — the same pattern as v1.11-followup.spec.ts
+    // which exercises this flow reliably.
+    const dlg = page.locator('[role="dialog"]');
+    if (await dlg.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await page.waitForTimeout(1200);
+      await dlg.locator('.cursor-pointer:has-text("Classic")').first().click({ force: true }).catch(() => {});
+      await page.waitForTimeout(1500);
+      await dlg.locator('.cursor-pointer:has-text("CL380")').first().click({ force: true }).catch(() => {});
+      await page.waitForLoadState('domcontentloaded');
+      await page.waitForTimeout(4000);
     }
   } else {
     // Fallback: catalog → range → model → Start Quote
@@ -44,11 +51,24 @@ async function enterQuoteFlow(page: Page): Promise<void> {
     }
   }
   await assertNoCrash(page);
+
+  // v1.11 — Step 1 requires material + color to enable Next Step. Pick PVC
+  // and the first rounded colour swatch so clickNextUntilStep can advance.
+  const pvc = page.locator('button:has-text("PVC")').first();
+  if (await pvc.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await pvc.click().catch(() => {});
+    await page.waitForTimeout(1200);
+  }
+  await page.locator('button.rounded-\\[1\\.5rem\\]').first().click({ force: true }).catch(() => {});
+  await page.waitForTimeout(1200);
 }
 
 async function clickNextUntilStep(page: Page, targetStep: number): Promise<number> {
+  // We always start on step 1 after enterQuoteFlow. Land on `targetStep`
+  // by clicking Next exactly `targetStep - 1` times.
   let attempts = 0;
-  while (attempts < targetStep) {
+  const maxClicks = Math.max(0, targetStep - 1);
+  while (attempts < maxClicks) {
     const nextBtn = page.locator('button:has-text("Next Step")').first();
     const visible = await nextBtn.isVisible().catch(() => false);
     if (!visible) break;
@@ -100,20 +120,26 @@ test.describe('Quote Builder', () => {
     const reached = await clickNextUntilStep(page, 3);
     expect(reached).toBeGreaterThanOrEqual(3);
 
-    const motorCard = page.locator('button:has-text("HP"), [class*="card"]:has-text("HP")').first();
-    const hasMotor = await motorCard.isVisible({ timeout: 10000 }).catch(() => false);
-
-    if (!hasMotor) {
-      // Org may not have Yamaha associated. This is a data-seed issue, not a feature failure.
-      console.warn('No motors visible on step 3 — Yamaha module not associated with test org');
+    // v1.11 (commit a66781c) — a motor auto-selects on load (closest to
+    // max HP), so the hero + "Choose Another Motor" should already be
+    // visible without us clicking. Verify the hero is up; fall back to
+    // grid-click only if auto-default didn't fire (data shape edge).
+    let chooseAnother = page.locator('button:has-text("Choose Another Motor")').first();
+    const heroAlreadyShown = await chooseAnother.isVisible({ timeout: 10000 }).catch(() => false);
+    if (heroAlreadyShown) {
+      await expect(chooseAnother).toBeVisible();
       return;
     }
 
+    const motorCard = page.locator('button:has-text("HP"), [class*="card"]:has-text("HP")').first();
+    const hasMotor = await motorCard.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasMotor) {
+      console.warn('No motors visible on step 3 — Yamaha module not associated with test org');
+      return;
+    }
     await motorCard.click();
     await page.waitForTimeout(1500);
-
-    // v1.2 UX: after selection, grid collapses and "Choose Another Motor" appears.
-    const chooseAnother = page.locator('button:has-text("Choose Another Motor")').first();
+    chooseAnother = page.locator('button:has-text("Choose Another Motor")').first();
     await expect(chooseAnother, 'Motor hero UX must show Choose Another Motor after selection').toBeVisible({ timeout: 10000 });
   });
 
@@ -160,9 +186,9 @@ test.describe('Quote Builder', () => {
   test('step 3 — price level selector is present', async ({ page }) => {
     await clickNextUntilStep(page, 3);
 
-    const priceLevelSelector = page
-      .locator('[role="combobox"], button:has-text("NSM Retail"), button:has-text("Trade Price"), button:has-text("Price Level")')
-      .first();
+    // v1.11 — the price-level selector is a native <select> (HTML elements
+    // get role=combobox automatically). Match it.
+    const priceLevelSelector = page.locator('select').first();
 
     await expect(
       priceLevelSelector,

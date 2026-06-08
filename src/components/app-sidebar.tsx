@@ -124,7 +124,7 @@ export function AppSidebar() {
     subLinks && subLinks.some((sub) => pathname.startsWith(sub.href));
 
   // Labels that should be prefixed with /{orgSlug}/ for org members
-  const ORG_PREFIXED_LABELS = new Set(['Dashboard', 'Settings', 'Pricing Manager']);
+  const ORG_PREFIXED_LABELS = new Set(['Dashboard', 'Settings', 'Catalog Manager']);
 
   const filteredNavLinks = useMemo(() => {
     if (isLoading) return [];
@@ -136,7 +136,7 @@ export function AppSidebar() {
       .filter(link => {
         if (link.label === 'Admin') return isAdmin;
         if (link.label === 'Dashboard' && isAdmin) return false;
-        if (link.label === 'Pricing Manager') {
+        if (link.label === 'Catalog Manager') {
           if (isAdmin || !isOrgMember) return false;
           const isMD = organisation?.roles?.find((r: any) => r.id === roleId)?.name === 'Managing Director';
           return !!userPermissions.can_access_pricing_manager || isMD;

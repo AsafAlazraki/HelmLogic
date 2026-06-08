@@ -57,6 +57,28 @@ interface FinalizeQuoteDialogProps {
         selectedTrailerOptionsData: any[];
         customTrailerOptions?: any[];
         selectedDealerFitData: any[];
+        /** v1.11 (Epic 9.2.2 + v1.11 expansion) — fit-up selections
+         *  for this quote. Wrapper around a catalog item with per-quote
+         *  quantity, optional price override, and optional operator note.
+         *  Snapshotted to quote.fitUpSelections at finalize. */
+        selectedFitUpData?: Array<{
+            item: {
+                id: string;
+                name: string;
+                tier: 'simple' | 'medium' | 'complex';
+                cost: number;
+                sellPrice?: number | null;
+                notes?: string | null;
+                category?: string | null;
+                customerDescription?: string | null;
+            };
+            quantity: number;
+            priceOverride: number | null;
+            quoteNote: string | null;
+            packageId?: string | null;
+            packageName?: string | null;
+            packageTier?: 'simple' | 'medium' | 'complex' | null;
+        }>;
         totalPrice: number;
         isRegoSelected: boolean;
         isStickerSelected: boolean;
@@ -139,7 +161,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     };
 
     const buildQuotePayload = () => {
-        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, catalogTrailerSnapshot, boatRegoSnapshot, trailerRegoSnapshot, priceLevelUsed, appliedPromotions, promotionDiscount, dealerServices, adminDetails } = quoteData;
+        const { model, vendor, range, module, rangeId, activeVariant, selectedOptionsData, customOptions, selectedMotor, selectedMotorAccessories, selectedTrailerOptionsData, customTrailerOptions, selectedDealerFitData, selectedFitUpData, totalPrice, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, selectedTrailerId, catalogTrailerSnapshot, boatRegoSnapshot, trailerRegoSnapshot, priceLevelUsed, appliedPromotions, promotionDiscount, dealerServices, adminDetails } = quoteData;
 
         // Trailer data source: catalog snapshot wins over model's own trailerConfig.
         // The snapshot is frozen at selection time so quote totals never drift.
@@ -330,10 +352,27 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
             // blank — the "No Names on Dealer Fit Options" prod bug.
             // Both finalize + render now also have a code/SKU fallback so
             // a missing name never leaves a blank label.
-            dealerFit: (selectedDealerFitData || []).map((sel: any) => ({
+            // v1.11 follow-up — categoryNames lists are snapshotted so the PDF
+            // can route motor-specific + trailer-specific dealer-fit items to
+            // their build bands instead of lumping everything together.
+            motorDealerFitCategoryNames: Array.isArray((module as any)?.motorDealerFitCategories) ? (module as any).motorDealerFitCategories : [],
+            trailerDealerFitCategoryNames: Array.isArray((module as any)?.trailerDealerFitCategories) ? (module as any).trailerDealerFitCategories : [],
+            dealerFit: (selectedDealerFitData || []).map((sel: any) => {
+                const motorCats: string[] = Array.isArray((module as any)?.motorDealerFitCategories) ? (module as any).motorDealerFitCategories : [];
+                const trailerCats: string[] = Array.isArray((module as any)?.trailerDealerFitCategories) ? (module as any).trailerDealerFitCategories : [];
+                const cat = sel.category || '';
+                const scope = motorCats.some(c => c.toLowerCase() === cat.toLowerCase())
+                    ? 'motor'
+                    : trailerCats.some(c => c.toLowerCase() === cat.toLowerCase())
+                        ? 'trailer'
+                        : 'boat';
+                return ({
                 id: sel.id || null,
                 name: sel.name || 'Dealer Fit',
                 category: sel.category || null,
+                /** v1.11 follow-up — 'motor' / 'trailer' / 'boat' so PDF Your-Build
+                 *  bands can route the right accessories under the right component. */
+                scope,
                 items: (sel.items || []).map((i: any) => {
                     const d = i.data || {};
                     // Try every reasonable field name a CSV/xlsx import could carry.
@@ -374,6 +413,41 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                         imageUrl: d.imageLink || d['Image Link'] || d.imageUrl || d.image || d.SummaryImage || null,
                     };
                 }),
+            });
+            }),
+
+            // v1.11 (Epic 9.2.2 + v1.11 expansion) — Fit-Up snapshots.
+            // Each line carries id + name + tier + cost + sellPrice +
+            // category + customerDescription + notes (catalog) + quantity
+            // + priceOverride + quoteNote (per-quote) locked at finalize
+            // time so later catalog edits don't retroactively change a
+            // sent quote. Customer PDF aggregates these into a single
+            // "Fit-up & rigging" summary line per Story 9.2.3 — no
+            // per-item breakdown on the customer-facing surface by
+            // deliberate product decision. Notes + quoteNote are
+            // operator-only. The financial helper multiplies sellPrice
+            // by quantity and honours priceOverride.
+            fitUpSelections: (selectedFitUpData || []).map(sel => ({
+                id: sel.item.id,
+                name: sel.item.name,
+                tier: sel.item.tier,
+                cost: sel.item.cost ?? 0,
+                sellPrice: sel.item.sellPrice != null ? sel.item.sellPrice : (sel.item.cost ?? 0),
+                category: sel.item.category ?? null,
+                customerDescription: sel.item.customerDescription ?? null,
+                notes: sel.item.notes ?? null,
+                // Snapshot the image URL so PDF + proposal can render it
+                // without re-querying the catalog (catalogue mutations
+                // after finalize must not retroactively change a sent quote).
+                imageUrl: (sel.item as any).imageUrl ?? null,
+                quantity: Math.max(1, sel.quantity ?? 1),
+                priceOverride: sel.priceOverride ?? null,
+                quoteNote: sel.quoteNote ?? null,
+                // v1.11 follow-up — package provenance carried so PDF can
+                // group items by bundle. Null when item was à-la-carte.
+                packageId: sel.packageId ?? null,
+                packageName: sel.packageName ?? null,
+                packageTier: sel.packageTier ?? null,
             })),
 
             // Pricing
@@ -429,9 +503,23 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
     const handleFinalize = async () => {
         if (!user) return;
 
-        if (mode === 'customer' && !customerName.trim()) {
-            toast({ variant: 'destructive', title: 'Customer name is required' });
-            return;
+        if (mode === 'customer') {
+            if (!customerName.trim()) {
+                toast({ variant: 'destructive', title: 'Customer name is required' });
+                return;
+            }
+            // Require at least one contact channel — email OR phone — so the
+            // dealer can actually follow up. Both encouraged but only one
+            // required (sometimes a phone-only or email-only customer).
+            if (!customerEmail.trim() && !customerPhone.trim()) {
+                toast({ variant: 'destructive', title: 'Customer email or phone required', description: 'Add at least one contact channel so you can follow up.' });
+                return;
+            }
+            // Basic email shape check when provided.
+            if (customerEmail.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(customerEmail.trim())) {
+                toast({ variant: 'destructive', title: 'Invalid email address' });
+                return;
+            }
         }
 
         setIsSaving(true);

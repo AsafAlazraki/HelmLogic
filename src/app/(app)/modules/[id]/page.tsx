@@ -60,6 +60,8 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useUser } from '@/firebase/auth/use-user';
 import { ModelConfigurationEditor } from '@/components/model-configuration-editor';
+import { FitUpCatalogManager } from '@/components/fit-up-catalog-manager';
+import { ServiceQuoteDashboard } from '@/components/service-quote-flow';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -211,8 +213,8 @@ function QuoteInitializationDialog({
 
     const ranges = useMemo(() =>
         [...(rawRanges ?? [])].sort((a, b) => {
-            const aOrder = RANGE_CATALOG_ORDER[a.slug ?? a.name.toLowerCase()] ?? (a.order ?? 99);
-            const bOrder = RANGE_CATALOG_ORDER[b.slug ?? b.name.toLowerCase()] ?? (b.order ?? 99);
+            const aOrder = RANGE_CATALOG_ORDER[a.slug ?? (a.name ?? "").toLowerCase()] ?? (a.order ?? 99);
+            const bOrder = RANGE_CATALOG_ORDER[b.slug ?? (b.name ?? "").toLowerCase()] ?? (b.order ?? 99);
             return aOrder - bOrder;
         }),
     [rawRanges]);
@@ -298,7 +300,7 @@ function QuoteInitializationDialog({
                                 <div className="overflow-y-auto max-h-[480px] pr-1">
                                     <div className="grid grid-cols-5 gap-6">
                                         {(models ?? [])
-                                            .filter(m => !modelSearch || m.name.toLowerCase().includes(modelSearch.toLowerCase()) || m.modelCode?.toLowerCase().includes(modelSearch.toLowerCase()))
+                                            .filter(m => !modelSearch || (m.name ?? "").toLowerCase().includes(modelSearch.toLowerCase()) || m.modelCode?.toLowerCase().includes(modelSearch.toLowerCase()))
                                             .map(model => (
                                             <Card key={model.id} className="cursor-pointer group hover:border-primary/40 transition-all rounded-[2rem] overflow-hidden border-2 shadow-sm h-full flex flex-col" onClick={() => onModelSelect(model, selectedRange)}>
                                                 <div className="aspect-video bg-muted/30 relative border-b overflow-hidden">
@@ -312,7 +314,7 @@ function QuoteInitializationDialog({
                                                 </div>
                                             </Card>
                                         ))}
-                                        {(models ?? []).filter(m => !modelSearch || m.name.toLowerCase().includes(modelSearch.toLowerCase()) || m.modelCode?.toLowerCase().includes(modelSearch.toLowerCase())).length === 0 && (
+                                        {(models ?? []).filter(m => !modelSearch || (m.name ?? "").toLowerCase().includes(modelSearch.toLowerCase()) || m.modelCode?.toLowerCase().includes(modelSearch.toLowerCase())).length === 0 && (
                                             <div className="col-span-5 py-16 text-center text-slate-400 text-sm font-medium">No models match &ldquo;{modelSearch}&rdquo;</div>
                                         )}
                                     </div>
@@ -763,6 +765,77 @@ export default function ModuleDetailsPage() {
         );
     }
 
+    // v1.11 (Epic 9.2.1 wider) — Fit-Up module surface. Hosts the
+    // FitUpCatalogManager + Export/Import + the module's own enable/
+    // disable handle. Acts as the "first-class" home for fit-up so
+    // dealers can find it via /modules just like Highfield or Yamaha.
+    if (moduleType === 'fit-up' && moduleData && currentMemberOrg) {
+        return (
+            <div className="flex flex-col h-screen overflow-hidden bg-background">
+                <div className="relative shrink-0 overflow-hidden bg-primary px-12 text-primary-foreground z-20 h-44 border-b-2 border-white/10">
+                    <div className="absolute inset-0 z-0 bg-primary/95">
+                        <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
+                        <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-indigo-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
+                    </div>
+                    <div className="relative z-10 flex flex-col h-full justify-center">
+                        <div className="flex items-center justify-between w-full gap-12">
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-white/50 leading-none">
+                                    <Navigation className="h-2.5 w-2.5" />
+                                    <span>FIT-UP MODULE</span>
+                                </div>
+                                <h1 className="text-3xl sm:text-5xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl">
+                                    {moduleData.name?.toUpperCase() ?? 'FIT-UP'}
+                                </h1>
+                                <p className="text-xs text-white/70 max-w-2xl">
+                                    Master fit-up catalogue, multi-level assignment (Modules / Brands / Ranges / Models), and quote-flow integration.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <main className="flex-1 overflow-y-auto p-8 max-w-6xl mx-auto w-full">
+                    <FitUpCatalogManager organisationId={currentMemberOrg.id} />
+                </main>
+            </div>
+        );
+    }
+
+    // v1.11 (Epic 11.2.1) — Service module surface. Hosts the
+    // ServiceQuoteDashboard. Customer-facing PDF + Send + NSM-Hub
+    // migration arrive in v1.12+.
+    if (moduleType === 'service' && moduleData && currentMemberOrg) {
+        return (
+            <div className="flex flex-col h-screen overflow-hidden bg-background">
+                <div className="relative shrink-0 overflow-hidden bg-primary px-12 text-primary-foreground z-20 h-44 border-b-2 border-white/10">
+                    <div className="absolute inset-0 z-0 bg-primary/95">
+                        <div className="absolute top-[-40%] left-[-10%] w-[80%] h-[180%] bg-emerald-400/20 blur-[120px] rounded-full animate-pulse pointer-events-none" />
+                        <div className="absolute bottom-[-50%] right-[-10%] w-[90%] h-[190%] bg-teal-600/30 blur-[140px] rounded-full animate-pulse duration-[8000ms] pointer-events-none" />
+                    </div>
+                    <div className="relative z-10 flex flex-col h-full justify-center">
+                        <div className="flex items-center justify-between w-full gap-12">
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.4em] text-white/50 leading-none">
+                                    <Navigation className="h-2.5 w-2.5" />
+                                    <span>SERVICE MODULE</span>
+                                </div>
+                                <h1 className="text-3xl sm:text-5xl font-black tracking-tighter uppercase italic leading-none drop-shadow-2xl">
+                                    {moduleData.name?.toUpperCase() ?? 'SERVICE'}
+                                </h1>
+                                <p className="text-xs text-white/70 max-w-2xl">
+                                    Service quote dashboard + 4-step create wizard. Powered by the Operations + Parts catalogue at /manage → Service Catalog.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <main className="flex-1 overflow-y-auto p-8 max-w-6xl mx-auto w-full">
+                    <ServiceQuoteDashboard organisationId={currentMemberOrg.id} />
+                </main>
+            </div>
+        );
+    }
+
     // Placeholder modules (used-boats, website-listings, etc.)
     if (moduleType !== 'catalog' && moduleData && currentMemberOrg) {
         return (
@@ -918,13 +991,13 @@ export default function ModuleDetailsPage() {
 
                 {/* Single Tabs wrapping both bar and content */}
                 <Tabs value={validSubDealerTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-                    <div className="bg-white border-b shrink-0 z-10 px-10">
-                        <TabsList className={cn("grid w-full h-12 bg-transparent p-0 gap-4", `grid-cols-${subDealerTabs.length}`)}>
+                    <div className="bg-white border-b shrink-0 z-10 px-4 sm:px-10 overflow-x-auto">
+                        <TabsList className="flex md:grid w-max md:w-full h-12 bg-transparent p-0 gap-3 sm:gap-4" style={{ gridTemplateColumns: `repeat(${subDealerTabs.length}, minmax(0, 1fr))` }}>
                             {subDealerTabs.map((t) => (
                                 <TabsTrigger
                                     key={t.id}
                                     value={t.id}
-                                    className="rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-[0.2em] h-full transition-all duration-300 text-slate-500 data-[state=active]:text-slate-950 hover:text-slate-700"
+                                    className="shrink-0 whitespace-nowrap rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-[0.15em] sm:tracking-[0.2em] px-2 sm:px-0 h-full transition-all duration-300 text-slate-500 data-[state=active]:text-slate-950 hover:text-slate-700"
                                 >
                                     {t.label}
                                 </TabsTrigger>
@@ -1222,13 +1295,16 @@ export default function ModuleDetailsPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-                <div className="bg-white border-b shrink-0 z-10 px-10">
-                    <TabsList className={cn("grid w-full h-12 bg-transparent p-0 gap-4", `grid-cols-${navTabs.length}`)}>
+                {/* Scrollable on narrow screens — 5 wide-tracked uppercase tabs
+                    can't fit at phone widths, so we scroll horizontally instead
+                    of letting them collide. Grid (even spread) once there's room. */}
+                <div className="bg-white border-b shrink-0 z-10 px-4 sm:px-10 overflow-x-auto">
+                    <TabsList className="flex md:grid w-max md:w-full h-12 bg-transparent p-0 gap-3 sm:gap-4" style={{ gridTemplateColumns: `repeat(${navTabs.length}, minmax(0, 1fr))` }}>
                         {navTabs.map((t) => (
                             <TabsTrigger
                                 key={t.id}
                                 value={t.id}
-                                className="rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-[0.2em] h-full transition-all duration-300 text-slate-500 data-[state=active]:text-slate-950 hover:text-slate-700"
+                                className="shrink-0 whitespace-nowrap rounded-none border-b-4 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent font-black uppercase text-[10px] tracking-[0.15em] sm:tracking-[0.2em] px-2 sm:px-0 h-full transition-all duration-300 text-slate-500 data-[state=active]:text-slate-950 hover:text-slate-700"
                             >
                                 {t.label}
                             </TabsTrigger>

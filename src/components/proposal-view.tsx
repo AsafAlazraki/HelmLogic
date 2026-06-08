@@ -44,6 +44,7 @@ import {
     Edit3,
     Percent,
     Clock,
+    Wrench,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -70,6 +71,16 @@ import {
     LIFECYCLE_STATE_TINT,
     type LifecycleState,
 } from '@/lib/quote-lifecycle';
+import {
+    FIT_UP_STATUSES,
+    FIT_UP_STATUS_LABEL,
+    FIT_UP_STATUS_DESC,
+    FIT_UP_STATUS_TINT,
+    getFitUpStatus,
+    transitionFitUpStatus,
+    updateFitUpScheduling,
+    type FitUpStatus,
+} from '@/lib/fit-up-status';
 import { useSiblingScenarios } from '@/lib/quote-scenarios';
 import {
     AlertDialog,
@@ -313,7 +324,29 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
             + (quote.trailer?.options || []).reduce((a: number, o: any) => a + (o.sellPriceExclGst || 0), 0);
         const dealerFitTotal = (quote.dealerFit || []).reduce((a: number, sel: any) =>
             a + (sel.items || []).reduce((b: number, i: any) => b + (i.sellPriceExclGst || 0), 0), 0);
-        const subtotalExclGst = boatBasePrice + optionsTotal + regoTotal + motorTotal + trailerTotal + dealerFitTotal;
+        // v1.11 (Epic 9.2.2 + v1.11 expansion) — Fit-Up totals on the
+        // on-screen proposal. Quantity × (override ?? sellPrice ?? cost).
+        // Cost: quantity × (cost ?? sellPrice × 60%). Older snapshots
+        // without quantity default to qty=1.
+        const fitUpTotal = (quote.fitUpSelections || []).reduce(
+            (a: number, sel: any) => {
+                const qty = Math.max(1, sel.quantity ?? 1);
+                const unit = sel.priceOverride != null
+                    ? sel.priceOverride
+                    : (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0));
+                return a + (qty * unit);
+            },
+            0,
+        );
+        const fitUpCost = (quote.fitUpSelections || []).reduce(
+            (a: number, sel: any) => {
+                const qty = Math.max(1, sel.quantity ?? 1);
+                const unit = sel.cost != null ? sel.cost : (sel.sellPrice || 0) * 0.6;
+                return a + (qty * unit);
+            },
+            0,
+        );
+        const subtotalExclGst = boatBasePrice + optionsTotal + regoTotal + motorTotal + trailerTotal + dealerFitTotal + fitUpTotal;
         const finalTotalPriceExclGst = subtotalExclGst - localDiscount;
         const gstAmount = finalTotalPriceExclGst * 0.1;
         const totalInclGst = finalTotalPriceExclGst + gstAmount;
@@ -324,13 +357,13 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
             + (quote.motor?.accessories || []).reduce((a: number, acc: any) => a + (acc.cost || (acc.sellPriceExclGst * 0.7)), 0);
         const trailerCost = (quote.trailer?.cost || (quote.trailer?.sellPriceExclGst * 0.8));
         const dealerFitCost = dealerFitTotal * 0.6;
-        const totalDealCostExclGst = boatCost + optionsCost + motorCost + trailerCost + dealerFitCost + regoTotal;
+        const totalDealCostExclGst = boatCost + optionsCost + motorCost + trailerCost + dealerFitCost + fitUpCost + regoTotal;
         const grossProfit = finalTotalPriceExclGst - totalDealCostExclGst;
         const marginPercent = finalTotalPriceExclGst > 0 ? (grossProfit / finalTotalPriceExclGst) * 100 : 0;
         return {
-            boatBasePrice, optionsTotal, regoTotal, motorTotal, trailerTotal, dealerFitTotal,
+            boatBasePrice, optionsTotal, regoTotal, motorTotal, trailerTotal, dealerFitTotal, fitUpTotal,
             subtotalExclGst, finalTotalPriceExclGst, gstAmount, totalInclGst,
-            boatCost, optionsCost, motorCost, trailerCost, dealerFitCost,
+            boatCost, optionsCost, motorCost, trailerCost, dealerFitCost, fitUpCost,
             totalDealCostExclGst, grossProfit, marginPercent
         };
     }, [quote, strategy, activeExchangeRate, localDiscount, organisation]);
@@ -469,6 +502,66 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         }
     }
 
+    /** v1.11 expansion — Fit-Up workshop status click handler. */
+    const handleFitUpStatusTransition = async (next: FitUpStatus) => {
+        if (!quote?.id || !auditOwnerUid || !user) return;
+        try {
+            await transitionFitUpStatus(firestore, auditOwnerUid, quote.id, next, {
+                byUid: user.uid,
+                byName: userProfile?.displayName || user.displayName || user.email || 'Someone',
+            });
+            toast({
+                title: `Fit-up: ${FIT_UP_STATUS_LABEL[next]}`,
+                description: 'Workshop status updated and logged to the Activity tab.',
+            });
+        } catch (e: any) {
+            console.error('[fit-up-status] failed', e);
+            toast({
+                variant: 'destructive',
+                title: 'Could not update fit-up status',
+                description: e?.message ?? 'See console.',
+            });
+        }
+    };
+
+    /** v1.11 expansion-2 — Fit-Up scheduling save (date + technician). */
+    const handleFitUpSchedulingUpdate = async (patch: { scheduledDate?: string | null; assignedTechnician?: string | null }) => {
+        if (!quote?.id || !auditOwnerUid || !user) return;
+        try {
+            await updateFitUpScheduling(firestore, auditOwnerUid, quote.id, patch, {
+                byUid: user.uid,
+                byName: userProfile?.displayName || user.displayName || user.email || 'Someone',
+            });
+            toast({ title: 'Fit-up schedule updated' });
+        } catch (e: any) {
+            console.error('[fit-up-scheduling] failed', e);
+            toast({
+                variant: 'destructive',
+                title: 'Could not update fit-up schedule',
+                description: e?.message ?? 'See console.',
+            });
+        }
+    };
+
+    /** v1.11 ("Toggle detailed view for customer") — flip whether the
+     *  customer PDF itemises fit-up lines or rolls them to a single
+     *  summary line. Writes `customerDetailedView` on the quote. */
+    const handleToggleDetailedView = async () => {
+        if (!quote?.id || !auditOwnerUid || !user) return;
+        if (quote.isLocked === true) {
+            toast({ variant: 'destructive', title: 'Quote is locked', description: 'Create a new version to change customer presentation.' });
+            return;
+        }
+        try {
+            const ref = doc(firestore, `users/${auditOwnerUid}/quotes`, quote.id);
+            await updateDoc(ref, { customerDetailedView: !quote.customerDetailedView, lastUpdateAt: serverTimestamp() });
+            toast({ title: quote.customerDetailedView ? 'Fit-up shown as summary line' : 'Fit-up itemised for customer' });
+        } catch (e: any) {
+            console.error('[detailed-view] failed', e);
+            toast({ variant: 'destructive', title: 'Could not update', description: e?.message ?? 'See console.' });
+        }
+    };
+
     /** v1.9 (story 1.4.1) — Lifecycle picker click handler. */
     const handleLifecycleTransition = async (next: LifecycleState) => {
         if (!quote?.id || !auditOwnerUid || !user) return;
@@ -555,7 +648,13 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
             <div className="web-view">
                 {/* Top Navigation */}
                 {!hideNav && (
-                    <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b shadow-sm no-print w-full px-6 sm:px-10 h-16 flex items-center justify-between gap-4">
+                    /* Sticky action bar — at narrow widths the 6+ action buttons
+                       overlap the left status chip ("AWORDIING" garbage at 768/
+                       1093px). Drop the fixed h-16, let it grow vertically,
+                       wrap the right-side button cluster onto a second line
+                       below lg, and add overflow-x-auto as the last-resort
+                       fallback so the bar can scroll if a label runs long. */
+                    <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b shadow-sm no-print w-full px-4 sm:px-6 xl:px-10 py-2 xl:py-0 xl:h-16 flex flex-col xl:flex-row xl:items-center justify-between gap-2 xl:gap-4 overflow-x-auto">
                         <div className="flex items-center gap-3 min-w-0">
                             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl border-2 shrink-0" onClick={() => router.back()}>
                                 <ArrowLeft className="h-4 w-4" />
@@ -621,6 +720,96 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                                 </button>
                                             );
                                         })}
+                                    </PopoverContent>
+                                </Popover>
+                            )}
+                            {/* v1.11 expansion — Fit-Up workshop status pill.
+                                Only renders when the quote actually has fit-up
+                                selections (otherwise it's noise on plain
+                                vessel-only quotes). Same Popover-pick pattern
+                                as the lifecycle picker. */}
+                            {(quote.fitUpSelections?.length ?? 0) > 0 && (
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <button
+                                            type="button"
+                                            className={cn(
+                                                'rounded-md border text-[8px] font-black uppercase tracking-widest px-2.5 py-0.5 shrink-0 hidden sm:inline-flex items-center gap-1 transition-opacity hover:opacity-80',
+                                                FIT_UP_STATUS_TINT[getFitUpStatus(quote)],
+                                            )}
+                                            aria-label="Change fit-up workshop status"
+                                            title="Workshop status for the fit-up scope on this quote"
+                                        >
+                                            <Wrench className="h-2.5 w-2.5" />
+                                            FIT-UP: {FIT_UP_STATUS_LABEL[getFitUpStatus(quote)]}
+                                            <ChevronDown className="h-3 w-3 opacity-70" />
+                                        </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent align="start" className="w-72 p-1">
+                                        <div className="px-3 py-2 border-b mb-1">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Fit-up workshop status</p>
+                                            <p className="text-[10px] text-slate-500 mt-0.5">Tracks the build progress of the fit-up scope — independent of the sales lifecycle.</p>
+                                        </div>
+                                        {FIT_UP_STATUSES.map((s) => {
+                                            const isCurrent = s === getFitUpStatus(quote);
+                                            return (
+                                                <button
+                                                    key={s}
+                                                    type="button"
+                                                    onClick={() => handleFitUpStatusTransition(s)}
+                                                    disabled={isCurrent}
+                                                    className={cn(
+                                                        'w-full text-left px-2 py-2 rounded-md flex items-start gap-2 hover:bg-slate-50 disabled:opacity-100 disabled:cursor-default',
+                                                    )}
+                                                >
+                                                    <Check className={cn('h-3.5 w-3.5 mt-0.5 shrink-0', isCurrent ? 'text-emerald-600' : 'text-transparent')} />
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className={cn(
+                                                                'text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border',
+                                                                FIT_UP_STATUS_TINT[s],
+                                                            )}>
+                                                                {FIT_UP_STATUS_LABEL[s]}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">{FIT_UP_STATUS_DESC[s]}</p>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                        {/* v1.11 expansion-2 — Scheduling block: date + technician.
+                                            Both save on blur. Operator-only — never on customer PDF. */}
+                                        <div className="border-t mt-2 pt-2 px-2 space-y-2">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Schedule</p>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-semibold text-slate-600">Scheduled date</label>
+                                                <Input
+                                                    type="date"
+                                                    defaultValue={quote.fitUpScheduledDate ?? ''}
+                                                    onBlur={(e) => {
+                                                        const v = e.target.value.trim();
+                                                        if ((quote.fitUpScheduledDate ?? '') === v) return;
+                                                        void handleFitUpSchedulingUpdate({ scheduledDate: v || null });
+                                                    }}
+                                                    className="h-7 rounded-md border-2 text-xs"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-semibold text-slate-600">Assigned technician</label>
+                                                <Input
+                                                    type="text"
+                                                    defaultValue={quote.fitUpAssignedTechnician ?? ''}
+                                                    onBlur={(e) => {
+                                                        const v = e.target.value.trim();
+                                                        if ((quote.fitUpAssignedTechnician ?? '') === v) return;
+                                                        void handleFitUpSchedulingUpdate({ assignedTechnician: v || null });
+                                                    }}
+                                                    placeholder="Name or initials"
+                                                    className="h-7 rounded-md border-2 text-xs"
+                                                />
+                                            </div>
+                                            <p className="text-[9px] text-muted-foreground italic">Operator-only — never on customer PDF.</p>
+                                        </div>
                                     </PopoverContent>
                                 </Popover>
                             )}
@@ -823,7 +1012,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                     </div>
                 )}
 
-                <div className="max-w-6xl mx-auto px-4 sm:px-8 py-8 md:py-12 space-y-6 md:space-y-8">
+                <div className="max-w-screen-2xl mx-auto px-6 sm:px-10 py-8 md:py-12 space-y-6 md:space-y-8">
                     {/* HERO */}
                     <div className="relative rounded-[2rem] md:rounded-[3rem] overflow-hidden border-2 bg-white shadow-xl">
                         {quote.coverImageUrl && (
@@ -1121,6 +1310,29 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                 </SectionCard>
                             )}
 
+                            {/* Fit-Up & Rigging — itemised section so the fit-up scope
+                                is visible on the proposal (the Investment Summary only
+                                shows the rolled-up total). */}
+                            {quote.fitUpSelections?.length > 0 && (
+                                <SectionCard icon={Wrench} label="Fit-Up & Rigging">
+                                    <div className="divide-y">
+                                        {quote.fitUpSelections.map((sel: any, i: number) => {
+                                            const qty = Math.max(1, sel.quantity ?? 1);
+                                            const unit = sel.priceOverride != null ? sel.priceOverride : (sel.sellPrice != null ? sel.sellPrice : (sel.cost || 0));
+                                            return (
+                                                <div key={sel.id || i} className="flex items-center justify-between px-6 py-3.5 hover:bg-slate-50/40 transition-colors">
+                                                    <div>
+                                                        <p className="text-sm font-black uppercase tracking-tight text-slate-900">{(sel.customerDescription || sel.name)}{qty > 1 ? ` ×${qty}` : ''}</p>
+                                                        <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{sel.tier}{sel.category ? ` · ${sel.category}` : ''}</p>
+                                                    </div>
+                                                    <span className="font-black text-sm tabular-nums">{formatCurrency(qty * unit)}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </SectionCard>
+                            )}
+
                             {/* Registration */}
                             {quote.registration && (
                                 quote.registration.boatRego || quote.registration.sticker || quote.registration.tenderTo || quote.registration.trailerRego
@@ -1181,6 +1393,27 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     <PricingRow label="Power Pack" value={f.motorTotal} showIfZero />
                                     <PricingRow label="Trailer" value={f.trailerTotal} />
                                     <PricingRow label="Dealer Fit" value={f.dealerFitTotal} />
+                                    <PricingRow label="Fit-up & Rigging" value={f.fitUpTotal} />
+                                    {/* v1.11 — customer detailed-view toggle. When on, the
+                                        customer PDF itemises each fit-up line; off = single
+                                        summary line (the locked 9.2.3 default). Only shown
+                                        when the quote actually has fit-up selections. */}
+                                    {(quote.fitUpSelections?.length ?? 0) > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={handleToggleDetailedView}
+                                            className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
+                                            title="Toggle whether the customer PDF itemises fit-up or shows one summary line"
+                                        >
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Itemise fit-up for customer</span>
+                                            <span className={cn(
+                                                'text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border',
+                                                quote.customerDetailedView ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-500 border-slate-200',
+                                            )}>
+                                                {quote.customerDetailedView ? 'Itemised' : 'Summary'}
+                                            </span>
+                                        </button>
+                                    )}
                                     <PricingRow label="Registration" value={f.regoTotal} />
 
                                     {localDiscount > 0 && (
@@ -1303,6 +1536,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     { label: 'Propulsion', cost: f.motorCost, sell: f.motorTotal },
                                     { label: 'Trailer', cost: f.trailerCost, sell: f.trailerTotal },
                                     { label: 'Dealer Fitout', cost: f.dealerFitCost, sell: f.dealerFitTotal },
+                                    { label: 'Fit-up & Rigging', cost: f.fitUpCost, sell: f.fitUpTotal },
                                 ].filter(r => r.sell > 0).map((row, i) => (
                                     <div key={i} className="px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-all">
                                         <p className="text-xs font-black uppercase text-slate-700">{row.label}</p>
@@ -1646,6 +1880,7 @@ const ACTIVITY_META: Record<AuditEventType, { icon: any; label: string; tint: st
     'discount-changed':   { icon: Percent,     label: 'Discount changed',       tint: 'bg-rose-50 text-rose-700 border-rose-200' },
     'lifecycle-transitioned': { icon: Activity, label: 'Status updated',         tint: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
     'scenario-created':   { icon: Layers,      label: 'Scenario created',       tint: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+    'fit-up-status-changed': { icon: Wrench,   label: 'Fit-up status updated',  tint: 'bg-teal-50 text-teal-700 border-teal-200' },
 };
 
 function ActivityRow({ event }: { event: QuoteAuditEvent }) {
@@ -1697,6 +1932,8 @@ function renderSummary(event: QuoteAuditEvent): string | null {
             return m.fromLifecycle && m.toLifecycle
                 ? `${m.fromLifecycle} → ${m.toLifecycle}`
                 : null;
+        case 'fit-up-status-changed':
+            return m.toValue ? `Now: ${m.toValue}` : null;
         case 'scenario-created':
             return m.scenarioLabel
                 ? `Label: "${m.scenarioLabel}"`

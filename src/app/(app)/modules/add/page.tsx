@@ -179,11 +179,13 @@ export default function AddModulePage() {
                                             <SelectItem value="motor-brand">Motor Brand</SelectItem>
                                             <SelectItem value="trailers">Trailers</SelectItem>
                                             <SelectItem value="rego">Rego (Registration Authority)</SelectItem>
+                                            <SelectItem value="fit-up">Fit-Up (Catalog & Quote integration)</SelectItem>
+                                            <SelectItem value="service">Service (Quote dashboard + wizard)</SelectItem>
                                         </SelectContent>
                                     </Select>
-                                    <p className="text-xs text-muted-foreground">Catalog modules have pricing, quoting, and stock management. Other types have custom functionality.</p>
+                                    <p className="text-xs text-muted-foreground">Catalog modules have pricing, quoting, and stock management. Fit-Up and Service modules manage per-org catalogues + quote-flow integration. Other types have custom functionality.</p>
                                 </div>
-                                {moduleType !== 'trailers' && moduleType !== 'rego' && (
+                                {moduleType !== 'trailers' && moduleType !== 'rego' && moduleType !== 'fit-up' && moduleType !== 'service' && (
                                     <FormField
                                         control={form.control}
                                         name="mainVendorId"

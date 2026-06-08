@@ -47,6 +47,8 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { RoleHierarchyChart } from '@/components/role-hierarchy-chart';
 import { ContentBlockManager } from '@/components/content-block-manager';
+import { DocumentDefaultsCard } from '@/components/document-defaults-card';
+import { CustomerDefaultsCard } from '@/components/customer-defaults-card';
 import { EmailTemplatesTab } from '@/components/email-template-manager';
 import { SharePointConfigEditor } from '@/components/sharepoint-config-editor';
 import { FitUpCatalogManager } from '@/components/fit-up-catalog-manager';
@@ -129,6 +131,13 @@ const permissionsConfig = [
     { id: 'can_access_settings', label: 'Access Settings' },
     { id: 'can_manage_stock', label: 'Manage Stock' },
     { id: 'can_view_stock', label: 'View Stock' },
+    // v1.11 follow-up — authority flags. Roles with these flags can
+    // approve margin-threshold overrides + crowd-sourced data suggestions.
+    // Set on the GM Sales & Marketing role for Northside (default off
+    // elsewhere). Wires the "GM override authority" + "Crowdsourcing
+    // approval authority" Submitted-board stories.
+    { id: 'can_override_margin', label: 'Override margin threshold' },
+    { id: 'can_approve_suggestions', label: 'Approve data suggestions' },
 ];
 
 function ColorFormField({ name, label, description }: { name: "primaryColor" | "accentColor" | "secondaryColor", label: string, description: string }) {
@@ -625,8 +634,12 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                 </Card>
                             </div>
                         </div>
+                        {/* v1.11 follow-up — Customer Defaults card. */}
+                        {orgId && organisation && (
+                            <CustomerDefaultsCard organisationId={orgId} organisation={organisation} />
+                        )}
                     </TabsContent>
-                    
+
                     <TabsContent value="users">
                         <Card>
                             <CardHeader>
@@ -776,6 +789,13 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                     </div>
                                 </CardHeader>
                             </Card>
+
+                            {/* v1.11 follow-up — Document Defaults card. Org-level
+                                deposit / payment schedule / quote validity that
+                                cascade onto new quotes + contracts. */}
+                            {orgId && organisation && (
+                                <DocumentDefaultsCard organisationId={orgId} organisation={organisation} />
+                            )}
 
                             {/* v1.7 (1.8.5) — Document Templates is the unified surface for
                                 Quote + Contract content. Sub-tabs filter the same content-block

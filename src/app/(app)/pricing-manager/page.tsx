@@ -7,12 +7,17 @@ import { useFirestore, useMemoFirebase } from "@/firebase/provider";
 import { doc, collection, query, where } from "firebase/firestore";
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Building, Search, Coins, ChevronRight, ShieldAlert, ArrowRightLeft, Minimize2 } from "lucide-react";
+import { Building, Search, Coins, ChevronRight, ShieldAlert, ArrowRightLeft, Minimize2, FileSpreadsheet, History as HistoryIcon } from "lucide-react";
+import { CatalogExportImport } from "@/components/catalog-export-import";
+import { CatalogAuditHistory } from "@/components/catalog-audit-history";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import NextImage from "next/image";
 import { HighfieldPricingWorkspace } from "@/components/highfield-pricing-workspace";
+import { MotorsTableView } from "@/components/motors-table-view";
+import { BoatsTableView } from "@/components/boats-table-view";
 import { ExchangeRateManager } from "@/components/exchange-rate-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,6 +64,9 @@ export default function PricingManagerPage() {
     const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [isExchangeRateManagerOpen, setIsExchangeRateManagerOpen] = useState(false);
+    /** v1.11 follow-up — Catalog Manager export/import sheet + audit history sheet. */
+    const [isCatalogIoOpen, setIsCatalogIoOpen] = useState(false);
+    const [isAuditHistoryOpen, setIsAuditHistoryOpen] = useState(false);
 
     // Fetch active rates for summary card
     const ratesQuery = useMemoFirebase(() => 
@@ -117,9 +125,49 @@ export default function PricingManagerPage() {
         <div className="flex flex-col h-[calc(100vh-theme(spacing.24))] space-y-6 overflow-hidden">
             <div className="shrink-0 flex items-start justify-between">
                 <div>
-                    <h1 className="text-3xl font-black uppercase tracking-tight">Pricing Manager</h1>
-                    <p className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 mt-1">Strategic Profitability Matrix</p>
+                    <h1 className="text-3xl font-black uppercase tracking-tight">Catalog Manager</h1>
+                    <p className="text-xs font-black uppercase tracking-widest text-muted-foreground/60 mt-1">
+                        Boats · Motors · Trailers · Dealer Fit · Fit-Up · Pricing
+                    </p>
                 </div>
+
+                {/* v1.11 follow-up — Catalog I/O + Audit History strategy cards.
+                    Same gradient style as Exchange Rates so they sit visually
+                    together as Catalog Manager top-level actions. */}
+                {organisationId && (
+                    <div className="flex gap-3 items-stretch">
+                    <Card
+                        className="w-56 bg-gradient-to-br from-slate-900 to-slate-700 text-white border-none shadow-xl group overflow-hidden h-24 relative cursor-pointer hover:scale-[1.02] transition-all active:scale-[0.98]"
+                        onClick={() => setIsCatalogIoOpen(true)}
+                    >
+                        <div className="absolute -bottom-4 -right-4 p-3 opacity-10 group-hover:opacity-20 transition-all z-0">
+                            <FileSpreadsheet className="h-24 w-24 -rotate-[12deg]" />
+                        </div>
+                        <CardHeader className="p-3 pb-1 relative z-10">
+                            <Badge variant="secondary" className="bg-white/20 text-white border-none font-black text-[8px] uppercase tracking-[0.1em] h-4">Import / Export</Badge>
+                            <CardTitle className="text-xs font-black uppercase tracking-widest mt-1.5">Catalog xlsx</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-3 pt-0 relative z-10">
+                            <span className="text-[9px] font-bold uppercase opacity-70 tracking-tighter">Every catalog · diff before commit</span>
+                        </CardContent>
+                    </Card>
+                    <Card
+                        className="w-48 bg-gradient-to-br from-amber-600 to-rose-700 text-white border-none shadow-xl group overflow-hidden h-24 relative cursor-pointer hover:scale-[1.02] transition-all active:scale-[0.98]"
+                        onClick={() => setIsAuditHistoryOpen(true)}
+                    >
+                        <div className="absolute -bottom-4 -right-4 p-3 opacity-10 group-hover:opacity-20 transition-all z-0">
+                            <HistoryIcon className="h-24 w-24 -rotate-[12deg]" />
+                        </div>
+                        <CardHeader className="p-3 pb-1 relative z-10">
+                            <Badge variant="secondary" className="bg-white/20 text-white border-none font-black text-[8px] uppercase tracking-[0.1em] h-4">History</Badge>
+                            <CardTitle className="text-xs font-black uppercase tracking-widest mt-1.5">Catalog Audit</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-3 pt-0 relative z-10">
+                            <span className="text-[9px] font-bold uppercase opacity-70 tracking-tighter">Every edit · who & when</span>
+                        </CardContent>
+                    </Card>
+                    </div>
+                )}
 
                 {/* Exchange Rates Strategic Card */}
                 {organisationId && (
@@ -223,10 +271,23 @@ export default function PricingManagerPage() {
                 <Card className="flex-1 min-w-0 shadow-lg border-2 overflow-hidden flex flex-col bg-muted/5">
                     {activeVendor ? (
                         activeVendor.slug === 'highfield' ? (
-                            <HighfieldPricingWorkspace 
-                                vendor={activeVendor} 
-                                organisationId={organisationId} 
+                            <HighfieldPricingWorkspace
+                                vendor={activeVendor}
+                                organisationId={organisationId}
                             />
+                        ) : activeVendor.vendorType === 'Motor Brand' ? (
+                            /* v1.11 follow-up — Story 3.7.3 Motors Table mounted
+                               here so motor brands have a read view inside the
+                               Catalog Manager instead of "coming soon". */
+                            <div className="p-6 overflow-y-auto">
+                                <MotorsTableView />
+                            </div>
+                        ) : activeVendor.vendorType === 'Boat Brand' ? (
+                            /* v1.11 follow-up — non-Highfield Boat Brand vendors
+                               get the Boats Table read view instead of "coming soon". */
+                            <div className="p-6 overflow-y-auto">
+                                <BoatsTableView />
+                            </div>
                         ) : (
                             <div className="flex flex-col h-full overflow-hidden">
                                 <CardHeader className="p-6 border-b bg-background shrink-0">
@@ -267,11 +328,41 @@ export default function PricingManagerPage() {
 
             {/* Global Strategy Overlays */}
             {organisationId && (
-                <ExchangeRateManager 
-                    organisationId={organisationId} 
-                    isOpen={isExchangeRateManagerOpen} 
-                    onClose={() => setIsExchangeRateManagerOpen(false)} 
+                <ExchangeRateManager
+                    organisationId={organisationId}
+                    isOpen={isExchangeRateManagerOpen}
+                    onClose={() => setIsExchangeRateManagerOpen(false)}
                 />
+            )}
+
+            {/* v1.11 follow-up — Catalog Manager Import/Export panel. */}
+            {organisationId && (
+                <Sheet open={isCatalogIoOpen} onOpenChange={setIsCatalogIoOpen}>
+                    <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">
+                        <SheetHeader>
+                            <SheetTitle className="flex items-center gap-2"><FileSpreadsheet className="h-5 w-5" /> Catalog Import / Export</SheetTitle>
+                            <SheetDescription className="text-xs">Export the catalog to xlsx, edit in Excel, re-upload, and review a diff before anything writes. Every commit is recorded in Catalog Audit.</SheetDescription>
+                        </SheetHeader>
+                        <div className="mt-4">
+                            <CatalogExportImport organisationId={organisationId} />
+                        </div>
+                    </SheetContent>
+                </Sheet>
+            )}
+
+            {/* v1.11 follow-up — Catalog Audit history viewer. */}
+            {organisationId && (
+                <Sheet open={isAuditHistoryOpen} onOpenChange={setIsAuditHistoryOpen}>
+                    <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">
+                        <SheetHeader>
+                            <SheetTitle className="flex items-center gap-2"><HistoryIcon className="h-5 w-5" /> Catalog Audit History</SheetTitle>
+                            <SheetDescription className="text-xs">Every catalog import + manual edit (when wired through). Newest first.</SheetDescription>
+                        </SheetHeader>
+                        <div className="mt-4">
+                            <CatalogAuditHistory organisationId={organisationId} />
+                        </div>
+                    </SheetContent>
+                </Sheet>
             )}
         </div>
     );

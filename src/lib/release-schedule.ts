@@ -40,16 +40,16 @@ export interface ReleaseWindow {
  * without 90 empty columns). v2.x is intentionally NOT a column yet — it
  * gets added when the v1.X runway is nearly exhausted.
  *
- * Loop START INDEX: starts at v1.11, NOT v1.10. Once a release ships
+ * Loop START INDEX: starts at v1.12, NOT v1.11. Once a release ships
  * (gets its own explicit `'vX.Y': { shipped: true }` entry above the
  * spread), it must be EXCLUDED from this generator — otherwise the
- * spread's empty `{}` would clobber the shipped flag. When v1.11 ships,
- * bump this constant to 12. (v1.10 close-out post-mortem: I shipped
+ * spread's empty `{}` would clobber the shipped flag. When v1.12 ships,
+ * bump this constant to 13. (v1.10 close-out post-mortem: I shipped
  * v1.10 with the start index still at 10, the spread silently
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 11;
+const FORWARD_RUNWAY_START = 12;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -80,6 +80,14 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // integration (v1.16+), Epic 11.2 service-quote flow (v1.11+),
     // Epic 11.3 NSM-Hub migration (v1.11, needs service-account).
     'v1.10': { shipped: true },
+    // v1.11 — Fit-Up release. Phase A (end-to-end quote-flow integration
+    // pulled from v1.16: Epic 9.2.1 / 9.2.2 / 9.2.3 + simplified 9.3.1)
+    // plus Phase B (expansion: categories, customerDescription, packages,
+    // search, per-line qty/override/note, workshop status). Non-fit-up
+    // stories built in the same dev cycle (Service Quote Flow, Motors
+    // Table, Suggestion Approval Queue) were retargeted to v1.12 so v1.11
+    // ships as a focused Fit-Up release.
+    'v1.11': { shipped: true },
     ...buildV1MinorReleases(),
 };
 

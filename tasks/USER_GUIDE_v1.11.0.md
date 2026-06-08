@@ -1,0 +1,303 @@
+# HelmLogic — User Guide v1.11.0
+
+**For:** Org admins + salespeople + workshop coordinators
+**Companion to:** `RELEASE_NOTES_v1.11.0.md`
+
+This release is the **Fit-Up release, end-to-end**. The v1.10 master Fit-Up Catalog is now wired into the quote flow (search, packages, per-line quantity, price overrides, operator notes), the customer PDF carries a single Fit-up & Rigging summary line, and every quote with fit-up scope has a workshop status pill that tracks the build separately from the sales lifecycle.
+
+---
+
+## §0 — Walking a customer through a complete quote (Mark's signoff path)
+
+The 8 items Mark asked for in his 8/06/2026 email map to a single happy-path walk-through. Follow it once and you've used every surface in v1.11.
+
+1. **Dashboard → New Quote → Classic → CL380** — opens the build flow on Step 1.
+2. **Step 1 (BOAT BASE)** — pick PVC + a colour. Item 2: the carousel shows only the hull, no trailer images. Item 7: the **Rego picker** is right below, state-aware on `boatLengthM`.
+3. **Step 1 → Next Step** advances to **Step 2 (FACTORY OPTIONS)**. Item 3: Standard Inclusions render across the top, the Factory Options grid is in the middle, and **Additional Factory Boat Notes/Options** lets you add a one-off note + price.
+4. **Step 2 → Next Step** advances to **Step 3 (MOTOR)**. Item 4 (engine half): a default Yamaha auto-selects on load. **Choose Another Motor** swaps it. **Dealer Services** has Extended Warranty + Service Plan toggles, **Prop Comes Standard** is opt-in.
+5. **Step 3 → Next Step** advances to **Step 4 (TRAILER)**. Item 5: Trailer Base assignment matrix, Trailer Hardware grid, and Additional Factory Trailer Notes for custom rigging. The carousel now picks up the trailer image.
+6. **Step 4 → Next Step** advances to **Step 5 (DEALER FIT + FIT-UP)**. Item 6: dealer-fit categories grouped by scope (motor / boat / trailer). Item 8: under that, **SIMPLE / MEDIUM / COMPLEX** tier package cards. Item 4 (rigging half): clicking a tier loads its members into the *Selected fit-up items* panel below.
+7. **Step 5 → Next Step** advances to **Step 6 (SUMMARY)**. Item 7 (summary side): registration is itemised in the Investment Summary.
+8. **Finalize Project → enter customer name → Create Proposal** lands on the proposal view. Item 1: the customer's name renders on the cover + in the body, and every section (Build / Motor / Trailer / Dealer Fit / Fit-Up / Investment Summary) is present in order. **Download** produces the customer-facing PDF.
+
+The Playwright spec `tests/bm-email-checklist.spec.ts` drives this exact walk and asserts each item is visible at its step. Re-run after any change to the quote flow and the matrix at the end will tell you what regressed.
+
+### Fit-Up Catalog dialog — what changed
+
+The Add / Edit dialog on **Manage → Fit-Up Catalog → Items → pencil icon** got a presentation rework for the launch:
+
+- Four labelled card sections so you don't scroll past a wall of fields: **Basics** (name / tier / cost / sell / category), **Customer-facing** (description shown on the quote, image URL with a live preview), **Internal** (operator-only notes), **Assignment scope** (Modules / Brands / Ranges / Models / Variants).
+- Tier is a 3-button pill row using the same colour as the catalog rows — **Simple** (emerald), **Medium** (amber), **Complex** (rose).
+- The image preview now sits beside its URL input at usable size so you can see if you pasted the right URL.
+- The Save / Cancel bar stays pinned to the bottom of the dialog while you scroll — no hunting for it on tall forms.
+
+Nothing about the data model changed — every existing item still saves the same way. Just easier to look at.
+
+### Auditability — who did what, when
+
+Two unified audit views cover "the audited part" of Mark's ask:
+
+**Per-quote audit** lives on each proposal's **Activity tab** (open a proposal → click Activity). Every lifecycle event surfaces with the actor's name + timestamp + a one-line summary:
+- Quote created · Finalised · Sent to customer · Locked / Unlocked · Forked to new version
+- Content personalised · Discount changed · Status updated · Scenario created
+- Fit-up status updated (workshop side)
+
+**Catalog audit** lives on **Manage → Catalog Manager → Catalog Audit** (the History card). The panel renders a chronological feed of:
+- Every catalog xlsx import (with per-row diff: before → after)
+- Every Fit-Up Item add / edit / delete (with field-level diff)
+- Every Fit-Up Package add / edit / delete
+
+Click any row to expand the diff. Rose strike-through = current; green = next. Items the import marked "skipped" badge in slate.
+
+If a price is wrong on a quote, the audit answers **two** questions: who set it on the catalog (Catalog Audit), and who applied it to the quote (Activity tab on the proposal). Together they give you the full chain.
+
+---
+
+## At a glance
+
+| What you want to do | Where | Section |
+|---|---|---|
+| Categorise my fit-up items | `Manage → Fit-Up Catalog` → Add/Edit item → Category | §1.1 |
+| Filter the catalog by category | Same tab → Category chip row | §1.2 |
+| Bundle items into a named package | Same tab → Packages sub-tab → Add package | §2 |
+| Add fit-up to a customer quote | Step 5 of the quote builder | §3 |
+| Search the fit-up catalog while picking | Step 5 → search input above the grid | §3.1 |
+| Add a package on a quote | Step 5 → Packages strip → click a package | §3.2 |
+| Set qty / override price / add a note per item | Step 5 → Selected fit-up items panel | §3.3 |
+| Track workshop progress on a fit-up | Proposal-view header → Fit-up pill | §4 |
+| See who changed the fit-up status + when | Proposal-view → Activity tab | §4.4 |
+
+---
+
+## 1. Catalog — categories + customer descriptions
+
+The Fit-Up Catalog (v1.10) gains two new optional fields per item.
+
+### 1.1 Category
+Open any item (`Manage → Fit-Up Catalog` → pencil icon). The new **Category** field is free-text — type e.g. `Rigging`, `Electronics`, `Safety`, or whatever taxonomy makes sense for your dealer. Items without a category are uncategorised and still appear under the "All" filter.
+
+**To do:**
+1. Edit any item.
+2. Type a category name (one new per item, but identical typing on multiple items groups them — the chip row de-dupes case-insensitively).
+3. Save.
+
+### 1.2 Category filter row
+A new chip row appears under the tier chips on the catalog. Only shows when at least one item has a category. Click any category to filter the catalog to that group. Click **All** to clear.
+
+### 1.3 Customer description
+Per-item free-text. Defaults to the item **Name** when the customer-facing surface needs a label. The customer PDF rolls fit-up into a single "Fit-up & Rigging" line by product decision (Story 9.2.3) — `customerDescription` is plumbed so future detailed surfaces use it without another migration. The internal label / workshop label can stay short ("LED kit wiring loom") while customer-facing text reads cleaner ("LED accent lighting installation").
+
+**To do:**
+1. Edit any item.
+2. Fill the **Customer description** textarea — what you want the customer to see.
+3. Leave the **Internal notes** field for workshop or operator-only context (never shown to the customer).
+4. Save.
+
+### 1.4 CSV import + export
+
+Both the per-tab export and the master `catalog-export-import` (multi-sheet) export now include `Category` + `Customer Description` columns. Import follows the same upsert-by-name rules from v1.10 — these two columns layer in on existing rows; the rest of your edits are preserved.
+
+---
+
+## 2. Packages — bundle items together
+
+### What it is
+A **package** is a named bundle of fit-up items. Selecting a package on a quote adds every item at once. Useful for repeatable installs ("Coastal Setup", "Offshore Pack", "First-time Owner Bundle").
+
+### 2.1 Manage packages
+1. Go to `Manage → Fit-Up Catalog`.
+2. Click the **Packages** sub-tab (next to Items).
+3. Click **Add package**.
+4. Give it a name, an optional description, and tick which items belong to it. The search box filters the picker by name, category, or customer description.
+5. Save.
+
+You'll see the package list with each package's name, description, member item chips, total sell price, and Edit / Delete actions.
+
+### 2.2 What happens when a member item is deleted
+If you delete an item that's referenced by a package, the package keeps working — it just shows an amber **"N deleted items"** pill so you know to either re-link or trim. There's no destructive cascade.
+
+---
+
+## 3. Quote flow — Fit-Up on Step 5
+
+### 3.1 Search + category filter
+The fit-up picker (Step 5, under Dealer Fit) now has a search box. Filters by name, customer description, internal notes, or category. The same dynamic category chip row from the catalog renders here too — pick a category to narrow the grid, click **All** to clear.
+
+The tier-chip row + **✦ Suggested** (motor-HP-biased) filter from Phase A still works alongside the new filters — they all AND-combine.
+
+### 3.2 Packages strip
+When at least one package is relevant to the boat in context, a Packages strip appears above the items grid. Each package shows its name, item count, and total sell. **One click** adds every package item that's not already on the quote (items already on stay untouched). Click again to NOT toggle off — to remove items, use the Remove (×) button on each row in the Selected panel.
+
+### 3.3 Selected fit-up items panel
+Below the picker, every selected item gets its own row in a **Selected fit-up items** panel. Three controls per row:
+
+**Qty stepper.** Min 1. Use the `+` / `−` buttons or type into the input. The running total on Step 5 multiplies by qty.
+
+**Price override.** Per-quote, per-line override. Leave blank to use the catalog sell price (placeholder shows you what the catalog price is). Saves on blur. Override is marked with an amber "(override)" tag in the per-line total. Catalog price isn't touched — this is a quote-only override.
+
+**Per-quote operator note.** Single-line free-text. Operator-only. **Never** shown on the customer PDF. Saves on blur. Useful for things like "Customer to supply hardware", "Schedule with Dave's crew", "Trade-in cradle reused".
+
+To remove a selection, click the × button in the top-right of the row.
+
+### 3.4 What this affects on the customer side
+- The Step 5 running total + Investment Summary on the proposal view honour qty × override.
+- The customer PDF still rolls fit-up into a **single "Fit-up & Rigging" line** — locked product decision per Story 9.2.3. Per-item, per-qty, override, and notes are all operator-only.
+- The proposal-view "Line Item Cost vs. Sell" (in the Audit drawer) honours qty + override too — your margin numbers match the quoted total.
+
+---
+
+## 4. Workshop status on the quote
+
+### What it is
+Every quote with at least one fit-up item gets a new **workshop status** pill in the proposal-view header, next to the sales lifecycle pill.
+
+The two are **orthogonal**: a quote can be sales-lifecycle `Accepted` while its fit-up is workshop-status `Scheduled`. They track different things.
+
+### 4.1 The four states
+- **Pending** (default) — no workshop action yet, sitting in the queue.
+- **Scheduled** — booked into the workshop for a specific date.
+- **In Progress** — workshop is actively building the fit-up.
+- **Complete** — fit-up work has been completed and signed off.
+
+### 4.2 To change it
+1. Open the proposal-view for a quote that has fit-up items.
+2. Click the **FIT-UP: <status>** pill in the header.
+3. Pick the new state from the popover. Toast confirms; Activity log records it.
+
+### 4.3 What this affects
+- Pill in the proposal-view header (operator-only — never on the customer PDF).
+- Activity tab — every transition logs a `Fit-up status updated` entry with the actor + timestamp + new value.
+
+### 4.4 Activity log
+The Activity tab on the proposal-view picks up a new event type. Wrench icon, teal tint, summary `Now: <status>`. Filterable like every other audit event.
+
+---
+
+---
+
+## 5. Demo seed (admin one-shot)
+
+A button **Seed demo data** lives on the Roadmap header. One click populates your org with:
+- 15 fit-up items spanning Rigging / Electronics / Safety / Sound / Plumbing / Trim (all 3 tiers)
+- 3 packages: Coastal Setup, Offshore Power Pack, First-Time Owner Kit
+- Placeholder images, customer descriptions, prices
+
+Items are catalogue-wide (no module/brand restrictions) so they show on EVERY quote — ideal for demos. Re-clicks are safe (idempotent — items / packages with the same names are skipped).
+
+## 6. Sub-model (variant) assignment
+
+The catalog editor's Assignment scope section gains a new **Variants (sub-models)** chip row, only visible when at least one model is picked. Variants are SKUs (material × colour) — pick specific variants of a model to lock the item to those SKUs only. Leave empty to allow any variant of the selected models.
+
+## 7. Item images
+
+The catalog editor has an **Image URL** field — paste any public image URL. A live preview renders below the input + the catalog row shows a small thumbnail. Broken images hide silently.
+
+## 8. Soft "often paired with" hints
+
+The catalog editor's **Often paired with** section lets you tag sibling items that tend to be sold together (e.g. tag "GPS Chartplotter" on the VHF Radio item, and vice versa). At quote time, the selector highlights paired items when the source item is selected. **Soft hint — never auto-adds.** Operators can ignore.
+
+## 9. Catalog audit log
+
+Every create / update / delete on items and packages is recorded in a new `/organisations/{orgId}/fitUpCatalogAudit` log. Includes actor + timestamp + a before/after diff on key fields (name, tier, cost, sellPrice, category, customerDescription, imageUrl). The Activity drawer surface for this lands in a follow-up; today the data is captured. Use it to answer "who changed the price on X last week?"
+
+## 10. Package-level price override
+
+In the Package editor, a new **Package price** field. Set a single bundle price (e.g. "Coastal Setup — $1,200 all-in"). At quote time:
+- The Packages strip shows the bundle price + an amber **(bundle)** tag instead of the catalog sum
+- Adding the package distributes the price PROPORTIONALLY across member items as per-line overrides
+- Margin still allocates correctly per item (the override only affects revenue; cost stays at catalog cost × qty)
+
+Leave blank to use the catalog sum (original behaviour).
+
+## 11. Fit-up scheduling (date + technician)
+
+The fit-up workshop status popover on the proposal-view gains a **Schedule** block:
+- **Scheduled date** — date picker (yyyy-mm-dd). Save on blur.
+- **Assigned technician** — free text (name / initials). Save on blur. No roster yet — type whatever.
+
+Both are operator-only. Never on customer PDF. Audit-logged.
+
+## 12. Pricing + Configurator audit workbook
+
+The catalog export / import surface (`Manage → Catalog Export / Import`) is rebranded as a **Pricing + Configurator Audit Workbook**. One click produces an xlsx with:
+
+**Round-trippable sheets** (upsert on import):
+- Fit-Up · Fit-Up Packages · Service Operations · Service Parts · Model Overrides · Trailer Overrides · Vendors · Ranges · Models · Variants · Optional Features
+
+**Export-only sheets** (read-only audit):
+- Exchange Rates
+- Dealer Fit Selections (with item count + rowIds)
+- Dealer Fit Categories (global)
+- Motor Vendors
+- Motor Models — with the **full price-level matrix** (hull_cash / hull_trade / hull_subdealer / hull_commercial / hull_boating_alliance) flattened to columns for fast audit
+
+Output filename: `pricing-configurator-audit-YYYY-MM-DD.xlsx`. Partial files on import won't clobber what's already there (upsert-by-natural-key).
+
+### Importing — what the diff-preview dialog does
+
+Imports aren't fire-and-forget. When you upload an edited xlsx:
+
+1. The system reads every sheet and computes a **per-row diff** against current Firestore data
+2. A **diff preview dialog** opens listing every change — green for creates, amber for updates, slate for skips (no natural key), with the exact before → after on each field
+3. **Tick the rows you want to commit** (all selected by default; untick to skip individual rows)
+4. Click **Commit** — only ticked rows write to Firestore
+5. **One summary entry per commit** is written to the Catalog Audit feed so the audit answers "who imported what when" with the per-row diff preserved
+
+This is what makes the workbook safe to hand to a dealer principal for editing in Excel and back — review the diff, untick what you don't want, commit, done. Hardware-store-honest.
+
+---
+
+## 13. PDF — what's different on the customer-facing proposal
+
+Three changes on the customer PDF since the last release:
+
+- **Trailer image is back.** Was suppressed in an earlier v1.11 build because some catalog entries had vendor brand logos slipping through the image slot. The new fallback chain prefers the trailer photo, then the catalog cover, and only falls back to a clean placeholder if neither exists. If your trailer PDF has a brand logo where the photo should be, it means the catalog entry's `imageUrl` points at a logo — update it on Manage → Trailers.
+- **Motor image** now also tries the `SummaryImage` field. If you upload a motor photo via the catalog editor (Manage → Motors → click a row → Upload Photo), it lands in `SummaryImage` and renders on the PDF even when the Yamaha CDN blocks the source.
+- **Investment Summary is now nested.** Standard Inclusions, Factory Options, Motor Accessories, Trailer Options, and Dealer Fit lines indent under their parent line (Vessel / Propulsion / Trailer). Smaller font, lighter colour, L-tick. The maths is identical — it just reads cleanly.
+
+## 14. Catalog Manager — what changed
+
+The page formerly known as **Pricing Manager** is now **Catalog Manager** (sidebar URL stays the same so old bookmarks still work). The landing view has two strategy cards:
+
+- **Catalog xlsx** — opens the Pricing + Configurator Audit Workbook sheet (§12)
+- **Catalog Audit** — opens the unified audit history panel (Activity-tab equivalent for catalog edits)
+
+Vendor catalogue rows route by type — clicking a Motor Brand opens the Motors table view, a Boat Brand opens the Boats table view, anything else opens the Highfield-style workspace.
+
+## 15. Org defaults — Customer Defaults + Document Defaults cards
+
+Two new org-level config cards on Manage. Both have sensible defaults so you only need to touch them if your dealership does things differently.
+
+### Customer Defaults (Manage → Company Details)
+
+Drives the customer-create dialog + the pipeline Kanban:
+
+- **Source dropdown options** — where you record "how did this customer find us?" Defaults: Boat show / Referral / Website / Walk-in / Repeat customer / Social media / Other. Edit the list to add a source specific to your dealership (e.g. "Sponsorship event").
+- **Pipeline stages** — the columns on the customer Kanban. Defaults: Lead → Contacted → Qualified → Quoted → Contracted → Won → Delivered. Drag to reorder, edit names, delete unused stages.
+- **Trade-in valuation rule** — pick one of External appraisal / Internal formula / Pending decision. Surfaces when a trade-in is recorded against a contract.
+
+### Document Defaults (Manage → Document Templates)
+
+Pre-populates new quotes so salespeople don't have to fill the same numbers every time:
+
+- **Deposit** — either a fixed dollar amount or a percentage of the total
+- **Quote validity** — how many days the quote is valid for (default 30)
+- **Payment schedule template** — named milestones, each with a percentage. Default: Deposit 10% · Production 40% · Pre-delivery 40% · Final 10%. The page shows a **"100% balanced"** badge when the percentages sum to 100, **"Out of balance"** otherwise — fix it before saving.
+
+The finalize-quote dialog reads from here, so every new quote starts pre-populated.
+
+## 16. Permission flags — admin gating
+
+Two new role permissions on Manage → Users & Permissions:
+
+- **Can override margin** — controls whether a user can override a line price on Step 5 fit-up. Set OFF for salespeople; ON for managers / admins.
+- **Can approve suggestions** — pre-wires the Suggestion Approval Queue (which lands in v1.12). Set this on the admin users who'll triage inbound feature suggestions.
+
+---
+
+## What this release did NOT ship (deferred to v1.12+)
+
+- **Fit-up scheduling** (assign a specific date + technician) — only the workshop STATUS is in v1.11; date + assignee is its own slice and lands in v1.12+.
+- **Customer PDF detail toggle** — the customer PDF stays as a single "Fit-up & Rigging" summary line by the locked Story 9.2.3 decision. `customerDescription` is plumbed so future surfaces can use it.
+- **Auto-classification rule engine** — the v1.11 HP heuristic ("≥150 HP → Complex" etc.) is a simplified take on Story 9.3.1. The full operator-authored rule engine remains planned for v2.2.
+- **Service Quoting end-to-end + Motors Table + Suggestion Approval Queue** — code IS on the dev branch and will deploy when v1.11 ships, but the planning rows have been moved to v1.12 so v1.12 release notes can give them the headline. Until then, they're "in preview".

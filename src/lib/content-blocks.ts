@@ -82,6 +82,33 @@ export interface ContentBlock {
      * (preserves legacy behaviour for blocks created before v1.8).
      */
     isLockedForQuotes?: boolean;
+    /**
+     * v1.11 follow-up — per-block presentation overrides. Operators can
+     * tweak the PDF rendering of their org-authored block (accent colour,
+     * card background, title alignment + size, body size) without
+     * touching the page layout the system controls. Every field is
+     * optional; missing = use the global default. UI lives in
+     * content-block-detail.tsx. Resolved into the proposal-pdf
+     * ContentBlockSection at render time.
+     */
+    style?: {
+        /** Hex (with #) — accent for the title underline + sub-header rule. */
+        accentColor?: string | null;
+        /** Hex — card background behind the body text. null = transparent. */
+        backgroundColor?: string | null;
+        /** Hex — body text color override. null = default slate. */
+        textColor?: string | null;
+        /** Title horizontal alignment. */
+        titleAlign?: 'left' | 'center' | null;
+        /** Title size scale. */
+        titleSize?: 'sm' | 'md' | 'lg' | 'xl' | null;
+        /** Body text size scale. */
+        bodySize?: 'sm' | 'md' | 'lg' | null;
+        /** Body alignment override. */
+        bodyAlign?: 'left' | 'center' | 'justify' | null;
+        /** Italic on the title. */
+        titleItalic?: boolean | null;
+    } | null;
     createdAt?: Timestamp;
     updatedAt?: Timestamp;
     updatedByUid?: string;
@@ -329,6 +356,35 @@ export async function resolveContentBlockSubHeadersForQuote(
         }
 
         if (sub) result[block.blockType] = sub;
+    }
+    return result;
+}
+
+/**
+ * v1.11 follow-up — resolves the per-block presentation style overrides
+ * that operators author in the Content Block Manager (accent colour,
+ * background colour, title alignment, etc.). Parallel to the html +
+ * subHeader resolvers; the PDF takes all three. Brand overrides + per-
+ * quote overrides for style are intentionally NOT supported in this
+ * first cut (the org-level style is the styling, branding lives in
+ * the brand HTML override). When the field is absent (legacy blocks),
+ * the PDF falls back to its global defaults.
+ */
+export type ContentBlockStyle = NonNullable<ContentBlock['style']>;
+
+export async function resolveContentBlockStylesForQuote(
+    firestore: Firestore,
+    orgId: string,
+    documentType: DocumentType = 'quote',
+): Promise<Partial<Record<BlockType, ContentBlockStyle>>> {
+    const blocksSnap = await getDocs(collection(firestore, `organisations/${orgId}/contentBlocks`));
+    const result: Partial<Record<BlockType, ContentBlockStyle>> = {};
+    for (const blockDoc of blocksSnap.docs) {
+        const block = { id: blockDoc.id, ...blockDoc.data() } as ContentBlock;
+        if (!blockBelongsTo(block, documentType)) continue;
+        if (block.style && Object.keys(block.style).length > 0) {
+            result[block.blockType] = block.style;
+        }
     }
     return result;
 }

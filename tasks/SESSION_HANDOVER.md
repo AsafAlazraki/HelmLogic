@@ -22,7 +22,8 @@
 | v1.8 | 2026-05-11 | ✅ Shipped | main |
 | v1.9 | 2026-05-12 | ✅ Shipped (PR #35) | main |
 | v1.9.5 | 2026-05-14 | ✅ Shipped (PR #36) | main |
-| **v1.10** | **2026-06-02** | 🚢 **Ready for dev → main — Phase A bug pass + Phase B Fit-Up admin + Phase C Service Quoting catalogue + Story 3.7.2 Boats read-view + FirebaseErrorListener denylist defense + v1.9.5 backfill** | `claude/app-overview-wKiZ1` |
+| v1.10 | 2026-06-02 | ✅ Shipped — Phase A bug pass + Phase B Fit-Up admin + Phase C Service Quoting catalogue + Story 3.7.2 Boats read-view + FirebaseErrorListener denylist defense + v1.9.5 backfill | merged |
+| **v1.11** | **2026-06-02** | 🚢 **Ready for dev → main — Fit-Up release (Phase A pulled Epic 9.2 from v1.16 + Phase B fit-up expansion: categories + customerDescription + packages + per-line qty/override/note + workshop status pill).** Non-fit-up stories built in the same dev cycle (Service Quote Flow, Motors Table, Suggestion Approval Queue) retargeted to v1.12 so v1.11 ships as a focused Fit-Up release. | `claude/app-overview-wKiZ1` |
 
 > **v1.9.5 = planning + groundwork + hotfix** (fractional, like v1.5.1/v1.6.1). Roadmap reshuffled to dealer-ops priority (157 stories re-targeted, Submitted drained, sequential v1.10–v1.40 runway); Epic 11 Service Quoting seeded as backlog (NSM-Hub absorption — PLANNED, not built); clickable release-detail popups; emailTemplates Create-Proposal crash (CODE fix — SendQuoteDialog subscribed to templates unconditionally; not a rules issue). **The actual dealer-ops + Service Quoting BUILD starts at v1.10.**
 
@@ -45,6 +46,23 @@
 - Service-quote flow itself (Epic 11.2.x — create form / dashboard / PDF / lifecycle): deferred to v1.11+. Catalogue is the foundation; quote consumption is the next phase.
 - Customer reconciliation + NSM-Hub data migration (Epic 11.3.x): deferred — needs the `nsm-service-quotation` service-account pre-flight.
 - Module x3 + parts x1 stories from the original v1.10 restructure plan: retargeting to v1.11 (specific stories TBD at v1.11 kickoff — the planning workbench will surface them).
+
+**v1.11 new Firestore surface (Fit-Up release):**
+- `organisations/{orgId}/fitUpPackages/{packageId}` — named bundles of fit-up items. Schema: `{ name, description?: string|null, itemIds: string[], createdAt, updatedAt }`. Reads + writes signed-in. Selecting a package in the quote selector toggles every member item on at once (already-on items keep their qty/override/note untouched). Dangling-id rendering: members removed from the items catalog show as an amber "N deleted items" pill in the admin; the selector silently ignores them.
+- `organisations/{orgId}/fitUpItems/{itemId}` extended with `category?: string|null` (free-text grouping; drives filter chips in admin + selector) and `customerDescription?: string|null` (customer-facing label; defaults to `name`; PDF still rolls up to a single Fit-up & Rigging line per locked Story 9.2.3).
+- `users/{ownerUid}/quotes/{quoteId}.fitUpStatus` — `'pending' | 'scheduled' | 'in-progress' | 'complete'`. Workshop status, orthogonal to sales `lifecycleState`. Optional; undefined defaults to `pending`. Sister fields: `fitUpStatusAt`, `fitUpStatusByUid`, `fitUpStatusByName`. See `src/lib/fit-up-status.ts`.
+- `users/{ownerUid}/quotes/{quoteId}.fitUpSelections[i]` expanded with `quantity: number` (default 1), `priceOverride: number | null` (per-quote override; null = catalog price), `quoteNote: string | null` (operator-only, never on customer PDF), plus snapshot `category` + `customerDescription`. Older snapshots without `quantity` default to qty=1 — matches original semantics.
+- New audit-log event type: `'fit-up-status-changed'` (registered in `src/lib/quote-audit-log.ts`). Activity tab on proposal-view renders with Wrench icon + teal tint + summary `Now: <status>`.
+- New helpers: `src/lib/fit-up-status.ts` (`FIT_UP_STATUSES`, `FIT_UP_STATUS_LABEL/DESC/TINT`, `getFitUpStatus`, `transitionFitUpStatus`).
+- New components: `src/components/v111-expansion-retarget-button.tsx` (one-shot; removed at close-out). Updates within existing components: `fit-up-catalog-manager.tsx` (Items / Packages sub-tabs, new fields, category filter, PackagesManager + Editor), `fit-up-quote-selector.tsx` (FitUpSelection state shape, search input, category chips, packages strip, SelectionRow with qty/override/note), `highfield-quote-flow.tsx` (state shape `FitUpItem[]` → `FitUpSelection[]`, package + update handlers), `finalize-quote-dialog.tsx` (snapshot expansion), `proposal-view.tsx` (workshop status pill + handler), `quote-financials.ts` (qty + override aware totals).
+- `FirebaseErrorListener` denylist: `/fitUpPackages` added to the v1.10 list (`/fitUpItems`, `/serviceOperations`, `/serviceParts`).
+
+**v1.11 NOT shipped — pushed to v1.12 (code is on dev, planning rows moved):**
+- 11.2.1 Service Quote Flow (Epic 11.2).
+- 11.1.3 / 11.1.4 Service Catalog refinements.
+- 3.7.3 Motors Table read-view.
+- 3.5.1 Suggestion Approval Queue.
+- The `V111ExpansionRetargetButton` did the bulk retarget — code stays on the dev branch and deploys when v1.11 merges; v1.12 release notes will give them the headline.
 
 > **Note**: this table was backfilled at v1.9 from a stale v1.4-era state. Canonical release state lives in **`CLAUDE.md`** top-of-file table; per-release detail lives in **`tasks/RELEASE_NOTES_vX.Y.Z.md`**.
 

@@ -58,7 +58,7 @@ export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<Rende
     const [
         { pdf },
         { ProposalPDFDocument },
-        { resolveContentBlocksForQuote, resolveContentBlockSubHeadersForQuote },
+        { resolveContentBlocksForQuote, resolveContentBlockSubHeadersForQuote, resolveContentBlockStylesForQuote },
         { extractImgUrlsFromHtml, preloadImages, swapImgUrlsInHtml },
         { createElement },
         { doc, getDoc },
@@ -94,17 +94,19 @@ export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<Rende
     // per sales-team.ts. Keyed by the QUOTE'S creator (not the current
     // user) because a PDF rendered by anyone must still show the
     // salesperson assigned to that quote.
-    const [contentBlocks, contentBlockSubHeaders, salespersonProfile] = quote.organisationId
+    const [contentBlocks, contentBlockSubHeaders, contentBlockStyles, salespersonProfile] = quote.organisationId
         ? await Promise.all([
             resolveContentBlocksForQuote(firestore, quote.organisationId, quote.vendorId ?? null, documentType, quoteOverrideCtx),
             resolveContentBlockSubHeadersForQuote(firestore, quote.organisationId, documentType, quoteOverrideCtx),
+            // v1.11 follow-up — per-block presentation overrides (colors, alignment, sizes).
+            resolveContentBlockStylesForQuote(firestore, quote.organisationId, documentType),
             quote.createdByUid
                 ? getDoc(doc(firestore, 'organisations', quote.organisationId, 'salesTeam', quote.createdByUid))
                     .then(snap => (snap.exists() ? snap.data() as any : null))
                     .catch(() => null)
                 : Promise.resolve(null),
         ])
-        : [undefined, undefined, null];
+        : [undefined, undefined, undefined, null];
 
     // 3. Collect every URL the PDF will reference, pre-load to data URLs.
     // Includes the salesperson photo + any inline images in their message
@@ -129,7 +131,12 @@ export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<Rende
         organisation?.secondaryLogoUrl,
         salespersonProfile?.photoUrl,
     ];
-    const dataUrls = await preloadImages(candidateUrls);
+    // v1.11 follow-up — route preload through the resizing proxy so a 21MB
+    // Highfield CDN cover ends up as ~100KB in the PDF, not 21MB. 1400px
+    // is wider than the A4 cover render target (~1200px) so we still get
+    // crisp prints. Smaller images pass through untouched (weserv is a no-op
+    // when the source is already smaller than the requested width).
+    const dataUrls = await preloadImages(candidateUrls, { maxWidth: 1400 });
 
     // 4. Swap URLs everywhere they appear, leaving original URLs intact
     // when preload couldn't resolve them (@react-pdf will silent-fail on
@@ -201,6 +208,7 @@ export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<Rende
             financials,
             contentBlocks: mappedBlocks,
             contentBlockSubHeaders,
+            contentBlockStyles,
             salespersonProfile: mappedSalespersonProfile,
         }) as any,
     ).toBlob();

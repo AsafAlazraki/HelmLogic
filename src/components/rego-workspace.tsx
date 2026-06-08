@@ -57,6 +57,11 @@ interface RegoType {
     description?: string;
     isActive?: boolean;
     vendorId?: string;
+    /** v1.11 — auto-match band rules. */
+    minLengthM?: number;
+    maxLengthM?: number;
+    minAtmKg?: number;
+    maxAtmKg?: number;
 }
 
 interface RegoWorkspaceProps {
@@ -110,6 +115,10 @@ function RegoTypeFormDialog({
     const [appliesTo, setAppliesTo] = useState<'boat' | 'trailer' | 'both'>('both');
     const [description, setDescription] = useState('');
     const [isActive, setIsActive] = useState(true);
+    const [minLengthM, setMinLengthM] = useState('');
+    const [maxLengthM, setMaxLengthM] = useState('');
+    const [minAtmKg, setMinAtmKg] = useState('');
+    const [maxAtmKg, setMaxAtmKg] = useState('');
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -119,6 +128,10 @@ function RegoTypeFormDialog({
         setAppliesTo(existing?.appliesTo || 'both');
         setDescription(existing?.description || '');
         setIsActive(existing?.isActive !== false);
+        setMinLengthM(existing?.minLengthM != null ? String(existing.minLengthM) : '');
+        setMaxLengthM(existing?.maxLengthM != null ? String(existing.maxLengthM) : '');
+        setMinAtmKg(existing?.minAtmKg != null ? String(existing.minAtmKg) : '');
+        setMaxAtmKg(existing?.maxAtmKg != null ? String(existing.maxAtmKg) : '');
     }, [open, existing]);
 
     async function handleSave() {
@@ -130,12 +143,19 @@ function RegoTypeFormDialog({
         try {
             const typesCol = collection(firestore, `data-warehouse/${vendor.id}/regoTypes`);
             const ref = existing ? doc(typesCol, existing.id) : doc(typesCol);
+            const num = (s: string) => (s.trim() === '' ? null : Number(s));
             const payload: any = {
                 name: name.trim(),
                 sellExclGst: sell.trim() === '' ? null : Number(sell),
                 appliesTo,
                 description: description.trim() || null,
                 isActive,
+                // v1.11 — band rules for auto-association by boat length /
+                // trailer ATM. Empty = no auto-match (manual pick only).
+                minLengthM: num(minLengthM),
+                maxLengthM: num(maxLengthM),
+                minAtmKg: num(minAtmKg),
+                maxAtmKg: num(maxAtmKg),
                 updatedAt: Date.now(),
             };
             if (!existing) payload.createdAt = Date.now();
@@ -181,6 +201,33 @@ function RegoTypeFormDialog({
                             </Select>
                         </div>
                     </div>
+                    {/* v1.11 — auto-match band rules. Boat bands use hull
+                        length (m); trailer bands use ATM (kg). Leave empty
+                        for manual-pick-only types. */}
+                    {(appliesTo === 'boat' || appliesTo === 'both') && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-widest">Min length (m)</Label>
+                                <Input type="number" inputMode="decimal" value={minLengthM} onChange={e => setMinLengthM(e.target.value)} placeholder="0" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-widest">Max length (m)</Label>
+                                <Input type="number" inputMode="decimal" value={maxLengthM} onChange={e => setMaxLengthM(e.target.value)} placeholder="4.5" />
+                            </div>
+                        </div>
+                    )}
+                    {(appliesTo === 'trailer' || appliesTo === 'both') && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-widest">Min ATM (kg)</Label>
+                                <Input type="number" inputMode="decimal" value={minAtmKg} onChange={e => setMinAtmKg(e.target.value)} placeholder="0" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black uppercase tracking-widest">Max ATM (kg)</Label>
+                                <Input type="number" inputMode="decimal" value={maxAtmKg} onChange={e => setMaxAtmKg(e.target.value)} placeholder="750" />
+                            </div>
+                        </div>
+                    )}
                     <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase tracking-widest">Description</Label>
                         <Textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional note for sellers" />
