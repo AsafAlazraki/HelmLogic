@@ -43,6 +43,36 @@ Two things you'll notice on the proposal PDF:
 
 Check the two attached PDFs (Classic CL380 + Sport SP600/SP560) for what the customer sees.
 
+## 📋 Pricing + Configurator Audit Workbook (Manage → Catalog Manager)
+
+The catalog import / export surface got a major expansion. One click on **Manage → Catalog Manager → Catalog Import / Export** produces an xlsx that's the single source of truth for every catalog that feeds the quote builder. Every sheet you need to audit pricing or configuration is in one file:
+
+**Round-trippable sheets** (upsert on import — you can edit in Excel and re-upload):
+- **Boats** — Vendors · Ranges · Models · Variants (with full SKU pricing) · Optional Features
+- **Trailers** — Trailer Overrides
+- **Fit-Up** — Fit-Up items + Fit-Up Packages
+- **Service** — Service Operations (labor codes) + Service Parts
+- **Model Overrides** — org-level pricing/image overrides on any vendor model
+
+**Export-only audit sheets** (read-only, so they can't be accidentally rewritten):
+- Exchange Rates
+- Dealer Fit Selections (with item count + rowIds)
+- Dealer Fit Categories (global)
+- Motor Vendors
+- **Motor Models** — with the full price-level matrix flattened to columns: `hull_cash` / `hull_trade` / `hull_subdealer` / `hull_commercial` / `hull_boating_alliance`. Fast scan for pricing-anomaly hunting.
+
+### Import — diff preview before anything writes
+
+Imports are no longer fire-and-forget. When you upload an edited xlsx:
+
+1. The system reads every sheet and computes a **per-row diff** against current Firestore data
+2. A **diff preview dialog** opens showing every change — green for creates, amber for updates, slate for skips, with the exact before → after on each field
+3. **Tick the rows you want to commit** (all selected by default; untick to skip individual rows)
+4. Click **Commit** — only ticked rows write to Firestore
+5. **Every commit writes a single summary entry** to the Catalog Audit feed (see next section) so the audit answers "who imported what when" with the per-row diff intact
+
+This means an admin can hand the workbook to a dealer principal for review, they can edit pricing in Excel, the admin uploads it, reviews the diff, and only the approved changes go live. Partial files won't clobber what's already there — it's strict upsert-by-natural-key.
+
 ## 🕵️ Auditability — who did what, when
 
 Two unified views answer "who did what when" without anyone needing to look at Firestore:
