@@ -392,6 +392,18 @@ export function FitUpCatalogManager({ organisationId }: FitUpCatalogManagerProps
 
             await Promise.all(writes);
 
+            // v1.11 audit — record the bulk import as one summary entry so
+            // the catalog audit drawer shows "Bill imported 50 items" rather
+            // than 50 individual line entries.
+            void logFitUpAuditEvent(firestore, organisationId, {
+                actorUid: user?.uid || 'unknown',
+                actorName: user?.displayName || user?.email || 'Someone',
+                resource: 'fitUpItem',
+                resourceId: 'bulk-import',
+                resourceName: `CSV import: ${updated} updated · ${created} created · ${skipped} skipped`,
+                action: 'updated',
+            });
+
             toast({
                 title: 'Import complete',
                 description: `${updated} updated · ${created} created · ${skipped} skipped (no name)`,

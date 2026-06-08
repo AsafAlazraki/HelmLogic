@@ -6,14 +6,18 @@
  * Live view of `organisations/{orgId}/catalogAudit` — every catalog
  * import + manual edit (when wired) lands here with who, when, and a
  * row-level diff. Newest first. Click a row to expand the per-row diff.
+ *
+ * v1.11 launch update — also merges `organisations/{orgId}/fitUpCatalogAudit`
+ * so the unified audit view covers every fit-up item / package edit
+ * (create / update / delete) alongside the xlsx imports.
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { collection, orderBy, query } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, History, ChevronDown, ChevronRight, FileSpreadsheet, Pencil } from 'lucide-react';
+import { Loader2, History, ChevronDown, ChevronRight, FileSpreadsheet, Pencil, Wrench } from 'lucide-react';
 
 interface AuditRowChange { field: string; current: any; next: any; }
 interface AuditRow {
@@ -27,7 +31,7 @@ interface AuditRow {
 
 interface AuditDoc {
     id: string;
-    source: 'catalog-import' | 'manual-edit' | string;
+    source: 'catalog-import' | 'manual-edit' | 'fit-up' | string;
     actorUid?: string | null;
     actorName?: string | null;
     committedAt?: any;
@@ -36,22 +40,76 @@ interface AuditDoc {
     rowCount?: number;
 }
 
+interface FitUpAuditDoc {
+    id: string;
+    actorUid?: string;
+    actorName?: string;
+    at?: any;
+    resource?: 'fitUpItem' | 'fitUpPackage';
+    resourceId?: string;
+    resourceName?: string;
+    action?: 'created' | 'updated' | 'deleted';
+    diff?: Record<string, { from: any; to: any }>;
+}
+
 export function CatalogAuditHistory({ organisationId }: { organisationId: string }) {
     const firestore = useFirestore();
     const q = useMemoFirebase(
         () => query(collection(firestore, 'organisations', organisationId, 'catalogAudit'), orderBy('committedAt', 'desc')),
         [firestore, organisationId],
     );
+    const fitUpQ = useMemoFirebase(
+        () => query(collection(firestore, 'organisations', organisationId, 'fitUpCatalogAudit'), orderBy('at', 'desc')),
+        [firestore, organisationId],
+    );
     const { data: entries, isLoading } = useCollection<AuditDoc>(q);
+    const { data: fitUpEntries, isLoading: fitUpLoading } = useCollection<FitUpAuditDoc>(fitUpQ);
     const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-    if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>;
-    const list = entries ?? [];
+    // Merge both audit feeds into one chronological list, newest first.
+    const merged = useMemo(() => {
+        const catalogRows: AuditDoc[] = (entries ?? []).map(e => ({ ...e }));
+        const fitUpRows: AuditDoc[] = (fitUpEntries ?? []).map(f => {
+            const fieldChanges: AuditRowChange[] = f.diff
+                ? Object.entries(f.diff).map(([field, d]) => ({ field, current: d.from, next: d.to }))
+                : [];
+            return {
+                id: f.id,
+                source: 'fit-up',
+                actorUid: f.actorUid ?? null,
+                actorName: f.actorName ?? null,
+                committedAt: f.at,
+                counts: f.action === 'created'
+                    ? { created: 1 }
+                    : f.action === 'deleted'
+                        ? { skipped: 1 }
+                        : { updated: 1 },
+                rows: [{
+                    sheetName: f.resource === 'fitUpPackage' ? 'Fit-Up Package' : 'Fit-Up Item',
+                    op: (f.action === 'created' ? 'create' : f.action === 'deleted' ? 'delete' : 'update') as 'create' | 'update' | 'delete',
+                    docId: f.resourceId,
+                    naturalKey: f.resourceName,
+                    changes: fieldChanges,
+                }],
+                rowCount: 1,
+            };
+        });
+        const all = [...catalogRows, ...fitUpRows];
+        all.sort((a, b) => {
+            const at = a.committedAt?.toMillis?.() ?? 0;
+            const bt = b.committedAt?.toMillis?.() ?? 0;
+            return bt - at;
+        });
+        return all;
+    }, [entries, fitUpEntries]);
+
+    if (isLoading || fitUpLoading) return <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>;
+    const list = merged;
     if (list.length === 0) {
         return (
             <div className="p-8 text-center border-2 border-dashed rounded-xl">
                 <History className="h-8 w-8 mx-auto opacity-30" />
-                <p className="text-xs text-muted-foreground mt-2">No catalog audits yet. Run a Catalog Import and a record will land here.</p>
+                <p className="text-xs text-muted-foreground mt-2">No catalog audits yet. Run a Catalog Import or edit a Fit-Up item and a record will land here.</p>
             </div>
         );
     }
@@ -72,7 +130,9 @@ export function CatalogAuditHistory({ organisationId }: { organisationId: string
                             {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
                             {e.source === 'catalog-import'
                                 ? <FileSpreadsheet className="h-4 w-4 text-primary shrink-0" />
-                                : <Pencil className="h-4 w-4 text-amber-600 shrink-0" />}
+                                : e.source === 'fit-up'
+                                    ? <Wrench className="h-4 w-4 text-teal-600 shrink-0" />
+                                    : <Pencil className="h-4 w-4 text-amber-600 shrink-0" />}
                             <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold">{e.actorName ?? 'Unknown'} · <span className="text-muted-foreground font-normal">{e.source}</span></p>
                                 <p className="text-[10px] text-muted-foreground">{when}</p>
