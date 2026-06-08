@@ -22,6 +22,17 @@ The 8 items Mark asked for in his 8/06/2026 email map to a single happy-path wal
 
 The Playwright spec `tests/bm-email-checklist.spec.ts` drives this exact walk and asserts each item is visible at its step. Re-run after any change to the quote flow and the matrix at the end will tell you what regressed.
 
+### Fit-Up Catalog dialog — what changed
+
+The Add / Edit dialog on **Manage → Fit-Up Catalog → Items → pencil icon** got a presentation rework for the launch:
+
+- Four labelled card sections so you don't scroll past a wall of fields: **Basics** (name / tier / cost / sell / category), **Customer-facing** (description shown on the quote, image URL with a live preview), **Internal** (operator-only notes), **Assignment scope** (Modules / Brands / Ranges / Models / Variants).
+- Tier is a 3-button pill row using the same colour as the catalog rows — **Simple** (emerald), **Medium** (amber), **Complex** (rose).
+- The image preview now sits beside its URL input at usable size so you can see if you pasted the right URL.
+- The Save / Cancel bar stays pinned to the bottom of the dialog while you scroll — no hunting for it on tall forms.
+
+Nothing about the data model changed — every existing item still saves the same way. Just easier to look at.
+
 ### Auditability — who did what, when
 
 Two unified audit views cover "the audited part" of Mark's ask:

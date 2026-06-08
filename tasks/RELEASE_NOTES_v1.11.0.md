@@ -35,6 +35,17 @@ Three audit-trail gaps caught during the pre-launch sweep and fixed in the same 
 
 Together with the existing per-quote `auditLog` (created · finalised · sent · locked · unlocked · version-forked · content-overridden · discount-changed · lifecycle-transitioned · scenario-created · fit-up-status-changed) the operator can answer "who did what when" without inspecting Firestore.
 
+### Fit-Up edit dialog polish (also under "beautiful")
+
+The Add / Edit dialog on `Manage → Fit-Up Catalog` got a presentation rework. Same fields, same save logic — restructured so it doesn't read as a stack of plain inputs:
+
+- Wider canvas (`max-w-3xl`, vertical scroll, sticky save bar at the bottom)
+- Four card sections with coloured dot headers — **Basics** (blue) · **Customer-facing** (emerald) · **Internal** (amber) · **Assignment scope** (violet)
+- Tier picker is now a 3-button pill row in the tier's own colour (simple = emerald, medium = amber, complex = rose), not a dropdown
+- Image preview promoted from a 64 × 64 thumbnail below the input to an 80 × 112 preview alongside it
+- Cost + Sell laid out side-by-side on the same row
+- Section labels use the same uppercase tracking-widest treatment as the rest of the admin surface
+
 ---
 
 ## Release Stats
