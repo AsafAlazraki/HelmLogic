@@ -449,7 +449,11 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
         return acc;
     }, {});
 
-    const lineItems: { label: string; sub?: string; amount: number }[] = [];
+    // v1.11 launch — `indent` lets factory options / motor accessories /
+    // trailer options / dealer-fit items render as sub-rows under their
+    // parent (Vessel / Propulsion / Trailer) instead of as peer top-level
+    // rows. Cleaner read for the customer; the maths is unchanged.
+    const lineItems: { label: string; sub?: string; amount: number; indent?: boolean }[] = [];
     if (f.boatBasePrice > 0) lineItems.push({
         label: `${quote.modelName} — Base Vessel`,
         sub: quote.variant?.name && quote.variant.name !== 'Standard'
@@ -463,12 +467,12 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
     const standardInclusions: string[] = Array.isArray(quote.standardFeatures) ? quote.standardFeatures : [];
     standardInclusions.forEach((feat: string) => {
         if (!feat || !feat.trim()) return;
-        lineItems.push({ label: feat.trim(), sub: 'Standard Inclusion', amount: 0 });
+        lineItems.push({ label: feat.trim(), sub: 'Standard Inclusion', amount: 0, indent: true });
     });
     factoryOptions.forEach((opt: any) => {
         const base = formatOptionName(opt.name.replace(/\s*\([^)]+\)\s*$/, '').trim());
         const color = extractFirstColor(opt.name);
-        lineItems.push({ label: color ? `${base} (${color})` : base, sub: opt.category || 'Factory Option', amount: opt.sellPriceExclGst || 0 });
+        lineItems.push({ label: color ? `${base} (${color})` : base, sub: opt.category || 'Factory Option', amount: opt.sellPriceExclGst || 0, indent: true });
     });
     // Motor — base + every accessory ON ITS OWN LINE. v1.11 follow-up: items
     // that are "Included" (price 0, factory-standard with the engine) now also
@@ -492,6 +496,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     ? (a.category ? `Motor · ${a.category} · Included` : 'Motor · Included')
                     : (a.category ? `Motor · ${a.category}` : 'Motor accessory'),
                 amount,
+                indent: true,
             });
         });
     }
@@ -514,6 +519,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     ? (o.category ? `Trailer · ${o.category} · Included` : 'Trailer · Included')
                     : (o.category ? `Trailer · ${o.category}` : 'Trailer option'),
                 amount,
+                indent: true,
             });
         });
     }
@@ -534,6 +540,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     label: real,
                     sub: (g?.category || g?.name) ? `Dealer Fit · ${g.category || g.name}` : 'Dealer Fit',
                     amount,
+                    indent: true,
                 });
                 pushedAny = true;
             });
@@ -546,6 +553,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                 label: it.name || it.label || 'Dealer Fit (custom)',
                 sub: it.category ? `Dealer Fit · ${it.category} · Custom` : 'Dealer Fit · Custom',
                 amount,
+                indent: true,
             });
         });
         // Fallback rollup if we couldn't itemise (legacy quotes with no
@@ -843,8 +851,18 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
 
                 {/* ════ YOUR BUILD — numbered card-stack of every component ════ */}
                 {(() => {
-                    const motorImg = quote.motor ? pdfImg(quote.motor.imageUrl, 400) : undefined;
+                    const motorImg = quote.motor ? pdfImg(quote.motor.imageUrl || quote.motor.SummaryImage || quote.motor['SummaryImage'], 400) : undefined;
                     const vesselImg = pdfImg(quote.variant?.imageUrl || quote.coverImageUrl, 600);
+                    // v1.11 launch — restore trailer image. Fall back across
+                    // common shapes (snapshot vs catalog vs legacy).
+                    const trailerImg = quote.trailer
+                        ? pdfImg(
+                            (quote.trailer as any).imageUrl
+                            || (quote.trailer as any).catalog?.imageUrl
+                            || (quote.trailer as any).catalog?.coverImageUrl,
+                            500,
+                        )
+                        : undefined;
 
                     // headline vessel specs — pick the ones customers care about
                     const allSpecs: any[] = Array.isArray(quote.specifications?.otherSpecs) ? quote.specifications.otherSpecs : [];
@@ -1009,11 +1027,12 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
 
                             {/* ③ TRAILER — also shows trailer-scope dealer-fit items
                                 ("trailer dealer fit") under the trailer band. Image
-                                slot intentionally omitted — most trailer.imageUrl
-                                values in the catalog are brand-logo graphics
-                                (REDCO/TINKA-style) rather than real trailer photos,
-                                and the pattern-detect heuristic kept catching the
-                                long tail wrong. The brand is shown in the subtitle. */}
+                                restored for v1.11 launch — when the catalog has a real
+                                trailer photo it now renders here next to the specs;
+                                when the URL is missing/blocked the BuildBand falls
+                                back to the imagePlaceholder. Operators should mirror
+                                trailer images into Firebase Storage if vendor CDNs
+                                gate hot-linking. */}
                             {quote.trailer && (() => {
                                 return (
                                 <BuildBand
@@ -1021,6 +1040,8 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                     title={`Trailer — ${quote.trailer.name || 'Trailer Package'}`}
                                     subtitle={quote.trailer.brand || tCatalog?.brandName || ''}
                                     price={currency(f.trailerTotal)}
+                                    image={trailerImg}
+                                    imagePlaceholder={<Text style={{ fontSize: 6, color: MUTED, textTransform: 'uppercase', letterSpacing: 1 }}>Trailer</Text>}
                                 >
                                     {trailerSpecPills.length > 0 && (
                                         <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: (trailerOptions.length > 0 || trailerDealerItems.length > 0) ? 8 : 0 }}>
@@ -1157,13 +1178,22 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                         const isIncluded = item.amount === 0;
                         const isDiscount = item.amount < 0;
                         const valueColor = isDiscount ? GREEN : (isIncluded ? MUTED : NAVY);
+                        // v1.11 launch — indented sub-items render with a left
+                        // padding + an L-shaped tick so they read as children of
+                        // the previous parent row (Vessel / Propulsion / etc.).
+                        const indent = !!item.indent;
                         return (
-                            <View key={i} wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
-                                <View style={{ flexShrink: 1, paddingRight: 12 }}>
-                                    <Text style={{ fontSize: 8.5, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.3, color: NAVY }}>{item.label}</Text>
-                                    {item.sub && <Text style={{ fontSize: 7, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: MUTED, marginTop: 1.5 }}>{item.sub}</Text>}
+                            <View key={i} wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: indent ? 5 : 8, paddingLeft: indent ? 18 : 0, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
+                                <View style={{ flexShrink: 1, paddingRight: 12, flexDirection: 'row', alignItems: 'flex-start' }}>
+                                    {indent && (
+                                        <View style={{ width: 8, height: 8, borderLeftWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', marginRight: 6, marginTop: 2 }} />
+                                    )}
+                                    <View style={{ flexShrink: 1 }}>
+                                        <Text style={{ fontSize: indent ? 7.5 : 8.5, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.3, color: indent ? SLATE : NAVY }}>{item.label}</Text>
+                                        {item.sub && <Text style={{ fontSize: indent ? 6 : 7, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: MUTED, marginTop: 1.5 }}>{item.sub}</Text>}
+                                    </View>
                                 </View>
-                                <Text style={{ fontSize: 8.5, fontWeight: 'bold', color: valueColor, flexShrink: 0 }}>
+                                <Text style={{ fontSize: indent ? 7.5 : 8.5, fontWeight: 'bold', color: valueColor, flexShrink: 0 }}>
                                     {isIncluded ? 'INCLUDED' : currency(item.amount)}
                                 </Text>
                             </View>

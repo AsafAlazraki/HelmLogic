@@ -146,6 +146,20 @@ test("Mark's checklist — 8/8 items pass end-to-end", async ({ page }) => {
     expect(ffoSection, 'Step 2 must surface Factory Options / Standard Inclusions / Additional Factory Notes').toBeGreaterThan(0);
     ticks['3-ffo-step2'] = true;
 
+    // Pick the first 2 factory option cards so the Investment Summary in
+    // the PDF actually shows nested options under the boat line.
+    const factoryCards = page.locator('button:has-text("$")').filter({ hasNotText: 'Next Step' });
+    const fcCount = await factoryCards.count();
+    const pickFc = Math.min(2, fcCount);
+    console.log(`▶ found ${fcCount} factory-option cards — picking ${pickFc}`);
+    for (let i = 0; i < pickFc; i++) {
+        await factoryCards.nth(i).scrollIntoViewIfNeeded().catch(() => {});
+        await factoryCards.nth(i).click({ force: true }).catch(() => {});
+        await page.waitForTimeout(500);
+    }
+    await page.waitForTimeout(1000);
+    await shot('s2b-factory-options-picked');
+
     // ── Step 3: motor ──
     await page.locator('button:has-text("Next Step")').first().click({ force: true });
     await page.waitForTimeout(4500);
@@ -173,11 +187,27 @@ test("Mark's checklist — 8/8 items pass end-to-end", async ({ page }) => {
     await page.waitForTimeout(5500);
     await shot('s5-dealerfit-fitup', true);
 
-    // ── ITEM 6: DFOs on Step 5 ──
+    // ── ITEM 6: DFOs on Step 5 — also pick the first 3 cards so the PDF
+    //    Investment Summary actually itemises dealer-fit lines. ──
     const dfoMarkers = await page.locator('text=/Dealer Fit|Safety Gear|Electronics|Trailer Dealer Fit/i').count();
     console.log('▶ DFO category markers on Step 5:', dfoMarkers);
     expect(dfoMarkers, 'Step 5 must surface Dealer Fit categories').toBeGreaterThan(0);
     ticks['6-dfo-step5'] = true;
+
+    // Pick up to 3 dealer-fit selection cards (different ones to span scopes).
+    // These are the cards under each Dealer-Fit category section — clickable
+    // <button> elements with a price on them.
+    const dfoCards = page.locator('button:has-text("$"):below(:text("Dealer Fit"))');
+    const dfoCount = await dfoCards.count();
+    const toPick = Math.min(3, dfoCount);
+    console.log(`▶ found ${dfoCount} dealer-fit cards — picking ${toPick}`);
+    for (let i = 0; i < toPick; i++) {
+        await dfoCards.nth(i).scrollIntoViewIfNeeded().catch(() => {});
+        await dfoCards.nth(i).click({ force: true }).catch(() => {});
+        await page.waitForTimeout(600);
+    }
+    await page.waitForTimeout(1200);
+    await shot('s5a-dealerfit-picked');
 
     // ── ITEM 8: Simple / Medium / Complex tier cards ──
     const simpleHits = await page.locator('button:has-text("SIMPLE"):has-text("$")').count();
