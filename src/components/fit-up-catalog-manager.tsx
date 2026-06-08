@@ -962,131 +962,151 @@ function FitUpItemEditor({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md">
-                <DialogHeader>
-                    <DialogTitle>{isEdit ? 'Edit fit-up item' : 'Add fit-up item'}</DialogTitle>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
+                <DialogHeader className="px-6 pt-6 pb-3 border-b bg-gradient-to-b from-slate-50/80 to-transparent">
+                    <DialogTitle className="text-xl font-black tracking-tight">{isEdit ? 'Edit fit-up item' : 'Add fit-up item'}</DialogTitle>
                     <DialogDescription className="text-xs">
-                        Tier reflects effort/complexity. Cost is what it costs the dealer to deliver the item.
+                        Tier reflects effort / complexity. Cost is what it costs the dealer to deliver the item; sell price is what the customer pays.
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-4 py-2">
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-semibold">Name</label>
-                        <Input
-                            value={name}
-                            onChange={e => setName(e.target.value)}
-                            placeholder="e.g., Sound system install"
-                            className="rounded-xl border-2"
-                            autoFocus
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-semibold">Tier</label>
-                            <Select value={tier} onValueChange={v => setTier(v as Tier)}>
-                                <SelectTrigger className="rounded-xl border-2">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {TIERS.map(t => (
-                                        <SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                <div className="px-6 py-5 space-y-5">
+                    {/* ── Basics ── */}
+                    <section className="rounded-2xl border-2 bg-white p-4 space-y-4">
+                        <div className="flex items-center gap-2">
+                            <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-700">Basics</p>
                         </div>
-
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold">Cost ($)</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Name</label>
                             <Input
-                                type="number"
-                                inputMode="decimal"
-                                value={cost}
-                                onChange={e => setCost(e.target.value)}
-                                placeholder="0.00"
-                                className="rounded-xl border-2 tabular-nums"
-                                min="0"
-                                step="0.01"
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                placeholder="e.g., Sound system install"
+                                className="rounded-xl border-2 h-10 font-semibold"
+                                autoFocus
                             />
                         </div>
-                    </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div className="space-y-1.5 md:col-span-3">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Tier</label>
+                                <div className="flex gap-2">
+                                    {TIERS.map(t => (
+                                        <button
+                                            key={t}
+                                            type="button"
+                                            onClick={() => setTier(t)}
+                                            className={`flex-1 rounded-xl border-2 px-3 py-2 text-[11px] font-black uppercase tracking-widest transition-all ${tier === t ? `${TIER_TONE[t] ?? 'bg-primary text-white border-primary'} ring-2 ring-primary/20 shadow-md` : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'}`}
+                                        >
+                                            {TIER_LABEL[t]}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Cost ($)</label>
+                                <Input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={cost}
+                                    onChange={e => setCost(e.target.value)}
+                                    placeholder="0.00"
+                                    className="rounded-xl border-2 h-10 tabular-nums font-bold"
+                                    min="0"
+                                    step="0.01"
+                                />
+                            </div>
+                            <div className="space-y-1.5 md:col-span-2">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Sell price ($) — optional</label>
+                                <Input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={sellPrice}
+                                    onChange={e => setSellPrice(e.target.value)}
+                                    placeholder="Leave blank to derive from margin later"
+                                    className="rounded-xl border-2 h-10 tabular-nums font-bold"
+                                    min="0"
+                                    step="0.01"
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Category — optional</label>
+                            <Input
+                                value={category}
+                                onChange={e => setCategory(e.target.value)}
+                                placeholder="e.g., Rigging, Electronics, Safety"
+                                className="rounded-xl border-2 h-9"
+                                list="fit-up-category-suggestions"
+                            />
+                            <p className="text-[10px] text-muted-foreground">
+                                Groups items in admin + the salesperson selector. Free-text — type to add a new one.
+                            </p>
+                        </div>
+                    </section>
 
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-semibold">Sell price ($) — optional</label>
-                        <Input
-                            type="number"
-                            inputMode="decimal"
-                            value={sellPrice}
-                            onChange={e => setSellPrice(e.target.value)}
-                            placeholder="Leave blank to derive from margin later"
-                            className="rounded-xl border-2 tabular-nums"
-                            min="0"
-                            step="0.01"
-                        />
-                    </div>
+                    {/* ── Customer-facing ── */}
+                    <section className="rounded-2xl border-2 bg-white p-4 space-y-4">
+                        <div className="flex items-center gap-2">
+                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-700">Customer-facing</p>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Customer description — optional</label>
+                            <Textarea
+                                value={customerDescription}
+                                onChange={e => setCustomerDescription(e.target.value)}
+                                placeholder="What the customer should see on the quote (defaults to Name)"
+                                className="rounded-xl border-2 text-xs"
+                                rows={2}
+                            />
+                            <p className="text-[10px] text-muted-foreground">
+                                Shown on the proposal&apos;s fit-up breakdown when expanded. Customer PDF still rolls up to a single &quot;Fit-up &amp; Rigging&quot; line by product decision.
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Image URL — optional</label>
+                                <Input
+                                    value={imageUrl}
+                                    onChange={e => setImageUrl(e.target.value)}
+                                    placeholder="https://… (renders on catalog row + quote selector card)"
+                                    className="rounded-xl border-2 h-9"
+                                    type="url"
+                                />
+                            </div>
+                            {imageUrl.trim() && (
+                                // Native <img> per CLAUDE.md lesson — Next/Image breaks external CDNs.
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={imageUrl.trim()} alt="Preview" className="h-20 w-28 object-contain rounded-xl border-2 bg-white shadow-sm mt-5" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                            )}
+                        </div>
+                    </section>
 
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-semibold">Category — optional</label>
-                        <Input
-                            value={category}
-                            onChange={e => setCategory(e.target.value)}
-                            placeholder="e.g., Rigging, Electronics, Safety"
-                            className="rounded-xl border-2"
-                            list="fit-up-category-suggestions"
-                        />
-                        <p className="text-[10px] text-muted-foreground">
-                            Groups items in admin + the salesperson selector. Free-text — type to add a new one.
-                        </p>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-semibold">Customer description — optional</label>
-                        <Textarea
-                            value={customerDescription}
-                            onChange={e => setCustomerDescription(e.target.value)}
-                            placeholder="What the customer should see on the quote (defaults to Name)"
-                            className="rounded-xl border-2 text-xs"
-                            rows={2}
-                        />
-                        <p className="text-[10px] text-muted-foreground">
-                            Shown on the proposal's fit-up breakdown when expanded. Customer PDF still rolls up to a single "Fit-up &amp; Rigging" line by product decision.
-                        </p>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-semibold">Image URL — optional</label>
-                        <Input
-                            value={imageUrl}
-                            onChange={e => setImageUrl(e.target.value)}
-                            placeholder="https://… (renders on catalog row + quote selector card)"
-                            className="rounded-xl border-2"
-                            type="url"
-                        />
-                        {imageUrl.trim() && (
-                            // Native <img> per CLAUDE.md lesson — Next/Image breaks external CDNs.
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={imageUrl.trim()} alt="Preview" className="h-16 w-16 object-contain rounded-lg border bg-white" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                        )}
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-semibold">Internal notes — optional</label>
+                    {/* ── Internal ── */}
+                    <section className="rounded-2xl border-2 bg-white p-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                            <div className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-700">Internal — operator only</p>
+                        </div>
                         <Textarea
                             value={notes}
                             onChange={e => setNotes(e.target.value)}
-                            placeholder="Operator-only — never shown to the customer"
+                            placeholder="Operator-only notes — never shown to the customer"
                             className="rounded-xl border-2 text-xs"
                             rows={2}
                         />
-                    </div>
+                    </section>
 
-                    {/* v1.11 Epic 9.2.1 — multi-level assignment. */}
-                    <div className="rounded-xl border-2 p-3 space-y-3 bg-slate-50/50">
+                    {/* ── Assignment scope (v1.11 Epic 9.2.1 — multi-level) ── */}
+                    <section className="rounded-2xl border-2 bg-white p-4 space-y-4">
                         <div>
-                            <p className="text-xs font-bold">Assignment scope</p>
-                            <p className="text-[10px] text-muted-foreground">
-                                Leave any level empty for "no restriction at that level". When two or more levels have
+                            <div className="flex items-center gap-2">
+                                <div className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-700">Assignment scope</p>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                                Leave any level empty for &quot;no restriction at that level&quot;. When two or more levels have
                                 picks, the item shows only when ALL non-empty levels match the current quote
                                 (Modules AND Brands AND Ranges AND Models).
                             </p>
@@ -1139,10 +1159,9 @@ function FitUpItemEditor({
                                 hint={visibleVariants.length === 0 ? 'Loading variants for the selected models…' : `Per-SKU restriction — leave empty to allow any variant of the selected models`}
                             />
                         )}
-                    </div>
+                    </section>
 
-                    {/* v1.11 expansion-2 — soft "often paired with" hints.
-                        Optional. References other catalog items by id. */}
+                    {/* v1.11 expansion-2 — soft "often paired with" hints. Optional. */}
                     <OftenPairedWithSection
                         organisationId={organisationId}
                         currentItemId={editingItem?.id ?? null}
@@ -1151,7 +1170,7 @@ function FitUpItemEditor({
                     />
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="px-6 py-4 border-t bg-slate-50/70 sticky bottom-0 backdrop-blur">
                     <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving} className="rounded-xl">
                         Cancel
                     </Button>
