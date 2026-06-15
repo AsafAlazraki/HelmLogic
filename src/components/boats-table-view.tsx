@@ -159,6 +159,32 @@ function BoatsTableBody({ vendorId }: { vendorId: string }) {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+    /** v1.16 (Story 3.8.1 reused number — Inventory display on catalog).
+     *  Per-modelCode count of in-stock inventory items, surfaced as a
+     *  small badge on each model row so the catalogue admin sees stock at
+     *  a glance. */
+    const [stockCountByModel, setStockCountByModel] = useState<Map<string, number>>(new Map());
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const snap = await getDocs(collection(firestore, 'inventory'));
+                const counts = new Map<string, number>();
+                snap.forEach(d => {
+                    const data = d.data() as any;
+                    if (data?.status && data.status !== 'in_stock' && data.status !== 'In Stock' && data.status !== 'inStock') return;
+                    const m = String(data?.model ?? '').trim();
+                    if (!m) return;
+                    counts.set(m, (counts.get(m) ?? 0) + 1);
+                });
+                if (!cancelled) setStockCountByModel(counts);
+            } catch (err) {
+                console.error('Failed to load inventory', err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore]);
 
     useEffect(() => {
         let cancelled = false;
@@ -273,6 +299,7 @@ function BoatsTableBody({ vendorId }: { vendorId: string }) {
                                     key={model.id}
                                     vendorId={vendorId}
                                     model={model}
+                                    stockCount={stockCountByModel.get(model.modelCode ?? model.id) ?? 0}
                                     expanded={expanded}
                                     onToggle={() => toggleExpand(model.id)}
                                 />
@@ -286,10 +313,12 @@ function BoatsTableBody({ vendorId }: { vendorId: string }) {
 }
 
 function ModelRowGroup({
-    vendorId, model, expanded, onToggle,
+    vendorId, model, stockCount, expanded, onToggle,
 }: {
     vendorId: string;
     model: Model;
+    /** v1.16 (3.8.1 reused) — number of in-stock inventory items matching this model. */
+    stockCount?: number;
     expanded: boolean;
     onToggle: () => void;
 }) {
@@ -307,7 +336,16 @@ function ModelRowGroup({
                         {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                     </Button>
                 </td>
-                <td className="px-3 py-2 font-mono font-bold">{model.modelCode ?? '—'}</td>
+                <td className="px-3 py-2 font-mono font-bold">
+                    <span className="inline-flex items-center gap-2">
+                        {model.modelCode ?? '—'}
+                        {(stockCount ?? 0) > 0 && (
+                            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border-emerald-300">
+                                {stockCount} in stock
+                            </Badge>
+                        )}
+                    </span>
+                </td>
                 <td className="px-3 py-2">{model.name ?? '—'}</td>
                 <td className="px-3 py-2">
                     <Badge variant="outline" className="text-[10px] font-semibold">{model.rangeName ?? '—'}</Badge>
