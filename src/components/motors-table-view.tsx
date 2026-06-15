@@ -14,19 +14,15 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Anchor, Search, Loader2, Download, HelpCircle } from 'lucide-react';
+import { Anchor, Search, Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
-import { InlineEditCell } from '@/components/inline-edit-cell';
 
 interface Vendor {
     id: string;
@@ -113,62 +109,10 @@ function EmptyState({ message }: { message: string }) {
 
 function MotorsTableBody({ vendorId }: { vendorId: string }) {
     const firestore = useFirestore();
-    const { toast } = useToast();
     const [rows, setRows] = useState<MotorRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [seriesFilter, setSeriesFilter] = useState<string>('all');
-
-    /** v1.14 (3.8.1 retrofit) — inline-edit handler for motors. Writes
-     *  straight to the vendor part doc; toasts on success/failure. */
-    const patchMotor = async (motorId: string, field: string, next: any) => {
-        try {
-            await updateDoc(
-                doc(firestore, 'data-warehouse', vendorId, 'parts', motorId),
-                { [field]: next, updatedAt: serverTimestamp() },
-            );
-            // Optimistic local update so the row reflects the change without a re-fetch.
-            setRows(prev => prev.map(r => r.id === motorId ? { ...r, [field]: next } : r));
-            toast({ title: 'Saved' });
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
-            throw err;
-        }
-    };
-
-    /** v1.14 (Story 3.8.8) — CSV export of the currently-filtered rows. */
-    const handleExport = () => {
-        const header = ['Part Number', 'Model Name', 'Series', 'HP Rating', 'Shaft', 'Cost', 'Sell (ex GST)'];
-        const escape = (v: any) => {
-            if (v == null) return '';
-            const s = String(v);
-            if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
-            return s;
-        };
-        const lines = [header.join(',')];
-        for (const r of filtered) {
-            lines.push([
-                r['Part Number'] ?? '',
-                r['Model Name'] ?? '',
-                r.Series ?? '',
-                r['HP Rating'] ?? '',
-                r.Shaft ?? '',
-                r.cost ?? '',
-                r.sellPriceExclGst ?? '',
-            ].map(escape).join(','));
-        }
-        const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        const stamp = new Date().toISOString().slice(0, 10);
-        a.href = url;
-        a.download = `motors-${stamp}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-        toast({ title: `Exported ${filtered.length} motors` });
-    };
 
     useEffect(() => {
         let cancelled = false;
@@ -254,96 +198,42 @@ function MotorsTableBody({ vendorId }: { vendorId: string }) {
                 <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground ml-auto">
                     {filtered.length} of {rows.length}
                 </p>
-                <Button variant="outline" size="sm" onClick={handleExport} className="rounded-xl text-xs h-9" disabled={filtered.length === 0}>
-                    <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
-                </Button>
             </div>
 
-            <TooltipProvider>
-                <div className="rounded-xl border-2 overflow-hidden">
-                    <table className="w-full text-xs">
-                        <thead className="bg-slate-50 border-b-2">
-                            <tr className="text-left">
-                                <ColumnHeader label="Part #" hint="Manufacturer's part number / SKU. Used by Yamaha MPF imports." />
-                                <ColumnHeader label="Model" hint="Model name as it appears on the data sheet." />
-                                <ColumnHeader label="Series" hint="Series the motor belongs to (e.g. F25, F70). Drives the series filter chip row." />
-                                <ColumnHeader label="HP" hint="Horsepower rating. Multi-engine syntax 'N × HP' is parsed at the quote-flow side." />
-                                <ColumnHeader label="Shaft" hint="Shaft length code (S / L / X / U). Matters for transom compatibility." />
-                                <ColumnHeader label="Cost" align="right" hint="Dealer cost. Inline-editable — click the cell to edit." />
-                                <ColumnHeader label="Sell (ex GST)" align="right" hint="Retail price excluding GST. Inline-editable. GST gets added at finalize." />
+            <div className="rounded-xl border-2 overflow-hidden">
+                <table className="w-full text-xs">
+                    <thead className="bg-slate-50 border-b-2">
+                        <tr className="text-left">
+                            <th className="px-3 py-2 font-bold uppercase tracking-widest text-[10px]">Part #</th>
+                            <th className="px-3 py-2 font-bold uppercase tracking-widest text-[10px]">Model</th>
+                            <th className="px-3 py-2 font-bold uppercase tracking-widest text-[10px]">Series</th>
+                            <th className="px-3 py-2 font-bold uppercase tracking-widest text-[10px]">HP</th>
+                            <th className="px-3 py-2 font-bold uppercase tracking-widest text-[10px]">Shaft</th>
+                            <th className="px-3 py-2 font-bold uppercase tracking-widest text-[10px] text-right">Cost</th>
+                            <th className="px-3 py-2 font-bold uppercase tracking-widest text-[10px] text-right">Sell (ex GST)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filtered.map(row => (
+                            <tr key={row.id} className="border-b last:border-b-0 hover:bg-slate-50">
+                                <td className="px-3 py-2 font-mono font-bold">{row['Part Number'] ?? '—'}</td>
+                                <td className="px-3 py-2">{row['Model Name'] ?? '—'}</td>
+                                <td className="px-3 py-2">
+                                    {row.Series && <Badge variant="outline" className="text-[10px]">{row.Series}</Badge>}
+                                </td>
+                                <td className="px-3 py-2 tabular-nums">{row['HP Rating'] ?? '—'}</td>
+                                <td className="px-3 py-2">{row.Shaft ?? '—'}</td>
+                                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                                    {row.cost != null ? formatCurrency(Number(row.cost)) : '—'}
+                                </td>
+                                <td className="px-3 py-2 text-right tabular-nums font-bold">
+                                    {row.sellPriceExclGst != null ? formatCurrency(Number(row.sellPriceExclGst)) : '—'}
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.map(row => (
-                                <tr key={row.id} className="border-b last:border-b-0 hover:bg-slate-50">
-                                    <td className="px-3 py-2 font-mono font-bold">{row['Part Number'] ?? '—'}</td>
-                                    <td className="px-3 py-2">
-                                        <InlineEditCell
-                                            type="text"
-                                            value={row['Model Name'] as string}
-                                            onSave={(v) => patchMotor(row.id, 'Model Name', v)}
-                                        />
-                                    </td>
-                                    <td className="px-3 py-2">
-                                        {row.Series && <Badge variant="outline" className="text-[10px]">{row.Series}</Badge>}
-                                    </td>
-                                    <td className="px-3 py-2 tabular-nums">
-                                        <InlineEditCell
-                                            type="text"
-                                            value={row['HP Rating'] as string}
-                                            onSave={(v) => patchMotor(row.id, 'HP Rating', v)}
-                                        />
-                                    </td>
-                                    <td className="px-3 py-2">
-                                        <InlineEditCell
-                                            type="text"
-                                            value={row.Shaft as string}
-                                            onSave={(v) => patchMotor(row.id, 'Shaft', v)}
-                                        />
-                                    </td>
-                                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                                        <InlineEditCell
-                                            type="currency"
-                                            value={row.cost as number | null | undefined}
-                                            validate={(n) => (n != null && (typeof n !== 'number' || n < 0) ? 'Positive number' : null)}
-                                            onSave={(v) => patchMotor(row.id, 'cost', v)}
-                                        />
-                                    </td>
-                                    <td className="px-3 py-2 text-right tabular-nums font-bold">
-                                        <InlineEditCell
-                                            type="currency"
-                                            value={row.sellPriceExclGst as number | null | undefined}
-                                            validate={(n) => (n != null && (typeof n !== 'number' || n < 0) ? 'Positive number' : null)}
-                                            onSave={(v) => patchMotor(row.id, 'sellPriceExclGst', v)}
-                                        />
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </TooltipProvider>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </div>
-    );
-}
-
-/** v1.14 (Story 3.8.6) — column header with an optional tooltip. */
-function ColumnHeader({ label, hint, align = 'left' }: { label: string; hint?: string; align?: 'left' | 'right' }) {
-    return (
-        <th className={`px-3 py-2 font-bold uppercase tracking-widest text-[10px] ${align === 'right' ? 'text-right' : ''}`}>
-            <span className="inline-flex items-center gap-1">
-                {label}
-                {hint && (
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <HelpCircle className="h-2.5 w-2.5 text-muted-foreground opacity-60 hover:opacity-100 cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p className="text-xs max-w-xs">{hint}</p>
-                        </TooltipContent>
-                    </Tooltip>
-                )}
-            </span>
-        </th>
     );
 }

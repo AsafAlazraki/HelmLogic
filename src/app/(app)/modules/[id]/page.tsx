@@ -830,7 +830,7 @@ export default function ModuleDetailsPage() {
                     </div>
                 </div>
                 <main className="flex-1 overflow-y-auto p-8 max-w-6xl mx-auto w-full">
-                    <ServiceQuoteDashboard organisationId={currentMemberOrg.id} organisation={currentMemberOrg} />
+                    <ServiceQuoteDashboard organisationId={currentMemberOrg.id} />
                 </main>
             </div>
         );
