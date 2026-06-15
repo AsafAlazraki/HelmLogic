@@ -473,7 +473,11 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
     factoryOptions.forEach((opt: any) => {
         const base = formatOptionName(opt.name.replace(/\s*\([^)]+\)\s*$/, '').trim());
         const color = extractFirstColor(opt.name);
-        lineItems.push({ label: color ? `${base} (${color})` : base, sub: opt.category || 'Factory Option', amount: opt.sellPriceExclGst || 0, indent: true });
+        /* v1.16 (XydsZkX3) — hideOptionPrices forces the line to render as
+           INCLUDED on the customer PDF (amount === 0 → 'INCLUDED' tag). */
+        const rawAmount = opt.sellPriceExclGst || 0;
+        const amount = quote.hideOptionPrices ? 0 : rawAmount;
+        lineItems.push({ label: color ? `${base} (${color})` : base, sub: opt.category || 'Factory Option', amount, indent: true });
     });
     // Motor — base + every accessory ON ITS OWN LINE. v1.11 follow-up: items
     // that are "Included" (price 0, factory-standard with the engine) now also
@@ -489,7 +493,8 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             amount: motorBase > 0 ? motorBase : (f.motorTotal ?? 0),
         });
         motorAccs.forEach(a => {
-            const amount = a.sellPriceExclGst || 0;
+            const rawAmount = a.sellPriceExclGst || 0;
+            const amount = quote.hideOptionPrices ? 0 : rawAmount;
             const isStandard = !!(a.isStandard || a.isInclusion);
             lineItems.push({
                 label: a.name || a.label || 'Motor accessory',
@@ -513,7 +518,8 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             amount: trailerBase > 0 ? trailerBase : (f.trailerTotal ?? 0),
         });
         tOpts.forEach(o => {
-            const amount = o.sellPriceExclGst || 0;
+            const rawAmount = o.sellPriceExclGst || 0;
+            const amount = quote.hideOptionPrices ? 0 : rawAmount;
             lineItems.push({
                 label: o.name || 'Trailer option',
                 sub: amount === 0
@@ -536,7 +542,8 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                 const labelCandidates = [it.description, it.label, it.name].filter(Boolean) as string[];
                 const real = labelCandidates.find(c => !isCodeOnlyLabel(c));
                 if (!real) return;
-                const amount = it.sellPriceExclGst || 0;
+                const rawAmount = it.sellPriceExclGst || 0;
+                const amount = quote.hideOptionPrices ? 0 : rawAmount;
                 lineItems.push({
                     label: real,
                     sub: (g?.category || g?.name) ? `Dealer Fit · ${g.category || g.name}` : 'Dealer Fit',
