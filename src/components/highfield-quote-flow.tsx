@@ -2648,6 +2648,24 @@ export function HighfieldQuoteFlow({
                                                             ))}
                                                         </div>
                                                     )}
+                                                    {/* v1.16 (NWi9EetL) — Sub Total for Trailer + trailer options selected.
+                                                        Captures trailer base + factory options + operator-added customs. */}
+                                                    {selectedTrailerId && (() => {
+                                                        const trailerBase = effectiveTrailerConfig ? getPriceForLevel(effectiveTrailerConfig, priceLevel) : 0;
+                                                        const factoryOptsTotal = selectedTrailerOptionsData.reduce((s: number, o: any) => s + getPriceForLevel(o, priceLevel), 0);
+                                                        const customOptsTotal = customTrailerOptions.reduce((s: number, o: any) => s + (o.sellPriceExclGst || 0), 0);
+                                                        const subtotal = trailerBase + factoryOptsTotal + customOptsTotal;
+                                                        if (subtotal <= 0) return null;
+                                                        return (
+                                                            <div className="p-4 border-t-2 border-primary/30 bg-primary/5 flex items-center justify-between">
+                                                                <div>
+                                                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary">Trailer Subtotal</p>
+                                                                    <p className="text-[9px] text-muted-foreground">Base + options + customs · ex GST</p>
+                                                                </div>
+                                                                <p className="text-sm font-black tabular-nums text-primary">${Math.round(subtotal).toLocaleString()}</p>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </CardContent>
                                             </Card>
                                         )}
