@@ -808,11 +808,18 @@ export function HighfieldQuoteFlow({
         const motorCats = new Set(motorModuleCategories.map(c => c.toLowerCase()));
         const trailerCats = new Set(trailerModuleCategories.map(c => c.toLowerCase()));
         const currentModelId = model?.id ?? null;
+        /** v1.16 (Story 3.9.3) — model-level dealer-fit category allowlist.
+         *  When set on the model, only listed categories show on Step 5. */
+        const modelCatAllowlist: string[] = Array.isArray((model as any)?.applicableDealerFitCategories)
+            ? (model as any).applicableDealerFitCategories.map((c: string) => c.toLowerCase())
+            : [];
         const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
             const cat = sel.category || 'Gear';
             // Skip motor and trailer categories — they're shown separately
             if (motorCats.has(cat.toLowerCase())) return acc;
             if (trailerCats.has(cat.toLowerCase())) return acc;
+            // v1.16 (3.9.3) — model-level category allowlist
+            if (modelCatAllowlist.length > 0 && !modelCatAllowlist.includes(cat.toLowerCase())) return acc;
             // v1.16 (ZidKJczh) — Dealer Fit option only model-specific. When
             // `sel.applicableModelIds` is set and non-empty, the option only
             // shows when the current model matches. Empty / missing = applies
@@ -824,7 +831,7 @@ export function HighfieldQuoteFlow({
             return acc;
         }, {});
         return Object.entries(groups) as [string, any][];
-    }, [dealerFitSelections, motorModuleCategories, trailerModuleCategories, model?.id]);
+    }, [dealerFitSelections, motorModuleCategories, trailerModuleCategories, model?.id, (model as any)?.applicableDealerFitCategories]);
 
     const groupedMotorDealerFit = useMemo(() => {
         if (!dealerFitSelections || motorModuleCategories.length === 0) return [];

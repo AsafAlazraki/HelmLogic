@@ -409,6 +409,10 @@ function VariantRows({ vendorId, model }: { vendorId: string; model: Model }) {
                         description on the model doc, surfaced on the proposal PDF
                         cover (future v1.16 wiring). */}
                     <MarketingCopyPanel vendorId={vendorId} model={model} />
+
+                    {/* v1.16 (Stories 3.9.2 + 3.9.3) — Motor compatibility window +
+                        Dealer-fit compat editor inline. */}
+                    <CompatibilityPanel vendorId={vendorId} model={model} />
                 </div>
             </td>
         </tr>
@@ -733,6 +737,150 @@ function CoverImagePanel({ vendorId, model }: { vendorId: string; model: Model }
                     className="rounded-lg border-2 h-9 text-xs flex-1"
                     type="url"
                 />
+            </div>
+        </div>
+    );
+}
+
+/** v1.16 (Stories 3.9.2 + 3.9.3) — Compatibility editor panel. Two
+ *  inline-editable rows on the boats-table expanded row:
+ *
+ *    3.9.2 Motor compat window (min HP / max HP / steering)
+ *      → model.specifications.motorConfigurations[0].engines[0]
+ *
+ *    3.9.3 Dealer fit compat (free-text category-allowlist)
+ *      → model.applicableDealerFitCategories  (string[])
+ *
+ *  The Quote Flow already filters dealer-fit by `applicableModelIds` on
+ *  the selection (v1.16 ZidKJczh). This panel lets the model owner
+ *  declare the inverse: which categories show on THIS model. The dealer
+ *  fit picker uses an AND of both filters when both are set.
+ */
+function CompatibilityPanel({ vendorId, model }: { vendorId: string; model: Model }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [loaded, setLoaded] = useState(false);
+    const [minHp, setMinHp] = useState<number | null>(null);
+    const [maxHp, setMaxHp] = useState<number | null>(null);
+    const [steering, setSteering] = useState<string>('');
+    const [categoriesCsv, setCategoriesCsv] = useState<string>('');
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                if (!model.rangeId) return;
+                const snap = await getDocs(collection(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models'));
+                snap.forEach(d => {
+                    if (d.id === model.id && !cancelled) {
+                        const data = d.data() as any;
+                        const eng = data?.specifications?.motorConfigurations?.[0]?.engines?.[0] ?? {};
+                        setMinHp(eng.minHp ?? null);
+                        setMaxHp(eng.maxHp ?? null);
+                        setSteering(String(eng.steeringType ?? ''));
+                        setCategoriesCsv(Array.isArray(data?.applicableDealerFitCategories) ? data.applicableDealerFitCategories.join(', ') : '');
+                        setLoaded(true);
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore, vendorId, model.id, model.rangeId]);
+
+    const saveMotor = async (next: { minHp?: number | null; maxHp?: number | null; steeringType?: string }) => {
+        if (!model.rangeId) return;
+        try {
+            const ref = doc(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models', model.id);
+            const snap = await getDocs(collection(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models'));
+            let current: any = {};
+            snap.forEach(d => { if (d.id === model.id) current = d.data(); });
+            const specs = current.specifications ?? {};
+            const configs = Array.isArray(specs.motorConfigurations) && specs.motorConfigurations.length > 0
+                ? [...specs.motorConfigurations]
+                : [{ engines: [{}] }];
+            const engines = Array.isArray(configs[0].engines) && configs[0].engines.length > 0
+                ? [...configs[0].engines]
+                : [{}];
+            engines[0] = { ...engines[0], ...next };
+            configs[0] = { ...configs[0], engines };
+            await updateDoc(ref, {
+                specifications: { ...specs, motorConfigurations: configs },
+                updatedAt: serverTimestamp(),
+            });
+            toast({ title: 'Motor compat saved' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
+        }
+    };
+
+    const saveCategories = async (csv: string) => {
+        if (!model.rangeId) return;
+        try {
+            const ref = doc(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models', model.id);
+            const arr = csv.split(',').map(s => s.trim()).filter(Boolean);
+            await updateDoc(ref, {
+                applicableDealerFitCategories: arr.length > 0 ? arr : null,
+                updatedAt: serverTimestamp(),
+            });
+            toast({ title: 'Dealer-fit compat saved' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
+        }
+    };
+
+    if (!loaded) return null;
+
+    return (
+        <div className="rounded-lg border-2 border-dashed bg-white p-3 space-y-3">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">COMPATIBILITY</p>
+            {/* 3.9.2 Motor */}
+            <div className="grid grid-cols-3 gap-3">
+                <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Min HP</label>
+                    <Input
+                        type="number"
+                        value={minHp ?? ''}
+                        onChange={e => setMinHp(e.target.value === '' ? null : Number(e.target.value))}
+                        onBlur={() => saveMotor({ minHp })}
+                        className="rounded-lg border-2 h-8 text-xs mt-1 tabular-nums"
+                        min={0}
+                    />
+                </div>
+                <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Max HP</label>
+                    <Input
+                        type="number"
+                        value={maxHp ?? ''}
+                        onChange={e => setMaxHp(e.target.value === '' ? null : Number(e.target.value))}
+                        onBlur={() => saveMotor({ maxHp })}
+                        className="rounded-lg border-2 h-8 text-xs mt-1 tabular-nums"
+                        min={0}
+                    />
+                </div>
+                <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Steering</label>
+                    <Input
+                        value={steering}
+                        onChange={e => setSteering(e.target.value)}
+                        onBlur={() => saveMotor({ steeringType: steering.trim() })}
+                        placeholder="e.g. Tiller / Remote"
+                        className="rounded-lg border-2 h-8 text-xs mt-1"
+                    />
+                </div>
+            </div>
+            {/* 3.9.3 Dealer-fit categories allowlist */}
+            <div>
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Dealer-fit categories (comma-separated; empty = all)</label>
+                <Input
+                    value={categoriesCsv}
+                    onChange={e => setCategoriesCsv(e.target.value)}
+                    onBlur={() => saveCategories(categoriesCsv)}
+                    placeholder="e.g. Safety Gear, Electronics, Trim"
+                    className="rounded-lg border-2 h-8 text-xs mt-1"
+                />
+                <p className="text-[9px] text-muted-foreground mt-1">When set, the dealer-fit picker on Step 5 only shows categories in this list for this model.</p>
             </div>
         </div>
     );
