@@ -34,6 +34,7 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -394,6 +395,11 @@ function VariantRows({ vendorId, model }: { vendorId: string; model: Model }) {
                     {/* v1.14 (Story 3.9.1) — Optional features drill-down panel. Lives
                         right under the variants when the model row is expanded. */}
                     <OptionalFeaturesPanel vendorId={vendorId} model={model} />
+
+                    {/* v1.15 (Story 3.4.2) — Marketing copy editor panel. Tagline +
+                        description on the model doc, surfaced on the proposal PDF
+                        cover (future v1.16 wiring). */}
+                    <MarketingCopyPanel vendorId={vendorId} model={model} />
                 </div>
             </td>
         </tr>
@@ -465,7 +471,7 @@ function OptionalFeaturesPanel({ vendorId, model }: { vendorId: string; model: M
         <div className="rounded-lg border-2 border-dashed bg-white p-3 space-y-2">
             <div className="flex items-center justify-between">
                 <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
-                    {features.length} optional feature{features.length === 1 ? '' : 's'}
+                    OPTIONAL FEATURES · {features.length}
                 </p>
                 <Button size="sm" variant="outline" onClick={addOne} className="rounded-lg text-[10px] h-7">
                     <Plus className="h-3 w-3 mr-1" /> Add
@@ -498,6 +504,120 @@ function OptionalFeaturesPanel({ vendorId, model }: { vendorId: string; model: M
                     ))}
                 </div>
             )}
+        </div>
+    );
+}
+
+/** v1.15 (Story 3.4.2) — Marketing Copy Editor UI. Tagline + description
+ *  on the model doc, surfaced on the proposal PDF cover (cover wiring is
+ *  a v1.16 follow-up; the data is captured here today).
+ *
+ *  Draft + dirty flag + Save button rather than save-on-blur — the
+ *  description is multi-line free text and operators don't want every
+ *  keystroke writing to Firestore. Discard restores from the live doc.
+ */
+function MarketingCopyPanel({ vendorId, model }: { vendorId: string; model: Model }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [tagline, setTagline] = useState('');
+    const [description, setDescription] = useState('');
+    const [loadedTagline, setLoadedTagline] = useState('');
+    const [loadedDescription, setLoadedDescription] = useState('');
+    const [loaded, setLoaded] = useState(false);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                if (!model.rangeId) return;
+                const snap = await getDocs(collection(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models'));
+                snap.forEach(d => {
+                    if (d.id === model.id && !cancelled) {
+                        const data = d.data() as any;
+                        const tg = String(data?.marketingTagline ?? '');
+                        const ds = String(data?.marketingDescription ?? '');
+                        setTagline(tg);
+                        setDescription(ds);
+                        setLoadedTagline(tg);
+                        setLoadedDescription(ds);
+                        setLoaded(true);
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore, vendorId, model.id, model.rangeId]);
+
+    const dirty = tagline !== loadedTagline || description !== loadedDescription;
+
+    const save = async () => {
+        if (!model.rangeId) return;
+        setSaving(true);
+        try {
+            const ref = doc(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models', model.id);
+            await updateDoc(ref, {
+                marketingTagline: tagline.trim() || null,
+                marketingDescription: description.trim() || null,
+                updatedAt: serverTimestamp(),
+            });
+            setLoadedTagline(tagline);
+            setLoadedDescription(description);
+            toast({ title: 'Marketing copy saved' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const discard = () => {
+        setTagline(loadedTagline);
+        setDescription(loadedDescription);
+    };
+
+    if (!loaded) return null;
+
+    return (
+        <div className="rounded-lg border-2 border-dashed bg-white p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+                    MARKETING COPY
+                </p>
+                {dirty && (
+                    <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 text-[9px] font-black uppercase">unsaved</Badge>
+                        <Button size="sm" variant="ghost" onClick={discard} disabled={saving} className="rounded-lg text-[10px] h-7">Discard</Button>
+                        <Button size="sm" onClick={save} disabled={saving} className="rounded-lg text-[10px] h-7">
+                            {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null} Save
+                        </Button>
+                    </div>
+                )}
+            </div>
+            <div className="space-y-2">
+                <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Tagline</label>
+                    <Input
+                        value={tagline}
+                        onChange={e => setTagline(e.target.value)}
+                        placeholder="Short headline shown on the proposal PDF cover (e.g. 'Built for blue water')"
+                        className="rounded-lg border-2 h-8 text-xs mt-1 font-semibold"
+                        maxLength={120}
+                    />
+                </div>
+                <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Description</label>
+                    <Textarea
+                        value={description}
+                        onChange={e => setDescription(e.target.value)}
+                        placeholder="Customer-facing description. Appears on the proposal PDF cover and the model detail page."
+                        className="rounded-lg border-2 text-xs mt-1"
+                        rows={3}
+                    />
+                </div>
+            </div>
         </div>
     );
 }
