@@ -797,17 +797,24 @@ export function HighfieldQuoteFlow({
         if (!dealerFitSelections) return [];
         const motorCats = new Set(motorModuleCategories.map(c => c.toLowerCase()));
         const trailerCats = new Set(trailerModuleCategories.map(c => c.toLowerCase()));
+        const currentModelId = model?.id ?? null;
         const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
             const cat = sel.category || 'Gear';
             // Skip motor and trailer categories — they're shown separately
             if (motorCats.has(cat.toLowerCase())) return acc;
             if (trailerCats.has(cat.toLowerCase())) return acc;
+            // v1.16 (ZidKJczh) — Dealer Fit option only model-specific. When
+            // `sel.applicableModelIds` is set and non-empty, the option only
+            // shows when the current model matches. Empty / missing = applies
+            // to all models (existing behaviour).
+            const restricted: string[] = Array.isArray(sel.applicableModelIds) ? sel.applicableModelIds : [];
+            if (restricted.length > 0 && currentModelId && !restricted.includes(currentModelId)) return acc;
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(sel);
             return acc;
         }, {});
         return Object.entries(groups) as [string, any][];
-    }, [dealerFitSelections, motorModuleCategories, trailerModuleCategories]);
+    }, [dealerFitSelections, motorModuleCategories, trailerModuleCategories, model?.id]);
 
     const groupedMotorDealerFit = useMemo(() => {
         if (!dealerFitSelections || motorModuleCategories.length === 0) return [];
