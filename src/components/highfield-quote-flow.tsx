@@ -269,6 +269,16 @@ export function HighfieldQuoteFlow({
     const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>(initialState?.selectedTrailerOptionIds ?? []);
     const [catalogTrailerSnapshot, setCatalogTrailerSnapshot] = useState<TrailerSnapshot | null>(initialState?.catalogTrailerSnapshot ?? null);
     const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>(initialState?.selectedDealerFitIds ?? []);
+    /** v1.16 (rI21WRhH) — Dealer fit option expander. Tracks which option
+     *  cards are open to reveal their package components. */
+    const [expandedDealerFitIds, setExpandedDealerFitIds] = useState<Set<string>>(new Set());
+    const toggleExpandedDealerFit = (id: string) => {
+        setExpandedDealerFitIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
     // v1.11 (Epic 9.2.1 + 9.2.2) — Fit-Up selections on the in-progress
     // quote. Stored as a flat array of FitUpItem snapshots (full data,
     // not just IDs) so the parent always has the price/cost/tier in
@@ -2424,14 +2434,45 @@ export function HighfieldQuoteFlow({
                                                         // Detect if items in this (unselected) selection are already included via another category
                                                         const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
                                                         return (
-                                                        <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1 relative", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-primary/20")}>
+                                                        <div key={sel.id} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent relative", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-primary/20")}>
                                                             {hasOverlap && <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5"><CopyCheck className="h-3 w-3 text-amber-600" /><span className="text-[7px] font-black uppercase tracking-wide text-amber-700">Already Included</span></div>}
-                                                            <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
-                                                            <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                                <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{sel.name}</p>
-                                                                <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.['Act Sell'] || i.data?.sellPriceExclGst || i.data?.['Store Price'] || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
-                                                            </div>
-                                                        </button>
+                                                            <button type="button" onClick={() => toggleDealerFitSelection(sel.id)} className="flex flex-col p-1 text-left w-full">
+                                                                <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
+                                                                <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
+                                                                    <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{sel.name}</p>
+                                                                    <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.['Act Sell'] || i.data?.sellPriceExclGst || i.data?.['Store Price'] || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
+                                                                </div>
+                                                            </button>
+                                                            {/* v1.16 (rI21WRhH) — Dealer fit option expander. Visible for
+                                                                packages (multi-item) so operators can see what's inside
+                                                                without leaving the picker. */}
+                                                            {sel.items && sel.items.length > 1 && (
+                                                                <>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => { e.stopPropagation(); toggleExpandedDealerFit(sel.id); }}
+                                                                        className="px-4 py-2 border-t flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-colors"
+                                                                    >
+                                                                        <span>{expandedDealerFitIds.has(sel.id) ? 'Hide' : 'Show'} components</span>
+                                                                        <ChevronRight className={cn("h-3 w-3 transition-transform", expandedDealerFitIds.has(sel.id) && "rotate-90")} />
+                                                                    </button>
+                                                                    {expandedDealerFitIds.has(sel.id) && (
+                                                                        <div className="px-4 pb-3 pt-1 space-y-1 bg-slate-50/50 max-h-40 overflow-y-auto">
+                                                                            {sel.items.map((it: any, ii: number) => {
+                                                                                const itemName = it.data?.description || it.data?.label || it.data?.name || it.data?.Description || it.data?.Name || it.rowId || `Item ${ii + 1}`;
+                                                                                const itemPrice = it.data?.['Act Sell'] || it.data?.sellPriceExclGst || it.data?.['Store Price'] || it.data?.PARTS || it.data?.RRP || it.data?.Price || it.data?.Retail || it.data?.Trade || 0;
+                                                                                return (
+                                                                                    <div key={ii} className="flex items-start justify-between gap-3 text-[10px]">
+                                                                                        <span className="text-slate-700 flex-shrink min-w-0 truncate">• {itemName}</span>
+                                                                                        {itemPrice > 0 && <span className="text-slate-500 tabular-nums shrink-0">${itemPrice.toLocaleString()}</span>}
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </div>
                                                         );
                                                     })}
                                                 </div>
