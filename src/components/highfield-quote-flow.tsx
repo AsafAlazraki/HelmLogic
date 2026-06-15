@@ -2953,8 +2953,9 @@ export function HighfieldQuoteFlow({
                                 if (specs.winch) rows.push({ label: 'Winch', value: specs.winch });
                                 if (specs.betweenGuardsMm != null) rows.push({ label: 'Between Guards', value: `${specs.betweenGuardsMm} mm` });
                                 if (specs.plug) rows.push({ label: 'Plug', value: specs.plug });
-                                if (t?.cost != null && t.cost > 0) rows.push({ label: 'Cost (Excl. GST)', value: `$${t.cost.toLocaleString()}` });
-                                if (sell != null) rows.push({ label: 'Sell (Excl. GST)', value: `$${Number(sell).toLocaleString()}` });
+                                /* v1.16 (11E75Jyz) — Remove pricing from Trailer Spec.
+                                   The trailer cost/sell belong in the Investment Summary
+                                   + the running-total card, not in the spec sheet. */
 
                                 return (
                                     <>
