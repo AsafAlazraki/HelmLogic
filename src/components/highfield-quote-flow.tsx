@@ -2146,11 +2146,30 @@ export function HighfieldQuoteFlow({
                                                 <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Base</h3>
                                             </div>
-                                            {trailerAssignments.length > 0 && (
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-white/70">
-                                                    {trailerAssignments.length} option{trailerAssignments.length === 1 ? '' : 's'}
-                                                </span>
-                                            )}
+                                            <div className="flex items-center gap-2">
+                                                {trailerAssignments.length > 0 && (
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-white/70">
+                                                        {trailerAssignments.length} option{trailerAssignments.length === 1 ? '' : 's'}
+                                                    </span>
+                                                )}
+                                                {/* v1.16 (Kw1Y2Gww) — Un-DEFAULT a trailer from a package.
+                                                    Click 'No trailer' to clear the auto-default assignment
+                                                    and submit the quote without a trailer. Mirrors the
+                                                    'Boat-only quote' pill for motors. */}
+                                                {selectedTrailerId && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedTrailerId(null);
+                                                            setCatalogTrailerSnapshot(null);
+                                                        }}
+                                                        className="text-[9px] font-black uppercase tracking-widest text-white/90 bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-full border border-white/30 transition-colors"
+                                                        title="Clear the trailer from this quote (boat-only)"
+                                                    >
+                                                        × No trailer
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* v1.4 day-1 redesign: trailer cards come from `model.trailerAssignments`
