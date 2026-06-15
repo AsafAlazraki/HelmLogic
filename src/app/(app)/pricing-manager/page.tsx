@@ -281,7 +281,7 @@ export default function PricingManagerPage() {
                                here so motor brands have a read view inside the
                                Catalog Manager instead of "coming soon". */
                             <div className="p-6 overflow-y-auto">
-                                <MotorsTableView />
+                                <MotorsTableView organisationId={organisationId} />
                             </div>
                         ) : activeVendor.vendorType === 'Boat Brand' ? (
                             /* v1.11 follow-up — non-Highfield Boat Brand vendors

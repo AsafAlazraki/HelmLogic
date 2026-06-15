@@ -24,9 +24,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Anchor, Search, Loader2, Download, HelpCircle } from 'lucide-react';
+import { Anchor, Search, Loader2, Download, HelpCircle, FileUp } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { formatCurrency } from '@/lib/currency-utils';
 import { InlineEditCell } from '@/components/inline-edit-cell';
+import { MasterPriceFileWorkspace } from '@/components/master-price-file-workspace';
 
 interface Vendor {
     id: string;
@@ -47,7 +49,7 @@ interface MotorRow {
     [k: string]: any;
 }
 
-export function MotorsTableView() {
+export function MotorsTableView({ organisationId }: { organisationId?: string | null } = {}) {
     const firestore = useFirestore();
 
     const vendorsQuery = useMemoFirebase(
@@ -57,6 +59,11 @@ export function MotorsTableView() {
     const { data: vendors, isLoading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
 
     const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
+    /** v1.14 (Story 3.7.7) — Import sheet that wraps the existing
+     *  MasterPriceFileWorkspace so admins don't have to bounce out to the
+     *  vendor module page to import an MPF / Sam Allen / Trailer Pricing
+     *  spreadsheet. Same surface, new entry point. */
+    const [importOpen, setImportOpen] = useState(false);
 
     useEffect(() => {
         if (!selectedVendorId && vendors && vendors.length > 0) {
@@ -74,20 +81,27 @@ export function MotorsTableView() {
                             Motors Catalogue (read-view)
                         </CardTitle>
                         <CardDescription className="text-xs">
-                            Every motor in the selected brand. Read-only — edits happen in the motor module editor.
+                            Every motor in the selected brand. Click a cell to edit inline · Import opens the master-price-file workspace inline.
                         </CardDescription>
                     </div>
-                    <div className="min-w-[220px]">
-                        <Select value={selectedVendorId ?? ''} onValueChange={v => setSelectedVendorId(v)}>
-                            <SelectTrigger className="rounded-xl border-2 text-xs">
-                                <SelectValue placeholder={vendorsLoading ? 'Loading…' : 'Select a brand'} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {(vendors ?? []).map(v => (
-                                    <SelectItem key={v.id} value={v.id}>{v.name ?? v.slug ?? v.id}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <div className="flex items-center gap-2">
+                        {organisationId && selectedVendorId && (
+                            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="rounded-xl text-xs h-9">
+                                <FileUp className="h-3.5 w-3.5 mr-1" /> Import data
+                            </Button>
+                        )}
+                        <div className="min-w-[220px]">
+                            <Select value={selectedVendorId ?? ''} onValueChange={v => setSelectedVendorId(v)}>
+                                <SelectTrigger className="rounded-xl border-2 text-xs">
+                                    <SelectValue placeholder={vendorsLoading ? 'Loading…' : 'Select a brand'} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {(vendors ?? []).map(v => (
+                                        <SelectItem key={v.id} value={v.id}>{v.name ?? v.slug ?? v.id}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </div>
             </CardHeader>
@@ -98,6 +112,30 @@ export function MotorsTableView() {
                     <MotorsTableBody vendorId={selectedVendorId} />
                 )}
             </CardContent>
+
+            {/* v1.14 (Story 3.7.7) — Import data sheet. Mounts the existing
+                MasterPriceFileWorkspace inline so admins don't have to bounce
+                to the vendor module page. */}
+            <Sheet open={importOpen} onOpenChange={setImportOpen}>
+                <SheetContent className="w-full sm:max-w-4xl overflow-y-auto">
+                    <SheetHeader>
+                        <SheetTitle>Import data</SheetTitle>
+                        <SheetDescription className="text-xs">
+                            Master Price File workspace for {(vendors ?? []).find(v => v.id === selectedVendorId)?.name ?? 'this vendor'}.
+                            Same surface as the vendor module page; new entry point.
+                        </SheetDescription>
+                    </SheetHeader>
+                    <div className="py-4">
+                        {selectedVendorId && organisationId && (
+                            <MasterPriceFileWorkspace
+                                vendorId={selectedVendorId}
+                                organisationId={organisationId}
+                                isAdmin={true}
+                            />
+                        )}
+                    </div>
+                </SheetContent>
+            </Sheet>
         </Card>
     );
 }
