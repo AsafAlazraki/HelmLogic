@@ -205,9 +205,10 @@ function BuildBand({
             {/* Body */}
             <View style={{ flexDirection: 'row', gap: 12, padding: 12 }}>
                 {image ? (
-                    <Image src={image} style={{ width: 92, height: 70, objectFit: 'contain', backgroundColor: LIGHT, borderRadius: 4, flexShrink: 0 }} />
+                    /* v1.16 (Qt0VHo4M) — Larger summary band images. 92×70 → 120×90. */
+                    <Image src={image} style={{ width: 120, height: 90, objectFit: 'contain', backgroundColor: LIGHT, borderRadius: 4, flexShrink: 0 }} />
                 ) : imagePlaceholder ? (
-                    <View style={{ width: 92, height: 70, backgroundColor: LIGHT, borderRadius: 4, flexShrink: 0, alignItems: 'center', justifyContent: 'center' }}>
+                    <View style={{ width: 120, height: 90, backgroundColor: LIGHT, borderRadius: 4, flexShrink: 0, alignItems: 'center', justifyContent: 'center' }}>
                         {imagePlaceholder}
                     </View>
                 ) : null}
@@ -722,18 +723,18 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                         on the left, vendor logo on the right (the boat brand,
                         e.g. Highfield). Single right-side logo — no cascade. */}
                     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 48, paddingTop: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 80 }}>
-                        {/* Org logo */}
+                        {/* v1.16 (bvAyUQVR) — Larger org logo. Was 40px tall × 160 max-w → 56px × 220. */}
                         {organisation?.primaryLogoUrl ? (
-                            <Image src={pdfImg(organisation.primaryLogoUrl, 320)} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
+                            <Image src={pdfImg(organisation.primaryLogoUrl, 440)} style={{ height: 56, maxWidth: 220, objectFit: 'contain' }} />
                         ) : (
                             <Text style={{ fontSize: 13, fontWeight: 'bold', color: NAVY, letterSpacing: 1 }}>
                                 {(organisation?.name ?? '').toUpperCase()}
                             </Text>
                         )}
 
-                        {/* Vendor (boat brand) logo on the right */}
+                        {/* v1.16 (bvAyUQVR) — Larger vendor logo (same boost as org). */}
                         {quote.vendorLogoUrl ? (
-                            <Image src={pdfImg(quote.vendorLogoUrl, 320)} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
+                            <Image src={pdfImg(quote.vendorLogoUrl, 440)} style={{ height: 56, maxWidth: 220, objectFit: 'contain' }} />
                         ) : quote.vendorName ? (
                             <Text style={{ fontSize: 13, fontWeight: 'bold', color: NAVY, letterSpacing: 1 }}>
                                 {quote.vendorName.toUpperCase()}
