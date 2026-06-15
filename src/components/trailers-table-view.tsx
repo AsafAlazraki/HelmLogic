@@ -33,7 +33,9 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Truck, Search, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Truck, Search, Loader2, AlertCircle, ExternalLink, Download, HelpCircle } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
 import { cn } from '@/lib/utils';
 import { InlineEditCell } from '@/components/inline-edit-cell';
@@ -139,6 +141,40 @@ export function TrailersTableView({ canEdit = true }: { canEdit?: boolean } = {}
         );
     }, [rows, search]);
 
+    /** v1.14 (Story 3.8.8) — CSV export of the currently-filtered rows. */
+    const handleExport = () => {
+        const header = ['Code', 'Name', 'ATM (kg)', 'Tare (kg)', 'Wheels', 'Cost', 'Sell (ex GST)'];
+        const escape = (v: any) => {
+            if (v == null) return '';
+            const s = String(v);
+            if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
+            return s;
+        };
+        const lines = [header.join(',')];
+        for (const t of filtered) {
+            lines.push([
+                t.code ?? '',
+                t.name ?? '',
+                t.specifications?.atmKg ?? '',
+                t.specifications?.tareKg ?? '',
+                t.specifications?.wheelSize ?? '',
+                t.cost ?? '',
+                t.sellPriceExclGst ?? '',
+            ].map(escape).join(','));
+        }
+        const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const stamp = new Date().toISOString().slice(0, 10);
+        a.href = url;
+        a.download = `trailers-${stamp}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        toast({ title: `Exported ${filtered.length} trailers` });
+    };
+
     const totalsBadge = rows.length === 0 ? null : (
         <div className="flex gap-1.5">
             <Badge variant="outline" className="text-[9px] font-bold uppercase">{rows.length} trailers</Badge>
@@ -198,6 +234,9 @@ export function TrailersTableView({ canEdit = true }: { canEdit?: boolean } = {}
                         />
                     </div>
                     {totalsBadge}
+                    <Button variant="outline" size="sm" onClick={handleExport} className="rounded-xl text-xs h-9" disabled={filtered.length === 0}>
+                        <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
+                    </Button>
                 </div>
 
                 {!selectedVendorId ? (
@@ -217,20 +256,21 @@ export function TrailersTableView({ canEdit = true }: { canEdit?: boolean } = {}
                         <Loader2 className="h-4 w-4 animate-spin mr-2 inline" />Loading trailers…
                     </div>
                 ) : (
+                    <TooltipProvider>
                     <div className="overflow-x-auto border-2 rounded-xl">
                         <table className="w-full text-xs">
                             <thead className="bg-slate-50 border-b-2">
                                 <tr>
-                                    <th className="px-3 py-2 text-left font-black uppercase tracking-widest text-[9px]">Image</th>
-                                    <th className="px-3 py-2 text-left font-black uppercase tracking-widest text-[9px]">Code</th>
-                                    <th className="px-3 py-2 text-left font-black uppercase tracking-widest text-[9px]">Name</th>
-                                    <th className="px-3 py-2 text-right font-black uppercase tracking-widest text-[9px]">ATM (kg)</th>
-                                    <th className="px-3 py-2 text-right font-black uppercase tracking-widest text-[9px]">Tare (kg)</th>
-                                    <th className="px-3 py-2 text-left font-black uppercase tracking-widest text-[9px]">Wheels</th>
-                                    <th className="px-3 py-2 text-right font-black uppercase tracking-widest text-[9px]">Cost</th>
-                                    <th className="px-3 py-2 text-right font-black uppercase tracking-widest text-[9px]">Sell (ex GST)</th>
-                                    <th className="px-3 py-2 text-right font-black uppercase tracking-widest text-[9px]">Margin</th>
-                                    <th className="px-3 py-2 text-center font-black uppercase tracking-widest text-[9px]">Rego</th>
+                                    <TrailerColHeader label="Image" hint="Thumbnail from the trailer's imageUrl field. Native <img> per CLAUDE.md lesson." />
+                                    <TrailerColHeader label="Code" hint="Model code / SKU. Read-only — edits happen via the trailer module editor." />
+                                    <TrailerColHeader label="Name" hint="Display name shown on quotes. Inline-editable — click to edit." />
+                                    <TrailerColHeader label="ATM (kg)" align="right" hint="Aggregate Trailer Mass — fully loaded weight. Drives rego band selection at quote time." />
+                                    <TrailerColHeader label="Tare (kg)" align="right" hint="Empty weight. Subtract from ATM for payload capacity." />
+                                    <TrailerColHeader label="Wheels" hint="Wheel size code (e.g. '13&quot; STEEL WHEEL'). Inline-editable." />
+                                    <TrailerColHeader label="Cost" align="right" hint="Dealer cost. Drives margin calculation. Missing rows highlight in rose." />
+                                    <TrailerColHeader label="Sell (ex GST)" align="right" hint="Retail price excluding GST. GST gets added at finalize per the v1.3 lesson." />
+                                    <TrailerColHeader label="Margin" align="right" hint="(Sell − Cost) / Sell × 100. Red < 15% · amber < 25% · emerald ≥ 25%." />
+                                    <TrailerColHeader label="Rego" align="center" hint="State-specific rego is calculated at quote time from the trailer ATM. Click the link to open the Rego module." />
                                 </tr>
                             </thead>
                             <tbody>
@@ -344,8 +384,31 @@ export function TrailersTableView({ canEdit = true }: { canEdit?: boolean } = {}
                             </tbody>
                         </table>
                     </div>
+                    </TooltipProvider>
                 )}
             </CardContent>
         </Card>
+    );
+}
+
+/** v1.14 (Story 3.8.6) — column header with an optional tooltip. */
+function TrailerColHeader({ label, hint, align = 'left' }: { label: string; hint?: string; align?: 'left' | 'right' | 'center' }) {
+    const alignClass = align === 'right' ? 'text-right' : align === 'center' ? 'text-center' : 'text-left';
+    return (
+        <th className={`px-3 py-2 font-black uppercase tracking-widest text-[9px] ${alignClass}`}>
+            <span className={`inline-flex items-center gap-1 ${align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : ''}`}>
+                {label}
+                {hint && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <HelpCircle className="h-2.5 w-2.5 text-muted-foreground opacity-60 hover:opacity-100 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p className="text-xs max-w-xs">{hint}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                )}
+            </span>
+        </th>
     );
 }

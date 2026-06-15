@@ -49,7 +49,7 @@ export interface ReleaseWindow {
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 14;
+const FORWARD_RUNWAY_START = 15;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -102,6 +102,17 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // fields, 3.8.2 inline edit spec fields. NOT in v1.13: 11.3.3 NSM-Hub
     // cutover — still blocked on service-account.
     'v1.13': { shipped: true },
+    // v1.14 — Catalogue polish round. 3.8.1 + 3.8.2 retrofit (Motors Table
+    // gains inline editing on Name / HP / Shaft / Cost / Sell); 3.8.6
+    // column-header help tooltips on Motors + Trailers tables; 3.8.8
+    // per-tab CSV export on Motors + Trailers; 9.2.3 customer PDF fit-up
+    // summary line (already shipped in v1.11 code — status flipped only).
+    // NOT in v1.14: 11.3.2 + 11.3.3 NSM-Hub (still blocked); 9.2.1
+    // per-module Fit-up tab (different from v1.11 Step-5 selector — needs
+    // its own design pass); 3.7.6 org-level pricing overrides inline;
+    // 3.7.7 per-vendor imports under catalog tabs; 3.9.1 optional features
+    // drill-down editor — all on the v1.15+ queue.
+    'v1.14': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
