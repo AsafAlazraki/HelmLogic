@@ -38,10 +38,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronDown, Ship, Search, Loader2, Hash, Plus, Trash2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, Ship, Search, Loader2, Hash, Plus, Trash2, Pencil } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
 import { cn } from '@/lib/utils';
 import { InlineEditCell } from '@/components/inline-edit-cell';
+import { FeatureRichTextEditor } from '@/components/feature-rich-text-editor';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Vendor {
     id: string;
@@ -64,6 +66,9 @@ interface Model {
     rangeName?: string;
     cost?: number | null;
     sellPriceExclGst?: number | null;
+    coverImageUrl?: string | null;
+    marketingTagline?: string | null;
+    marketingDescription?: string | null;
 }
 
 interface Variant {
@@ -392,6 +397,10 @@ function VariantRows({ vendorId, model }: { vendorId: string; model: Model }) {
                         </div>
                     )}
 
+                    {/* v1.16 (Story 3.8.3) — Inline edit cover image (paste URL).
+                        Drag-drop affordance ships in v1.17 polish. */}
+                    <CoverImagePanel vendorId={vendorId} model={model} />
+
                     {/* v1.14 (Story 3.9.1) — Optional features drill-down panel. Lives
                         right under the variants when the model row is expanded. */}
                     <OptionalFeaturesPanel vendorId={vendorId} model={model} />
@@ -525,6 +534,8 @@ function MarketingCopyPanel({ vendorId, model }: { vendorId: string; model: Mode
     const [loadedDescription, setLoadedDescription] = useState('');
     const [loaded, setLoaded] = useState(false);
     const [saving, setSaving] = useState(false);
+    /** v1.16 (Story 3.8.4) — TipTap popover for the description. */
+    const [richEditorOpen, setRichEditorOpen] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -608,15 +619,120 @@ function MarketingCopyPanel({ vendorId, model }: { vendorId: string; model: Mode
                     />
                 </div>
                 <div>
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Description</label>
+                    <div className="flex items-center justify-between">
+                        <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Description</label>
+                        {/* v1.16 (Story 3.8.4) — TipTap popover for rich editing. */}
+                        <Button size="sm" variant="ghost" onClick={() => setRichEditorOpen(true)} className="rounded-lg text-[9px] h-6 px-2 text-primary">
+                            <Pencil className="h-2.5 w-2.5 mr-1" /> Rich editor
+                        </Button>
+                    </div>
                     <Textarea
                         value={description}
                         onChange={e => setDescription(e.target.value)}
-                        placeholder="Customer-facing description. Appears on the proposal PDF cover and the model detail page."
+                        placeholder="Customer-facing description. Click 'Rich editor' for formatting + inline images."
                         className="rounded-lg border-2 text-xs mt-1"
                         rows={3}
                     />
                 </div>
+            </div>
+
+            {/* v1.16 (Story 3.8.4) — TipTap popover. Reuses FeatureRichTextEditor
+                (the same component the content-block editor uses) so heading /
+                bold / italic / lists / inline images all work. */}
+            <Dialog open={richEditorOpen} onOpenChange={setRichEditorOpen}>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Marketing description — {model.name ?? model.modelCode ?? 'Model'}</DialogTitle>
+                        <DialogDescription className="text-xs">
+                            Rich-text editor. Headings, bold, italic, lists, links, inline images. Saves on close.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-2">
+                        <FeatureRichTextEditor
+                            value={description}
+                            onChange={setDescription}
+                            placeholder="Customer-facing marketing description. Used on the proposal PDF cover."
+                            imageStoragePathPrefix={`models/${model.id}/marketing-inline-images`}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => { setDescription(loadedDescription); setRichEditorOpen(false); }} className="rounded-xl">Discard</Button>
+                        <Button onClick={async () => { await save(); setRichEditorOpen(false); }} className="rounded-xl">Save + close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+}
+
+/** v1.16 (Story 3.8.3) — Inline edit cover image. Paste URL today; the
+ *  drag-drop affordance ships in v1.17 polish (needs a Storage upload
+ *  pipeline + the per-model storage path convention).
+ */
+function CoverImagePanel({ vendorId, model }: { vendorId: string; model: Model }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [draft, setDraft] = useState(model.coverImageUrl ?? '');
+    const [loaded, setLoaded] = useState(false);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                if (!model.rangeId) return;
+                const snap = await getDocs(collection(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models'));
+                snap.forEach(d => {
+                    if (d.id === model.id && !cancelled) {
+                        const data = d.data() as any;
+                        setDraft(String(data?.coverImageUrl ?? ''));
+                        setLoaded(true);
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore, vendorId, model.id, model.rangeId]);
+
+    const save = async (next: string) => {
+        if (!model.rangeId) return;
+        setSaving(true);
+        try {
+            const ref = doc(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models', model.id);
+            await updateDoc(ref, { coverImageUrl: next.trim() || null, updatedAt: serverTimestamp() });
+            toast({ title: 'Cover image saved' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (!loaded) return null;
+
+    return (
+        <div className="rounded-lg border-2 border-dashed bg-white p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">COVER IMAGE</p>
+                {saving && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+            </div>
+            <div className="flex items-center gap-3">
+                {draft.trim() ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={draft.trim()} alt={model.name ?? ''} className="h-16 w-24 object-contain bg-slate-50 rounded border" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                ) : (
+                    <div className="h-16 w-24 rounded border-2 border-dashed bg-slate-50 flex items-center justify-center"><Ship className="h-4 w-4 text-slate-400" /></div>
+                )}
+                <Input
+                    value={draft}
+                    onChange={e => setDraft(e.target.value)}
+                    onBlur={() => { if (draft !== (model.coverImageUrl ?? '')) save(draft); }}
+                    placeholder="https://… (paste a URL — drag-drop coming v1.17)"
+                    className="rounded-lg border-2 h-9 text-xs flex-1"
+                    type="url"
+                />
             </div>
         </div>
     );
