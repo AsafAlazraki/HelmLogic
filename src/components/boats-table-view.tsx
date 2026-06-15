@@ -413,6 +413,9 @@ function VariantRows({ vendorId, model }: { vendorId: string; model: Model }) {
                     {/* v1.16 (Stories 3.9.2 + 3.9.3) — Motor compatibility window +
                         Dealer-fit compat editor inline. */}
                     <CompatibilityPanel vendorId={vendorId} model={model} />
+
+                    {/* v1.16 (Story 3.4.3) — Photo Curation UI. */}
+                    <PhotoCurationPanel vendorId={vendorId} model={model} />
                 </div>
             </td>
         </tr>
@@ -881,6 +884,104 @@ function CompatibilityPanel({ vendorId, model }: { vendorId: string; model: Mode
                     className="rounded-lg border-2 h-8 text-xs mt-1"
                 />
                 <p className="text-[9px] text-muted-foreground mt-1">When set, the dealer-fit picker on Step 5 only shows categories in this list for this model.</p>
+            </div>
+        </div>
+    );
+}
+
+/** v1.16 (Story 3.4.3) — Photo Curation UI. Inline list editor for
+ *  `model.galleryImageUrls` — the array of additional photos shown on
+ *  the carousel slides during quote build (alongside the cover image,
+ *  variant image, motor + trailer photos).
+ */
+function PhotoCurationPanel({ vendorId, model }: { vendorId: string; model: Model }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [urls, setUrls] = useState<string[]>([]);
+    const [loaded, setLoaded] = useState(false);
+    const [pasteValue, setPasteValue] = useState('');
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                if (!model.rangeId) return;
+                const snap = await getDocs(collection(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models'));
+                snap.forEach(d => {
+                    if (d.id === model.id && !cancelled) {
+                        const data = d.data() as any;
+                        setUrls(Array.isArray(data?.galleryImageUrls) ? data.galleryImageUrls : []);
+                        setLoaded(true);
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore, vendorId, model.id, model.rangeId]);
+
+    const writeBack = async (next: string[]) => {
+        if (!model.rangeId) return;
+        try {
+            const ref = doc(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models', model.id);
+            await updateDoc(ref, { galleryImageUrls: next, updatedAt: serverTimestamp() });
+            setUrls(next);
+            toast({ title: 'Gallery saved' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
+        }
+    };
+
+    const add = () => {
+        const trimmed = pasteValue.trim();
+        if (!trimmed) return;
+        writeBack([...urls, trimmed]);
+        setPasteValue('');
+    };
+
+    const remove = (idx: number) => writeBack(urls.filter((_, i) => i !== idx));
+
+    const move = (idx: number, dir: -1 | 1) => {
+        const next = idx + dir;
+        if (next < 0 || next >= urls.length) return;
+        const arr = [...urls];
+        [arr[idx], arr[next]] = [arr[next], arr[idx]];
+        writeBack(arr);
+    };
+
+    if (!loaded) return null;
+
+    return (
+        <div className="rounded-lg border-2 border-dashed bg-white p-3 space-y-2">
+            <div className="flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">PHOTO GALLERY · {urls.length}</p>
+            </div>
+            <p className="text-[9px] text-muted-foreground italic">Additional photos for the Step 1 carousel during quote build. Use cover + variant images for the main hero — these are supplementary.</p>
+            <div className="space-y-1.5">
+                {urls.map((u, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-1.5 rounded bg-slate-50 border">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={u} alt={`gallery ${idx + 1}`} className="h-10 w-14 object-contain bg-white rounded border" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                        <code className="flex-1 text-[10px] truncate text-slate-600">{u}</code>
+                        <Button size="icon" variant="ghost" onClick={() => move(idx, -1)} disabled={idx === 0} className="h-6 w-6"><ChevronDown className="h-3 w-3 rotate-180" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => move(idx, 1)} disabled={idx === urls.length - 1} className="h-6 w-6"><ChevronDown className="h-3 w-3" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => remove(idx)} className="h-6 w-6 text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                    </div>
+                ))}
+            </div>
+            <div className="flex items-center gap-2">
+                <Input
+                    value={pasteValue}
+                    onChange={e => setPasteValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+                    placeholder="Paste an image URL + Enter (or click Add)"
+                    className="rounded-lg border-2 h-8 text-xs flex-1"
+                    type="url"
+                />
+                <Button size="sm" onClick={add} className="rounded-lg text-[10px] h-8" disabled={!pasteValue.trim()}>
+                    <Plus className="h-3 w-3 mr-1" /> Add
+                </Button>
             </div>
         </div>
     );
