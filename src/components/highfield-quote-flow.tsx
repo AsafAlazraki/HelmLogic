@@ -2377,9 +2377,20 @@ export function HighfieldQuoteFlow({
                                     {dealerFitLoading ? <div className="flex justify-center py-16"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div> : groupedDealerFit.length > 0 ? (
                                         groupedDealerFit.map(([cat, opts]) => (
                                             <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 scroll-mt-10">
-                                                <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
-                                                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                                {/* v1.16 (VyZ4AonV) — restructured dealer-fit heading: category
+                                                    name + option count + a gold accent rule + a quick subtitle
+                                                    distinguishing accessory categories from packages. */}
+                                                <div className="bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
+                                                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                                        </div>
+                                                        <span className="text-[8px] font-black uppercase tracking-widest text-white/70">
+                                                            {opts.length} option{opts.length === 1 ? '' : 's'}
+                                                            {(opts as any[]).some((o: any) => o.type === 'package') ? ' · packages incl.' : ''}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                     {opts.map((sel: any) => {
