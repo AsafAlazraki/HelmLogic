@@ -1547,7 +1547,12 @@ export function HighfieldQuoteFlow({
                                         <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">SAVE ${promotionDiscount.toLocaleString()}</span>
                                     </div>
                                 )}
-                                <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{finalPrice.toLocaleString()}</span></div>
+                                <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{Math.round(finalPrice).toLocaleString()}</span></div>
+                                {/* v1.16 (E7fCW6Oh + mqXYkQbT) — Inc-GST sub-line. Rounded up to
+                                    whole dollars per the v1.3 lesson. */}
+                                <div className="text-[10px] font-black uppercase text-emerald-700 tracking-[0.2em] mt-1">
+                                    ${Math.ceil(finalPrice * 1.1).toLocaleString()} <span className="text-slate-500">inc GST</span>
+                                </div>
                             </div>
                         </div>
                     </div>

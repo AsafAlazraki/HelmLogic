@@ -17,9 +17,9 @@ Live status board. Updated as each story lands on `claude/v1.12-v1.13-push`.
 
 | Ticket | Title | Status |
 |---|---|---|
-| 3.3.1 | Crowdsourced Suggestions with Audit | ❌ |
-| 3.4.2 | Marketing Copy Editor UI | ❌ |
-| 9.3.1 | Rule-based fit-up tier auto-classification (full engine) | ❌ |
+| 3.3.1 | Crowdsourced Suggestions with Audit | ✅ |
+| 3.4.2 | Marketing Copy Editor UI | ✅ |
+| 9.3.1 | Rule-based fit-up tier auto-classification (full engine) | ✅ |
 
 ## v1.16 (34 stories)
 
