@@ -8,8 +8,8 @@ Live status board. Updated as each story lands on `claude/v1.12-v1.13-push`.
 
 | Ticket | Title | Status |
 |---|---|---|
-| 3.7.6 | Org-level pricing overrides inline | ❌ |
-| 3.7.7 | Migrate per-vendor imports under catalog tabs | ❌ |
+| 3.7.6 | Org-level pricing overrides inline | ✅ |
+| 3.7.7 | Migrate per-vendor imports under catalog tabs | ✅ |
 | 3.9.1 | Optional features editor (drill-down panel per model) | ❌ |
 | 9.2.1 | Fit-up tab on each module page | ❌ |
 

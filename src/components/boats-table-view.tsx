@@ -28,17 +28,19 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronDown, Ship, Search, Loader2, Hash } from 'lucide-react';
+import { ChevronRight, ChevronDown, Ship, Search, Loader2, Hash, Plus, Trash2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
 import { cn } from '@/lib/utils';
+import { InlineEditCell } from '@/components/inline-edit-cell';
 
 interface Vendor {
     id: string;
@@ -353,7 +355,7 @@ function VariantRows({ vendorId, model }: { vendorId: string; model: Model }) {
     return (
         <tr className="bg-slate-50/50">
             <td colSpan={6} className="px-0 py-0">
-                <div className="border-l-4 border-primary/30 px-6 py-3">
+                <div className="border-l-4 border-primary/30 px-6 py-3 space-y-4">
                     {loading ? (
                         <div className="flex items-center text-muted-foreground text-xs">
                             <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
@@ -388,8 +390,114 @@ function VariantRows({ vendorId, model }: { vendorId: string; model: Model }) {
                             ))}
                         </div>
                     )}
+
+                    {/* v1.14 (Story 3.9.1) — Optional features drill-down panel. Lives
+                        right under the variants when the model row is expanded. */}
+                    <OptionalFeaturesPanel vendorId={vendorId} model={model} />
                 </div>
             </td>
         </tr>
+    );
+}
+
+/** v1.14 (Story 3.9.1) — Optional features inline drill-down. Reads
+ *  optionalFeatures off the model doc, renders an editable mini-table with
+ *  inline-edit cells for name + category + sellPriceExclGst + isStandard.
+ *  Writes the whole array back on each change (so the existing model-editor
+ *  schema doesn't break — optionalFeatures is an embedded array).
+ */
+function OptionalFeaturesPanel({ vendorId, model }: { vendorId: string; model: Model }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [features, setFeatures] = useState<any[]>([]);
+    const [loaded, setLoaded] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                if (!model.rangeId) return;
+                const snap = await getDocs(collection(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models'));
+                snap.forEach(d => {
+                    if (d.id === model.id && !cancelled) {
+                        const data = d.data() as any;
+                        setFeatures(Array.isArray(data?.optionalFeatures) ? data.optionalFeatures : []);
+                        setLoaded(true);
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore, vendorId, model.id, model.rangeId]);
+
+    const writeBack = async (next: any[]) => {
+        if (!model.rangeId) return;
+        try {
+            const ref = doc(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models', model.id);
+            await updateDoc(ref, { optionalFeatures: next, updatedAt: serverTimestamp() });
+            setFeatures(next);
+            toast({ title: 'Optional feature saved' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
+        }
+    };
+
+    const patchAt = (idx: number, field: string, value: any) => {
+        const next = features.map((f, i) => i === idx ? { ...f, [field]: value } : f);
+        return writeBack(next);
+    };
+
+    const addOne = () => {
+        const next = [...features, { id: `feat-${Date.now()}`, name: 'New optional feature', category: '', sellPriceExclGst: 0, isStandard: false }];
+        return writeBack(next);
+    };
+
+    const removeAt = (idx: number) => {
+        const next = features.filter((_, i) => i !== idx);
+        return writeBack(next);
+    };
+
+    if (!loaded) return null;
+
+    return (
+        <div className="rounded-lg border-2 border-dashed bg-white p-3 space-y-2">
+            <div className="flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+                    {features.length} optional feature{features.length === 1 ? '' : 's'}
+                </p>
+                <Button size="sm" variant="outline" onClick={addOne} className="rounded-lg text-[10px] h-7">
+                    <Plus className="h-3 w-3 mr-1" /> Add
+                </Button>
+            </div>
+            {features.length === 0 ? (
+                <p className="text-[10px] text-muted-foreground italic">No optional features on this model.</p>
+            ) : (
+                <div className="space-y-1">
+                    {features.map((f, idx) => (
+                        <div key={f.id ?? idx} className="grid grid-cols-[1fr_140px_110px_70px_28px] items-center gap-2 p-1.5 rounded bg-slate-50 border text-[11px]">
+                            <InlineEditCell type="text" value={f.name} placeholder="(no name)" onSave={(v) => patchAt(idx, 'name', v)} />
+                            <InlineEditCell type="text" value={f.category} placeholder="(no category)" onSave={(v) => patchAt(idx, 'category', v)} />
+                            <InlineEditCell type="currency" value={f.sellPriceExclGst} placeholder="$0" onSave={(v) => patchAt(idx, 'sellPriceExclGst', v ?? 0)} />
+                            <button
+                                type="button"
+                                onClick={() => patchAt(idx, 'isStandard', !f.isStandard)}
+                                className={cn(
+                                    'rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider',
+                                    f.isStandard ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-slate-100 text-slate-600 border border-slate-200',
+                                )}
+                                title="Toggle whether this is a standard inclusion on this model"
+                            >
+                                {f.isStandard ? 'STD' : 'OPT'}
+                            </button>
+                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => removeAt(idx)}>
+                                <Trash2 className="h-3 w-3" />
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
     );
 }
