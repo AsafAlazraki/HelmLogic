@@ -46,7 +46,8 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Plus, Pencil, Trash2, Wrench, Loader2, Upload, Download, Percent, ArrowUpRight, Package } from 'lucide-react';
+import { Plus, Pencil, Trash2, Wrench, Loader2, Upload, Download, Percent, ArrowUpRight, Package, Filter } from 'lucide-react';
+import { FitUpClassificationRulesManager } from '@/components/fit-up-classification-rules-manager';
 import { useToast } from '@/hooks/use-toast';
 
 const TIERS = ['simple', 'medium', 'complex'] as const;
@@ -432,7 +433,13 @@ export function FitUpCatalogManager({ organisationId }: FitUpCatalogManagerProps
                 <TabsTrigger value="packages" className="rounded-lg text-xs gap-1.5">
                     <Package className="h-3 w-3" /> Packages
                 </TabsTrigger>
+                <TabsTrigger value="rules" className="rounded-lg text-xs gap-1.5">
+                    <Filter className="h-3 w-3" /> Rules
+                </TabsTrigger>
             </TabsList>
+            <TabsContent value="rules" className="m-0">
+                <FitUpClassificationRulesManager organisationId={organisationId} />
+            </TabsContent>
             <TabsContent value="packages" className="m-0">
                 <FitUpPackagesManager organisationId={organisationId} items={items ?? []} />
             </TabsContent>
