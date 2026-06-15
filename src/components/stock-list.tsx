@@ -488,7 +488,7 @@ export function StockList({
                                                     {item.material === 'PVC' ? (
                                                         <Badge className="bg-red-500 text-white border-transparent text-[10px] px-2 py-0">PVC</Badge>
                                                     ) : item.material === 'HYP' ? (
-                                                        <Badge className="bg-slate-200 text-slate-600 border-transparent text-[10px] px-2 py-0">HYP</Badge>
+                                                        <Badge className="bg-slate-200 text-slate-600 border-transparent text-[10px] px-2 py-0">Hypalon</Badge>
                                                     ) : (
                                                         <span>{item.material || '—'}</span>
                                                     )}

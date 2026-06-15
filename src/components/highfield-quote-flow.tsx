@@ -1575,7 +1575,8 @@ export function HighfieldQuoteFlow({
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                             {availableMaterials.map((mat) => (
                                                 <button key={mat} onClick={() => handleMaterialChange(mat as any)} className={cn("group flex flex-col items-center justify-center p-1 rounded-[2rem] transition-all bg-white shadow-xl border-2 border-transparent h-32", selectedMaterial === mat ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
-                                                    <span className={cn("text-xs font-black uppercase tracking-widest transition-colors", selectedMaterial === mat ? "text-primary" : "text-slate-600")}>{mat}</span>
+                                                    {/* v1.16 (lXRbKtH8) — display label "Hypalon" instead of code "HYP" */}
+                                                    <span className={cn("text-xs font-black uppercase tracking-widest transition-colors", selectedMaterial === mat ? "text-primary" : "text-slate-600")}>{mat === 'HYP' ? 'Hypalon' : mat}</span>
                                                 </button>
                                             ))}
                                         </div>
