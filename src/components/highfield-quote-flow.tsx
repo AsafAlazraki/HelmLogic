@@ -1485,17 +1485,29 @@ export function HighfieldQuoteFlow({
 
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
-            <div className="sticky top-0 z-[100] px-4 sm:px-12 h-16 sm:h-20 bg-card border-b border-slate-100 shrink-0 flex items-center">
-                <div className="w-full flex items-center justify-between">
-                    <div className="flex-1 flex items-center justify-between mr-4 sm:mr-24 min-w-0 overflow-x-auto">
-                        {STEPS.map((step) => (
-                            <div key={step.id} className="flex items-center gap-2">
-                                <div className={cn("h-7 w-7 rounded-full flex items-center justify-center text-[9px] font-black transition-all border-2", currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-md" : currentStep > step.id ? "bg-green-500 border-green-500 text-white" : "bg-muted border-transparent text-muted-foreground")}>{currentStep > step.id ? <CheckCircle2 className="h-3.5 w-3.5" /> : step.id}</div>
-                                <span className={cn("text-[8px] font-black uppercase tracking-[0.2em] hidden md:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-muted-foreground")}>{step.label}</span>
-                            </div>
-                        ))}
+            {/* v1.16 (pcDkqAXa) — Improved heading layout. Added the current
+                model name + step label above the stepper pills so the
+                operator always knows what they're working on. Stepper now
+                has a thin connector line between pills to read as a single
+                progression rather than 6 floating dots. */}
+            <div className="sticky top-0 z-[100] px-4 sm:px-12 py-2 sm:py-3 bg-card border-b border-slate-100 shrink-0">
+                <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-baseline gap-3 min-w-0">
+                        <h2 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] text-primary truncate">{model?.name ?? 'Build'}</h2>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground hidden sm:inline">Step {currentStep} of {STEPS.length}</span>
+                        <span className="text-[9px] font-bold text-slate-500 hidden sm:inline truncate">· {STEPS.find(s => s.id === currentStep)?.label ?? ''}</span>
                     </div>
-                    <button type="button" className="font-black text-destructive uppercase tracking-widest text-[9px] hover:opacity-70 transition-opacity" onClick={() => router.push(`/modules/${module.slug || module.id}`)}>Exit Build</button>
+                    <button type="button" className="font-black text-destructive uppercase tracking-widest text-[9px] hover:opacity-70 transition-opacity shrink-0" onClick={() => router.push(`/modules/${module.slug || module.id}`)}>Exit Build</button>
+                </div>
+                <div className="flex items-center justify-between min-w-0 overflow-x-auto relative">
+                    <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-muted -translate-y-1/2 z-0" />
+                    <div className="absolute top-1/2 left-0 h-0.5 bg-green-500 -translate-y-1/2 z-0 transition-all" style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }} />
+                    {STEPS.map((step) => (
+                        <div key={step.id} className="flex items-center gap-1.5 z-10 relative bg-card pr-1">
+                            <div className={cn("h-7 w-7 rounded-full flex items-center justify-center text-[9px] font-black transition-all border-2", currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-md" : currentStep > step.id ? "bg-green-500 border-green-500 text-white" : "bg-muted border-transparent text-muted-foreground")}>{currentStep > step.id ? <CheckCircle2 className="h-3.5 w-3.5" /> : step.id}</div>
+                            <span className={cn("text-[8px] font-black uppercase tracking-[0.2em] hidden md:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-muted-foreground")}>{step.label}</span>
+                        </div>
+                    ))}
                 </div>
             </div>
 
