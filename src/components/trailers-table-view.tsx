@@ -92,7 +92,7 @@ function marginPct(cost: number | undefined, sell: number | undefined): number |
     return ((sell - cost) / sell) * 100;
 }
 
-export function TrailersTableView({ canEdit = true }: { canEdit?: boolean } = {}) {
+export function TrailersTableView({ canEdit = true, organisationId }: { canEdit?: boolean; organisationId?: string | null }) {
     const firestore = useFirestore();
     const { toast } = useToast();
 
@@ -105,22 +105,83 @@ export function TrailersTableView({ canEdit = true }: { canEdit?: boolean } = {}
     const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
     const [search, setSearch] = useState('');
     const [rows, setRows] = useState<TrailerRow[]>([]);
+    /** v1.14 (Story 3.7.6) — Org override mode. When ON, inline edits write
+     *  to `organisations/{orgId}/trailerOverrides/{trailerId}` instead of the
+     *  vendor catalogue. Effective value used in the table prefers an
+     *  override when present so the operator sees the org's view of the world.
+     *  Defaults to OFF so v1.13 behaviour is unchanged for orgs that don't
+     *  need overrides. */
+    const [orgOverrideMode, setOrgOverrideMode] = useState(false);
 
-    /** v1.13 (3.8.1 + 3.8.2) — inline-edit handler. Writes straight to the
-     *  vendor trailer doc; toasts on success/failure. Caller decides which
-     *  fields are editable (currently pricing + spec primitives). */
+    /** Org-level trailer overrides. Each doc is keyed by trailerId and carries
+     *  a partial of the trailer fields. Lazy-loaded only when organisationId
+     *  is present. */
+    const overridesQuery = useMemoFirebase(
+        () => organisationId ? collection(firestore, 'organisations', organisationId, 'trailerOverrides') : null,
+        [firestore, organisationId],
+    );
+    const { data: overrides } = useCollection<any>(overridesQuery);
+    const overrideMap = useMemo(() => {
+        const m = new Map<string, any>();
+        (overrides ?? []).forEach((o: any) => m.set(o.id, o));
+        return m;
+    }, [overrides]);
+
+    /** v1.13 (3.8.1 + 3.8.2) + v1.14 (3.7.6) — inline-edit handler. Routes
+     *  to the vendor catalogue OR the per-org overrides collection depending
+     *  on `orgOverrideMode`. Toasts on success/failure. */
     const patchTrailer = async (trailerId: string, field: string, next: any) => {
         if (!selectedVendorId) throw new Error('no vendor selected');
         try {
-            await updateDoc(
-                doc(firestore, 'data-warehouse', selectedVendorId, 'trailers', trailerId),
-                { [field]: next, updatedAt: serverTimestamp() },
-            );
-            toast({ title: 'Saved' });
+            if (orgOverrideMode && organisationId) {
+                const overridePath = doc(firestore, 'organisations', organisationId, 'trailerOverrides', trailerId);
+                const cur = overrideMap.get(trailerId) ?? {};
+                let patch: any = {};
+                if (field.startsWith('specifications.')) {
+                    const sub = field.split('.')[1];
+                    patch.specifications = { ...(cur.specifications ?? {}), [sub]: next };
+                } else {
+                    patch[field] = next;
+                }
+                patch.vendorId = selectedVendorId;
+                patch.trailerId = trailerId;
+                patch.updatedAt = serverTimestamp();
+                const { setDoc } = await import('firebase/firestore');
+                await setDoc(overridePath, patch, { merge: true });
+                toast({ title: 'Override saved' });
+            } else {
+                await updateDoc(
+                    doc(firestore, 'data-warehouse', selectedVendorId, 'trailers', trailerId),
+                    { [field]: next, updatedAt: serverTimestamp() },
+                );
+                toast({ title: 'Saved' });
+            }
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
             throw err;
         }
+    };
+
+    /** Resolve the effective value for a field — override wins when set. */
+    const resolveField = (t: TrailerRow, field: string): any => {
+        const ov = overrideMap.get(t.id);
+        if (!ov) return (t as any)[field];
+        if (field.startsWith('specifications.')) {
+            const sub = field.split('.')[1];
+            if (ov.specifications && ov.specifications[sub] !== undefined) return ov.specifications[sub];
+            return (t.specifications as any)?.[sub];
+        }
+        return ov[field] !== undefined ? ov[field] : (t as any)[field];
+    };
+
+    const hasOverride = (t: TrailerRow, field: string): boolean => {
+        const ov = overrideMap.get(t.id);
+        if (!ov) return false;
+        if (field.startsWith('specifications.')) {
+            const sub = field.split('.')[1];
+            return ov.specifications && ov.specifications[sub] !== undefined;
+        }
+        return ov[field] !== undefined;
     };
 
     useEffect(() => {
@@ -234,6 +295,17 @@ export function TrailersTableView({ canEdit = true }: { canEdit?: boolean } = {}
                         />
                     </div>
                     {totalsBadge}
+                    {organisationId && (
+                        <Button
+                            variant={orgOverrideMode ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setOrgOverrideMode(v => !v)}
+                            className="rounded-xl text-xs h-9"
+                            title={orgOverrideMode ? 'Inline edits write to org overrides (per-org). Click to switch back to vendor mode.' : 'Inline edits write to the vendor catalogue. Click to switch to org-override mode.'}
+                        >
+                            {orgOverrideMode ? '🏢 Org overrides' : '🌐 Vendor data'} ({overrideMap.size})
+                        </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={handleExport} className="rounded-xl text-xs h-9" disabled={filtered.length === 0}>
                         <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
                     </Button>
@@ -275,70 +347,60 @@ export function TrailersTableView({ canEdit = true }: { canEdit?: boolean } = {}
                             </thead>
                             <tbody>
                                 {filtered.map(t => {
-                                    const cost = t.cost;
-                                    const sell = t.sellPriceExclGst;
+                                    const cost = resolveField(t, 'cost') as number | undefined;
+                                    const sell = resolveField(t, 'sellPriceExclGst') as number | undefined;
                                     const mp = marginPct(cost, sell);
-                                    const missing = !cost || !sell;
+                                    /** v1.14 (3.7.6) — tiny OVR badge when this row has any org override applied. */
+                                    const rowHasOverride = overrideMap.has(t.id);
                                     return (
-                                        <tr key={t.id} className={cn('border-b last:border-b-0 hover:bg-slate-50', !t.isActive && 'opacity-60')}>
+                                        <tr key={t.id} className={cn('border-b last:border-b-0 hover:bg-slate-50', !t.isActive && 'opacity-60', rowHasOverride && 'bg-violet-50/30')}>
                                             <td className="px-3 py-2">
                                                 {t.imageUrl
                                                     /* eslint-disable-next-line @next/next/no-img-element */
                                                     ? <img src={t.imageUrl} alt={t.name ?? t.code ?? ''} className="h-10 w-14 object-contain bg-white rounded border" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
                                                     : <div className="h-10 w-14 rounded border bg-slate-100 flex items-center justify-center"><Truck className="h-3 w-3 text-slate-400" /></div>}
                                             </td>
-                                            <td className="px-3 py-2 font-mono text-[10px]">{t.code ?? '—'}</td>
+                                            <td className="px-3 py-2 font-mono text-[10px]">
+                                                {t.code ?? '—'}
+                                                {rowHasOverride && <Badge variant="outline" className="ml-1 text-[7px] font-black uppercase bg-violet-50 text-violet-700 border-violet-300">OVR</Badge>}
+                                            </td>
                                             <td className="px-3 py-2 font-semibold">
                                                 <InlineEditCell
                                                     type="text"
-                                                    value={t.name}
+                                                    value={resolveField(t, 'name') as string}
                                                     disabled={!canEdit}
                                                     onSave={(v) => patchTrailer(t.id, 'name', v)}
                                                 />
+                                                {hasOverride(t, 'name') && <span className="ml-1 text-[8px] font-black text-violet-700">·OVR</span>}
                                             </td>
                                             <td className="px-3 py-2 text-right tabular-nums">
                                                 <InlineEditCell
                                                     type="number"
-                                                    value={t.specifications?.atmKg}
+                                                    value={resolveField(t, 'specifications.atmKg') as number | undefined}
                                                     disabled={!canEdit}
                                                     validate={(n) => (n != null && (typeof n !== 'number' || n < 0) ? 'Positive number' : null)}
-                                                    onSave={(v) => patchTrailer(t.id, 'specifications.atmKg' as any, v).catch(async () => {
-                                                        // Nested path — fall back to a merged write
-                                                        await updateDoc(
-                                                            doc(firestore, 'data-warehouse', selectedVendorId!, 'trailers', t.id),
-                                                            { specifications: { ...(t.specifications ?? {}), atmKg: v }, updatedAt: serverTimestamp() },
-                                                        );
-                                                    })}
+                                                    onSave={(v) => patchTrailer(t.id, 'specifications.atmKg', v)}
                                                 />
+                                                {hasOverride(t, 'specifications.atmKg') && <span className="ml-1 text-[8px] font-black text-violet-700">·OVR</span>}
                                             </td>
                                             <td className="px-3 py-2 text-right tabular-nums">
                                                 <InlineEditCell
                                                     type="number"
-                                                    value={t.specifications?.tareKg}
+                                                    value={resolveField(t, 'specifications.tareKg') as number | undefined}
                                                     disabled={!canEdit}
                                                     validate={(n) => (n != null && (typeof n !== 'number' || n < 0) ? 'Positive number' : null)}
-                                                    onSave={async (v) => {
-                                                        await updateDoc(
-                                                            doc(firestore, 'data-warehouse', selectedVendorId!, 'trailers', t.id),
-                                                            { specifications: { ...(t.specifications ?? {}), tareKg: v }, updatedAt: serverTimestamp() },
-                                                        );
-                                                        toast({ title: 'Saved' });
-                                                    }}
+                                                    onSave={(v) => patchTrailer(t.id, 'specifications.tareKg', v)}
                                                 />
+                                                {hasOverride(t, 'specifications.tareKg') && <span className="ml-1 text-[8px] font-black text-violet-700">·OVR</span>}
                                             </td>
                                             <td className="px-3 py-2">
                                                 <InlineEditCell
                                                     type="text"
-                                                    value={t.specifications?.wheelSize}
+                                                    value={resolveField(t, 'specifications.wheelSize') as string}
                                                     disabled={!canEdit}
-                                                    onSave={async (v) => {
-                                                        await updateDoc(
-                                                            doc(firestore, 'data-warehouse', selectedVendorId!, 'trailers', t.id),
-                                                            { specifications: { ...(t.specifications ?? {}), wheelSize: v }, updatedAt: serverTimestamp() },
-                                                        );
-                                                        toast({ title: 'Saved' });
-                                                    }}
+                                                    onSave={(v) => patchTrailer(t.id, 'specifications.wheelSize', v)}
                                                 />
+                                                {hasOverride(t, 'specifications.wheelSize') && <span className="ml-1 text-[8px] font-black text-violet-700">·OVR</span>}
                                             </td>
                                             <td className={cn('px-3 py-2 text-right tabular-nums', !cost && 'bg-rose-50 text-rose-700 font-bold')}>
                                                 <InlineEditCell
@@ -349,6 +411,7 @@ export function TrailersTableView({ canEdit = true }: { canEdit?: boolean } = {}
                                                     validate={(n) => (n != null && (typeof n !== 'number' || n < 0) ? 'Positive number' : null)}
                                                     onSave={(v) => patchTrailer(t.id, 'cost', v)}
                                                 />
+                                                {hasOverride(t, 'cost') && <span className="ml-1 text-[8px] font-black text-violet-700">·OVR</span>}
                                             </td>
                                             <td className={cn('px-3 py-2 text-right tabular-nums', !sell && 'bg-rose-50 text-rose-700 font-bold')}>
                                                 <InlineEditCell
@@ -359,6 +422,7 @@ export function TrailersTableView({ canEdit = true }: { canEdit?: boolean } = {}
                                                     validate={(n) => (n != null && (typeof n !== 'number' || n < 0) ? 'Positive number' : null)}
                                                     onSave={(v) => patchTrailer(t.id, 'sellPriceExclGst', v)}
                                                 />
+                                                {hasOverride(t, 'sellPriceExclGst') && <span className="ml-1 text-[8px] font-black text-violet-700">·OVR</span>}
                                             </td>
                                             <td className="px-3 py-2 text-right tabular-nums">
                                                 {mp == null

@@ -294,7 +294,7 @@ export default function PricingManagerPage() {
                                Trailers Table read view (pricing + ATM/Tare + margin
                                + missing-pricing highlighter + rego link). */
                             <div className="p-6 overflow-y-auto">
-                                <TrailersTableView />
+                                <TrailersTableView organisationId={organisationId} />
                             </div>
                         ) : (
                             <div className="flex flex-col h-full overflow-hidden">
