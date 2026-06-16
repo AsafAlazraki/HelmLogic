@@ -54,7 +54,6 @@ import {
     Box,
     Settings,
     Globe,
-    X
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
