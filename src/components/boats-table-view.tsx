@@ -28,17 +28,22 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronDown, Ship, Search, Loader2, Hash } from 'lucide-react';
+import { ChevronRight, ChevronDown, Ship, Search, Loader2, Hash, Plus, Trash2, Pencil } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
 import { cn } from '@/lib/utils';
+import { InlineEditCell } from '@/components/inline-edit-cell';
+import { FeatureRichTextEditor } from '@/components/feature-rich-text-editor';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface Vendor {
     id: string;
@@ -61,6 +66,9 @@ interface Model {
     rangeName?: string;
     cost?: number | null;
     sellPriceExclGst?: number | null;
+    coverImageUrl?: string | null;
+    marketingTagline?: string | null;
+    marketingDescription?: string | null;
 }
 
 interface Variant {
@@ -151,6 +159,32 @@ function BoatsTableBody({ vendorId }: { vendorId: string }) {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+    /** v1.16 (Story 3.8.1 reused number — Inventory display on catalog).
+     *  Per-modelCode count of in-stock inventory items, surfaced as a
+     *  small badge on each model row so the catalogue admin sees stock at
+     *  a glance. */
+    const [stockCountByModel, setStockCountByModel] = useState<Map<string, number>>(new Map());
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const snap = await getDocs(collection(firestore, 'inventory'));
+                const counts = new Map<string, number>();
+                snap.forEach(d => {
+                    const data = d.data() as any;
+                    if (data?.status && data.status !== 'in_stock' && data.status !== 'In Stock' && data.status !== 'inStock') return;
+                    const m = String(data?.model ?? '').trim();
+                    if (!m) return;
+                    counts.set(m, (counts.get(m) ?? 0) + 1);
+                });
+                if (!cancelled) setStockCountByModel(counts);
+            } catch (err) {
+                console.error('Failed to load inventory', err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore]);
 
     useEffect(() => {
         let cancelled = false;
@@ -265,6 +299,7 @@ function BoatsTableBody({ vendorId }: { vendorId: string }) {
                                     key={model.id}
                                     vendorId={vendorId}
                                     model={model}
+                                    stockCount={stockCountByModel.get(model.modelCode ?? model.id) ?? 0}
                                     expanded={expanded}
                                     onToggle={() => toggleExpand(model.id)}
                                 />
@@ -278,10 +313,12 @@ function BoatsTableBody({ vendorId }: { vendorId: string }) {
 }
 
 function ModelRowGroup({
-    vendorId, model, expanded, onToggle,
+    vendorId, model, stockCount, expanded, onToggle,
 }: {
     vendorId: string;
     model: Model;
+    /** v1.16 (3.8.1 reused) — number of in-stock inventory items matching this model. */
+    stockCount?: number;
     expanded: boolean;
     onToggle: () => void;
 }) {
@@ -299,7 +336,16 @@ function ModelRowGroup({
                         {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                     </Button>
                 </td>
-                <td className="px-3 py-2 font-mono font-bold">{model.modelCode ?? '—'}</td>
+                <td className="px-3 py-2 font-mono font-bold">
+                    <span className="inline-flex items-center gap-2">
+                        {model.modelCode ?? '—'}
+                        {(stockCount ?? 0) > 0 && (
+                            <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border-emerald-300">
+                                {stockCount} in stock
+                            </Badge>
+                        )}
+                    </span>
+                </td>
                 <td className="px-3 py-2">{model.name ?? '—'}</td>
                 <td className="px-3 py-2">
                     <Badge variant="outline" className="text-[10px] font-semibold">{model.rangeName ?? '—'}</Badge>
@@ -353,7 +399,7 @@ function VariantRows({ vendorId, model }: { vendorId: string; model: Model }) {
     return (
         <tr className="bg-slate-50/50">
             <td colSpan={6} className="px-0 py-0">
-                <div className="border-l-4 border-primary/30 px-6 py-3">
+                <div className="border-l-4 border-primary/30 px-6 py-3 space-y-4">
                     {loading ? (
                         <div className="flex items-center text-muted-foreground text-xs">
                             <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
@@ -388,8 +434,593 @@ function VariantRows({ vendorId, model }: { vendorId: string; model: Model }) {
                             ))}
                         </div>
                     )}
+
+                    {/* v1.16 (Story 3.8.3) — Inline edit cover image (paste URL).
+                        Drag-drop affordance ships in v1.17 polish. */}
+                    <CoverImagePanel vendorId={vendorId} model={model} />
+
+                    {/* v1.14 (Story 3.9.1) — Optional features drill-down panel. Lives
+                        right under the variants when the model row is expanded. */}
+                    <OptionalFeaturesPanel vendorId={vendorId} model={model} />
+
+                    {/* v1.15 (Story 3.4.2) — Marketing copy editor panel. Tagline +
+                        description on the model doc, surfaced on the proposal PDF
+                        cover (future v1.16 wiring). */}
+                    <MarketingCopyPanel vendorId={vendorId} model={model} />
+
+                    {/* v1.16 (Stories 3.9.2 + 3.9.3) — Motor compatibility window +
+                        Dealer-fit compat editor inline. */}
+                    <CompatibilityPanel vendorId={vendorId} model={model} />
+
+                    {/* v1.16 (Story 3.4.3) — Photo Curation UI. */}
+                    <PhotoCurationPanel vendorId={vendorId} model={model} />
                 </div>
             </td>
         </tr>
+    );
+}
+
+/** v1.14 (Story 3.9.1) — Optional features inline drill-down. Reads
+ *  optionalFeatures off the model doc, renders an editable mini-table with
+ *  inline-edit cells for name + category + sellPriceExclGst + isStandard.
+ *  Writes the whole array back on each change (so the existing model-editor
+ *  schema doesn't break — optionalFeatures is an embedded array).
+ */
+function OptionalFeaturesPanel({ vendorId, model }: { vendorId: string; model: Model }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [features, setFeatures] = useState<any[]>([]);
+    const [loaded, setLoaded] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                if (!model.rangeId) return;
+                const snap = await getDocs(collection(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models'));
+                snap.forEach(d => {
+                    if (d.id === model.id && !cancelled) {
+                        const data = d.data() as any;
+                        setFeatures(Array.isArray(data?.optionalFeatures) ? data.optionalFeatures : []);
+                        setLoaded(true);
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore, vendorId, model.id, model.rangeId]);
+
+    const writeBack = async (next: any[]) => {
+        if (!model.rangeId) return;
+        try {
+            const ref = doc(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models', model.id);
+            await updateDoc(ref, { optionalFeatures: next, updatedAt: serverTimestamp() });
+            setFeatures(next);
+            toast({ title: 'Optional feature saved' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
+        }
+    };
+
+    const patchAt = (idx: number, field: string, value: any) => {
+        const next = features.map((f, i) => i === idx ? { ...f, [field]: value } : f);
+        return writeBack(next);
+    };
+
+    const addOne = () => {
+        const next = [...features, { id: `feat-${Date.now()}`, name: 'New optional feature', category: '', sellPriceExclGst: 0, isStandard: false }];
+        return writeBack(next);
+    };
+
+    const removeAt = (idx: number) => {
+        const next = features.filter((_, i) => i !== idx);
+        return writeBack(next);
+    };
+
+    if (!loaded) return null;
+
+    return (
+        <div className="rounded-lg border-2 border-dashed bg-white p-3 space-y-2">
+            <div className="flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+                    OPTIONAL FEATURES · {features.length}
+                </p>
+                <Button size="sm" variant="outline" onClick={addOne} className="rounded-lg text-[10px] h-7">
+                    <Plus className="h-3 w-3 mr-1" /> Add
+                </Button>
+            </div>
+            {features.length === 0 ? (
+                <p className="text-[10px] text-muted-foreground italic">No optional features on this model.</p>
+            ) : (
+                <div className="space-y-1">
+                    {features.map((f, idx) => (
+                        <div key={f.id ?? idx} className="grid grid-cols-[1fr_140px_110px_70px_28px] items-center gap-2 p-1.5 rounded bg-slate-50 border text-[11px]">
+                            <InlineEditCell type="text" value={f.name} placeholder="(no name)" onSave={(v) => patchAt(idx, 'name', v)} />
+                            <InlineEditCell type="text" value={f.category} placeholder="(no category)" onSave={(v) => patchAt(idx, 'category', v)} />
+                            <InlineEditCell type="currency" value={f.sellPriceExclGst} placeholder="$0" onSave={(v) => patchAt(idx, 'sellPriceExclGst', v ?? 0)} />
+                            <button
+                                type="button"
+                                onClick={() => patchAt(idx, 'isStandard', !f.isStandard)}
+                                className={cn(
+                                    'rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider',
+                                    f.isStandard ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-slate-100 text-slate-600 border border-slate-200',
+                                )}
+                                title="Toggle whether this is a standard inclusion on this model"
+                            >
+                                {f.isStandard ? 'STD' : 'OPT'}
+                            </button>
+                            <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => removeAt(idx)}>
+                                <Trash2 className="h-3 w-3" />
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/** v1.15 (Story 3.4.2) — Marketing Copy Editor UI. Tagline + description
+ *  on the model doc, surfaced on the proposal PDF cover (cover wiring is
+ *  a v1.16 follow-up; the data is captured here today).
+ *
+ *  Draft + dirty flag + Save button rather than save-on-blur — the
+ *  description is multi-line free text and operators don't want every
+ *  keystroke writing to Firestore. Discard restores from the live doc.
+ */
+function MarketingCopyPanel({ vendorId, model }: { vendorId: string; model: Model }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [tagline, setTagline] = useState('');
+    const [description, setDescription] = useState('');
+    const [loadedTagline, setLoadedTagline] = useState('');
+    const [loadedDescription, setLoadedDescription] = useState('');
+    const [loaded, setLoaded] = useState(false);
+    const [saving, setSaving] = useState(false);
+    /** v1.16 (Story 3.8.4) — TipTap popover for the description. */
+    const [richEditorOpen, setRichEditorOpen] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                if (!model.rangeId) return;
+                const snap = await getDocs(collection(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models'));
+                snap.forEach(d => {
+                    if (d.id === model.id && !cancelled) {
+                        const data = d.data() as any;
+                        const tg = String(data?.marketingTagline ?? '');
+                        const ds = String(data?.marketingDescription ?? '');
+                        setTagline(tg);
+                        setDescription(ds);
+                        setLoadedTagline(tg);
+                        setLoadedDescription(ds);
+                        setLoaded(true);
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore, vendorId, model.id, model.rangeId]);
+
+    const dirty = tagline !== loadedTagline || description !== loadedDescription;
+
+    const save = async () => {
+        if (!model.rangeId) return;
+        setSaving(true);
+        try {
+            const ref = doc(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models', model.id);
+            await updateDoc(ref, {
+                marketingTagline: tagline.trim() || null,
+                marketingDescription: description.trim() || null,
+                updatedAt: serverTimestamp(),
+            });
+            setLoadedTagline(tagline);
+            setLoadedDescription(description);
+            toast({ title: 'Marketing copy saved' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const discard = () => {
+        setTagline(loadedTagline);
+        setDescription(loadedDescription);
+    };
+
+    if (!loaded) return null;
+
+    return (
+        <div className="rounded-lg border-2 border-dashed bg-white p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+                    MARKETING COPY
+                </p>
+                {dirty && (
+                    <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300 text-[9px] font-black uppercase">unsaved</Badge>
+                        <Button size="sm" variant="ghost" onClick={discard} disabled={saving} className="rounded-lg text-[10px] h-7">Discard</Button>
+                        <Button size="sm" onClick={save} disabled={saving} className="rounded-lg text-[10px] h-7">
+                            {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null} Save
+                        </Button>
+                    </div>
+                )}
+            </div>
+            <div className="space-y-2">
+                <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Tagline</label>
+                    <Input
+                        value={tagline}
+                        onChange={e => setTagline(e.target.value)}
+                        placeholder="Short headline shown on the proposal PDF cover (e.g. 'Built for blue water')"
+                        className="rounded-lg border-2 h-8 text-xs mt-1 font-semibold"
+                        maxLength={120}
+                    />
+                </div>
+                <div>
+                    <div className="flex items-center justify-between">
+                        <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Description</label>
+                        {/* v1.16 (Story 3.8.4) — TipTap popover for rich editing. */}
+                        <Button size="sm" variant="ghost" onClick={() => setRichEditorOpen(true)} className="rounded-lg text-[9px] h-6 px-2 text-primary">
+                            <Pencil className="h-2.5 w-2.5 mr-1" /> Rich editor
+                        </Button>
+                    </div>
+                    <Textarea
+                        value={description}
+                        onChange={e => setDescription(e.target.value)}
+                        placeholder="Customer-facing description. Click 'Rich editor' for formatting + inline images."
+                        className="rounded-lg border-2 text-xs mt-1"
+                        rows={3}
+                    />
+                </div>
+            </div>
+
+            {/* v1.16 (Story 3.8.4) — TipTap popover. Reuses FeatureRichTextEditor
+                (the same component the content-block editor uses) so heading /
+                bold / italic / lists / inline images all work. */}
+            <Dialog open={richEditorOpen} onOpenChange={setRichEditorOpen}>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Marketing description — {model.name ?? model.modelCode ?? 'Model'}</DialogTitle>
+                        <DialogDescription className="text-xs">
+                            Rich-text editor. Headings, bold, italic, lists, links, inline images. Saves on close.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-2">
+                        <FeatureRichTextEditor
+                            value={description}
+                            onChange={setDescription}
+                            placeholder="Customer-facing marketing description. Used on the proposal PDF cover."
+                            imageStoragePathPrefix={`models/${model.id}/marketing-inline-images`}
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => { setDescription(loadedDescription); setRichEditorOpen(false); }} className="rounded-xl">Discard</Button>
+                        <Button onClick={async () => { await save(); setRichEditorOpen(false); }} className="rounded-xl">Save + close</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+}
+
+/** v1.16 (Story 3.8.3) — Inline edit cover image. Paste URL today; the
+ *  drag-drop affordance ships in v1.17 polish (needs a Storage upload
+ *  pipeline + the per-model storage path convention).
+ */
+function CoverImagePanel({ vendorId, model }: { vendorId: string; model: Model }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [draft, setDraft] = useState(model.coverImageUrl ?? '');
+    const [loaded, setLoaded] = useState(false);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                if (!model.rangeId) return;
+                const snap = await getDocs(collection(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models'));
+                snap.forEach(d => {
+                    if (d.id === model.id && !cancelled) {
+                        const data = d.data() as any;
+                        setDraft(String(data?.coverImageUrl ?? ''));
+                        setLoaded(true);
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore, vendorId, model.id, model.rangeId]);
+
+    const save = async (next: string) => {
+        if (!model.rangeId) return;
+        setSaving(true);
+        try {
+            const ref = doc(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models', model.id);
+            await updateDoc(ref, { coverImageUrl: next.trim() || null, updatedAt: serverTimestamp() });
+            toast({ title: 'Cover image saved' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (!loaded) return null;
+
+    return (
+        <div className="rounded-lg border-2 border-dashed bg-white p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">COVER IMAGE</p>
+                {saving && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+            </div>
+            <div className="flex items-center gap-3">
+                {draft.trim() ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={draft.trim()} alt={model.name ?? ''} className="h-16 w-24 object-contain bg-slate-50 rounded border" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                ) : (
+                    <div className="h-16 w-24 rounded border-2 border-dashed bg-slate-50 flex items-center justify-center"><Ship className="h-4 w-4 text-slate-400" /></div>
+                )}
+                <Input
+                    value={draft}
+                    onChange={e => setDraft(e.target.value)}
+                    onBlur={() => { if (draft !== (model.coverImageUrl ?? '')) save(draft); }}
+                    placeholder="https://… (paste a URL — drag-drop coming v1.17)"
+                    className="rounded-lg border-2 h-9 text-xs flex-1"
+                    type="url"
+                />
+            </div>
+        </div>
+    );
+}
+
+/** v1.16 (Stories 3.9.2 + 3.9.3) — Compatibility editor panel. Two
+ *  inline-editable rows on the boats-table expanded row:
+ *
+ *    3.9.2 Motor compat window (min HP / max HP / steering)
+ *      → model.specifications.motorConfigurations[0].engines[0]
+ *
+ *    3.9.3 Dealer fit compat (free-text category-allowlist)
+ *      → model.applicableDealerFitCategories  (string[])
+ *
+ *  The Quote Flow already filters dealer-fit by `applicableModelIds` on
+ *  the selection (v1.16 ZidKJczh). This panel lets the model owner
+ *  declare the inverse: which categories show on THIS model. The dealer
+ *  fit picker uses an AND of both filters when both are set.
+ */
+function CompatibilityPanel({ vendorId, model }: { vendorId: string; model: Model }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [loaded, setLoaded] = useState(false);
+    const [minHp, setMinHp] = useState<number | null>(null);
+    const [maxHp, setMaxHp] = useState<number | null>(null);
+    const [steering, setSteering] = useState<string>('');
+    const [categoriesCsv, setCategoriesCsv] = useState<string>('');
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                if (!model.rangeId) return;
+                const snap = await getDocs(collection(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models'));
+                snap.forEach(d => {
+                    if (d.id === model.id && !cancelled) {
+                        const data = d.data() as any;
+                        const eng = data?.specifications?.motorConfigurations?.[0]?.engines?.[0] ?? {};
+                        setMinHp(eng.minHp ?? null);
+                        setMaxHp(eng.maxHp ?? null);
+                        setSteering(String(eng.steeringType ?? ''));
+                        setCategoriesCsv(Array.isArray(data?.applicableDealerFitCategories) ? data.applicableDealerFitCategories.join(', ') : '');
+                        setLoaded(true);
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore, vendorId, model.id, model.rangeId]);
+
+    const saveMotor = async (next: { minHp?: number | null; maxHp?: number | null; steeringType?: string }) => {
+        if (!model.rangeId) return;
+        try {
+            const ref = doc(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models', model.id);
+            const snap = await getDocs(collection(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models'));
+            let current: any = {};
+            snap.forEach(d => { if (d.id === model.id) current = d.data(); });
+            const specs = current.specifications ?? {};
+            const configs = Array.isArray(specs.motorConfigurations) && specs.motorConfigurations.length > 0
+                ? [...specs.motorConfigurations]
+                : [{ engines: [{}] }];
+            const engines = Array.isArray(configs[0].engines) && configs[0].engines.length > 0
+                ? [...configs[0].engines]
+                : [{}];
+            engines[0] = { ...engines[0], ...next };
+            configs[0] = { ...configs[0], engines };
+            await updateDoc(ref, {
+                specifications: { ...specs, motorConfigurations: configs },
+                updatedAt: serverTimestamp(),
+            });
+            toast({ title: 'Motor compat saved' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
+        }
+    };
+
+    const saveCategories = async (csv: string) => {
+        if (!model.rangeId) return;
+        try {
+            const ref = doc(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models', model.id);
+            const arr = csv.split(',').map(s => s.trim()).filter(Boolean);
+            await updateDoc(ref, {
+                applicableDealerFitCategories: arr.length > 0 ? arr : null,
+                updatedAt: serverTimestamp(),
+            });
+            toast({ title: 'Dealer-fit compat saved' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
+        }
+    };
+
+    if (!loaded) return null;
+
+    return (
+        <div className="rounded-lg border-2 border-dashed bg-white p-3 space-y-3">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">COMPATIBILITY</p>
+            {/* 3.9.2 Motor */}
+            <div className="grid grid-cols-3 gap-3">
+                <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Min HP</label>
+                    <Input
+                        type="number"
+                        value={minHp ?? ''}
+                        onChange={e => setMinHp(e.target.value === '' ? null : Number(e.target.value))}
+                        onBlur={() => saveMotor({ minHp })}
+                        className="rounded-lg border-2 h-8 text-xs mt-1 tabular-nums"
+                        min={0}
+                    />
+                </div>
+                <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Max HP</label>
+                    <Input
+                        type="number"
+                        value={maxHp ?? ''}
+                        onChange={e => setMaxHp(e.target.value === '' ? null : Number(e.target.value))}
+                        onBlur={() => saveMotor({ maxHp })}
+                        className="rounded-lg border-2 h-8 text-xs mt-1 tabular-nums"
+                        min={0}
+                    />
+                </div>
+                <div>
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Steering</label>
+                    <Input
+                        value={steering}
+                        onChange={e => setSteering(e.target.value)}
+                        onBlur={() => saveMotor({ steeringType: steering.trim() })}
+                        placeholder="e.g. Tiller / Remote"
+                        className="rounded-lg border-2 h-8 text-xs mt-1"
+                    />
+                </div>
+            </div>
+            {/* 3.9.3 Dealer-fit categories allowlist */}
+            <div>
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Dealer-fit categories (comma-separated; empty = all)</label>
+                <Input
+                    value={categoriesCsv}
+                    onChange={e => setCategoriesCsv(e.target.value)}
+                    onBlur={() => saveCategories(categoriesCsv)}
+                    placeholder="e.g. Safety Gear, Electronics, Trim"
+                    className="rounded-lg border-2 h-8 text-xs mt-1"
+                />
+                <p className="text-[9px] text-muted-foreground mt-1">When set, the dealer-fit picker on Step 5 only shows categories in this list for this model.</p>
+            </div>
+        </div>
+    );
+}
+
+/** v1.16 (Story 3.4.3) — Photo Curation UI. Inline list editor for
+ *  `model.galleryImageUrls` — the array of additional photos shown on
+ *  the carousel slides during quote build (alongside the cover image,
+ *  variant image, motor + trailer photos).
+ */
+function PhotoCurationPanel({ vendorId, model }: { vendorId: string; model: Model }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [urls, setUrls] = useState<string[]>([]);
+    const [loaded, setLoaded] = useState(false);
+    const [pasteValue, setPasteValue] = useState('');
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                if (!model.rangeId) return;
+                const snap = await getDocs(collection(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models'));
+                snap.forEach(d => {
+                    if (d.id === model.id && !cancelled) {
+                        const data = d.data() as any;
+                        setUrls(Array.isArray(data?.galleryImageUrls) ? data.galleryImageUrls : []);
+                        setLoaded(true);
+                    }
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore, vendorId, model.id, model.rangeId]);
+
+    const writeBack = async (next: string[]) => {
+        if (!model.rangeId) return;
+        try {
+            const ref = doc(firestore, 'data-warehouse', vendorId, 'ranges', model.rangeId, 'models', model.id);
+            await updateDoc(ref, { galleryImageUrls: next, updatedAt: serverTimestamp() });
+            setUrls(next);
+            toast({ title: 'Gallery saved' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
+        }
+    };
+
+    const add = () => {
+        const trimmed = pasteValue.trim();
+        if (!trimmed) return;
+        writeBack([...urls, trimmed]);
+        setPasteValue('');
+    };
+
+    const remove = (idx: number) => writeBack(urls.filter((_, i) => i !== idx));
+
+    const move = (idx: number, dir: -1 | 1) => {
+        const next = idx + dir;
+        if (next < 0 || next >= urls.length) return;
+        const arr = [...urls];
+        [arr[idx], arr[next]] = [arr[next], arr[idx]];
+        writeBack(arr);
+    };
+
+    if (!loaded) return null;
+
+    return (
+        <div className="rounded-lg border-2 border-dashed bg-white p-3 space-y-2">
+            <div className="flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">PHOTO GALLERY · {urls.length}</p>
+            </div>
+            <p className="text-[9px] text-muted-foreground italic">Additional photos for the Step 1 carousel during quote build. Use cover + variant images for the main hero — these are supplementary.</p>
+            <div className="space-y-1.5">
+                {urls.map((u, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-1.5 rounded bg-slate-50 border">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={u} alt={`gallery ${idx + 1}`} className="h-10 w-14 object-contain bg-white rounded border" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                        <code className="flex-1 text-[10px] truncate text-slate-600">{u}</code>
+                        <Button size="icon" variant="ghost" onClick={() => move(idx, -1)} disabled={idx === 0} className="h-6 w-6"><ChevronDown className="h-3 w-3 rotate-180" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => move(idx, 1)} disabled={idx === urls.length - 1} className="h-6 w-6"><ChevronDown className="h-3 w-3" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => remove(idx)} className="h-6 w-6 text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                    </div>
+                ))}
+            </div>
+            <div className="flex items-center gap-2">
+                <Input
+                    value={pasteValue}
+                    onChange={e => setPasteValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+                    placeholder="Paste an image URL + Enter (or click Add)"
+                    className="rounded-lg border-2 h-8 text-xs flex-1"
+                    type="url"
+                />
+                <Button size="sm" onClick={add} className="rounded-lg text-[10px] h-8" disabled={!pasteValue.trim()}>
+                    <Plus className="h-3 w-3 mr-1" /> Add
+                </Button>
+            </div>
+        </div>
     );
 }

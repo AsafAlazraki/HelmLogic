@@ -562,6 +562,27 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         }
     };
 
+    /** v1.16 (XydsZkX3) — toggle per-option retail price on the customer
+     *  PDF. When ON every Factory Option / Trailer Option / Dealer-Fit line
+     *  shows its dollar amount; when OFF those lines render with 'INCLUDED'
+     *  in place of the price. Maths unchanged; line totals still feed the
+     *  Investment Summary. */
+    const handleToggleOptionPrices = async () => {
+        if (!quote?.id || !auditOwnerUid || !user) return;
+        if (quote.isLocked === true) {
+            toast({ variant: 'destructive', title: 'Quote is locked', description: 'Create a new version to change customer presentation.' });
+            return;
+        }
+        try {
+            const ref = doc(firestore, `users/${auditOwnerUid}/quotes`, quote.id);
+            await updateDoc(ref, { hideOptionPrices: !quote.hideOptionPrices, lastUpdateAt: serverTimestamp() });
+            toast({ title: quote.hideOptionPrices ? 'Option prices shown to customer' : 'Option prices hidden — INCLUDED only' });
+        } catch (e: any) {
+            console.error('[option-prices] failed', e);
+            toast({ variant: 'destructive', title: 'Could not update', description: e?.message ?? 'See console.' });
+        }
+    };
+
     /** v1.9 (story 1.4.1) — Lifecycle picker click handler. */
     const handleLifecycleTransition = async (next: LifecycleState) => {
         if (!quote?.id || !auditOwnerUid || !user) return;
@@ -1414,6 +1435,23 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                             </span>
                                         </button>
                                     )}
+                                    {/* v1.16 (XydsZkX3) — Show / Hide per-option retail pricing on
+                                        the customer PDF. When OFF, every Factory Option / Trailer
+                                        Option / Dealer-Fit line renders as INCLUDED with no $ figure. */}
+                                    <button
+                                        type="button"
+                                        onClick={handleToggleOptionPrices}
+                                        className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
+                                        title="Toggle whether per-option retail prices show on the customer PDF"
+                                    >
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Show option prices to customer</span>
+                                        <span className={cn(
+                                            'text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border',
+                                            !quote.hideOptionPrices ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200',
+                                        )}>
+                                            {!quote.hideOptionPrices ? 'Shown' : 'Hidden'}
+                                        </span>
+                                    </button>
                                     <PricingRow label="Registration" value={f.regoTotal} />
 
                                     {localDiscount > 0 && (

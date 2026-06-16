@@ -14,15 +14,21 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Anchor, Search, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Anchor, Search, Loader2, Download, HelpCircle, FileUp } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { formatCurrency } from '@/lib/currency-utils';
+import { InlineEditCell } from '@/components/inline-edit-cell';
+import { MasterPriceFileWorkspace } from '@/components/master-price-file-workspace';
 
 interface Vendor {
     id: string;
@@ -43,7 +49,7 @@ interface MotorRow {
     [k: string]: any;
 }
 
-export function MotorsTableView() {
+export function MotorsTableView({ organisationId }: { organisationId?: string | null } = {}) {
     const firestore = useFirestore();
 
     const vendorsQuery = useMemoFirebase(
@@ -53,6 +59,11 @@ export function MotorsTableView() {
     const { data: vendors, isLoading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
 
     const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
+    /** v1.14 (Story 3.7.7) — Import sheet that wraps the existing
+     *  MasterPriceFileWorkspace so admins don't have to bounce out to the
+     *  vendor module page to import an MPF / Sam Allen / Trailer Pricing
+     *  spreadsheet. Same surface, new entry point. */
+    const [importOpen, setImportOpen] = useState(false);
 
     useEffect(() => {
         if (!selectedVendorId && vendors && vendors.length > 0) {
@@ -70,20 +81,27 @@ export function MotorsTableView() {
                             Motors Catalogue (read-view)
                         </CardTitle>
                         <CardDescription className="text-xs">
-                            Every motor in the selected brand. Read-only — edits happen in the motor module editor.
+                            Every motor in the selected brand. Click a cell to edit inline · Import opens the master-price-file workspace inline.
                         </CardDescription>
                     </div>
-                    <div className="min-w-[220px]">
-                        <Select value={selectedVendorId ?? ''} onValueChange={v => setSelectedVendorId(v)}>
-                            <SelectTrigger className="rounded-xl border-2 text-xs">
-                                <SelectValue placeholder={vendorsLoading ? 'Loading…' : 'Select a brand'} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {(vendors ?? []).map(v => (
-                                    <SelectItem key={v.id} value={v.id}>{v.name ?? v.slug ?? v.id}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <div className="flex items-center gap-2">
+                        {organisationId && selectedVendorId && (
+                            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="rounded-xl text-xs h-9">
+                                <FileUp className="h-3.5 w-3.5 mr-1" /> Import data
+                            </Button>
+                        )}
+                        <div className="min-w-[220px]">
+                            <Select value={selectedVendorId ?? ''} onValueChange={v => setSelectedVendorId(v)}>
+                                <SelectTrigger className="rounded-xl border-2 text-xs">
+                                    <SelectValue placeholder={vendorsLoading ? 'Loading…' : 'Select a brand'} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {(vendors ?? []).map(v => (
+                                        <SelectItem key={v.id} value={v.id}>{v.name ?? v.slug ?? v.id}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </div>
             </CardHeader>
@@ -94,6 +112,30 @@ export function MotorsTableView() {
                     <MotorsTableBody vendorId={selectedVendorId} />
                 )}
             </CardContent>
+
+            {/* v1.14 (Story 3.7.7) — Import data sheet. Mounts the existing
+                MasterPriceFileWorkspace inline so admins don't have to bounce
+                to the vendor module page. */}
+            <Sheet open={importOpen} onOpenChange={setImportOpen}>
+                <SheetContent className="w-full sm:max-w-4xl overflow-y-auto">
+                    <SheetHeader>
+                        <SheetTitle>Import data</SheetTitle>
+                        <SheetDescription className="text-xs">
+                            Master Price File workspace for {(vendors ?? []).find(v => v.id === selectedVendorId)?.name ?? 'this vendor'}.
+                            Same surface as the vendor module page; new entry point.
+                        </SheetDescription>
+                    </SheetHeader>
+                    <div className="py-4">
+                        {selectedVendorId && organisationId && (
+                            <MasterPriceFileWorkspace
+                                vendorId={selectedVendorId}
+                                organisationId={organisationId}
+                                isAdmin={true}
+                            />
+                        )}
+                    </div>
+                </SheetContent>
+            </Sheet>
         </Card>
     );
 }
@@ -109,10 +151,62 @@ function EmptyState({ message }: { message: string }) {
 
 function MotorsTableBody({ vendorId }: { vendorId: string }) {
     const firestore = useFirestore();
+    const { toast } = useToast();
     const [rows, setRows] = useState<MotorRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [seriesFilter, setSeriesFilter] = useState<string>('all');
+
+    /** v1.14 (3.8.1 retrofit) — inline-edit handler for motors. Writes
+     *  straight to the vendor part doc; toasts on success/failure. */
+    const patchMotor = async (motorId: string, field: string, next: any) => {
+        try {
+            await updateDoc(
+                doc(firestore, 'data-warehouse', vendorId, 'parts', motorId),
+                { [field]: next, updatedAt: serverTimestamp() },
+            );
+            // Optimistic local update so the row reflects the change without a re-fetch.
+            setRows(prev => prev.map(r => r.id === motorId ? { ...r, [field]: next } : r));
+            toast({ title: 'Saved' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
+            throw err;
+        }
+    };
+
+    /** v1.14 (Story 3.8.8) — CSV export of the currently-filtered rows. */
+    const handleExport = () => {
+        const header = ['Part Number', 'Model Name', 'Series', 'HP Rating', 'Shaft', 'Cost', 'Sell (ex GST)'];
+        const escape = (v: any) => {
+            if (v == null) return '';
+            const s = String(v);
+            if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
+            return s;
+        };
+        const lines = [header.join(',')];
+        for (const r of filtered) {
+            lines.push([
+                r['Part Number'] ?? '',
+                r['Model Name'] ?? '',
+                r.Series ?? '',
+                r['HP Rating'] ?? '',
+                r.Shaft ?? '',
+                r.cost ?? '',
+                r.sellPriceExclGst ?? '',
+            ].map(escape).join(','));
+        }
+        const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const stamp = new Date().toISOString().slice(0, 10);
+        a.href = url;
+        a.download = `motors-${stamp}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        toast({ title: `Exported ${filtered.length} motors` });
+    };
 
     useEffect(() => {
         let cancelled = false;
@@ -198,42 +292,96 @@ function MotorsTableBody({ vendorId }: { vendorId: string }) {
                 <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground ml-auto">
                     {filtered.length} of {rows.length}
                 </p>
+                <Button variant="outline" size="sm" onClick={handleExport} className="rounded-xl text-xs h-9" disabled={filtered.length === 0}>
+                    <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
+                </Button>
             </div>
 
-            <div className="rounded-xl border-2 overflow-hidden">
-                <table className="w-full text-xs">
-                    <thead className="bg-slate-50 border-b-2">
-                        <tr className="text-left">
-                            <th className="px-3 py-2 font-bold uppercase tracking-widest text-[10px]">Part #</th>
-                            <th className="px-3 py-2 font-bold uppercase tracking-widest text-[10px]">Model</th>
-                            <th className="px-3 py-2 font-bold uppercase tracking-widest text-[10px]">Series</th>
-                            <th className="px-3 py-2 font-bold uppercase tracking-widest text-[10px]">HP</th>
-                            <th className="px-3 py-2 font-bold uppercase tracking-widest text-[10px]">Shaft</th>
-                            <th className="px-3 py-2 font-bold uppercase tracking-widest text-[10px] text-right">Cost</th>
-                            <th className="px-3 py-2 font-bold uppercase tracking-widest text-[10px] text-right">Sell (ex GST)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filtered.map(row => (
-                            <tr key={row.id} className="border-b last:border-b-0 hover:bg-slate-50">
-                                <td className="px-3 py-2 font-mono font-bold">{row['Part Number'] ?? '—'}</td>
-                                <td className="px-3 py-2">{row['Model Name'] ?? '—'}</td>
-                                <td className="px-3 py-2">
-                                    {row.Series && <Badge variant="outline" className="text-[10px]">{row.Series}</Badge>}
-                                </td>
-                                <td className="px-3 py-2 tabular-nums">{row['HP Rating'] ?? '—'}</td>
-                                <td className="px-3 py-2">{row.Shaft ?? '—'}</td>
-                                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                                    {row.cost != null ? formatCurrency(Number(row.cost)) : '—'}
-                                </td>
-                                <td className="px-3 py-2 text-right tabular-nums font-bold">
-                                    {row.sellPriceExclGst != null ? formatCurrency(Number(row.sellPriceExclGst)) : '—'}
-                                </td>
+            <TooltipProvider>
+                <div className="rounded-xl border-2 overflow-hidden">
+                    <table className="w-full text-xs">
+                        <thead className="bg-slate-50 border-b-2">
+                            <tr className="text-left">
+                                <ColumnHeader label="Part #" hint="Manufacturer's part number / SKU. Used by Yamaha MPF imports." />
+                                <ColumnHeader label="Model" hint="Model name as it appears on the data sheet." />
+                                <ColumnHeader label="Series" hint="Series the motor belongs to (e.g. F25, F70). Drives the series filter chip row." />
+                                <ColumnHeader label="HP" hint="Horsepower rating. Multi-engine syntax 'N × HP' is parsed at the quote-flow side." />
+                                <ColumnHeader label="Shaft" hint="Shaft length code (S / L / X / U). Matters for transom compatibility." />
+                                <ColumnHeader label="Cost" align="right" hint="Dealer cost. Inline-editable — click the cell to edit." />
+                                <ColumnHeader label="Sell (ex GST)" align="right" hint="Retail price excluding GST. Inline-editable. GST gets added at finalize." />
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            {filtered.map(row => (
+                                <tr key={row.id} className="border-b last:border-b-0 hover:bg-slate-50">
+                                    <td className="px-3 py-2 font-mono font-bold">{row['Part Number'] ?? '—'}</td>
+                                    <td className="px-3 py-2">
+                                        <InlineEditCell
+                                            type="text"
+                                            value={row['Model Name'] as string}
+                                            onSave={(v) => patchMotor(row.id, 'Model Name', v)}
+                                        />
+                                    </td>
+                                    <td className="px-3 py-2">
+                                        {row.Series && <Badge variant="outline" className="text-[10px]">{row.Series}</Badge>}
+                                    </td>
+                                    <td className="px-3 py-2 tabular-nums">
+                                        <InlineEditCell
+                                            type="text"
+                                            value={row['HP Rating'] as string}
+                                            onSave={(v) => patchMotor(row.id, 'HP Rating', v)}
+                                        />
+                                    </td>
+                                    <td className="px-3 py-2">
+                                        <InlineEditCell
+                                            type="text"
+                                            value={row.Shaft as string}
+                                            onSave={(v) => patchMotor(row.id, 'Shaft', v)}
+                                        />
+                                    </td>
+                                    <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                                        <InlineEditCell
+                                            type="currency"
+                                            value={row.cost as number | null | undefined}
+                                            validate={(n) => (n != null && (typeof n !== 'number' || n < 0) ? 'Positive number' : null)}
+                                            onSave={(v) => patchMotor(row.id, 'cost', v)}
+                                        />
+                                    </td>
+                                    <td className="px-3 py-2 text-right tabular-nums font-bold">
+                                        <InlineEditCell
+                                            type="currency"
+                                            value={row.sellPriceExclGst as number | null | undefined}
+                                            validate={(n) => (n != null && (typeof n !== 'number' || n < 0) ? 'Positive number' : null)}
+                                            onSave={(v) => patchMotor(row.id, 'sellPriceExclGst', v)}
+                                        />
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </TooltipProvider>
         </div>
+    );
+}
+
+/** v1.14 (Story 3.8.6) — column header with an optional tooltip. */
+function ColumnHeader({ label, hint, align = 'left' }: { label: string; hint?: string; align?: 'left' | 'right' }) {
+    return (
+        <th className={`px-3 py-2 font-bold uppercase tracking-widest text-[10px] ${align === 'right' ? 'text-right' : ''}`}>
+            <span className="inline-flex items-center gap-1">
+                {label}
+                {hint && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <HelpCircle className="h-2.5 w-2.5 text-muted-foreground opacity-60 hover:opacity-100 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p className="text-xs max-w-xs">{hint}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                )}
+            </span>
+        </th>
     );
 }

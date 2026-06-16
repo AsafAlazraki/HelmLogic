@@ -21,6 +21,7 @@ import {
     doc,
     setDoc,
     updateDoc,
+    deleteDoc,
     serverTimestamp,
     writeBatch,
 } from 'firebase/firestore';
@@ -52,7 +53,7 @@ import {
     Layout,
     Box,
     Settings,
-    Globe
+    Globe,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -447,10 +448,26 @@ export default function ModuleDetailsPage() {
         user ? query(
             collection(firestore, `users/${user.uid}/quotes`),
             orderBy('createdAt', 'desc'),
-            limit(8)
+            limit(20),  // v1.16 (gFQrcADO) — over-fetch so soft-deleted rows still leave 8 visible after filter
         ) : null,
     [firestore, user]);
-    const { data: recentQuotes } = useCollection<any>(recentQuotesQuery);
+    const { data: recentQuotesRaw } = useCollection<any>(recentQuotesQuery);
+    /** v1.16 (gFQrcADO) — Hide soft-deleted quotes from the Recent Proposals
+     *  grid. The actual delete sets `deletedAt`; the doc + sub-collections
+     *  stay in Firestore so audit + sent emails are preserved. */
+    const recentQuotes = useMemo(
+        () => (recentQuotesRaw ?? []).filter((q: any) => !q.deletedAt).slice(0, 8),
+        [recentQuotesRaw],
+    );
+    /** v1.16 (ltaY5TPd — Quote Archive Repository). Toggle on the Recent
+     *  Proposals card flips the list to show the soft-deleted quotes with
+     *  a Restore button per row. */
+    const [archiveMode, setArchiveMode] = useState(false);
+    const archivedQuotes = useMemo(
+        () => (recentQuotesRaw ?? []).filter((q: any) => q.deletedAt),
+        [recentQuotesRaw],
+    );
+    const displayQuotes = archiveMode ? archivedQuotes : recentQuotes;
 
     // Dashboard stock counts
     const dashboardInventoryQuery = useMemoFirebase(() => {
@@ -830,7 +847,7 @@ export default function ModuleDetailsPage() {
                     </div>
                 </div>
                 <main className="flex-1 overflow-y-auto p-8 max-w-6xl mx-auto w-full">
-                    <ServiceQuoteDashboard organisationId={currentMemberOrg.id} />
+                    <ServiceQuoteDashboard organisationId={currentMemberOrg.id} organisation={currentMemberOrg} />
                 </main>
             </div>
         );
@@ -1395,44 +1412,105 @@ export default function ModuleDetailsPage() {
                                 <Card className="lg:col-span-5 flex flex-col border-2 rounded-2xl shadow-sm bg-white overflow-hidden min-h-0 max-h-[calc(100vh-340px)]">
                                         <CardHeader className="px-5 py-4 border-b flex flex-row items-center justify-between shrink-0">
                                             <div className="flex items-center gap-2.5">
-                                                <h2 className="text-sm font-semibold text-slate-900">Recent Proposals</h2>
-                                                {recentQuotes && recentQuotes.length > 0 && (
+                                                <h2 className="text-sm font-semibold text-slate-900">{archiveMode ? 'Archived Proposals' : 'Recent Proposals'}</h2>
+                                                {displayQuotes && displayQuotes.length > 0 && (
                                                     <Badge variant="secondary" className="text-xs font-medium px-2 h-5">
-                                                        {recentQuotes.length} active
+                                                        {displayQuotes.length} {archiveMode ? 'archived' : 'active'}
                                                     </Badge>
                                                 )}
                                             </div>
-                                            <Button
-                                                size="sm"
-                                                onClick={() => setIsQuoteInitializationOpen(true)}
-                                                className="gap-1.5 h-8 text-xs"
-                                            >
-                                                <PlusCircle className="h-3.5 w-3.5" />
-                                                New Quote
-                                            </Button>
+                                            <div className="flex items-center gap-2">
+                                                {/* v1.16 (ltaY5TPd) — Archive view toggle. */}
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => setArchiveMode(v => !v)}
+                                                    className="gap-1.5 h-8 text-xs"
+                                                    title={archiveMode ? 'Back to active proposals' : 'View archived (soft-deleted) proposals'}
+                                                >
+                                                    {archiveMode ? '← Active' : `Archive (${archivedQuotes.length})`}
+                                                </Button>
+                                                {!archiveMode && (
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => setIsQuoteInitializationOpen(true)}
+                                                        className="gap-1.5 h-8 text-xs"
+                                                    >
+                                                        <PlusCircle className="h-3.5 w-3.5" />
+                                                        New Quote
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </CardHeader>
                                         <CardContent className="flex-1 p-0 overflow-hidden">
-                                            {(!recentQuotes || recentQuotes.length === 0) ? (
+                                            {(!displayQuotes || displayQuotes.length === 0) ? (
                                                 <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-4">
                                                     <div className="h-16 w-16 bg-slate-50 rounded-2xl flex items-center justify-center border-2 border-dashed border-slate-200">
                                                         <FileText className="h-7 w-7 text-slate-300" />
                                                     </div>
                                                     <div className="space-y-2">
-                                                        <p className="text-sm font-medium text-slate-500">No proposals yet</p>
-                                                        <Button variant="outline" size="sm" onClick={() => setIsQuoteInitializationOpen(true)}>
-                                                            Create your first quote
-                                                        </Button>
+                                                        <p className="text-sm font-medium text-slate-500">{archiveMode ? 'No archived proposals' : 'No proposals yet'}</p>
+                                                        {!archiveMode && (
+                                                            <Button variant="outline" size="sm" onClick={() => setIsQuoteInitializationOpen(true)}>
+                                                                Create your first quote
+                                                            </Button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <ScrollArea className="h-full">
                                                     <div className="p-4 grid grid-cols-2 gap-3">
-                                                        {recentQuotes.map((q: any) => (
+                                                        {displayQuotes.map((q: any) => (
                                                             <div
                                                                 key={q.id}
                                                                 onClick={() => router.push(`/modules/${moduleData.id}/proposals/${q.id}`)}
-                                                                className="group flex flex-col rounded-xl border bg-white hover:border-primary/40 hover:shadow-md cursor-pointer transition-all overflow-hidden"
+                                                                className="group flex flex-col rounded-xl border bg-white hover:border-primary/40 hover:shadow-md cursor-pointer transition-all overflow-hidden relative"
                                                             >
+                                                                {/* v1.16 (gFQrcADO + ltaY5TPd) — Remove / Restore action.
+                                                                    Archive mode swaps the X for a Restore icon that
+                                                                    clears deletedAt. */}
+                                                                {user && (
+                                                                    archiveMode ? (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={async (e) => {
+                                                                                e.stopPropagation();
+                                                                                try {
+                                                                                    await updateDoc(doc(firestore, `users/${user.uid}/quotes`, q.id), {
+                                                                                        deletedAt: null,
+                                                                                        lastUpdateAt: serverTimestamp(),
+                                                                                    });
+                                                                                } catch (err: any) {
+                                                                                    alert('Restore failed: ' + (err?.message ?? String(err)));
+                                                                                }
+                                                                            }}
+                                                                            className="absolute top-2 right-2 z-10 h-7 px-2 rounded-lg bg-white/95 border border-emerald-300 shadow-sm text-emerald-700 hover:bg-emerald-50 flex items-center gap-1 text-[9px] font-black uppercase tracking-widest transition-all"
+                                                                            title="Restore this quote to the active list"
+                                                                        >
+                                                                            Restore
+                                                                        </button>
+                                                                    ) : (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={async (e) => {
+                                                                                e.stopPropagation();
+                                                                                if (!confirm(`Remove quote ${q.quoteNumber || ''} from your list? Sub-collections (audit, sent emails) are preserved.`)) return;
+                                                                                try {
+                                                                                    await updateDoc(doc(firestore, `users/${user.uid}/quotes`, q.id), {
+                                                                                        deletedAt: serverTimestamp(),
+                                                                                        lastUpdateAt: serverTimestamp(),
+                                                                                    });
+                                                                                } catch (err: any) {
+                                                                                    alert('Remove failed: ' + (err?.message ?? String(err)));
+                                                                                }
+                                                                            }}
+                                                                            className="absolute top-2 right-2 z-10 h-7 w-7 rounded-lg bg-white/95 border border-slate-200 shadow-sm opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-white hover:border-destructive flex items-center justify-center transition-all"
+                                                                            title="Remove from list (soft-delete)"
+                                                                        >
+                                                                            <X className="h-3.5 w-3.5" />
+                                                                        </button>
+                                                                    )
+                                                                )}
                                                                 {/* Image — full-width hero (no padding, cover fit) */}
                                                                 <div className="relative h-36 bg-slate-100 border-b overflow-hidden shrink-0">
                                                                     {q.coverImageUrl ? (

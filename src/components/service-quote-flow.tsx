@@ -33,6 +33,7 @@ import {
 } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { ServiceQuoteDetailSheet } from '@/components/service-quote-detail-sheet';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -116,10 +117,11 @@ function deriveOpSell(op: { flatRateHours: number; hourlyRate: number; sellPrice
 // Dashboard
 // ---------------------------------------------------------------------
 
-export function ServiceQuoteDashboard({ organisationId }: { organisationId: string }) {
+export function ServiceQuoteDashboard({ organisationId, organisation }: { organisationId: string; organisation?: any }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [createOpen, setCreateOpen] = useState(false);
+    const [detailQuote, setDetailQuote] = useState<ServiceQuote | null>(null);
     const [statusFilter, setStatusFilter] = useState<ServiceQuoteStatus | 'all'>('all');
 
     const quotesRef = useMemoFirebase(
@@ -154,7 +156,7 @@ export function ServiceQuoteDashboard({ organisationId }: { organisationId: stri
                         </CardTitle>
                         <CardDescription className="text-xs">
                             Dealer-facing service quotes built from your operations + parts catalogue.
-                            Customer-facing PDF + sent-email flow lands in v1.12+.
+                            Click a card to open the detail view — edit, download the PDF, or send to the customer.
                         </CardDescription>
                     </div>
                     <Button onClick={() => setCreateOpen(true)} className="rounded-xl">
@@ -188,6 +190,7 @@ export function ServiceQuoteDashboard({ organisationId }: { organisationId: stri
                             <ServiceQuoteCard
                                 key={q.id}
                                 quote={q}
+                                onOpen={() => setDetailQuote(q)}
                                 onStatusChange={async (status) => {
                                     await updateDoc(doc(firestore, 'organisations', organisationId, 'serviceQuotes', q.id), {
                                         status,
@@ -206,6 +209,14 @@ export function ServiceQuoteDashboard({ organisationId }: { organisationId: stri
                 open={createOpen}
                 onOpenChange={setCreateOpen}
                 organisationId={organisationId}
+            />
+
+            <ServiceQuoteDetailSheet
+                open={detailQuote !== null}
+                onOpenChange={(open) => { if (!open) setDetailQuote(null); }}
+                organisationId={organisationId}
+                quote={detailQuote}
+                organisation={organisation}
             />
         </Card>
     );
@@ -226,14 +237,18 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
 }
 
 function ServiceQuoteCard({
-    quote, onStatusChange, onDelete,
+    quote, onStatusChange, onDelete, onOpen,
 }: {
     quote: ServiceQuote;
     onStatusChange: (status: ServiceQuoteStatus) => Promise<void>;
     onDelete: () => void;
+    onOpen?: () => void;
 }) {
     return (
-        <div className="rounded-2xl border-2 p-4 bg-white shadow-sm space-y-2 hover:border-primary/40 transition-colors">
+        <div
+            onClick={onOpen}
+            className="rounded-2xl border-2 p-4 bg-white shadow-sm space-y-2 hover:border-primary/40 hover:shadow-md transition-all cursor-pointer"
+        >
             <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                     <p className="text-sm font-bold truncate">{quote.customerName || 'Unnamed customer'}</p>
@@ -247,7 +262,11 @@ function ServiceQuoteCard({
                 <span>{quote.operations.length} ops · {quote.parts.length} parts</span>
                 <span className="font-bold text-foreground tabular-nums">${quote.totalSell.toLocaleString()}</span>
             </div>
-            <div className="flex items-center gap-1.5 pt-2 border-t">
+            <div
+                className="flex items-center gap-1.5 pt-2 border-t"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+            >
                 <Select value={quote.status} onValueChange={v => onStatusChange(v as ServiceQuoteStatus)}>
                     <SelectTrigger className="h-7 text-[10px] rounded-lg border-2 flex-1">
                         <SelectValue />
@@ -258,7 +277,7 @@ function ServiceQuoteCard({
                         ))}
                     </SelectContent>
                 </Select>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={onDelete}>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(); }}>
                     <Trash2 className="h-3.5 w-3.5" />
                 </Button>
             </div>

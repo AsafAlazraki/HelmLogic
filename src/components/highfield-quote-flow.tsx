@@ -269,6 +269,16 @@ export function HighfieldQuoteFlow({
     const [selectedTrailerOptionIds, setSelectedTrailerOptionIds] = useState<string[]>(initialState?.selectedTrailerOptionIds ?? []);
     const [catalogTrailerSnapshot, setCatalogTrailerSnapshot] = useState<TrailerSnapshot | null>(initialState?.catalogTrailerSnapshot ?? null);
     const [selectedDealerFitIds, setSelectedDealerFitIds] = useState<string[]>(initialState?.selectedDealerFitIds ?? []);
+    /** v1.16 (rI21WRhH) — Dealer fit option expander. Tracks which option
+     *  cards are open to reveal their package components. */
+    const [expandedDealerFitIds, setExpandedDealerFitIds] = useState<Set<string>>(new Set());
+    const toggleExpandedDealerFit = (id: string) => {
+        setExpandedDealerFitIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
     // v1.11 (Epic 9.2.1 + 9.2.2) — Fit-Up selections on the in-progress
     // quote. Stored as a flat array of FitUpItem snapshots (full data,
     // not just IDs) so the parent always has the price/cost/tier in
@@ -797,17 +807,31 @@ export function HighfieldQuoteFlow({
         if (!dealerFitSelections) return [];
         const motorCats = new Set(motorModuleCategories.map(c => c.toLowerCase()));
         const trailerCats = new Set(trailerModuleCategories.map(c => c.toLowerCase()));
+        const currentModelId = model?.id ?? null;
+        /** v1.16 (Story 3.9.3) — model-level dealer-fit category allowlist.
+         *  When set on the model, only listed categories show on Step 5. */
+        const modelCatAllowlist: string[] = Array.isArray((model as any)?.applicableDealerFitCategories)
+            ? (model as any).applicableDealerFitCategories.map((c: string) => c.toLowerCase())
+            : [];
         const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
             const cat = sel.category || 'Gear';
             // Skip motor and trailer categories — they're shown separately
             if (motorCats.has(cat.toLowerCase())) return acc;
             if (trailerCats.has(cat.toLowerCase())) return acc;
+            // v1.16 (3.9.3) — model-level category allowlist
+            if (modelCatAllowlist.length > 0 && !modelCatAllowlist.includes(cat.toLowerCase())) return acc;
+            // v1.16 (ZidKJczh) — Dealer Fit option only model-specific. When
+            // `sel.applicableModelIds` is set and non-empty, the option only
+            // shows when the current model matches. Empty / missing = applies
+            // to all models (existing behaviour).
+            const restricted: string[] = Array.isArray(sel.applicableModelIds) ? sel.applicableModelIds : [];
+            if (restricted.length > 0 && currentModelId && !restricted.includes(currentModelId)) return acc;
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(sel);
             return acc;
         }, {});
         return Object.entries(groups) as [string, any][];
-    }, [dealerFitSelections, motorModuleCategories, trailerModuleCategories]);
+    }, [dealerFitSelections, motorModuleCategories, trailerModuleCategories, model?.id, (model as any)?.applicableDealerFitCategories]);
 
     const groupedMotorDealerFit = useMemo(() => {
         if (!dealerFitSelections || motorModuleCategories.length === 0) return [];
@@ -1468,17 +1492,29 @@ export function HighfieldQuoteFlow({
 
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
-            <div className="sticky top-0 z-[100] px-4 sm:px-12 h-16 sm:h-20 bg-card border-b border-slate-100 shrink-0 flex items-center">
-                <div className="w-full flex items-center justify-between">
-                    <div className="flex-1 flex items-center justify-between mr-4 sm:mr-24 min-w-0 overflow-x-auto">
-                        {STEPS.map((step) => (
-                            <div key={step.id} className="flex items-center gap-2">
-                                <div className={cn("h-7 w-7 rounded-full flex items-center justify-center text-[9px] font-black transition-all border-2", currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-md" : currentStep > step.id ? "bg-green-500 border-green-500 text-white" : "bg-muted border-transparent text-muted-foreground")}>{currentStep > step.id ? <CheckCircle2 className="h-3.5 w-3.5" /> : step.id}</div>
-                                <span className={cn("text-[8px] font-black uppercase tracking-[0.2em] hidden md:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-muted-foreground")}>{step.label}</span>
-                            </div>
-                        ))}
+            {/* v1.16 (pcDkqAXa) — Improved heading layout. Added the current
+                model name + step label above the stepper pills so the
+                operator always knows what they're working on. Stepper now
+                has a thin connector line between pills to read as a single
+                progression rather than 6 floating dots. */}
+            <div className="sticky top-0 z-[100] px-4 sm:px-12 py-2 sm:py-3 bg-card border-b border-slate-100 shrink-0">
+                <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-baseline gap-3 min-w-0">
+                        <h2 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] text-primary truncate">{model?.name ?? 'Build'}</h2>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground hidden sm:inline">Step {currentStep} of {STEPS.length}</span>
+                        <span className="text-[9px] font-bold text-slate-500 hidden sm:inline truncate">· {STEPS.find(s => s.id === currentStep)?.label ?? ''}</span>
                     </div>
-                    <button type="button" className="font-black text-destructive uppercase tracking-widest text-[9px] hover:opacity-70 transition-opacity" onClick={() => router.push(`/modules/${module.slug || module.id}`)}>Exit Build</button>
+                    <button type="button" className="font-black text-destructive uppercase tracking-widest text-[9px] hover:opacity-70 transition-opacity shrink-0" onClick={() => router.push(`/modules/${module.slug || module.id}`)}>Exit Build</button>
+                </div>
+                <div className="flex items-center justify-between min-w-0 overflow-x-auto relative">
+                    <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-muted -translate-y-1/2 z-0" />
+                    <div className="absolute top-1/2 left-0 h-0.5 bg-green-500 -translate-y-1/2 z-0 transition-all" style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }} />
+                    {STEPS.map((step) => (
+                        <div key={step.id} className="flex items-center gap-1.5 z-10 relative bg-card pr-1">
+                            <div className={cn("h-7 w-7 rounded-full flex items-center justify-center text-[9px] font-black transition-all border-2", currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-md" : currentStep > step.id ? "bg-green-500 border-green-500 text-white" : "bg-muted border-transparent text-muted-foreground")}>{currentStep > step.id ? <CheckCircle2 className="h-3.5 w-3.5" /> : step.id}</div>
+                            <span className={cn("text-[8px] font-black uppercase tracking-[0.2em] hidden md:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-muted-foreground")}>{step.label}</span>
+                        </div>
+                    ))}
                 </div>
             </div>
 
@@ -1547,7 +1583,12 @@ export function HighfieldQuoteFlow({
                                         <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">SAVE ${promotionDiscount.toLocaleString()}</span>
                                     </div>
                                 )}
-                                <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{finalPrice.toLocaleString()}</span></div>
+                                <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{Math.round(finalPrice).toLocaleString()}</span></div>
+                                {/* v1.16 (E7fCW6Oh + mqXYkQbT) — Inc-GST sub-line. Rounded up to
+                                    whole dollars per the v1.3 lesson. */}
+                                <div className="text-[10px] font-black uppercase text-emerald-700 tracking-[0.2em] mt-1">
+                                    ${Math.ceil(finalPrice * 1.1).toLocaleString()} <span className="text-slate-500">inc GST</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1570,7 +1611,8 @@ export function HighfieldQuoteFlow({
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                             {availableMaterials.map((mat) => (
                                                 <button key={mat} onClick={() => handleMaterialChange(mat as any)} className={cn("group flex flex-col items-center justify-center p-1 rounded-[2rem] transition-all bg-white shadow-xl border-2 border-transparent h-32", selectedMaterial === mat ? "border-primary ring-2 ring-primary/20 scale-[1.02]" : "hover:border-primary/20")}>
-                                                    <span className={cn("text-xs font-black uppercase tracking-widest transition-colors", selectedMaterial === mat ? "text-primary" : "text-slate-600")}>{mat}</span>
+                                                    {/* v1.16 (lXRbKtH8) — display label "Hypalon" instead of code "HYP" */}
+                                                    <span className={cn("text-xs font-black uppercase tracking-widest transition-colors", selectedMaterial === mat ? "text-primary" : "text-slate-600")}>{mat === 'HYP' ? 'Hypalon' : mat}</span>
                                                 </button>
                                             ))}
                                         </div>
@@ -2133,11 +2175,30 @@ export function HighfieldQuoteFlow({
                                                 <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
                                                 <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Trailer Base</h3>
                                             </div>
-                                            {trailerAssignments.length > 0 && (
-                                                <span className="text-[9px] font-black uppercase tracking-widest text-white/70">
-                                                    {trailerAssignments.length} option{trailerAssignments.length === 1 ? '' : 's'}
-                                                </span>
-                                            )}
+                                            <div className="flex items-center gap-2">
+                                                {trailerAssignments.length > 0 && (
+                                                    <span className="text-[9px] font-black uppercase tracking-widest text-white/70">
+                                                        {trailerAssignments.length} option{trailerAssignments.length === 1 ? '' : 's'}
+                                                    </span>
+                                                )}
+                                                {/* v1.16 (Kw1Y2Gww) — Un-DEFAULT a trailer from a package.
+                                                    Click 'No trailer' to clear the auto-default assignment
+                                                    and submit the quote without a trailer. Mirrors the
+                                                    'Boat-only quote' pill for motors. */}
+                                                {selectedTrailerId && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setSelectedTrailerId(null);
+                                                            setCatalogTrailerSnapshot(null);
+                                                        }}
+                                                        className="text-[9px] font-black uppercase tracking-widest text-white/90 bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-full border border-white/30 transition-colors"
+                                                        title="Clear the trailer from this quote (boat-only)"
+                                                    >
+                                                        × No trailer
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* v1.4 day-1 redesign: trailer cards come from `model.trailerAssignments`
@@ -2371,9 +2432,20 @@ export function HighfieldQuoteFlow({
                                     {dealerFitLoading ? <div className="flex justify-center py-16"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div> : groupedDealerFit.length > 0 ? (
                                         groupedDealerFit.map(([cat, opts]) => (
                                             <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 scroll-mt-10">
-                                                <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
-                                                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                                {/* v1.16 (VyZ4AonV) — restructured dealer-fit heading: category
+                                                    name + option count + a gold accent rule + a quick subtitle
+                                                    distinguishing accessory categories from packages. */}
+                                                <div className="bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
+                                                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                                        </div>
+                                                        <span className="text-[8px] font-black uppercase tracking-widest text-white/70">
+                                                            {opts.length} option{opts.length === 1 ? '' : 's'}
+                                                            {(opts as any[]).some((o: any) => o.type === 'package') ? ' · packages incl.' : ''}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                     {opts.map((sel: any) => {
@@ -2381,14 +2453,45 @@ export function HighfieldQuoteFlow({
                                                         // Detect if items in this (unselected) selection are already included via another category
                                                         const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
                                                         return (
-                                                        <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1 relative", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-primary/20")}>
+                                                        <div key={sel.id} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent relative", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-primary/20")}>
                                                             {hasOverlap && <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5"><CopyCheck className="h-3 w-3 text-amber-600" /><span className="text-[7px] font-black uppercase tracking-wide text-amber-700">Already Included</span></div>}
-                                                            <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
-                                                            <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                                <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{sel.name}</p>
-                                                                <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.['Act Sell'] || i.data?.sellPriceExclGst || i.data?.['Store Price'] || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
-                                                            </div>
-                                                        </button>
+                                                            <button type="button" onClick={() => toggleDealerFitSelection(sel.id)} className="flex flex-col p-1 text-left w-full">
+                                                                <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
+                                                                <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
+                                                                    <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{sel.name}</p>
+                                                                    <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.['Act Sell'] || i.data?.sellPriceExclGst || i.data?.['Store Price'] || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
+                                                                </div>
+                                                            </button>
+                                                            {/* v1.16 (rI21WRhH) — Dealer fit option expander. Visible for
+                                                                packages (multi-item) so operators can see what's inside
+                                                                without leaving the picker. */}
+                                                            {sel.items && sel.items.length > 1 && (
+                                                                <>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => { e.stopPropagation(); toggleExpandedDealerFit(sel.id); }}
+                                                                        className="px-4 py-2 border-t flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 transition-colors"
+                                                                    >
+                                                                        <span>{expandedDealerFitIds.has(sel.id) ? 'Hide' : 'Show'} components</span>
+                                                                        <ChevronRight className={cn("h-3 w-3 transition-transform", expandedDealerFitIds.has(sel.id) && "rotate-90")} />
+                                                                    </button>
+                                                                    {expandedDealerFitIds.has(sel.id) && (
+                                                                        <div className="px-4 pb-3 pt-1 space-y-1 bg-slate-50/50 max-h-40 overflow-y-auto">
+                                                                            {sel.items.map((it: any, ii: number) => {
+                                                                                const itemName = it.data?.description || it.data?.label || it.data?.name || it.data?.Description || it.data?.Name || it.rowId || `Item ${ii + 1}`;
+                                                                                const itemPrice = it.data?.['Act Sell'] || it.data?.sellPriceExclGst || it.data?.['Store Price'] || it.data?.PARTS || it.data?.RRP || it.data?.Price || it.data?.Retail || it.data?.Trade || 0;
+                                                                                return (
+                                                                                    <div key={ii} className="flex items-start justify-between gap-3 text-[10px]">
+                                                                                        <span className="text-slate-700 flex-shrink min-w-0 truncate">• {itemName}</span>
+                                                                                        {itemPrice > 0 && <span className="text-slate-500 tabular-nums shrink-0">${itemPrice.toLocaleString()}</span>}
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </div>
                                                         );
                                                     })}
                                                 </div>
@@ -2642,6 +2745,24 @@ export function HighfieldQuoteFlow({
                                                             ))}
                                                         </div>
                                                     )}
+                                                    {/* v1.16 (NWi9EetL) — Sub Total for Trailer + trailer options selected.
+                                                        Captures trailer base + factory options + operator-added customs. */}
+                                                    {selectedTrailerId && (() => {
+                                                        const trailerBase = effectiveTrailerConfig ? getPriceForLevel(effectiveTrailerConfig, priceLevel) : 0;
+                                                        const factoryOptsTotal = selectedTrailerOptionsData.reduce((s: number, o: any) => s + getPriceForLevel(o, priceLevel), 0);
+                                                        const customOptsTotal = customTrailerOptions.reduce((s: number, o: any) => s + (o.sellPriceExclGst || 0), 0);
+                                                        const subtotal = trailerBase + factoryOptsTotal + customOptsTotal;
+                                                        if (subtotal <= 0) return null;
+                                                        return (
+                                                            <div className="p-4 border-t-2 border-primary/30 bg-primary/5 flex items-center justify-between">
+                                                                <div>
+                                                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary">Trailer Subtotal</p>
+                                                                    <p className="text-[9px] text-muted-foreground">Base + options + customs · ex GST</p>
+                                                                </div>
+                                                                <p className="text-sm font-black tabular-nums text-primary">${Math.round(subtotal).toLocaleString()}</p>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </CardContent>
                                             </Card>
                                         )}
@@ -2947,8 +3068,9 @@ export function HighfieldQuoteFlow({
                                 if (specs.winch) rows.push({ label: 'Winch', value: specs.winch });
                                 if (specs.betweenGuardsMm != null) rows.push({ label: 'Between Guards', value: `${specs.betweenGuardsMm} mm` });
                                 if (specs.plug) rows.push({ label: 'Plug', value: specs.plug });
-                                if (t?.cost != null && t.cost > 0) rows.push({ label: 'Cost (Excl. GST)', value: `$${t.cost.toLocaleString()}` });
-                                if (sell != null) rows.push({ label: 'Sell (Excl. GST)', value: `$${Number(sell).toLocaleString()}` });
+                                /* v1.16 (11E75Jyz) — Remove pricing from Trailer Spec.
+                                   The trailer cost/sell belong in the Investment Summary
+                                   + the running-total card, not in the spec sheet. */
 
                                 return (
                                     <>

@@ -292,7 +292,7 @@ export function StockItemForm({
                   <SelectValue placeholder="Select material" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="HYP">HYP</SelectItem>
+                  <SelectItem value="HYP">Hypalon</SelectItem>
                   <SelectItem value="PVC">PVC</SelectItem>
                 </SelectContent>
               </Select>

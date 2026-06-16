@@ -40,16 +40,16 @@ export interface ReleaseWindow {
  * without 90 empty columns). v2.x is intentionally NOT a column yet — it
  * gets added when the v1.X runway is nearly exhausted.
  *
- * Loop START INDEX: starts at v1.12, NOT v1.11. Once a release ships
+ * Loop START INDEX: starts at v1.14, NOT v1.13. Once a release ships
  * (gets its own explicit `'vX.Y': { shipped: true }` entry above the
  * spread), it must be EXCLUDED from this generator — otherwise the
- * spread's empty `{}` would clobber the shipped flag. When v1.12 ships,
- * bump this constant to 13. (v1.10 close-out post-mortem: I shipped
+ * spread's empty `{}` would clobber the shipped flag. When v1.14 ships,
+ * bump this constant to 15. (v1.10 close-out post-mortem: I shipped
  * v1.10 with the start index still at 10, the spread silently
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 12;
+const FORWARD_RUNWAY_START = 17;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -88,6 +88,54 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // Table, Suggestion Approval Queue) were retargeted to v1.12 so v1.11
     // ships as a focused Fit-Up release.
     'v1.11': { shipped: true },
+    // v1.12 — Service Quoting end-to-end. 11.2.2 view/edit/status
+    // lifecycle, 11.2.3 service-quote PDF (HL @react-pdf), 3.4.1 customer
+    // schema redesign (source / lifecycleStage / primary+secondary buyer /
+    // tradeIn ref / documents / notesCount). NOT in v1.12: 11.3.2
+    // migration tooling — blocked on NSM-Hub service-account; lands when
+    // access clears (v1.14+).
+    'v1.12': { shipped: true },
+    // v1.13 — Service Quoting send + Catalog admin polish. 11.2.4
+    // send-service-quote-via-email (reuses v1.8 send pipeline), 3.7.4
+    // Trailers table read-view (per-state rego cost surfaced), 3.7.5
+    // Pricing Manager feature parity audit, 3.8.1 inline edit pricing
+    // fields, 3.8.2 inline edit spec fields. NOT in v1.13: 11.3.3 NSM-Hub
+    // cutover — still blocked on service-account.
+    'v1.13': { shipped: true },
+    // v1.14 — Catalogue polish round. 3.8.1 + 3.8.2 retrofit (Motors Table
+    // gains inline editing on Name / HP / Shaft / Cost / Sell); 3.8.6
+    // column-header help tooltips on Motors + Trailers tables; 3.8.8
+    // per-tab CSV export on Motors + Trailers; 9.2.3 customer PDF fit-up
+    // summary line (already shipped in v1.11 code — status flipped only).
+    // NOT in v1.14: 11.3.2 + 11.3.3 NSM-Hub (still blocked); 9.2.1
+    // per-module Fit-up tab (different from v1.11 Step-5 selector — needs
+    // its own design pass); 3.7.6 org-level pricing overrides inline;
+    // 3.7.7 per-vendor imports under catalog tabs; 3.9.1 optional features
+    // drill-down editor — all on the v1.15+ queue.
+    'v1.14': { shipped: true },
+    // v1.15 — Suggestion audit + Marketing copy + Rule engine. 3.3.1
+    // crowdsourced suggestions with audit-log writes per approve/reject;
+    // 3.4.2 marketing copy editor UI on BoatsTable; 9.3.1 rule-based
+    // fit-up tier auto-classification (full rule engine — new
+    // fitUpClassificationRules collection + admin UI + resolver, replaces
+    // the v1.11 motor-HP heuristic).
+    'v1.15': { shipped: true },
+    // v1.16 — Wide polish + 34-ticket backlog drain. 21 code-shipped
+    // (Hypalon label, inc-GST sub-line, no-trailer pill, trailer subtotal,
+    // dealer-fit headings + expander + model-specific filter, archive
+    // toggle on Recent Proposals, larger images + logos, Trailer Spec
+    // pricing removed, Show/Hide option prices, improved Step header,
+    // 3.8.3 cover image, 3.8.4 marketing rich editor, 3.9.2 motor compat,
+    // 3.9.3 dealer-fit compat, 3.4.3 photo curation, 3.8.1 inventory
+    // badge); 3 stale-flip (9.2.2 already shipped in v1.11 quote-flow,
+    // VDUeX9zQ + e6twmpiT trailer/colour image in v1.11 Phase D);
+    // 10 decisions/docs consolidated in tasks/v1.16-DECISIONS.md.
+    // Plus PDF close-out polish: blank-page fix (absolute-positioned
+    // fixed footer), Investment Summary tightening (~50% more rows per
+    // page), smart-continue mode for content blocks (short atomic /
+    // long flow). NOT in v1.16: 11.3.2 + 11.3.3 NSM-Hub work — still
+    // service-account-blocked; deferred to v1.17.
+    'v1.16': { shipped: true },
     ...buildV1MinorReleases(),
 };
 

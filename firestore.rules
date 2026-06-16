@@ -214,6 +214,12 @@ service cloud.firestore {
       match /fitUpPackages/{packageId} {
         allow read, write: if isSignedIn();
       }
+      // v1.15 (Story 9.3.1) — Operator-authored classification rules that
+      // auto-suggest a fit-up tier from the quote context. Same lenient
+      // policy as fitUpPackages — UI-layer can_access_settings gates write.
+      match /fitUpClassificationRules/{ruleId} {
+        allow read, write: if isSignedIn();
+      }
       // v1.11 expansion-2 — Fit-Up catalog audit log. Append-only log of
       // catalog mutations (item/package created / updated / deleted).
       // Reads + writes signed-in; UI-layer org-admin gate via /manage's

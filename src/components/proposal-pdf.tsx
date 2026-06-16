@@ -56,7 +56,12 @@ const S = StyleSheet.create({
     pageHeaderSub: { fontSize: 6.5, letterSpacing: 2.5, fontWeight: 'bold', textTransform: 'uppercase', color: MUTED, marginTop: 3 },
     pageHeaderRight: { textAlign: 'right' },
     pageHeaderMeta: { fontSize: 6.5, fontWeight: 'bold', textTransform: 'uppercase', color: MUTED },
-    pageFooter: { marginTop: 'auto', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 10 },
+    /* v1.16 PDF polish — footer is now `fixed` and absolutely positioned at the
+       page bottom so it renders on every page AND doesn't take inline flex space
+       (which used to push it past the page edge → spurious blank page). The
+       paddingHorizontal here matches the Page's `padding: 44` so the footer
+       lines up with the body content. */
+    pageFooter: { position: 'absolute', bottom: 24, left: 44, right: 44, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 10 },
     pageFooterText: { fontSize: 6.5, fontWeight: 'bold', color: SLATE },
     pageFooterMuted: { fontSize: 6.5, fontWeight: 'bold', color: MUTED },
 });
@@ -82,8 +87,13 @@ function InnerHeader({ title, sub, quoteNumber }: { title: string; sub: string; 
 }
 
 function InnerFooter({ organisation, quoteNumber }: { organisation: any; quoteNumber: string }) {
+    /* v1.16 PDF polish — `fixed` makes the footer render on every page
+       at the same absolute position WITHOUT taking up flex flow space.
+       Removes the blank-page-5 bug where InnerFooter's marginTop:auto
+       pushed it past the page bottom, forcing react-pdf to spawn an
+       extra page with only the footer on it. */
     return (
-        <View style={S.pageFooter}>
+        <View style={S.pageFooter} fixed>
             <View style={{ flexDirection: 'row', gap: 16, flex: 1 }}>
                 <Text style={S.pageFooterText}>{organisation?.name}</Text>
                 {organisation?.phoneNumber && <Text style={S.pageFooterMuted}>{organisation.phoneNumber}</Text>}
@@ -91,7 +101,6 @@ function InnerFooter({ organisation, quoteNumber }: { organisation: any; quoteNu
             <Text
                 style={[S.pageFooterMuted, { flex: 1, textAlign: 'center' }]}
                 render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
-                fixed
             />
             <Text style={[S.pageFooterMuted, { flex: 1, textAlign: 'right' }]}>{quoteNumber}</Text>
         </View>
@@ -205,9 +214,10 @@ function BuildBand({
             {/* Body */}
             <View style={{ flexDirection: 'row', gap: 12, padding: 12 }}>
                 {image ? (
-                    <Image src={image} style={{ width: 92, height: 70, objectFit: 'contain', backgroundColor: LIGHT, borderRadius: 4, flexShrink: 0 }} />
+                    /* v1.16 (Qt0VHo4M) — Larger summary band images. 92×70 → 120×90. */
+                    <Image src={image} style={{ width: 120, height: 90, objectFit: 'contain', backgroundColor: LIGHT, borderRadius: 4, flexShrink: 0 }} />
                 ) : imagePlaceholder ? (
-                    <View style={{ width: 92, height: 70, backgroundColor: LIGHT, borderRadius: 4, flexShrink: 0, alignItems: 'center', justifyContent: 'center' }}>
+                    <View style={{ width: 120, height: 90, backgroundColor: LIGHT, borderRadius: 4, flexShrink: 0, alignItems: 'center', justifyContent: 'center' }}>
                         {imagePlaceholder}
                     </View>
                 ) : null}
@@ -318,120 +328,169 @@ function substituteCustomerTokens(html: string | undefined, quote: any): string 
 export function ProposalPDFDocument({ quote, organisation, financials, contentBlocks, contentBlockSubHeaders, contentBlockStyles, pdfSections, salespersonProfile }: Props) {
     const zones = partitionContentBlocks(pdfSections ?? DEFAULT_SECTIONS);
 
-    /** v1.7 round-5 — each content block now renders as its OWN PAGE
-     *  with its OWN InnerHeader matching the block type. Fixes the
-     *  earlier bug where zoneA blocks rendered under the "Vessel
-     *  Configuration" header on page 2 (orphan content under the wrong
-     *  header). T&Cs keeps its fallback chain (authored → legacy
-     *  org.termsAndConditions → DEFAULT_TERMS). Empty blocks (no
-     *  authored content, no fallback) emit nothing. */
-    const renderBlockPages = (zoneSections: PdfStructureSection[]) =>
-        zoneSections
-            .map(s => {
-                const blockType = s.key as BlockType;
-                const html = contentBlocks?.[blockType];
-                const label = BLOCK_TYPE_LABEL[blockType] ?? s.key;
-                const customSub = contentBlockSubHeaders?.[blockType];
-                const sub = (customSub && customSub.trim()) || SECTION_SUB[blockType] || '';
+    /** v1.16 PDF polish — content blocks now share pages in each zone
+     *  instead of getting their own dedicated A4 page each. A short
+     *  block (e.g. 3 lines of "Why us") used to claim a whole page
+     *  with 80% white space; now multiple short blocks stack vertically
+     *  and react-pdf auto-breaks when the running total overflows.
+     *
+     *  Per-block rendering still:
+     *   - Skips empty html (tag-only counts as empty)
+     *   - Falls back to authored / org / DEFAULT terms for T&Cs
+     *   - Honours per-block style overrides (colour, alignment, size)
+     *   - Wraps each block in `wrap={false}` so a block never splits
+     *     mid-paragraph; long blocks get their own page automatically
+     *
+     *  Special-cased salesperson-message keeps the photo-side layout
+     *  but renders within the shared Page (still wrap=false so the
+     *  photo + message stay together). */
 
-                // Salesperson-message — bespoke layout (photo + name + sign-off).
-                if (blockType === 'salesperson-message') {
-                    const sp = salespersonProfile;
-                    const spHtml = sp?.messageHtml;
-                    if (!sp || !spHtml || !spHtml.trim()) return null;
-                    const spSub = (customSub && customSub.trim())
-                        || `From ${sp.displayName ?? 'Your Salesperson'}${sp.role ? ` · ${sp.role}` : ''}`;
-                    return (
-                        <Page key={s.id} size="A4" style={{ ...S.page, padding: 44 }}>
-                            <InnerHeader title={label} sub={spSub} quoteNumber={quote.quoteNumber} />
-                            <View style={{ flexDirection: 'row', gap: 18 }}>
-                                {sp.photoUrl ? (
-                                    <Image src={pdfImg(sp.photoUrl, 240)} style={{ height: 110, width: 110, borderRadius: 55, objectFit: 'cover' }} />
-                                ) : null}
-                                <View style={{ flex: 1 }}>
-                                    <TipTapHtmlPdf html={substituteCustomerTokens(spHtml, quote)} fontSize={10} color={SLATE} />
-                                    {sp.signOff ? (
-                                        <Text style={{ fontSize: 10, fontStyle: 'italic', color: SLATE, marginTop: 12 }}>{sp.signOff}</Text>
-                                    ) : null}
-                                </View>
-                            </View>
-                            <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
-                        </Page>
-                    );
-                }
+    /** v1.16 (Option G — smart continue mode):
+     *  Each content block now decides per-render whether to be atomic
+     *  (wrap=false; keeps the whole block on one page; risks page-break
+     *  overflow on a short page) or flow-able (wrap=true; long blocks
+     *  split mid-paragraph across pages with the title staying with its
+     *  first paragraph).
+     *
+     *  Heuristic: count the visible text length in the html. Blocks
+     *  under ~600 chars stay atomic — they always fit on one page.
+     *  Longer blocks flow so they don't strand a half-empty page in
+     *  front of themselves. Title + first paragraph still stay together
+     *  via a nested wrap=false header View. */
+    const renderBlockSection = (s: PdfStructureSection) => {
+        const blockType = s.key as BlockType;
+        const html = contentBlocks?.[blockType];
+        const label = BLOCK_TYPE_LABEL[blockType] ?? s.key;
+        const customSub = contentBlockSubHeaders?.[blockType];
+        const sub = (customSub && customSub.trim()) || SECTION_SUB[blockType] || '';
+        const visibleLen = (h?: string) => (h ?? '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().length;
+        const ATOMIC_THRESHOLD = 600;
 
-                // T&Cs fallback chain — always renders even if no block is
-                // authored. Treats tag-only content ("<p></p>", "<p><br></p>")
-                // as empty too so the page doesn't render blank when an org
-                // has an "empty" authored block left over from a previous
-                // version of the content manager.
-                const htmlEmpty = !html || !html.trim() || !html.replace(/<[^>]+>/g, '').trim();
-                if (blockType === 'terms-and-conditions' && htmlEmpty) {
-                    /* Bare-minimum fallback. T&Cs content is operator-authored
-                       in the Content Manager — never invent terms here. Orgs
-                       that haven't filled it in get this short stub and a
-                       prompt; orgs that have filled it in skip this branch
-                       entirely. */
-                    const DEFAULT_TERMS = [
-                        '1. This proposal is valid for 30 days from the date of issue.',
-                        '2. Prices are subject to change without notice after the validity period.',
-                        '3. A non-refundable deposit may be required to secure this package.',
-                        '4. Final delivery dates will be confirmed upon order acceptance.',
-                    ];
-                    const customTerms = organisation?.termsAndConditions
-                        ? (organisation.termsAndConditions as string).split('\n').filter((l: string) => l.trim())
-                        : null;
-                    const lines = customTerms && customTerms.length > 0 ? customTerms : DEFAULT_TERMS;
-                    return (
-                        <Page key={s.id} size="A4" style={{ ...S.page, padding: 44 }}>
-                            <InnerHeader title={label} sub={sub} quoteNumber={quote.quoteNumber} />
-                            {lines.map((t: string, i: number, arr: string[]) => (
-                                <Text key={i} style={{ fontSize: 9, color: SLATE, lineHeight: 1.6, marginBottom: i < arr.length - 1 ? 5 : 0 }}>{t}</Text>
-                            ))}
-                            <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
-                        </Page>
-                    );
-                }
-
-                // Generic content block — only render if html has real content
-                // (tag-only HTML counts as empty so we don't emit blank pages).
-                if (htmlEmpty) return null;
-                // v1.11 follow-up — apply per-block presentation overrides.
-                const style = contentBlockStyles?.[blockType] || {};
-                const titleSizeMap = { sm: 14, md: 18, lg: 22, xl: 28 } as const;
-                const bodySizeMap = { sm: 8.5, md: 10, lg: 12 } as const;
-                const titleSize = titleSizeMap[(style.titleSize as 'sm' | 'md' | 'lg' | 'xl') || 'md'];
-                const bodySize = bodySizeMap[(style.bodySize as 'sm' | 'md' | 'lg') || 'md'];
-                const accent = style.accentColor || NAVY;
-                const textColor = style.textColor || SLATE;
-                const titleAlign = (style.titleAlign as 'left' | 'center') || 'left';
-                const bodyAlign = (style.bodyAlign as 'left' | 'center' | 'justify') || 'left';
-                const cardBg = style.backgroundColor || undefined;
-                const titleItalic = style.titleItalic !== false; // default italic
-                return (
-                    <Page key={s.id} size="A4" style={{ ...S.page, padding: 44 }}>
-                        <View style={{ borderBottomWidth: 2, borderBottomColor: accent, paddingBottom: 10, marginBottom: 18 }}>
-                            <Text style={{ fontSize: titleSize, fontWeight: 'bold', fontStyle: titleItalic ? 'italic' : 'normal', textTransform: 'uppercase', letterSpacing: -0.4, lineHeight: 1.1, color: accent, textAlign: titleAlign }}>
-                                {label}
-                            </Text>
-                            {sub ? (
-                                <Text style={{ fontSize: 6.5, letterSpacing: 2.5, fontWeight: 'bold', textTransform: 'uppercase', color: MUTED, marginTop: 4, textAlign: titleAlign }}>
-                                    {sub}
-                                </Text>
+        // Salesperson-message — bespoke layout (photo + name + sign-off).
+        // Always atomic — photo + signature should never separate from message.
+        if (blockType === 'salesperson-message') {
+            const sp = salespersonProfile;
+            const spHtml = sp?.messageHtml;
+            if (!sp || !spHtml || !spHtml.trim()) return null;
+            const spSub = (customSub && customSub.trim())
+                || `From ${sp.displayName ?? 'Your Salesperson'}${sp.role ? ` · ${sp.role}` : ''}`;
+            return (
+                <View key={s.id} wrap={false} style={{ marginBottom: 24 }}>
+                    <View style={{ borderBottomWidth: 2, borderBottomColor: NAVY, paddingBottom: 8, marginBottom: 14 }}>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.4, lineHeight: 1.1, color: NAVY }}>{label}</Text>
+                        {spSub ? <Text style={{ fontSize: 6.5, letterSpacing: 2.5, fontWeight: 'bold', textTransform: 'uppercase', color: MUTED, marginTop: 3 }}>{spSub}</Text> : null}
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 18 }}>
+                        {sp.photoUrl ? (
+                            <Image src={pdfImg(sp.photoUrl, 240)} style={{ height: 100, width: 100, borderRadius: 50, objectFit: 'cover' }} />
+                        ) : null}
+                        <View style={{ flex: 1 }}>
+                            <TipTapHtmlPdf html={substituteCustomerTokens(spHtml, quote)} fontSize={10} color={SLATE} />
+                            {sp.signOff ? (
+                                <Text style={{ fontSize: 10, fontStyle: 'italic', color: SLATE, marginTop: 10 }}>{sp.signOff}</Text>
                             ) : null}
                         </View>
-                        {cardBg ? (
-                            <View style={{ backgroundColor: cardBg, padding: 14, borderRadius: 6 }}>
-                                <TipTapHtmlPdf html={html} fontSize={bodySize} color={textColor} align={bodyAlign} />
-                            </View>
-                        ) : (
-                            <TipTapHtmlPdf html={html} fontSize={bodySize} color={textColor} align={bodyAlign} />
-                        )}
-                        <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
-                    </Page>
-                );
-            })
-            .filter(Boolean);
+                    </View>
+                </View>
+            );
+        }
+
+        // T&Cs fallback chain — always renders even if no block is authored.
+        const htmlEmpty = !html || !html.trim() || !html.replace(/<[^>]+>/g, '').trim();
+        if (blockType === 'terms-and-conditions' && htmlEmpty) {
+            const DEFAULT_TERMS = [
+                '1. This proposal is valid for 30 days from the date of issue.',
+                '2. Prices are subject to change without notice after the validity period.',
+                '3. A non-refundable deposit may be required to secure this package.',
+                '4. Final delivery dates will be confirmed upon order acceptance.',
+            ];
+            const customTerms = organisation?.termsAndConditions
+                ? (organisation.termsAndConditions as string).split('\n').filter((l: string) => l.trim())
+                : null;
+            const lines = customTerms && customTerms.length > 0 ? customTerms : DEFAULT_TERMS;
+            return (
+                <View key={s.id} wrap={false} style={{ marginBottom: 24 }}>
+                    <View style={{ borderBottomWidth: 2, borderBottomColor: NAVY, paddingBottom: 8, marginBottom: 14 }}>
+                        <Text style={{ fontSize: 18, fontWeight: 'bold', fontStyle: 'italic', textTransform: 'uppercase', letterSpacing: -0.4, lineHeight: 1.1, color: NAVY }}>{label}</Text>
+                        {sub ? <Text style={{ fontSize: 6.5, letterSpacing: 2.5, fontWeight: 'bold', textTransform: 'uppercase', color: MUTED, marginTop: 3 }}>{sub}</Text> : null}
+                    </View>
+                    {lines.map((t: string, i: number, arr: string[]) => (
+                        <Text key={i} style={{ fontSize: 9, color: SLATE, lineHeight: 1.6, marginBottom: i < arr.length - 1 ? 5 : 0 }}>{t}</Text>
+                    ))}
+                </View>
+            );
+        }
+
+        if (htmlEmpty) return null;
+
+        // Per-block style overrides
+        const style = contentBlockStyles?.[blockType] || {};
+        const titleSizeMap = { sm: 14, md: 18, lg: 22, xl: 28 } as const;
+        const bodySizeMap = { sm: 8.5, md: 10, lg: 12 } as const;
+        const titleSize = titleSizeMap[(style.titleSize as 'sm' | 'md' | 'lg' | 'xl') || 'md'];
+        const bodySize = bodySizeMap[(style.bodySize as 'sm' | 'md' | 'lg') || 'md'];
+        const accent = style.accentColor || NAVY;
+        const textColor = style.textColor || SLATE;
+        const titleAlign = (style.titleAlign as 'left' | 'center') || 'left';
+        const bodyAlign = (style.bodyAlign as 'left' | 'center' | 'justify') || 'left';
+        const cardBg = style.backgroundColor || undefined;
+        const titleItalic = style.titleItalic !== false;
+
+        const isAtomic = visibleLen(html) < ATOMIC_THRESHOLD;
+        const Header = (
+            <View wrap={false} style={{ borderBottomWidth: 2, borderBottomColor: accent, paddingBottom: 8, marginBottom: 14 }}>
+                <Text style={{ fontSize: titleSize, fontWeight: 'bold', fontStyle: titleItalic ? 'italic' : 'normal', textTransform: 'uppercase', letterSpacing: -0.4, lineHeight: 1.1, color: accent, textAlign: titleAlign }}>
+                    {label}
+                </Text>
+                {sub ? (
+                    <Text style={{ fontSize: 6.5, letterSpacing: 2.5, fontWeight: 'bold', textTransform: 'uppercase', color: MUTED, marginTop: 3, textAlign: titleAlign }}>
+                        {sub}
+                    </Text>
+                ) : null}
+            </View>
+        );
+        const Body = cardBg ? (
+            <View style={{ backgroundColor: cardBg, padding: 14, borderRadius: 6 }}>
+                <TipTapHtmlPdf html={html} fontSize={bodySize} color={textColor} align={bodyAlign} />
+            </View>
+        ) : (
+            <TipTapHtmlPdf html={html} fontSize={bodySize} color={textColor} align={bodyAlign} />
+        );
+
+        if (isAtomic) {
+            // Short block — keep the whole thing together (existing behaviour).
+            return (
+                <View key={s.id} wrap={false} style={{ marginBottom: 24 }}>
+                    {Header}
+                    {Body}
+                </View>
+            );
+        }
+        // Long block — flow-able. Title stays with first paragraph via the
+        // inner wrap=false Header; body wraps freely across pages.
+        return (
+            <View key={s.id} style={{ marginBottom: 24 }}>
+                {Header}
+                {Body}
+            </View>
+        );
+    };
+
+    const renderBlockPages = (zoneSections: PdfStructureSection[]) => {
+        const sections = zoneSections
+            .map(s => ({ s, section: renderBlockSection(s) }))
+            .filter(x => x.section != null);
+        if (sections.length === 0) return null;
+        // Single shared Page per zone. Body wraps; each block is wrap=false
+        // so blocks never split mid-paragraph. Footer is fixed so the
+        // first overflow page (if any) still has it.
+        return (
+            <Page key={`zone-${zoneSections[0]?.id ?? 'unknown'}`} size="A4" style={{ ...S.page, padding: 44, paddingBottom: 60 }}>
+                {sections.map(x => x.section)}
+                <InnerFooter organisation={organisation} quoteNumber={quote.quoteNumber} />
+            </Page>
+        );
+    };
 
     const f = financials;
     const createdAt: Date = quote.createdAt?.toDate?.() ?? new Date();
@@ -472,7 +531,11 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
     factoryOptions.forEach((opt: any) => {
         const base = formatOptionName(opt.name.replace(/\s*\([^)]+\)\s*$/, '').trim());
         const color = extractFirstColor(opt.name);
-        lineItems.push({ label: color ? `${base} (${color})` : base, sub: opt.category || 'Factory Option', amount: opt.sellPriceExclGst || 0, indent: true });
+        /* v1.16 (XydsZkX3) — hideOptionPrices forces the line to render as
+           INCLUDED on the customer PDF (amount === 0 → 'INCLUDED' tag). */
+        const rawAmount = opt.sellPriceExclGst || 0;
+        const amount = quote.hideOptionPrices ? 0 : rawAmount;
+        lineItems.push({ label: color ? `${base} (${color})` : base, sub: opt.category || 'Factory Option', amount, indent: true });
     });
     // Motor — base + every accessory ON ITS OWN LINE. v1.11 follow-up: items
     // that are "Included" (price 0, factory-standard with the engine) now also
@@ -488,7 +551,8 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             amount: motorBase > 0 ? motorBase : (f.motorTotal ?? 0),
         });
         motorAccs.forEach(a => {
-            const amount = a.sellPriceExclGst || 0;
+            const rawAmount = a.sellPriceExclGst || 0;
+            const amount = quote.hideOptionPrices ? 0 : rawAmount;
             const isStandard = !!(a.isStandard || a.isInclusion);
             lineItems.push({
                 label: a.name || a.label || 'Motor accessory',
@@ -512,7 +576,8 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             amount: trailerBase > 0 ? trailerBase : (f.trailerTotal ?? 0),
         });
         tOpts.forEach(o => {
-            const amount = o.sellPriceExclGst || 0;
+            const rawAmount = o.sellPriceExclGst || 0;
+            const amount = quote.hideOptionPrices ? 0 : rawAmount;
             lineItems.push({
                 label: o.name || 'Trailer option',
                 sub: amount === 0
@@ -535,7 +600,8 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                 const labelCandidates = [it.description, it.label, it.name].filter(Boolean) as string[];
                 const real = labelCandidates.find(c => !isCodeOnlyLabel(c));
                 if (!real) return;
-                const amount = it.sellPriceExclGst || 0;
+                const rawAmount = it.sellPriceExclGst || 0;
+                const amount = quote.hideOptionPrices ? 0 : rawAmount;
                 lineItems.push({
                     label: real,
                     sub: (g?.category || g?.name) ? `Dealer Fit · ${g.category || g.name}` : 'Dealer Fit',
@@ -722,18 +788,18 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                         on the left, vendor logo on the right (the boat brand,
                         e.g. Highfield). Single right-side logo — no cascade. */}
                     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: 48, paddingTop: 28, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 80 }}>
-                        {/* Org logo */}
+                        {/* v1.16 (bvAyUQVR) — Larger org logo. Was 40px tall × 160 max-w → 56px × 220. */}
                         {organisation?.primaryLogoUrl ? (
-                            <Image src={pdfImg(organisation.primaryLogoUrl, 320)} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
+                            <Image src={pdfImg(organisation.primaryLogoUrl, 440)} style={{ height: 56, maxWidth: 220, objectFit: 'contain' }} />
                         ) : (
                             <Text style={{ fontSize: 13, fontWeight: 'bold', color: NAVY, letterSpacing: 1 }}>
                                 {(organisation?.name ?? '').toUpperCase()}
                             </Text>
                         )}
 
-                        {/* Vendor (boat brand) logo on the right */}
+                        {/* v1.16 (bvAyUQVR) — Larger vendor logo (same boost as org). */}
                         {quote.vendorLogoUrl ? (
-                            <Image src={pdfImg(quote.vendorLogoUrl, 320)} style={{ height: 40, maxWidth: 160, objectFit: 'contain' }} />
+                            <Image src={pdfImg(quote.vendorLogoUrl, 440)} style={{ height: 56, maxWidth: 220, objectFit: 'contain' }} />
                         ) : quote.vendorName ? (
                             <Text style={{ fontSize: 13, fontWeight: 'bold', color: NAVY, letterSpacing: 1 }}>
                                 {quote.vendorName.toUpperCase()}
@@ -846,7 +912,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             {/* ═══════════════════════════════════════════════════════════
                 PAGE — VESSEL CONFIGURATION (system, anchored)
             ═══════════════════════════════════════════════════════════ */}
-            <Page size="A4" style={{ ...S.page, padding: 44 }}>
+            <Page size="A4" style={{ ...S.page, padding: 44, paddingBottom: 60 }}>
                 <InnerHeader title="Your Build" sub="Every component of your package" quoteNumber={quote.quoteNumber} />
 
                 {/* ════ YOUR BUILD — numbered card-stack of every component ════ */}
@@ -1157,7 +1223,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             {/* ═══════════════════════════════════════════════════════════
                 PAGE — INVESTMENT SUMMARY (system, anchored)
             ═══════════════════════════════════════════════════════════ */}
-            <Page size="A4" style={{ ...S.page, padding: 44 }}>
+            <Page size="A4" style={{ ...S.page, padding: 44, paddingBottom: 60 }}>
                 <InnerHeader title="Investment Summary" sub="Comprehensive Package Breakdown" quoteNumber={quote.quoteNumber} />
 
                 {/* Pricing table */}
@@ -1174,26 +1240,28 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                           - INCLUDED (amount === 0): grey "Included" tag
                           - DISCOUNT (amount < 0):   green negative number
                           - REGULAR (amount > 0):    navy currency */}
+                    {/* v1.16 (Option E) — Investment Summary tightening. Reduced
+                        vertical padding per row, smaller fonts on indented sub-items,
+                        thinner sub-label spacing. The whole block now fits ~50%
+                        more rows per page so a long quote doesn't bleed onto a
+                        nearly-empty second page. */}
                     {lineItems.map((item, i) => {
                         const isIncluded = item.amount === 0;
                         const isDiscount = item.amount < 0;
                         const valueColor = isDiscount ? GREEN : (isIncluded ? MUTED : NAVY);
-                        // v1.11 launch — indented sub-items render with a left
-                        // padding + an L-shaped tick so they read as children of
-                        // the previous parent row (Vessel / Propulsion / etc.).
                         const indent = !!item.indent;
                         return (
-                            <View key={i} wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: indent ? 5 : 8, paddingLeft: indent ? 18 : 0, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
+                            <View key={i} wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: indent ? 3 : 5, paddingLeft: indent ? 18 : 0, borderBottomWidth: 0.5, borderBottomColor: '#f1f5f9' }}>
                                 <View style={{ flexShrink: 1, paddingRight: 12, flexDirection: 'row', alignItems: 'flex-start' }}>
                                     {indent && (
-                                        <View style={{ width: 8, height: 8, borderLeftWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', marginRight: 6, marginTop: 2 }} />
+                                        <View style={{ width: 6, height: 6, borderLeftWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', marginRight: 5, marginTop: 2 }} />
                                     )}
                                     <View style={{ flexShrink: 1 }}>
-                                        <Text style={{ fontSize: indent ? 7.5 : 8.5, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.3, color: indent ? SLATE : NAVY }}>{item.label}</Text>
-                                        {item.sub && <Text style={{ fontSize: indent ? 6 : 7, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: MUTED, marginTop: 1.5 }}>{item.sub}</Text>}
+                                        <Text style={{ fontSize: indent ? 7 : 8, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.3, color: indent ? SLATE : NAVY, lineHeight: 1.2 }}>{item.label}</Text>
+                                        {item.sub && <Text style={{ fontSize: indent ? 5.5 : 6.5, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: MUTED, marginTop: 1 }}>{item.sub}</Text>}
                                     </View>
                                 </View>
-                                <Text style={{ fontSize: indent ? 7.5 : 8.5, fontWeight: 'bold', color: valueColor, flexShrink: 0 }}>
+                                <Text style={{ fontSize: indent ? 7 : 8, fontWeight: 'bold', color: valueColor, flexShrink: 0 }}>
                                     {isIncluded ? 'INCLUDED' : currency(item.amount)}
                                 </Text>
                             </View>
@@ -1246,7 +1314,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             {/* ═══════════════════════════════════════════════════════════
                 PAGE — ACCEPTANCE (signatures, anchored)
             ═══════════════════════════════════════════════════════════ */}
-            <Page size="A4" style={{ ...S.page, padding: 44 }}>
+            <Page size="A4" style={{ ...S.page, padding: 44, paddingBottom: 60 }}>
                 <InnerHeader title="Acceptance" sub="Signatures & Confirmation" quoteNumber={quote.quoteNumber} />
 
                 {/* Quote summary recap — a final at-a-glance reminder of what

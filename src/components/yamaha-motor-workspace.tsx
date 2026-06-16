@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Ship, Search, Package, Settings as SettingsIcon, DollarSign, ChevronDown, ArrowUpDown, Tag } from 'lucide-react';
+import { Ship, Search, Package, Settings as SettingsIcon, DollarSign, ChevronDown, ArrowUpDown, Tag, Wrench } from 'lucide-react';
+import { ModuleFitUpTab } from '@/components/module-fit-up-tab';
 import { ModulePromotions } from '@/components/module-promotions';
 import { MasterPriceFileWorkspace } from '@/components/master-price-file-workspace';
 import { ModuleSettingsPanel } from '@/components/module-settings-panel';
@@ -299,10 +300,10 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
     const firestore = useFirestore();
 
     // Tab state — initialized from URL ?motorTab= param so refresh stays put
-    const [activeTab, setActiveTab] = useState<'catalog' | 'pricing' | 'promotions' | 'settings'>(() => {
+    const [activeTab, setActiveTab] = useState<'catalog' | 'pricing' | 'promotions' | 'fit-up' | 'settings'>(() => {
         if (typeof window !== 'undefined') {
             const t = new URLSearchParams(window.location.search).get('motorTab');
-            if (t === 'catalog' || t === 'pricing' || t === 'promotions' || t === 'settings') return t;
+            if (t === 'catalog' || t === 'pricing' || t === 'promotions' || t === 'fit-up' || t === 'settings') return t;
         }
         return 'catalog';
     });
@@ -439,6 +440,7 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
         { key: 'catalog' as const, label: 'Catalog', icon: <Ship className="h-4 w-4" /> },
         { key: 'pricing' as const, label: 'Pricing Manager', icon: <DollarSign className="h-4 w-4" /> },
         { key: 'promotions' as const, label: 'Promotions', icon: <Tag className="h-4 w-4" /> },
+        { key: 'fit-up' as const, label: 'Fit-up', icon: <Wrench className="h-4 w-4" /> },
         { key: 'settings' as const, label: 'Settings', icon: <SettingsIcon className="h-4 w-4" /> },
     ];
 
@@ -610,6 +612,20 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
                                 moduleId={moduleId}
                                 vendorId={vendorId}
                                 organisationId={organisationId}
+                            />
+                        </div>
+                    </ScrollArea>
+                )}
+
+                {/* v1.14 (Story 9.2.1) — per-module Fit-up tab. Lists fit-up items
+                    in the org's catalog scoped to this moduleId. */}
+                {activeTab === 'fit-up' && (
+                    <ScrollArea className="h-full">
+                        <div className="p-8">
+                            <ModuleFitUpTab
+                                organisationId={organisationId}
+                                moduleId={moduleId}
+                                moduleName="Yamaha Outboards"
                             />
                         </div>
                     </ScrollArea>

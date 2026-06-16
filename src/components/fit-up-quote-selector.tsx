@@ -28,6 +28,11 @@ import { useMemo, useState } from 'react';
 import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import {
+    resolveClassification,
+    type ClassificationRule,
+    type QuoteContext as ClassificationContext,
+} from '@/lib/fit-up-classification';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -309,6 +314,15 @@ export function FitUpQuoteSelector({
     );
     const { data: packages } = useCollection<FitUpPackage>(packagesRef);
 
+    /** v1.15 (Story 9.3.1) — operator-authored classification rules. When
+     *  none exist the suggested-tier path falls back to the v1.11 motor-HP
+     *  heuristic (no regression). */
+    const rulesRef = useMemoFirebase(
+        () => collection(firestore, 'organisations', organisationId, 'fitUpClassificationRules'),
+        [firestore, organisationId],
+    );
+    const { data: rules } = useCollection<ClassificationRule>(rulesRef);
+
     const [categoryFilter, setCategoryFilter] = useState<string | 'all'>('all');
     const [search, setSearch] = useState('');
     // The custom-items section is collapsed by default — packages are the
@@ -321,14 +335,18 @@ export function FitUpQuoteSelector({
      *  the generic Complex package). Null = no opinion. */
     const [useCase, setUseCase] = useState<FitUpUseCase | null>(null);
 
-    // Boat-level complexity from catalog wins; HP heuristic is the fallback.
-    // 'auto' on the boat means "let HP decide" → defer to motorHp path.
+    // Resolution priority:
+    //   1. Catalog-level explicit complexity (boat-level override; non-'auto')
+    //   2. v1.15 (9.3.1) operator-authored classification rules
+    //   3. v1.11 motor-HP heuristic (fallback)
     const suggestedTier = useMemo(() => {
         if (boatComplexity && boatComplexity !== 'auto' && TIERS.includes(boatComplexity)) {
             return boatComplexity;
         }
-        return suggestedTierForMotorHp(motorHp);
-    }, [boatComplexity, motorHp]);
+        const ctx: ClassificationContext = { motorHp, vendorId, modelCode: modelId };
+        const result = resolveClassification(rules ?? [], ctx);
+        return result.tier;
+    }, [boatComplexity, motorHp, rules, vendorId, modelId]);
 
     // v1.11 Epic 9.2.1 — filter by assignment context first (multi-
     // level AND), then by tier chip + category chip + Suggested + search.

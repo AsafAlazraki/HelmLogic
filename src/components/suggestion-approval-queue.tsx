@@ -17,9 +17,10 @@
  */
 
 import { useMemo, useState } from 'react';
-import { collection, doc, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, doc, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { useUser } from '@/firebase/auth/use-user';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,9 +43,29 @@ interface FeatureRow {
 
 export function SuggestionApprovalQueue() {
     const firestore = useFirestore();
+    const { user } = useUser();
     const { toast } = useToast();
     const [search, setSearch] = useState('');
     const [busyId, setBusyId] = useState<string | null>(null);
+
+    /** v1.15 (Story 3.3.1 — "with Audit") — append an audit entry on every
+     *  approve / reject so the suggestion lifecycle is traceable. Lives at
+     *  features/{featureId}/auditLog/{eventId}, mirrors the per-quote audit
+     *  pattern shipped in v1.8. Fire-and-forget; a failed audit write must
+     *  not roll back the underlying state change. */
+    const logSuggestionEvent = async (featureId: string, eventType: string, metadata?: Record<string, any>) => {
+        try {
+            await addDoc(collection(firestore, 'features', featureId, 'auditLog'), {
+                eventType,
+                at: serverTimestamp(),
+                byUid: user?.uid || 'unknown',
+                byName: user?.displayName || user?.email || 'Someone',
+                metadata: metadata ?? null,
+            });
+        } catch (err) {
+            console.warn('audit-log write failed (non-fatal)', err);
+        }
+    };
 
     const featuresRef = useMemoFirebase(
         () => query(collection(firestore, 'features'), where('status', '==', 'submitted')),
@@ -74,6 +95,11 @@ export function SuggestionApprovalQueue() {
                 status: 'under-review',
                 updatedAt: serverTimestamp(),
             });
+            void logSuggestionEvent(f.id, 'suggestion-approved', {
+                fromStatus: f.status ?? 'submitted',
+                toStatus: 'under-review',
+                title: f.title,
+            });
             toast({ title: 'Approved → Under review', description: f.title });
         } catch (err) {
             console.error(err);
@@ -89,6 +115,10 @@ export function SuggestionApprovalQueue() {
             await updateDoc(doc(firestore, 'features', f.id), {
                 deletedAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
+            });
+            void logSuggestionEvent(f.id, 'suggestion-rejected', {
+                fromStatus: f.status ?? 'submitted',
+                title: f.title,
             });
             toast({ title: 'Rejected (soft-deleted)', description: f.title });
         } catch (err) {

@@ -18,6 +18,7 @@ import NextImage from "next/image";
 import { HighfieldPricingWorkspace } from "@/components/highfield-pricing-workspace";
 import { MotorsTableView } from "@/components/motors-table-view";
 import { BoatsTableView } from "@/components/boats-table-view";
+import { TrailersTableView } from "@/components/trailers-table-view";
 import { ExchangeRateManager } from "@/components/exchange-rate-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -280,13 +281,20 @@ export default function PricingManagerPage() {
                                here so motor brands have a read view inside the
                                Catalog Manager instead of "coming soon". */
                             <div className="p-6 overflow-y-auto">
-                                <MotorsTableView />
+                                <MotorsTableView organisationId={organisationId} />
                             </div>
                         ) : activeVendor.vendorType === 'Boat Brand' ? (
                             /* v1.11 follow-up — non-Highfield Boat Brand vendors
                                get the Boats Table read view instead of "coming soon". */
                             <div className="p-6 overflow-y-auto">
                                 <BoatsTableView />
+                            </div>
+                        ) : activeVendor.vendorType === 'Trailer Brand' ? (
+                            /* v1.13 — Story 3.7.4. Trailer Brand vendors get the
+                               Trailers Table read view (pricing + ATM/Tare + margin
+                               + missing-pricing highlighter + rego link). */
+                            <div className="p-6 overflow-y-auto">
+                                <TrailersTableView organisationId={organisationId} />
                             </div>
                         ) : (
                             <div className="flex flex-col h-full overflow-hidden">
