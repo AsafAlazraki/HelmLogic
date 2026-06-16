@@ -38,14 +38,15 @@ def val(v):
     return v
 def fields(doc): return {k: val(x) for k, x in doc.get("fields", {}).items()}
 
-SHIP_PREFIXES = ("9.2.3 ", "3.8.6 ", "3.8.8 ")
-DEFER_TO_V115 = ("3.7.6 ", "3.7.7 ", "3.9.1 ", "9.2.1 ")
+SHIP_PREFIXES = ("9.2.3 ", "3.8.6 ", "3.8.8 ", "3.7.6 ", "3.7.7 ", "3.9.1 ", "9.2.1 ")
+DEFER_TO_V115 = ()
+DEFER_TO_V117 = ("11.3.2 ", "11.3.3 ")
 
 url = f"{BASE}:runQuery"
 body = {"structuredQuery": {"from": [{"collectionId": "features"}], "limit": 300}}
 rows = requests.post(url, json=body, headers=H, timeout=30).json()
 
-ships, defers, hold = [], [], []
+ships, defers117, hold = [], [], []
 for row in rows:
     if "document" not in row: continue
     doc = row["document"]
@@ -55,17 +56,16 @@ for row in rows:
     title = f.get("title", "")
     if any(title.startswith(p) for p in SHIP_PREFIXES):
         ships.append((fid, title))
-    elif any(title.startswith(p) for p in DEFER_TO_V115):
-        defers.append((fid, title))
+    elif any(title.startswith(p) for p in DEFER_TO_V117):
+        defers117.append((fid, title))
     else:
-        # NSM-Hub stays at v1.14 (we'll keep checking the service account)
         hold.append((fid, title))
 
 print(f"\n=== SHIP {len(ships)} ===")
 for fid, title in ships: print(f"  {title[:90]}")
-print(f"\n=== DEFER → v1.15 ({len(defers)}) ===")
-for fid, title in defers: print(f"  {title[:90]}")
-print(f"\n=== HOLD AT v1.14 (NSM-Hub) ({len(hold)}) ===")
+print(f"\n=== DEFER → v1.17 ({len(defers117)}) (NSM-Hub) ===")
+for fid, title in defers117: print(f"  {title[:90]}")
+print(f"\n=== UNCATEGORISED AT v1.14 ({len(hold)}) ===")
 for fid, title in hold: print(f"  {title[:90]}")
 
 if "--dry" in sys.argv:
@@ -85,9 +85,9 @@ for fid, _ in ships:
     s, r = patch_doc(fid, {"status": "shipped"})
     if s: ok += 1
     else: fail += 1; print(f"  FAIL ship {fid}: {r.status_code}")
-for fid, _ in defers:
-    s, r = patch_doc(fid, {"targetRelease": "v1.15"})
+for fid, _ in defers117:
+    s, r = patch_doc(fid, {"targetRelease": "v1.17"})
     if s: ok += 1
-    else: fail += 1; print(f"  FAIL defer {fid}: {r.status_code}")
+    else: fail += 1; print(f"  FAIL defer→v1.17 {fid}: {r.status_code}")
 
 print(f"\nDone: {ok} patched, {fail} failed")
