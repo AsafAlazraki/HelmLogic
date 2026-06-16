@@ -49,7 +49,7 @@ export interface ReleaseWindow {
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 15;
+const FORWARD_RUNWAY_START = 17;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -113,6 +113,29 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // 3.7.7 per-vendor imports under catalog tabs; 3.9.1 optional features
     // drill-down editor — all on the v1.15+ queue.
     'v1.14': { shipped: true },
+    // v1.15 — Suggestion audit + Marketing copy + Rule engine. 3.3.1
+    // crowdsourced suggestions with audit-log writes per approve/reject;
+    // 3.4.2 marketing copy editor UI on BoatsTable; 9.3.1 rule-based
+    // fit-up tier auto-classification (full rule engine — new
+    // fitUpClassificationRules collection + admin UI + resolver, replaces
+    // the v1.11 motor-HP heuristic).
+    'v1.15': { shipped: true },
+    // v1.16 — Wide polish + 34-ticket backlog drain. 21 code-shipped
+    // (Hypalon label, inc-GST sub-line, no-trailer pill, trailer subtotal,
+    // dealer-fit headings + expander + model-specific filter, archive
+    // toggle on Recent Proposals, larger images + logos, Trailer Spec
+    // pricing removed, Show/Hide option prices, improved Step header,
+    // 3.8.3 cover image, 3.8.4 marketing rich editor, 3.9.2 motor compat,
+    // 3.9.3 dealer-fit compat, 3.4.3 photo curation, 3.8.1 inventory
+    // badge); 3 stale-flip (9.2.2 already shipped in v1.11 quote-flow,
+    // VDUeX9zQ + e6twmpiT trailer/colour image in v1.11 Phase D);
+    // 10 decisions/docs consolidated in tasks/v1.16-DECISIONS.md.
+    // Plus PDF close-out polish: blank-page fix (absolute-positioned
+    // fixed footer), Investment Summary tightening (~50% more rows per
+    // page), smart-continue mode for content blocks (short atomic /
+    // long flow). NOT in v1.16: 11.3.2 + 11.3.3 NSM-Hub work — still
+    // service-account-blocked; deferred to v1.17.
+    'v1.16': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
