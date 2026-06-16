@@ -49,7 +49,7 @@ export interface ReleaseWindow {
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 17;
+const FORWARD_RUNWAY_START = 18;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -136,6 +136,25 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // long flow). NOT in v1.16: 11.3.2 + 11.3.3 NSM-Hub work — still
     // service-account-blocked; deferred to v1.17.
     'v1.16': { shipped: true },
+    // v1.17 — Catalog editing at scale + bug sweep. Phase A (7 stories,
+    // all unblocked): 3.10.1 multi-row select + bulk markup on Motors +
+    // Trailers, 3.10.2 paste-from-spreadsheet (auto-detected key column,
+    // diff preview, idempotent merge), 3.10.3 cross-tab catalog filter
+    // (search box on Catalog Manager threads through as initialSearch
+    // to Motors/Trailers/Boats tables), 3.2.1 internal data normalisation
+    // layer (derive-pricing.ts canonical shape + applyMarkup helper +
+    // GST_MULTIPLIER constant + isRateStale detector), 3.11.3 per-vendor
+    // importer plug-in registry (Yamaha MPF + Sam Allen + Trailer Brand
+    // pre-registered), 3.9.4 boat <-> trailer compat editor, 3.9.5
+    // exchange-rate stale-warning helper. Phase B bug sweep: 2 of 5
+    // resolved (Trailer Catalog gap via 3.10.2 + 3.11.3, 3.7.8 placement
+    // decision in tasks/v1.17-DECISIONS.md), 2 parked awaiting repro
+    // (HL save error, RU200KAM $76.82 delta), 1 still service-account-
+    // blocked (11.3.1 NSM customer reconciliation) carrying to v1.18.
+    // NOT in v1.17: NSM-Hub migration (11.3.2 + 11.3.3, still blocked),
+    // customer surfaces (Epic 8.1 v1.21+), quote variations (Epic 2.4
+    // v1.18+), margin threshold (Epic 2.2 v1.19).
+    'v1.17': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
