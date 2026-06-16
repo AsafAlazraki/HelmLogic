@@ -207,11 +207,16 @@ export default function PricingManagerPage() {
                         <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Subscribed Brands</CardTitle>
                         <div className="relative mt-2">
                             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                            <Input 
-                                placeholder="Search brands..." 
+                            {/* v1.17 (Story 3.10.3) — cross-tab filter. The search box
+                                filters the brand sidebar (legacy behaviour) AND seeds the
+                                active table's row filter so 'F70' or 'highfield CL' narrows
+                                both layers in one go. */}
+                            <Input
+                                placeholder="Search brands or models..."
                                 className="pl-8 h-8 text-[11px] font-bold bg-background"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
+                                data-testid="catalog-manager-cross-tab-search"
                             />
                         </div>
                     </CardHeader>
@@ -279,22 +284,19 @@ export default function PricingManagerPage() {
                         ) : activeVendor.vendorType === 'Motor Brand' ? (
                             /* v1.11 follow-up — Story 3.7.3 Motors Table mounted
                                here so motor brands have a read view inside the
-                               Catalog Manager instead of "coming soon". */
+                               Catalog Manager instead of "coming soon".
+                               v1.17/3.10.3 — initialSearch threads the cross-tab
+                               filter through to the table's internal search. */
                             <div className="p-6 overflow-y-auto">
-                                <MotorsTableView organisationId={organisationId} />
+                                <MotorsTableView organisationId={organisationId} initialSearch={searchTerm} />
                             </div>
                         ) : activeVendor.vendorType === 'Boat Brand' ? (
-                            /* v1.11 follow-up — non-Highfield Boat Brand vendors
-                               get the Boats Table read view instead of "coming soon". */
                             <div className="p-6 overflow-y-auto">
-                                <BoatsTableView />
+                                <BoatsTableView initialSearch={searchTerm} />
                             </div>
                         ) : activeVendor.vendorType === 'Trailer Brand' ? (
-                            /* v1.13 — Story 3.7.4. Trailer Brand vendors get the
-                               Trailers Table read view (pricing + ATM/Tare + margin
-                               + missing-pricing highlighter + rego link). */
                             <div className="p-6 overflow-y-auto">
-                                <TrailersTableView organisationId={organisationId} />
+                                <TrailersTableView organisationId={organisationId} initialSearch={searchTerm} />
                             </div>
                         ) : (
                             <div className="flex flex-col h-full overflow-hidden">

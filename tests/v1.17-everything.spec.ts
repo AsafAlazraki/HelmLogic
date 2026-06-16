@@ -47,6 +47,84 @@ test('Multi-row select + bulk markup retrofit on TrailersTableView (3.10.1)', as
     tick('v1.17/3.10.1-trailers-respects-override-mode', /patchTrailer\(r\.id, 'sellPriceExclGst'/.test(src));
 });
 
+test('Cross-tab catalog filter (3.10.3)', async () => {
+    const fs = require('fs');
+    const page = fs.readFileSync('src/app/(app)/pricing-manager/page.tsx', 'utf8');
+    tick('v1.17/3.10.3-search-input-testid', /data-testid="catalog-manager-cross-tab-search"/.test(page));
+    tick('v1.17/3.10.3-search-placeholder-cross-tab', /Search brands or models/.test(page));
+    tick('v1.17/3.10.3-motors-initialSearch', /<MotorsTableView[^>]*initialSearch=\{searchTerm\}/.test(page));
+    tick('v1.17/3.10.3-trailers-initialSearch', /<TrailersTableView[^>]*initialSearch=\{searchTerm\}/.test(page));
+    tick('v1.17/3.10.3-boats-initialSearch', /<BoatsTableView[^>]*initialSearch=\{searchTerm\}/.test(page));
+
+    const motors = fs.readFileSync('src/components/motors-table-view.tsx', 'utf8');
+    tick('v1.17/3.10.3-motors-accepts-initialSearch', /initialSearch\??: string/.test(motors));
+
+    const trailers = fs.readFileSync('src/components/trailers-table-view.tsx', 'utf8');
+    tick('v1.17/3.10.3-trailers-accepts-initialSearch', /initialSearch\??: string/.test(trailers));
+
+    const boats = fs.readFileSync('src/components/boats-table-view.tsx', 'utf8');
+    tick('v1.17/3.10.3-boats-accepts-initialSearch', /initialSearch\??: string/.test(boats));
+});
+
+test('Internal Data Normalisation Layer (3.2.1)', async () => {
+    const fs = require('fs');
+    const path = 'src/lib/catalog/derive-pricing.ts';
+    tick('v1.17/3.2.1-derive-pricing-lib-exists', fs.existsSync(path));
+    if (fs.existsSync(path)) {
+        const src = fs.readFileSync(path, 'utf8');
+        tick('v1.17/3.2.1-derivePricing-exported', /export function derivePricing/.test(src));
+        tick('v1.17/3.2.1-applyMarkup-exported', /export function applyMarkup/.test(src));
+        tick('v1.17/3.2.1-gst-multiplier', /GST_MULTIPLIER = 1\.1/.test(src));
+        tick('v1.17/3.2.1-inc-gst-ceil-rule', /Math\.ceil\(sell \* GST_MULTIPLIER\)/.test(src));
+        tick('v1.17/3.2.1-margin-tone-bands', /'red'.*'amber'.*'emerald'/s.test(src));
+    } else {
+        ['derivePricing-exported','applyMarkup-exported','gst-multiplier','inc-gst-ceil-rule','margin-tone-bands'].forEach(k => tick(`v1.17/3.2.1-${k}`, false));
+    }
+});
+
+test('Per-vendor importer plug-in registry (3.11.3)', async () => {
+    const fs = require('fs');
+    const path = 'src/lib/catalog/importer-registry.ts';
+    tick('v1.17/3.11.3-registry-lib-exists', fs.existsSync(path));
+    if (fs.existsSync(path)) {
+        const src = fs.readFileSync(path, 'utf8');
+        tick('v1.17/3.11.3-registerImporter-exported', /export function registerImporter/.test(src));
+        tick('v1.17/3.11.3-getImporterForVendor-exported', /export function getImporterForVendor/.test(src));
+        tick('v1.17/3.11.3-yamaha-mpf-importer', /id: 'yamaha-mpf'/.test(src));
+        tick('v1.17/3.11.3-sam-allen-importer', /id: 'sam-allen-rigging'/.test(src));
+        tick('v1.17/3.11.3-trailer-brand-importer', /id: 'trailer-brand'/.test(src));
+    } else {
+        ['registerImporter-exported','getImporterForVendor-exported','yamaha-mpf-importer','sam-allen-importer','trailer-brand-importer'].forEach(k => tick(`v1.17/3.11.3-${k}`, false));
+    }
+});
+
+test('Trailer compat editor (3.9.4)', async () => {
+    const fs = require('fs');
+    const path = 'src/components/trailer-compat-editor.tsx';
+    tick('v1.17/3.9.4-editor-component-exists', fs.existsSync(path));
+    if (fs.existsSync(path)) {
+        const src = fs.readFileSync(path, 'utf8');
+        tick('v1.17/3.9.4-applicableTrailerCodes-field', /applicableTrailerCodes/.test(src));
+        tick('v1.17/3.9.4-checkbox-list', /Checkbox/.test(src));
+        tick('v1.17/3.9.4-save-handler', /save = async/.test(src));
+        tick('v1.17/3.9.4-testid', /data-testid="trailer-compat-editor"/.test(src));
+    } else {
+        ['applicableTrailerCodes-field','checkbox-list','save-handler','testid'].forEach(k => tick(`v1.17/3.9.4-${k}`, false));
+    }
+});
+
+test('Per-org vendor exchange-rate editor + stale detector (3.9.5)', async () => {
+    const fs = require('fs');
+    // The CRUD + change-log surface already shipped pre-v1.17. v1.17 adds the
+    // stale-rate detector to derive-pricing.ts and a wiring point for cards.
+    const mgr = fs.readFileSync('src/components/exchange-rate-manager.tsx', 'utf8');
+    tick('v1.17/3.9.5-exchange-rate-manager-component', /export function ExchangeRateManager/.test(mgr));
+    tick('v1.17/3.9.5-change-log-collection', /changeLog/.test(mgr));
+    const derive = fs.readFileSync('src/lib/catalog/derive-pricing.ts', 'utf8');
+    tick('v1.17/3.9.5-isRateStale-exported', /export function isRateStale/.test(derive));
+    tick('v1.17/3.9.5-stale-threshold-30-days', /STALE_RATE_THRESHOLD_DAYS = 30/.test(derive));
+});
+
 test('Paste-from-spreadsheet (3.10.2) — module + Motors wiring', async () => {
     const fs = require('fs');
     const path = 'src/components/paste-from-spreadsheet.tsx';

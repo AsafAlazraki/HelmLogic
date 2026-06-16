@@ -81,7 +81,7 @@ interface Variant {
     cost?: number | null;
 }
 
-export function BoatsTableView() {
+export function BoatsTableView({ initialSearch }: { initialSearch?: string } = {}) {
     const firestore = useFirestore();
 
     // Boat-brand vendors only — the table is named "Boats" for a reason;
@@ -157,7 +157,9 @@ function BoatsTableBody({ vendorId }: { vendorId: string }) {
     const [models, setModels] = useState<Model[]>([]);
     const [ranges, setRanges] = useState<Range[]>([]);
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState('');
+    /** v1.17 (Story 3.10.3) — initial seed from Catalog Manager's cross-tab search. */
+    const [search, setSearch] = useState(initialSearch ?? '');
+    useEffect(() => { if (initialSearch !== undefined) setSearch(initialSearch); }, [initialSearch]);
     const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
     /** v1.16 (Story 3.8.1 reused number — Inventory display on catalog).
      *  Per-modelCode count of in-stock inventory items, surfaced as a

@@ -51,7 +51,7 @@ interface MotorRow {
     [k: string]: any;
 }
 
-export function MotorsTableView({ organisationId }: { organisationId?: string | null } = {}) {
+export function MotorsTableView({ organisationId, initialSearch }: { organisationId?: string | null; initialSearch?: string } = {}) {
     const firestore = useFirestore();
 
     const vendorsQuery = useMemoFirebase(
@@ -111,7 +111,7 @@ export function MotorsTableView({ organisationId }: { organisationId?: string | 
                 {!selectedVendorId ? (
                     <EmptyState message="Pick a brand to view the catalogue." />
                 ) : (
-                    <MotorsTableBody vendorId={selectedVendorId} />
+                    <MotorsTableBody vendorId={selectedVendorId} initialSearch={initialSearch} />
                 )}
             </CardContent>
 
@@ -151,12 +151,17 @@ function EmptyState({ message }: { message: string }) {
     );
 }
 
-function MotorsTableBody({ vendorId }: { vendorId: string }) {
+function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initialSearch?: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [rows, setRows] = useState<MotorRow[]>([]);
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState('');
+    /** v1.17 (Story 3.10.3) — initial seed comes from the Catalog Manager's
+     *  cross-tab search box. Local edits override afterwards. */
+    const [search, setSearch] = useState(initialSearch ?? '');
+    /** Sync if the parent's cross-tab search changes (vendor switch with
+     *  filter still on). */
+    useEffect(() => { if (initialSearch !== undefined) setSearch(initialSearch); }, [initialSearch]);
     const [seriesFilter, setSeriesFilter] = useState<string>('all');
     /** v1.17 (Story 3.10.1) — multi-row select. Set of row IDs the operator
      *  has ticked. Bulk price-adjustment toolbar appears when non-empty. */

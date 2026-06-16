@@ -93,7 +93,7 @@ function marginPct(cost: number | undefined, sell: number | undefined): number |
     return ((sell - cost) / sell) * 100;
 }
 
-export function TrailersTableView({ canEdit = true, organisationId }: { canEdit?: boolean; organisationId?: string | null }) {
+export function TrailersTableView({ canEdit = true, organisationId, initialSearch }: { canEdit?: boolean; organisationId?: string | null; initialSearch?: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
 
@@ -104,7 +104,10 @@ export function TrailersTableView({ canEdit = true, organisationId }: { canEdit?
     const { data: vendors, isLoading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
 
     const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
-    const [search, setSearch] = useState('');
+    /** v1.17 (Story 3.10.3) — initial seed comes from Catalog Manager's
+     *  cross-tab search box. Local edits override afterwards. */
+    const [search, setSearch] = useState(initialSearch ?? '');
+    useEffect(() => { if (initialSearch !== undefined) setSearch(initialSearch); }, [initialSearch]);
     const [rows, setRows] = useState<TrailerRow[]>([]);
     /** v1.17 (Story 3.10.1 retrofit) — multi-row select on Trailers Table.
      *  Same UX as MotorsTableView: per-row + select-all-filtered checkboxes,
