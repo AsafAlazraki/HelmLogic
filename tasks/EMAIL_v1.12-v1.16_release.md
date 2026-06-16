@@ -25,13 +25,13 @@ Plus a PDF-quality close-out pass: **blank-page bug killed** (fixed footer no lo
 
 ## Submitted column drained
 
-22 backlog items were sitting in the Roadmap's Submitted column with no target release. We pulled them all in and **spread them across the forward releases** so every story now lives on a real column:
+22 backlog items were sitting in the Roadmap's Submitted column with no target release. We pulled them all in, **audited each one against "is this a platform feature or an operator concern"**, and spread what's real across the forward releases:
 
-- **v1.18** picked up 8 (catalog polish + small data ops — Edit Stock Item, Export Data, Set Outboard shaft length, Set Up Motor & Trailer Options, How to delete a section in Catalog subsections, Dealer Fit options on all models, 2.1.1 Structured Price Sources, Receipt PDF branding).
-- **v1.21** picked up 3 (sales-ops / Epic 8.1 — Pending Units, "HOLD REQUEST" workflow, Date-of-creation / order date).
-- **v2.0** picked up 6 (launch-prep — training plan, training session, catalog backfill, comms plan, training scheduling per role, Sync Demo setup).
+- **v1.18** picked up 3 (catalog polish — Edit Stock Item, Export Data brand→range→model, 2.1.1 Structured Price Sources, Receipt PDF branding).
+- **v1.21** picked up 2 (sales-ops / Epic 8.1 — Pending Units, Date-of-creation / order date).
+- **v2.0** picked up 5 (launch-prep — training plan, Catalog Manager admin training session, catalog backfill, comms plan, training scheduling per role).
 - **v2.2** kept 1 (Shopify API setup).
-- **4 dropped** (3 duplicates already targeted elsewhere + 1 garbage).
+- **10 dropped**: 4 dupes/garbage + 6 operator concerns / how-to questions that are configuration of the platform we've already built, not platform features for us to build (e.g. "Dealer Fit options are the same on all models" — that's the admin attaching options per model via the dealer-fit compat editor we shipped in v1.16; "How to delete a section in Catalog subsections" — a how-to question, not a feature).
 
 ## v1.17 already underway — releasing this week
 
