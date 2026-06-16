@@ -57,5 +57,9 @@ Plan doc: `tasks/v1.17-plan.md`.
 
 Release notes + per-version user guides for every cycle land in `tasks/RELEASE_NOTES_v1.12.0.md` through `RELEASE_NOTES_v1.16.0.md` and `USER_GUIDE_v1.12.0.md` through `USER_GUIDE_v1.16.0.md`. They're rendered into the in-app `/feature-tracking` Release Notes tab too.
 
+## Quick note on tomorrow's meeting
+
+I've got a customer kick-off engagement session running right before tomorrow's catch-up with BFJ. I'll do my best to make it on time — apologies in advance if I'm a couple of minutes late.
+
 Cheers,
 Asaf
