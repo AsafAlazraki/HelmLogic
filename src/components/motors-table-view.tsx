@@ -24,9 +24,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Anchor, Search, Loader2, Download, HelpCircle, FileUp, Percent, X } from 'lucide-react';
+import { Anchor, Search, Loader2, Download, HelpCircle, FileUp, Percent, X, ClipboardPaste } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
+import { PasteFromSpreadsheet } from '@/components/paste-from-spreadsheet';
 import { formatCurrency } from '@/lib/currency-utils';
 import { InlineEditCell } from '@/components/inline-edit-cell';
 import { MasterPriceFileWorkspace } from '@/components/master-price-file-workspace';
@@ -165,6 +166,8 @@ function MotorsTableBody({ vendorId }: { vendorId: string }) {
      *  skipped and reported in the summary toast. */
     const [bulkMarkup, setBulkMarkup] = useState<string>('25');
     const [bulkApplying, setBulkApplying] = useState(false);
+    /** v1.17 (Story 3.10.2) — paste-from-spreadsheet dialog state. */
+    const [pasteOpen, setPasteOpen] = useState(false);
 
     /** v1.14 (3.8.1 retrofit) — inline-edit handler for motors. Writes
      *  straight to the vendor part doc; toasts on success/failure. */
@@ -376,7 +379,18 @@ function MotorsTableBody({ vendorId }: { vendorId: string }) {
                 <Button variant="outline" size="sm" onClick={handleExport} className="rounded-xl text-xs h-9" disabled={filtered.length === 0}>
                     <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
                 </Button>
+                {/* v1.17 (Story 3.10.2) — paste-from-spreadsheet entry point */}
+                <Button variant="outline" size="sm" onClick={() => setPasteOpen(true)} className="rounded-xl text-xs h-9">
+                    <ClipboardPaste className="h-3.5 w-3.5 mr-1" /> Paste
+                </Button>
             </div>
+            <PasteFromSpreadsheet
+                open={pasteOpen}
+                onOpenChange={setPasteOpen}
+                collectionPath={['data-warehouse', vendorId, 'parts']}
+                existingRows={rows as any}
+                resourceLabel="motors"
+            />
 
             <TooltipProvider>
                 {/* v1.17 (Story 3.10.1) — bulk-action toolbar. Renders when

@@ -23,31 +23,51 @@ test.afterAll(() => {
 test('Multi-row select + bulk markup on MotorsTableView (3.10.1)', async () => {
     const fs = require('fs');
     const src = fs.readFileSync('src/components/motors-table-view.tsx', 'utf8');
+    tick('v1.17/3.10.1-motors-checkbox-import', /from '@\/components\/ui\/checkbox'/.test(src));
+    tick('v1.17/3.10.1-motors-selected-state', /selected.*Set<string>|setSelected/.test(src));
+    tick('v1.17/3.10.1-motors-toggleRow', /toggleRow/.test(src));
+    tick('v1.17/3.10.1-motors-toggleAllFiltered', /toggleAllFiltered/.test(src));
+    tick('v1.17/3.10.1-motors-bulkMarkup-state', /bulkMarkup|setBulkMarkup/.test(src));
+    tick('v1.17/3.10.1-motors-applyBulkMarkup', /applyBulkMarkup/.test(src));
+    tick('v1.17/3.10.1-motors-bulk-toolbar-render-gate', /selected\.size > 0/.test(src));
+    tick('v1.17/3.10.1-motors-bulk-toolbar-testid', /data-testid="motors-bulk-toolbar"/.test(src));
+    tick('v1.17/3.10.1-motors-cost-driven-recalc', /Math\.round\(.*cost.*factor\)/.test(src));
+    tick('v1.17/3.10.1-motors-summary-toast', /Bulk markup applied/.test(src));
+    tick('v1.17/3.10.1-motors-clear-selection', /setSelected\(new Set\(\)\)/.test(src));
+});
 
-    // Checkbox primitive imported
-    tick('v1.17/3.10.1-checkbox-import', /from '@\/components\/ui\/checkbox'/.test(src));
+test('Multi-row select + bulk markup retrofit on TrailersTableView (3.10.1)', async () => {
+    const fs = require('fs');
+    const src = fs.readFileSync('src/components/trailers-table-view.tsx', 'utf8');
+    tick('v1.17/3.10.1-trailers-checkbox-import', /from '@\/components\/ui\/checkbox'/.test(src));
+    tick('v1.17/3.10.1-trailers-selected-state', /selected.*Set<string>|setSelected/.test(src));
+    tick('v1.17/3.10.1-trailers-bulk-toolbar-testid', /data-testid="trailers-bulk-toolbar"/.test(src));
+    tick('v1.17/3.10.1-trailers-applyBulkMarkup', /applyBulkMarkup/.test(src));
+    // Routes through patchTrailer so org-override mode is honored
+    tick('v1.17/3.10.1-trailers-respects-override-mode', /patchTrailer\(r\.id, 'sellPriceExclGst'/.test(src));
+});
 
-    // selected: Set<string> state for tracked row IDs
-    tick('v1.17/3.10.1-selected-state', /selected.*Set<string>|setSelected/.test(src));
-
-    // Per-row + header checkbox handlers
-    tick('v1.17/3.10.1-toggleRow', /toggleRow/.test(src));
-    tick('v1.17/3.10.1-toggleAllFiltered', /toggleAllFiltered/.test(src));
-
-    // Bulk markup state + apply function
-    tick('v1.17/3.10.1-bulkMarkup-state', /bulkMarkup|setBulkMarkup/.test(src));
-    tick('v1.17/3.10.1-applyBulkMarkup', /applyBulkMarkup/.test(src));
-
-    // Bulk toolbar renders only when selected.size > 0 + has the data-testid
-    tick('v1.17/3.10.1-bulk-toolbar-renders-on-selection', /selected\.size > 0/.test(src));
-    tick('v1.17/3.10.1-bulk-toolbar-testid', /data-testid="motors-bulk-toolbar"/.test(src));
-
-    // Cost-driven recalc: next sell = round(cost * (1 + markup/100))
-    tick('v1.17/3.10.1-cost-driven-recalc', /Math\.round\(.*cost.*factor\)/.test(src));
-
-    // Summary toast wording
-    tick('v1.17/3.10.1-summary-toast', /Bulk markup applied/.test(src));
-
-    // Clear-selection button
-    tick('v1.17/3.10.1-clear-selection-button', /setSelected\(new Set\(\)\)/.test(src));
+test('Paste-from-spreadsheet (3.10.2) — module + Motors wiring', async () => {
+    const fs = require('fs');
+    const path = 'src/components/paste-from-spreadsheet.tsx';
+    tick('v1.17/3.10.2-paste-module-exists', fs.existsSync(path));
+    if (fs.existsSync(path)) {
+        const src = fs.readFileSync(path, 'utf8');
+        // Exported parser + key detection + diff builder so other surfaces can reuse them.
+        tick('v1.17/3.10.2-parseTsvOrCsv-exported', /export function parseTsvOrCsv/.test(src));
+        tick('v1.17/3.10.2-detectKeyColumn-exported', /export function detectKeyColumn/.test(src));
+        tick('v1.17/3.10.2-buildDiff-exported', /export function buildDiff/.test(src));
+        // Default key priority matches the v1.4 lesson (Part Number first).
+        tick('v1.17/3.10.2-default-key-priority', /Part Number'\s*,\s*\n\s*'Model Code/.test(src));
+        // Idempotent: unchanged rows count separately.
+        tick('v1.17/3.10.2-unchanged-counter', /unchanged.*\+= 1|unchanged:/.test(src));
+        // Merge writes, not clear-and-replace.
+        tick('v1.17/3.10.2-setDoc-with-merge', /setDoc\(.*,.*,.*merge: true.*\)/s.test(src));
+    } else {
+        for (const f of ['parseTsvOrCsv','detectKeyColumn','buildDiff','default-key-priority','unchanged-counter','setDoc-with-merge']) {
+            tick(`v1.17/3.10.2-${f}`, false);
+        }
+    }
+    const motors = fs.readFileSync('src/components/motors-table-view.tsx', 'utf8');
+    tick('v1.17/3.10.2-motors-paste-wired', /<PasteFromSpreadsheet\s/.test(motors));
 });
