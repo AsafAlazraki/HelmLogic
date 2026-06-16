@@ -20,12 +20,6 @@ The Submitted column on the Roadmap had been growing — 22 items sitting there 
 
 We're not pausing. v1.17 is already in build and on track to ship in the next few days. Theme: **"Catalog editing at scale + bug sweep"** — multi-row select with bulk price adjust, paste-from-spreadsheet upload, cross-tab catalog filter, plus a sweep of the awaiting-repro bug list.
 
-**What I need**
-
-- **Mark / Ben** — sign-off on v1.12–v1.16 over the next 24 hours so any escaped issues roll into v1.17 close-out.
-- **Mark** — quick update on the NSM-Hub service-account when you get a moment? It's now blocked migration tooling across three releases.
-- **Sales team** — please run a real quote PDF and flag anything that looks off.
-
 **Heads-up on tomorrow's meeting**
 
 I've got a customer kick-off engagement session running right before our BFJ catch-up. I'll do my best to make it on time — apologies in advance if I'm a couple of minutes late.
