@@ -4,15 +4,11 @@ Hi team,
 
 Big drop tonight — **v1.12 through v1.16 went to production as a single joint release**. 52 stories in one push.
 
-**What's new**
+**What's new — at a glance**
 
-- **Service Quoting end-to-end** — quoting a service job is now a first-class workflow alongside boat quoting: view, edit, status lifecycle, customer-facing PDF, send via email.
-- **Catalog editing** — the catalog is now editable inline. Click a cell, change it, done. Plus org-level pricing overrides, column tooltips, CSV export per tab, and a Trailers read-view.
-- **Rule engine** — Fit-up tier auto-classification is now fully rule-based, replacing the v1.11 motor-HP heuristic. Admins can author classification rules in the UI.
-- **34-ticket backlog drain in v1.16** — every user-reported polish item (Hypalon labels, inc-GST sub-lines, no-trailer pill, dealer-fit headings, archive view on Recent Proposals, larger images + logos, motor & dealer-fit compatibility editors, photo curation, inventory badges, and more) either shipped or got a clean product decision.
-- **PDF quality pass** — blank-page bug killed, Investment Summary now fits ~50% more rows per page, and long content blocks flow naturally across pages instead of each one claiming its own page.
+Service Quoting end-to-end · inline catalog editing · fit-up rule engine · a 34-ticket polish drain in v1.16 · a proper PDF quality pass (no more blank page 5, denser Investment Summary, smoother content-block layout).
 
-**👉 Head to the Roadmap to see every story that shipped, click any v1.12 → v1.16 column for the full per-ticket breakdown, and check what's lined up next.**
+**👉 Open the Roadmap to see every story that shipped. Click any v1.12 → v1.16 column for the full per-ticket breakdown, the audit trail, and what's lined up next.** Faster to skim there than to read it in an email.
 
 **Roadmap clean-up**
 
