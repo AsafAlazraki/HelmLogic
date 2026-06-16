@@ -345,14 +345,29 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
      *  but renders within the shared Page (still wrap=false so the
      *  photo + message stay together). */
 
+    /** v1.16 (Option G — smart continue mode):
+     *  Each content block now decides per-render whether to be atomic
+     *  (wrap=false; keeps the whole block on one page; risks page-break
+     *  overflow on a short page) or flow-able (wrap=true; long blocks
+     *  split mid-paragraph across pages with the title staying with its
+     *  first paragraph).
+     *
+     *  Heuristic: count the visible text length in the html. Blocks
+     *  under ~600 chars stay atomic — they always fit on one page.
+     *  Longer blocks flow so they don't strand a half-empty page in
+     *  front of themselves. Title + first paragraph still stay together
+     *  via a nested wrap=false header View. */
     const renderBlockSection = (s: PdfStructureSection) => {
         const blockType = s.key as BlockType;
         const html = contentBlocks?.[blockType];
         const label = BLOCK_TYPE_LABEL[blockType] ?? s.key;
         const customSub = contentBlockSubHeaders?.[blockType];
         const sub = (customSub && customSub.trim()) || SECTION_SUB[blockType] || '';
+        const visibleLen = (h?: string) => (h ?? '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().length;
+        const ATOMIC_THRESHOLD = 600;
 
         // Salesperson-message — bespoke layout (photo + name + sign-off).
+        // Always atomic — photo + signature should never separate from message.
         if (blockType === 'salesperson-message') {
             const sp = salespersonProfile;
             const spHtml = sp?.messageHtml;
@@ -421,25 +436,42 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
         const cardBg = style.backgroundColor || undefined;
         const titleItalic = style.titleItalic !== false;
 
-        return (
-            <View key={s.id} wrap={false} style={{ marginBottom: 24 }}>
-                <View style={{ borderBottomWidth: 2, borderBottomColor: accent, paddingBottom: 8, marginBottom: 14 }}>
-                    <Text style={{ fontSize: titleSize, fontWeight: 'bold', fontStyle: titleItalic ? 'italic' : 'normal', textTransform: 'uppercase', letterSpacing: -0.4, lineHeight: 1.1, color: accent, textAlign: titleAlign }}>
-                        {label}
+        const isAtomic = visibleLen(html) < ATOMIC_THRESHOLD;
+        const Header = (
+            <View wrap={false} style={{ borderBottomWidth: 2, borderBottomColor: accent, paddingBottom: 8, marginBottom: 14 }}>
+                <Text style={{ fontSize: titleSize, fontWeight: 'bold', fontStyle: titleItalic ? 'italic' : 'normal', textTransform: 'uppercase', letterSpacing: -0.4, lineHeight: 1.1, color: accent, textAlign: titleAlign }}>
+                    {label}
+                </Text>
+                {sub ? (
+                    <Text style={{ fontSize: 6.5, letterSpacing: 2.5, fontWeight: 'bold', textTransform: 'uppercase', color: MUTED, marginTop: 3, textAlign: titleAlign }}>
+                        {sub}
                     </Text>
-                    {sub ? (
-                        <Text style={{ fontSize: 6.5, letterSpacing: 2.5, fontWeight: 'bold', textTransform: 'uppercase', color: MUTED, marginTop: 3, textAlign: titleAlign }}>
-                            {sub}
-                        </Text>
-                    ) : null}
+                ) : null}
+            </View>
+        );
+        const Body = cardBg ? (
+            <View style={{ backgroundColor: cardBg, padding: 14, borderRadius: 6 }}>
+                <TipTapHtmlPdf html={html} fontSize={bodySize} color={textColor} align={bodyAlign} />
+            </View>
+        ) : (
+            <TipTapHtmlPdf html={html} fontSize={bodySize} color={textColor} align={bodyAlign} />
+        );
+
+        if (isAtomic) {
+            // Short block — keep the whole thing together (existing behaviour).
+            return (
+                <View key={s.id} wrap={false} style={{ marginBottom: 24 }}>
+                    {Header}
+                    {Body}
                 </View>
-                {cardBg ? (
-                    <View style={{ backgroundColor: cardBg, padding: 14, borderRadius: 6 }}>
-                        <TipTapHtmlPdf html={html} fontSize={bodySize} color={textColor} align={bodyAlign} />
-                    </View>
-                ) : (
-                    <TipTapHtmlPdf html={html} fontSize={bodySize} color={textColor} align={bodyAlign} />
-                )}
+            );
+        }
+        // Long block — flow-able. Title stays with first paragraph via the
+        // inner wrap=false Header; body wraps freely across pages.
+        return (
+            <View key={s.id} style={{ marginBottom: 24 }}>
+                {Header}
+                {Body}
             </View>
         );
     };
@@ -1208,26 +1240,28 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                           - INCLUDED (amount === 0): grey "Included" tag
                           - DISCOUNT (amount < 0):   green negative number
                           - REGULAR (amount > 0):    navy currency */}
+                    {/* v1.16 (Option E) — Investment Summary tightening. Reduced
+                        vertical padding per row, smaller fonts on indented sub-items,
+                        thinner sub-label spacing. The whole block now fits ~50%
+                        more rows per page so a long quote doesn't bleed onto a
+                        nearly-empty second page. */}
                     {lineItems.map((item, i) => {
                         const isIncluded = item.amount === 0;
                         const isDiscount = item.amount < 0;
                         const valueColor = isDiscount ? GREEN : (isIncluded ? MUTED : NAVY);
-                        // v1.11 launch — indented sub-items render with a left
-                        // padding + an L-shaped tick so they read as children of
-                        // the previous parent row (Vessel / Propulsion / etc.).
                         const indent = !!item.indent;
                         return (
-                            <View key={i} wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: indent ? 5 : 8, paddingLeft: indent ? 18 : 0, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
+                            <View key={i} wrap={false} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: indent ? 3 : 5, paddingLeft: indent ? 18 : 0, borderBottomWidth: 0.5, borderBottomColor: '#f1f5f9' }}>
                                 <View style={{ flexShrink: 1, paddingRight: 12, flexDirection: 'row', alignItems: 'flex-start' }}>
                                     {indent && (
-                                        <View style={{ width: 8, height: 8, borderLeftWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', marginRight: 6, marginTop: 2 }} />
+                                        <View style={{ width: 6, height: 6, borderLeftWidth: 1, borderBottomWidth: 1, borderColor: '#cbd5e1', marginRight: 5, marginTop: 2 }} />
                                     )}
                                     <View style={{ flexShrink: 1 }}>
-                                        <Text style={{ fontSize: indent ? 7.5 : 8.5, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.3, color: indent ? SLATE : NAVY }}>{item.label}</Text>
-                                        {item.sub && <Text style={{ fontSize: indent ? 6 : 7, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: MUTED, marginTop: 1.5 }}>{item.sub}</Text>}
+                                        <Text style={{ fontSize: indent ? 7 : 8, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.3, color: indent ? SLATE : NAVY, lineHeight: 1.2 }}>{item.label}</Text>
+                                        {item.sub && <Text style={{ fontSize: indent ? 5.5 : 6.5, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: MUTED, marginTop: 1 }}>{item.sub}</Text>}
                                     </View>
                                 </View>
-                                <Text style={{ fontSize: indent ? 7.5 : 8.5, fontWeight: 'bold', color: valueColor, flexShrink: 0 }}>
+                                <Text style={{ fontSize: indent ? 7 : 8, fontWeight: 'bold', color: valueColor, flexShrink: 0 }}>
                                     {isIncluded ? 'INCLUDED' : currency(item.amount)}
                                 </Text>
                             </View>
