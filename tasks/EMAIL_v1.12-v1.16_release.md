@@ -12,6 +12,8 @@ Big drop tonight — **v1.12 through v1.16 went to production as a single joint 
 - **34-ticket backlog drain in v1.16** — every user-reported polish item (Hypalon labels, inc-GST sub-lines, no-trailer pill, dealer-fit headings, archive view on Recent Proposals, larger images + logos, motor & dealer-fit compatibility editors, photo curation, inventory badges, and more) either shipped or got a clean product decision.
 - **PDF quality pass** — blank-page bug killed, Investment Summary now fits ~50% more rows per page, and long content blocks flow naturally across pages instead of each one claiming its own page.
 
+**👉 Head to the Roadmap to see every story that shipped, click any v1.12 → v1.16 column for the full per-ticket breakdown, and check what's lined up next.**
+
 **Roadmap clean-up**
 
 The Submitted column on the Roadmap had been growing — 22 items sitting there with no target. We drained it tonight: real platform features landed in v1.18, v1.21, v2.0, or v2.2; how-to questions and operator-config concerns got dropped (e.g. "Dealer Fit options on all models" — that's already configurable via the editor we shipped in v1.16). Every story on the Roadmap is now scheduled, not parked.
