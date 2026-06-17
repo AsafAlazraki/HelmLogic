@@ -1506,13 +1506,13 @@ export function HighfieldQuoteFlow({
                     </div>
                     <button type="button" className="font-black text-destructive uppercase tracking-widest text-[9px] hover:opacity-70 transition-opacity shrink-0" onClick={() => router.push(`/modules/${module.slug || module.id}`)}>Exit Build</button>
                 </div>
-                <div className="flex items-center justify-between min-w-0 overflow-x-auto relative">
+                <div className="flex items-center justify-between min-w-0 overflow-x-auto relative max-w-4xl mx-auto">
                     <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-muted -translate-y-1/2 z-0" />
                     <div className="absolute top-1/2 left-0 h-0.5 bg-green-500 -translate-y-1/2 z-0 transition-all" style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }} />
                     {STEPS.map((step) => (
-                        <div key={step.id} className="flex items-center gap-1.5 z-10 relative bg-card pr-1">
-                            <div className={cn("h-7 w-7 rounded-full flex items-center justify-center text-[9px] font-black transition-all border-2", currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-md" : currentStep > step.id ? "bg-green-500 border-green-500 text-white" : "bg-muted border-transparent text-muted-foreground")}>{currentStep > step.id ? <CheckCircle2 className="h-3.5 w-3.5" /> : step.id}</div>
-                            <span className={cn("text-[8px] font-black uppercase tracking-[0.2em] hidden md:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-muted-foreground")}>{step.label}</span>
+                        <div key={step.id} className="flex items-center gap-2 z-10 relative bg-card pr-1">
+                            <div className={cn("h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-black transition-all border-2", currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-md" : currentStep > step.id ? "bg-green-500 border-green-500 text-white" : "bg-muted border-transparent text-muted-foreground")}>{currentStep > step.id ? <CheckCircle2 className="h-4 w-4" /> : step.id}</div>
+                            <span className={cn("text-[10px] font-black uppercase tracking-[0.18em] hidden md:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-muted-foreground")}>{step.label}</span>
                         </div>
                     ))}
                 </div>
