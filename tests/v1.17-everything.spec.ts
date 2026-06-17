@@ -20,6 +20,21 @@ test.afterAll(() => {
     console.log(`  ${p}/${Object.keys(ticks).length} passed\n`);
 });
 
+test('Hotfix — lockedSeatId resilience for variant-incompatible pair', async () => {
+    // Prod bug 2026-06-16: console.associatedSeatId pointed at the WWD
+    // seat regardless of console colourway. When operator picked a
+    // non-WWD console, the WWD seat was filtered out by the variant
+    // gate and the Seats category rendered empty. Fix: the lockedSeatId
+    // resolver now falls back to a sibling seat (same base name) when
+    // the target seat is filtered out. Asserting the resolver source.
+    const fs = require('fs');
+    const src = fs.readFileSync('src/components/highfield-quote-flow.tsx', 'utf8');
+    tick('hotfix/lockedSeatId-sibling-fallback', /sibling seat with the same base name/.test(src));
+    tick('hotfix/lockedSeatId-strips-colour-parenthetical', /\.replace\(\/[^/]+\/, ''\)/.test(src) && /baseName/.test(src));
+    tick('hotfix/lockedSeatId-checks-seat-exists', /seatExists = relevantFeatures\.some/.test(src));
+    tick('hotfix/repair-script-exists', fs.existsSync('scripts/repair-console-seat-pairing.py'));
+});
+
 test('Multi-row select + bulk markup on MotorsTableView (3.10.1)', async () => {
     const fs = require('fs');
     const src = fs.readFileSync('src/components/motors-table-view.tsx', 'utf8');

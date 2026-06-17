@@ -767,8 +767,30 @@ export function HighfieldQuoteFlow({
     }, [relevantFeatures, selectedOptionIds]);
 
     const lockedSeatId = useMemo(() => {
-        return activeConsoleFeature?.associatedSeatId || null;
-    }, [activeConsoleFeature]);
+        const target = activeConsoleFeature?.associatedSeatId || null;
+        if (!target) return null;
+        // Resilience fix (prod bug 2026-06-16): if the console's
+        // associatedSeatId points at a seat that's been filtered out for
+        // the current variant (relevantFeatures already applied the
+        // applicableVariantIds + associatedSkus + material gates), fall
+        // back to a sibling seat with the same base name. The seat naming
+        // convention on Highfield is "<base> (<colour>)" e.g. "RS7 seat
+        // with EP (Black / Carbon)", so we strip the parenthetical and
+        // match any sibling whose stripped name matches.
+        const seatExists = relevantFeatures.some((f: any) => f.id === target && f.category === 'Seats');
+        if (seatExists) return target;
+        const all = (model.optionalFeatures || []) as any[];
+        const targetSeat = all.find(f => f.id === target);
+        if (!targetSeat) return null;
+        const baseName = String(targetSeat.name || '').replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
+        if (!baseName) return null;
+        const sibling = relevantFeatures.find((f: any) => {
+            if (f.category !== 'Seats') return false;
+            const fb = String(f.name || '').replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
+            return fb === baseName;
+        });
+        return sibling?.id ?? null;
+    }, [activeConsoleFeature, relevantFeatures, model.optionalFeatures]);
 
     const selectedMotorAccessories = useMemo(() => {
         if (!selectedMotor) return [];
