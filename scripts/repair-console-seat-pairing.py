@@ -28,10 +28,21 @@ H = {"Authorization": f"Bearer {tok}"}
 BASE = f"https://firestore.googleapis.com/v1/projects/{PROJECT}/databases/(default)/documents"
 
 def val(v):
+    """Unwrap a Firestore typed-value to a Python primitive.
+    CRITICAL: must handle EVERY typed-value variant. Missing a variant
+    (e.g. forgetting doubleValue) causes a read-modify-write loop to
+    treat that field as an opaque dict, and the write re-wraps the dict
+    as a nested map, corrupting the data. Prod 2026-06-16: an earlier
+    version of this helper missed doubleValue and corrupted
+    sellPriceExclGst across 28 Highfield models. The emergency unwrap
+    lives in scripts/emergency-unwrap-prices.py. Never edit val()
+    without confirming every typed-value variant is here."""
     if "stringValue" in v: return v["stringValue"]
     if "integerValue" in v: return int(v["integerValue"])
+    if "doubleValue" in v: return float(v["doubleValue"])
     if "booleanValue" in v: return v["booleanValue"]
     if "nullValue" in v: return None
+    if "timestampValue" in v: return v["timestampValue"]
     if "arrayValue" in v: return [val(x) for x in v["arrayValue"].get("values", [])]
     if "mapValue" in v: return {k: val(x) for k, x in v["mapValue"].get("fields", {}).items()}
     return v
@@ -39,7 +50,9 @@ def val(v):
 def encode(v):
     if isinstance(v, bool): return {"booleanValue": v}
     if isinstance(v, int): return {"integerValue": str(v)}
-    if isinstance(v, float): return {"doubleValue": v}
+    if isinstance(v, float):
+        if v == int(v): return {"integerValue": str(int(v))}
+        return {"doubleValue": v}
     if v is None: return {"nullValue": None}
     if isinstance(v, str): return {"stringValue": v}
     if isinstance(v, list): return {"arrayValue": {"values": [encode(x) for x in v]}}
