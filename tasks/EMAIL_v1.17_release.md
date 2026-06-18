@@ -22,7 +22,7 @@ A handful of bugs that were waiting on customer repros stay parked at v1.17, two
 
 Catalog Manager polish round plus first cuts of customer-facing surfaces. Same cadence.
 
-On the side, we're going to start playing with the Shopify API to get to know it. Nothing shippable in v1.18, just exploratory work to understand how the integration would look so when it lands on the Roadmap properly later we're not learning from scratch.
+On the side, we're going to start playing with the Shopify API to get to know it in the context of HelmLogic. Nothing shippable in v1.18, just exploratory work to understand how the integration would look (catalog sync, stock visibility, order flow, that kind of thing) so when it lands on the Roadmap properly later we're not learning from scratch.
 
 Cheers,
 Asaf
