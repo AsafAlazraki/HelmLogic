@@ -18,9 +18,11 @@ Bill's permission error after the trailer step is fixed (the security rules for 
 
 A handful of bugs that were waiting on customer repros stay parked at v1.17, two NSM-Hub migration stories carry to v1.18 while we wait on the service-account, and the rest of Phase B was either resolved in v1.17 or absorbed into the new paste-from-spreadsheet flow. Quick reminder while you're in the Roadmap: configuration of the platform, dealer-fit options per model, motor compatibility ranges, marketing copy, that stays with you as operators. We're building the platform. You make it sing by setting those up.
 
-**v1.18, this week**
+**v1.18, next week**
 
 Catalog Manager polish round plus first cuts of customer-facing surfaces. Same cadence.
+
+On the side, we're going to start playing with the Shopify API to get to know it. Nothing shippable in v1.18, just exploratory work to understand how the integration would look so when it lands on the Roadmap properly later we're not learning from scratch.
 
 Cheers,
 Asaf
