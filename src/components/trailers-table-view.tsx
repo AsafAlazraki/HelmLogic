@@ -35,10 +35,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Truck, Search, Loader2, AlertCircle, ExternalLink, Download, HelpCircle } from 'lucide-react';
+import { Truck, Search, Loader2, AlertCircle, ExternalLink, Download, HelpCircle, Percent, X } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
 import { cn } from '@/lib/utils';
 import { InlineEditCell } from '@/components/inline-edit-cell';
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface Vendor {
     id: string;
@@ -92,7 +93,7 @@ function marginPct(cost: number | undefined, sell: number | undefined): number |
     return ((sell - cost) / sell) * 100;
 }
 
-export function TrailersTableView({ canEdit = true, organisationId }: { canEdit?: boolean; organisationId?: string | null }) {
+export function TrailersTableView({ canEdit = true, organisationId, initialSearch }: { canEdit?: boolean; organisationId?: string | null; initialSearch?: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
 
@@ -103,8 +104,18 @@ export function TrailersTableView({ canEdit = true, organisationId }: { canEdit?
     const { data: vendors, isLoading: vendorsLoading } = useCollection<Vendor>(vendorsQuery);
 
     const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
-    const [search, setSearch] = useState('');
+    /** v1.17 (Story 3.10.3) — initial seed comes from Catalog Manager's
+     *  cross-tab search box. Local edits override afterwards. */
+    const [search, setSearch] = useState(initialSearch ?? '');
+    useEffect(() => { if (initialSearch !== undefined) setSearch(initialSearch); }, [initialSearch]);
     const [rows, setRows] = useState<TrailerRow[]>([]);
+    /** v1.17 (Story 3.10.1 retrofit) — multi-row select on Trailers Table.
+     *  Same UX as MotorsTableView: per-row + select-all-filtered checkboxes,
+     *  bulk markup toolbar mounts when selected.size > 0. Routes through
+     *  the existing patchTrailer pipeline so org-override mode is respected. */
+    const [selected, setSelected] = useState<Set<string>>(new Set());
+    const [bulkMarkup, setBulkMarkup] = useState<string>('25');
+    const [bulkApplying, setBulkApplying] = useState(false);
     /** v1.14 (Story 3.7.6) — Org override mode. When ON, inline edits write
      *  to `organisations/{orgId}/trailerOverrides/{trailerId}` instead of the
      *  vendor catalogue. Effective value used in the table prefers an
@@ -159,6 +170,43 @@ export function TrailersTableView({ canEdit = true, organisationId }: { canEdit?
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
             throw err;
+        }
+    };
+
+    /** v1.17 (Story 3.10.1 retrofit) — bulk markup on selected trailers.
+     *  Routes per-row through patchTrailer so org-override mode is honored.
+     *  Skips rows without a cost; single summary toast at end. */
+    const applyBulkMarkup = async () => {
+        const pct = parseFloat(bulkMarkup);
+        if (!Number.isFinite(pct) || pct < -100) {
+            toast({ variant: 'destructive', title: 'Invalid markup', description: 'Enter a number greater than -100.' });
+            return;
+        }
+        const rowsToWrite = rows.filter(r => selected.has(r.id));
+        if (rowsToWrite.length === 0) return;
+        setBulkApplying(true);
+        let updated = 0;
+        let skipped = 0;
+        const factor = 1 + pct / 100;
+        try {
+            for (const r of rowsToWrite) {
+                const cost = resolveField(r, 'cost') as number | undefined;
+                if (cost == null || typeof cost !== 'number') { skipped += 1; continue; }
+                const nextSell = Math.round(cost * factor);
+                try {
+                    await patchTrailer(r.id, 'sellPriceExclGst', nextSell);
+                    updated += 1;
+                } catch {
+                    skipped += 1;
+                }
+            }
+            toast({
+                title: `Bulk markup applied`,
+                description: `${updated} updated, ${skipped} skipped${skipped > 0 ? ' (missing cost or write failed)' : ''}.`,
+            });
+            setSelected(new Set());
+        } finally {
+            setBulkApplying(false);
         }
     };
 
@@ -329,10 +377,58 @@ export function TrailersTableView({ canEdit = true, organisationId }: { canEdit?
                     </div>
                 ) : (
                     <TooltipProvider>
+                    {/* v1.17 (Story 3.10.1) — bulk-action toolbar. Routes through
+                        patchTrailer so org-override mode is honored. */}
+                    {selected.size > 0 && (
+                        <div data-testid="trailers-bulk-toolbar" className="rounded-xl border-2 border-primary bg-primary/5 p-3 flex items-center gap-3 flex-wrap mb-3">
+                            <p className="text-xs font-bold uppercase tracking-widest text-primary">
+                                {selected.size} selected
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <Percent className="h-3.5 w-3.5 text-muted-foreground" />
+                                <Input
+                                    type="number"
+                                    step="0.5"
+                                    value={bulkMarkup}
+                                    onChange={e => setBulkMarkup(e.target.value)}
+                                    className="h-8 w-24 rounded-lg text-xs"
+                                    placeholder="Markup %"
+                                    disabled={bulkApplying}
+                                />
+                                <span className="text-[10px] text-muted-foreground">
+                                    markup over cost {orgOverrideMode && <em>· writes overrides</em>}
+                                </span>
+                            </div>
+                            <Button size="sm" onClick={applyBulkMarkup} disabled={bulkApplying} className="h-8 rounded-lg text-xs">
+                                {bulkApplying ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                                Apply markup
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())} disabled={bulkApplying} className="h-8 rounded-lg text-xs ml-auto">
+                                <X className="h-3 w-3 mr-1" /> Clear
+                            </Button>
+                        </div>
+                    )}
                     <div className="overflow-x-auto border-2 rounded-xl">
                         <table className="w-full text-xs">
                             <thead className="bg-slate-50 border-b-2">
                                 <tr>
+                                    <th className="w-8 px-2 py-2">
+                                        {/* v1.17 (3.10.1) — select-all-filtered header checkbox */}
+                                        <Checkbox
+                                            checked={filtered.length > 0 && filtered.every(t => selected.has(t.id)) ? true : (filtered.some(t => selected.has(t.id)) ? 'indeterminate' : false)}
+                                            onCheckedChange={() => {
+                                                const filteredIds = filtered.map(t => t.id);
+                                                const allSelected = filteredIds.length > 0 && filteredIds.every(id => selected.has(id));
+                                                setSelected(prev => {
+                                                    const next = new Set(prev);
+                                                    if (allSelected) for (const id of filteredIds) next.delete(id);
+                                                    else for (const id of filteredIds) next.add(id);
+                                                    return next;
+                                                });
+                                            }}
+                                            aria-label="Select all filtered trailers"
+                                        />
+                                    </th>
                                     <TrailerColHeader label="Image" hint="Thumbnail from the trailer's imageUrl field. Native <img> per CLAUDE.md lesson." />
                                     <TrailerColHeader label="Code" hint="Model code / SKU. Read-only — edits happen via the trailer module editor." />
                                     <TrailerColHeader label="Name" hint="Display name shown on quotes. Inline-editable — click to edit." />
@@ -353,7 +449,19 @@ export function TrailersTableView({ canEdit = true, organisationId }: { canEdit?
                                     /** v1.14 (3.7.6) — tiny OVR badge when this row has any org override applied. */
                                     const rowHasOverride = overrideMap.has(t.id);
                                     return (
-                                        <tr key={t.id} className={cn('border-b last:border-b-0 hover:bg-slate-50', !t.isActive && 'opacity-60', rowHasOverride && 'bg-violet-50/30')}>
+                                        <tr key={t.id} className={cn('border-b last:border-b-0 hover:bg-slate-50', !t.isActive && 'opacity-60', rowHasOverride && 'bg-violet-50/30', selected.has(t.id) && 'bg-primary/5')}>
+                                            <td className="w-8 px-2 py-2">
+                                                {/* v1.17 (3.10.1) — per-row checkbox */}
+                                                <Checkbox
+                                                    checked={selected.has(t.id)}
+                                                    onCheckedChange={() => setSelected(prev => {
+                                                        const next = new Set(prev);
+                                                        if (next.has(t.id)) next.delete(t.id); else next.add(t.id);
+                                                        return next;
+                                                    })}
+                                                    aria-label={`Select ${t.name ?? t.id}`}
+                                                />
+                                            </td>
                                             <td className="px-3 py-2">
                                                 {t.imageUrl
                                                     /* eslint-disable-next-line @next/next/no-img-element */

@@ -24,8 +24,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Anchor, Search, Loader2, Download, HelpCircle, FileUp } from 'lucide-react';
+import { Anchor, Search, Loader2, Download, HelpCircle, FileUp, Percent, X, ClipboardPaste } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import { Checkbox } from '@/components/ui/checkbox';
+import { PasteFromSpreadsheet } from '@/components/paste-from-spreadsheet';
 import { formatCurrency } from '@/lib/currency-utils';
 import { InlineEditCell } from '@/components/inline-edit-cell';
 import { MasterPriceFileWorkspace } from '@/components/master-price-file-workspace';
@@ -49,7 +51,7 @@ interface MotorRow {
     [k: string]: any;
 }
 
-export function MotorsTableView({ organisationId }: { organisationId?: string | null } = {}) {
+export function MotorsTableView({ organisationId, initialSearch }: { organisationId?: string | null; initialSearch?: string } = {}) {
     const firestore = useFirestore();
 
     const vendorsQuery = useMemoFirebase(
@@ -109,7 +111,7 @@ export function MotorsTableView({ organisationId }: { organisationId?: string | 
                 {!selectedVendorId ? (
                     <EmptyState message="Pick a brand to view the catalogue." />
                 ) : (
-                    <MotorsTableBody vendorId={selectedVendorId} />
+                    <MotorsTableBody vendorId={selectedVendorId} initialSearch={initialSearch} />
                 )}
             </CardContent>
 
@@ -149,13 +151,28 @@ function EmptyState({ message }: { message: string }) {
     );
 }
 
-function MotorsTableBody({ vendorId }: { vendorId: string }) {
+function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initialSearch?: string }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [rows, setRows] = useState<MotorRow[]>([]);
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState('');
+    /** v1.17 (Story 3.10.3) — initial seed comes from the Catalog Manager's
+     *  cross-tab search box. Local edits override afterwards. */
+    const [search, setSearch] = useState(initialSearch ?? '');
+    /** Sync if the parent's cross-tab search changes (vendor switch with
+     *  filter still on). */
+    useEffect(() => { if (initialSearch !== undefined) setSearch(initialSearch); }, [initialSearch]);
     const [seriesFilter, setSeriesFilter] = useState<string>('all');
+    /** v1.17 (Story 3.10.1) — multi-row select. Set of row IDs the operator
+     *  has ticked. Bulk price-adjustment toolbar appears when non-empty. */
+    const [selected, setSelected] = useState<Set<string>>(new Set());
+    /** v1.17 — bulk-markup input + apply lifecycle. Markup is cost-driven:
+     *  next sell = round(cost * (1 + markup/100)). Rows without a cost are
+     *  skipped and reported in the summary toast. */
+    const [bulkMarkup, setBulkMarkup] = useState<string>('25');
+    const [bulkApplying, setBulkApplying] = useState(false);
+    /** v1.17 (Story 3.10.2) — paste-from-spreadsheet dialog state. */
+    const [pasteOpen, setPasteOpen] = useState(false);
 
     /** v1.14 (3.8.1 retrofit) — inline-edit handler for motors. Writes
      *  straight to the vendor part doc; toasts on success/failure. */
@@ -267,6 +284,78 @@ function MotorsTableBody({ vendorId }: { vendorId: string }) {
         return <EmptyState message="No motors found for this brand." />;
     }
 
+    /** v1.17 (Story 3.10.1) — toggle a single row's membership in `selected`. */
+    const toggleRow = (id: string) => {
+        setSelected(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
+
+    /** v1.17 — header checkbox: select-all-filtered if any are unselected,
+     *  otherwise clear. Stays scoped to the currently-filtered list so an
+     *  operator with a series filter on doesn't accidentally select hidden
+     *  rows. */
+    const toggleAllFiltered = () => {
+        const filteredIds = filtered.map(r => r.id);
+        const allSelected = filteredIds.length > 0 && filteredIds.every(id => selected.has(id));
+        setSelected(prev => {
+            const next = new Set(prev);
+            if (allSelected) {
+                for (const id of filteredIds) next.delete(id);
+            } else {
+                for (const id of filteredIds) next.add(id);
+            }
+            return next;
+        });
+    };
+
+    const filteredAllSelected = filtered.length > 0 && filtered.every(r => selected.has(r.id));
+    const filteredSomeSelected = filtered.some(r => selected.has(r.id));
+
+    /** v1.17 (Story 3.10.1) — bulk markup. Iterates the selected rows in
+     *  sequence, computes the new sell from cost * (1 + markup/100), rounds
+     *  to whole dollars, writes Firestore. Skips rows without a cost and
+     *  reports in the summary toast. */
+    const applyBulkMarkup = async () => {
+        const pct = parseFloat(bulkMarkup);
+        if (!Number.isFinite(pct) || pct < -100) {
+            toast({ variant: 'destructive', title: 'Invalid markup', description: 'Enter a number greater than -100.' });
+            return;
+        }
+        const rowsToWrite = rows.filter(r => selected.has(r.id));
+        if (rowsToWrite.length === 0) return;
+        setBulkApplying(true);
+        let updated = 0;
+        let skipped = 0;
+        const factor = 1 + pct / 100;
+        try {
+            for (const r of rowsToWrite) {
+                if (r.cost == null || typeof r.cost !== 'number') { skipped += 1; continue; }
+                const nextSell = Math.round(r.cost * factor);
+                try {
+                    await updateDoc(
+                        doc(firestore, 'data-warehouse', vendorId, 'parts', r.id),
+                        { sellPriceExclGst: nextSell, updatedAt: serverTimestamp() },
+                    );
+                    setRows(prev => prev.map(x => x.id === r.id ? { ...x, sellPriceExclGst: nextSell } : x));
+                    updated += 1;
+                } catch (err) {
+                    console.error('bulk-markup row write failed', r.id, err);
+                    skipped += 1;
+                }
+            }
+            toast({
+                title: `Bulk markup applied`,
+                description: `${updated} updated, ${skipped} skipped${skipped > 0 ? ' (missing cost or write failed)' : ''}.`,
+            });
+            setSelected(new Set());
+        } finally {
+            setBulkApplying(false);
+        }
+    };
+
     return (
         <div className="space-y-3">
             <div className="flex items-center gap-3 flex-wrap">
@@ -295,13 +384,74 @@ function MotorsTableBody({ vendorId }: { vendorId: string }) {
                 <Button variant="outline" size="sm" onClick={handleExport} className="rounded-xl text-xs h-9" disabled={filtered.length === 0}>
                     <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
                 </Button>
+                {/* v1.17 (Story 3.10.2) — paste-from-spreadsheet entry point */}
+                <Button variant="outline" size="sm" onClick={() => setPasteOpen(true)} className="rounded-xl text-xs h-9">
+                    <ClipboardPaste className="h-3.5 w-3.5 mr-1" /> Paste
+                </Button>
             </div>
+            <PasteFromSpreadsheet
+                open={pasteOpen}
+                onOpenChange={setPasteOpen}
+                collectionPath={['data-warehouse', vendorId, 'parts']}
+                existingRows={rows as any}
+                resourceLabel="motors"
+            />
 
             <TooltipProvider>
+                {/* v1.17 (Story 3.10.1) — bulk-action toolbar. Renders when
+                    any rows are selected. Currently scoped to bulk markup;
+                    bulk cost adjust + bulk price-level retarget land in
+                    later v1.17 commits. */}
+                {selected.size > 0 && (
+                    <div data-testid="motors-bulk-toolbar" className="rounded-xl border-2 border-primary bg-primary/5 p-3 flex items-center gap-3 flex-wrap mb-3">
+                        <p className="text-xs font-bold uppercase tracking-widest text-primary">
+                            {selected.size} selected
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <Percent className="h-3.5 w-3.5 text-muted-foreground" />
+                            <Input
+                                type="number"
+                                step="0.5"
+                                value={bulkMarkup}
+                                onChange={e => setBulkMarkup(e.target.value)}
+                                className="h-8 w-24 rounded-lg text-xs"
+                                placeholder="Markup %"
+                                disabled={bulkApplying}
+                            />
+                            <span className="text-[10px] text-muted-foreground">markup over cost</span>
+                        </div>
+                        <Button
+                            size="sm"
+                            onClick={applyBulkMarkup}
+                            disabled={bulkApplying}
+                            className="h-8 rounded-lg text-xs"
+                        >
+                            {bulkApplying ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                            Apply markup
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setSelected(new Set())}
+                            disabled={bulkApplying}
+                            className="h-8 rounded-lg text-xs ml-auto"
+                        >
+                            <X className="h-3 w-3 mr-1" /> Clear
+                        </Button>
+                    </div>
+                )}
                 <div className="rounded-xl border-2 overflow-hidden">
                     <table className="w-full text-xs">
                         <thead className="bg-slate-50 border-b-2">
                             <tr className="text-left">
+                                <th className="w-8 px-2 py-2">
+                                    {/* v1.17 (3.10.1) — select-all-filtered header checkbox */}
+                                    <Checkbox
+                                        checked={filteredAllSelected ? true : (filteredSomeSelected ? 'indeterminate' : false)}
+                                        onCheckedChange={toggleAllFiltered}
+                                        aria-label="Select all filtered rows"
+                                    />
+                                </th>
                                 <ColumnHeader label="Part #" hint="Manufacturer's part number / SKU. Used by Yamaha MPF imports." />
                                 <ColumnHeader label="Model" hint="Model name as it appears on the data sheet." />
                                 <ColumnHeader label="Series" hint="Series the motor belongs to (e.g. F25, F70). Drives the series filter chip row." />
@@ -313,7 +463,15 @@ function MotorsTableBody({ vendorId }: { vendorId: string }) {
                         </thead>
                         <tbody>
                             {filtered.map(row => (
-                                <tr key={row.id} className="border-b last:border-b-0 hover:bg-slate-50">
+                                <tr key={row.id} className={`border-b last:border-b-0 hover:bg-slate-50 ${selected.has(row.id) ? 'bg-primary/5' : ''}`}>
+                                    <td className="w-8 px-2 py-2">
+                                        {/* v1.17 (3.10.1) — per-row checkbox */}
+                                        <Checkbox
+                                            checked={selected.has(row.id)}
+                                            onCheckedChange={() => toggleRow(row.id)}
+                                            aria-label={`Select ${row['Model Name'] ?? row.id}`}
+                                        />
+                                    </td>
                                     <td className="px-3 py-2 font-mono font-bold">{row['Part Number'] ?? '—'}</td>
                                     <td className="px-3 py-2">
                                         <InlineEditCell
