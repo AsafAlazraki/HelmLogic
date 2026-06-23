@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, ArrowRightLeft, Trash2, Box, CheckCircle2, ChevronUp, ChevronDown, Plus, Pencil, Truck, Shield, Search } from 'lucide-react';
 import { StockItemDetail } from '@/components/stock-item-detail';
 import { StockItemForm } from '@/components/stock-item-form';
+import { InlineEditCell } from '@/components/inline-edit-cell';
 import { MoveToDelivered } from '@/components/move-to-delivered';
 import {
     Select,
@@ -301,6 +302,22 @@ export function StockList({
         }
     };
 
+    /** v1.18 (Story "Edit Stock Item") — inline patch handler for
+     *  stock rows. Mirrors the patchMotor / patchTrailer pattern from
+     *  the catalog tables so click-to-edit cells write straight to
+     *  inventory/{id} without going through the full StockItemForm
+     *  dialog. Used by the InlineEditCell wiring on Location, Stock
+     *  Number, and Label columns. */
+    const patchStockItem = async (itemId: string, field: string, next: any) => {
+        try {
+            await updateDoc(doc(firestore, 'inventory', itemId), { [field]: next });
+            toast({ title: 'Saved' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
+            throw err;
+        }
+    };
+
     const handleDeleteItem = async (itemId: string) => {
         const itemRef = doc(firestore, 'inventory', itemId);
         deleteDoc(itemRef)
@@ -433,9 +450,17 @@ export function StockList({
                                                 <td className="px-3 py-2 whitespace-nowrap">{item.colour || '—'}</td>
                                             )}
 
-                                            {/* Stock Number */}
+                                            {/* Stock Number — v1.18 inline-editable */}
                                             {visibleColumnKeys.has('stockNumber') && (
-                                                <td className="px-3 py-2 whitespace-nowrap font-mono text-[10px]">{item.stockNumber || '—'}</td>
+                                                <td className="px-3 py-2 whitespace-nowrap font-mono text-[10px]" onClick={(e) => e.stopPropagation()}>
+                                                    {readOnly ? (item.stockNumber || '—') : (
+                                                        <InlineEditCell
+                                                            type="text"
+                                                            value={item.stockNumber as string}
+                                                            onSave={(v) => patchStockItem(item.id, 'stockNumber', v)}
+                                                        />
+                                                    )}
+                                                </td>
                                             )}
 
                                             {/* Status */}
@@ -450,9 +475,17 @@ export function StockList({
                                                 </td>
                                             )}
 
-                                            {/* Location */}
+                                            {/* Location — v1.18 inline-editable */}
                                             {visibleColumnKeys.has('location') && (
-                                                <td className="px-3 py-2 whitespace-nowrap">{item.location || '—'}</td>
+                                                <td className="px-3 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                                    {readOnly ? (item.location || '—') : (
+                                                        <InlineEditCell
+                                                            type="text"
+                                                            value={item.location as string}
+                                                            onSave={(v) => patchStockItem(item.id, 'location', v)}
+                                                        />
+                                                    )}
+                                                </td>
                                             )}
 
                                             {/* Date into Stock / ETA */}
@@ -472,9 +505,17 @@ export function StockList({
                                                 <td className="px-3 py-2 whitespace-nowrap">{item.soldBy || '—'}</td>
                                             )}
 
-                                            {/* Label */}
+                                            {/* Label — v1.18 inline-editable */}
                                             {visibleColumnKeys.has('label') && (
-                                                <td className="px-3 py-2 whitespace-nowrap">{item.label || '—'}</td>
+                                                <td className="px-3 py-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                                                    {readOnly ? (item.label || '—') : (
+                                                        <InlineEditCell
+                                                            type="text"
+                                                            value={item.label as string}
+                                                            onSave={(v) => patchStockItem(item.id, 'label', v)}
+                                                        />
+                                                    )}
+                                                </td>
                                             )}
 
                                             {/* Serial Number */}

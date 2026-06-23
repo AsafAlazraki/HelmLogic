@@ -40,6 +40,37 @@ test('Structured Price Sources (2.1.1)', async () => {
     tick('v1.18/2.1.1-finalize-delegates-to-resolver', /resolvePriceLevel\(item,/.test(finalize));
 });
 
+test('Edit Stock Item — inline edit on stock rows', async () => {
+    const fs = require('fs');
+    const src = fs.readFileSync('src/components/stock-list.tsx', 'utf8');
+    tick('v1.18/edit-stock-imports-inline-edit-cell', /from '@\/components\/inline-edit-cell'/.test(src));
+    tick('v1.18/edit-stock-patchStockItem-helper', /const patchStockItem/.test(src));
+    tick('v1.18/edit-stock-writes-to-inventory', /'inventory', itemId\), \{ \[field\]: next \}/.test(src));
+    tick('v1.18/edit-stock-stockNumber-editable', /onSave=\{\(v\) => patchStockItem\(item\.id, 'stockNumber'/.test(src));
+    tick('v1.18/edit-stock-location-editable', /onSave=\{\(v\) => patchStockItem\(item\.id, 'location'/.test(src));
+    tick('v1.18/edit-stock-label-editable', /onSave=\{\(v\) => patchStockItem\(item\.id, 'label'/.test(src));
+    tick('v1.18/edit-stock-readonly-respected', /readOnly \?/.test(src));
+});
+
+test('Export Data brand -> range -> model hierarchy CSV', async () => {
+    const fs = require('fs');
+    const path = 'src/components/catalog-hierarchy-export.tsx';
+    tick('v1.18/hierarchy-export-component-exists', fs.existsSync(path));
+    if (fs.existsSync(path)) {
+        const src = fs.readFileSync(path, 'utf8');
+        tick('v1.18/hierarchy-export-walks-ranges', /'ranges'/.test(src) && /'models'/.test(src));
+        tick('v1.18/hierarchy-export-includes-brand-range-model-cols', /'Brand'/.test(src) && /'Range'/.test(src) && /'Model Code'/.test(src));
+        tick('v1.18/hierarchy-export-margin-calc', /margin =/.test(src) && /sellPriceExclGst/.test(src));
+        tick('v1.18/hierarchy-export-csv-mime', /text\/csv;charset=utf-8/.test(src));
+        tick('v1.18/hierarchy-export-filename-dated', /catalog-hierarchy-\$\{stamp\}\.csv/.test(src));
+        tick('v1.18/hierarchy-export-testid', /data-testid="catalog-hierarchy-export"/.test(src));
+    } else {
+        ['walks-ranges','includes-brand-range-model-cols','margin-calc','csv-mime','filename-dated','testid'].forEach(k => tick(`v1.18/hierarchy-export-${k}`, false));
+    }
+    const page = fs.readFileSync('src/app/(app)/pricing-manager/page.tsx', 'utf8');
+    tick('v1.18/hierarchy-export-wired-into-catalog-manager', /<CatalogHierarchyExport\s/.test(page));
+});
+
 test('Saved filter views per user (3.10.4)', async () => {
     const fs = require('fs');
     const path = 'src/components/saved-filters-bar.tsx';

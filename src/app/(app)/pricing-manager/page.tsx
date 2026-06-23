@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HelmLogicLoading } from "@/components/helmlogic-loading";
 import { SavedFiltersBar, type SavedCatalogFilter } from "@/components/saved-filters-bar";
+import { CatalogHierarchyExport } from "@/components/catalog-hierarchy-export";
 
 interface Vendor {
     id: string;
@@ -153,6 +154,12 @@ export default function PricingManagerPage() {
                             <span className="text-[9px] font-bold uppercase opacity-70 tracking-tighter">Every catalog · diff before commit</span>
                         </CardContent>
                     </Card>
+                    {/* v1.18 (Story "Export Data brand -> range -> model")
+                        Catalog hierarchy CSV button. One file, full brand /
+                        range / model tree across every subscribed Boat Brand. */}
+                    <div className="flex items-end pb-1">
+                        <CatalogHierarchyExport vendors={subscribedVendors ?? []} />
+                    </div>
                     <Card
                         className="w-48 bg-gradient-to-br from-amber-600 to-rose-700 text-white border-none shadow-xl group overflow-hidden h-24 relative cursor-pointer hover:scale-[1.02] transition-all active:scale-[0.98]"
                         onClick={() => setIsAuditHistoryOpen(true)}
