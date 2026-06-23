@@ -21,6 +21,25 @@ test.afterAll(() => {
     console.log(`  ${p}/${Object.keys(ticks).length} passed\n`);
 });
 
+test('Structured Price Sources (2.1.1)', async () => {
+    const fs = require('fs');
+    const derive = fs.readFileSync('src/lib/catalog/derive-pricing.ts', 'utf8');
+    tick('v1.18/2.1.1-resolvePriceLevel-exported', /export function resolvePriceLevel/.test(derive));
+    tick('v1.18/2.1.1-PRICE_FALLBACK_FIELDS-exported', /export const PRICE_FALLBACK_FIELDS/.test(derive));
+    tick('v1.18/2.1.1-fallback-includes-sellPriceExclGst', /'sellPriceExclGst'/.test(derive));
+    tick('v1.18/2.1.1-fallback-includes-act-sell', /'Act Sell'/.test(derive));
+    tick('v1.18/2.1.1-fallback-includes-NSM-Retail', /'NSM Retail'/.test(derive));
+    tick('v1.18/2.1.1-coerce-string-fallback', /typeof v === 'string'/.test(derive));
+
+    const quoteFlow = fs.readFileSync('src/components/highfield-quote-flow.tsx', 'utf8');
+    tick('v1.18/2.1.1-quote-flow-imports-resolver', /from '@\/lib\/catalog\/derive-pricing'/.test(quoteFlow));
+    tick('v1.18/2.1.1-quote-flow-delegates-to-resolver', /return resolvePriceLevel\(item, level\)/.test(quoteFlow));
+
+    const finalize = fs.readFileSync('src/components/finalize-quote-dialog.tsx', 'utf8');
+    tick('v1.18/2.1.1-finalize-imports-resolver', /from '@\/lib\/catalog\/derive-pricing'/.test(finalize));
+    tick('v1.18/2.1.1-finalize-delegates-to-resolver', /resolvePriceLevel\(item,/.test(finalize));
+});
+
 test('Saved filter views per user (3.10.4)', async () => {
     const fs = require('fs');
     const path = 'src/components/saved-filters-bar.tsx';

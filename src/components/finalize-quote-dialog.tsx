@@ -8,6 +8,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { doc, setDoc, updateDoc, serverTimestamp, collection as firestoreCollection } from 'firebase/firestore';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { buildQuoteFinancials } from '@/lib/quote-financials';
+import { resolvePriceLevel } from '@/lib/catalog/derive-pricing';
 import {
     Dialog,
     DialogContent,
@@ -167,17 +168,10 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
         // The snapshot is frozen at selection time so quote totals never drift.
         const trailerSource = catalogTrailerSnapshot || model?.trailerConfig || null;
 
-        /** Resolve price for an item based on the selected price level */
-        const resolvePrice = (item: any): number => {
-            if (!item) return 0;
-            const level = priceLevelUsed || 'hull_cash';
-            if (item.priceLevels?.[level]) {
-                const v = item.priceLevels[level];
-                return typeof v === 'number' ? v : parseFloat(v) || 0;
-            }
-            const fallback = item.sellPriceExclGst || item['Act Sell'] || item['Store Price'] || item['Sell Price'] || item['NSM Retail'] || item.PARTS || item.RRP || item.Price || item.Retail || item.Trade || 0;
-            return typeof fallback === 'number' ? fallback : parseFloat(fallback) || 0;
-        };
+        /** v1.18 (Story 2.1.1) — delegate to the shared resolver so the
+         *  finalize payload and the live quote-flow render compute prices
+         *  through one fallback chain. */
+        const resolvePrice = (item: any): number => resolvePriceLevel(item, priceLevelUsed || 'hull_cash');
 
         return {
             // Quote metadata

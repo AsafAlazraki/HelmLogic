@@ -1,6 +1,7 @@
 'use client';
 
 import { formatMetres } from '@/lib/units';
+import { resolvePriceLevel } from '@/lib/catalog/derive-pricing';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, doc, where, getDoc, getDocs } from 'firebase/firestore';
@@ -222,13 +223,14 @@ export function HighfieldQuoteFlow({
         return motor?.['MODEL'] || motor?.['Model Name'] || motor?.['MODEL CODE'] || motor?.['Model'] || motor?.name || 'Selected Motor';
     }
 
+    /**
+     * v1.18 (Story 2.1.1) — delegate to the shared resolver in
+     * src/lib/catalog/derive-pricing.ts so motor cards + finalize payload
+     * + accessory rows all use one fallback chain. Kept as a 1-line
+     * wrapper so every call site downstream stays identical.
+     */
     function getPriceForLevel(item: any, level: string): number {
-        const fallbackPrice = item?.sellPriceExclGst || item?.['Act Sell'] || item?.['Sell Price'] || item?.['Store Price'] || item?.['NSM Retail'] || item?.PARTS || item?.RRP || item?.Price || item?.Retail || item?.Trade || 0;
-        if (!level || level === 'default' || !item?.priceLevels) {
-            return typeof fallbackPrice === 'number' ? fallbackPrice : parseFloat(fallbackPrice) || 0;
-        }
-        const levelPrice = item?.priceLevels?.[level];
-        return levelPrice ? (typeof levelPrice === 'number' ? levelPrice : parseFloat(levelPrice) || 0) : (typeof fallbackPrice === 'number' ? fallbackPrice : parseFloat(fallbackPrice) || 0);
+        return resolvePriceLevel(item, level);
     }
 
     // 1. Core State — seeded from initialState when duplicating an existing quote
