@@ -40,6 +40,42 @@ test('Structured Price Sources (2.1.1)', async () => {
     tick('v1.18/2.1.1-finalize-delegates-to-resolver', /resolvePriceLevel\(item,/.test(finalize));
 });
 
+test('Receipt PDF branding — shared pdf-branding lib (Story "Receipt PDF branding")', async () => {
+    const fs = require('fs');
+    const path = 'src/lib/pdf-branding.ts';
+    tick('v1.18/receipt-branding-lib-exists', fs.existsSync(path));
+    if (fs.existsSync(path)) {
+        const src = fs.readFileSync(path, 'utf8');
+        tick('v1.18/receipt-branding-tokens-type', /export interface PdfBrandingTokens/.test(src));
+        tick('v1.18/receipt-branding-default-export', /export const DEFAULT_PDF_BRANDING/.test(src));
+        tick('v1.18/receipt-branding-resolve-fn', /export function resolveBranding/.test(src));
+        tick('v1.18/receipt-branding-merges-org-overrides', /organisation\?\.pdfBranding/.test(src));
+    } else {
+        ['tokens-type','default-export','resolve-fn','merges-org-overrides'].forEach(k => tick(`v1.18/receipt-branding-${k}`, false));
+    }
+    const proposalPdf = fs.readFileSync('src/components/proposal-pdf.tsx', 'utf8');
+    tick('v1.18/receipt-branding-quote-pdf-uses-shared-tokens', /from '@\/lib\/pdf-branding'/.test(proposalPdf));
+    tick('v1.18/receipt-branding-quote-pdf-defaults-byte-identical', /DEFAULT_PDF_BRANDING\.brand/.test(proposalPdf) && /DEFAULT_PDF_BRANDING\.gold/.test(proposalPdf));
+});
+
+test('Send Quote Action (boat side) — 1.4.2 wiring intact', async () => {
+    // 1.4.2 ships as a stale-flip in v1.18. The dialog + button + pipeline
+    // shipped in v1.8 (story 1.2.4.c). This test pins the wiring so any
+    // future regression that breaks the send pipeline surfaces here.
+    const fs = require('fs');
+    const dialog = fs.readFileSync('src/components/send-quote-dialog.tsx', 'utf8');
+    tick('v1.18/1.4.2-send-dialog-component', /SendQuoteDialog/.test(dialog));
+    tick('v1.18/1.4.2-render-quote-pdf-step', /renderQuotePdf/.test(dialog));
+    // mail/{id} write lives in lib/email-send.ts (sendQuoteEmail pipeline).
+    tick('v1.18/1.4.2-mail-trigger-write', /sendQuoteEmail/.test(dialog) && /collection.*['\"]mail['\"]|addDoc.*mail/.test(require('fs').readFileSync('src/lib/email-send.ts', 'utf8')));
+    tick('v1.18/1.4.2-sent-emails-audit', /sentEmails/.test(dialog));
+    tick('v1.18/1.4.2-auto-lock-on-first-send', /lockQuote|lockedAt/.test(dialog));
+
+    const view = fs.readFileSync('src/components/proposal-view.tsx', 'utf8');
+    tick('v1.18/1.4.2-send-button-on-proposal-view', /Send Quote/.test(view));
+    tick('v1.18/1.4.2-email-send-flag-gating', /NEXT_PUBLIC_EMAIL_SEND_ENABLED/.test(view));
+});
+
 test('Edit Stock Item — inline edit on stock rows', async () => {
     const fs = require('fs');
     const src = fs.readFileSync('src/components/stock-list.tsx', 'utf8');

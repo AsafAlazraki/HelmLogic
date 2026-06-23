@@ -16,14 +16,19 @@ import {
  * BRAND is now a deep navy-blue closer to "executive proposal" tone;
  * GOLD provides a thin accent rule on the cover for premium feel.
  * ──────────────────────────────────────────────────────────────────────── */
-const BRAND  = '#0c2a4d'; // deep navy-blue — primary
-const NAVY   = '#0f172a';
-const SLATE  = '#475569';
-const MUTED  = '#94a3b8';
-const BORDER = '#e2e8f0';
-const LIGHT  = '#f8fafc';
-const GREEN  = '#10b981';
-const GOLD   = '#a07a2c'; // hairline gold accent on cover
+// v1.18 (Story "Receipt PDF branding") — palette imported from the shared
+// pdf-branding lib so the quote PDF + the upcoming receipt PDF + every
+// other PDF artifact resolves through one source. Defaults match the
+// pre-v1.18 constants exactly so no visual regression.
+import { DEFAULT_PDF_BRANDING } from '@/lib/pdf-branding';
+const BRAND  = DEFAULT_PDF_BRANDING.brand;
+const NAVY   = DEFAULT_PDF_BRANDING.navy;
+const SLATE  = DEFAULT_PDF_BRANDING.slate;
+const MUTED  = DEFAULT_PDF_BRANDING.muted;
+const BORDER = DEFAULT_PDF_BRANDING.border;
+const LIGHT  = DEFAULT_PDF_BRANDING.light;
+const GREEN  = DEFAULT_PDF_BRANDING.green;
+const GOLD   = DEFAULT_PDF_BRANDING.gold;
 
 /* ─── Helpers ──────────────────────────────────────────────────────────── */
 function currency(n: number): string {
