@@ -23,6 +23,7 @@ import { ExchangeRateManager } from "@/components/exchange-rate-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HelmLogicLoading } from "@/components/helmlogic-loading";
+import { SavedFiltersBar, type SavedCatalogFilter } from "@/components/saved-filters-bar";
 
 interface Vendor {
     id: string;
@@ -218,6 +219,19 @@ export default function PricingManagerPage() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 data-testid="catalog-manager-cross-tab-search"
                             />
+                        </div>
+                        {/* v1.18 (Story 3.10.4) — saved filter views per user.
+                            Chip row below the search input; each chip recalls a
+                            saved query, X removes it, "Save current" appears
+                            when the search has a value. Pins live as an array
+                            field on the user profile doc (no new Firestore
+                            collection so no rules deploy needed). */}
+                        <SavedFiltersBar
+                            savedFilters={(userProfile?.savedCatalogFilters ?? []) as SavedCatalogFilter[]}
+                            currentQuery={searchTerm}
+                            onApply={setSearchTerm}
+                        />
+                        <div className="hidden">
                         </div>
                     </CardHeader>
                     <ScrollArea className="flex-1">
