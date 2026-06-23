@@ -49,7 +49,7 @@ export interface ReleaseWindow {
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 18;
+const FORWARD_RUNWAY_START = 19;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -155,6 +155,21 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // customer surfaces (Epic 8.1 v1.21+), quote variations (Epic 2.4
     // v1.18+), margin threshold (Epic 2.2 v1.19).
     'v1.17': { shipped: true },
+    // v1.18 — Catalog polish + first customer-facing surface + Shopify
+    // spike. Phase A (6 stories): 3.10.4 saved filter views per user
+    // (stored on user profile doc, no new collection), 2.1.1 structured
+    // price sources (canonical resolvePriceLevel + PRICE_FALLBACK_FIELDS
+    // in derive-pricing.ts; motors + finalize migrated), Edit Stock Item
+    // (inline edit on StockList rows for stockNumber / location / label),
+    // Export Data brand -> range -> model (one-CSV hierarchy export for
+    // boats), Receipt PDF branding (shared pdf-branding.ts tokens lib),
+    // 1.4.2 Send Quote Action stale-flip (already shipped v1.8/1.2.4.c;
+    // regression test added). Phase C: Shopify research spike, doc + code
+    // stubs only (tasks/shopify-exploration-notes.md, src/lib/shopify/*).
+    // Held / retargeted: 1.3.2 Contract Signing Pack v1.18 -> v1.20,
+    // 2.3.1 Quote Variations v1.18 -> v1.19. NSM-Hub trio (11.3.1/.2/.3)
+    // carries to v1.19, still service-account-blocked.
+    'v1.18': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
