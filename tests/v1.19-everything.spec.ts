@@ -17,6 +17,33 @@ test.afterAll(() => {
     console.log(`  ${p}/${Object.keys(ticks).length} passed\n`);
 });
 
+test('Quote Variations schema + helpers (2.3.1)', async () => {
+    const fs = require('fs');
+    const lib = 'src/lib/catalog/quote-variation.ts';
+    tick('v1.19/2.3.1-lib-exists', fs.existsSync(lib));
+    if (fs.existsSync(lib)) {
+        const src = fs.readFileSync(lib, 'utf8');
+        tick('v1.19/2.3.1-status-type', /QuoteVariationStatus = 'draft' \| 'sent' \| 'accepted' \| 'rejected'/.test(src));
+        tick('v1.19/2.3.1-line-kind-type', /QuoteVariationLineKind = 'add' \| 'remove' \| 'priceAdjust'/.test(src));
+        tick('v1.19/2.3.1-canTransition-helper', /export function canTransitionVariationStatus/.test(src));
+        tick('v1.19/2.3.1-computeVariationTotal-helper', /export function computeVariationTotal/.test(src));
+        tick('v1.19/2.3.1-newAcceptToken-helper', /export function newAcceptToken/.test(src));
+        tick('v1.19/2.3.1-accepted-terminal', /accepted: \[\]/.test(src));
+        tick('v1.19/2.3.1-rejected-terminal', /rejected: \[\]/.test(src));
+        tick('v1.19/2.3.1-2.6.3-customer-accept-fields', /acceptedSignatureDataUrl/.test(src) && /acceptedByName/.test(src) && /publicAcceptToken/.test(src));
+    } else {
+        ['status-type','line-kind-type','canTransition-helper','computeVariationTotal-helper','newAcceptToken-helper','accepted-terminal','rejected-terminal','2.6.3-customer-accept-fields'].forEach(k => tick(`v1.19/2.3.1-${k}`, false));
+    }
+});
+
+test('Quote Variations rules path + regression test extension (2.3.1)', async () => {
+    const fs = require('fs');
+    const rules = fs.readFileSync('firestore.rules', 'utf8');
+    tick('v1.19/2.3.1-rules-variations-match', /match \/variations\/\{variationId\}/.test(rules));
+    const ruleTest = fs.readFileSync('tests/firestore-rules-deployed.spec.ts', 'utf8');
+    tick('v1.19/2.3.1-rules-test-includes-variations', /'variations'/.test(ruleTest) && /USER_QUOTE_SUBPATHS/.test(ruleTest));
+});
+
 test('Model-Specific Fit-Out Pricing (2.1.2)', async () => {
     const fs = require('fs');
     const lib = 'src/lib/catalog/fit-out-pricing.ts';

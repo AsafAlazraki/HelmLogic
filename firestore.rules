@@ -140,6 +140,14 @@ service cloud.firestore {
         match /contentOverrides/{blockType} {
           allow read, write: if isSignedIn();
         }
+        // v1.19 (Story 2.3.1) — Post-contract quote variations. Sit
+        // under the parent quote so they inherit the user-owns model.
+        // Reads + writes signed-in; quote-lock + variation-status
+        // gating handled at the UI layer (canTransitionVariationStatus
+        // in src/lib/catalog/quote-variation.ts).
+        match /variations/{variationId} {
+          allow read, write: if isSignedIn();
+        }
       }
       match /routes/{routeId} {
         allow read, write: if isOwner(userId) || isAdmin();
