@@ -49,7 +49,7 @@ export interface ReleaseWindow {
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 19;
+const FORWARD_RUNWAY_START = 20;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -170,6 +170,20 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // 2.3.1 Quote Variations v1.18 -> v1.19. NSM-Hub trio (11.3.1/.2/.3)
     // carries to v1.19, still service-account-blocked.
     'v1.18': { shipped: true },
+    // v1.19 — Pricing discipline + variations foundation. Phase A
+    // (3 code-shipped + 1 schema-only): 2.2.1 margin threshold
+    // enforcement + GM override (margin-gate.ts + finalize gate +
+    // override dialog), 2.1.2 model-specific fit-out pricing (3-tier
+    // package prices + admin UI on HighfieldModelEditor), 2.3.1 quote
+    // variations schema + helpers + Firestore rules + regression test
+    // (UI v1.20), 2.6.3 customer agreement schema fields baked into
+    // QuoteVariation (UI v1.20). New Firestore path: users/{uid}/
+    // quotes/{qid}/variations/{vid}. Rules updated + regression test
+    // extended. Retargeted out of v1.19: 8.2.1 Reporting Dashboard ->
+    // v1.20. NSM-Hub trio (11.3.1/.2/.3) carries to v1.20, still
+    // service-account-blocked. PUBLISH firestore.rules to prod before
+    // announcing - new variations path is the gate.
+    'v1.19': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
