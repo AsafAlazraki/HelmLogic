@@ -96,6 +96,15 @@ export const highfieldModelSchema = z.object({
      *  this in the model editor; the value snapshots onto the quote so the
      *  customer PDF reflects the bundle's identity. */
     fitUpComplexity: z.enum(['auto', 'simple', 'medium', 'complex']).optional().default('auto'),
+    /** v1.19 (Story 2.1.2) — Model-Specific Fit-Out Pricing.
+     *  Each tier optional. When set, the quote flow surfaces the explicit
+     *  package price instead of summing per-item. When all three are null
+     *  (default), behaviour is unchanged from v1.18. ex GST throughout. */
+    fitOutPricing: z.object({
+        basic: z.number().nullable().optional().default(null),
+        moderate: z.number().nullable().optional().default(null),
+        complex: z.number().nullable().optional().default(null),
+    }).passthrough().nullable().optional().default(null),
     trailerConfig: z.object({
         name: z.string().nullable().optional(),
         imageUrl: z.string().nullable().optional(),
@@ -646,6 +655,42 @@ function FitUpComplexityCard({ model }: { model: any }) {
                     {value === 'auto' || !value ? (
                         <span className="text-[9px] text-muted-foreground italic ml-auto">(auto)</span>
                     ) : null}
+                </div>
+                {/* v1.19 (Story 2.1.2) — Model-Specific Fit-Out Pricing.
+                    Three optional ex-GST package prices that, when set,
+                    short-circuit the per-item summation in the quote flow.
+                    Leave blank to keep v1.18 behaviour. */}
+                <div data-testid="fit-out-pricing-fields" className="space-y-2 mt-4 pt-4 border-t-2 border-slate-100">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Package pricing (ex GST)</p>
+                    <p className="text-[9px] text-muted-foreground italic">Optional. When set, replaces the summed-item fit-out total in the quote. Leave blank to use the per-item catalog total.</p>
+                    <div className="grid grid-cols-3 gap-2">
+                        {(['basic', 'moderate', 'complex'] as const).map((tier) => (
+                            <FormField
+                                key={tier}
+                                control={control}
+                                name={`fitOutPricing.${tier}` as any}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground capitalize">{tier}</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                step="100"
+                                                min="0"
+                                                value={field.value ?? ''}
+                                                onChange={(e) => {
+                                                    const v = e.target.value === '' ? null : parseFloat(e.target.value);
+                                                    field.onChange(Number.isFinite(v) ? v : null);
+                                                }}
+                                                placeholder="$ —"
+                                                className="h-10 border-2 font-bold rounded-xl text-xs"
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        ))}
+                    </div>
                 </div>
             </CardContent>
         </Card>

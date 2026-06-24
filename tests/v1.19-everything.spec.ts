@@ -17,6 +17,26 @@ test.afterAll(() => {
     console.log(`  ${p}/${Object.keys(ticks).length} passed\n`);
 });
 
+test('Model-Specific Fit-Out Pricing (2.1.2)', async () => {
+    const fs = require('fs');
+    const lib = 'src/lib/catalog/fit-out-pricing.ts';
+    tick('v1.19/2.1.2-lib-exists', fs.existsSync(lib));
+    if (fs.existsSync(lib)) {
+        const src = fs.readFileSync(lib, 'utf8');
+        tick('v1.19/2.1.2-tier-type', /export type FitOutTier = 'basic' \| 'moderate' \| 'complex'/.test(src));
+        tick('v1.19/2.1.2-resolveFitOutPrice-exported', /export function resolveFitOutPrice/.test(src));
+        tick('v1.19/2.1.2-hasFitOutPricing-exported', /export function hasFitOutPricing/.test(src));
+        tick('v1.19/2.1.2-returns-null-when-unset', /if \(value == null\) return null/.test(src));
+        tick('v1.19/2.1.2-rejects-negative', /value < 0/.test(src));
+    } else {
+        ['tier-type','resolveFitOutPrice-exported','hasFitOutPricing-exported','returns-null-when-unset','rejects-negative'].forEach(k => tick(`v1.19/2.1.2-${k}`, false));
+    }
+    const editor = fs.readFileSync('src/components/highfield-model-editor.tsx', 'utf8');
+    tick('v1.19/2.1.2-schema-field-on-model', /fitOutPricing: z\.object/.test(editor));
+    tick('v1.19/2.1.2-three-tier-inputs', /fitOutPricing\.\$\{tier\}|fitOutPricing\.\${tier}/.test(editor) || (/'basic'/.test(editor) && /'moderate'/.test(editor) && /'complex'/.test(editor) && /Package pricing/.test(editor)));
+    tick('v1.19/2.1.2-editor-testid', /data-testid="fit-out-pricing-fields"/.test(editor));
+});
+
 test('Margin Threshold Enforcement + GM Override (2.2.1)', async () => {
     const fs = require('fs');
     const gate = 'src/lib/catalog/margin-gate.ts';
