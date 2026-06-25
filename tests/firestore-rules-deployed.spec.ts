@@ -45,6 +45,7 @@ const NSM_ORG_ID = 'AcFZVEFA5UDJG2hyetWT';
  *  on the very next read. */
 const USER_QUOTE_SUBPATHS = [
     'variations', // v1.19 — quote variations (post-contract delta sheets)
+    'contracts',  // v1.20/2.4.1 — contracts when a quote is converted
 ];
 
 /** Collections we ship code for that were added v1.10–v1.17.

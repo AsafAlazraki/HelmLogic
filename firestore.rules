@@ -148,6 +148,18 @@ service cloud.firestore {
         match /variations/{variationId} {
           allow read, write: if isSignedIn();
         }
+        // v1.20 (Story 2.4.1) — Contracts created when a quote is
+        // converted. Immutable line-item snapshot. Subsequent changes
+        // flow through variations or a re-converted contract.
+        match /contracts/{contractId} {
+          allow read, write: if isSignedIn();
+          // v1.20 (Story 2.4.2) — Deposits recorded against a contract.
+          // Each deposit also gets a receipt PDF generated from the
+          // v1.18 pdf-branding.ts tokens.
+          match /deposits/{depositId} {
+            allow read, write: if isSignedIn();
+          }
+        }
       }
       match /routes/{routeId} {
         allow read, write: if isOwner(userId) || isAdmin();
