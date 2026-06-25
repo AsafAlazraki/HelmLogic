@@ -28,20 +28,21 @@ test.afterAll(() => {
     console.log(`  ${p}/${Object.keys(ticks).length} passed\n`);
 });
 
-/** Find the first existing quote URL for the test user. */
+/** Navigate to a known proposal URL. Mirror of the pattern used in
+ *  v1.11-audit-trail.spec / just-grab-pdf.spec — canonical CL380 quote
+ *  that's been seeded on the test org. */
+const KNOWN_PROPOSAL_URL = `${BASE_URL}/modules/highfield/proposals/t5qEMoapEftr5ijLEop8`;
 async function openFirstQuote(page: any): Promise<boolean> {
-    const m = page.url().match(/\/([^/]+)\/(dashboard|modules|$)/);
-    const orgSlug = m ? m[1] : 'northside-marine';
-    await page.goto(`${BASE_URL}/${orgSlug}/dashboard?_t=${Date.now()}`);
+    await page.goto(`${KNOWN_PROPOSAL_URL}?_t=${Date.now()}`);
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(4000);
-    // Recent proposals appear on the dashboard. Click any visible quote card.
-    const card = page.locator('a[href*="/proposals/"]').first();
-    if (!(await card.isVisible({ timeout: 6000 }).catch(() => false))) return false;
-    await card.click({ force: true });
-    await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(8000);
-    return true;
+    await page.waitForTimeout(10000);
+    // The page returns 404 (or redirects) when the quote isn't there.
+    const url = page.url();
+    if (/login|404|not-found/.test(url)) return false;
+    // Page actually rendered when we can see a Send Quote button or the
+    // proposal navigation bar.
+    const navOk = await page.locator('button:has-text("Send Quote")').first().isVisible({ timeout: 8000 }).catch(() => false);
+    return navOk;
 }
 
 test('Proposal view — Convert to Contract button mounts', async ({ page }) => {
