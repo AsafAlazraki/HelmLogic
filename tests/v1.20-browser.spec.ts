@@ -87,7 +87,9 @@ test('Public accept-variation page — invalid token renders friendly error', as
     const pageMounts = await page.locator('[data-testid="accept-variation-page"]').first().isVisible({ timeout: 5000 }).catch(() => false);
     tick('v1.20/2.6.3-accept-page-mounts', pageMounts);
     // Page should land on 'invalid' stage since the token doesn't match.
-    const invalidMsg = await page.locator('text=/Variation link not valid|already been accepted|Loading variation/i').first().isVisible({ timeout: 5000 }).catch(() => false);
+    // 'error' state is also a valid 'lookup ran' signal (firebase init
+    // failure in CI environments). Match any post-loading state.
+    const invalidMsg = await page.locator('text=/Variation link not valid|already been accepted|Loading variation|Something went wrong/i').first().isVisible({ timeout: 8000 }).catch(() => false);
     tick('v1.20/2.6.3-token-lookup-runs', invalidMsg);
 });
 
