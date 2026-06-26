@@ -49,7 +49,7 @@ export interface ReleaseWindow {
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 20;
+const FORWARD_RUNWAY_START = 21;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -184,6 +184,26 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // service-account-blocked. PUBLISH firestore.rules to prod before
     // announcing - new variations path is the gate.
     'v1.19': { shipped: true },
+    // v1.20 — Quote-to-contract lifecycle + variation surfaces.
+    // Phase A (6 shippable): 2.4.1 Convert Quote -> Contract (schema +
+    // helpers + Convert button + dialog + contract detail sheet),
+    // 2.4.2 Deposit Recording with Receipt PDF foundation
+    // (RecordDepositDialog, deposits list in the detail sheet),
+    // 1.4.4 Quote Validity / Expiry (banner + Send/Convert gates),
+    // 1.3.2 Contract Signing Pack PDF (first multi-document PDF
+    // consuming pdf-branding.ts shared tokens), 2.3.1 Quote
+    // Variations editor (mounts on locked quotes; schema v1.19),
+    // 2.6.3 Customer Agreement on Variation public accept page at
+    // /accept-variation/[token] with canvas signature + token lookup
+    // via collectionGroup + anonymous auth (server-side endpoint v1.21
+    // hardening). New Firestore paths: users/{uid}/quotes/{qid}/
+    // contracts/{cid} + nested /deposits/{depositId}. Rules updated +
+    // regression test extended. Retargeted out of v1.20: 8.2.1
+    // Reporting Dashboard -> v1.21, 5.2.1 RBAC -> v1.22. NSM-Hub
+    // trio carries to v1.21, still service-account-blocked. PUBLISH
+    // firestore.rules to prod before announcing - new contracts +
+    // deposits paths are the gate.
+    'v1.20': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
