@@ -14,18 +14,21 @@
  * Since this is a public page with no auth, the security model is:
  *   - Token is unguessable (32-hex random per variation).
  *   - Token marked consumed on first accept.
- *   - Firestore rules require signed-in for write, so the page uses a
- *     server route to perform the actual write under HL's service
- *     identity. The PoC implementation in this commit writes from the
- *     client using anonymous auth (signInAnonymously) so the public
- *     page works without a server endpoint. Production hardening: move
- *     the write to a Cloud Function in v1.21.
+ *   - Firestore rules require signed-in for write, so the page uses
+ *     anonymous auth (signInAnonymously) so the public page works
+ *     without a server endpoint. Production hardening: move the write
+ *     to a Cloud Function in v1.21.
+ *
+ * Wrapped in FirebaseClientProvider so useFirestore() resolves outside
+ * the (app) layout. Same pattern as src/app/login/page.tsx +
+ * src/app/signup/page.tsx.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { collectionGroup, getDocs, query, where, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { signInAnonymously, getAuth } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +41,7 @@ interface VariationLookup {
     data: any;
 }
 
-export default function AcceptVariationPage() {
+function AcceptVariationContent() {
     const params = useParams();
     const tokenRaw = (params?.token ?? '') as string;
     const token = String(tokenRaw).trim();
@@ -257,5 +260,13 @@ export default function AcceptVariationPage() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+export default function AcceptVariationPage() {
+    return (
+        <FirebaseClientProvider>
+            <AcceptVariationContent />
+        </FirebaseClientProvider>
     );
 }
