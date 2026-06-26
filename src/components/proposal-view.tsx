@@ -63,6 +63,7 @@ import { canTransitionContractState, buildContractReference, computeContractTota
 import { SendQuoteDialog } from '@/components/send-quote-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ContractDetailSheet } from '@/components/contract-detail-sheet';
+import { VariationEditorDialog } from '@/components/variation-editor-dialog';
 import { PersonaliseContentSheet } from '@/components/personalise-content-sheet';
 import { QuotePreviewSheet } from '@/components/quote-preview-sheet';
 import { CreateScenarioDialog } from '@/components/create-scenario-dialog';
@@ -195,6 +196,9 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     /** v1.20 (Story 2.4.1 / 2.4.2 surface) — Contract detail sheet state.
      *  Opens from the "View contract" pill once the quote has a contractId. */
     const [isContractDetailOpen, setIsContractDetailOpen] = useState(false);
+    /** v1.20 (Story 2.3.1 surface) — Variation editor dialog state.
+     *  Opens from the "Create variation" button once the quote is locked. */
+    const [isVariationOpen, setIsVariationOpen] = useState(false);
     /** v1.8 (story 1.2.4.c) — Send Quote dialog state. Opens from the
      *  Send button in the header. Disabled when email infra is not yet
      *  wired (NEXT_PUBLIC_EMAIL_SEND_ENABLED flag — gating the BUTTON,
@@ -1047,6 +1051,22 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                 >
                                     <FileSignature className="h-3.5 w-3.5 text-emerald-600" />
                                     <span className="hidden sm:inline">View Contract</span>
+                                </Button>
+                            )}
+                            {/* v1.20 (Story 2.3.1 surface) — Create variation button.
+                                Available on a locked quote (variation is the only way to
+                                modify after lock). */}
+                            {quote?.isLocked && (
+                                <Button
+                                    data-testid="create-variation-button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5"
+                                    onClick={() => setIsVariationOpen(true)}
+                                    title="Create a priced variation against this locked quote"
+                                >
+                                    <GitBranch className="h-3.5 w-3.5 text-sky-600" />
+                                    <span className="hidden sm:inline">Variation</span>
                                 </Button>
                             )}
                             {/* v1.9 (story 1.1.3) — Create Scenario button.
@@ -2022,6 +2042,18 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                     quoteId={quote.id}
                     contractId={quote.contractId}
                     orgShortCode={organisation?.shortCode}
+                />
+            )}
+
+            {/* v1.20 (Story 2.3.1 surface) — Variation editor dialog. */}
+            {auditOwnerUid && user && quote && (
+                <VariationEditorDialog
+                    open={isVariationOpen}
+                    onOpenChange={setIsVariationOpen}
+                    ownerUid={auditOwnerUid}
+                    quoteId={quote.id}
+                    nextVariationNumber={(quote.variationCount ?? 0) + 1}
+                    createdByName={userProfile?.displayName || user.displayName || user.email || 'Unknown'}
                 />
             )}
 
