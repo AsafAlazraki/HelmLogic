@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { FileSignature, Receipt, Loader2 } from 'lucide-react';
 import { RecordDepositDialog } from '@/components/record-deposit-dialog';
+import { ContractSigningPackButton } from '@/components/contract-signing-pack-button';
 import { PAYMENT_METHOD_LABEL, computeDepositTotals } from '@/lib/catalog/deposit';
 
 interface ContractDetailSheetProps {
@@ -84,6 +85,14 @@ export function ContractDetailSheet({ open, onOpenChange, ownerUid, quoteId, con
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <p className="font-mono text-xs font-bold">{contract.contractReference}</p>
                                     <Badge className={`${STATE_TONE[contract.state] ?? ''} text-[10px] font-bold uppercase`}>{contract.state}</Badge>
+                                    <div className="ml-auto">
+                                        <ContractSigningPackButton
+                                            ownerUid={ownerUid}
+                                            quoteId={quoteId}
+                                            contractId={contractId}
+                                            contractReference={contract.contractReference}
+                                        />
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-2 text-xs pt-2">
                                     <div>

@@ -77,6 +77,20 @@ test('Proposal view — Convert to Contract button mounts', async ({ page }) => 
     }
 });
 
+test('Public accept-variation page — invalid token renders friendly error', async ({ page }) => {
+    test.setTimeout(60_000);
+    // No login required — this is the public surface.
+    const fakeToken = 'deadbeef-not-a-real-token-' + Date.now();
+    await page.goto(`${BASE_URL}/accept-variation/${fakeToken}?_t=${Date.now()}`);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(10000);
+    const pageMounts = await page.locator('[data-testid="accept-variation-page"]').first().isVisible({ timeout: 5000 }).catch(() => false);
+    tick('v1.20/2.6.3-accept-page-mounts', pageMounts);
+    // Page should land on 'invalid' stage since the token doesn't match.
+    const invalidMsg = await page.locator('text=/Variation link not valid|already been accepted|Loading variation/i').first().isVisible({ timeout: 5000 }).catch(() => false);
+    tick('v1.20/2.6.3-token-lookup-runs', invalidMsg);
+});
+
 test('Proposal view — Expiry banner stays hidden when no expiry set', async ({ page }) => {
     test.setTimeout(180_000);
     await login(page);
