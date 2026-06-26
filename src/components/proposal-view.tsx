@@ -62,6 +62,7 @@ import { evaluateExpiry, formatExpiryDate } from '@/lib/catalog/quote-expiry';
 import { canTransitionContractState, buildContractReference, computeContractTotals } from '@/lib/catalog/contract';
 import { SendQuoteDialog } from '@/components/send-quote-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { ContractDetailSheet } from '@/components/contract-detail-sheet';
 import { PersonaliseContentSheet } from '@/components/personalise-content-sheet';
 import { QuotePreviewSheet } from '@/components/quote-preview-sheet';
 import { CreateScenarioDialog } from '@/components/create-scenario-dialog';
@@ -191,6 +192,9 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     /** v1.20 (Story 2.4.1) — Convert to Contract dialog state. */
     const [isConvertOpen, setIsConvertOpen] = useState(false);
     const [convertSaving, setConvertSaving] = useState(false);
+    /** v1.20 (Story 2.4.1 / 2.4.2 surface) — Contract detail sheet state.
+     *  Opens from the "View contract" pill once the quote has a contractId. */
+    const [isContractDetailOpen, setIsContractDetailOpen] = useState(false);
     /** v1.8 (story 1.2.4.c) — Send Quote dialog state. Opens from the
      *  Send button in the header. Disabled when email infra is not yet
      *  wired (NEXT_PUBLIC_EMAIL_SEND_ENABLED flag — gating the BUTTON,
@@ -1028,6 +1032,23 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     </Button>
                                 );
                             })()}
+                            {/* v1.20 (Story 2.4.1 / 2.4.2 surface) — View contract pill.
+                                Mounts once quote.contractId is set. Opens the
+                                ContractDetailSheet with snapshot + deposits + Record
+                                Deposit button. */}
+                            {quote?.contractId && (
+                                <Button
+                                    data-testid="view-contract-button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5"
+                                    onClick={() => setIsContractDetailOpen(true)}
+                                    title="View the contract details, deposits, and signing pack"
+                                >
+                                    <FileSignature className="h-3.5 w-3.5 text-emerald-600" />
+                                    <span className="hidden sm:inline">View Contract</span>
+                                </Button>
+                            )}
                             {/* v1.9 (story 1.1.3) — Create Scenario button.
                                 Opens CreateScenarioDialog → spawns a sibling
                                 quote under the same root + redirects. Hidden
@@ -1990,6 +2011,18 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+            )}
+
+            {/* v1.20 (Story 2.4.1 / 2.4.2 surface) — Contract detail sheet. */}
+            {auditOwnerUid && quote?.contractId && (
+                <ContractDetailSheet
+                    open={isContractDetailOpen}
+                    onOpenChange={setIsContractDetailOpen}
+                    ownerUid={auditOwnerUid}
+                    quoteId={quote.id}
+                    contractId={quote.contractId}
+                    orgShortCode={organisation?.shortCode}
+                />
             )}
 
             {/* v1.8 (story 1.2.3.c) — Personalise Content side sheet.
