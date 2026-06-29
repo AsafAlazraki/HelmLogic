@@ -49,7 +49,7 @@ export interface ReleaseWindow {
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 22;
+const FORWARD_RUNWAY_START = 23;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -214,6 +214,14 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // /{path=**}/quotes/{quoteId} for collectionGroup reads — PUBLISH to
     // prod before announcing. NSM-Hub trio stays blocked. NOT faked.
     'v1.21': { shipped: true },
+    // v1.22 — Sales workspace shell. 8.1.1 Sales nav group (Customers/
+    // Contracts/Reporting), 8.1.5 cross-module Contracts view
+    // (/contracts), 2.7.1 margin-threshold config UI on /manage, 1.7.3
+    // recent activity feed on /reporting, + libs 4.1.1 promotions,
+    // 2.6.1 variation-order doc, 1.8.3 content-block layout toggle.
+    // E2E 5/5 + 30/30 file. NEW recursive rules for contracts + auditLog
+    // collectionGroup reads — publish before announcing. NSM-Hub blocked.
+    'v1.22': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
