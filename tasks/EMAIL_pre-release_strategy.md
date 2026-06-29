@@ -32,6 +32,10 @@ Once we're confident the desktop experience is solid through UAT, we look at res
 
 One honest flag: the sub-dealer functionality hasn't really been tested by the team, and large parts of it haven't been touched. As we move into UAT we need to make sure that's actively exercised. It's a meaningful part of the model and it can't stay an assumption. Let's get eyes and hands on it.
 
+**A question for down the track: offline capability**
+
+Something to put on the radar, not the plan: do we want HelmLogic to work offline? A salesperson at a boat show with patchy reception, building a quote without a connection, is a real scenario. If the answer is yes, it's a big piece of work. It touches data sync, conflict resolution, local storage, and a lot of the assumptions the app currently makes about always being connected. To be clear, this is something we'd only scope after everything else is done. Not now, not next, but worth a conscious decision later rather than discovering we want it once we're committed elsewhere. Flagging it so it's a deliberate choice when the time comes.
+
 **👉 The Roadmap tells the whole story.** Open it and you'll see how much has gone green. It's the best way to see what's shipped, what's left, and where we're heading next.
 
 Cheers,
