@@ -49,7 +49,7 @@ export interface ReleaseWindow {
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 21;
+const FORWARD_RUNWAY_START = 22;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -204,6 +204,16 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // firestore.rules to prod before announcing - new contracts +
     // deposits paths are the gate.
     'v1.20': { shipped: true },
+    // v1.21 — Customer CRM foundation. 8.1.2 Customer Detail Sheet
+    // (new /customers page mounts CustomerList + clickable detail sheet),
+    // 8.2.1 Reporting Dashboard + 8.1.4 cross-module quotes view (metrics
+    // strip + sortable/filterable collectionGroup quote list on
+    // /reporting), plus lifecycle foundation libs 1.4.3 acceptance,
+    // 1.5.5 trade-in, 2.5.3 inventory-allocation. E2E browser-tested on
+    // dev (5/5) + 27/27 file ticks. NEW recursive Firestore rule
+    // /{path=**}/quotes/{quoteId} for collectionGroup reads — PUBLISH to
+    // prod before announcing. NSM-Hub trio stays blocked. NOT faked.
+    'v1.21': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
