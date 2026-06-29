@@ -49,7 +49,7 @@ export interface ReleaseWindow {
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 26;
+const FORWARD_RUNWAY_START = 31;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -236,6 +236,19 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // 1.4.5 versioning lib, 1.6.1 comms-log lib, 2.4.6 final-invoice lib.
     // E2E 2/2 + 18/18 file.
     'v1.25': { shipped: true },
+    // v1.26 — Global Search + customer/quote feature helpers (1.5.4 /
+    // 1.7.4 / 1.9.1 / 2.2.2 / 2.4.4 / 2.6.2 / 4.1.2). 7/7 shipped.
+    'v1.26': { shipped: true },
+    // v1.27 — customer doc storage (1.5.7) + customer-specific promos
+    // (4.2.2). NOT fully shipped: 2.5.2 Settlement-to-Revolution is
+    // BLOCKED on Revolution access. Column left unflagged honestly.
+    'v1.27': {},
+    // v1.28 — spouse/co-buyer (1.5.6) + refund handling (2.4.5) +
+    // promotion stacking (4.2.1). 3/3 shipped.
+    'v1.28': { shipped: true },
+    'v1.29': {},
+    // v1.30 — notification system foundation (10.1.1-10.1.5). 5/5 shipped.
+    'v1.30': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
