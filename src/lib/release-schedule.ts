@@ -49,7 +49,7 @@ export interface ReleaseWindow {
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 24;
+const FORWARD_RUNWAY_START = 26;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -228,6 +228,14 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // Work (/my-work, 3 tabs scoped to createdByUid). E2E 3/3 + 19/19
     // file. NSM-Hub blocked.
     'v1.23': { shipped: true },
+    // v1.24 — Customer depth. 1.5.3 notes timeline + 8.1.3 customer
+    // journey strip (customer detail sheet), 2.5.1 order tracking strip
+    // (contract sheet). E2E 3/3. New customers/{id}/notes rule.
+    'v1.24': { shipped: true },
+    // v1.25 — Quote tooling. 1.1.4 quote comparison (/quote-comparison),
+    // 1.4.5 versioning lib, 1.6.1 comms-log lib, 2.4.6 final-invoice lib.
+    // E2E 2/2 + 18/18 file.
+    'v1.25': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
