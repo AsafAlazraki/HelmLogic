@@ -15,7 +15,7 @@
  *   users/{uid}/quotes/{qid}/contracts/{cid}/deposits/*       (live list)
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useDoc } from '@/firebase/firestore/use-doc';
@@ -28,6 +28,7 @@ import { FileSignature, Receipt, Loader2 } from 'lucide-react';
 import { RecordDepositDialog } from '@/components/record-deposit-dialog';
 import { ContractSigningPackButton } from '@/components/contract-signing-pack-button';
 import { PAYMENT_METHOD_LABEL, computeDepositTotals } from '@/lib/catalog/deposit';
+import { buildPaymentSchedule, applyDepositPaid, outstandingBalance, totalPaid } from '@/lib/catalog/payment-schedule';
 
 interface ContractDetailSheetProps {
     open: boolean;
@@ -59,6 +60,19 @@ export function ContractDetailSheet({ open, onOpenChange, ownerUid, quoteId, con
         [firestore, ownerUid, quoteId, contractId],
     );
     const { data: deposits } = useCollection<any>(depositsRef);
+
+    // v1.23 (Story 2.4.3) — payment schedule derived from the contract
+    // total + org payment-milestone defaults. Deposit line flips paid
+    // once any deposit doc exists.
+    const schedule = useMemo(() => {
+        if (!contract) return [];
+        // Org payment-milestone defaults flow in via a later polish pass;
+        // for now buildPaymentSchedule applies sensible fallbacks
+        // (10% deposit + balance on delivery).
+        let lines = buildPaymentSchedule(Number(contract.totalInclGst ?? 0), {});
+        if ((deposits ?? []).length > 0) lines = applyDepositPaid(lines, (deposits ?? [])[0]?.createdAt);
+        return lines;
+    }, [contract, deposits]);
 
     return (
         <>
@@ -161,6 +175,27 @@ export function ContractDetailSheet({ open, onOpenChange, ownerUid, quoteId, con
                                         })}
                                     </div>
                                 )}
+                            </div>
+
+                            {/* v1.23 (Story 2.4.3) — Payment schedule. */}
+                            <div data-testid="payment-schedule">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Payment schedule</p>
+                                    <p className="text-[10px] text-muted-foreground">
+                                        ${totalPaid(schedule).toLocaleString('en-AU')} paid · ${outstandingBalance(schedule).toLocaleString('en-AU')} due
+                                    </p>
+                                </div>
+                                <div className="space-y-1.5">
+                                    {schedule.map(line => (
+                                        <div key={line.key} className="flex items-center justify-between text-xs border-b py-1.5">
+                                            <span className="flex items-center gap-2">
+                                                <span className={`h-2 w-2 rounded-full ${line.paid ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                                                {line.label} <span className="text-muted-foreground">({line.percentage}%)</span>
+                                            </span>
+                                            <span className="tabular-nums font-bold">${line.amountIncGst.toLocaleString('en-AU')}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     )}

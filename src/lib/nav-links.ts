@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Shield, Warehouse, Building2, Settings, Blocks, Coins, Bot, Lightbulb, Users, FileSignature, BarChart3, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Shield, Warehouse, Building2, Settings, Blocks, Coins, Bot, Lightbulb, Users, FileSignature, BarChart3, Briefcase, GitBranch } from 'lucide-react';
 
 export type SubNavLink = {
   href: string;
@@ -24,8 +24,10 @@ export const navLinks: NavLink[] = [
     icon: Briefcase,
     subLinks: [
       { href: '/customers', label: 'Customers', icon: Users },
+      { href: '/pipeline', label: 'Pipeline', icon: GitBranch },
       { href: '/contracts', label: 'Contracts', icon: FileSignature },
       { href: '/reporting', label: 'Reporting', icon: BarChart3 },
+      { href: '/my-work', label: 'My Work', icon: Briefcase },
     ],
   },
   { href: '/pricing-manager', label: 'Catalog Manager', icon: Coins },
