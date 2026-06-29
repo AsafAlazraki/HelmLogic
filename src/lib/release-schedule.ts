@@ -49,7 +49,7 @@ export interface ReleaseWindow {
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 23;
+const FORWARD_RUNWAY_START = 24;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -222,6 +222,12 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // E2E 5/5 + 30/30 file. NEW recursive rules for contracts + auditLog
     // collectionGroup reads — publish before announcing. NSM-Hub blocked.
     'v1.22': { shipped: true },
+    // v1.23 — Pipeline + payments + my-work. 1.7.1 sales pipeline board
+    // (/pipeline, customers grouped by lifecycle stage), 2.4.3 payment
+    // schedule (per-contract, in the contract detail sheet), 8.1.6 My
+    // Work (/my-work, 3 tabs scoped to createdByUid). E2E 3/3 + 19/19
+    // file. NSM-Hub blocked.
+    'v1.23': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
