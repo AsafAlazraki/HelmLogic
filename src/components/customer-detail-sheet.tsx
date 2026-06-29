@@ -39,7 +39,9 @@ export function CustomerDetailSheet({ open, onOpenChange, customer }: CustomerDe
         () => full ? query(collectionGroup(firestore, 'quotes'), where('customerId', '==', full.id)) : null,
         [firestore, full?.id],
     );
-    const { data: quotes } = useCollection<any>(quotesQuery);
+    // silent: missing collectionGroup rule degrades to "no quotes linked"
+    // instead of white-screening (v1.10 denylist lesson).
+    const { data: quotes } = useCollection<any>(quotesQuery, { silent: true });
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>

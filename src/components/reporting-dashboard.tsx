@@ -52,7 +52,11 @@ export function ReportingDashboard({ organisationId }: { organisationId: string 
         () => organisationId ? query(collectionGroup(firestore, 'quotes'), where('organisationId', '==', organisationId)) : null,
         [firestore, organisationId],
     );
-    const { data: quotes, isLoading } = useCollection<any>(quotesQuery);
+    // silent: a missing collectionGroup rule degrades to an empty
+    // dashboard instead of white-screening via the global error boundary
+    // (v1.10 denylist lesson). The recursive rule in firestore.rules
+    // makes the data actually populate once published.
+    const { data: quotes, isLoading } = useCollection<any>(quotesQuery, { silent: true });
 
     const metrics = useMemo(() => {
         const list = (quotes ?? []).filter(q => !q.deletedAt);

@@ -25,7 +25,7 @@
 import { test, expect } from '@playwright/test';
 import { initializeApp, getApps, deleteApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, collection, query, limit, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, collectionGroup, where, query, limit, getDocs } from 'firebase/firestore';
 
 // Same Firebase web config the app uses (public + safe to embed; gating
 // is on the security rules, not the API key).
@@ -131,6 +131,21 @@ test('Bill Hull can LIST every v1.10-v1.17 org subcollection (rules deployed)', 
                     tick(`rules/users.quotes.${sub}.list`, false);
                 }
             }
+        }
+
+        // v1.21 — collection-group read of quotes (reporting dashboard +
+        // cross-module view + customer detail sheet). Requires the
+        // recursive-wildcard rule match /{path=**}/quotes/{quoteId}.
+        try {
+            const cg = query(collectionGroup(db, 'quotes'), limit(1));
+            await getDocs(cg);
+            tick('rules/collectionGroup.quotes.list', true);
+        } catch (err: any) {
+            const msg = err?.message ?? String(err);
+            if (/permission-denied|Missing or insufficient permissions/i.test(msg)) {
+                console.log(`   ↳ DENIED: ${msg.slice(0, 200)}`);
+            }
+            tick('rules/collectionGroup.quotes.list', false);
         }
     } finally {
         await deleteApp(app).catch(() => {});

@@ -166,6 +166,18 @@ service cloud.firestore {
       }
     }
 
+    // v1.21 (Story 8.1.4 + 8.2.1) — collection-group reads of quotes.
+    // The path-scoped /users/{uid}/quotes/{qid} rule above does NOT
+    // enable collectionGroup('quotes') queries; Firestore requires a
+    // recursive-wildcard rule for that. The reporting dashboard +
+    // cross-module quotes view + customer detail sheet all run
+    // collectionGroup('quotes') filtered by organisationId / customerId.
+    // Reads signed-in (org-scoping enforced in the query's where()).
+    // Writes stay on the path-scoped rule above (no write via group).
+    match /{path=**}/quotes/{quoteId} {
+      allow read: if isSignedIn();
+    }
+
     match /roles_admin/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
