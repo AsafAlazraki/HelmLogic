@@ -6,9 +6,21 @@ This week's release is a big one, and it marks a turning point worth pausing on.
 
 **What's landing**
 
-With this release we close off almost the entire roadmap that's been sitting on the system. Not just the planned columns, we've also pulled in the backlog and worked through it. Customer records, the sales workspace, contracts, reporting, quote-to-contract lifecycle, variations, deposits, margin controls, pricing-at-scale tooling. The bulk of what we set out to build is now built and tested on our dev environment.
+With this release we close off the entire buildable feature roadmap that's been sitting on the system. Not just the planned columns, we pulled in the backlog and worked through it too. Customer records and the sales workspace, contracts, reporting, the full quote-to-contract lifecycle, variations, deposits, payment schedules, margin controls, pricing-at-scale tooling, global search, notifications, the platform and security foundations. Everything that could be built as a feature is now built and tested on our dev environment.
 
-That's a milestone. A year of planned features, substantially done.
+That's a real milestone. A year of planned feature work, done.
+
+**What's deliberately NOT in that "done"**
+
+I want to be straight about what remains, because it's not feature gaps, it's three buckets that genuinely can't be closed by writing more code right now:
+
+1. **Dependency-blocked.** The NSM-Hub migration and the Revolution data pieces need access we don't have yet. The Shopify integration needs real keys. These wait on external access, not on us.
+
+2. **Operational and launch.** Training plans, the comms rollout, pulling existing customer and quote data across, the migration cutoff, decommissioning the old tool. Real work, but it's launch logistics, not software to build.
+
+3. **Legal and decisions.** Privacy policy, refund policy, cooling-off text, e-signature provider choice, which states we operate in. These are calls for us and our advisors to make, then encode.
+
+So the honest headline: the feature build is done; what's left is access, logistics, and decisions.
 
 **There is still work to do, and the nature of it changes now**
 
