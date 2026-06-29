@@ -147,6 +147,19 @@ test('Bill Hull can LIST every v1.10-v1.17 org subcollection (rules deployed)', 
             }
             tick('rules/collectionGroup.quotes.list', false);
         }
+
+        // v1.22 — collection-group read of contracts (cross-module view).
+        try {
+            const cg = query(collectionGroup(db, 'contracts'), limit(1));
+            await getDocs(cg);
+            tick('rules/collectionGroup.contracts.list', true);
+        } catch (err: any) {
+            const msg = err?.message ?? String(err);
+            if (/permission-denied|Missing or insufficient permissions/i.test(msg)) {
+                console.log(`   ↳ DENIED: ${msg.slice(0, 200)}`);
+            }
+            tick('rules/collectionGroup.contracts.list', false);
+        }
     } finally {
         await deleteApp(app).catch(() => {});
     }

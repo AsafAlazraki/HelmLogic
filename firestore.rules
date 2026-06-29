@@ -178,6 +178,20 @@ service cloud.firestore {
       allow read: if isSignedIn();
     }
 
+    // v1.22 (Story 8.1.5) — collection-group reads of contracts for the
+    // cross-module Contracts view. Same rationale as the quotes rule
+    // above. Writes stay on the path-scoped rule under the quote subtree.
+    match /{path=**}/contracts/{contractId} {
+      allow read: if isSignedIn();
+    }
+
+    // v1.22 (Story 1.7.3) — collection-group reads of auditLog for the
+    // recent-activity feed. Writes stay on the path-scoped quote auditLog
+    // rule. Read signed-in.
+    match /{path=**}/auditLog/{eventId} {
+      allow read: if isSignedIn();
+    }
+
     match /roles_admin/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
