@@ -29,6 +29,7 @@ import { RecordDepositDialog } from '@/components/record-deposit-dialog';
 import { ContractSigningPackButton } from '@/components/contract-signing-pack-button';
 import { PAYMENT_METHOD_LABEL, computeDepositTotals } from '@/lib/catalog/deposit';
 import { buildPaymentSchedule, applyDepositPaid, outstandingBalance, totalPaid } from '@/lib/catalog/payment-schedule';
+import { ORDER_STATE_SEQUENCE, ORDER_STATE_LABEL, orderProgress, type OrderState } from '@/lib/catalog/order-tracking';
 
 interface ContractDetailSheetProps {
     open: boolean;
@@ -175,6 +176,29 @@ export function ContractDetailSheet({ open, onOpenChange, ownerUid, quoteId, con
                                         })}
                                     </div>
                                 )}
+                            </div>
+
+                            {/* v1.24 (Story 2.5.1) — Order tracking strip. */}
+                            <div data-testid="order-tracking">
+                                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground mb-2">Factory order</p>
+                                {(() => {
+                                    const state = (contract.orderState as OrderState) ?? 'ordered';
+                                    const progress = orderProgress(state);
+                                    return (
+                                        <div className="space-y-2">
+                                            <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                                                <div className="h-full bg-primary transition-all" style={{ width: `${Math.round(progress * 100)}%` }} />
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                {ORDER_STATE_SEQUENCE.map(s => (
+                                                    <span key={s} className={`text-[7px] uppercase tracking-tight font-bold ${s === state ? 'text-primary' : 'text-muted-foreground/50'}`}>
+                                                        {ORDER_STATE_LABEL[s]}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                             </div>
 
                             {/* v1.23 (Story 2.4.3) — Payment schedule. */}

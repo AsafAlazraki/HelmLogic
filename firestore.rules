@@ -427,6 +427,10 @@ service cloud.firestore {
 
     match /customers/{customerId} {
       allow read, write: if isSignedIn();
+      // v1.24 (Story 1.5.3) — customer notes timeline.
+      match /notes/{noteId} {
+        allow read, write: if isSignedIn();
+      }
     }
 
     // Legacy support for clients collection
