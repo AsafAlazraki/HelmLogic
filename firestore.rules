@@ -192,6 +192,17 @@ service cloud.firestore {
       allow read: if isSignedIn();
     }
 
+    // v1.20 (Story 2.6.3) — collection-group reads of variations for the
+    // public accept-variation page. It looks a variation up by its
+    // unguessable publicAcceptToken via collectionGroup('variations'),
+    // authenticated anonymously (signInAnonymously). Anonymous users are
+    // signed-in, so isSignedIn() permits the token lookup; the token
+    // itself is the access control. Writes stay on the path-scoped
+    // users/{uid}/quotes/{qid}/variations rule.
+    match /{path=**}/variations/{variationId} {
+      allow read: if isSignedIn();
+    }
+
     match /roles_admin/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
