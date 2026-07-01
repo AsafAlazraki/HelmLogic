@@ -118,7 +118,7 @@ test('Bill Hull can LIST every v1.10-v1.17 org subcollection (rules deployed)', 
             // empty + the rule check still fires).
             for (const sub of USER_QUOTE_SUBPATHS) {
                 try {
-                    const probeQuoteId = '__rules_probe__';
+                    const probeQuoteId = 'rulesprobe';
                     const q = query(collection(db, 'users', currentUserId, 'quotes', probeQuoteId, sub), limit(1));
                     await getDocs(q);
                     tick(`rules/users.quotes.${sub}.list`, true);
