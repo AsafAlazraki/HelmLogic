@@ -46,7 +46,7 @@ Two pieces I think we should consciously add to the plan for the next phase rath
 
 The modules, and where their data comes from
 
-This one deserves its own section, because it's the biggest piece of work still ahead and it's easy to underestimate. Finishing the original roadmap is not the finish line. Every module on the org dashboard needs a deliberate decision about what we actually do with it: keep it as is, rebuild it, replace it, fold it into something else. There are a lot of them, and this is a real body of work in its own right, not leftover polish.
+This one deserves its own section, because it's the biggest piece of work still ahead and it's easy to underestimate. Finishing the original roadmap is not the finish line. There is a whole set of modules across the org dashboard that still need to be designed and built, boat modules, fit up modules, trailer modules, and others beyond those. Every one needs a deliberate decision about what we actually do with it: build it, rebuild it, replace it, or fold it into something else. There are a lot of them, and this is a real body of work in its own right, not leftover polish.
 
 The important part is the order. We can't make that call on a module in the abstract. It follows from one thing first, identifying where that module's data comes from and in what format. Until we've pinned the source and the shape of the data feeding a module, deciding what happens to it is guesswork. So the real next body of work is a proper pass, module by module across the dashboard, data source and format first, then the decision on each. I'll lay that out so we can work through it together rather than me pre judging any of it.
 
