@@ -52,6 +52,10 @@ The important part is the order. We can't make that call on a module in the abst
 
 That order is exactly why the Shopify question sits at the front of everything. Since bringing Shopify in reshapes our underlying data model, we have a genuine sequencing decision: do we start working through the modules now, or do we hold until the Shopify data is pulled in and the new data model has settled. Doing that work on a data model that is about to change risks doing it twice. I don't think we answer that on the fly. It's one of the most important calls in front of us and it sets the shape and the order of everything that follows.
 
+A public facing Build A Boat, its own piece of work
+
+Separate to everything above, there's the public facing Build A Boat, a customer facing configurator that would live on the NSM website rather than inside the internal tool. I want to call it out on its own because it's a big piece of work in its own right, not a feature bolted onto what we have. It also carries its own decisions, and the main one is rollout: when it goes live, whether it goes out in stages rather than all at once, and how much of the build we expose publicly to begin with. I'd treat it as its own workstream with its own plan, and I'm flagging it now so those rollout calls get made deliberately rather than late.
+
 A few calls to make
 
 Some things wait on decisions rather than work: the e-signature approach, which states we operate in and the compliance text that follows, and the sender domain and SMTP setup above. The faster we make those calls, the faster they clear.
