@@ -44,6 +44,12 @@ Two pieces I think we should consciously add to the plan for the next phase rath
 - An agentic rules engine. Today a lot of our quoting logic (compatibility, pricing, promotions, classification) lives in code or in an operator's head. The next step is a proper rules engine that can hold that logic as configuration and apply it, and act on it, automatically. This is the piece that moves us from a system people drive manually to one that can make and apply decisions for them.
 - A fuller notification system. We shipped the foundation this cycle. The scope worth adding is the layer on top: proactive, agentic notifications that surface what needs attention (a quote gone cold, a deposit overdue, a milestone reached) rather than waiting for someone to go looking. It pairs naturally with the rules engine above.
 
+The bigger picture, and a real sequencing call
+
+I want to be honest that finishing the original roadmap is not the finish line for the product. As we plan what comes next it's clear there is a lot more still to build, a substantial slate of further modules, more than we had on the original board. The two above are only the start of it. That is not a problem, it's the natural next chapter, but it's a real body of work and it deserves to be prioritised as its own exercise rather than treated as leftover polish. I'll lay that slate out properly so we can rank it together.
+
+And that raises what might be the most important call in front of us, because it ties straight to Shopify. Since bringing Shopify in reshapes our underlying data model, we have a genuine decision: do we start building the next wave of modules now, or do we hold until the Shopify data is pulled in and the new data model has settled. Building major new modules on a data model that is about to change risks doing the work twice. I don't think we answer that on the fly. We should decide it deliberately, because it sets the shape and the order of everything that follows.
+
 A few calls to make
 
 Some things wait on decisions rather than work: the e-signature approach, which states we operate in and the compliance text that follows, and the sender domain and SMTP setup above. The faster we make those calls, the faster they clear.
@@ -52,7 +58,7 @@ One note on timing. I've got a customer kick off engagement session just before 
 
 Where this leaves us
 
-The build is essentially done and proven. The next stages are production readiness first, then growth. The reshaped roadmap should reflect that, and I'd like us to shape those stages together rather than me guessing at them.
+The roadmap we set out to build is done and proven. That's a real milestone, and it's worth marking. But it's a chapter, not the end of the book. Ahead of us are production readiness, then a substantial next wave of modules to build, with the Shopify data question sitting right at the front of how we sequence it. The reshaped roadmap should reflect all of that, and I'd like us to shape it together rather than me guessing at the order.
 
 Proud of where this has landed. Let's get it live.
 
