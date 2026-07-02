@@ -1,4 +1,4 @@
-Subject: HelmLogic, the build is essentially done. Where to from here.
+Subject: HelmLogic, the roadmap we set out to build is done. Where to from here.
 
 Hi team,
 
