@@ -25,7 +25,7 @@ Before the growth stuff, a short list that has to be right for go live:
 - The existing ServiceHub data migration. Live data in the current ServiceHub needs to come across. It's its own exercise with its own owner, cutoff date and parallel run plan, and shouldn't hide inside "launch tasks."
 - The multi user quote bug. You can't currently edit a quote someone else created. I've found why and I'm fixing it this weekend. It matters for any dealership where more than one person touches a deal.
 - UAT. The most valuable thing we can do now is use the system in anger, real quotes, real customers, real contracts, and find where it bites. End to end use finds what screen by screen checking doesn't.
-- Shopify data timelines. We've done the groundwork on the API. What we need next is a real read on timing: when data starts flowing to and from Shopify, and what that depends on. The sooner we get hands on real access the sooner we can put dates against it.
+- Shopify data timelines, and the data model change that comes with it. We've done the groundwork on the API. Two things we need next. First, a real read on timing: when data starts flowing to and from Shopify, and what that depends on. Second, and more significant, Shopify is not just an API hookup. Bringing it in means a significant change to our underlying data model, so it has to be planned and resourced as a data project in its own right, not slotted in as a connector. The sooner we get hands on real access the sooner we can put dates and a proper shape against it.
 - Responsiveness and offline. Two requirements we need to actually pin down rather than assume. How responsive does this need to be on tablet and phone, and do we need it to work offline at a boat show with patchy reception. Both change the shape of the work, so I'd rather we decide them deliberately than discover them late.
 
 Then, the growth layer
@@ -37,11 +37,18 @@ Once it's solid and live, the roadmap reshapes toward getting it adopted and use
 - Sub dealer rollouts. This is a meaningful part of the model and it hasn't been properly exercised yet, so it earns real attention in this phase.
 - The bigger integrations, Shopify and Revolution, once access is sorted.
 
+New scope worth putting on the roadmap now
+
+Two pieces I think we should consciously add to the plan for the next phase rather than let them arrive by accident. Both need shaping together, so I'm flagging them as scope, not specifying them here.
+
+- An agentic rules engine. Today a lot of our quoting logic (compatibility, pricing, promotions, classification) lives in code or in an operator's head. The next step is a proper rules engine that can hold that logic as configuration and apply it, and act on it, automatically. This is the piece that moves us from a system people drive manually to one that can make and apply decisions for them.
+- A fuller notification system. We shipped the foundation this cycle. The scope worth adding is the layer on top: proactive, agentic notifications that surface what needs attention (a quote gone cold, a deposit overdue, a milestone reached) rather than waiting for someone to go looking. It pairs naturally with the rules engine above.
+
 A few calls to make
 
 Some things wait on decisions rather than work: the e-signature approach, which states we operate in and the compliance text that follows, and the sender domain and SMTP setup above. The faster we make those calls, the faster they clear.
 
-One bit of context on timing. I've got a customer kick off engagement session just before tomorrow's meeting with BFJ, so I'll come into that meeting straight off the back of real customer conversation, which should sharpen what we prioritise on the data and access side.
+One note on timing. I've got a customer kick off engagement session just before tomorrow's meeting with BFJ.
 
 Where this leaves us
 
