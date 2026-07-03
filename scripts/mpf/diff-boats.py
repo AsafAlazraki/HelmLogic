@@ -77,7 +77,8 @@ def main():
     H = {"Authorization": f"Bearer {sign_in()}"}
 
     # ---- walk live Highfield catalog ----
-    live_variants = {}   # sku -> record
+    all_variants = []    # every live variant doc (ids can repeat across models, e.g. demo-default-pvc)
+    sku_index = {}       # variant doc id (== SKU for HB* codes) -> record
     live_models = {}     # normalized modelCode -> record
     ranges = list_all(H, f"data-warehouse/{HF_VENDOR}/ranges")
     print(f"live ranges: {len(ranges)}")
@@ -95,18 +96,21 @@ def main():
             for vd in list_all(H, f"data-warehouse/{HF_VENDOR}/ranges/{rid}/models/{mid}/variants"):
                 vid = vd["name"].split("/")[-1]
                 vf = fields(vd)
-                live_variants[vid] = {
+                rec = {
                     "sku": vf.get("sku") or vid, "variantId": vid,
                     "rangeId": rid, "range": rname, "modelId": mid, "modelCode": mcode,
                     "sellPriceExclGst": vf.get("sellPriceExclGst"),
                     "cost": vf.get("cost"),
                     "material": vf.get("material"),
                 }
-    print(f"live models: {len(live_models)} | live variants: {len(live_variants)}")
+                all_variants.append(rec)
+                sku_index.setdefault(vid, rec)
+    print(f"live models: {len(live_models)} | live variants: {len(all_variants)}")
 
     # ---- reconcile Highfield SKUs ----
     per_boat = []
     exact, mismatch, missing = [], [], []
+    sell_exact = cost_exact = 0
     sell_drift_signed = sell_drift_abs = cost_drift_signed = cost_drift_abs = 0.0
     matched_skus = set()
     for b in hf_boats:
@@ -114,7 +118,7 @@ def main():
         hf = b.get("highfield", {})
         model_norm = (hf.get("model") or "").replace(" ", "").upper()
         model_hit = live_models.get(model_norm)
-        lv = live_variants.get(sku)
+        lv = sku_index.get(sku)
         row = {
             "modelCode": sku, "name": b["name"], "model": hf.get("model"),
             "range": hf.get("range"), "sourceRow": b["sourceRow"],
@@ -143,32 +147,39 @@ def main():
                 "sellDelta": sell_d,   # MPF-derived exGst cash − HL sellPriceExclGst
                 "costDelta": cost_d,   # MPF landed AUD − HL cost
             })
+            sell_ok = sell_d is not None and abs(sell_d) <= PRICE_TOL
+            cost_ok = cost_d is not None and abs(cost_d) <= PRICE_TOL
             if sell_d is not None:
                 sell_drift_signed += sell_d
                 sell_drift_abs += abs(sell_d)
+                sell_exact += 1 if sell_ok else 0
             if cost_d is not None:
                 cost_drift_signed += cost_d
                 cost_drift_abs += abs(cost_d)
-            price_ok = (sell_d is not None and abs(sell_d) <= PRICE_TOL
-                        and cost_d is not None and abs(cost_d) <= PRICE_TOL)
-            row["status"] = "exact_match" if price_ok else "price_mismatch"
-            (exact if price_ok else mismatch).append(row)
+                cost_exact += 1 if cost_ok else 0
+            row["sellMatches"] = sell_ok
+            row["costMatches"] = cost_ok
+            row["status"] = "exact_match" if (sell_ok and cost_ok) else "price_mismatch"
+            (exact if (sell_ok and cost_ok) else mismatch).append(row)
         per_boat.append(row)
 
-    hl_only = sorted(set(live_variants) - matched_skus)
+    hl_only = [v for v in all_variants if v["variantId"] not in matched_skus]
     worst = sorted(
-        (r for r in mismatch if r.get("sellDelta") is not None),
-        key=lambda r: abs(r["sellDelta"]), reverse=True)[:20]
+        mismatch,
+        key=lambda r: abs(r.get("sellDelta") or 0) + abs(r.get("costDelta") or 0),
+        reverse=True)[:20]
 
     summary = {
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "source": str(BOATS.relative_to(ROOT)),
         "live": {"vendor": HF_VENDOR, "ranges": len(ranges),
-                 "models": len(live_models), "variants": len(live_variants)},
+                 "models": len(live_models), "variants": len(all_variants)},
         "highfield": {
             "mpfSkus": len(hf_boats),
             "exactMatch": len(exact),
             "priceMismatch": len(mismatch),
+            "sellExact": sell_exact,
+            "costExact": cost_exact,
             "missingInHL": len(missing),
             "hlOnlyVariants": len(hl_only),
             "sellDriftSigned": round(sell_drift_signed, 2),
@@ -190,7 +201,7 @@ def main():
         "summary": summary,
         "worst20BySellDelta": worst,
         "missingInHL": missing,
-        "hlOnlyVariants": [live_variants[s] for s in hl_only],
+        "hlOnlyVariants": hl_only,
         "perBoat": per_boat,
     }, indent=1))
 
@@ -208,7 +219,9 @@ def main():
         "| Bucket | Count |",
         "|---|---|",
         f"| Exact match (sell AND cost within ${PRICE_TOL}) | {hs['exactMatch']} |",
-        f"| Price mismatch | {hs['priceMismatch']} |",
+        f"| — sell matches (MPF cash ÷ 1.1 == HL sellPriceExclGst) | {hs['sellExact']} |",
+        f"| — cost matches (MPF landed AUD == HL cost) | {hs['costExact']} |",
+        f"| Price mismatch (sell or cost off) | {hs['priceMismatch']} |",
         f"| Missing in HelmLogic | {hs['missingInHL']} |",
         f"| HL-only variants not in MPF current set | {hs['hlOnlyVariants']} |",
         "",
@@ -246,9 +259,9 @@ def main():
     if hl_only:
         lines.append("| Variant | Model | Range | Note |")
         lines.append("|---|---|---|---|")
-        for s in hl_only:
-            v = live_variants[s]
-            note = "placeholder/demo" if s.startswith("demo") else \
+        for v in hl_only:
+            s = v["variantId"]
+            note = "placeholder/demo" if "demo" in s.lower() or "-STD" in s else \
                 "likely OBSOLETE-section SKU or manual add"
             lines.append(f"| {s} | {v['modelCode']} | {v['range']} | {note} |")
     else:

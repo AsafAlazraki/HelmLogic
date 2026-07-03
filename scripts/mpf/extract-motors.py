@@ -168,7 +168,7 @@ def main():
             'hull_campaign': num(get('sell_campaign')),  # D7
         }
         motors.append({
-            'compositeKey': f"{code}||{section or ''}",
+            'compositeKey': f"{code}||{section or ''}||{display or ''}",
             'modelCode': code,
             'displayName': display,          # exact Boat Module reference string
             'section': section,              # rig/campaign section context
@@ -191,6 +191,16 @@ def main():
 
     codes = [m['modelCode'] for m in motors]
     dup_codes = sorted({c for c in codes if codes.count(c) > 1})
+    # Disambiguate any residual duplicate composite keys (identical code+section+
+    # display re-lists, e.g. Cap Camarat powerplant re-lists) with the source row.
+    seen = {}
+    for m in motors:
+        k = m['compositeKey']
+        if k in seen:
+            m['compositeKey'] = f"{k}||r{m['sourceRow']}"
+            m['duplicateOfRow'] = seen[k]
+        else:
+            seen[k] = m['sourceRow']
     keys = [m['compositeKey'] for m in motors]
     dup_keys = sorted({k for k in keys if keys.count(k) > 1})
 

@@ -1,19 +1,21 @@
 {
  "summary": {
-  "generatedAt": "2026-07-03T06:57:51.055258+00:00",
+  "generatedAt": "2026-07-03T07:02:27.260452+00:00",
   "source": "tasks/mpf-audit/extracted/boats.json",
   "live": {
    "vendor": "LafOLpLb6QIFE856TiD4",
    "ranges": 7,
    "models": 84,
-   "variants": 628
+   "variants": 635
   },
   "highfield": {
    "mpfSkus": 588,
    "exactMatch": 0,
    "priceMismatch": 582,
+   "sellExact": 575,
+   "costExact": 0,
    "missingInHL": 6,
-   "hlOnlyVariants": 46,
+   "hlOnlyVariants": 53,
    "sellDriftSigned": 12981.85,
    "sellDriftAbs": 12981.85,
    "costDriftSigned": 5276426.08,
@@ -51,6 +53,8 @@
    "hlCost": 23527,
    "sellDelta": 1854.55,
    "costDelta": 40671.57,
+   "sellMatches": false,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -69,6 +73,8 @@
    "hlCost": 23527,
    "sellDelta": 1854.55,
    "costDelta": 40671.57,
+   "sellMatches": false,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -87,6 +93,8 @@
    "hlCost": 23527,
    "sellDelta": 1854.55,
    "costDelta": 40671.57,
+   "sellMatches": false,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -105,6 +113,8 @@
    "hlCost": 23527,
    "sellDelta": 1854.55,
    "costDelta": 40671.57,
+   "sellMatches": false,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -123,6 +133,8 @@
    "hlCost": 23527,
    "sellDelta": 1854.55,
    "costDelta": 40671.57,
+   "sellMatches": false,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -141,6 +153,8 @@
    "hlCost": 23527,
    "sellDelta": 1854.55,
    "costDelta": 40671.57,
+   "sellMatches": false,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -159,240 +173,268 @@
    "hlCost": 23527,
    "sellDelta": 1854.55,
    "costDelta": 40671.57,
+   "sellMatches": false,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
-   "modelCode": "HBR005",
-   "name": "Highfield - RU230KAM (PVC) WH",
-   "model": "RU230KAM",
-   "range": "Roll-Up",
-   "sourceRow": 282,
-   "mpfCashIncGst": 2770.0,
-   "mpfCashExGst": 2518.18,
-   "mpfLandedAUD": 1671.4285714285716,
+   "modelCode": "HBS201",
+   "name": "Highfield - SP900 (HYP) W-W-WB",
+   "model": "SP900",
+   "range": "Sport",
+   "sourceRow": 926,
+   "mpfCashIncGst": 129830.0,
+   "mpfCashExGst": 118027.27,
+   "mpfLandedAUD": 78551.42857142858,
    "modelFoundInHL": true,
-   "modelPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru230kam",
-   "hlPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru230kam/variants/HBR005",
-   "hlSellPriceExclGst": 2518.18,
-   "hlCost": 698,
+   "modelPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900",
+   "hlPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900/variants/HBS201",
+   "hlSellPriceExclGst": 118027.27,
+   "hlCost": 37904,
    "sellDelta": 0.0,
-   "costDelta": 973.43,
+   "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
-   "modelCode": "HBR006",
-   "name": "Highfield - RU230KAM (HYP) WH",
-   "model": "RU230KAM",
-   "range": "Roll-Up",
-   "sourceRow": 283,
-   "mpfCashIncGst": 5320.0,
-   "mpfCashExGst": 4836.36,
-   "mpfLandedAUD": 3214.2857142857147,
+   "modelCode": "HBS202",
+   "name": "Highfield - SP900 (HYP) LG-W-WB",
+   "model": "SP900",
+   "range": "Sport",
+   "sourceRow": 927,
+   "mpfCashIncGst": 129830.0,
+   "mpfCashExGst": 118027.27,
+   "mpfLandedAUD": 78551.42857142858,
    "modelFoundInHL": true,
-   "modelPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru230kam",
-   "hlPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru230kam/variants/HBR006",
-   "hlSellPriceExclGst": 4836.36,
-   "hlCost": 1702,
+   "modelPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900",
+   "hlPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900/variants/HBS202",
+   "hlSellPriceExclGst": 118027.27,
+   "hlCost": 37904,
    "sellDelta": 0.0,
-   "costDelta": 1512.29,
+   "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
-   "modelCode": "HBR007",
-   "name": "Highfield - RU230KAM (PVC) LG",
-   "model": "RU230KAM",
-   "range": "Roll-Up",
-   "sourceRow": 284,
-   "mpfCashIncGst": 2770.0,
-   "mpfCashExGst": 2518.18,
-   "mpfLandedAUD": 1671.4285714285716,
+   "modelCode": "HBS203",
+   "name": "Highfield - SP900 (HYP) LG-W-DB",
+   "model": "SP900",
+   "range": "Sport",
+   "sourceRow": 928,
+   "mpfCashIncGst": 129830.0,
+   "mpfCashExGst": 118027.27,
+   "mpfLandedAUD": 78551.42857142858,
    "modelFoundInHL": true,
-   "modelPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru230kam",
-   "hlPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru230kam/variants/HBR007",
-   "hlSellPriceExclGst": 2518.18,
-   "hlCost": 698,
+   "modelPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900",
+   "hlPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900/variants/HBS203",
+   "hlSellPriceExclGst": 118027.27,
+   "hlCost": 37904,
    "sellDelta": 0.0,
-   "costDelta": 973.43,
+   "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
-   "modelCode": "HBR008",
-   "name": "Highfield - RU230KAM (HYP) LG",
-   "model": "RU230KAM",
-   "range": "Roll-Up",
-   "sourceRow": 285,
-   "mpfCashIncGst": 4500.0,
-   "mpfCashExGst": 4090.91,
-   "mpfLandedAUD": 2721.4285714285716,
+   "modelCode": "HBS204",
+   "name": "Highfield - SP900 (HYP) B-W-C",
+   "model": "SP900",
+   "range": "Sport",
+   "sourceRow": 929,
+   "mpfCashIncGst": 129830.0,
+   "mpfCashExGst": 118027.27,
+   "mpfLandedAUD": 78551.42857142858,
    "modelFoundInHL": true,
-   "modelPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru230kam",
-   "hlPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru230kam/variants/HBR008",
-   "hlSellPriceExclGst": 4090.91,
-   "hlCost": 1381,
+   "modelPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900",
+   "hlPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900/variants/HBS204",
+   "hlSellPriceExclGst": 118027.27,
+   "hlCost": 37904,
    "sellDelta": 0.0,
-   "costDelta": 1340.43,
+   "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
-   "modelCode": "HBR009",
-   "name": "Highfield - RU250KAM (PVC) WH",
-   "model": "RU250KAM",
-   "range": "Roll-Up",
-   "sourceRow": 287,
-   "mpfCashIncGst": 3060.0,
-   "mpfCashExGst": 2781.82,
-   "mpfLandedAUD": 1850.0,
+   "modelCode": "HBS205",
+   "name": "Highfield - SP900 (HYP) DG-G-MB",
+   "model": "SP900",
+   "range": "Sport",
+   "sourceRow": 930,
+   "mpfCashIncGst": 129830.0,
+   "mpfCashExGst": 118027.27,
+   "mpfLandedAUD": 78551.42857142858,
    "modelFoundInHL": true,
-   "modelPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru250kam",
-   "hlPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru250kam/variants/HBR009",
-   "hlSellPriceExclGst": 2781.82,
-   "hlCost": 794,
+   "modelPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900",
+   "hlPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900/variants/HBS205",
+   "hlSellPriceExclGst": 118027.27,
+   "hlCost": 37904,
    "sellDelta": 0.0,
-   "costDelta": 1056.0,
+   "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
-   "modelCode": "HBR010",
-   "name": "Highfield - RU250KAM (HYP) WH",
-   "model": "RU250KAM",
-   "range": "Roll-Up",
-   "sourceRow": 288,
-   "mpfCashIncGst": 5960.0,
-   "mpfCashExGst": 5418.18,
-   "mpfLandedAUD": 3602.857142857143,
+   "modelCode": "HBS206",
+   "name": "Highfield - SP900 (HYP) B-B-DB",
+   "model": "SP900",
+   "range": "Sport",
+   "sourceRow": 931,
+   "mpfCashIncGst": 129830.0,
+   "mpfCashExGst": 118027.27,
+   "mpfLandedAUD": 78551.42857142858,
    "modelFoundInHL": true,
-   "modelPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru250kam",
-   "hlPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru250kam/variants/HBR010",
-   "hlSellPriceExclGst": 5418.18,
-   "hlCost": 1936,
+   "modelPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900",
+   "hlPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900/variants/HBS206",
+   "hlSellPriceExclGst": 118027.27,
+   "hlCost": 37904,
    "sellDelta": 0.0,
-   "costDelta": 1666.86,
+   "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
-   "modelCode": "HBR011",
-   "name": "Highfield - RU250KAM (PVC) LG",
-   "model": "RU250KAM",
-   "range": "Roll-Up",
-   "sourceRow": 289,
-   "mpfCashIncGst": 3060.0,
-   "mpfCashExGst": 2781.82,
-   "mpfLandedAUD": 1850.0,
+   "modelCode": "HBS207",
+   "name": "Highfield - SP900 (HYP) B-B-B",
+   "model": "SP900",
+   "range": "Sport",
+   "sourceRow": 932,
+   "mpfCashIncGst": 129830.0,
+   "mpfCashExGst": 118027.27,
+   "mpfLandedAUD": 78551.42857142858,
    "modelFoundInHL": true,
-   "modelPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru250kam",
-   "hlPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru250kam/variants/HBR011",
-   "hlSellPriceExclGst": 2781.82,
-   "hlCost": 794,
+   "modelPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900",
+   "hlPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900/variants/HBS207",
+   "hlSellPriceExclGst": 118027.27,
+   "hlCost": 37904,
    "sellDelta": 0.0,
-   "costDelta": 1056.0,
+   "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
-   "modelCode": "HBR012",
-   "name": "Highfield - RU250KAM (HYP) LG",
-   "model": "RU250KAM",
-   "range": "Roll-Up",
-   "sourceRow": 290,
-   "mpfCashIncGst": 5140.0,
-   "mpfCashExGst": 4672.73,
-   "mpfLandedAUD": 3110.0,
+   "modelCode": "HBS208",
+   "name": "Highfield - SP900 (HYP) I-B-C",
+   "model": "SP900",
+   "range": "Sport",
+   "sourceRow": 933,
+   "mpfCashIncGst": 129830.0,
+   "mpfCashExGst": 118027.27,
+   "mpfLandedAUD": 78551.42857142858,
    "modelFoundInHL": true,
-   "modelPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru250kam",
-   "hlPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru250kam/variants/HBR012",
-   "hlSellPriceExclGst": 4672.73,
-   "hlCost": 1615,
+   "modelPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900",
+   "hlPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp900/variants/HBS208",
+   "hlSellPriceExclGst": 118027.27,
+   "hlCost": 37904,
    "sellDelta": 0.0,
-   "costDelta": 1495.0,
+   "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
-   "modelCode": "HBR013",
-   "name": "Highfield - RU280KAM (PVC) WH",
-   "model": "RU280KAM",
-   "range": "Roll-Up",
-   "sourceRow": 292,
-   "mpfCashIncGst": 3250.0,
-   "mpfCashExGst": 2954.55,
-   "mpfLandedAUD": 1965.7142857142858,
+   "modelCode": "HBS193",
+   "name": "Highfield - SP800 (HYP) W-W-WB",
+   "model": "SP800",
+   "range": "Sport",
+   "sourceRow": 917,
+   "mpfCashIncGst": 111680.0,
+   "mpfCashExGst": 101527.27,
+   "mpfLandedAUD": 67568.57142857143,
    "modelFoundInHL": true,
-   "modelPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru280kam",
-   "hlPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru280kam/variants/HBR013",
-   "hlSellPriceExclGst": 2954.55,
-   "hlCost": 850,
+   "modelPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp800",
+   "hlPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp800/variants/HBS193",
+   "hlSellPriceExclGst": 101527.27,
+   "hlCost": 32898,
    "sellDelta": 0.0,
-   "costDelta": 1115.71,
+   "costDelta": 34670.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
-   "modelCode": "HBR014",
-   "name": "Highfield - RU280KAM (HYP) WH",
-   "model": "RU280KAM",
-   "range": "Roll-Up",
-   "sourceRow": 293,
-   "mpfCashIncGst": 6540.0,
-   "mpfCashExGst": 5945.45,
-   "mpfLandedAUD": 3955.714285714286,
+   "modelCode": "HBS194",
+   "name": "Highfield - SP800 (HYP) LG-W-WB",
+   "model": "SP800",
+   "range": "Sport",
+   "sourceRow": 918,
+   "mpfCashIncGst": 111680.0,
+   "mpfCashExGst": 101527.27,
+   "mpfLandedAUD": 67568.57142857143,
    "modelFoundInHL": true,
-   "modelPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru280kam",
-   "hlPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru280kam/variants/HBR014",
-   "hlSellPriceExclGst": 5945.45,
-   "hlCost": 2146,
+   "modelPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp800",
+   "hlPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp800/variants/HBS194",
+   "hlSellPriceExclGst": 101527.27,
+   "hlCost": 32898,
    "sellDelta": 0.0,
-   "costDelta": 1809.71,
+   "costDelta": 34670.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
-   "modelCode": "HBR015",
-   "name": "Highfield - RU280KAM (PVC) LG",
-   "model": "RU280KAM",
-   "range": "Roll-Up",
-   "sourceRow": 294,
-   "mpfCashIncGst": 3250.0,
-   "mpfCashExGst": 2954.55,
-   "mpfLandedAUD": 1965.7142857142858,
+   "modelCode": "HBS195",
+   "name": "Highfield - SP800 (HYP) LG-W-DB",
+   "model": "SP800",
+   "range": "Sport",
+   "sourceRow": 919,
+   "mpfCashIncGst": 111680.0,
+   "mpfCashExGst": 101527.27,
+   "mpfLandedAUD": 67568.57142857143,
    "modelFoundInHL": true,
-   "modelPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru280kam",
-   "hlPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru280kam/variants/HBR015",
-   "hlSellPriceExclGst": 2954.55,
-   "hlCost": 850,
+   "modelPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp800",
+   "hlPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp800/variants/HBS195",
+   "hlSellPriceExclGst": 101527.27,
+   "hlCost": 32898,
    "sellDelta": 0.0,
-   "costDelta": 1115.71,
+   "costDelta": 34670.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
-   "modelCode": "HBR016",
-   "name": "Highfield - RU280KAM (HYP) LG",
-   "model": "RU280KAM",
-   "range": "Roll-Up",
-   "sourceRow": 295,
-   "mpfCashIncGst": 5380.0,
-   "mpfCashExGst": 4890.91,
-   "mpfLandedAUD": 3254.2857142857147,
+   "modelCode": "HBS196",
+   "name": "Highfield - SP800 (HYP) B-W-C",
+   "model": "SP800",
+   "range": "Sport",
+   "sourceRow": 920,
+   "mpfCashIncGst": 111680.0,
+   "mpfCashExGst": 101527.27,
+   "mpfLandedAUD": 67568.57142857143,
    "modelFoundInHL": true,
-   "modelPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru280kam",
-   "hlPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru280kam/variants/HBR016",
-   "hlSellPriceExclGst": 4890.91,
-   "hlCost": 1689,
+   "modelPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp800",
+   "hlPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp800/variants/HBS196",
+   "hlSellPriceExclGst": 101527.27,
+   "hlCost": 32898,
    "sellDelta": 0.0,
-   "costDelta": 1565.29,
+   "costDelta": 34670.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
-   "modelCode": "HBR017",
-   "name": "Highfield - RU320KAM (PVC) WH",
-   "model": "RU320KAM",
-   "range": "Roll-Up",
-   "sourceRow": 297,
-   "mpfCashIncGst": 3680.0,
-   "mpfCashExGst": 3345.45,
-   "mpfLandedAUD": 2222.857142857143,
+   "modelCode": "HBS197",
+   "name": "Highfield - SP800 (HYP) DG-G-MB",
+   "model": "SP800",
+   "range": "Sport",
+   "sourceRow": 921,
+   "mpfCashIncGst": 111680.0,
+   "mpfCashExGst": 101527.27,
+   "mpfLandedAUD": 67568.57142857143,
    "modelFoundInHL": true,
-   "modelPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru320kam",
-   "hlPath": "ranges/EqcKQ51svI1I2Q5poFdl/models/ru320kam/variants/HBR017",
-   "hlSellPriceExclGst": 3345.45,
-   "hlCost": 979,
+   "modelPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp800",
+   "hlPath": "ranges/nQ2LE50z9Tbf2uss0Ote/models/sp800/variants/HBS197",
+   "hlSellPriceExclGst": 101527.27,
+   "hlCost": 32898,
    "sellDelta": 0.0,
-   "costDelta": 1243.86,
+   "costDelta": 34670.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   }
  ],
@@ -478,300 +520,47 @@
  ],
  "hlOnlyVariants": [
   {
-   "sku": "HBC129",
-   "variantId": "HBC129",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl340max",
-   "modelCode": "CL340MAX",
-   "sellPriceExclGst": 6154.55,
-   "cost": 2185,
+   "sku": "HBR021",
+   "variantId": "HBR021",
+   "rangeId": "EqcKQ51svI1I2Q5poFdl",
+   "range": "Roll-Up",
+   "modelId": "ru200al",
+   "modelCode": "RU200AL",
+   "sellPriceExclGst": 2381.82,
+   "cost": 666,
    "material": "PVC"
   },
   {
-   "sku": "HBC130",
-   "variantId": "HBC130",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl340max",
-   "modelCode": "CL340MAX",
-   "sellPriceExclGst": 9263.64,
-   "cost": 3533,
+   "sku": "HBR022",
+   "variantId": "HBR022",
+   "rangeId": "EqcKQ51svI1I2Q5poFdl",
+   "range": "Roll-Up",
+   "modelId": "ru200al",
+   "modelCode": "RU200AL",
+   "sellPriceExclGst": 4545.45,
+   "cost": 1604,
    "material": "HYP"
   },
   {
-   "sku": "HBC131",
-   "variantId": "HBC131",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl340max",
-   "modelCode": "CL340MAX",
-   "sellPriceExclGst": 6154.55,
-   "cost": 2185,
+   "sku": "HBR023",
+   "variantId": "HBR023",
+   "rangeId": "EqcKQ51svI1I2Q5poFdl",
+   "range": "Roll-Up",
+   "modelId": "ru200al",
+   "modelCode": "RU200AL",
+   "sellPriceExclGst": 2381.82,
+   "cost": 666,
    "material": "PVC"
   },
   {
-   "sku": "HBC132",
-   "variantId": "HBC132",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl340max",
-   "modelCode": "CL340MAX",
-   "sellPriceExclGst": 9263.64,
-   "cost": 3533,
-   "material": "HYP"
-  },
-  {
-   "sku": "HBC133",
-   "variantId": "HBC133",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl340max",
-   "modelCode": "CL340MAX",
-   "sellPriceExclGst": 6154.55,
-   "cost": 2185,
-   "material": "PVC"
-  },
-  {
-   "sku": "HBC134",
-   "variantId": "HBC134",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl340max",
-   "modelCode": "CL340MAX",
-   "sellPriceExclGst": 9263.64,
-   "cost": 3533,
-   "material": "HYP"
-  },
-  {
-   "sku": "HBC135",
-   "variantId": "HBC135",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl340max",
-   "modelCode": "CL340MAX",
-   "sellPriceExclGst": 6154.55,
-   "cost": 2185,
-   "material": "PVC"
-  },
-  {
-   "sku": "HBC136",
-   "variantId": "HBC136",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl340max",
-   "modelCode": "CL340MAX",
-   "sellPriceExclGst": 9263.64,
-   "cost": 3533,
-   "material": "HYP"
-  },
-  {
-   "sku": "HBC137",
-   "variantId": "HBC137",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl360max",
-   "modelCode": "CL360MAX",
-   "sellPriceExclGst": 6645.45,
-   "cost": 2378,
-   "material": "PVC"
-  },
-  {
-   "sku": "HBC138",
-   "variantId": "HBC138",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl360max",
-   "modelCode": "CL360MAX",
-   "sellPriceExclGst": 10054.55,
-   "cost": 3855,
-   "material": "HYP"
-  },
-  {
-   "sku": "HBC139",
-   "variantId": "HBC139",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl360max",
-   "modelCode": "CL360MAX",
-   "sellPriceExclGst": 6645.45,
-   "cost": 2378,
-   "material": "PVC"
-  },
-  {
-   "sku": "HBC140",
-   "variantId": "HBC140",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl360max",
-   "modelCode": "CL360MAX",
-   "sellPriceExclGst": 10054.55,
-   "cost": 3855,
-   "material": "HYP"
-  },
-  {
-   "sku": "HBC141",
-   "variantId": "HBC141",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl360max",
-   "modelCode": "CL360MAX",
-   "sellPriceExclGst": 6645.45,
-   "cost": 2378,
-   "material": "PVC"
-  },
-  {
-   "sku": "HBC142",
-   "variantId": "HBC142",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl360max",
-   "modelCode": "CL360MAX",
-   "sellPriceExclGst": 10054.55,
-   "cost": 3855,
-   "material": "HYP"
-  },
-  {
-   "sku": "HBC143",
-   "variantId": "HBC143",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl360max",
-   "modelCode": "CL360MAX",
-   "sellPriceExclGst": 6645.45,
-   "cost": 2378,
-   "material": "PVC"
-  },
-  {
-   "sku": "HBC144",
-   "variantId": "HBC144",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl360max",
-   "modelCode": "CL360MAX",
-   "sellPriceExclGst": 10054.55,
-   "cost": 3855,
-   "material": "HYP"
-  },
-  {
-   "sku": "HBC145",
-   "variantId": "HBC145",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl380max",
-   "modelCode": "CL380MAX",
-   "sellPriceExclGst": 7118.18,
-   "cost": 2570,
-   "material": "PVC"
-  },
-  {
-   "sku": "HBC146",
-   "variantId": "HBC146",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl380max",
-   "modelCode": "CL380MAX",
-   "sellPriceExclGst": 10854.55,
-   "cost": 4190,
-   "material": "HYP"
-  },
-  {
-   "sku": "HBC147",
-   "variantId": "HBC147",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl380max",
-   "modelCode": "CL380MAX",
-   "sellPriceExclGst": 7118.18,
-   "cost": 2570,
-   "material": "PVC"
-  },
-  {
-   "sku": "HBC148",
-   "variantId": "HBC148",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl380max",
-   "modelCode": "CL380MAX",
-   "sellPriceExclGst": 10854.55,
-   "cost": 4190,
-   "material": "HYP"
-  },
-  {
-   "sku": "HBC149",
-   "variantId": "HBC149",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl380max",
-   "modelCode": "CL380MAX",
-   "sellPriceExclGst": 7118.18,
-   "cost": 2570,
-   "material": "PVC"
-  },
-  {
-   "sku": "HBC150",
-   "variantId": "HBC150",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl380max",
-   "modelCode": "CL380MAX",
-   "sellPriceExclGst": 10854.55,
-   "cost": 4190,
-   "material": "HYP"
-  },
-  {
-   "sku": "HBC151",
-   "variantId": "HBC151",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl380max",
-   "modelCode": "CL380MAX",
-   "sellPriceExclGst": 7118.18,
-   "cost": 2570,
-   "material": "PVC"
-  },
-  {
-   "sku": "HBC152",
-   "variantId": "HBC152",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl380max",
-   "modelCode": "CL380MAX",
-   "sellPriceExclGst": 10854.55,
-   "cost": 4190,
-   "material": "HYP"
-  },
-  {
-   "sku": "HBC158",
-   "variantId": "HBC158",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl340max",
-   "modelCode": "CL340MAX",
-   "sellPriceExclGst": 9263.64,
-   "cost": 3533,
-   "material": "HYP"
-  },
-  {
-   "sku": "HBC161",
-   "variantId": "HBC161",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl360max",
-   "modelCode": "CL360MAX",
-   "sellPriceExclGst": 10054.55,
-   "cost": 3855,
-   "material": "HYP"
-  },
-  {
-   "sku": "HBC163",
-   "variantId": "HBC163",
-   "rangeId": "qo7IePnRzJxjrYyLWhTn",
-   "range": "Classic",
-   "modelId": "cl380max",
-   "modelCode": "CL380MAX",
-   "sellPriceExclGst": 10854.55,
-   "cost": 4190,
+   "sku": "HBR024",
+   "variantId": "HBR024",
+   "rangeId": "EqcKQ51svI1I2Q5poFdl",
+   "range": "Roll-Up",
+   "modelId": "ru200al",
+   "modelCode": "RU200AL",
+   "sellPriceExclGst": 3809.09,
+   "cost": 1283,
    "material": "HYP"
   },
   {
@@ -816,50 +605,6 @@
    "modelCode": "RU200KAM",
    "sellPriceExclGst": 3854.55,
    "cost": 1304,
-   "material": "HYP"
-  },
-  {
-   "sku": "HBR021",
-   "variantId": "HBR021",
-   "rangeId": "EqcKQ51svI1I2Q5poFdl",
-   "range": "Roll-Up",
-   "modelId": "ru200al",
-   "modelCode": "RU200AL",
-   "sellPriceExclGst": 2381.82,
-   "cost": 666,
-   "material": "PVC"
-  },
-  {
-   "sku": "HBR022",
-   "variantId": "HBR022",
-   "rangeId": "EqcKQ51svI1I2Q5poFdl",
-   "range": "Roll-Up",
-   "modelId": "ru200al",
-   "modelCode": "RU200AL",
-   "sellPriceExclGst": 4545.45,
-   "cost": 1604,
-   "material": "HYP"
-  },
-  {
-   "sku": "HBR023",
-   "variantId": "HBR023",
-   "rangeId": "EqcKQ51svI1I2Q5poFdl",
-   "range": "Roll-Up",
-   "modelId": "ru200al",
-   "modelCode": "RU200AL",
-   "sellPriceExclGst": 2381.82,
-   "cost": 666,
-   "material": "PVC"
-  },
-  {
-   "sku": "HBR024",
-   "variantId": "HBR024",
-   "rangeId": "EqcKQ51svI1I2Q5poFdl",
-   "range": "Roll-Up",
-   "modelId": "ru200al",
-   "modelCode": "RU200AL",
-   "sellPriceExclGst": 3809.09,
-   "cost": 1283,
    "material": "HYP"
   },
   {
@@ -973,6 +718,380 @@
    "material": "HYP"
   },
   {
+   "sku": "sp700-STD",
+   "variantId": "demo-default-pvc",
+   "rangeId": "nQ2LE50z9Tbf2uss0Ote",
+   "range": "Sport",
+   "modelId": "sp700",
+   "modelCode": "SP700",
+   "sellPriceExclGst": 30000,
+   "cost": 21000,
+   "material": "PVC"
+  },
+  {
+   "sku": "sp760-STD",
+   "variantId": "demo-default-pvc",
+   "rangeId": "nQ2LE50z9Tbf2uss0Ote",
+   "range": "Sport",
+   "modelId": "sp760",
+   "modelCode": "SP760",
+   "sellPriceExclGst": 30000,
+   "cost": 21000,
+   "material": "PVC"
+  },
+  {
+   "sku": "HBC129",
+   "variantId": "HBC129",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl340max",
+   "modelCode": "CL340MAX",
+   "sellPriceExclGst": 6154.55,
+   "cost": 2185,
+   "material": "PVC"
+  },
+  {
+   "sku": "HBC130",
+   "variantId": "HBC130",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl340max",
+   "modelCode": "CL340MAX",
+   "sellPriceExclGst": 9263.64,
+   "cost": 3533,
+   "material": "HYP"
+  },
+  {
+   "sku": "HBC131",
+   "variantId": "HBC131",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl340max",
+   "modelCode": "CL340MAX",
+   "sellPriceExclGst": 6154.55,
+   "cost": 2185,
+   "material": "PVC"
+  },
+  {
+   "sku": "HBC132",
+   "variantId": "HBC132",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl340max",
+   "modelCode": "CL340MAX",
+   "sellPriceExclGst": 9263.64,
+   "cost": 3533,
+   "material": "HYP"
+  },
+  {
+   "sku": "HBC133",
+   "variantId": "HBC133",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl340max",
+   "modelCode": "CL340MAX",
+   "sellPriceExclGst": 6154.55,
+   "cost": 2185,
+   "material": "PVC"
+  },
+  {
+   "sku": "HBC134",
+   "variantId": "HBC134",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl340max",
+   "modelCode": "CL340MAX",
+   "sellPriceExclGst": 9263.64,
+   "cost": 3533,
+   "material": "HYP"
+  },
+  {
+   "sku": "HBC135",
+   "variantId": "HBC135",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl340max",
+   "modelCode": "CL340MAX",
+   "sellPriceExclGst": 6154.55,
+   "cost": 2185,
+   "material": "PVC"
+  },
+  {
+   "sku": "HBC136",
+   "variantId": "HBC136",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl340max",
+   "modelCode": "CL340MAX",
+   "sellPriceExclGst": 9263.64,
+   "cost": 3533,
+   "material": "HYP"
+  },
+  {
+   "sku": "HBC158",
+   "variantId": "HBC158",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl340max",
+   "modelCode": "CL340MAX",
+   "sellPriceExclGst": 9263.64,
+   "cost": 3533,
+   "material": "HYP"
+  },
+  {
+   "sku": "HBC137",
+   "variantId": "HBC137",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl360max",
+   "modelCode": "CL360MAX",
+   "sellPriceExclGst": 6645.45,
+   "cost": 2378,
+   "material": "PVC"
+  },
+  {
+   "sku": "HBC138",
+   "variantId": "HBC138",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl360max",
+   "modelCode": "CL360MAX",
+   "sellPriceExclGst": 10054.55,
+   "cost": 3855,
+   "material": "HYP"
+  },
+  {
+   "sku": "HBC139",
+   "variantId": "HBC139",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl360max",
+   "modelCode": "CL360MAX",
+   "sellPriceExclGst": 6645.45,
+   "cost": 2378,
+   "material": "PVC"
+  },
+  {
+   "sku": "HBC140",
+   "variantId": "HBC140",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl360max",
+   "modelCode": "CL360MAX",
+   "sellPriceExclGst": 10054.55,
+   "cost": 3855,
+   "material": "HYP"
+  },
+  {
+   "sku": "HBC141",
+   "variantId": "HBC141",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl360max",
+   "modelCode": "CL360MAX",
+   "sellPriceExclGst": 6645.45,
+   "cost": 2378,
+   "material": "PVC"
+  },
+  {
+   "sku": "HBC142",
+   "variantId": "HBC142",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl360max",
+   "modelCode": "CL360MAX",
+   "sellPriceExclGst": 10054.55,
+   "cost": 3855,
+   "material": "HYP"
+  },
+  {
+   "sku": "HBC143",
+   "variantId": "HBC143",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl360max",
+   "modelCode": "CL360MAX",
+   "sellPriceExclGst": 6645.45,
+   "cost": 2378,
+   "material": "PVC"
+  },
+  {
+   "sku": "HBC144",
+   "variantId": "HBC144",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl360max",
+   "modelCode": "CL360MAX",
+   "sellPriceExclGst": 10054.55,
+   "cost": 3855,
+   "material": "HYP"
+  },
+  {
+   "sku": "HBC161",
+   "variantId": "HBC161",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl360max",
+   "modelCode": "CL360MAX",
+   "sellPriceExclGst": 10054.55,
+   "cost": 3855,
+   "material": "HYP"
+  },
+  {
+   "sku": "HBC145",
+   "variantId": "HBC145",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl380max",
+   "modelCode": "CL380MAX",
+   "sellPriceExclGst": 7118.18,
+   "cost": 2570,
+   "material": "PVC"
+  },
+  {
+   "sku": "HBC146",
+   "variantId": "HBC146",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl380max",
+   "modelCode": "CL380MAX",
+   "sellPriceExclGst": 10854.55,
+   "cost": 4190,
+   "material": "HYP"
+  },
+  {
+   "sku": "HBC147",
+   "variantId": "HBC147",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl380max",
+   "modelCode": "CL380MAX",
+   "sellPriceExclGst": 7118.18,
+   "cost": 2570,
+   "material": "PVC"
+  },
+  {
+   "sku": "HBC148",
+   "variantId": "HBC148",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl380max",
+   "modelCode": "CL380MAX",
+   "sellPriceExclGst": 10854.55,
+   "cost": 4190,
+   "material": "HYP"
+  },
+  {
+   "sku": "HBC149",
+   "variantId": "HBC149",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl380max",
+   "modelCode": "CL380MAX",
+   "sellPriceExclGst": 7118.18,
+   "cost": 2570,
+   "material": "PVC"
+  },
+  {
+   "sku": "HBC150",
+   "variantId": "HBC150",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl380max",
+   "modelCode": "CL380MAX",
+   "sellPriceExclGst": 10854.55,
+   "cost": 4190,
+   "material": "HYP"
+  },
+  {
+   "sku": "HBC151",
+   "variantId": "HBC151",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl380max",
+   "modelCode": "CL380MAX",
+   "sellPriceExclGst": 7118.18,
+   "cost": 2570,
+   "material": "PVC"
+  },
+  {
+   "sku": "HBC152",
+   "variantId": "HBC152",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl380max",
+   "modelCode": "CL380MAX",
+   "sellPriceExclGst": 10854.55,
+   "cost": 4190,
+   "material": "HYP"
+  },
+  {
+   "sku": "HBC163",
+   "variantId": "HBC163",
+   "rangeId": "qo7IePnRzJxjrYyLWhTn",
+   "range": "Classic",
+   "modelId": "cl380max",
+   "modelCode": "CL380MAX",
+   "sellPriceExclGst": 10854.55,
+   "cost": 4190,
+   "material": "HYP"
+  },
+  {
+   "sku": "pa540-STD",
+   "variantId": "demo-default-pvc",
+   "rangeId": "vfXxDuMpChteKncb7LnG",
+   "range": "Patrol",
+   "modelId": "pa540",
+   "modelCode": "PA540",
+   "sellPriceExclGst": 30000,
+   "cost": 21000,
+   "material": "PVC"
+  },
+  {
+   "sku": "pa600-STD",
+   "variantId": "demo-default-pvc",
+   "rangeId": "vfXxDuMpChteKncb7LnG",
+   "range": "Patrol",
+   "modelId": "pa600",
+   "modelCode": "PA600",
+   "sellPriceExclGst": 30000,
+   "cost": 21000,
+   "material": "PVC"
+  },
+  {
+   "sku": "pa660-STD",
+   "variantId": "demo-default-pvc",
+   "rangeId": "vfXxDuMpChteKncb7LnG",
+   "range": "Patrol",
+   "modelId": "pa660",
+   "modelCode": "PA660",
+   "sellPriceExclGst": 30000,
+   "cost": 21000,
+   "material": "PVC"
+  },
+  {
+   "sku": "pa700-STD",
+   "variantId": "demo-default-pvc",
+   "rangeId": "vfXxDuMpChteKncb7LnG",
+   "range": "Patrol",
+   "modelId": "pa700",
+   "modelCode": "PA700",
+   "sellPriceExclGst": 30000,
+   "cost": 21000,
+   "material": "PVC"
+  },
+  {
+   "sku": "pa760-STD",
+   "variantId": "demo-default-pvc",
+   "rangeId": "vfXxDuMpChteKncb7LnG",
+   "range": "Patrol",
+   "modelId": "pa760",
+   "modelCode": "PA760",
+   "sellPriceExclGst": 30000,
+   "cost": 21000,
+   "material": "PVC"
+  },
+  {
    "sku": "pa860-STD",
    "variantId": "demo-default-pvc",
    "rangeId": "vfXxDuMpChteKncb7LnG",
@@ -1001,6 +1120,8 @@
    "hlCost": 698,
    "sellDelta": 0.0,
    "costDelta": 973.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1019,6 +1140,8 @@
    "hlCost": 1702,
    "sellDelta": 0.0,
    "costDelta": 1512.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1037,6 +1160,8 @@
    "hlCost": 698,
    "sellDelta": 0.0,
    "costDelta": 973.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1055,6 +1180,8 @@
    "hlCost": 1381,
    "sellDelta": 0.0,
    "costDelta": 1340.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1073,6 +1200,8 @@
    "hlCost": 794,
    "sellDelta": 0.0,
    "costDelta": 1056.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1091,6 +1220,8 @@
    "hlCost": 1936,
    "sellDelta": 0.0,
    "costDelta": 1666.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1109,6 +1240,8 @@
    "hlCost": 794,
    "sellDelta": 0.0,
    "costDelta": 1056.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1127,6 +1260,8 @@
    "hlCost": 1615,
    "sellDelta": 0.0,
    "costDelta": 1495.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1145,6 +1280,8 @@
    "hlCost": 850,
    "sellDelta": 0.0,
    "costDelta": 1115.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1163,6 +1300,8 @@
    "hlCost": 2146,
    "sellDelta": 0.0,
    "costDelta": 1809.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1181,6 +1320,8 @@
    "hlCost": 850,
    "sellDelta": 0.0,
    "costDelta": 1115.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1199,6 +1340,8 @@
    "hlCost": 1689,
    "sellDelta": 0.0,
    "costDelta": 1565.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1217,6 +1360,8 @@
    "hlCost": 979,
    "sellDelta": 0.0,
    "costDelta": 1243.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1235,6 +1380,8 @@
    "hlCost": 2265,
    "sellDelta": 0.0,
    "costDelta": 1933.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1253,6 +1400,8 @@
    "hlCost": 979,
    "sellDelta": 0.0,
    "costDelta": 1243.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1271,6 +1420,8 @@
    "hlCost": 1807,
    "sellDelta": 0.0,
    "costDelta": 1688.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1289,6 +1440,8 @@
    "hlCost": 714,
    "sellDelta": 0.0,
    "costDelta": 983.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1307,6 +1460,8 @@
    "hlCost": 1634,
    "sellDelta": 0.0,
    "costDelta": 1476.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1325,6 +1480,8 @@
    "hlCost": 714,
    "sellDelta": 0.0,
    "costDelta": 983.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1343,6 +1500,8 @@
    "hlCost": 1313,
    "sellDelta": 0.0,
    "costDelta": 1302.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1361,6 +1520,8 @@
    "hlCost": 835,
    "sellDelta": 0.0,
    "costDelta": 1077.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1379,6 +1540,8 @@
    "hlCost": 1920,
    "sellDelta": 0.0,
    "costDelta": 1658.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1397,6 +1560,8 @@
    "hlCost": 835,
    "sellDelta": 0.0,
    "costDelta": 1077.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1415,6 +1580,8 @@
    "hlCost": 1599,
    "sellDelta": 0.0,
    "costDelta": 1486.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1433,6 +1600,8 @@
    "hlCost": 875,
    "sellDelta": 0.0,
    "costDelta": 1129.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1451,6 +1620,8 @@
    "hlCost": 2131,
    "sellDelta": 0.0,
    "costDelta": 1801.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1469,6 +1640,8 @@
    "hlCost": 875,
    "sellDelta": 0.0,
    "costDelta": 1129.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1487,6 +1660,8 @@
    "hlCost": 1673,
    "sellDelta": 0.0,
    "costDelta": 1555.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1505,6 +1680,8 @@
    "hlCost": 1004,
    "sellDelta": 0.0,
    "costDelta": 1257.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1523,6 +1700,8 @@
    "hlCost": 2249,
    "sellDelta": 0.0,
    "costDelta": 1925.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1541,6 +1720,8 @@
    "hlCost": 1004,
    "sellDelta": 0.0,
    "costDelta": 1257.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1559,6 +1740,8 @@
    "hlCost": 1791,
    "sellDelta": 0.0,
    "costDelta": 1679.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1577,6 +1760,8 @@
    "hlCost": 1132,
    "sellDelta": 0.0,
    "costDelta": 1216.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1595,6 +1780,8 @@
    "hlCost": 2111,
    "sellDelta": 0.0,
    "costDelta": 1740.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1613,6 +1800,8 @@
    "hlCost": 1132,
    "sellDelta": 0.0,
    "costDelta": 1216.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1631,6 +1820,8 @@
    "hlCost": 1790,
    "sellDelta": 0.0,
    "costDelta": 1568.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1649,6 +1840,8 @@
    "hlCost": 1132,
    "sellDelta": 0.0,
    "costDelta": 1216.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1667,6 +1860,8 @@
    "hlCost": 1790,
    "sellDelta": 0.0,
    "costDelta": 1568.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1685,6 +1880,8 @@
    "hlCost": 1132,
    "sellDelta": 0.0,
    "costDelta": 1216.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1703,6 +1900,8 @@
    "hlCost": 2111,
    "sellDelta": 0.0,
    "costDelta": 1740.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1721,6 +1920,8 @@
    "hlCost": 1188,
    "sellDelta": 0.0,
    "costDelta": 1276.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1739,6 +1940,8 @@
    "hlCost": 2288,
    "sellDelta": 0.0,
    "costDelta": 1866.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1757,6 +1960,8 @@
    "hlCost": 1188,
    "sellDelta": 0.0,
    "costDelta": 1276.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1775,6 +1980,8 @@
    "hlCost": 1967,
    "sellDelta": 0.0,
    "costDelta": 1694.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1793,6 +2000,8 @@
    "hlCost": 1188,
    "sellDelta": 0.0,
    "costDelta": 1276.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1811,6 +2020,8 @@
    "hlCost": 1967,
    "sellDelta": 0.0,
    "costDelta": 1694.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1829,6 +2040,8 @@
    "hlCost": 1188,
    "sellDelta": 0.0,
    "costDelta": 1276.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1847,6 +2060,8 @@
    "hlCost": 2288,
    "sellDelta": 0.0,
    "costDelta": 1866.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1865,6 +2080,8 @@
    "hlCost": 1301,
    "sellDelta": 0.0,
    "costDelta": 1377.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1883,6 +2100,8 @@
    "hlCost": 2626,
    "sellDelta": 0.0,
    "costDelta": 2086.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1901,6 +2120,8 @@
    "hlCost": 1301,
    "sellDelta": 0.0,
    "costDelta": 1377.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1919,6 +2140,8 @@
    "hlCost": 2168,
    "sellDelta": 0.0,
    "costDelta": 1842.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1937,6 +2160,8 @@
    "hlCost": 1301,
    "sellDelta": 0.0,
    "costDelta": 1377.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1955,6 +2180,8 @@
    "hlCost": 2168,
    "sellDelta": 0.0,
    "costDelta": 1842.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1973,6 +2200,8 @@
    "hlCost": 1301,
    "sellDelta": 0.0,
    "costDelta": 1377.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -1991,6 +2220,8 @@
    "hlCost": 2626,
    "sellDelta": 0.0,
    "costDelta": 2086.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2009,6 +2240,8 @@
    "hlCost": 1548,
    "sellDelta": 0.0,
    "costDelta": 1539.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2027,6 +2260,8 @@
    "hlCost": 2898,
    "sellDelta": 0.0,
    "costDelta": 2262.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2045,6 +2280,8 @@
    "hlCost": 1548,
    "sellDelta": 0.0,
    "costDelta": 1539.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2063,6 +2300,8 @@
    "hlCost": 2440,
    "sellDelta": 0.0,
    "costDelta": 2017.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2081,6 +2320,8 @@
    "hlCost": 1548,
    "sellDelta": 0.0,
    "costDelta": 1539.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2099,6 +2340,8 @@
    "hlCost": 2440,
    "sellDelta": 0.0,
    "costDelta": 2017.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2117,6 +2360,8 @@
    "hlCost": 1548,
    "sellDelta": 0.0,
    "costDelta": 1539.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2135,6 +2380,8 @@
    "hlCost": 2898,
    "sellDelta": 0.0,
    "costDelta": 2262.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2153,6 +2400,8 @@
    "hlCost": 1719,
    "sellDelta": 0.0,
    "costDelta": 1661.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2171,6 +2420,8 @@
    "hlCost": 3050,
    "sellDelta": 0.0,
    "costDelta": 2374.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2189,6 +2440,8 @@
    "hlCost": 1719,
    "sellDelta": 0.0,
    "costDelta": 1661.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2207,6 +2460,8 @@
    "hlCost": 3050,
    "sellDelta": 0.0,
    "costDelta": 2374.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2225,6 +2480,8 @@
    "hlCost": 1719,
    "sellDelta": 0.0,
    "costDelta": 1661.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2243,6 +2500,8 @@
    "hlCost": 3050,
    "sellDelta": 0.0,
    "costDelta": 2374.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2261,6 +2520,8 @@
    "hlCost": 1719,
    "sellDelta": 0.0,
    "costDelta": 1661.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2279,6 +2540,8 @@
    "hlCost": 3050,
    "sellDelta": 0.0,
    "costDelta": 2374.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2297,6 +2560,8 @@
    "hlCost": 1132,
    "sellDelta": 0.0,
    "costDelta": 1216.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2315,6 +2580,8 @@
    "hlCost": 2111,
    "sellDelta": 0.0,
    "costDelta": 1740.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2333,6 +2600,8 @@
    "hlCost": 1132,
    "sellDelta": 0.0,
    "costDelta": 1216.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2351,6 +2620,8 @@
    "hlCost": 1790,
    "sellDelta": 0.0,
    "costDelta": 1568.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2369,6 +2640,8 @@
    "hlCost": 1132,
    "sellDelta": 0.0,
    "costDelta": 1216.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2387,6 +2660,8 @@
    "hlCost": 1790,
    "sellDelta": 0.0,
    "costDelta": 1568.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2405,6 +2680,8 @@
    "hlCost": 1132,
    "sellDelta": 0.0,
    "costDelta": 1216.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2423,6 +2700,8 @@
    "hlCost": 2111,
    "sellDelta": 0.0,
    "costDelta": 1740.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2441,6 +2720,8 @@
    "hlCost": 1188,
    "sellDelta": 0.0,
    "costDelta": 1276.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2459,6 +2740,8 @@
    "hlCost": 2288,
    "sellDelta": 0.0,
    "costDelta": 1866.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2477,6 +2760,8 @@
    "hlCost": 1188,
    "sellDelta": 0.0,
    "costDelta": 1276.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2495,6 +2780,8 @@
    "hlCost": 1967,
    "sellDelta": 0.0,
    "costDelta": 1694.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2513,6 +2800,8 @@
    "hlCost": 1188,
    "sellDelta": 0.0,
    "costDelta": 1276.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2531,6 +2820,8 @@
    "hlCost": 1967,
    "sellDelta": 0.0,
    "costDelta": 1694.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2549,6 +2840,8 @@
    "hlCost": 1188,
    "sellDelta": 0.0,
    "costDelta": 1276.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2567,6 +2860,8 @@
    "hlCost": 2288,
    "sellDelta": 0.0,
    "costDelta": 1866.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2585,6 +2880,8 @@
    "hlCost": 1301,
    "sellDelta": 0.0,
    "costDelta": 1367.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2603,6 +2900,8 @@
    "hlCost": 2626,
    "sellDelta": 0.0,
    "costDelta": 2076.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2621,6 +2920,8 @@
    "hlCost": 1301,
    "sellDelta": 0.0,
    "costDelta": 1367.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2639,6 +2940,8 @@
    "hlCost": 2168,
    "sellDelta": 0.0,
    "costDelta": 1832.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2657,6 +2960,8 @@
    "hlCost": 1301,
    "sellDelta": 0.0,
    "costDelta": 1367.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2675,6 +2980,8 @@
    "hlCost": 2168,
    "sellDelta": 0.0,
    "costDelta": 1832.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2693,6 +3000,8 @@
    "hlCost": 1301,
    "sellDelta": 0.0,
    "costDelta": 1367.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2711,6 +3020,8 @@
    "hlCost": 2626,
    "sellDelta": 0.0,
    "costDelta": 2076.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2729,6 +3040,8 @@
    "hlCost": 1557,
    "sellDelta": 0.0,
    "costDelta": 1474.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2747,6 +3060,8 @@
    "hlCost": 2634,
    "sellDelta": 0.0,
    "costDelta": 2051.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2765,6 +3080,8 @@
    "hlCost": 1557,
    "sellDelta": 0.0,
    "costDelta": 1474.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2783,6 +3100,8 @@
    "hlCost": 2313,
    "sellDelta": 0.0,
    "costDelta": 1878.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2801,6 +3120,8 @@
    "hlCost": 1557,
    "sellDelta": 0.0,
    "costDelta": 1474.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2819,6 +3140,8 @@
    "hlCost": 2313,
    "sellDelta": 0.0,
    "costDelta": 1878.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2837,6 +3160,8 @@
    "hlCost": 1557,
    "sellDelta": 0.0,
    "costDelta": 1474.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2855,6 +3180,8 @@
    "hlCost": 2634,
    "sellDelta": 0.0,
    "costDelta": 2051.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2873,6 +3200,8 @@
    "hlCost": 2634,
    "sellDelta": 0.0,
    "costDelta": 2051.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2891,6 +3220,8 @@
    "hlCost": 1678,
    "sellDelta": 0.0,
    "costDelta": 1579.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2909,6 +3240,8 @@
    "hlCost": 2986,
    "sellDelta": 0.0,
    "costDelta": 2279.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2927,6 +3260,8 @@
    "hlCost": 1678,
    "sellDelta": 0.0,
    "costDelta": 1579.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2945,6 +3280,8 @@
    "hlCost": 2529,
    "sellDelta": 0.0,
    "costDelta": 2035.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2963,6 +3300,8 @@
    "hlCost": 1678,
    "sellDelta": 0.0,
    "costDelta": 1579.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2981,6 +3320,8 @@
    "hlCost": 2529,
    "sellDelta": 0.0,
    "costDelta": 2035.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -2999,6 +3340,8 @@
    "hlCost": 1678,
    "sellDelta": 0.0,
    "costDelta": 1579.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3017,6 +3360,8 @@
    "hlCost": 2986,
    "sellDelta": 0.0,
    "costDelta": 2279.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3035,6 +3380,8 @@
    "hlCost": 2986,
    "sellDelta": 0.0,
    "costDelta": 2279.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3053,6 +3400,8 @@
    "hlCost": 1886,
    "sellDelta": 0.0,
    "costDelta": 1709.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3071,6 +3420,8 @@
    "hlCost": 3284,
    "sellDelta": 0.0,
    "costDelta": 2458.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3089,6 +3440,8 @@
    "hlCost": 1886,
    "sellDelta": 0.0,
    "costDelta": 1709.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3107,6 +3460,8 @@
    "hlCost": 2826,
    "sellDelta": 0.0,
    "costDelta": 2214.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3125,6 +3480,8 @@
    "hlCost": 1886,
    "sellDelta": 0.0,
    "costDelta": 1709.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3143,6 +3500,8 @@
    "hlCost": 3284,
    "sellDelta": 0.0,
    "costDelta": 2458.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3161,6 +3520,8 @@
    "hlCost": 1886,
    "sellDelta": 0.0,
    "costDelta": 1709.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3179,6 +3540,8 @@
    "hlCost": 2826,
    "sellDelta": 0.0,
    "costDelta": 2214.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3197,6 +3560,8 @@
    "hlCost": 3284,
    "sellDelta": 0.0,
    "costDelta": 2458.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3215,6 +3580,8 @@
    "hlCost": 2185,
    "sellDelta": 0.0,
    "costDelta": 1910.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3233,6 +3600,8 @@
    "hlCost": 3533,
    "sellDelta": 0.0,
    "costDelta": 2632.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3251,6 +3620,8 @@
    "hlCost": 2185,
    "sellDelta": 0.0,
    "costDelta": 1910.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3269,6 +3640,8 @@
    "hlCost": 3533,
    "sellDelta": 0.0,
    "costDelta": 2632.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3287,6 +3660,8 @@
    "hlCost": 2185,
    "sellDelta": 0.0,
    "costDelta": 1910.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3305,6 +3680,8 @@
    "hlCost": 3533,
    "sellDelta": 0.0,
    "costDelta": 2632.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3323,6 +3700,8 @@
    "hlCost": 2185,
    "sellDelta": 0.0,
    "costDelta": 1910.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3341,6 +3720,8 @@
    "hlCost": 3533,
    "sellDelta": 0.0,
    "costDelta": 2632.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3359,6 +3740,8 @@
    "hlCost": 3533,
    "sellDelta": 0.0,
    "costDelta": 2632.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3377,6 +3760,8 @@
    "hlCost": 2378,
    "sellDelta": 0.0,
    "costDelta": 2043.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3395,6 +3780,8 @@
    "hlCost": 3855,
    "sellDelta": 0.0,
    "costDelta": 2835.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3413,6 +3800,8 @@
    "hlCost": 2378,
    "sellDelta": 0.0,
    "costDelta": 2043.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3431,6 +3820,8 @@
    "hlCost": 3855,
    "sellDelta": 0.0,
    "costDelta": 2835.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3449,6 +3840,8 @@
    "hlCost": 2378,
    "sellDelta": 0.0,
    "costDelta": 2043.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3467,6 +3860,8 @@
    "hlCost": 3855,
    "sellDelta": 0.0,
    "costDelta": 2835.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3485,6 +3880,8 @@
    "hlCost": 2378,
    "sellDelta": 0.0,
    "costDelta": 2043.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3503,6 +3900,8 @@
    "hlCost": 3855,
    "sellDelta": 0.0,
    "costDelta": 2835.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3521,6 +3920,8 @@
    "hlCost": 3855,
    "sellDelta": 0.0,
    "costDelta": 2835.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3539,6 +3940,8 @@
    "hlCost": 2570,
    "sellDelta": 0.0,
    "costDelta": 2167.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3557,6 +3960,8 @@
    "hlCost": 4190,
    "sellDelta": 0.0,
    "costDelta": 3034.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3575,6 +3980,8 @@
    "hlCost": 2570,
    "sellDelta": 0.0,
    "costDelta": 2167.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3593,6 +4000,8 @@
    "hlCost": 4190,
    "sellDelta": 0.0,
    "costDelta": 3034.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3611,6 +4020,8 @@
    "hlCost": 2570,
    "sellDelta": 0.0,
    "costDelta": 2167.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3629,6 +4040,8 @@
    "hlCost": 4190,
    "sellDelta": 0.0,
    "costDelta": 3034.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3647,6 +4060,8 @@
    "hlCost": 2570,
    "sellDelta": 0.0,
    "costDelta": 2167.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3665,6 +4080,8 @@
    "hlCost": 4190,
    "sellDelta": 0.0,
    "costDelta": 3034.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3683,6 +4100,8 @@
    "hlCost": 4190,
    "sellDelta": 0.0,
    "costDelta": 3034.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3701,6 +4120,8 @@
    "hlCost": 4472,
    "sellDelta": 0.0,
    "costDelta": 3205.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3719,6 +4140,8 @@
    "hlCost": 6118,
    "sellDelta": 0.0,
    "costDelta": 4087.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3737,6 +4160,8 @@
    "hlCost": 4472,
    "sellDelta": 0.0,
    "costDelta": 3205.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3755,6 +4180,8 @@
    "hlCost": 6118,
    "sellDelta": 0.0,
    "costDelta": 4087.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3773,6 +4200,8 @@
    "hlCost": 4472,
    "sellDelta": 0.0,
    "costDelta": 3205.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3791,6 +4220,8 @@
    "hlCost": 6118,
    "sellDelta": 0.0,
    "costDelta": 4087.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3809,6 +4240,8 @@
    "hlCost": 4472,
    "sellDelta": 0.0,
    "costDelta": 3205.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3827,6 +4260,8 @@
    "hlCost": 6118,
    "sellDelta": 0.0,
    "costDelta": 4087.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3845,6 +4280,8 @@
    "hlCost": 6118,
    "sellDelta": 0.0,
    "costDelta": 4087.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3863,6 +4300,8 @@
    "hlCost": 5073,
    "sellDelta": 0.0,
    "costDelta": 3567.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3881,6 +4320,8 @@
    "hlCost": 6799,
    "sellDelta": 0.0,
    "costDelta": 4492.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3899,6 +4340,8 @@
    "hlCost": 5073,
    "sellDelta": 0.0,
    "costDelta": 3567.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3917,6 +4360,8 @@
    "hlCost": 6799,
    "sellDelta": 0.0,
    "costDelta": 4492.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3935,6 +4380,8 @@
    "hlCost": 5073,
    "sellDelta": 0.0,
    "costDelta": 3567.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3953,6 +4400,8 @@
    "hlCost": 6799,
    "sellDelta": 0.0,
    "costDelta": 4492.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3971,6 +4420,8 @@
    "hlCost": 5073,
    "sellDelta": 0.0,
    "costDelta": 3567.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -3989,6 +4440,8 @@
    "hlCost": 6799,
    "sellDelta": 0.0,
    "costDelta": 4492.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4007,6 +4460,8 @@
    "hlCost": 6799,
    "sellDelta": 0.0,
    "costDelta": 4492.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4025,6 +4480,8 @@
    "hlCost": 5482,
    "sellDelta": 0.0,
    "costDelta": 3836.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4043,6 +4500,8 @@
    "hlCost": 7682,
    "sellDelta": 0.0,
    "costDelta": 5015.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4061,6 +4520,8 @@
    "hlCost": 5482,
    "sellDelta": 0.0,
    "costDelta": 3836.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4079,6 +4540,8 @@
    "hlCost": 7682,
    "sellDelta": 0.0,
    "costDelta": 5015.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4097,6 +4560,8 @@
    "hlCost": 5482,
    "sellDelta": 0.0,
    "costDelta": 3836.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4115,6 +4580,8 @@
    "hlCost": 7682,
    "sellDelta": 0.0,
    "costDelta": 5015.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4133,6 +4600,8 @@
    "hlCost": 5482,
    "sellDelta": 0.0,
    "costDelta": 3836.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4151,6 +4620,8 @@
    "hlCost": 7682,
    "sellDelta": 0.0,
    "costDelta": 5015.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4169,6 +4640,8 @@
    "hlCost": 7682,
    "sellDelta": 0.0,
    "costDelta": 5015.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4187,6 +4660,8 @@
    "hlCost": 1886,
    "sellDelta": 0.0,
    "costDelta": 1709.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4205,6 +4680,8 @@
    "hlCost": 3284,
    "sellDelta": 0.0,
    "costDelta": 2458.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4223,6 +4700,8 @@
    "hlCost": 1886,
    "sellDelta": 0.0,
    "costDelta": 1709.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4241,6 +4720,8 @@
    "hlCost": 2826,
    "sellDelta": 0.0,
    "costDelta": 2214.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4259,6 +4740,8 @@
    "hlCost": 1886,
    "sellDelta": 0.0,
    "costDelta": 1709.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4277,6 +4760,8 @@
    "hlCost": 2826,
    "sellDelta": 0.0,
    "costDelta": 2214.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4295,6 +4780,8 @@
    "hlCost": 1886,
    "sellDelta": 0.0,
    "costDelta": 1709.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4313,6 +4800,8 @@
    "hlCost": 3284,
    "sellDelta": 0.0,
    "costDelta": 2458.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4331,6 +4820,8 @@
    "hlCost": 3284,
    "sellDelta": 0.0,
    "costDelta": 2458.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4349,6 +4840,8 @@
    "hlCost": 2185,
    "sellDelta": 0.0,
    "costDelta": 1910.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4367,6 +4860,8 @@
    "hlCost": 3533,
    "sellDelta": 0.0,
    "costDelta": 2632.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4385,6 +4880,8 @@
    "hlCost": 2185,
    "sellDelta": 0.0,
    "costDelta": 1910.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4403,6 +4900,8 @@
    "hlCost": 3533,
    "sellDelta": 0.0,
    "costDelta": 2632.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4421,6 +4920,8 @@
    "hlCost": 2185,
    "sellDelta": 0.0,
    "costDelta": 1910.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4439,6 +4940,8 @@
    "hlCost": 3533,
    "sellDelta": 0.0,
    "costDelta": 2632.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4457,6 +4960,8 @@
    "hlCost": 2185,
    "sellDelta": 0.0,
    "costDelta": 1910.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4475,6 +4980,8 @@
    "hlCost": 3533,
    "sellDelta": 0.0,
    "costDelta": 2632.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4493,6 +5000,8 @@
    "hlCost": 3533,
    "sellDelta": 0.0,
    "costDelta": 2632.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4511,6 +5020,8 @@
    "hlCost": 2378,
    "sellDelta": 0.0,
    "costDelta": 2043.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4529,6 +5040,8 @@
    "hlCost": 3855,
    "sellDelta": 0.0,
    "costDelta": 2835.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4547,6 +5060,8 @@
    "hlCost": 2378,
    "sellDelta": 0.0,
    "costDelta": 2043.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4565,6 +5080,8 @@
    "hlCost": 3855,
    "sellDelta": 0.0,
    "costDelta": 2835.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4583,6 +5100,8 @@
    "hlCost": 3855,
    "sellDelta": 0.0,
    "costDelta": 2835.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4601,6 +5120,8 @@
    "hlCost": 2378,
    "sellDelta": 0.0,
    "costDelta": 2043.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4619,6 +5140,8 @@
    "hlCost": 2378,
    "sellDelta": 0.0,
    "costDelta": 2043.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4637,6 +5160,8 @@
    "hlCost": 3855,
    "sellDelta": 0.0,
    "costDelta": 2835.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4655,6 +5180,8 @@
    "hlCost": 3855,
    "sellDelta": 0.0,
    "costDelta": 2835.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4673,6 +5200,8 @@
    "hlCost": 2570,
    "sellDelta": 0.0,
    "costDelta": 2167.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4691,6 +5220,8 @@
    "hlCost": 4190,
    "sellDelta": 0.0,
    "costDelta": 3034.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4709,6 +5240,8 @@
    "hlCost": 2570,
    "sellDelta": 0.0,
    "costDelta": 2167.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4727,6 +5260,8 @@
    "hlCost": 4190,
    "sellDelta": 0.0,
    "costDelta": 3034.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4745,6 +5280,8 @@
    "hlCost": 2570,
    "sellDelta": 0.0,
    "costDelta": 2167.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4763,6 +5300,8 @@
    "hlCost": 4190,
    "sellDelta": 0.0,
    "costDelta": 3034.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4781,6 +5320,8 @@
    "hlCost": 2570,
    "sellDelta": 0.0,
    "costDelta": 2167.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4799,6 +5340,8 @@
    "hlCost": 4190,
    "sellDelta": 0.0,
    "costDelta": 3034.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4817,6 +5360,8 @@
    "hlCost": 4190,
    "sellDelta": 0.0,
    "costDelta": 3034.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4835,6 +5380,8 @@
    "hlCost": 1992,
    "sellDelta": 0.0,
    "costDelta": 1746.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4853,6 +5400,8 @@
    "hlCost": 3299,
    "sellDelta": 0.0,
    "costDelta": 2446.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4871,6 +5420,8 @@
    "hlCost": 1992,
    "sellDelta": 0.0,
    "costDelta": 1746.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4889,6 +5440,8 @@
    "hlCost": 2842,
    "sellDelta": 0.0,
    "costDelta": 2202.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4907,6 +5460,8 @@
    "hlCost": 1992,
    "sellDelta": 0.0,
    "costDelta": 1746.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4925,6 +5480,8 @@
    "hlCost": 2842,
    "sellDelta": 0.0,
    "costDelta": 2202.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4943,6 +5500,8 @@
    "hlCost": 1992,
    "sellDelta": 0.0,
    "costDelta": 1746.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4961,6 +5520,8 @@
    "hlCost": 3299,
    "sellDelta": 0.0,
    "costDelta": 2446.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4979,6 +5540,8 @@
    "hlCost": 3299,
    "sellDelta": 0.0,
    "costDelta": 2446.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -4997,6 +5560,8 @@
    "hlCost": 2200,
    "sellDelta": 0.0,
    "costDelta": 1878.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5015,6 +5580,8 @@
    "hlCost": 3597,
    "sellDelta": 0.0,
    "costDelta": 2627.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5033,6 +5600,8 @@
    "hlCost": 2200,
    "sellDelta": 0.0,
    "costDelta": 1878.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5051,6 +5620,8 @@
    "hlCost": 3140,
    "sellDelta": 0.0,
    "costDelta": 2382.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5069,6 +5640,8 @@
    "hlCost": 2200,
    "sellDelta": 0.0,
    "costDelta": 1878.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5087,6 +5660,8 @@
    "hlCost": 3140,
    "sellDelta": 0.0,
    "costDelta": 2382.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5105,6 +5680,8 @@
    "hlCost": 2200,
    "sellDelta": 0.0,
    "costDelta": 1878.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5123,6 +5700,8 @@
    "hlCost": 3597,
    "sellDelta": 0.0,
    "costDelta": 2627.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5141,6 +5720,8 @@
    "hlCost": 3597,
    "sellDelta": 0.0,
    "costDelta": 2627.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5159,6 +5740,8 @@
    "hlCost": 2497,
    "sellDelta": 0.0,
    "costDelta": 2077.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5177,6 +5760,8 @@
    "hlCost": 3845,
    "sellDelta": 0.0,
    "costDelta": 2799.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5195,6 +5780,8 @@
    "hlCost": 2497,
    "sellDelta": 0.0,
    "costDelta": 2077.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5213,6 +5800,8 @@
    "hlCost": 3845,
    "sellDelta": 0.0,
    "costDelta": 2799.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5231,6 +5820,8 @@
    "hlCost": 2497,
    "sellDelta": 0.0,
    "costDelta": 2077.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5249,6 +5840,8 @@
    "hlCost": 3845,
    "sellDelta": 0.0,
    "costDelta": 2799.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5267,6 +5860,8 @@
    "hlCost": 2497,
    "sellDelta": 0.0,
    "costDelta": 2077.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5285,6 +5880,8 @@
    "hlCost": 3845,
    "sellDelta": 0.0,
    "costDelta": 2799.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5303,6 +5900,8 @@
    "hlCost": 3845,
    "sellDelta": 0.0,
    "costDelta": 2799.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5321,6 +5920,8 @@
    "hlCost": 7235,
    "sellDelta": 0.0,
    "costDelta": 7459.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5339,6 +5940,8 @@
    "hlCost": 7235,
    "sellDelta": 0.0,
    "costDelta": 7459.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5357,6 +5960,8 @@
    "hlCost": 7235,
    "sellDelta": 0.0,
    "costDelta": 7459.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5375,6 +5980,8 @@
    "hlCost": 8233,
    "sellDelta": 0.0,
    "costDelta": 10475.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5393,6 +6000,8 @@
    "hlCost": 8233,
    "sellDelta": 0.0,
    "costDelta": 10475.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5411,6 +6020,8 @@
    "hlCost": 8233,
    "sellDelta": 0.0,
    "costDelta": 10475.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5429,6 +6040,8 @@
    "hlCost": 11807,
    "sellDelta": 0.0,
    "costDelta": 13397.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5447,6 +6060,8 @@
    "hlCost": 4919,
    "sellDelta": 0.0,
    "costDelta": 3585.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5465,6 +6080,8 @@
    "hlCost": 6646,
    "sellDelta": 0.0,
    "costDelta": 4509.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5483,6 +6100,8 @@
    "hlCost": 4919,
    "sellDelta": 0.0,
    "costDelta": 3585.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5501,6 +6120,8 @@
    "hlCost": 6646,
    "sellDelta": 0.0,
    "costDelta": 4509.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5519,6 +6140,8 @@
    "hlCost": 5335,
    "sellDelta": 0.0,
    "costDelta": 3807.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5537,6 +6160,8 @@
    "hlCost": 7288,
    "sellDelta": 0.0,
    "costDelta": 4854.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5555,6 +6180,8 @@
    "hlCost": 5335,
    "sellDelta": 0.0,
    "costDelta": 3807.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5573,6 +6200,8 @@
    "hlCost": 7288,
    "sellDelta": 0.0,
    "costDelta": 4854.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5591,6 +6220,8 @@
    "hlCost": 4919,
    "sellDelta": 0.0,
    "costDelta": 3585.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5609,6 +6240,8 @@
    "hlCost": 6646,
    "sellDelta": 0.0,
    "costDelta": 4509.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5627,6 +6260,8 @@
    "hlCost": 5330,
    "sellDelta": 0.0,
    "costDelta": 3895.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5645,6 +6280,8 @@
    "hlCost": 7530,
    "sellDelta": 0.0,
    "costDelta": 5074.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5663,6 +6300,8 @@
    "hlCost": 5330,
    "sellDelta": 0.0,
    "costDelta": 3895.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5681,6 +6320,8 @@
    "hlCost": 7530,
    "sellDelta": 0.0,
    "costDelta": 5074.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5699,6 +6340,8 @@
    "hlCost": 5330,
    "sellDelta": 0.0,
    "costDelta": 3895.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5717,6 +6360,8 @@
    "hlCost": 7530,
    "sellDelta": 0.0,
    "costDelta": 5074.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5735,6 +6380,8 @@
    "hlCost": 5330,
    "sellDelta": 0.0,
    "costDelta": 3895.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5753,6 +6400,8 @@
    "hlCost": 7530,
    "sellDelta": 0.0,
    "costDelta": 5074.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5771,6 +6420,8 @@
    "hlCost": 5330,
    "sellDelta": 0.0,
    "costDelta": 3895.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5789,6 +6440,8 @@
    "hlCost": 7530,
    "sellDelta": 0.0,
    "costDelta": 5074.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5807,6 +6460,8 @@
    "hlCost": 7071,
    "sellDelta": 0.0,
    "costDelta": 4937.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5825,6 +6480,8 @@
    "hlCost": 9616,
    "sellDelta": 0.0,
    "costDelta": 6301.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5843,6 +6500,8 @@
    "hlCost": 7071,
    "sellDelta": 0.0,
    "costDelta": 4937.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5861,6 +6520,8 @@
    "hlCost": 9616,
    "sellDelta": 0.0,
    "costDelta": 6301.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5879,6 +6540,8 @@
    "hlCost": 7071,
    "sellDelta": 0.0,
    "costDelta": 4937.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5897,6 +6560,8 @@
    "hlCost": 9616,
    "sellDelta": 0.0,
    "costDelta": 6301.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5915,6 +6580,8 @@
    "hlCost": 7071,
    "sellDelta": 0.0,
    "costDelta": 4937.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5933,6 +6600,8 @@
    "hlCost": 9616,
    "sellDelta": 0.0,
    "costDelta": 6301.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5951,6 +6620,8 @@
    "hlCost": 7071,
    "sellDelta": 0.0,
    "costDelta": 4937.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5969,6 +6640,8 @@
    "hlCost": 9616,
    "sellDelta": 0.0,
    "costDelta": 6301.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -5987,6 +6660,8 @@
    "hlCost": 7545,
    "sellDelta": 0.0,
    "costDelta": 5292.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6005,6 +6680,8 @@
    "hlCost": 10418,
    "sellDelta": 0.0,
    "costDelta": 6830.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6023,6 +6700,8 @@
    "hlCost": 7545,
    "sellDelta": 0.0,
    "costDelta": 5292.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6041,6 +6720,8 @@
    "hlCost": 10418,
    "sellDelta": 0.0,
    "costDelta": 6830.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6059,6 +6740,8 @@
    "hlCost": 7545,
    "sellDelta": 0.0,
    "costDelta": 5292.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6077,6 +6760,8 @@
    "hlCost": 10418,
    "sellDelta": 0.0,
    "costDelta": 6830.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6095,6 +6780,8 @@
    "hlCost": 7545,
    "sellDelta": 0.0,
    "costDelta": 5292.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6113,6 +6800,8 @@
    "hlCost": 10418,
    "sellDelta": 0.0,
    "costDelta": 6830.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6131,6 +6820,8 @@
    "hlCost": 7545,
    "sellDelta": 0.0,
    "costDelta": 5292.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6149,6 +6840,8 @@
    "hlCost": 10418,
    "sellDelta": 0.0,
    "costDelta": 6830.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6167,6 +6860,8 @@
    "hlCost": 8741,
    "sellDelta": 0.0,
    "costDelta": 5933.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6185,6 +6880,8 @@
    "hlCost": 12124,
    "sellDelta": 0.0,
    "costDelta": 7744.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6203,6 +6900,8 @@
    "hlCost": 8741,
    "sellDelta": 0.0,
    "costDelta": 5933.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6221,6 +6920,8 @@
    "hlCost": 12124,
    "sellDelta": 0.0,
    "costDelta": 7744.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6239,6 +6940,8 @@
    "hlCost": 8741,
    "sellDelta": 0.0,
    "costDelta": 5933.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6257,6 +6960,8 @@
    "hlCost": 12124,
    "sellDelta": 0.0,
    "costDelta": 7744.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6275,6 +6980,8 @@
    "hlCost": 8741,
    "sellDelta": 0.0,
    "costDelta": 5933.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6293,6 +7000,8 @@
    "hlCost": 12124,
    "sellDelta": 0.0,
    "costDelta": 7744.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6311,6 +7020,8 @@
    "hlCost": 8741,
    "sellDelta": 0.0,
    "costDelta": 5933.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6329,6 +7040,8 @@
    "hlCost": 12124,
    "sellDelta": 0.0,
    "costDelta": 7744.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6347,6 +7060,8 @@
    "hlCost": 10426,
    "sellDelta": 0.0,
    "costDelta": 7841.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6365,6 +7080,8 @@
    "hlCost": 14555,
    "sellDelta": 0.0,
    "costDelta": 10053.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6383,6 +7100,8 @@
    "hlCost": 10426,
    "sellDelta": 0.0,
    "costDelta": 7841.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6401,6 +7120,8 @@
    "hlCost": 14555,
    "sellDelta": 0.0,
    "costDelta": 10053.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6419,6 +7140,8 @@
    "hlCost": 10426,
    "sellDelta": 0.0,
    "costDelta": 7841.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6437,6 +7160,8 @@
    "hlCost": 14555,
    "sellDelta": 0.0,
    "costDelta": 10053.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6455,6 +7180,8 @@
    "hlCost": 10426,
    "sellDelta": 0.0,
    "costDelta": 7841.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6473,6 +7200,8 @@
    "hlCost": 14555,
    "sellDelta": 0.0,
    "costDelta": 10053.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6491,6 +7220,8 @@
    "hlCost": 10426,
    "sellDelta": 0.0,
    "costDelta": 7841.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6509,6 +7240,8 @@
    "hlCost": 14555,
    "sellDelta": 0.0,
    "costDelta": 10053.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6527,6 +7260,8 @@
    "hlCost": 11807,
    "sellDelta": 0.0,
    "costDelta": 8581.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6545,6 +7280,8 @@
    "hlCost": 16054,
    "sellDelta": 0.0,
    "costDelta": 10856.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6563,6 +7300,8 @@
    "hlCost": 11807,
    "sellDelta": 0.0,
    "costDelta": 8581.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6581,6 +7320,8 @@
    "hlCost": 16054,
    "sellDelta": 0.0,
    "costDelta": 10856.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6599,6 +7340,8 @@
    "hlCost": 11807,
    "sellDelta": 0.0,
    "costDelta": 8581.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6617,6 +7360,8 @@
    "hlCost": 16054,
    "sellDelta": 0.0,
    "costDelta": 10856.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6635,6 +7380,8 @@
    "hlCost": 11807,
    "sellDelta": 0.0,
    "costDelta": 8581.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6653,6 +7400,8 @@
    "hlCost": 16054,
    "sellDelta": 0.0,
    "costDelta": 10856.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6671,6 +7420,8 @@
    "hlCost": 11807,
    "sellDelta": 0.0,
    "costDelta": 8581.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6689,6 +7440,8 @@
    "hlCost": 16054,
    "sellDelta": 0.0,
    "costDelta": 10856.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6707,6 +7460,8 @@
    "hlCost": 11807,
    "sellDelta": 0.0,
    "costDelta": 8581.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6725,6 +7480,8 @@
    "hlCost": 16054,
    "sellDelta": 0.0,
    "costDelta": 10856.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6743,6 +7500,8 @@
    "hlCost": 11807,
    "sellDelta": 0.0,
    "costDelta": 8581.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6761,6 +7520,8 @@
    "hlCost": 16054,
    "sellDelta": 0.0,
    "costDelta": 10856.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6779,6 +7540,8 @@
    "hlCost": 11807,
    "sellDelta": 0.0,
    "costDelta": 8581.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6797,6 +7560,8 @@
    "hlCost": 16054,
    "sellDelta": 0.0,
    "costDelta": 10856.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6815,6 +7580,8 @@
    "hlCost": 11807,
    "sellDelta": 0.0,
    "costDelta": 8581.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6833,6 +7600,8 @@
    "hlCost": 16054,
    "sellDelta": 0.0,
    "costDelta": 10856.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6851,6 +7620,8 @@
    "hlCost": 11807,
    "sellDelta": 0.0,
    "costDelta": 8581.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6869,6 +7640,8 @@
    "hlCost": 16054,
    "sellDelta": 0.0,
    "costDelta": 10856.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6887,6 +7660,8 @@
    "hlCost": 15536,
    "sellDelta": 0.0,
    "costDelta": 10718.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6905,6 +7680,8 @@
    "hlCost": 19604,
    "sellDelta": 0.0,
    "costDelta": 12897.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6923,6 +7700,8 @@
    "hlCost": 15536,
    "sellDelta": 0.0,
    "costDelta": 10718.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6941,6 +7720,8 @@
    "hlCost": 19604,
    "sellDelta": 0.0,
    "costDelta": 12897.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6959,6 +7740,8 @@
    "hlCost": 15536,
    "sellDelta": 0.0,
    "costDelta": 10718.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6977,6 +7760,8 @@
    "hlCost": 19604,
    "sellDelta": 0.0,
    "costDelta": 12897.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -6995,6 +7780,8 @@
    "hlCost": 15536,
    "sellDelta": 0.0,
    "costDelta": 10718.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7013,6 +7800,8 @@
    "hlCost": 19604,
    "sellDelta": 0.0,
    "costDelta": 12897.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7031,6 +7820,8 @@
    "hlCost": 15536,
    "sellDelta": 0.0,
    "costDelta": 10718.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7049,6 +7840,8 @@
    "hlCost": 19604,
    "sellDelta": 0.0,
    "costDelta": 12897.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7067,6 +7860,8 @@
    "hlCost": 15536,
    "sellDelta": 0.0,
    "costDelta": 10718.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7085,6 +7880,8 @@
    "hlCost": 19604,
    "sellDelta": 0.0,
    "costDelta": 12897.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7103,6 +7900,8 @@
    "hlCost": 15536,
    "sellDelta": 0.0,
    "costDelta": 10718.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7121,6 +7920,8 @@
    "hlCost": 19604,
    "sellDelta": 0.0,
    "costDelta": 12897.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7139,6 +7940,8 @@
    "hlCost": 15536,
    "sellDelta": 0.0,
    "costDelta": 10718.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7157,6 +7960,8 @@
    "hlCost": 19604,
    "sellDelta": 0.0,
    "costDelta": 12897.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7175,6 +7980,8 @@
    "hlCost": 15536,
    "sellDelta": 0.0,
    "costDelta": 10718.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7193,6 +8000,8 @@
    "hlCost": 19604,
    "sellDelta": 0.0,
    "costDelta": 12897.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7211,6 +8020,8 @@
    "hlCost": 15536,
    "sellDelta": 0.0,
    "costDelta": 10718.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7229,6 +8040,8 @@
    "hlCost": 19604,
    "sellDelta": 0.0,
    "costDelta": 12897.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7247,6 +8060,8 @@
    "hlCost": 21323,
    "sellDelta": 0.0,
    "costDelta": 15288.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7265,6 +8080,8 @@
    "hlCost": 21323,
    "sellDelta": 0.0,
    "costDelta": 15288.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7283,6 +8100,8 @@
    "hlCost": 21323,
    "sellDelta": 0.0,
    "costDelta": 15288.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7301,6 +8120,8 @@
    "hlCost": 21323,
    "sellDelta": 0.0,
    "costDelta": 15288.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7319,6 +8140,8 @@
    "hlCost": 21323,
    "sellDelta": 0.0,
    "costDelta": 15288.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7337,6 +8160,8 @@
    "hlCost": 21323,
    "sellDelta": 0.0,
    "costDelta": 14308.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7355,6 +8180,8 @@
    "hlCost": 21323,
    "sellDelta": 0.0,
    "costDelta": 14308.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7373,6 +8200,8 @@
    "hlCost": 21323,
    "sellDelta": 0.0,
    "costDelta": 14308.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7391,6 +8220,8 @@
    "hlCost": 21323,
    "sellDelta": 0.0,
    "costDelta": 14308.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7409,6 +8240,8 @@
    "hlCost": 21323,
    "sellDelta": 0.0,
    "costDelta": 14308.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7427,6 +8260,8 @@
    "hlCost": 23403,
    "sellDelta": 0.0,
    "costDelta": 15972.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7445,6 +8280,8 @@
    "hlCost": 23403,
    "sellDelta": 0.0,
    "costDelta": 15972.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7463,6 +8300,8 @@
    "hlCost": 23403,
    "sellDelta": 0.0,
    "costDelta": 15972.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7481,6 +8320,8 @@
    "hlCost": 23403,
    "sellDelta": 0.0,
    "costDelta": 15972.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7499,6 +8340,8 @@
    "hlCost": 23403,
    "sellDelta": 0.0,
    "costDelta": 15972.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7517,6 +8360,8 @@
    "hlCost": 23403,
    "sellDelta": 0.0,
    "costDelta": 15972.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7535,6 +8380,8 @@
    "hlCost": 23403,
    "sellDelta": 0.0,
    "costDelta": 15972.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7553,6 +8400,8 @@
    "hlCost": 23403,
    "sellDelta": 0.0,
    "costDelta": 15972.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7571,6 +8420,8 @@
    "hlCost": 23403,
    "sellDelta": 0.0,
    "costDelta": 15972.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7589,6 +8440,8 @@
    "hlCost": 23403,
    "sellDelta": 0.0,
    "costDelta": 15972.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7607,6 +8460,8 @@
    "hlCost": 31138,
    "sellDelta": 0.0,
    "costDelta": 20446.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7625,6 +8480,8 @@
    "hlCost": 31138,
    "sellDelta": 0.0,
    "costDelta": 20446.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7643,6 +8500,8 @@
    "hlCost": 31138,
    "sellDelta": 0.0,
    "costDelta": 20446.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7661,6 +8520,8 @@
    "hlCost": 31138,
    "sellDelta": 0.0,
    "costDelta": 20446.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7679,6 +8540,8 @@
    "hlCost": 31138,
    "sellDelta": 0.0,
    "costDelta": 20446.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7697,6 +8560,8 @@
    "hlCost": 31138,
    "sellDelta": 0.0,
    "costDelta": 20446.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7715,6 +8580,8 @@
    "hlCost": 31138,
    "sellDelta": 0.0,
    "costDelta": 20446.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7733,6 +8600,8 @@
    "hlCost": 31138,
    "sellDelta": 0.0,
    "costDelta": 20446.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7751,6 +8620,8 @@
    "hlCost": 31138,
    "sellDelta": 0.0,
    "costDelta": 20446.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7769,6 +8640,8 @@
    "hlCost": 31138,
    "sellDelta": 0.0,
    "costDelta": 20446.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7787,6 +8660,8 @@
    "hlCost": 3501,
    "sellDelta": 0.0,
    "costDelta": 5596.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7805,6 +8680,8 @@
    "hlCost": 3501,
    "sellDelta": 0.0,
    "costDelta": 5596.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7823,6 +8700,8 @@
    "hlCost": 3501,
    "sellDelta": 0.0,
    "costDelta": 5596.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7841,6 +8720,8 @@
    "hlCost": 3501,
    "sellDelta": 0.0,
    "costDelta": 5596.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7859,6 +8740,8 @@
    "hlCost": 3501,
    "sellDelta": 0.0,
    "costDelta": 5596.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7877,6 +8760,8 @@
    "hlCost": 3501,
    "sellDelta": 0.0,
    "costDelta": 5596.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7895,6 +8780,8 @@
    "hlCost": 3501,
    "sellDelta": 0.0,
    "costDelta": 5596.14,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7913,6 +8800,8 @@
    "hlCost": 5296,
    "sellDelta": 0.0,
    "costDelta": 6556.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7931,6 +8820,8 @@
    "hlCost": 4839,
    "sellDelta": 0.0,
    "costDelta": 6312.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7949,6 +8840,8 @@
    "hlCost": 4839,
    "sellDelta": 0.0,
    "costDelta": 6312.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7967,6 +8860,8 @@
    "hlCost": 5296,
    "sellDelta": 0.0,
    "costDelta": 6556.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -7985,6 +8880,8 @@
    "hlCost": 5296,
    "sellDelta": 0.0,
    "costDelta": 6556.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8003,6 +8900,8 @@
    "hlCost": 5296,
    "sellDelta": 0.0,
    "costDelta": 6556.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8021,6 +8920,8 @@
    "hlCost": 5296,
    "sellDelta": 0.0,
    "costDelta": 6556.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8039,6 +8940,8 @@
    "hlCost": 5296,
    "sellDelta": 0.0,
    "costDelta": 6556.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8057,6 +8960,8 @@
    "hlCost": 3909,
    "sellDelta": 0.0,
    "costDelta": 5892.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8075,6 +8980,8 @@
    "hlCost": 3909,
    "sellDelta": 0.0,
    "costDelta": 5892.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8093,6 +9000,8 @@
    "hlCost": 3909,
    "sellDelta": 0.0,
    "costDelta": 5892.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8111,6 +9020,8 @@
    "hlCost": 3909,
    "sellDelta": 0.0,
    "costDelta": 5892.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8129,6 +9040,8 @@
    "hlCost": 3909,
    "sellDelta": 0.0,
    "costDelta": 5892.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8147,6 +9060,8 @@
    "hlCost": 3909,
    "sellDelta": 0.0,
    "costDelta": 5892.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8165,6 +9080,8 @@
    "hlCost": 3909,
    "sellDelta": 0.0,
    "costDelta": 5892.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8183,6 +9100,8 @@
    "hlCost": 5353,
    "sellDelta": 0.0,
    "costDelta": 6665.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8201,6 +9120,8 @@
    "hlCost": 5353,
    "sellDelta": 0.0,
    "costDelta": 6665.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8219,6 +9140,8 @@
    "hlCost": 5353,
    "sellDelta": 0.0,
    "costDelta": 6665.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8237,6 +9160,8 @@
    "hlCost": 5353,
    "sellDelta": 0.0,
    "costDelta": 6665.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8255,6 +9180,8 @@
    "hlCost": 5353,
    "sellDelta": 0.0,
    "costDelta": 6665.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8273,6 +9200,8 @@
    "hlCost": 5353,
    "sellDelta": 0.0,
    "costDelta": 6665.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8291,6 +9220,8 @@
    "hlCost": 5353,
    "sellDelta": 0.0,
    "costDelta": 6665.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8309,6 +9240,8 @@
    "hlCost": 5353,
    "sellDelta": 0.0,
    "costDelta": 6665.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8327,6 +9260,8 @@
    "hlCost": 4326,
    "sellDelta": 0.0,
    "costDelta": 6145.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8345,6 +9280,8 @@
    "hlCost": 4326,
    "sellDelta": 0.0,
    "costDelta": 6145.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8363,6 +9300,8 @@
    "hlCost": 4326,
    "sellDelta": 0.0,
    "costDelta": 6145.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8381,6 +9320,8 @@
    "hlCost": 4326,
    "sellDelta": 0.0,
    "costDelta": 6145.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8399,6 +9340,8 @@
    "hlCost": 4326,
    "sellDelta": 0.0,
    "costDelta": 6145.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8417,6 +9360,8 @@
    "hlCost": 4326,
    "sellDelta": 0.0,
    "costDelta": 6145.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8435,6 +9380,8 @@
    "hlCost": 4326,
    "sellDelta": 0.0,
    "costDelta": 6145.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8453,6 +9400,8 @@
    "hlCost": 5875,
    "sellDelta": 0.0,
    "costDelta": 6976.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8471,6 +9420,8 @@
    "hlCost": 5875,
    "sellDelta": 0.0,
    "costDelta": 6976.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8489,6 +9440,8 @@
    "hlCost": 5875,
    "sellDelta": 0.0,
    "costDelta": 6976.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8507,6 +9460,8 @@
    "hlCost": 5875,
    "sellDelta": 0.0,
    "costDelta": 6976.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8525,6 +9480,8 @@
    "hlCost": 5875,
    "sellDelta": 0.0,
    "costDelta": 6976.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8543,6 +9500,8 @@
    "hlCost": 5875,
    "sellDelta": 0.0,
    "costDelta": 6976.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8561,6 +9520,8 @@
    "hlCost": 5875,
    "sellDelta": 0.0,
    "costDelta": 6976.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8579,6 +9540,8 @@
    "hlCost": 5875,
    "sellDelta": 0.0,
    "costDelta": 6976.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8597,6 +9560,8 @@
    "hlCost": 6295,
    "sellDelta": 0.0,
    "costDelta": 6845.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8615,6 +9580,8 @@
    "hlCost": 6295,
    "sellDelta": 0.0,
    "costDelta": 6845.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8633,6 +9600,8 @@
    "hlCost": 6295,
    "sellDelta": 0.0,
    "costDelta": 6845.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8651,6 +9620,8 @@
    "hlCost": 6295,
    "sellDelta": 0.0,
    "costDelta": 6845.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8669,6 +9640,8 @@
    "hlCost": 6295,
    "sellDelta": 0.0,
    "costDelta": 6845.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8687,6 +9660,8 @@
    "hlCost": 6295,
    "sellDelta": 0.0,
    "costDelta": 6845.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8705,6 +9680,8 @@
    "hlCost": 6295,
    "sellDelta": 0.0,
    "costDelta": 6845.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8723,6 +9700,8 @@
    "hlCost": 7803,
    "sellDelta": 0.0,
    "costDelta": 7652.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8741,6 +9720,8 @@
    "hlCost": 7803,
    "sellDelta": 0.0,
    "costDelta": 7652.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8759,6 +9740,8 @@
    "hlCost": 7803,
    "sellDelta": 0.0,
    "costDelta": 7652.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8777,6 +9760,8 @@
    "hlCost": 7803,
    "sellDelta": 0.0,
    "costDelta": 7652.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8795,6 +9780,8 @@
    "hlCost": 7803,
    "sellDelta": 0.0,
    "costDelta": 7652.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8813,6 +9800,8 @@
    "hlCost": 7803,
    "sellDelta": 0.0,
    "costDelta": 7652.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8831,6 +9820,8 @@
    "hlCost": 7803,
    "sellDelta": 0.0,
    "costDelta": 7652.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8849,6 +9840,8 @@
    "hlCost": 7803,
    "sellDelta": 0.0,
    "costDelta": 7652.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8867,6 +9860,8 @@
    "hlCost": 6534,
    "sellDelta": 0.0,
    "costDelta": 7070.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8885,6 +9880,8 @@
    "hlCost": 6534,
    "sellDelta": 0.0,
    "costDelta": 7070.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8903,6 +9900,8 @@
    "hlCost": 6534,
    "sellDelta": 0.0,
    "costDelta": 7070.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8921,6 +9920,8 @@
    "hlCost": 6534,
    "sellDelta": 0.0,
    "costDelta": 7070.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8939,6 +9940,8 @@
    "hlCost": 6534,
    "sellDelta": 0.0,
    "costDelta": 7070.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8957,6 +9960,8 @@
    "hlCost": 6534,
    "sellDelta": 0.0,
    "costDelta": 7070.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8975,6 +9980,8 @@
    "hlCost": 6534,
    "sellDelta": 0.0,
    "costDelta": 7070.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -8993,6 +10000,8 @@
    "hlCost": 8178,
    "sellDelta": 0.0,
    "costDelta": 7950.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9011,6 +10020,8 @@
    "hlCost": 8178,
    "sellDelta": 0.0,
    "costDelta": 7950.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9029,6 +10040,8 @@
    "hlCost": 8178,
    "sellDelta": 0.0,
    "costDelta": 7950.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9047,6 +10060,8 @@
    "hlCost": 8178,
    "sellDelta": 0.0,
    "costDelta": 7950.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9065,6 +10080,8 @@
    "hlCost": 8178,
    "sellDelta": 0.0,
    "costDelta": 7950.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9083,6 +10100,8 @@
    "hlCost": 8178,
    "sellDelta": 0.0,
    "costDelta": 7950.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9101,6 +10120,8 @@
    "hlCost": 8178,
    "sellDelta": 0.0,
    "costDelta": 7950.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9119,6 +10140,8 @@
    "hlCost": 8178,
    "sellDelta": 0.0,
    "costDelta": 7950.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9137,6 +10160,8 @@
    "hlCost": 7129,
    "sellDelta": 0.0,
    "costDelta": 7489.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9155,6 +10180,8 @@
    "hlCost": 7129,
    "sellDelta": 0.0,
    "costDelta": 7489.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9173,6 +10200,8 @@
    "hlCost": 7129,
    "sellDelta": 0.0,
    "costDelta": 7489.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9191,6 +10220,8 @@
    "hlCost": 7129,
    "sellDelta": 0.0,
    "costDelta": 7489.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9209,6 +10240,8 @@
    "hlCost": 7129,
    "sellDelta": 0.0,
    "costDelta": 7489.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9227,6 +10260,8 @@
    "hlCost": 7129,
    "sellDelta": 0.0,
    "costDelta": 7489.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9245,6 +10280,8 @@
    "hlCost": 7129,
    "sellDelta": 0.0,
    "costDelta": 7489.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9263,6 +10300,8 @@
    "hlCost": 9391,
    "sellDelta": 0.0,
    "costDelta": 8700.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9281,6 +10320,8 @@
    "hlCost": 9391,
    "sellDelta": 0.0,
    "costDelta": 8700.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9299,6 +10340,8 @@
    "hlCost": 9391,
    "sellDelta": 0.0,
    "costDelta": 8700.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9317,6 +10360,8 @@
    "hlCost": 9391,
    "sellDelta": 0.0,
    "costDelta": 8700.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9335,6 +10380,8 @@
    "hlCost": 9391,
    "sellDelta": 0.0,
    "costDelta": 8700.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9353,6 +10400,8 @@
    "hlCost": 9391,
    "sellDelta": 0.0,
    "costDelta": 8700.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9371,6 +10420,8 @@
    "hlCost": 9391,
    "sellDelta": 0.0,
    "costDelta": 8700.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9389,6 +10440,8 @@
    "hlCost": 9391,
    "sellDelta": 0.0,
    "costDelta": 8700.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9407,6 +10460,8 @@
    "hlCost": 10006,
    "sellDelta": 0.0,
    "costDelta": 10678.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9425,6 +10480,8 @@
    "hlCost": 10006,
    "sellDelta": 0.0,
    "costDelta": 10678.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9443,6 +10500,8 @@
    "hlCost": 10006,
    "sellDelta": 0.0,
    "costDelta": 10678.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9461,6 +10520,8 @@
    "hlCost": 10006,
    "sellDelta": 0.0,
    "costDelta": 10678.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9479,6 +10540,8 @@
    "hlCost": 10006,
    "sellDelta": 0.0,
    "costDelta": 10678.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9497,6 +10560,8 @@
    "hlCost": 10006,
    "sellDelta": 0.0,
    "costDelta": 10678.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9515,6 +10580,8 @@
    "hlCost": 10006,
    "sellDelta": 0.0,
    "costDelta": 10678.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9533,6 +10600,8 @@
    "hlCost": 11981,
    "sellDelta": 0.0,
    "costDelta": 11737.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9551,6 +10620,8 @@
    "hlCost": 11981,
    "sellDelta": 0.0,
    "costDelta": 11737.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9569,6 +10640,8 @@
    "hlCost": 11981,
    "sellDelta": 0.0,
    "costDelta": 11737.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9587,6 +10660,8 @@
    "hlCost": 11981,
    "sellDelta": 0.0,
    "costDelta": 11737.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9605,6 +10680,8 @@
    "hlCost": 11981,
    "sellDelta": 0.0,
    "costDelta": 11737.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9623,6 +10700,8 @@
    "hlCost": 11981,
    "sellDelta": 0.0,
    "costDelta": 11737.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9641,6 +10720,8 @@
    "hlCost": 11981,
    "sellDelta": 0.0,
    "costDelta": 11737.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9659,6 +10740,8 @@
    "hlCost": 11981,
    "sellDelta": 0.0,
    "costDelta": 11737.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9677,6 +10760,8 @@
    "hlCost": 10353,
    "sellDelta": 0.0,
    "costDelta": 14657.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9695,6 +10780,8 @@
    "hlCost": 10353,
    "sellDelta": 0.0,
    "costDelta": 14657.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9713,6 +10800,8 @@
    "hlCost": 10353,
    "sellDelta": 0.0,
    "costDelta": 14657.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9731,6 +10820,8 @@
    "hlCost": 10353,
    "sellDelta": 0.0,
    "costDelta": 14657.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9749,6 +10840,8 @@
    "hlCost": 10353,
    "sellDelta": 0.0,
    "costDelta": 14657.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9767,6 +10860,8 @@
    "hlCost": 10353,
    "sellDelta": 0.0,
    "costDelta": 14657.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9785,6 +10880,8 @@
    "hlCost": 10353,
    "sellDelta": 0.0,
    "costDelta": 14657.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9803,6 +10900,8 @@
    "hlCost": 13114,
    "sellDelta": 0.0,
    "costDelta": 16137.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9821,6 +10920,8 @@
    "hlCost": 13114,
    "sellDelta": 0.0,
    "costDelta": 16137.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9839,6 +10940,8 @@
    "hlCost": 13114,
    "sellDelta": 0.0,
    "costDelta": 16137.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9857,6 +10960,8 @@
    "hlCost": 13114,
    "sellDelta": 0.0,
    "costDelta": 16137.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9875,6 +10980,8 @@
    "hlCost": 13114,
    "sellDelta": 0.0,
    "costDelta": 16137.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9893,6 +11000,8 @@
    "hlCost": 13114,
    "sellDelta": 0.0,
    "costDelta": 16137.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9911,6 +11020,8 @@
    "hlCost": 13114,
    "sellDelta": 0.0,
    "costDelta": 16137.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9929,6 +11040,8 @@
    "hlCost": 13114,
    "sellDelta": 0.0,
    "costDelta": 16137.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9947,6 +11060,8 @@
    "hlCost": 14451,
    "sellDelta": 0.0,
    "costDelta": 18503.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9965,6 +11080,8 @@
    "hlCost": 14451,
    "sellDelta": 0.0,
    "costDelta": 18503.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -9983,6 +11100,8 @@
    "hlCost": 14451,
    "sellDelta": 0.0,
    "costDelta": 18503.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10001,6 +11120,8 @@
    "hlCost": 14451,
    "sellDelta": 0.0,
    "costDelta": 18503.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10019,6 +11140,8 @@
    "hlCost": 14451,
    "sellDelta": 0.0,
    "costDelta": 18503.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10037,6 +11160,8 @@
    "hlCost": 14451,
    "sellDelta": 0.0,
    "costDelta": 18503.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10055,6 +11180,8 @@
    "hlCost": 14451,
    "sellDelta": 0.0,
    "costDelta": 18503.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10073,6 +11200,8 @@
    "hlCost": 18261,
    "sellDelta": 0.0,
    "costDelta": 20544.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10091,6 +11220,8 @@
    "hlCost": 18261,
    "sellDelta": 0.0,
    "costDelta": 20544.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10109,6 +11240,8 @@
    "hlCost": 18261,
    "sellDelta": 0.0,
    "costDelta": 20544.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10127,6 +11260,8 @@
    "hlCost": 18261,
    "sellDelta": 0.0,
    "costDelta": 20544.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10145,6 +11280,8 @@
    "hlCost": 18261,
    "sellDelta": 0.0,
    "costDelta": 20544.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10163,6 +11300,8 @@
    "hlCost": 18261,
    "sellDelta": 0.0,
    "costDelta": 20544.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10181,6 +11320,8 @@
    "hlCost": 18261,
    "sellDelta": 0.0,
    "costDelta": 20544.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10199,6 +11340,8 @@
    "hlCost": 18261,
    "sellDelta": 0.0,
    "costDelta": 20544.71,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10217,6 +11360,8 @@
    "hlCost": 18218,
    "sellDelta": 0.0,
    "costDelta": 19110.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10235,6 +11380,8 @@
    "hlCost": 18218,
    "sellDelta": 0.0,
    "costDelta": 19110.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10253,6 +11400,8 @@
    "hlCost": 18218,
    "sellDelta": 0.0,
    "costDelta": 19110.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10271,6 +11420,8 @@
    "hlCost": 18218,
    "sellDelta": 0.0,
    "costDelta": 19110.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10289,6 +11440,8 @@
    "hlCost": 18218,
    "sellDelta": 0.0,
    "costDelta": 19110.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10307,6 +11460,8 @@
    "hlCost": 18218,
    "sellDelta": 0.0,
    "costDelta": 19110.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10325,6 +11480,8 @@
    "hlCost": 18218,
    "sellDelta": 0.0,
    "costDelta": 19110.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10343,6 +11500,8 @@
    "hlCost": 22342,
    "sellDelta": 0.0,
    "costDelta": 21320.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10361,6 +11520,8 @@
    "hlCost": 22342,
    "sellDelta": 0.0,
    "costDelta": 21320.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10379,6 +11540,8 @@
    "hlCost": 22342,
    "sellDelta": 0.0,
    "costDelta": 21320.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10397,6 +11560,8 @@
    "hlCost": 22342,
    "sellDelta": 0.0,
    "costDelta": 21320.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10415,6 +11580,8 @@
    "hlCost": 22342,
    "sellDelta": 0.0,
    "costDelta": 21320.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10446,6 +11613,8 @@
    "hlCost": 22342,
    "sellDelta": 0.0,
    "costDelta": 21320.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10464,6 +11633,8 @@
    "hlCost": 22342,
    "sellDelta": 0.0,
    "costDelta": 21320.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10482,6 +11653,8 @@
    "hlCost": 22342,
    "sellDelta": 0.0,
    "costDelta": 21320.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10500,6 +11673,8 @@
    "hlCost": 24799,
    "sellDelta": 0.0,
    "costDelta": 23455.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10518,6 +11693,8 @@
    "hlCost": 24799,
    "sellDelta": 0.0,
    "costDelta": 23455.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10536,6 +11713,8 @@
    "hlCost": 24799,
    "sellDelta": 0.0,
    "costDelta": 23455.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10554,6 +11733,8 @@
    "hlCost": 24799,
    "sellDelta": 0.0,
    "costDelta": 23455.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10572,6 +11753,8 @@
    "hlCost": 24799,
    "sellDelta": 0.0,
    "costDelta": 23455.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10590,6 +11773,8 @@
    "hlCost": 24799,
    "sellDelta": 0.0,
    "costDelta": 23455.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10608,6 +11793,8 @@
    "hlCost": 24799,
    "sellDelta": 0.0,
    "costDelta": 23455.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10626,6 +11813,8 @@
    "hlCost": 24799,
    "sellDelta": 0.0,
    "costDelta": 23455.29,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10644,6 +11833,8 @@
    "hlCost": 28037,
    "sellDelta": 0.0,
    "costDelta": 25443.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10662,6 +11853,8 @@
    "hlCost": 28037,
    "sellDelta": 0.0,
    "costDelta": 25443.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10680,6 +11873,8 @@
    "hlCost": 28037,
    "sellDelta": 0.0,
    "costDelta": 25443.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10698,6 +11893,8 @@
    "hlCost": 28037,
    "sellDelta": 0.0,
    "costDelta": 25443.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10716,6 +11913,8 @@
    "hlCost": 28037,
    "sellDelta": 0.0,
    "costDelta": 25443.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10734,6 +11933,8 @@
    "hlCost": 28037,
    "sellDelta": 0.0,
    "costDelta": 25443.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10752,6 +11953,8 @@
    "hlCost": 28037,
    "sellDelta": 0.0,
    "costDelta": 25443.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10770,6 +11973,8 @@
    "hlCost": 28037,
    "sellDelta": 0.0,
    "costDelta": 25443.0,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10788,6 +11993,8 @@
    "hlCost": 27164,
    "sellDelta": 0.0,
    "costDelta": 29018.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10806,6 +12013,8 @@
    "hlCost": 27164,
    "sellDelta": 0.0,
    "costDelta": 29018.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10824,6 +12033,8 @@
    "hlCost": 27164,
    "sellDelta": 0.0,
    "costDelta": 29018.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10842,6 +12053,8 @@
    "hlCost": 27164,
    "sellDelta": 0.0,
    "costDelta": 29018.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10860,6 +12073,8 @@
    "hlCost": 27164,
    "sellDelta": 0.0,
    "costDelta": 29018.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10878,6 +12093,8 @@
    "hlCost": 27164,
    "sellDelta": 0.0,
    "costDelta": 29018.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10896,6 +12113,8 @@
    "hlCost": 27164,
    "sellDelta": 0.0,
    "costDelta": 29018.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10914,6 +12133,8 @@
    "hlCost": 27164,
    "sellDelta": 0.0,
    "costDelta": 29018.86,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10932,6 +12153,8 @@
    "hlCost": 29223,
    "sellDelta": 0.0,
    "costDelta": 30375.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10950,6 +12173,8 @@
    "hlCost": 29223,
    "sellDelta": 0.0,
    "costDelta": 30375.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10968,6 +12193,8 @@
    "hlCost": 29223,
    "sellDelta": 0.0,
    "costDelta": 30375.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -10986,6 +12213,8 @@
    "hlCost": 29223,
    "sellDelta": 0.0,
    "costDelta": 30375.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11004,6 +12233,8 @@
    "hlCost": 29223,
    "sellDelta": 0.0,
    "costDelta": 30375.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11022,6 +12253,8 @@
    "hlCost": 29223,
    "sellDelta": 0.0,
    "costDelta": 30375.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11040,6 +12273,8 @@
    "hlCost": 29223,
    "sellDelta": 0.0,
    "costDelta": 30375.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11058,6 +12293,8 @@
    "hlCost": 29223,
    "sellDelta": 0.0,
    "costDelta": 30375.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11076,6 +12313,8 @@
    "hlCost": 32898,
    "sellDelta": 0.0,
    "costDelta": 34670.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11094,6 +12333,8 @@
    "hlCost": 32898,
    "sellDelta": 0.0,
    "costDelta": 34670.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11112,6 +12353,8 @@
    "hlCost": 32898,
    "sellDelta": 0.0,
    "costDelta": 34670.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11130,6 +12373,8 @@
    "hlCost": 32898,
    "sellDelta": 0.0,
    "costDelta": 34670.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11148,6 +12393,8 @@
    "hlCost": 32898,
    "sellDelta": 0.0,
    "costDelta": 34670.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11166,6 +12413,8 @@
    "hlCost": 32898,
    "sellDelta": 0.0,
    "costDelta": 34670.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11184,6 +12433,8 @@
    "hlCost": 32898,
    "sellDelta": 0.0,
    "costDelta": 34670.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11202,6 +12453,8 @@
    "hlCost": 32898,
    "sellDelta": 0.0,
    "costDelta": 34670.57,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11220,6 +12473,8 @@
    "hlCost": 37904,
    "sellDelta": 0.0,
    "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11238,6 +12493,8 @@
    "hlCost": 37904,
    "sellDelta": 0.0,
    "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11256,6 +12513,8 @@
    "hlCost": 37904,
    "sellDelta": 0.0,
    "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11274,6 +12533,8 @@
    "hlCost": 37904,
    "sellDelta": 0.0,
    "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11292,6 +12553,8 @@
    "hlCost": 37904,
    "sellDelta": 0.0,
    "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11310,6 +12573,8 @@
    "hlCost": 37904,
    "sellDelta": 0.0,
    "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11328,6 +12593,8 @@
    "hlCost": 37904,
    "sellDelta": 0.0,
    "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11346,6 +12613,8 @@
    "hlCost": 37904,
    "sellDelta": 0.0,
    "costDelta": 40647.43,
+   "sellMatches": true,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11364,6 +12633,8 @@
    "hlCost": 23527,
    "sellDelta": 1854.55,
    "costDelta": 40671.57,
+   "sellMatches": false,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11382,6 +12653,8 @@
    "hlCost": 23527,
    "sellDelta": 1854.55,
    "costDelta": 40671.57,
+   "sellMatches": false,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11400,6 +12673,8 @@
    "hlCost": 23527,
    "sellDelta": 1854.55,
    "costDelta": 40671.57,
+   "sellMatches": false,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11418,6 +12693,8 @@
    "hlCost": 23527,
    "sellDelta": 1854.55,
    "costDelta": 40671.57,
+   "sellMatches": false,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11436,6 +12713,8 @@
    "hlCost": 23527,
    "sellDelta": 1854.55,
    "costDelta": 40671.57,
+   "sellMatches": false,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11454,6 +12733,8 @@
    "hlCost": 23527,
    "sellDelta": 1854.55,
    "costDelta": 40671.57,
+   "sellMatches": false,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
@@ -11472,6 +12753,8 @@
    "hlCost": 23527,
    "sellDelta": 1854.55,
    "costDelta": 40671.57,
+   "sellMatches": false,
+   "costMatches": false,
    "status": "price_mismatch"
   },
   {
