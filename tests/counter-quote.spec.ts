@@ -223,7 +223,69 @@ test('counter quote — standalone motor + dealer-fit + rigging kit, exact total
         await again.locator('button.text-destructive, button:has(svg.lucide-trash-2)').first().click();
         await page.waitForTimeout(2500);
     }
-    const gone = !(await page.locator(`text=${QUOTE_CUSTOMER}`).first().isVisible({ timeout: 3000 }).catch(() => false));
+    // Scope the gone-check to CARDS and let the "Service quote removed"
+    // toast (whose description echoes the customer name) auto-dismiss first.
+    await page.waitForTimeout(6000);
+    const gone = !(await page.locator('div.cursor-pointer').filter({ hasText: QUOTE_CUSTOMER }).first()
+        .isVisible({ timeout: 3000 }).catch(() => false));
     expect(gone, 'test quote must be deleted (Firestore verified post-run via REST)').toBe(true);
     await shot(page, 'counter-cleanup-dashboard');
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Module entry points (Asaf scope-add) — Trailers / Yamaha / Fit-Up
+// surfaces each get a "New … Quote" pill that deep-links into the
+// counter-quote wizard with the matching catalog tab PRESELECTED.
+// Read-only: the probe wizard is abandoned via Escape, never saved.
+// ═══════════════════════════════════════════════════════════════════
+const ENTRY_POINTS = [
+    { moduleId: 'trailers-module', name: 'trailers', button: 'New Trailer Quote', placeholder: 'Search trailers' },
+    { moduleId: 'KddayQaREA5tdZzzXjDW', name: 'yamaha', button: 'New Motor Quote', placeholder: 'Search motors' },
+    { moduleId: 'fit-up-module', name: 'fitup', button: 'New Rigging Quote', placeholder: 'Search rigging kits' },
+];
+
+test('module entry points — deep-link into counter-quote with the catalog tab preselected', async ({ page }) => {
+    test.setTimeout(600_000);
+    await login(page);
+    page.setDefaultTimeout(30000);
+
+    for (const ep of ENTRY_POINTS) {
+        // 1366px is the hyper-critical layout width; the main test covers 1440.
+        await page.setViewportSize({ width: 1366, height: 768 });
+        await page.goto(`${BASE_URL}/modules/${ep.moduleId}?_t=${Date.now()}`);
+        await page.waitForLoadState('domcontentloaded');
+        await page.waitForTimeout(6000);
+
+        const entryBtn = page.locator(`button:has-text("${ep.button}")`).first();
+        await expect(entryBtn, `${ep.name}: entry pill must render on the module hero`).toBeVisible({ timeout: 30000 });
+        await shot(page, `entry-${ep.name}`, false);
+        if (ep.name === 'trailers') {
+            await page.setViewportSize({ width: 1920, height: 1080 });
+            await page.waitForTimeout(800);
+            await shot(page, 'entry-trailers-1920', false);
+            await page.setViewportSize({ width: 1366, height: 768 });
+            await page.waitForTimeout(800);
+        }
+
+        // Deep link → service module + auto-opened wizard
+        await entryBtn.click();
+        const dlg = page.locator('[role="dialog"]');
+        await dlg.waitFor({ state: 'visible', timeout: 45000 });
+        await expect(dlg.locator('text=/New Service Quote/i').first()).toBeVisible();
+
+        // Walk to the Parts step — the preselected tab must already be active.
+        await dlg.locator('input[placeholder="John Smith"]').fill('HL TEST Entry Probe (not saved)');
+        await dlg.locator('button:has-text("Next")').click();
+        await page.waitForTimeout(1200);
+        await dlg.locator('button:has-text("Next")').click();
+        await page.waitForTimeout(1500);
+        await expect(dlg.locator('text=/Catalog items/i').first()).toBeVisible({ timeout: 15000 });
+        const tabSearch = dlg.locator(`input[placeholder*="${ep.placeholder}"]`);
+        await tabSearch.waitFor({ state: 'visible', timeout: 90000 }); // waits out that tab's lazy load
+        await shot(page, `entry-${ep.name}-picker`, false);
+
+        // Abandon — nothing saved.
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(1000);
+    }
 });

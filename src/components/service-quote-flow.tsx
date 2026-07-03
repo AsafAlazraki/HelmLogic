@@ -127,6 +127,21 @@ export function ServiceQuoteDashboard({ organisationId, organisation }: { organi
     const [createOpen, setCreateOpen] = useState(false);
     const [detailQuote, setDetailQuote] = useState<ServiceQuote | null>(null);
     const [statusFilter, setStatusFilter] = useState<ServiceQuoteStatus | 'all'>('all');
+    /** Deep-link entry (module surfaces): ?newQuote=1&catalogTab=trailers
+     *  auto-opens the create wizard with the catalog picker preselected.
+     *  Params are stripped after consumption so a refresh doesn't re-open. */
+    const [initialCatalogTab, setInitialCatalogTab] = useState<string | null>(null);
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const sp = new URLSearchParams(window.location.search);
+        if (sp.get('newQuote') !== '1') return;
+        setInitialCatalogTab(sp.get('catalogTab'));
+        setCreateOpen(true);
+        sp.delete('newQuote');
+        sp.delete('catalogTab');
+        const qs = sp.toString();
+        window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''));
+    }, []);
 
     const quotesRef = useMemoFirebase(
         () => query(collection(firestore, 'organisations', organisationId, 'serviceQuotes'), orderBy('updatedAt', 'desc')),
@@ -223,8 +238,9 @@ export function ServiceQuoteDashboard({ organisationId, organisation }: { organi
 
             <ServiceQuoteCreateDialog
                 open={createOpen}
-                onOpenChange={setCreateOpen}
+                onOpenChange={(o) => { setCreateOpen(o); if (!o) setInitialCatalogTab(null); }}
                 organisationId={organisationId}
+                initialCatalogTab={initialCatalogTab}
             />
 
             <ServiceQuoteDetailSheet
@@ -313,11 +329,13 @@ const WIZARD_STEPS = [
 ];
 
 function ServiceQuoteCreateDialog({
-    open, onOpenChange, organisationId,
+    open, onOpenChange, organisationId, initialCatalogTab,
 }: {
     open: boolean;
     onOpenChange: (o: boolean) => void;
     organisationId: string;
+    /** Deep-link preselection for the CatalogItemPicker tab. */
+    initialCatalogTab?: string | null;
 }) {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -486,6 +504,7 @@ function ServiceQuoteCreateDialog({
                                 op-shaped line so existing totals/PDF need no changes. */}
                             <CatalogItemPicker
                                 organisationId={organisationId}
+                                initialTab={initialCatalogTab}
                                 onAdd={({ part, installOp }: CatalogAdd) => {
                                     setSelectedParts(prev => [...prev, part]);
                                     if (installOp) setSelectedOps(prev => [...prev, installOp]);

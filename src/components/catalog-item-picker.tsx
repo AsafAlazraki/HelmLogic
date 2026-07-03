@@ -42,7 +42,8 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import { collection, getDocs, limit, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -88,7 +89,12 @@ interface CatalogRow {
     installLabour?: number;
 }
 
-type TabId = 'motors' | 'trailers' | 'dealer-fit' | 'rigging';
+export type CatalogTabId = 'motors' | 'trailers' | 'dealer-fit' | 'rigging';
+type TabId = CatalogTabId;
+
+export function isCatalogTabId(v: any): v is CatalogTabId {
+    return v === 'motors' || v === 'trailers' || v === 'dealer-fit' || v === 'rigging';
+}
 
 const TABS: Array<{ id: TabId; label: string; icon: any; itemType: string }> = [
     { id: 'motors', label: 'Motors', icon: Anchor, itemType: 'motor' },
@@ -219,13 +225,16 @@ export function CatalogItemPicker({
     organisationId,
     disabled,
     onAdd,
+    initialTab,
 }: {
     organisationId: string;
     disabled?: boolean;
     onAdd: (add: CatalogAdd) => Promise<void> | void;
+    /** Deep-link preselection (module entry points pass ?catalogTab=…). */
+    initialTab?: string | null;
 }) {
     const firestore = useFirestore();
-    const [activeTab, setActiveTab] = useState<TabId>('motors');
+    const [activeTab, setActiveTab] = useState<TabId>(isCatalogTabId(initialTab) ? initialTab : 'motors');
     const [search, setSearch] = useState('');
     const [addingId, setAddingId] = useState<string | null>(null);
     // Per-tab caches: undefined = not loaded yet, null = loading.
@@ -262,9 +271,10 @@ export function CatalogItemPicker({
         loadTab(tab);
     };
 
-    // Load the default tab once on mount.
+    // Load the initial tab once on mount (default motors; deep links may
+    // preselect trailers / dealer-fit / rigging).
     useEffect(() => {
-        loadTab('motors');
+        loadTab(activeTab);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -417,5 +427,60 @@ export function CatalogItemPicker({
                 </div>
             )}
         </section>
+    );
+}
+
+/* ─── Module entry points (Asaf scope-add, 2026-07-03) ─────────────────
+ * "New Quote" affordance for the Trailers / Yamaha Outboards / Fit-Up &
+ * Rigging module surfaces. Deep-links into the Service & Counter Quotes
+ * create wizard with the matching catalog tab preselected
+ * (/modules/{serviceModuleId}?newQuote=1&catalogTab={tab}).
+ *
+ * The service module id is discovered with a caught one-shot getDocs
+ * (modules where moduleType == 'service'); if the org has no service
+ * module the button renders nothing — the surface stays untouched.
+ * Styled to match the module-hero pill buttons ("Back to Hub"). */
+
+export function CounterQuoteEntryButton({
+    tab,
+    label,
+    className,
+}: {
+    tab: CatalogTabId;
+    label: string;
+    className?: string;
+}) {
+    const firestore = useFirestore();
+    const router = useRouter();
+    const [serviceModuleId, setServiceModuleId] = useState<string | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const snap = await getDocs(query(collection(firestore, 'modules'), where('moduleType', '==', 'service'), limit(1)));
+                if (!cancelled && !snap.empty) setServiceModuleId(snap.docs[0].id);
+            } catch (err) {
+                // Non-essential read — no service module / missing rule = no button.
+                console.warn('[CounterQuoteEntryButton] service-module lookup unavailable (non-fatal)', err);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore]);
+
+    if (!serviceModuleId) return null;
+
+    return (
+        <Button
+            variant="ghost"
+            onClick={() => router.push(`/modules/${serviceModuleId}?newQuote=1&catalogTab=${tab}`)}
+            className={cn(
+                'h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 shadow-xl flex items-center',
+                className,
+            )}
+        >
+            <Plus className="h-4 w-4 mr-2" />
+            <span>{label}</span>
+        </Button>
     );
 }
