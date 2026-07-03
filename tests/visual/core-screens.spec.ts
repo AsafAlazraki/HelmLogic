@@ -6,8 +6,10 @@
  * Update:    npm run test:visual:update
  *
  * Design notes:
- *  - One shared page, serial mode: login once, then walk the screens.
- *    (workers=1 in playwright.visual.config.ts, so serial is safe.)
+ *  - Each test uses the standard `page` fixture (NOT a shared beforeAll
+ *    page) so it inherits the proxy + launch options from the config —
+ *    without them Firebase auth can't reach identitytoolkit in the
+ *    sandbox. login() per test; workers=1 keeps runs deterministic.
  *  - NEVER waitForLoadState('networkidle') — Firebase websockets keep the
  *    network "active" forever (repo lesson). We use domcontentloaded +
  *    explicit selector waits + fixed settle timeouts instead.
@@ -19,20 +21,9 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
 import { login, openHighfieldModule, BASE_URL } from '../helpers/auth';
 
-test.describe.configure({ mode: 'serial' });
 test.use({ viewport: { width: 1440, height: 900 } });
 
 const MODULE_ID = 'M1Yf3R9igpJDxJnOVr6f';
-
-let page: Page;
-
-test.beforeAll(async ({ browser }) => {
-  page = await browser.newPage();
-});
-
-test.afterAll(async () => {
-  await page?.close();
-});
 
 /**
  * Masks shared by every screen:
@@ -68,7 +59,7 @@ async function settle(p: Page): Promise<void> {
   await p.waitForTimeout(1200);
 }
 
-test('login page', async () => {
+test('login page', async ({ page }) => {
   await page.goto(`${BASE_URL}/login`);
   await page.waitForLoadState('domcontentloaded');
   // Explicit wait for the form — never networkidle (Firebase websockets).
@@ -80,7 +71,7 @@ test('login page', async () => {
   });
 });
 
-test('dashboard (post-login)', async () => {
+test('dashboard (post-login)', async ({ page }) => {
   await login(page);
   // Module cards signal the dashboard's Firestore data has arrived.
   await page.locator('a[href*="/modules/"]').first().waitFor({ timeout: 30000 });
@@ -96,9 +87,8 @@ test('dashboard (post-login)', async () => {
   });
 });
 
-test('highfield module page', async () => {
-  await page.goto(`${BASE_URL}/dashboard`);
-  await page.waitForLoadState('domcontentloaded');
+test('highfield module page', async ({ page }) => {
+  await login(page);
   await page.locator('a[href*="/modules/"]').first().waitFor({ timeout: 30000 });
   await openHighfieldModule(page);
   await page.waitForSelector('[role="tab"]', { timeout: 20000 });
@@ -114,8 +104,9 @@ test('highfield module page', async () => {
   });
 });
 
-test('quote flow — CL380 step 1', async () => {
+test('quote flow — CL380 step 1', async ({ page }) => {
   test.setTimeout(300000);
+  await login(page);
 
   // Same New Quote dialog pattern as tests/bm-email-checklist.spec.ts —
   // dialog open is intermittent, so retry up to 3 times.
@@ -153,13 +144,10 @@ test('quote flow — CL380 step 1', async () => {
   const header = page.locator('div.sticky.top-0').filter({ hasText: 'Exit Build' }).first();
   await expect(header).toBeVisible();
   await expect(header).toHaveScreenshot('quote-header.png');
-
-  // Leave the build overlay so later tests start from normal chrome.
-  await page.locator('button:has-text("Exit Build")').first().click({ force: true }).catch(() => {});
-  await page.waitForTimeout(2000);
 });
 
-test('catalog manager (/pricing-manager)', async () => {
+test('catalog manager (/pricing-manager)', async ({ page }) => {
+  await login(page);
   await page.goto(`${BASE_URL}/pricing-manager`);
   await page.waitForLoadState('domcontentloaded');
   await page.waitForSelector('h1, [role="tab"]', { timeout: 30000 });
@@ -171,7 +159,8 @@ test('catalog manager (/pricing-manager)', async () => {
   });
 });
 
-test('customers (/customers)', async () => {
+test('customers (/customers)', async ({ page }) => {
+  await login(page);
   await page.goto(`${BASE_URL}/customers`);
   await page.waitForLoadState('domcontentloaded');
   await page.locator('h1:has-text("Customers")').waitFor({ timeout: 30000 });
@@ -188,7 +177,8 @@ test('customers (/customers)', async () => {
   });
 });
 
-test('reporting (/reporting)', async () => {
+test('reporting (/reporting)', async ({ page }) => {
+  await login(page);
   await page.goto(`${BASE_URL}/reporting`);
   await page.waitForLoadState('domcontentloaded');
   await page.locator('h1:has-text("Reporting")').waitFor({ timeout: 30000 });
