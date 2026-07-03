@@ -106,7 +106,7 @@
       "firstSeen": "2026-07-03",
       "rootCause": "Environment \u2014 transient proxy connection reset; writer had token refresh but no transient retry.",
       "fix": "Store._req retries connection resets + 429/5xx with exponential backoff (4 attempts)",
-      "retest": "Apply relaunched; idempotent resume (334 applied writes skip as unchanged) \u2014 result recorded on completion",
+      "retest": "GREEN \u2014 boats apply completed 1042/1042 (334 skipped-unchanged on resume, 248 updates, 460 creates), APPLY-2B-BOATS OK",
       "class": "environment-fix"
     },
     {
@@ -115,7 +115,7 @@
       "firstSeen": "2026-07-03",
       "rootCause": "Product-of-migration bug \u2014 Yamaha motor rows keep original column names with spaces ('NSM Retail'); Firestore updateMask requires backtick-quoted field paths for non-identifier names.",
       "fix": "_fs.patch_doc quotes flat field names whole (preserving literal dots e.g. 'Prop Part No.') and treats explicit masks as dotted nesting",
-      "retest": "Apply relaunched \u2014 result recorded on completion",
+      "retest": "GREEN \u2014 MTF apply completed 608 writes (motors updated+created, trailers 267 upd + 47 new, 1,011 factory options repriced), APPLY-3B-MTF OK",
       "class": "migration-fix"
     }
   ]
