@@ -1,0 +1,3537 @@
+{
+ "file": "tasks/mpf-source/Parts Module.xlsx",
+ "generated": "2026-07-03",
+ "method": "openpyxl 3.1.5 read_only=True data_only=True; strictly read-only",
+ "sheet_count": 21,
+ "sheets": [
+  {
+   "sheet": "Parts Enquiry",
+   "state": "hidden",
+   "classification": "working/scratch (hidden)",
+   "purpose": "Interactive part lookup calculator (min/max/SOH/cost/sell what-if). Not a dataset.",
+   "header_row": 6,
+   "headers_nonnull": [
+    [
+     2,
+     "NSM OP Code"
+    ],
+    [
+     3,
+     "Supplier"
+    ],
+    [
+     4,
+     "Sup. Code"
+    ],
+    [
+     5,
+     "Min"
+    ],
+    [
+     6,
+     "Max"
+    ],
+    [
+     7,
+     "SOH"
+    ],
+    [
+     14,
+     "Anchor"
+    ]
+   ],
+   "max_row": 16,
+   "max_col": 15,
+   "real_rows_any_nonempty": 7,
+   "key_col_index0": null,
+   "rows_with_key": null,
+   "distinct_keys": null,
+   "sample_rows": [
+    [
+     null,
+     null,
+     "GME EPIRB - 406MHz GNSS (Manual Ativation)",
+     0.1,
+     367.279,
+     31.8119,
+     439,
+     "EPIRB Installation",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "Cost",
+     "Landed",
+     "MU",
+     "GP",
+     "SELL Price",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     367.279,
+     394.2972,
+     -0.3337,
+     -131.5699,
+     289,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "Parts Maintenance",
+   "state": "visible",
+   "classification": "master working sheet",
+   "purpose": "NSM-curated Parts & Accessories master: supplier, code, CTD, sell, install type, labour (TTF hrs), sell-inc-install, service Operation Code. Feeds Dropdowns + Dealer Fit + Boat Module vocab columns.",
+   "header_row": 1,
+   "headers_nonnull": [
+    [
+     2,
+     "Parts & Accessories Module"
+    ],
+    [
+     3,
+     "Supplier"
+    ],
+    [
+     4,
+     "Code"
+    ],
+    [
+     5,
+     "Supplier Description"
+    ],
+    [
+     6,
+     "P&A"
+    ],
+    [
+     7,
+     "MU"
+    ],
+    [
+     8,
+     "CTD"
+    ],
+    [
+     9,
+     "MU"
+    ],
+    [
+     10,
+     "GP"
+    ],
+    [
+     11,
+     "Sell"
+    ],
+    [
+     12,
+     "Base List"
+    ],
+    [
+     13,
+     "Install Type"
+    ],
+    [
+     14,
+     "TTF (Hours)"
+    ],
+    [
+     15,
+     "Labour ($)"
+    ],
+    [
+     16,
+     "Parts CTD"
+    ],
+    [
+     17,
+     "Sundry CTD"
+    ],
+    [
+     18,
+     "Total CTD"
+    ],
+    [
+     19,
+     "MU"
+    ],
+    [
+     20,
+     "GP"
+    ],
+    [
+     21,
+     "Parts"
+    ],
+    [
+     22,
+     "Sundry"
+    ],
+    [
+     23,
+     "Labour"
+    ],
+    [
+     24,
+     "Sell inc Install (if appl.)"
+    ],
+    [
+     26,
+     "Operation Code"
+    ],
+    [
+     27,
+     "Operation Description"
+    ]
+   ],
+   "max_row": 4515,
+   "max_col": 59,
+   "real_rows_any_nonempty": 3915,
+   "key_col_index0": 4,
+   "rows_with_key": 3667,
+   "distinct_keys": 3532,
+   "sample_rows": [
+    [
+     null,
+     null,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19,
+     20,
+     21,
+     22,
+     23,
+     null,
+     25,
+     26,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "Safety Gear - Smooth Waters",
+     "NSM",
+     "SG002",
+     "Safety Gear - Smooth Waters (Excluding PFD's & Anchor)",
+     37.0353,
+     null,
+     37.0353,
+     1.2583,
+     46.6011,
+     92,
+     null,
+     "Install Safety Equipment - Smooth Waters",
+     0.05,
+     6.5045,
+     37.0353,
+     0,
+     43.5398,
+     1.088,
+     47.3693,
+     92,
+     0.05,
+     7.95,
+     100,
+     null,
+     "SG002",
+     "Safety Gear - Smooth Waters",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "Safety Gear - Smooth Waters inc Fire Ext",
+     "NSM",
+     "SG003",
+     "Safety Gear - Smooth Waters inc Fire Ext (Excluding PFD's & Anchor)",
+     54.4353,
+     null,
+     54.4353,
+     1.0374,
+     56.4738,
+     122,
+     null,
+     "Fire Extinguisher Installation",
+     0.25,
+     32.5227,
+     54.4353,
+     1,
+     87.958,
+     0.695,
+     61.1329,
+     122,
+     2.25,
+     39.75,
+     164,
+     null,
+     "SG003",
+     "Safety Gear - Smooth Waters inc Fire Ext",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "Highfield",
+   "state": "visible",
+   "classification": "vendor price list",
+   "purpose": "Highfield accessories price list. USD factory Price x 0.7 FX -> AUD; Trade/Retail INC GST (exception to ex-GST convention).",
+   "header_row": 6,
+   "headers_nonnull": [
+    [
+     2,
+     "Code"
+    ],
+    [
+     3,
+     "Equipment"
+    ],
+    [
+     4,
+     "Colour"
+    ],
+    [
+     5,
+     "Category"
+    ],
+    [
+     6,
+     "Price"
+    ],
+    [
+     7,
+     "AUD $"
+    ],
+    [
+     9,
+     "Margin"
+    ],
+    [
+     10,
+     "GP"
+    ],
+    [
+     11,
+     "Trade (inc GST)"
+    ],
+    [
+     13,
+     "Margin"
+    ],
+    [
+     14,
+     "GP"
+    ],
+    [
+     15,
+     "Retail (inc GST)"
+    ]
+   ],
+   "max_row": 1398,
+   "max_col": 41,
+   "real_rows_any_nonempty": 1016,
+   "key_col_index0": 2,
+   "rows_with_key": 1016,
+   "distinct_keys": 1016,
+   "sample_rows": [
+    [
+     null,
+     null,
+     "HEE022",
+     "EP for BOL950SP",
+     null,
+     "EP",
+     91,
+     130,
+     null,
+     0.1875,
+     30,
+     176,
+     null,
+     0.35,
+     70.0,
+     220,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "HEE023",
+     "EP for BOL950RS",
+     null,
+     "EP",
+     91,
+     130,
+     null,
+     0.1875,
+     30,
+     176,
+     null,
+     0.35,
+     70.0,
+     220,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "HEP111",
+     "Stainless steel cleat",
+     null,
+     "Spare parts",
+     25,
+     35.7143,
+     null,
+     0.3452,
+     18.8312,
+     60,
+     null,
+     0.4762,
+     32.4675,
+     75,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "Dealer Fit Module",
+   "state": "visible",
+   "classification": "master working sheet",
+   "purpose": "Dealer Fit Options master: 1 DFO = parts + labour + sundry + sublet rollup (Act CTD / Act Sell) + up to 30 accessory component slots. Source of HelmLogic dealerFitSelections' Act Sell / Act CTD.",
+   "header_row": 11,
+   "headers_nonnull": [
+    [
+     2,
+     "Description"
+    ],
+    [
+     3,
+     "Code"
+    ],
+    [
+     4,
+     "CTD"
+    ],
+    [
+     5,
+     "Inflation"
+    ],
+    [
+     6,
+     "Adj CTD"
+    ],
+    [
+     7,
+     "Tot Parts CTD"
+    ],
+    [
+     8,
+     "Parts Sell"
+    ],
+    [
+     9,
+     "Total Lab"
+    ],
+    [
+     10,
+     "Labour CTD"
+    ],
+    [
+     11,
+     "Labour Ret"
+    ],
+    [
+     12,
+     "Sundry 1"
+    ],
+    [
+     13,
+     "Sublet"
+    ],
+    [
+     14,
+     "Act CTD"
+    ],
+    [
+     15,
+     "MU"
+    ],
+    [
+     16,
+     "GP"
+    ],
+    [
+     17,
+     "Act Sell"
+    ],
+    [
+     18,
+     "Rebate"
+    ],
+    [
+     19,
+     "Accessory"
+    ],
+    [
+     20,
+     "Code"
+    ],
+    [
+     21,
+     "CTD"
+    ],
+    [
+     22,
+     "Sell"
+    ],
+    [
+     23,
+     "Labour"
+    ],
+    [
+     24,
+     "Lab Hrs"
+    ],
+    [
+     25,
+     "Sundry"
+    ],
+    [
+     26,
+     "Sublet"
+    ],
+    [
+     27,
+     "Image Link"
+    ],
+    [
+     28,
+     "Accessory"
+    ],
+    [
+     29,
+     "Code"
+    ],
+    [
+     30,
+     "CTD"
+    ],
+    [
+     31,
+     "Sell"
+    ],
+    [
+     32,
+     "Labour"
+    ],
+    [
+     33,
+     "Lab Hrs"
+    ],
+    [
+     34,
+     "Sundry"
+    ],
+    [
+     35,
+     "Sublet"
+    ],
+    [
+     37,
+     "Accessory"
+    ],
+    [
+     38,
+     "Code"
+    ],
+    [
+     39,
+     "CTD"
+    ],
+    [
+     40,
+     "Sell"
+    ],
+    [
+     41,
+     "Labour"
+    ],
+    [
+     42,
+     "Lab Hrs"
+    ],
+    [
+     43,
+     "Sundry"
+    ],
+    [
+     44,
+     "Sublet"
+    ],
+    [
+     46,
+     "Accessory"
+    ],
+    [
+     47,
+     "Code"
+    ],
+    [
+     48,
+     "CTD"
+    ],
+    [
+     49,
+     "Sell"
+    ],
+    [
+     50,
+     "Labour"
+    ],
+    [
+     51,
+     "Lab Hrs"
+    ],
+    [
+     52,
+     "Sundry"
+    ],
+    [
+     53,
+     "Sublet"
+    ],
+    [
+     55,
+     "Accessory"
+    ],
+    [
+     56,
+     "Code"
+    ],
+    [
+     57,
+     "CTD"
+    ],
+    [
+     58,
+     "Sell"
+    ],
+    [
+     59,
+     "Labour"
+    ],
+    [
+     60,
+     "Lab Hrs"
+    ],
+    [
+     61,
+     "Sundry"
+    ],
+    [
+     62,
+     "Sublet"
+    ],
+    [
+     64,
+     "Accessory"
+    ],
+    [
+     65,
+     "Code"
+    ]
+   ],
+   "max_row": 2705,
+   "max_col": 350,
+   "real_rows_any_nonempty": 2320,
+   "key_col_index0": 3,
+   "rows_with_key": 1795,
+   "distinct_keys": 1791,
+   "sample_rows": [
+    [
+     null,
+     null,
+     "VHF Radio - GME GX700W Flush Mounted with 1.8m Aerial",
+     "GME-GX700WPK",
+     335.181,
+     0,
+     0,
+     335.181,
+     417,
+     3.5,
+     455.3182,
+     556.5,
+     16,
+     0,
+     806.4992,
+     0.1227,
+     98.9554,
+     996,
+     null,
+     "GX700W - VHF Fixed Mount Marine Radio - White",
+     "GX700W",
+     223.652,
+     269,
+     "Head Unit Installation - Flush Mount",
+     2.5,
+     10,
+     0,
+     "https://www.northsidemarine.com.au/online-store/wp-content/uploads/sites/9/2023/11/GME-GX700W-1.png",
+     "ABL012 - Double Swivel rectangular antenna base with lead for AW36XX range of whips",
+     "ABL012",
+     53.724,
+     69,
+     "Radio Aerial Installation - Deck/Side Mount",
+     0.9,
+     5,
+     0,
+     null,
+     "AW366V - VHF 1800mm detachable ant whip",
+     "AW366V",
+     57.805
+    ],
+    [
+     null,
+     null,
+     "VHF Radio - GME GX700B Flush Mounted with 1.8m Aerial",
+     "GME-GX700BPK",
+     335.181,
+     0,
+     0,
+     335.181,
+     417,
+     3.5,
+     455.3182,
+     556.5,
+     16,
+     0,
+     806.4992,
+     0.1227,
+     98.9554,
+     996,
+     null,
+     "GX700B - VHF Fixed Mount Marine Radio - Black",
+     "GX700B",
+     223.652,
+     269,
+     "Head Unit Installation - Flush Mount",
+     2.5,
+     10,
+     0,
+     "https://www.northsidemarine.com.au/online-store/wp-content/uploads/sites/9/2023/11/GME-GX700B-1-768x525.png",
+     "ABL012 - Double Swivel rectangular antenna base with lead for AW36XX range of whips",
+     "ABL012",
+     53.724,
+     69,
+     "Radio Aerial Installation - Deck/Side Mount",
+     0.9,
+     5,
+     0,
+     null,
+     "AW366V - VHF 1800mm detachable ant whip",
+     "AW366V",
+     57.805
+    ],
+    [
+     null,
+     null,
+     "VHF Radio - GME GX700W Flush Mounted with 1.2m Aerial",
+     "GME-GX700WPK-KIT02",
+     324.159,
+     0,
+     0,
+     324.159,
+     407,
+     3.5,
+     455.3182,
+     556.5,
+     16,
+     0,
+     795.4772,
+     0.1268,
+     100.8865,
+     986,
+     null,
+     "GX700W - VHF Fixed Mount Marine Radio - White",
+     "GX700W",
+     223.652,
+     269,
+     "Head Unit Installation - Flush Mount",
+     2.5,
+     10,
+     0,
+     "https://www.northsidemarine.com.au/online-store/wp-content/uploads/sites/9/2023/11/GME-GX700W-1.png",
+     "ABL012 - Double Swivel rectangular antenna base with lead for AW36XX range of whips",
+     "ABL012",
+     53.724,
+     69,
+     "Radio Aerial Installation - Deck/Side Mount",
+     0.9,
+     5,
+     0,
+     null,
+     "AW364V - VHF detachable antenna whip 1200 mm",
+     "AW364V",
+     46.783
+    ]
+   ]
+  },
+  {
+   "sheet": "Parts Data Drop",
+   "state": "visible",
+   "classification": "DMS extract",
+   "purpose": "Full DMS parts inventory drop as at 27.02.2026: Franchise, Part, Description, Stock OH, Bin, cost ('Daily'), MU, GP, List, Retail+GST.",
+   "header_row": 1,
+   "headers_nonnull": [
+    [
+     0,
+     "As at 27.02.2026"
+    ],
+    [
+     2,
+     "Franchise"
+    ],
+    [
+     3,
+     "Part"
+    ],
+    [
+     4,
+     "Description"
+    ],
+    [
+     5,
+     "Stock OH"
+    ],
+    [
+     6,
+     "Bin"
+    ],
+    [
+     7,
+     "Daily"
+    ],
+    [
+     8,
+     "MU"
+    ],
+    [
+     9,
+     "GP"
+    ],
+    [
+     10,
+     "List"
+    ],
+    [
+     11,
+     "Retail+ GST"
+    ]
+   ],
+   "max_row": 26349,
+   "max_col": 56,
+   "real_rows_any_nonempty": 26347,
+   "key_col_index0": 3,
+   "rows_with_key": 26347,
+   "distinct_keys": 26244,
+   "sample_rows": [
+    [
+     null,
+     null,
+     "9DU",
+     1000,
+     "TRAILER COUPLING 50MM 3500KG",
+     0,
+     "FF16",
+     79.2,
+     0.3768,
+     29.84,
+     109.04,
+     119.94,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "9DU",
+     1029,
+     "MASTER CYLINDER AND HAND BRAKE",
+     0,
+     "BUY IN",
+     80.2,
+     0.5303,
+     42.53,
+     122.73,
+     135,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "9DU",
+     1030,
+     "HYDRAULIC OVER-RIDE 50MMCOUPLI",
+     1,
+     "FF16",
+     132.61,
+     0.371,
+     49.2,
+     181.81,
+     199.99,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "BLA - 27.03.2026",
+   "state": "visible",
+   "classification": "vendor price list",
+   "purpose": "BLA (Bell Litho? -> BLA Distributors) trade price list dated 27.03.2026: dealer price, bulk qty/price, base list, RRP, barcode.",
+   "header_row": 3,
+   "headers_nonnull": [
+    [
+     2,
+     "BLA Code"
+    ],
+    [
+     3,
+     "Buy In"
+    ],
+    [
+     4,
+     "Description"
+    ],
+    [
+     5,
+     "Sell Unit"
+    ],
+    [
+     6,
+     "Dealer Price"
+    ],
+    [
+     7,
+     "Bulk Qty"
+    ],
+    [
+     8,
+     "Bulk Price"
+    ],
+    [
+     9,
+     "MU"
+    ],
+    [
+     10,
+     "GP"
+    ],
+    [
+     11,
+     "Base List"
+    ],
+    [
+     12,
+     "RRP"
+    ],
+    [
+     13,
+     "Barcode"
+    ]
+   ],
+   "max_row": 14561,
+   "max_col": 57,
+   "real_rows_any_nonempty": 14058,
+   "key_col_index0": 2,
+   "rows_with_key": 14058,
+   "distinct_keys": 14058,
+   "sample_rows": [
+    [
+     null,
+     null,
+     35777,
+     null,
+     "SEASTAR 30 SERIES STAINLESS STEEL SHIM",
+     "PC",
+     7.83,
+     null,
+     null,
+     1.0783,
+     8.4427,
+     16.2727,
+     17.9,
+     "9319786401033",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     101088,
+     null,
+     "HUMMINBIRD GPS RECEIVER AS GPS WITH HEADING SENSOR",
+     "PC",
+     547.86,
+     null,
+     null,
+     0.5581,
+     305.7764,
+     853.6364,
+     939,
+     "082324035791",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     102140,
+     null,
+     "HUMMINBIRD DIGITAL GUAGE HDR 650",
+     "PC",
+     346.6,
+     null,
+     null,
+     0.5449,
+     188.8545,
+     535.4545,
+     589,
+     "082324034992",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "Viking Price List",
+   "state": "visible",
+   "classification": "vendor price list",
+   "purpose": "Viking trailer parts; BBB-member nett buy price only.",
+   "header_row": 4,
+   "headers_nonnull": [
+    [
+     2,
+     "Part no :"
+    ],
+    [
+     3,
+     "Description"
+    ],
+    [
+     4,
+     "BBB Member  NETT Buy"
+    ],
+    [
+     5,
+     "Qty Reqd"
+    ]
+   ],
+   "max_row": 898,
+   "max_col": 31,
+   "real_rows_any_nonempty": 894,
+   "key_col_index0": 2,
+   "rows_with_key": 894,
+   "distinct_keys": 860,
+   "sample_rows": [
+    [
+     null,
+     null,
+     91060,
+     "2” x 2” Winch Bottom suit 50mm drawbar",
+     61.1111,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     91061,
+     "3” x 2” Winch Bottom suit 50mm drawbar",
+     72.2222,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     91062,
+     "3” x 2” Winch Bottom suit 75/100mm drawbar",
+     78.8889,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "Oceansouth Price List",
+   "state": "visible",
+   "classification": "vendor price list",
+   "purpose": "Oceansouth covers/accessories: price ex GST, MU, GP, RRP inc GST, barcode.",
+   "header_row": 8,
+   "headers_nonnull": [
+    [
+     2,
+     "ITEM No."
+    ],
+    [
+     3,
+     "ITEM DESCRIPTION"
+    ],
+    [
+     4,
+     "Price (Excl. GST)"
+    ],
+    [
+     5,
+     "MU"
+    ],
+    [
+     6,
+     "GP"
+    ],
+    [
+     7,
+     "RRP (Incl. GST)"
+    ],
+    [
+     8,
+     "BARCODE"
+    ]
+   ],
+   "max_row": 2281,
+   "max_col": 38,
+   "real_rows_any_nonempty": 2013,
+   "key_col_index0": 2,
+   "rows_with_key": 2013,
+   "distinct_keys": 2010,
+   "sample_rows": [
+    [
+     null,
+     null,
+     101,
+     "TUBE STAINLESS STEEL 25mm (1'')  2 METRE LENGTH",
+     20.5042,
+     1.0367,
+     21.2558,
+     45.936,
+     "9337568000816",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     103,
+     "TUBE ALUMINIUM 25mm (1'')  2 METRE LENGTH",
+     7.9031,
+     0.7653,
+     6.0486,
+     15.3468,
+     "9337568000830",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     106,
+     "TUBE ALUMINIUM  32mm (1 1/4'')     2 METRE LENGTH",
+     9.0724,
+     0.768,
+     6.9673,
+     17.6436,
+     "9337568000854",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "Frank Marine Price List",
+   "state": "visible",
+   "classification": "vendor price list",
+   "purpose": "Frank Marine SS hardware: BBB price + qty.",
+   "header_row": 6,
+   "headers_nonnull": [
+    [
+     2,
+     "Code"
+    ],
+    [
+     3,
+     "PRODUCT DESCRIPTION"
+    ],
+    [
+     4,
+     "BBB Price"
+    ],
+    [
+     5,
+     "Qty"
+    ]
+   ],
+   "max_row": 692,
+   "max_col": 22,
+   "real_rows_any_nonempty": 685,
+   "key_col_index0": 2,
+   "rows_with_key": 685,
+   "distinct_keys": 685,
+   "sample_rows": [
+    [
+     null,
+     null,
+     15001,
+     "Stainless steel 316 Stainless 316 Flush Mount Mooring Whip Base 25mm (1\")",
+     14.22,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     15014,
+     "Stainless steel 316 Frames 60°with thread hole 25mm (1\" )",
+     15.49,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     16003,
+     "Stainless steel Swivel Hinge with cross bolt",
+     13.8,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "BLA Price List",
+   "state": "visible",
+   "classification": "vendor price list (superseded)",
+   "purpose": "Older BLA list (Trade, bulk disc, retail). Superseded by 'BLA - 27.03.2026'.",
+   "header_row": 10,
+   "headers_nonnull": [
+    [
+     2,
+     "BLA\nCode"
+    ],
+    [
+     3,
+     "Description"
+    ],
+    [
+     4,
+     "New Price Code"
+    ],
+    [
+     6,
+     "Trade"
+    ],
+    [
+     7,
+     "Bulk Qty"
+    ],
+    [
+     8,
+     "Bulk Qty Disc\n%"
+    ],
+    [
+     9,
+     "Nett Bulk after 5.0% S/D excl.\nGST"
+    ],
+    [
+     10,
+     "MU"
+    ],
+    [
+     11,
+     "GP"
+    ],
+    [
+     12,
+     "Retail"
+    ],
+    [
+     15,
+     "BLA\nCode"
+    ]
+   ],
+   "max_row": 14153,
+   "max_col": 39,
+   "real_rows_any_nonempty": 14142,
+   "key_col_index0": 2,
+   "rows_with_key": 14142,
+   "distinct_keys": 14142,
+   "sample_rows": [
+    [
+     "",
+     "",
+     102224,
+     "HUMMINBIRD COVER HELIX 9G1/9G2/10G1/G2/G3",
+     "PC",
+     "",
+     84.07,
+     "",
+     "",
+     75.66,
+     0.681,
+     51.52,
+     139.9,
+     "",
+     "",
+     102224,
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "",
+     102226,
+     "HUMMINBIRD COVER HELIX 12",
+     "PC",
+     "",
+     120.13,
+     "",
+     "",
+     108.12,
+     0.6808,
+     73.61,
+     199.9,
+     "",
+     "",
+     102226,
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "",
+     "",
+     102227,
+     "HUMMINBIRD COVER SOLIX 10",
+     "PC",
+     "",
+     82.12,
+     "",
+     "",
+     73.91,
+     0.7208,
+     53.27,
+     139.9,
+     "",
+     "",
+     102227,
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ]
+  },
+  {
+   "sheet": "Minn Kota Price List",
+   "state": "visible",
+   "classification": "vendor price list",
+   "purpose": "Minn Kota electric motors via BLA codes; trade ex GST + RRP inc GST; contains section rows + #DIV/0! artifacts.",
+   "header_row": 3,
+   "headers_nonnull": [
+    [
+     2,
+     "BLA Code"
+    ],
+    [
+     3,
+     "Description"
+    ],
+    [
+     4,
+     "Sell Unit"
+    ],
+    [
+     5,
+     "Trade Price Excl. GST"
+    ],
+    [
+     6,
+     "MU"
+    ],
+    [
+     7,
+     "GP"
+    ],
+    [
+     8,
+     "Recommended Retail Incl. GST"
+    ],
+    [
+     9,
+     "Barcode"
+    ]
+   ],
+   "max_row": 220,
+   "max_col": 28,
+   "real_rows_any_nonempty": 217,
+   "key_col_index0": 2,
+   "rows_with_key": 217,
+   "distinct_keys": 217,
+   "sample_rows": [
+    [
+     null,
+     null,
+     "TRANSOM MOUNT MOTORS FRESHWATER",
+     null,
+     0,
+     0,
+     "#DIV/0!",
+     0,
+     null,
+     0,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     601110,
+     "MINN KOTA ENDURA TROLLING MOTOR C2 30LB 30\" 12V",
+     "PC",
+     362.19,
+     0.2776,
+     100.5373,
+     509,
+     "029402036837",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     601120,
+     "MINN KOTA ENDURA TROLLING MOTOR C2 40LB 36\" 12V",
+     "PC",
+     513.88,
+     0.272,
+     139.7564,
+     719,
+     "029402036851",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "SAW Price List",
+   "state": "visible",
+   "classification": "vendor price list",
+   "purpose": "Sam Allen Wholesale: stockist price ex GST, RRP inc GST, barcode, catalogue page.",
+   "header_row": 8,
+   "headers_nonnull": [
+    [
+     2,
+     "SAW #"
+    ],
+    [
+     3,
+     "DESCRIPTION"
+    ],
+    [
+     4,
+     "STOCKIST PRICE EX GST"
+    ],
+    [
+     5,
+     "MU"
+    ],
+    [
+     6,
+     "GP"
+    ],
+    [
+     7,
+     "RRP INC GST"
+    ],
+    [
+     8,
+     "BARCODE"
+    ],
+    [
+     9,
+     "2020 CATALOGUE PAGE NO."
+    ],
+    [
+     10,
+     "NOTES"
+    ]
+   ],
+   "max_row": 12348,
+   "max_col": 42,
+   "real_rows_any_nonempty": 12340,
+   "key_col_index0": 2,
+   "rows_with_key": 12340,
+   "distinct_keys": 12339,
+   "sample_rows": [
+    [
+     null,
+     null,
+     10014,
+     "Rope manila laid 3 strand 6mm x 250m coil",
+     92.5,
+     0.601,
+     55.5909,
+     162.9,
+     "9330420019865",
+     "758",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     10015,
+     "Rope manila laid 3 strand 8mm x 250m coil",
+     166.9545,
+     0.6003,
+     100.2273,
+     293.9,
+     "9330420019872",
+     "758",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     10016,
+     "Rope manila laid 3 strand 10mm x 250m coil",
+     221.2545,
+     0.6,
+     132.7455,
+     389.4,
+     "9330420019889",
+     "758",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "RWB Marine Price List",
+   "state": "visible",
+   "classification": "vendor price list",
+   "purpose": "RWB Marine: price, nett, bulk, RRP, catalogue page.",
+   "header_row": 6,
+   "headers_nonnull": [
+    [
+     2,
+     "Code"
+    ],
+    [
+     4,
+     "Description"
+    ],
+    [
+     5,
+     "Unit"
+    ],
+    [
+     6,
+     "Price"
+    ],
+    [
+     7,
+     "Nett"
+    ],
+    [
+     8,
+     "Bulk Qty"
+    ],
+    [
+     9,
+     "Bulk Disc"
+    ],
+    [
+     10,
+     "Nett Bulk"
+    ],
+    [
+     11,
+     "MU"
+    ],
+    [
+     12,
+     "GP"
+    ],
+    [
+     13,
+     "RRP"
+    ],
+    [
+     16,
+     "Catalogue Pg"
+    ]
+   ],
+   "max_row": 5847,
+   "max_col": 25,
+   "real_rows_any_nonempty": 5609,
+   "key_col_index0": 2,
+   "rows_with_key": 5609,
+   "distinct_keys": 5609,
+   "sample_rows": [
+    [
+     null,
+     null,
+     "FJ100",
+     null,
+     "Flojet RV Fresh Water Pump 2.9 GPM 12v",
+     "Ea",
+     136.99,
+     126.72,
+     12,
+     0.1,
+     114.048,
+     0.6819,
+     77.7702,
+     211,
+     null,
+     null,
+     325,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "J10-100",
+     null,
+     "Toilet Jabsco Manual Standard Bowl",
+     "Ea",
+     368.17,
+     340.56,
+     4,
+     0.075,
+     315.018,
+     0.5005,
+     157.6638,
+     519.95,
+     null,
+     null,
+     461,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "J10-102",
+     null,
+     "Toilet Jabsco Manual Large Bowl",
+     "Ea",
+     439.45,
+     406.49,
+     4,
+     0.075,
+     376.0032,
+     0.4978,
+     187.1786,
+     619.5,
+     null,
+     null,
+     461,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "Garmin Price List",
+   "state": "visible",
+   "classification": "vendor price list",
+   "purpose": "Garmin electronics: dealer net ex GST, base list, RRP inc GST; grouped under section rows.",
+   "header_row": 3,
+   "headers_nonnull": [
+    [
+     2,
+     "Garmin Part Number"
+    ],
+    [
+     3,
+     "UPC code"
+    ],
+    [
+     4,
+     "Item / Description"
+    ],
+    [
+     5,
+     "Dealer Net (ex GST)"
+    ],
+    [
+     6,
+     "GM"
+    ],
+    [
+     7,
+     "GP"
+    ],
+    [
+     8,
+     "Base List"
+    ],
+    [
+     9,
+     "RRP (inc GST)"
+    ]
+   ],
+   "max_row": 2684,
+   "max_col": 44,
+   "real_rows_any_nonempty": 1987,
+   "key_col_index0": 2,
+   "rows_with_key": 1863,
+   "distinct_keys": 1593,
+   "sample_rows": [
+    [
+     null,
+     null,
+     "010-02573-30",
+     753759336110,
+     "Force Kraken Trolling Motor,48in,100lb,Black,w/ GT56",
+     4799.27,
+     0.2,
+     1199.8209,
+     5999.0909,
+     6599,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "010-02573-00",
+     753759284756,
+     "Force Kraken Trolling Motor,63in,100lb,Black,w/ GT56",
+     5090.18,
+     0.2,
+     1272.5473,
+     6362.7273,
+     6999,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "010-02573-10",
+     753759284770,
+     "Force Kraken Trolling Motor,75in,100lb,Black,w/ GT56",
+     5381.09,
+     0.2,
+     1345.2736,
+     6726.3636,
+     7399,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "Lowrance Price List",
+   "state": "visible",
+   "classification": "vendor price list",
+   "purpose": "Lowrance electronics: trade, nett, list, sell, category, RRP, barcode. 65,541 max_row but only ~445 real (ghost formatting rows).",
+   "header_row": 7,
+   "headers_nonnull": [
+    [
+     2,
+     "Part Number"
+    ],
+    [
+     3,
+     "Title"
+    ],
+    [
+     4,
+     "Trade"
+    ],
+    [
+     5,
+     "Nett"
+    ],
+    [
+     6,
+     "MU"
+    ],
+    [
+     7,
+     "GP"
+    ],
+    [
+     8,
+     "List"
+    ],
+    [
+     9,
+     "Sell"
+    ],
+    [
+     12,
+     "Category"
+    ],
+    [
+     13,
+     "Technology"
+    ],
+    [
+     14,
+     "Description"
+    ],
+    [
+     15,
+     "RRP (0.0%)"
+    ],
+    [
+     16,
+     "Barcode"
+    ]
+   ],
+   "max_row": 65541,
+   "max_col": 23,
+   "real_rows_any_nonempty": 445,
+   "key_col_index0": 2,
+   "rows_with_key": 445,
+   "distinct_keys": 445,
+   "sample_rows": [
+    [
+     null,
+     null,
+     "000-16007-001",
+     "HDS-16 PRO No Transducer (AUS/NZ)",
+     4835.64,
+     4714.749,
+     0.2821,
+     1329.801,
+     6044.55,
+     6649,
+     null,
+     null,
+     "HDS Pro",
+     "HDS-16 PRO",
+     "Lowrance HDS-16 PRO, No Transducer. 16\" SolarMAX HD IPS display, Dual 1kW sonar with CHIRP, ActiveImaging™ HD ready. Networkable to Lowrance performance sonars …",
+     6044.55,
+     "9420064129874",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "000-15992-001",
+     "HDS-16 PRO AUS/NZ + ActiveImaging™ HD 3-in-1 Transducer",
+     4908.36,
+     4785.651,
+     0.2821,
+     1349.799,
+     6135.45,
+     6749,
+     null,
+     null,
+     "HDS Pro",
+     "HDS-16 PRO",
+     "Lowrance HDS-16 PRO with ActiveImaging™ HD 3-in-1 transducer. 16\" SolarMAX HD IPS display, Dual 1kW sonar with CHIRP. Networkable to Lowrance performance sonars…",
+     6135.45,
+     "9420064129720",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "000-16004-001",
+     "HDS-12 PRO No Transducer (AUS/NZ)",
+     3708.36,
+     3615.651,
+     0.2821,
+     1019.799,
+     4635.45,
+     5099,
+     null,
+     null,
+     "HDS Pro",
+     "HDS-12 PRO",
+     "Lowrance HDS-12 PRO, No Transducer. 12\" SolarMAX HD IPS display, Dual 1kW sonar with CHIRP, ActiveImaging™ HD ready. Networkable to Lowrance performance sonars …",
+     4635.45,
+     "9420064129843",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "GME Marine PL 9.6.26",
+   "state": "visible",
+   "classification": "vendor price list",
+   "purpose": "GME current list dated 9.6.26 incl 'NSM Sell' column; category header text occupies the description header cell.",
+   "header_row": 4,
+   "headers_nonnull": [
+    [
+     2,
+     "Emergency Position Indicating Radio Beacon (EPIRB)"
+    ],
+    [
+     4,
+     "Net Price Ex GST"
+    ],
+    [
+     5,
+     "Margin"
+    ],
+    [
+     6,
+     "GP"
+    ],
+    [
+     7,
+     "SRP Inc GST"
+    ],
+    [
+     8,
+     "NSM Sell"
+    ],
+    [
+     9,
+     "Barcode"
+    ]
+   ],
+   "max_row": 597,
+   "max_col": 57,
+   "real_rows_any_nonempty": 134,
+   "key_col_index0": 2,
+   "rows_with_key": 134,
+   "distinct_keys": 134,
+   "sample_rows": [
+    [
+     null,
+     null,
+     "MT605GAUS",
+     "406MHz GNSS EPIRB - Manual Activation",
+     333.89,
+     0.1366,
+     65.2009,
+     525,
+     439,
+     9319493315876,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "MT606GAUS",
+     "MT606G EPIRB - 406MHz, GNSS, AIS, Manual Act/ Water Activation",
+     685,
+     0.1485,
+     132.2727,
+     980,
+     899,
+     9319493315838,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "MT606FGAUS",
+     "MT606FG EPIRB - 406MHz, GNSS, AIS, Float Free/ Water Activation",
+     874.3,
+     0.1499,
+     170.2455,
+     1249,
+     1149,
+     9319493315845,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "GME Marine Price List",
+   "state": "hidden",
+   "classification": "vendor price list (superseded, hidden)",
+   "purpose": "Older GME list; hidden; different net prices than 9.6.26 sheet.",
+   "header_row": 7,
+   "headers_nonnull": [
+    [
+     2,
+     "PART NUMBER"
+    ],
+    [
+     3,
+     "Emergency Position Indicating Radio Beacon (EPIRB)"
+    ],
+    [
+     4,
+     "Net Price Ex GST"
+    ],
+    [
+     5,
+     "MU"
+    ],
+    [
+     6,
+     "GP"
+    ],
+    [
+     7,
+     "SRP Inc GST"
+    ],
+    [
+     8,
+     "Barcode"
+    ]
+   ],
+   "max_row": 621,
+   "max_col": 16,
+   "real_rows_any_nonempty": 143,
+   "key_col_index0": 2,
+   "rows_with_key": 127,
+   "distinct_keys": 127,
+   "sample_rows": [
+    [
+     null,
+     null,
+     "MT605GAUS",
+     "406MHz GNSS EPIRB - Manual Activation",
+     305.27,
+     0.4294,
+     131.0936,
+     480,
+     9319493315876,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "MT401FFSVC",
+     "Float free housing service kit",
+     125.0331,
+     0.4469,
+     55.876,
+     199,
+     9319493157735,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "MB053",
+     "Mounting Bracket - Suit MT600 / MT600G",
+     28.68,
+     0.4264,
+     12.2291,
+     45,
+     "9319493252386",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "Simrad Price List",
+   "state": "visible",
+   "classification": "vendor price list",
+   "purpose": "Simrad/Navico: trade, nett, base, sell, install hrs + sundry (NSM-added install estimates), RRP, barcode.",
+   "header_row": 7,
+   "headers_nonnull": [
+    [
+     2,
+     "Part Number"
+    ],
+    [
+     3,
+     "Title"
+    ],
+    [
+     4,
+     "Trade"
+    ],
+    [
+     5,
+     "Nett"
+    ],
+    [
+     6,
+     "MU"
+    ],
+    [
+     7,
+     "GP"
+    ],
+    [
+     8,
+     "Base"
+    ],
+    [
+     9,
+     "Sell"
+    ],
+    [
+     11,
+     "Install (Hrs)"
+    ],
+    [
+     12,
+     "Sundry"
+    ],
+    [
+     14,
+     "Category"
+    ],
+    [
+     15,
+     "Technology"
+    ],
+    [
+     16,
+     "Description"
+    ],
+    [
+     17,
+     "RRP (0.0%)"
+    ],
+    [
+     18,
+     "Barcode"
+    ]
+   ],
+   "max_row": 991,
+   "max_col": 78,
+   "real_rows_any_nonempty": 639,
+   "key_col_index0": 2,
+   "rows_with_key": 638,
+   "distinct_keys": 638,
+   "sample_rows": [
+    [
+     null,
+     null,
+     "000-15126-001",
+     "NSO evo3S MFD 16\" System Pack",
+     9447.272,
+     9211.0902,
+     0.2821,
+     2597.9998,
+     11809.09,
+     12990,
+     null,
+     4,
+     10,
+     null,
+     "Navigation Systems",
+     "NSO evo3S™",
+     "NSO evo3S 16\" MFD System Pack - High performance all-in-one multifunctional display. Integrate with radar, autopilot, sonar modules and much more via Ethernet a…",
+     11809.09,
+     "9420064108442",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "000-15127-001",
+     "NSO evo3S MFD 19\" System Pack",
+     11192.728,
+     10912.9098,
+     0.2821,
+     3078.0002,
+     13990.91,
+     15390,
+     null,
+     4,
+     10,
+     null,
+     "Navigation Systems",
+     "NSO evo3S™",
+     "NSO evo3S 19\" MFD System Pack - High performance all-in-one multifunctional display. Integrate with radar, autopilot, sonar modules and much more via Ethernet a…",
+     13990.91,
+     "9420064108459",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "000-15128-001",
+     "NSO evo3S MFD 24\" System Pack",
+     13810.912,
+     13465.6392,
+     0.2821,
+     3798.0008,
+     17263.64,
+     18990,
+     null,
+     4,
+     10,
+     null,
+     "Navigation Systems",
+     "NSO evo3S™",
+     "NSO evo3S 24\" MFD System Pack - High performance all-in-one multifunctional display. Integrate with radar, autopilot, sonar modules and much more via Ethernet a…",
+     17263.64,
+     "9420064108466",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "Hella Price List",
+   "state": "visible",
+   "classification": "vendor price list",
+   "purpose": "Hella lighting: catalogue no, material no, MOQ, barcode, nett price.",
+   "header_row": 4,
+   "headers_nonnull": [
+    [
+     2,
+     "Catalogue No"
+    ],
+    [
+     3,
+     "Material"
+    ],
+    [
+     4,
+     "Description"
+    ],
+    [
+     5,
+     "MOQ"
+    ],
+    [
+     6,
+     "Barcode No"
+    ],
+    [
+     7,
+     "Nett Price"
+    ]
+   ],
+   "max_row": 1767,
+   "max_col": 75,
+   "real_rows_any_nonempty": 1763,
+   "key_col_index0": 2,
+   "rows_with_key": 1763,
+   "distinct_keys": 1763,
+   "sample_rows": [
+    [
+     null,
+     null,
+     1005,
+     "980680002",
+     "Daytime Running Light",
+     1,
+     "9416325206736",
+     76.21,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     1009,
+     "980880001",
+     "Drl,Surface Mount, Horizontal, Single, Led Safety Daylights, 12V",
+     1,
+     "9416325217299",
+     46.82,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "1009-24V",
+     "980880101",
+     "Drl,Surface Mount, Horizontal, Single, Led Safety Daylights, 24V",
+     1,
+     "9416325217305",
+     46.82,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "Camec Price List",
+   "state": "visible",
+   "classification": "vendor price list",
+   "purpose": "Camec caravan/RV parts: part #, UOM, MOQ, trade ex GST, RRP inc GST. Header on row 2.",
+   "header_row": 2,
+   "headers_nonnull": [],
+   "max_row": 4959,
+   "max_col": 51,
+   "real_rows_any_nonempty": 4941,
+   "key_col_index0": 2,
+   "rows_with_key": 4941,
+   "distinct_keys": 4730,
+   "sample_rows": [
+    [
+     null,
+     null,
+     "Part #",
+     "DESCRIPTION",
+     "UNIT OF MEASURE",
+     "MIN ORDER \nQUANTITY",
+     "TRADE PRICE \n(Ex GST)",
+     "RRP \n(Incl GST)",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "042089",
+     "1 KEY BARREL KIT-6 ASSY KEY & NEW ASSY KEY",
+     "EA",
+     1,
+     65.8,
+     123.1,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     "Part #",
+     "DESCRIPTION",
+     "UNIT OF MEASURE",
+     "MIN ORDER \nQUANTITY",
+     "TRADE PRICE \n(Ex GST)",
+     "RRP \n(Incl GST)",
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ]
+   ]
+  },
+  {
+   "sheet": "Dropdowns",
+   "state": "hidden",
+   "classification": "dropdown vocabulary (hidden)",
+   "purpose": "Named-range vocab columns feeding data validation in Boat Module + this workbook: parts master list, labour estimates, accessories, pre-delivery ops, PFDs, anchor kits, rego letters, tie-downs, safety-gear packs, propellers.",
+   "header_row": 1,
+   "headers_nonnull": [
+    [
+     19,
+     "PROPELLERS - Yamaha"
+    ]
+   ],
+   "max_row": 3720,
+   "max_col": 20,
+   "real_rows_any_nonempty": 3719,
+   "key_col_index0": null,
+   "rows_with_key": null,
+   "distinct_keys": null,
+   "sample_rows": [
+    [
+     "SAFETY GEAR EQUIPMENT (NB: Excludes PFD's & Anchor)",
+     null,
+     null,
+     "VHF Radio - GME GX700W Flush Mounted with 1.8m Aerial",
+     null,
+     "Pre Delivery & Engine Installation - Yamaha F2.5SMHB (Tiller) w Aluminium Propellor",
+     null,
+     "EA - Adult PFD, Standard",
+     null,
+     "ANCHOR KITS",
+     null,
+     "Rego Letters - 8\" Standard",
+     null,
+     "MTD25 - Tie Down Strap",
+     null,
+     "Safety Gear - Smooth Waters",
+     null,
+     null,
+     null,
+     "Supplied with Motor"
+    ],
+    [
+     "Safety Gear - Smooth Waters",
+     null,
+     null,
+     "VHF Radio - GME GX700B Flush Mounted with 1.8m Aerial",
+     null,
+     0,
+     null,
+     0,
+     null,
+     "Sand Anchor Kit - 4lb",
+     null,
+     "Custom Registration Letters",
+     null,
+     "MTD5SS - Tie Down Strap",
+     null,
+     "Safety Gear - Smooth Waters inc Fire Ext",
+     null,
+     null,
+     null,
+     0
+    ],
+    [
+     "Safety Gear - Smooth Waters inc Fire Ext",
+     null,
+     null,
+     "VHF Radio - GME GX700W Flush Mounted with 1.2m Aerial",
+     null,
+     "Pre Delivery & Engine Installation - Yamaha F4SMHA (Tiller) w Aluminium Propellor",
+     null,
+     "Inflatable PFD - Adult 150N (Manual)",
+     null,
+     "Sand Anchor Kit - 6lb",
+     null,
+     "Custom Boat Name",
+     null,
+     "MTD6 - Tie Down Strap",
+     null,
+     "Safety Gear - Partially Smooth Waters",
+     null,
+     null,
+     null,
+     "Propeller - Aluminium 6 1/2\" BA Spline"
+    ]
+   ]
+  }
+ ]
+}

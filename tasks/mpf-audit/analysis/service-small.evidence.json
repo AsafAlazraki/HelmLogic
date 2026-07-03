@@ -1,0 +1,201 @@
+{
+  "meta": {
+    "date": "2026-07-03",
+    "method": "openpyxl 3.1.5 read_only=True data_only=True; full-sheet scans; no writes to sources; PII masked",
+    "source_dir": "/home/user/HelmLogic/tasks/mpf-source/"
+  },
+  "service_module": {
+    "file": "Service Module.xlsx",
+    "verdict": "catalog_not_ledger",
+    "sheets": {
+      "Std Service Schedules": {
+        "reported_dims": [63073, 367],
+        "last_populated_row": 280,
+        "populated_rows_after_280": 0,
+        "engine_model_rows": 189,
+        "distinct_family_codes_col4": 81,
+        "year_model_counts": {"2023": 22, "2024": 112, "2025": 23, "blank": 32},
+        "cylinder_counts": {"1": 12, "2": 34, "3": 10, "4": 72, "6": 44, "8": 16},
+        "a1": "Yamaha Price File",
+        "intervals": ["20hr","100hr","200hr","300hr","400hr","500hr","600hr","700hr","800hr","900hr","1000hr"],
+        "interval_fields": ["CTD","Sell","Time Allow."],
+        "five_year_plan_cols_43_47": ["CTD","GP ($)","Margin","Sell","60 Repayments"],
+        "inflation_assumption": 0.025,
+        "parts_bom_col_range": [64, 259],
+        "parts_bom_blocks": 27,
+        "dead_region": {"col": 261, "band": "Motor Support", "data_rows": 0},
+        "sample_LXF450USA2": {"family": "6KN", "cyl": 8, "year": 2024, "svc20_ctd": 453.886, "svc20_sell": 761, "svc20_hrs": 3.5, "svc500_sell": 2170, "svc500_hrs": 8.5, "plan5yr_ctd": 19401, "plan5yr_sell": 29800, "repayment60": 496.67},
+        "sample_F30LA": {"family": "6BT", "cyl": 3, "year": 2024, "svc20_ctd": 274.646, "svc20_sell": 443, "svc20_hrs": 2.3, "plan5yr_ctd": 8835, "plan5yr_sell": 13771}
+      },
+      "Schedule Notes": {
+        "reported_dims": [102, 50],
+        "content": ["NSM labour matrix interval x cyl (rows 6-16)", "Yamaha suggested labour matrix (cols 11-17)", "parts included in std service note (rows 18-20)", "Pay-As-You-Go R/I/IR matrix part-type x interval (rows 23-39)", "4-cyl and 6-cyl 500hr printable checklists (rows 42-98)"],
+        "nsm_vs_yamaha_example_8cyl_100hr": {"nsm": 6.8, "yamaha": 5.0}
+      },
+      "Operation Codes": {
+        "reported_dims": [1166, 73],
+        "coded_operations": 366,
+        "main_block_rows": [8, 504],
+        "orphan_legacy_block_rows": [1143, 1163],
+        "orphan_anomaly": "older labour basis 124.36/hr, Sell < CTD (e.g. DFO-ELE-0202 CTD 253.73 Sell 240)",
+        "header": ["Operation / Option","Op Code","Labour(Hrs)","Labour Cost","Sundry 1","Sundry 2","Sundry 3","Sublet","Total CTD","MU","GP","Labour(sell)","Sundry1(sell)","Sundry2(sell)","Sundry3(sell)","Sublet(sell)","Sell","Procedure"],
+        "rate_constants_row6": {"labour_cost_per_hr_exgst": 130.0909, "labour_sell_per_hr_incgst": 159, "sundry_multipliers": [1, 0.9, 0.8], "sublet_mu": 0.15},
+        "cols_22_to_73": "empty",
+        "section_count": 35,
+        "sections_sample": ["Labour Estimates","Trailer Pre Deliveries","Dealer Fit Options","Yamaha Accessories","ELECTRONIC INSTALLS (Labour Only)","Engine Removals","RIGGING INSTALLATIONS (Labour Only)","FACTORY OPTIONS - Extra Installation Charges","SUBLETS"],
+        "code_prefix_counts_top": {"DFO": 114, "YAM": 30, "DFO-TRA-": 20, "9HI-CO": 20, "DFO-ELE-": 18, "DFO-ENG-REM": 16, "9HI-FA": 16, "9SR-FA": 10, "DFO-VIP-": 8, "PDTR": 7},
+        "nonunique_codes": ["Sublet x7", "Factory Fit", "blank on sentinel rows"],
+        "sample_ops": [
+          {"code": "PDTR04", "name": "PD Trailer - Tri Axle Braked", "hrs": 2.5, "ctd": 334.23, "sell": 417.5},
+          {"code": "RIG-MEC-0300", "name": "Rigging Kit Installation (3.0) - Mechanical (ex cables)", "hrs": 3.0, "ctd": 405.27, "sell": 510},
+          {"code": "PUDL", "name": "Pick Up / Delivery Fee - Bris, Northside", "hrs": 2.2, "sell": 350},
+          {"code": "9HI-CON-SUS1150FAB", "name": "Install - Highfield SUS1100 Console w Fabric Top", "hrs": 4.0, "sell": 658}
+        ]
+      },
+      "Oils and Lubes": {
+        "reported_dims": [50, 23],
+        "header": ["Type","Notes","Part No.","Serv Cost","Unit","CTD","MU","GP","Sell"],
+        "banded_codes": {"LUBE1-8": "gear oil by HP band (2-6hp .. F200-F350)", "SUND1-7": "sundries by HP band (2-5hp .. 250-350hp)"},
+        "sample": {"engine_oil_4stroke": {"part": "90790-BZ404", "ctd": 7.41, "sell_per_litre": 15}, "SUND7": {"band": "250-350hp", "ctd": 14.184, "sell": 19.75}, "LUBE8": {"band": "F200-F350hp", "ctd": 17.98, "sell": 43.5}}
+      },
+      "Labour Rates": {
+        "reported_dims": [63, 26],
+        "internal_actual_cost_per_hr": 105,
+        "rates_inc_gst": {"Retail GEN": 159, "Pre Delivery PD": 159, "Detail DET": 159, "Trade TRA": 143.1, "Internal PDI": 143.1, "Internal-PD PD": 143.1, "Warranty WAR": 152, "Warranty Yamaha YAM": 126.005, "Warranty Stacer STA": 82.5, "Warranty Stabicraft STB": 110, "Warranty Surtees SUR": 152, "Warranty Jeanneau JEA": 152, "Warranty Haines HAI": 152, "Warranty Highfield HIG": 152, "Warranty Malibu MAL": 121, "Warranty Whittley WHI": 93.5, "Warranty Mercury MER": 159, "Warranty Volvo VOL": 140.25},
+        "anomaly": "code PD used for two different rates (retail 159 vs internal 143.10)"
+      },
+      "Dropdowns": {
+        "hidden": true,
+        "reported_dims": [1199, 16],
+        "col3_engine_model_list_count": 1198,
+        "col16_pickup_delivery_options": 6
+      }
+    },
+    "boat_module_pd_resolution": {
+      "pre_delivery_code_pattern": "{franchise}_{modelCode}_PD e.g. 9SB_7002323000_PD",
+      "resolves_to_operation_codes_sheet": false,
+      "rate_resolves_to": "Labour Rates sheet PD/DET codes",
+      "mpdc_dpdc_location": "checklist text stored on Boat Module row itself (CSV cols 483-533 and 535-564), not in Service Module",
+      "trailer_pd_resolves_to": "Operation Codes PDTR01-07"
+    },
+    "helmlogic_mapping": {
+      "operationCodes_to_serviceOperations": {"confidence": "high", "key": "Op Code", "hours_field": "Labour (Hrs) -> flatRateHours", "rate": "159 inc GST -> 144.55 ex GST hourlyRate", "exclude": ["zero-priced sentinels", "orphan rows 1143-1163"]},
+      "oilsAndLubes_to_serviceParts": {"confidence": "high"},
+      "labourRates_to_rate_config": {"confidence": "high", "gap": "HelmLogic serviceOperations has single hourlyRate; NSM has rate classes incl. per-brand warranty"},
+      "stdServiceSchedules_to_new_serviceSchedules_catalog": {"confidence": "medium-high", "note": "Epic 11.3-adjacent; keyed by Yamaha engine model code, joins Motor Module keyspace"},
+      "checklists": {"confidence": "low-medium", "note": "no HelmLogic surface"}
+    }
+  },
+  "price_matrix": {
+    "file": "Price Matrix.xlsx",
+    "sheets": ["Price Matrix", "Exchange Rates", "Exchange Rate Calculator"],
+    "banner_notes": ["Trade/Sub Dealer Pricing is Discount off Retail", "All Admin Loads removed 18.08.2025 as per MM / JF Request"],
+    "columns": ["Brand","Franchise Code","Exchange Rate","BMT Labour Rate","Retail Labour Rate","Reviewed","CTD","Other","Sub Dealer","Trade","Sell","Factory Options","Dealer Fit Options","Warranty Allowance","Admin Load","Notes"],
+    "boat_brand_rows": {
+      "Stabicraft 9SC": {"sell": 0.29, "fopt": 0.29, "dfo": 0.225},
+      "Stacer 9ST": {"sell": 0.105, "fopt": 0.15, "dfo": 0.225},
+      "Surtees 9SR": {"fx": "$NZ", "ctd": 0.2, "sell": 0.21, "fopt": 0.25, "dfo": 0.225},
+      "Jeanneau/MerryFisher 9JE": {"fx": "Euro", "sell": 0.24, "fopt": 0.25, "dfo": 0.225, "warranty": 0.005},
+      "HainesSignature 9HS": {"sell": 0.185, "fopt": 0.185, "dfo": 0.185},
+      "Highfield 9HI": {"sell": 0.475, "other": 0.45, "subDealerDiscount": 0.175, "tradeDiscount": 0.05, "fopt": 0.5, "dfo": 0.3}
+    },
+    "trailer_rows": {"generic TRA / 9MY / 9DU / 9MC / GFAB": 0.22, "Stacer Trailers 9ST": 0.2},
+    "motor_rows": {"Yamaha 9YA + YAM accessories": {"ctd": 0.075, "sell": 0.115, "fopt": 0.2, "dfo": 0.2}, "Rigging Kits 9YA": {"subDealer": -0.05, "trade": -0.05, "sell": 0.25}},
+    "rrp_suppliers": ["BLA","SAW","MWH","SUP","CEN","OCE","BBB","ANC","EJM","FRM","RWB","HELLA","NARVA","IBC","SAC","PERM","Sublet"],
+    "retail_sliding_scale": {"<=10": 1.0, "10.01-25": 0.9, "25.01-35": 0.8, "35.01-50": 0.7, "50.01-100": 0.6, "100.01-500": 0.5, "500.01-1000": 0.4, "1000.01-2500": 0.3},
+    "exchange_rates": {"AUD": 1, "NZ": 1.2, "USD": 0.7, "EURO": 0.6, "note": "direction inconsistent: NZ divides, USD/EUR multiply by 1/rate"},
+    "mapping_confidence": "high semantics / medium placement (per-vendor marginMatrix org config)"
+  },
+  "registration_module": {
+    "file": "Registration Module.xlsx",
+    "as_at": "2025-07-01",
+    "state_coverage": "QLD only (no state column)",
+    "columns": ["description","REV Code","CTD","SELL(rounded up)"],
+    "boat_rego_bands": {"REGO 1 <=4.5m": [126.35, 127], "REGO 2 4.51-6.0m": [249.5, 250], "REGO 3 6.01-10m": [414, 414], "REGO 4 10.01-15m": [608.05, 609]},
+    "trailer_rego_bands": {"REGO 6 <=1.02t": [165.11, 166], "REGO 7 >1.021t": [282.19, 283], "heavy >4.55t (no code)": [997.5, 998]},
+    "other_fees": {"REGO 5 boat transfer": [32.55, 33], "REGO 8 trailer transfer": [32.55, 33], "replacement plate": [35.05, 36], "unregistered vehicle permit": [38.9, 39], "VIN plate": [8.14, 9], "PPSR": [4.2, 5]},
+    "pensioner_concession_bands": 4,
+    "mapping": "v1.4 Rego module QLD catalog; boat length bands join Boat CSV col299 text values",
+    "confidence": "high"
+  },
+  "freight_module": {
+    "file": "Freight Module.xlsx",
+    "sheets": {
+      "Freight Distribution Calculator": {"real_last_row": 67, "shipment": "S00173451/A", "container_nett_aud": 5634.64, "total_linear_metres": 52.8, "method": "per-linear-metre split, small-boat vs loaded-boat, rounded actual CTD per boat", "boat_keyspace": "Highfield variant SKUs + NSM stock numbers N0143xx"},
+      "FCL Import - Highfield": {"forwarder": "AWW Global Logistics", "origin": "Qingdao", "quote_date": "2026-02-28", "seafreight_usd": 3767.596, "aud_total_est": 8233.78, "buffer_pct": 0.10, "seafreight_ctd": 9057.158, "per_linear_metre_aud": 128.47},
+      "Quadrant Pacific - Surtees": {"origin": "Tauranga NZ", "quote_date": "2024-04-22", "aud_total_est": 4496.125, "buffer_pct": 0.05, "seafreight_ctd": 4720.93, "per_linear_metre_aud": 441.21}
+    },
+    "mapping": "per-vendor freight config feeding Boat Module landed-cost chain (CSV cols 251-259 -> Landed Hull Cost)",
+    "confidence": "high decode / medium placement"
+  },
+  "administration_module": {
+    "file": "Administration Module.xlsx",
+    "bank_details": {"account_name": "Northside Marine Pty Ltd", "bsb": "064 000", "account_number": "present (masked in md)", "visa_mc_surcharge": 0.012, "amex_surcharge": 0.0275, "reference_convention": "Surname / Deal #"},
+    "finance_module": {"provider": "Yamaha Finance", "rates_by_term_years": {"7": 0.095, "6": 0.0875, "5": 0.0825, "4": 0.0795, "3": 0.075, "2": 0.075}, "fees": 1200, "disclaimers": "YMF ACL 394553 ABN 29 101 928 670 (contains typos)"},
+    "hidden_dropdowns_doc_states": {"Display Sheet": 0, "Quotation": 0, "Contract": 1, "Tax Invoice": 1, "Tax Invoice (Deposit Paid)": 1, "Contract (Stock Allocated)": 1, "Delivered Deal": 1, "Deal at Admin Status": 1, "Deal Closed Down": 1},
+    "mapping": "org paymentDetails + finance estimator config + deal-lifecycle doc-state ancestor of v1.9 lifecycle",
+    "confidence": "high (medium on 0/1 flag semantics)"
+  },
+  "customer_module": {
+    "file": "Customer Module.xlsx",
+    "reported_dims": [677, 481],
+    "real_last_row": 57,
+    "real_max_col": 18,
+    "data_rows": 44,
+    "sale_type_enum": ["Cash Sale/Cash", "Trade", "Sub Dealer", "Sub (Exclusive)", "AUS Sailing", "Commercial Sale", "Spare 2-5"],
+    "sections": ["HIGHFIELD - Sub Dealer's (r18)", "HIGHFIELD - OEM's (r29)", "HIGHFIELD - Broker's (r34)", "YACHT CLUBS (r50)"],
+    "columns": ["CUSTOMER","SALE TYPE","COMPANY NAME","ABN NUMBER","STREET ADDRESS","SUBURB","STATE","P/CODE","COUNTRY","PRIMARY CONTACT","PHONE","PHONE (2)","EMAIL","Website"],
+    "sale_type_distribution": {"Trade": 19, "Sub Dealer": 7, "Cash": 3, "Commercial Sale": 3, "Sub (Exclusive)": 2, "AUS Sailing": 2, "spares": 4, "blank": 4},
+    "state_distribution": {"Qld": 24, "QLD": 1, "NSW": 2, "blank": 17},
+    "verdict": "B2B dealer-network account list, NOT retail customer registry; retail customers live elsewhere (DMS)",
+    "mapping": "trade/sub-dealer accounts tied to price levels, not v1.12 Customer schema",
+    "confidence": "high decode / medium target"
+  },
+  "contacts_module": {
+    "file": "Contacts Module.xlsx",
+    "rows": 57,
+    "departments": {"BOAT SALES": 6, "PARTS & ACCESSORIES": 5, "SERVICE": 3, "SERVICE TECHNICIANS & DETAILING": 9, "ADMINISTRATION": 5, "MARKETING": 2, "SYSTEMS SUPPORT": 2, "ungrouped": 4},
+    "domain": "nsmarine.com.au",
+    "typo_domains": ["nsmmarine.com.au", "nsmarin.com.au"],
+    "mapping": "salesTeam + technician picker (v1.11 fitUpAssignedTechnician)",
+    "confidence": "high"
+  },
+  "bmt_stock_holdings": {
+    "file": "BMT Stock Holdings.xlsx",
+    "reported_dims": [84, 38],
+    "brand_blocks": ["JEANNEAU","HAINES SIGNATURE","STACER","STABICRAFT","SURTEES","HIGHFIELD"],
+    "columns": ["Model","Hull & Accesories (sic)","Motor","Trailer","Total BMT Cost"],
+    "populated_data_rows": 1,
+    "single_row": {"model": "Merry Fisher - 695", "hull": 100000, "motor": 50000, "trailer": 30000, "total": 180000, "note": "round placeholder numbers"},
+    "verdict": "empty template / requirements hint for BMT-composite stock-value reporting",
+    "confidence": "high"
+  },
+  "nsm_boat_module_sample_csv": {
+    "file": "NSM Boat Module Sample.csv",
+    "rows": 8,
+    "cols": 4069,
+    "boats": ["2350 Supercab Adventure/Sportfish/Profish (70023230/40/50 00)", "2050 Treker Adventure/Sportfish/Profish (70020100/110/120 00)"],
+    "matrix_key": "Stabicraft",
+    "key_regions": {"specs": "3-21", "std_inclusions_x51": "23-74", "factory_options_x150": "76-226", "afo_x10": "231-241", "landed_cost_chain": "243-259", "promos": "261-264", "markups": "266-271", "pre_delivery": "273-278", "pd_parts_x10_handover": "280-297", "rego_safety": "299-306", "motor_options_x13": "308-388", "trailers_x10": "390-399", "extra_dfo_x42": "401-443", "hull_only_pricing_by_sale_type": "459-479", "mpdc_x50": "483-533", "dpdc_x30": "535-564", "deposit_schedule": "606-611", "factory_lead_times": "615-620"},
+    "sample_values": {"pd_code": "9SB_7002323000_PD", "boat_pd_hrs": 12.0, "handover_hrs": 2.0, "duty": "0.02%", "ho_mu": "29%", "dfo_mu": "22.5%", "rego_band_text": "6.01m to 10.00m", "deposit_schedule": "0/10/30/0/60 %", "lead_time_days_total": 45},
+    "markups_match_price_matrix_row": "Stabicraft 9SC (0.29 / 0.225)",
+    "anomaly": "PD code prefix 9SB vs Price Matrix franchise 9SC for Stabicraft",
+    "confidence": "high"
+  },
+  "cross_cutting_anomalies": [
+    "phantom max_row/max_col on 5 of 9 files (63073->280, 677->57, 481->18, 84 mostly empty, 106->67)",
+    "\\u00a0 styled-blank cells throughout",
+    "9SB vs 9SC Stabicraft prefix collision",
+    "9ST shared by Stacer boats and Stacer Trailers with different margins",
+    "Rigging Kits negative trade discounts (-5%)",
+    "Operation Codes orphan block Sell < CTD",
+    "PD labour-rate code ambiguity (retail vs internal)",
+    "Registration QLD-only, no state field; concession/heavy bands lack REV codes",
+    "customer STATE case drift Qld/QLD",
+    "2 typo'd staff email domains",
+    "finance disclaimer typos (would leak onto PDFs)",
+    "freight per-lm varies 3.4x by vendor; buffer 10% vs 5% -> config must be per-vendor",
+    "'.' sentinel in CSV option slots",
+    "exchange-rate direction inconsistent (divide vs multiply)"
+  ]
+}
