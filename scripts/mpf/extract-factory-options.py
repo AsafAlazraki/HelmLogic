@@ -174,11 +174,14 @@ def extract_fo():
             code = str(c)
             obsolete_codes.add(code)
             is_stab = (f and 'stabi' in str(f).lower()) or code.startswith('STB')
+            errs = [fld for fld, raw in (('basePrice', g_raw), ('sell', l_raw)) if is_error(raw)]
+            if errs:
+                quarantine.append({'row': rn, 'code': code, 'desc': d,
+                                   'region': 'obsolete-stabicraft' if is_stab else 'obsolete',
+                                   'errorCells': errs,
+                                   'basePriceRaw': str(g_raw), 'sellRaw': str(l_raw)})
             if is_stab:
                 sell, sem = sell_semantics(l_raw)
-                if sem == 'error' or is_error(g_raw):
-                    quarantine.append({'row': rn, 'code': code, 'desc': d, 'region': 'obsolete-stabicraft',
-                                       'basePriceRaw': str(g_raw), 'sellRaw': str(l_raw)})
                 obsolete_stabicraft.append({
                     'row': rn, 'code': code, 'desc': d, 'factoryCode': e, 'matrix': f,
                     'sellRaw': l_raw if isinstance(l_raw, (int, float, str)) else None,
@@ -236,7 +239,7 @@ def extract_fo():
             quarantine.append({'row': rn, 'code': code, 'desc': d,
                                'region': 'highfield-flat' if in_highfield else
                                          (cur or {}).get('sectionName', '(no section)'),
-                               'errors': [f"{fld}={val}" for fld, val in errors],
+                               'errorCells': [fld for fld, _ in errors],
                                'basePriceRaw': str(g_raw), 'sellRaw': str(l_raw)})
             opt['quarantined'] = True   # listed but NEVER imported
         if in_highfield:
@@ -269,10 +272,10 @@ def stabicraft_bug_evidence(sections, obsolete_codes):
         for o in s['options']:
             active_codes.add(o['code'])
 
-    boats = []
-    rn = 0
-    for row in ws.iter_rows(min_row=4, max_row=1004, max_col=241):
-        rn = row[0].row if hasattr(row[0], 'row') else rn + 1
+    current_boats, obsolete_boats = [], []
+    rn = 3
+    for row in ws.iter_rows(min_row=4, max_row=2301, max_col=241):
+        rn += 1
         matrix = row[4].value if len(row) >= 5 else None
         if matrix is None or 'stabi' not in str(matrix).lower():
             continue
@@ -300,8 +303,8 @@ def stabicraft_bug_evidence(sections, obsolete_codes):
                 in_obsolete_only.append(code)
             else:
                 missing.append(code)
-        boats.append({
-            'boat': str(name), 'modelCode': str(model_code),
+        rec = {
+            'row': rn, 'boat': str(name), 'modelCode': str(model_code),
             'hullSectionFound': str(model_code) in active_by_hull,
             'foRefs': len(refs),
             'resolveInOwnActiveSection': len(in_own),
@@ -309,28 +312,35 @@ def stabicraft_bug_evidence(sections, obsolete_codes):
             'resolveOnlyInObsolete': len(in_obsolete_only),
             'missingEverywhere': len(missing),
             'missingCodes': missing[:10],
-        })
+        }
+        (current_boats if rn < 1005 else obsolete_boats).append(rec)
     wb.close()
 
-    totals = {
-        'currentStabicraftBoats': len(boats),
-        'totalFoRefs': sum(b['foRefs'] for b in boats),
-        'resolveInOwnActiveSection': sum(b['resolveInOwnActiveSection'] for b in boats),
-        'resolveInOtherActiveSection': sum(b['resolveInOtherActiveSection'] for b in boats),
-        'resolveOnlyInObsolete': sum(b['resolveOnlyInObsolete'] for b in boats),
-        'missingEverywhere': sum(b['missingEverywhere'] for b in boats),
-    }
+    def totals(boats):
+        return {
+            'boats': len(boats),
+            'totalFoRefs': sum(b['foRefs'] for b in boats),
+            'resolveInOwnActiveSection': sum(b['resolveInOwnActiveSection'] for b in boats),
+            'resolveInOtherActiveSection': sum(b['resolveInOtherActiveSection'] for b in boats),
+            'resolveOnlyInObsolete': sum(b['resolveOnlyInObsolete'] for b in boats),
+            'missingEverywhere': sum(b['missingEverywhere'] for b in boats),
+        }
     return {
-        'finding': 'NSM DATA BUG (theirs): the FO Module re-keyed Stabicraft options to '
-                   '10-digit factory codes in its active sections and moved the old STB-* '
-                   'rows to OBSOLETE OPTIONS, but the Boat Module FO ref columns were only '
-                   'partially migrated — most Stabicraft boat rows still reference '
-                   'obsolete-section codes. CORRECT import (D6): take each boat\'s options '
-                   'from the ACTIVE section joined via FO hull-row NSM code == Boat Module '
-                   'Model Code; keep obsolete STB-*/legacy rows only as a crosswalk.',
+        'finding': 'NSM DATA BUG (theirs), refined by this extraction: the FO Module '
+                   're-keyed Stabicraft options to 10-digit factory codes in its active '
+                   'sections and moved the old STB-* rows to OBSOLETE OPTIONS. The Boat '
+                   'Module\'s CURRENT Stabicraft rows (rows 144-194) were migrated and '
+                   'resolve almost entirely in their own active FO section via the NSM-code '
+                   'join. The Boat Module\'s OBSOLETE-region duplicates of the SAME model '
+                   'codes (e.g. row 1814 "2350 - Supercab Adventure" == 7002323000, the row '
+                   'phase-1 probed) still carry legacy STB-* refs resolving only into the '
+                   'obsolete FO section. CORRECT import (D6): take each current boat\'s '
+                   'options from the ACTIVE section joined via FO hull-row NSM code == Boat '
+                   'Module Model Code; keep obsolete STB-* rows only as a legacy crosswalk; '
+                   'never join by drifting section names.',
         'joinRule': 'FO section hull-row NSM code == Boat Module Model Code (verified)',
-        'totals': totals,
-        'perBoat': boats,
+        'currentBoatRows': {'totals': totals(current_boats), 'perBoat': current_boats},
+        'obsoleteBoatRows': {'totals': totals(obsolete_boats), 'perBoat': obsolete_boats},
     }
 
 
@@ -366,7 +376,8 @@ def main():
             'highfieldFlatOptions': len(hf_flat),
             'totalActiveOptionRows': n_opts + len(hf_flat),
             'importableOptions': len(importable),
-            'quarantinedCells': len(quarantine),
+            'quarantinedRows': len(quarantine),
+            'quarantinedCells': sum(len(q.get('errorCells', [])) for q in quarantine),
             'obsoleteStabicraftRows': len(obs_stab),
             'obsoleteRegionCodes': len(obsolete_codes),
             'sellSemantics': sem_counts,
@@ -399,12 +410,13 @@ def main():
     c = out['counts']
     print(f"factory-options: {c['boatSections']} boat sections, {c['sectionOptions']} section "
           f"options + {c['highfieldFlatOptions']} Highfield flat = {c['totalActiveOptionRows']} "
-          f"active option rows; quarantined {c['quarantinedCells']}; obsolete Stabicraft "
-          f"crosswalk {c['obsoleteStabicraftRows']}; semantics {c['sellSemantics']}")
-    t = bug['totals']
-    print(f"stabicraft-bug: {t['currentStabicraftBoats']} boats, {t['totalFoRefs']} FO refs -> "
-          f"own-active {t['resolveInOwnActiveSection']}, other-active {t['resolveInOtherActiveSection']}, "
-          f"obsolete-only {t['resolveOnlyInObsolete']}, missing {t['missingEverywhere']}")
+          f"active option rows; quarantined {c['quarantinedCells']} cells in {c['quarantinedRows']} rows; "
+          f"obsolete Stabicraft crosswalk {c['obsoleteStabicraftRows']}; semantics {c['sellSemantics']}")
+    for label in ('currentBoatRows', 'obsoleteBoatRows'):
+        t = bug[label]['totals']
+        print(f"stabicraft-bug {label}: {t['boats']} boats, {t['totalFoRefs']} FO refs -> "
+              f"own-active {t['resolveInOwnActiveSection']}, other-active {t['resolveInOtherActiveSection']}, "
+              f"obsolete-only {t['resolveOnlyInObsolete']}, missing {t['missingEverywhere']}")
 
 
 if __name__ == '__main__':
