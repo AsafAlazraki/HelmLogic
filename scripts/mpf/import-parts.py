@@ -190,15 +190,30 @@ def managed_equal(payload, live):
     return True
 
 
+def _patch_with_retry(session, headers, url, body):
+    import time as _t
+    last = None
+    for attempt in range(4):
+        try:
+            r = session.patch(url, headers=headers, json=body, timeout=60)
+        except requests.exceptions.ConnectionError as e:
+            last = e; _t.sleep(2 ** attempt); continue
+        if r.status_code in (429, 500, 502, 503, 504):
+            _t.sleep(2 ** attempt); continue
+        return r
+    if last: raise last
+    return r
+
+
 def patch_doc(session, headers, path, payload):
     mask = "&".join(f"updateMask.fieldPaths={requests.utils.quote(k, safe='')}" for k in payload)
     url = f"{FS_BASE}/{path}?{mask}"
-    r = session.patch(url, headers=headers, json={"fields": {k: to_fs(v) for k, v in payload.items()}}, timeout=60)
+    r = _patch_with_retry(session, headers, url, {"fields": {k: to_fs(v) for k, v in payload.items()}})
     if r.status_code == 401:
         # Long applies (34k docs) outlive the idToken — refresh once in-place
         # so every caller sharing this headers dict picks up the new token.
         headers["Authorization"] = f"Bearer {sign_in()}"
-        r = session.patch(url, headers=headers, json={"fields": {k: to_fs(v) for k, v in payload.items()}}, timeout=60)
+        r = _patch_with_retry(session, headers, url, {"fields": {k: to_fs(v) for k, v in payload.items()}})
     return r.status_code, (None if r.status_code == 200 else r.text[:300])
 
 

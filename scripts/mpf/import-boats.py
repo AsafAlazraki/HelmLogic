@@ -123,12 +123,27 @@ class Store:
         self.ops = {"create": 0, "update": 0, "skip_unchanged": 0}
 
     def _req(self, method, url, **kw):
-        """Request with one automatic token refresh on 401 — long applies
-        (>1h) outlive the Firebase idToken's lifetime."""
-        r = requests.request(method, url, headers=self.h, timeout=60, **kw)
-        if r.status_code == 401:
-            self.h = {"Authorization": f"Bearer {sign_in()}"}
-            r = requests.request(method, url, headers=self.h, timeout=60, **kw)
+        """Request with one automatic token refresh on 401 plus transient
+        retry (connection resets / 429 / 5xx) — long applies (>1h) outlive
+        the Firebase idToken lifetime and WILL hit proxy hiccups."""
+        import time as _t
+        last = None
+        for attempt in range(4):
+            try:
+                r = requests.request(method, url, headers=self.h, timeout=60, **kw)
+            except requests.exceptions.ConnectionError as e:
+                last = e
+                _t.sleep(2 ** attempt)
+                continue
+            if r.status_code == 401:
+                self.h = {"Authorization": f"Bearer {sign_in()}"}
+                continue
+            if r.status_code in (429, 500, 502, 503, 504):
+                _t.sleep(2 ** attempt)
+                continue
+            return r
+        if last:
+            raise last
         return r
 
     def get(self, path):

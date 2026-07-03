@@ -22,10 +22,12 @@ def token():
     return _token
 
 def _req(url, method="GET", body=None):
-    # One automatic token refresh on 401 — long applies (>1h) outlive the
-    # Firebase idToken lifetime.
+    # Token refresh on 401 + transient retry (resets/429/5xx) — long applies
+    # outlive the idToken lifetime and hit proxy hiccups.
     global _token
-    for attempt in (1, 2):
+    import time as _t
+    last = None
+    for attempt in range(4):
         req = urllib.request.Request(url, method=method,
             data=json.dumps(body).encode() if body is not None else None,
             headers={"Authorization": f"Bearer {token()}", "Content-Type": "application/json"})
@@ -33,10 +35,15 @@ def _req(url, method="GET", body=None):
             with urllib.request.urlopen(req) as r:
                 return json.load(r)
         except urllib.error.HTTPError as e:
-            if e.code == 401 and attempt == 1:
+            if e.code == 401:
                 _token = None  # force re-sign-in
                 continue
+            if e.code in (429, 500, 502, 503, 504):
+                last = e; _t.sleep(2 ** attempt); continue
             raise
+        except (urllib.error.URLError, ConnectionError, OSError) as e:
+            last = e; _t.sleep(2 ** attempt); continue
+    raise last
 
 def decode_value(v):
     if "stringValue" in v: return v["stringValue"]
@@ -86,12 +93,39 @@ def get_doc(path):
         if e.code == 404: return None
         raise
 
+def _mask_path(m):
+    """Firestore updateMask field paths must backtick-quote any segment that
+    isn't a simple identifier (e.g. Yamaha column names like `NSM Retail`)."""
+    import re as _re
+    out = []
+    for seg in m.split('.'):
+        if _re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', seg):
+            out.append(seg)
+        else:
+            out.append('`' + seg.replace('\\', '\\\\').replace('`', '\\`') + '`')
+    return '.'.join(out)
+
+
+def _quote_seg(seg):
+    import re as _re
+    if _re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', seg):
+        return seg
+    return '`' + seg.replace('\\', '\\\\').replace('`', '\\`') + '`'
+
+
 def patch_doc(path, fields, update_mask=None):
-    """Merge-patch a document. fields: plain dict. update_mask: list of field paths."""
+    """Merge-patch a document. fields: plain dict. update_mask: list of field paths.
+    Default masks come from fields.keys() = FLAT field names (quote whole —
+    names like 'Prop Part No.' contain literal dots). An explicit update_mask
+    is treated as dotted nesting (each segment quoted as needed)."""
     url = f"{BASE}/{urllib.parse.quote(path)}"
     params = []
-    for m in (update_mask or list(fields.keys())):
-        params.append(("updateMask.fieldPaths", m))
+    if update_mask:
+        for m in update_mask:
+            params.append(("updateMask.fieldPaths", _mask_path(m)))
+    else:
+        for k in fields.keys():
+            params.append(("updateMask.fieldPaths", _quote_seg(k)))
     url += "?" + urllib.parse.urlencode(params)
     body = {"fields": {k: encode_value(v) for k, v in fields.items()}}
     return _req(url, method="PATCH", body=body)
