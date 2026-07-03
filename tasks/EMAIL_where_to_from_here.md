@@ -60,6 +60,10 @@ A few calls to make
 
 Some things wait on decisions rather than work: the e-signature approach, which states we operate in and the compliance text that follows, and the sender domain and SMTP setup above. The faster we make those calls, the faster they clear.
 
+On timing
+
+The release itself kicks off tomorrow morning. Because this is a big one, we're rolling it out in stages rather than pushing it all live in a single hit, so it lands in a controlled way and we can keep an eye on each step as it goes.
+
 Where this leaves us
 
 The roadmap we set out to build is done and proven. That's a real milestone, and it's worth marking. But it's a chapter, not the end of the book. Ahead of us are production readiness whenever the business decides to go there, then the module by module pass, with the Shopify data question sitting right at the front of how we sequence it. The reshaped roadmap should reflect all of that, and I'd like us to shape it together rather than me guessing at the order.
