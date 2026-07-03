@@ -116,23 +116,38 @@ test('quote flow — CL380 Step 1 + Step 5 dealer-fit', async ({ page }) => {
   const m = page.url().match(/\/([^/]+)\/(dashboard|modules|$)/);
   const orgSlug = m ? m[1] : 'northside-marine';
 
-  // New Quote dialog is intermittent (repo pattern) — retry up to 3 times.
+  // New Quote dialog is intermittent (repo pattern). The "CONTEXT ERROR" build
+  // screen appears when the model wasn't actually selected before the flow
+  // advanced, so we (1) wait for the CL380 card to RENDER before clicking it,
+  // and (2) detect the context-error screen and retry from a fresh module load.
   let onStep1 = false;
-  for (let attempt = 1; attempt <= 3 && !onStep1; attempt++) {
+  for (let attempt = 1; attempt <= 5 && !onStep1; attempt++) {
     await page.goto(`${BASE_URL}/${orgSlug}/modules/${MODULE_ID}?_t=${Date.now()}`);
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(4000);
+    // Let the module config (needed by the build context) fully load first.
+    await page.waitForTimeout(6000);
     const newQ = page.locator('button:has-text("New Quote"), button:has-text("New Proposal")').first();
     if (!(await newQ.isVisible().catch(() => false))) continue;
     await newQ.click({ force: true });
     const dlg = page.locator('[role="dialog"]');
     if (!(await dlg.waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false))) continue;
-    await page.waitForTimeout(1500);
-    await dlg.locator('.cursor-pointer:has-text("Classic")').first().click({ force: true });
-    await page.waitForTimeout(1800);
-    await dlg.locator('.cursor-pointer:has-text("CL380")').first().click({ force: true });
+    const classic = dlg.locator('.cursor-pointer:has-text("Classic")').first();
+    if (!(await classic.waitFor({ state: 'visible', timeout: 12000 }).then(() => true).catch(() => false))) continue;
+    await classic.click({ force: true });
+    const cl380 = dlg.locator('.cursor-pointer:has-text("CL380")').first();
+    if (!(await cl380.waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false))) continue;
+    await page.waitForTimeout(600);
+    await cl380.click({ force: true });
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(5000);
+    // Wait for EITHER the Step-1 chrome or the context-error screen.
+    await page.waitForFunction(
+      () => /Next Step/i.test(document.body.innerText) || /CONTEXT ERROR/i.test(document.body.innerText),
+      { timeout: 30000 },
+    ).catch(() => {});
+    await page.waitForTimeout(2000);
+    if (/CONTEXT ERROR/i.test(await page.locator('body').innerText().catch(() => ''))) {
+      continue; // fresh retry from a clean module load
+    }
     onStep1 = await page.locator('button:has-text("Next Step")').first().isVisible().catch(() => false);
   }
   expect(onStep1, 'should land on Step 1 after Classic + CL380').toBe(true);
