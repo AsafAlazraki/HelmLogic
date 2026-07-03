@@ -8,6 +8,7 @@ Playwright `toHaveScreenshot` baselines for HelmLogic's core screens.
 |---|---|
 | `core-screens.spec.ts` | Captures login, dashboard, Highfield module, quote-flow Step 1 (+ build header element), Catalog Manager, Customers, Reporting |
 | `__screenshots__/` | Committed PNG baselines, one per screen |
+| `tls-bridge.mjs` | Sandbox-only local TLS bridge (see "Sandbox TLS bridge" below) |
 | `../../playwright.visual.config.ts` | Dedicated config: `workers: 1`, `retries: 0`, `maxDiffPixelRatio: 0.02`, `animations: 'disabled'` |
 
 ## How baselines work
@@ -95,11 +96,36 @@ Masks hide dynamic pixels; everything unmasked is asserted. The rules:
    diff. Over-masking erodes coverage; a mask is a documented decision that
    a region is data, not design.
 
+## Sandbox TLS bridge (`tls-bridge.mjs`)
+
+In the Claude sandbox, all outbound HTTPS goes through a TLS-intercepting
+agent proxy (`HTTPS_PROXY`). Chromium 147's TLS ClientHello gets
+connection-RESET by that proxy's MITM endpoint, and unlike older Chromium
+builds **no** `--disable-features` combination (ECH, PostQuantumKeyAgreement,
+X25519MLKEM768, `--ssl-version-max=tls1.2`, `--disable-http2`) fixes it —
+while curl and Node's TLS stack handshake with the same proxy fine.
+
+Fix: the config points the browser at a local bridge instead. The bridge
+accepts Chromium's CONNECT, terminates its TLS with a throwaway self-signed
+cert (Playwright runs with `ignoreHTTPSErrors`), and relays each request
+outbound with Node's TLS through the real agent proxy (verifying against
+`/root/.ccr/ca-bundle.crt`). It is auto-started by the config's `webServer`
+entry **only when `HTTPS_PROXY` is set** — on a normal machine/CI without the
+sandbox proxy, the browser connects directly and the bridge never runs.
+
+Limitations (fine for this app): HTTPS only (no plain-http proxying, no
+WebSocket upgrades — Firebase Auth/Firestore/Storage use fetch/XHR), fresh
+upstream tunnel per request. Requires `openssl` on PATH.
+
 ## Repo lessons that apply here
 
 - **Never `waitForLoadState('networkidle')`** — Firebase websockets keep the
   network active forever. Use `domcontentloaded` + explicit selector waits.
 - Tests must use the standard `page` fixture (not `browser.newPage()` in a
-  `beforeAll`) so they inherit the proxy + PQ-disable launch options from the
-  config — without the proxy, Firebase auth cannot reach
-  `identitytoolkit.googleapis.com` in the sandbox.
+  `beforeAll`) so they inherit the proxy settings from the config — without
+  them, Firebase auth cannot reach `identitytoolkit.googleapis.com` in the
+  sandbox.
+- The app must be a **production** build (`npm run build` + `next start`).
+  A stale `.next` dir serves HTML whose chunk URLs 400 — the page renders
+  but never hydrates, and login silently no-ops (the button submits a plain
+  HTML form). If login "does nothing", rebuild first.
