@@ -41,22 +41,39 @@ test('ULTIMATE: SP560 PVC W-W-WB — MPF-identical quote', async ({ page }) => {
   await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(3500);
 
-  // New Quote -> Sport -> SP560
-  const newQ = page.locator('button:has-text("New Quote"), button:has-text("New Proposal")').first();
-  await newQ.waitFor({ state: 'visible', timeout: 45000 });
-  await newQ.click();
-  const dialog = page.locator('[role="dialog"]');
-  await dialog.waitFor({ state: 'visible', timeout: 20000 });
-  await page.waitForTimeout(1200);
-  const sportCard = dialog.locator('.cursor-pointer:has-text("Sport")').first();
-  await sportCard.waitFor({ state: 'visible', timeout: 20000 });
-  await sportCard.click({ force: true });
-  await page.waitForTimeout(1800);
-  const sp560 = dialog.locator('.cursor-pointer:has-text("SP560")').first();
-  await sp560.waitFor({ timeout: 15000 });
-  await sp560.click({ force: true });
-  await page.waitForLoadState('domcontentloaded');
-  await page.waitForTimeout(5000);
+  // New Quote -> Sport -> SP560. The dialog's model click navigates to
+  // /quote/sp560?range=...&vendor=${mainVendor?.id} — if mainVendor hasn't
+  // resolved yet the URL carries vendor=undefined and the quote page shows
+  // "Context Error". Retry the whole dialog flow (with growing settles)
+  // until the quote flow actually mounts.
+  let mounted = false;
+  for (let attempt = 1; attempt <= 3 && !mounted; attempt++) {
+    if (attempt > 1) {
+      console.log(`  context error — retry ${attempt}`);
+      await page.goto(`${BASE_URL}/${orgSlug}/modules/${MODULE_ID}?_t=${Date.now()}`);
+      await page.waitForLoadState('domcontentloaded');
+    }
+    await page.waitForTimeout(3000 * attempt);
+    const newQ2 = page.locator('button:has-text("New Quote"), button:has-text("New Proposal")').first();
+    await newQ2.waitFor({ state: 'visible', timeout: 45000 });
+    await newQ2.click();
+    const dialog = page.locator('[role="dialog"]');
+    await dialog.waitFor({ state: 'visible', timeout: 20000 });
+    await page.waitForTimeout(1500 * attempt);
+    const sportCard = dialog.locator('.cursor-pointer:has-text("Sport")').first();
+    await sportCard.waitFor({ state: 'visible', timeout: 20000 });
+    await sportCard.click({ force: true });
+    await page.waitForTimeout(2000 * attempt);
+    const sp560 = dialog.locator('.cursor-pointer:has-text("SP560")').first();
+    await sp560.waitFor({ timeout: 15000 });
+    await sp560.click({ force: true });
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(6000);
+    const ctxError = await page.locator('text=Context Error').isVisible().catch(() => false);
+    const vendorOk = !/vendor=undefined/.test(page.url());
+    mounted = !ctxError && vendorOk;
+    console.log(`  attempt ${attempt}: url=${page.url()} mounted=${mounted}`);
+  }
   await shot('hl-step1-boat', true);
 
   // ── STEP 1: material PVC + colour W-W-WB ──
