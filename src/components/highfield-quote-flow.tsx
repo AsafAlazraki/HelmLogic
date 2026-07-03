@@ -1531,7 +1531,7 @@ export function HighfieldQuoteFlow({
                         </div>
                     </div>
                     <div className="flex-1 hidden sm:flex items-center justify-center min-w-0">
-                        <div className="flex items-center w-full max-w-3xl">
+                        <div className="flex items-center w-full px-2">
                             {STEPS.map((step, i) => (
                                 <Fragment key={step.id}>
                                     {i > 0 && <div className={cn("h-[3px] flex-1 mx-2 lg:mx-3 rounded-full transition-colors", currentStep >= step.id ? "bg-green-500" : "bg-slate-200")} />}
@@ -1571,12 +1571,17 @@ export function HighfieldQuoteFlow({
                                                         live on media.highfieldboats.com which Cloudflare anti-hotlinking
                                                         blocks through the Next optimisation proxy → blank slide). See
                                                         CLAUDE.md lesson. */}
-                                                    {/* Photography (boat cover / variant / gallery) fills the card
-                                                        edge-to-edge with object-COVER — no white gutters. Motor +
-                                                        trailer product cutouts stay object-contain (cover would
-                                                        crop them off their white background).
+                                                    {/* Photography (boat cover / variant / gallery): the FULL image is
+                                                        contained (nothing cropped — studio renders span edge-to-edge so
+                                                        object-cover clips bow/stern), while a blurred echo of the same
+                                                        image fills the card behind it so there are no white gutters.
+                                                        Motor + trailer product cutouts stay plain object-contain.
                                                         `unoptimized` keeps external-CDN covers from being proxy-blocked. */}
-                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill unoptimized className={cn("transition-all", (slide.type === 'motor' || slide.type === 'trailer') ? "object-contain p-6" : "object-cover")} priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
+                                                    {slide.url && (slide.type === 'motor' || slide.type === 'trailer') && <Image src={slide.url} alt="Build Preview" fill unoptimized className="object-contain p-6 transition-all" priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
+                                                    {slide.url && !(slide.type === 'motor' || slide.type === 'trailer') && <>
+                                                        <Image src={slide.url} alt="" aria-hidden fill unoptimized className="object-cover blur-2xl scale-110 opacity-50" loading={idx === 0 ? undefined : 'lazy'} />
+                                                        <Image src={slide.url} alt="Build Preview" fill unoptimized className="object-contain transition-all" priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />
+                                                    </>}
                                                     <Button variant="ghost" size="icon" className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20" onClick={() => setLightboxUrl(slide.url || null)}><Maximize2 className="h-5 w-5" /></Button>
                                                 </>
                                             )}
