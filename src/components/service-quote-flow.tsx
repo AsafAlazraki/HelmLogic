@@ -44,6 +44,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Plus, ChevronLeft, ChevronRight, Loader2, Wrench, Package, User, ClipboardCheck, Check, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { CatalogItemPicker, type CatalogAdd } from '@/components/catalog-item-picker';
 
 const STATUS_OPTIONS = ['draft', 'sent', 'accepted', 'in-progress', 'complete', 'cancelled'] as const;
 type ServiceQuoteStatus = typeof STATUS_OPTIONS[number];
@@ -92,6 +93,9 @@ interface ServiceQuoteLinePart {
     qty: number;
     cost: number;
     sellPrice: number;
+    /** Counter-quote catalog lines — 'motor' | 'trailer' | 'dealer-fit' |
+     *  'rigging-kit'. Absent on classic serviceParts lines. */
+    itemType?: string;
 }
 
 interface ServiceQuote {
@@ -163,10 +167,11 @@ export function ServiceQuoteDashboard({ organisationId, organisation }: { organi
                     <div>
                         <CardTitle className="flex items-center gap-2 text-base font-bold">
                             <ClipboardCheck className="h-4 w-4" />
-                            Service Quotes
+                            Service &amp; Counter Quotes
                         </CardTitle>
                         <CardDescription className="text-xs">
-                            Dealer-facing service quotes built from your operations + parts catalogue.
+                            Dealer-facing service quotes built from your operations + parts catalogue — plus standalone
+                            counter quotes for motors, trailers, dealer-fit options and rigging kits (no boat required).
                             Click a card to open the detail view — edit, download the PDF, or send to the customer.
                         </CardDescription>
                     </div>
@@ -469,11 +474,24 @@ function ServiceQuoteCreateDialog({
                     )}
 
                     {step === 3 && (
-                        <PartsPicker
-                            catalog={partsCatalog ?? []}
-                            selected={selectedParts}
-                            onChange={setSelectedParts}
-                        />
+                        <div className="space-y-4">
+                            <PartsPicker
+                                catalog={partsCatalog ?? []}
+                                selected={selectedParts}
+                                onChange={setSelectedParts}
+                            />
+                            {/* Counter-quote catalog items (decision.standalone-quotes) —
+                                motors / trailers / dealer-fit / rigging kits land as
+                                part-shaped lines; rigging install labour lands as an
+                                op-shaped line so existing totals/PDF need no changes. */}
+                            <CatalogItemPicker
+                                organisationId={organisationId}
+                                onAdd={({ part, installOp }: CatalogAdd) => {
+                                    setSelectedParts(prev => [...prev, part]);
+                                    if (installOp) setSelectedOps(prev => [...prev, installOp]);
+                                }}
+                            />
+                        </div>
                     )}
 
                     {step === 4 && (
