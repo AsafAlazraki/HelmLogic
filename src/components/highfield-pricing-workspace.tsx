@@ -1290,6 +1290,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         isOpen={isGlobalUpdateOpen}
                         onOpenChange={setIsGlobalUpdateOpen}
                         onApply={handleGlobalUpdate}
+                        activeView={activeView}
                     />
                 </div>
             )}

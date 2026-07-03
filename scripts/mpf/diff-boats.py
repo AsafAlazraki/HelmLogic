@@ -234,7 +234,7 @@ def main():
         "",
         "Positive delta = MPF is higher than HelmLogic.",
         "",
-        "## 20 worst offenders by |sell delta|",
+        "## 20 worst offenders by |sell Δ| + |cost Δ|",
         "",
         "| SKU | Model | MPF cash exGst | HL sellPriceExclGst | Sell Δ | MPF landed | HL cost | Cost Δ |",
         "|---|---|---|---|---|---|---|---|",

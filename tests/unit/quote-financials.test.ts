@@ -154,7 +154,7 @@ describe('buildQuoteFinancials — discount handling', () => {
     expect(f.subtotalExclGst).toBe(10000);
     expect(f.finalTotalPriceExclGst).toBe(9500);
     expect(f.totalInclGst).toBe(Math.ceil(9500 * 1.1));
-    expect(f.totalInclGst).toBe(10451); // 9500*1.1 = 10450.000000000002 -> ceil 10451
+    expect(f.totalInclGst).toBe(10450); // 9500*1.1 lands at/below 10450 in floats -> ceil 10450
   });
 
   it('discount defaults to 0', () => {
@@ -345,9 +345,9 @@ describe('buildQuoteFinancials — aggregation across sections', () => {
   });
   it('totalInclGst from subtotal (no discount)', () => {
     expect(f.totalInclGst).toBe(Math.ceil(23900 * 1.1));
-    expect(f.totalInclGst).toBe(26290);
+    expect(f.totalInclGst).toBe(26291); // 23900*1.1 = 26290.000000000004 -> ceil 26291 (float quirk)
   });
-  it('gstAmount', () => expect(f.gstAmount).toBe(26290 - 23900));
+  it('gstAmount', () => expect(f.gstAmount).toBe(26291 - 23900));
 
   it('empty quote -> everything zero', () => {
     const z = buildQuoteFinancials({});

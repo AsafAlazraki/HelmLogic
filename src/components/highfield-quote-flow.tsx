@@ -709,11 +709,11 @@ export function HighfieldQuoteFlow({
         return slides;
     }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId, effectiveTrailerConfig?.imageUrl]);
 
-    const selectedOptionsData = useMemo(() => {
+    const selectedOptionsData = useMemo<any[]>(() => {
         return model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id)) || [];
     }, [selectedOptionIds, model.optionalFeatures]);
 
-    const relevantFeatures = useMemo(() => {
+    const relevantFeatures = useMemo<any[]>(() => {
         const features = model.optionalFeatures || [];
         if (!activeVariant) return features;
         return features.filter((f: any) => {

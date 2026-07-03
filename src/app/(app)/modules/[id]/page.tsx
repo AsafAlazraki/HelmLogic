@@ -1253,7 +1253,8 @@ export default function ModuleDetailsPage() {
                         {/* Price List */}
                         <TabsContent value="pricing" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                             <PriceListViewer
-                                parentOrganisationId={currentMemberOrg.parentOrganisationId}
+                                // Guarded by the isSubDealer branch above — isSubDealer implies parentOrganisationId is set
+                                parentOrganisationId={currentMemberOrg.parentOrganisationId!}
                                 subDealerOrgId={currentMemberOrg.id}
                                 vendorId={moduleData.mainVendorId}
                             />
