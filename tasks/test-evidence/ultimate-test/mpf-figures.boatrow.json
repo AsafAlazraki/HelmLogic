@@ -1,0 +1,39 @@
+{
+ "mode": "recalculated (LibreOffice --convert-to xlsx)",
+ "sheetRow": 829,
+ "boatRow": {
+  "name": "Highfield - SP560 (PVC) W-W-WB",
+  "modelCode": "HBS113",
+  "matrix": "Highfield Inflatables",
+  "regoBand": "4.51m to 6.0m",
+  "regoDecals": "Rego Decals (Std) t/s PVC Tubes",
+  "minHp": "90 HP",
+  "maxHp": "115 HP",
+  "shaft": "XL",
+  "engConfig": "Remote",
+  "motor1": "Yamaha - F90XB",
+  "rig1": "Mech Rigging Kit - 6X3 Concealed (Left Hand) Mount w 6Y5 2 Gauges, 5m Harness, 15' Cables & Filter",
+  "prop1No": "6FP-45943-00",
+  "prop1Desc": "Propeller - Aluminium SDS GP K Series - 15\"",
+  "stdTrailer": "REDCO Custom / Highfield SP560 Aluminium - TA600-MOB",
+  "df1": "Tube Covers to suit PVC Boat - 5.6 Mtr",
+  "df2": "VHF Radio - GME GX750B Hideaway with 1.8m Aerial",
+  "df3": "Fusion Apollo RA670 Stereo w 2 Pairs of XS 6.5\" Speakers + 1.8mtr Aerial",
+  "df4": "Garmin EchoMap Ultra 2 125sv w GT56 UHD Tducer (AUS/NZ Navionics) & Spray Deflector Cover",
+  "landedHullCost": 25010,
+  "hullCash": 41340,
+  "hullCashGp": 0.33451862602806,
+  "hullTrade": 39273,
+  "hullSubDealer": 34105,
+  "hullSubExcl": 33252,
+  "hullAusSailing": 33072,
+  "hullWarranty": 27453
+ },
+ "recalcVsSavedDrift": {
+  "hullCashGp": {
+   "saved": 0.3345186260280599,
+   "recalc": 0.33451862602806
+  }
+ },
+ "components": {}
+}
