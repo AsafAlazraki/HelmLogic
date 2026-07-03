@@ -16,7 +16,8 @@
  * v1.8.2 (image upload) extends with <img> handling.
  */
 
-import { Image, Text, View, type Style } from '@react-pdf/renderer';
+import { Image, Text, View } from '@react-pdf/renderer';
+import type { Style } from '@react-pdf/types';
 import { Fragment, type ReactNode } from 'react';
 
 interface BlockNode {

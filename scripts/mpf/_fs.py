@@ -85,3 +85,24 @@ def patch_doc(path, fields, update_mask=None):
     url += "?" + urllib.parse.urlencode(params)
     body = {"fields": {k: encode_value(v) for k, v in fields.items()}}
     return _req(url, method="PATCH", body=body)
+
+
+def create_doc(collection_path, fields, doc_id=None):
+    """Create a document (auto-ID unless doc_id given)."""
+    url = f"{BASE}/{urllib.parse.quote(collection_path)}"
+    if doc_id:
+        url += f"?documentId={urllib.parse.quote(doc_id)}"
+    body = {"fields": {k: encode_value(v) for k, v in fields.items()}}
+    return _req(url, method="POST", body=body)
+
+
+def nested_from_dotted(updates):
+    """{'a.b': 1, 'c': 2} -> (nested dict for fields, mask list)."""
+    nested = {}
+    for path, v in updates.items():
+        parts = path.split('.')
+        cur = nested
+        for p in parts[:-1]:
+            cur = cur.setdefault(p, {})
+        cur[parts[-1]] = v
+    return nested, list(updates.keys())

@@ -1,4 +1,4 @@
-import { ref, uploadBytes, getDownloadURL, Storage, uploadBytesResumable, UploadTaskSnapshot } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, type FirebaseStorage as Storage, uploadBytesResumable, UploadTaskSnapshot } from 'firebase/storage';
 
 export async function uploadFileToStorage(
   storage: Storage,

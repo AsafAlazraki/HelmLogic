@@ -136,7 +136,7 @@ export function BoatsTableView({ initialSearch }: { initialSearch?: string } = {
                 {!selectedVendorId ? (
                     <EmptyState message="Pick a brand to view the catalogue." />
                 ) : (
-                    <BoatsTableBody vendorId={selectedVendorId} />
+                    <BoatsTableBody vendorId={selectedVendorId} initialSearch={initialSearch} />
                 )}
             </CardContent>
         </Card>
@@ -152,7 +152,7 @@ function EmptyState({ message }: { message: string }) {
     );
 }
 
-function BoatsTableBody({ vendorId }: { vendorId: string }) {
+function BoatsTableBody({ vendorId, initialSearch }: { vendorId: string; initialSearch?: string }) {
     const firestore = useFirestore();
     const [models, setModels] = useState<Model[]>([]);
     const [ranges, setRanges] = useState<Range[]>([]);

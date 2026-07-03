@@ -237,7 +237,7 @@ const searchMotors = ai.defineTool(
                                          
                     if (isMotorDataset) {
                         const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${vendorDoc.id}/dataSets/${dsDoc.id}/rows`));
-                        const rows = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                        const rows: Array<{ id: string } & Record<string, any>> = rowsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
                         let filtered = rows;
                         if (input.hpRating) {

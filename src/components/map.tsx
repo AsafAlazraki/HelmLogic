@@ -46,7 +46,7 @@ export function VesselMap() {
             <InfoWindow
               position={selectedVessel.position}
               onCloseClick={() => setSelectedVessel(null)}
-              pixelOffset={new google.maps.Size(0,-40)}
+              pixelOffset={[0, -40]}
             >
                 <div>
                     <h3 className="font-bold">{selectedVessel.name}</h3>

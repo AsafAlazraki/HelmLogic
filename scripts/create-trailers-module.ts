@@ -140,3 +140,5 @@ main().catch(err => {
     console.error('\n✗ Failed:', err.message);
     process.exit(1);
 });
+
+export {};
