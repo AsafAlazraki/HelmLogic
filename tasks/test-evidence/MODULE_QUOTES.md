@@ -32,8 +32,8 @@ Generated 2026-07-03 (UTC) · org `AcFZVEFA5UDJG2hyetWT` (Northside Marine) · a
 ## 2. Honest gaps (ranked)
 
 1. ~~**The boat quote flow is Highfield-only.**~~ **RESOLVED 2026-07-03 (phase5b.allbrands, see §5).** The gate in `src/app/(app)/modules/[id]/quote/[modelId]/page.tsx` now mounts the same quote flow for **any `vendorType: 'Boat Brand'` vendor whose model has ≥1 variant with a numeric `sellPriceExclGst`** (defensive variant probe added to the page loader); brands without MPF-priced variants keep the placeholder. Step 1 hides the material picker and auto-selects the single MPF variant for non-Highfield brands. Browser-verified end-to-end for Stacer + Stabicraft (`allbrands-*.png`). Pre-lift screenshots kept for history: `stabicraft-step1.png`, `haines-step1.png`.
-2. **No standalone dealer-fit / parts-only quote flow exists (no boat).** Checked every module surface: the Fit-Up module is a catalog manager; dealer-fit options only exist inside boat-quote Step 5. **The parts + labor use case IS served today by service quotes** (364 operations, 26,345 parts, 157 engine schedules with intervals) — that is the recommended path until a dedicated flow ships (Epic 11.2 continues).
-3. **Trailers + motors are not standalone-quotable** — both modules are catalog/pricing surfaces; trailer and motor quoting lives inside the Highfield boat flow (Steps 4 and 3). No quote-start affordance exists on either module (checked both trailer modules + Yamaha).
+2. ~~**No standalone dealer-fit / parts-only quote flow exists (no boat).**~~ **RESOLVED 2026-07-03 (build.counter-quotes, see §6).** Service Quoting is now **Service & Counter Quotes**: the wizard's Parts step (and the detail sheet, next to the engine-schedule picker) mounts a new tabbed `CatalogItemPicker` (Motors / Trailers / Dealer Fit / Rigging Kits) so a standalone quote — no boat — can carry catalog items at MPF prices. Browser-proven end-to-end with exact-price assertions (`tests/counter-quote.spec.ts`).
+3. ~~**Trailers + motors are not standalone-quotable**~~ **RESOLVED 2026-07-03 (build.counter-quotes, see §6).** Both are quotable standalone via counter quotes, and the Trailers / Yamaha Outboards / Fit-Up & Rigging module heroes now carry a "New … Quote" pill that deep-links into the counter-quote wizard with the matching catalog tab preselected (`?newQuote=1&catalogTab=…`).
 4. ~~**`factoryOptionCodes` has no consumer.**~~ **RESOLVED 2026-07-03 (phase5b.allbrands, see §5).** `scripts/mpf/import-fo-nonhf.py` materialized `optionalFeatures` arrays (HF-shape-exact) onto **213 non-HF models — 9,633 options, 0 errors** — from `tasks/mpf-audit/extracted/factory-options.json`, resolving each model's `factoryOptionCodes` own-section-first then via the global code catalog. Residual: 2,199 code refs have **no importable source in the MPF itself** (embargoed Formosa hulls, FO sections absent from NSM's workbook) — logged, not invented; 9 Formosa models resolve 0 options and were left untouched. Apply log + readback: `tasks/mpf-audit/apply-log-fo-nonhf.jsonl`.
 5. **Haines pricing is $0 across the board** (all 9 models, variants, and full price ladders) — faithful to the MPF source workbook. Data gap for NSM to fill, not an app defect.
 6. **The v1.31 "Context Error" bug still reproduces**: opening a quote via the org-scoped route (`/{orgSlug}/modules/{id}` → dialog → model) intermittently strips `?range=&vendor=` and lands on "Context Error — could not locate the required configuration data". Hit twice during this phase; the non-org `/modules/{id}` route is the reliable workaround (now used by the spec, same as `ultimate-test.spec.ts`).
@@ -84,3 +84,32 @@ Gaps 1 + 4 and Bug 2 above are now closed in the dev worktree (NOT committed —
 | Step 6 summary totals | **PASS** — $10,656 = base + FO | **PASS** — $21,590 ex / $23,750 inc + MPF deposit schedule (20/30/50) + ~45d lead time |
 
 Screenshots: `module-quotes/allbrands-stacer-step{1,2,2-selected,3,4,5,6-summary}.png`, `module-quotes/allbrands-stabicraft-step{1,2,2-selected,3,4,5,6-summary}.png`. Note: the RegoPicker auto-matched QLD "Recreational Vessel 4.5m–8m" ($163) from the Stabicraft hull length — intended behaviour; the spec clears it to assert the exact hull price (clear is sticky per the picker's `autoApplied` guard).
+
+---
+
+## 6. Addendum 2026-07-03 — build.counter-quotes (Service & Counter Quotes)
+
+Asaf's `decision.standalone-quotes` built: Service Quoting extended into **Service & Counter Quotes** so standalone quotes (no boat) can include CATALOG items — motors, trailers, dealer-fit options, rigging kits — alongside operations + parts. Gaps 2 + 3 above are closed in the dev worktree (NOT committed — same posture as the earlier fixes).
+
+**What shipped**
+
+1. **New `src/components/catalog-item-picker.tsx`** — tabbed picker (Motors / Trailers / Dealer Fit / Rigging Kits) mirroring the engine-schedule picker's caught-getDocs pattern (lazy per-tab load, missing collection/rule → inert empty state), MQ-2 search guards (≥2 chars on >50-row lists, 50-row render cap, String()-guarded fields). Data: motors from Motor-Brand vendors' dataSet rows (`'NSM Retail'`/hull_cash sell, `'Dealer Buy'` cost), trailers from Trailer-Brand vendors' `series/*/trailers` (+ direct `/trailers`), dealer fit from `organisations/{org}/dealerFitSelections` (`items[0].data['Act Sell']`/`'Act CTD'`), rigging kits from `organisations/{org}/riggingKits` (`sellPriceExclGst`, `kitCost`). Emits lines in the EXISTING shapes — items as part lines (`{id, partNumber, name, qty, cost, sellPrice, itemType}`), rigging install labour as an op line `Install: {kit}` (`hours` = installHours, `sellPrice` = MPF `installLabour`, `rate` = labour/hours, fallback rate 130.09 = MPF labourRateExGst) — one atomic `onAdd({part, installOp?})` so the detail sheet writes a single Firestore patch (no stale-snapshot totals clobber).
+2. **Wizard** (`service-quote-flow.tsx`) — picker mounted under the Parts step; dashboard renamed "Service & Counter Quotes"; `?newQuote=1&catalogTab=…` deep link auto-opens the wizard with the picker tab preselected (params stripped after consumption so refresh doesn't re-open).
+3. **Detail sheet** (`service-quote-detail-sheet.tsx`) — picker mounted next to the engine-schedule picker (locked quotes hide it); one-patch add keeps `totalSell`/`totalCost` honest; parts section retitles to "Parts & Catalog Items" and lines carry an itemType tag.
+4. **PDF** (`service-quote-pdf.tsx`) — minimal label change only: itemType-aware section title + small gold type tag per catalog line. Totals math untouched (GST-ceil rule pre-existing).
+5. **Module entry points** (`modules/[id]/page.tsx` + `CounterQuoteEntryButton` export) — "New Trailer Quote" / "New Motor Quote" / "New Rigging Quote" hero pills on the Trailers / Yamaha / Fit-Up modules, styled identically to "Back to Hub"; service module discovered via caught getDocs (no service module → no button).
+
+**Browser evidence** (`tests/counter-quote.spec.ts`, evidence config, `--workers=1`, production build on `localhost:9002`, live Firestore — 2 tests, both green):
+
+| Check | Result |
+|---|---|
+| Standalone wizard: motor F90XB @ **$17,643** (NSM Retail) + dealer-fit `6x3-0000l-15-05` @ **$1,909** (Act Sell) + rigging kit `6X0-6Y52R-SE-50` @ **$1,019** + auto install-labour op **$520.36** (4.00h × $130.09) | **PASS** — every price asserted against same-day read-only fixtures |
+| Review + card + sheet total ex GST | **PASS** — **$21,091.36** exact (= 17,643 + 1,909 + 1,019 + 520.36); card "1 ops · 3 parts" |
+| PDF grand total | **PASS** — **$23,201 = ceil(21,091.36 × 1.1)** asserted via pdftotext; page render `counter-quote-pdf-page-1.png`; "Parts & Catalog Items" + MOTOR/DEALER FIT/RIGGING KIT tags present |
+| Lifecycle | draft state machine untouched (sheet offers → sent / → cancelled); estimateType semantics intact |
+| Cleanup | test quote deleted through the app UI; Firestore verified read-only afterwards (only the pre-existing v1.12 walkthrough quote remains) |
+| Entry points | **PASS** ×3 — pill renders on each module hero (1366px + a 1920px shot), deep link opens the wizard, Parts step shows the matching tab preselected (Trailers 496 rows / Motors / Rigging Kits) |
+
+Screenshots: `module-quotes/counter-*.png` (dashboard title, per-tab picker rows, review, detail sheet, cleanup, PDF page) + `module-quotes/entry-{trailers,yamaha,fitup}[-picker].png` + `entry-trailers-1920.png`. PDF: `module-quotes/counter-quote.pdf`.
+
+**Firestore write footprint:** one test service quote created + deleted through the app UI (verified clean via REST); entry-point probes abandoned at the wizard (never saved). Build: `npm run typecheck` 0 errors, `npm run build` green.
