@@ -84,8 +84,9 @@ test('ULTIMATE: SP560 PVC W-W-WB — MPF-identical quote', async ({ page }) => {
   const cardTexts = await page.locator(CARD).allTextContents();
   notes.step1CardTexts = cardTexts;
   console.log('  colour cards:', JSON.stringify(cardTexts));
-  // Prefer the W-W-WB colour card (colour code or name containing it).
-  let colourCard = page.locator(CARD).filter({ hasText: /W-W-WB/i }).first();
+  // HBS113 = W-W-WB = colour name "White / White / White/Blue" (cards show
+  // the colour NAME, not the code — verified in run 1 notes).
+  let colourCard = page.locator(CARD).filter({ hasText: /White \/ White \/ White\/Blue/i }).first();
   if (!(await colourCard.isVisible().catch(() => false))) {
     // Fallback: first card — record which one we actually clicked.
     colourCard = page.locator(CARD).first();
@@ -98,23 +99,32 @@ test('ULTIMATE: SP560 PVC W-W-WB — MPF-identical quote', async ({ page }) => {
   await colourCard.click({ force: true });
   await page.waitForTimeout(2000);
 
-  // Rego section appears after a colour is picked. Prefer the band picker
-  // ("4.51m to 6.0m"), fall back to the legacy 12-months toggle.
+  // Rego section appears after a colour is picked. The RegoPicker
+  // auto-matches "Recreational Vessel — 4.5m to 8m" ($163 ex GST, QLD
+  // Transport catalog). The MPF Registration Module band "4.51m to 6.0m"
+  // ($250, doc data-warehouse/qld-transport/regoTypes/mpf-rego-2) was
+  // imported in Phase 4 — select IT so both systems quote the same rego.
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await page.waitForTimeout(1200);
-  const bandOption = page.locator('button, [role="option"], .cursor-pointer').filter({ hasText: /4\.51m to 6\.0m/ }).first();
-  if (await bandOption.isVisible().catch(() => false)) {
-    await bandOption.click({ force: true }).catch(() => {});
-    notes.regoMode = 'band-picker 4.51m to 6.0m';
-  } else {
-    const legacyRego = page.locator('div.cursor-pointer:has-text("12 Months Registration")').first();
-    if (await legacyRego.isVisible({ timeout: 4000 }).catch(() => false)) {
-      await legacyRego.scrollIntoViewIfNeeded().catch(() => {});
-      await legacyRego.click({ force: true }).catch(() => {});
-      notes.regoMode = 'legacy 12-months toggle';
+  await page.waitForTimeout(1500);
+  const regoCard = page.locator('div, section').filter({ hasText: /Boat Registration \(Rego Module\)/ }).last();
+  const regoTrigger = regoCard.locator('[role="combobox"], button:has(svg.lucide-chevron-down)').first();
+  if (await regoTrigger.isVisible().catch(() => false)) {
+    await regoTrigger.scrollIntoViewIfNeeded().catch(() => {});
+    await regoTrigger.click({ force: true });
+    await page.waitForTimeout(1000);
+    const mpfBand = page.locator('[role="option"]').filter({ hasText: /4\.51m to 6\.0m/ }).first();
+    if (await mpfBand.isVisible({ timeout: 4000 }).catch(() => false)) {
+      const optText = await mpfBand.textContent();
+      await mpfBand.click({ force: true });
+      notes.regoMode = `MPF band selected: ${optText?.slice(0, 80)}`;
     } else {
-      notes.regoMode = 'NOT FOUND on step 1';
+      const allOpts = await page.locator('[role="option"]').allTextContents().catch(() => []);
+      notes.regoOptions = allOpts.slice(0, 30);
+      await page.keyboard.press('Escape');
+      notes.regoMode = 'MPF band NOT in dropdown — kept auto-match';
     }
+  } else {
+    notes.regoMode = 'RegoPicker trigger not found — kept auto-match';
   }
   console.log('  rego:', notes.regoMode);
   await page.waitForTimeout(1500);
@@ -189,21 +199,23 @@ test('ULTIMATE: SP560 PVC W-W-WB — MPF-identical quote', async ({ page }) => {
   // ── STEP 5: dealer fit — exactly the 2 MPF lines ──
   await page.locator('button:has-text("Next Step")').first().click({ force: true });
   await page.waitForTimeout(3500);
+  // The MPF dealer-fit lines render as toggle PILLS in the
+  // "Recommended for this boat" strip (NsmDealerFitStrip <button>s),
+  // not as rounded-[1.5rem] cards. Click the two MPF-configured lines.
   const wanted = [
     { key: 'tubeCovers', re: /Tube Covers to suit PVC Boat - 5\.6/i },
     { key: 'vhf', re: /GX750B Hideaway/i },
   ];
   for (const w of wanted) {
-    const card = page.locator(`${CARD}, .cursor-pointer`).filter({ hasText: w.re }).first();
-    if (await card.isVisible().catch(() => false)) {
-      await card.scrollIntoViewIfNeeded().catch(() => {});
-      await card.click({ force: true });
-      notes[`df-${w.key}`] = ((await card.textContent()) || '').slice(0, 200);
+    const pill = page.locator('button').filter({ hasText: w.re }).first();
+    if (await pill.isVisible().catch(() => false)) {
+      await pill.scrollIntoViewIfNeeded().catch(() => {});
+      await pill.click({ force: true });
+      notes[`df-${w.key}`] = ((await pill.textContent()) || '').slice(0, 200);
     } else {
-      // search the page for the text anywhere (may need scrolling/tabs)
-      notes[`df-${w.key}`] = 'CARD NOT FOUND';
+      notes[`df-${w.key}`] = 'PILL NOT FOUND';
     }
-    await page.waitForTimeout(1200);
+    await page.waitForTimeout(1500);
   }
   console.log('  dealer fit:', notes['df-tubeCovers'], '|', notes['df-vhf']);
   await shot('hl-step5-dealerfit', true);
@@ -216,9 +228,11 @@ test('ULTIMATE: SP560 PVC W-W-WB — MPF-identical quote', async ({ page }) => {
   // Extract the whole summary text + the headline totals.
   const summaryText = await page.evaluate(() => document.body.innerText);
   fs.writeFileSync(`${OUT}/hl-summary-text.txt`, summaryText);
-  const totalMatch = summaryText.match(/\$([\d,]+)\s*inc GST/);
+  const totalMatch = summaryText.match(/\$([\d,]+(?:\.\d{2})?)\s*inc\.?\s*gst/i);
   notes.hlTotalIncGst = totalMatch ? totalMatch[1] : null;
-  console.log('  HL total inc GST:', notes.hlTotalIncGst);
+  const exMatch = summaryText.match(/PACKAGE PRICING \(EXCL\. GST\)\s*\$\s*([\d,]+(?:\.\d{2})?)/i);
+  notes.hlTotalExGst = exMatch ? exMatch[1] : null;
+  console.log('  HL totals:', notes.hlTotalExGst, 'ex |', notes.hlTotalIncGst, 'inc');
 
   // Closeup of the totals panel: screenshot the element containing "inc GST".
   const totalEl = page.locator('text=/inc GST/').first();

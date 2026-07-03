@@ -94,21 +94,32 @@ async function imgDataUri(absPath, maxW = 1200) {
   } catch { return null; }
 }
 
-const SHOTS_DIR = path.join(ROOT, 'tests', 'visual', '__screenshots__', 'core-screens.spec.ts');
+// Prefer the real, unmasked report shots (tests/report-shots/__png__); fall back
+// to the older masked visual-regression baselines only if a new shot is missing.
+const SHOTS_DIR = path.join(ROOT, 'tests', 'report-shots', '__png__');
+const FALLBACK_SHOTS_DIR = path.join(ROOT, 'tests', 'visual', '__screenshots__', 'core-screens.spec.ts');
 const GALLERY_SPEC = [
-  ['login.png', 'Login — the front door every operator walks through'],
-  ['dashboard.png', 'Dashboard — quotes, pipeline and modules for Northside Marine'],
-  ['module-highfield.png', 'Highfield module — the quoting flow reading migrated MPF catalog data'],
-  ['catalog-manager.png', 'Catalog Manager — where migrated boats, motors and trailers are administered'],
-  ['customers.png', 'Customers — CRM surface'],
-  ['reporting.png', 'Reporting — cross-module quote analytics'],
+  ['login.png', 'Login: the front door every operator walks through.'],
+  ['dashboard.png', 'Dashboard: quotes, pipeline and modules for Northside Marine.'],
+  ['module-highfield.png', 'Highfield module: the quoting flow reading migrated MPF catalog data.'],
+  ['quote-step1.png', 'Quote Step 1 (CL380): boat, material, colour and registration, priced from migrated Highfield data.'],
+  ['quote-step5-dealerfit.png', 'Quote Step 5: the dealer-fit and fit-up screen, now populated with Northside Marine’s migrated dealer-fit options.'],
+  ['catalog-manager.png', 'Catalog Manager: where migrated boats, motors and trailers are administered.'],
+  ['manage-mpf-data.png', 'Manage, MPF Data: the admin surface for the new MPF-backed collections (rigging kits, suppliers, pricing matrix, freight, engine service schedules).'],
+  ['customers.png', 'Customers: the CRM surface.'],
+  ['reporting.png', 'Reporting: cross-module quote analytics.'],
 ];
 const gallery = [];
+let galleryUsedFallback = false;
 for (const [file, caption] of GALLERY_SPEC) {
-  const uri = await imgDataUri(path.join(SHOTS_DIR, file));
+  let uri = await imgDataUri(path.join(SHOTS_DIR, file));
+  if (!uri) { uri = await imgDataUri(path.join(FALLBACK_SHOTS_DIR, file)); if (uri) galleryUsedFallback = true; }
   if (uri) gallery.push({ file, caption, uri });
 }
 present['visual screenshots'] = gallery.length > 0;
+const GALLERY_SOURCE = galleryUsedFallback
+  ? 'captured by tests/report-shots.spec.ts; a few frames fall back to the visual-regression baselines'
+  : 'captured unmasked by tests/report-shots.spec.ts';
 
 // Ultimate-test PNGs (side-by-side exhibit) — include whatever exists.
 const ULT_DIR = path.join(ROOT, 'tasks', 'test-evidence', 'ultimate-test');
@@ -221,7 +232,7 @@ ${plain(`For years, Northside Marine's entire pricing brain has lived in a web o
   ${card('587<span class="of">/588</span>', 'Highfield SKUs price-exact to the cent', true)}
   ${card('$5.27M', 'Cost-basis gap found &amp; closed')}
   ${card(imagePatches ? n(imagePatches) : '1,056', 'Image references fixed', true)}
-  ${card(String((ffr?.entries || []).length || 14), 'Failures logged, fixed, re-proven')}
+  ${card(String((ffr?.entries || []).length || 15), 'Failures logged, fixed, re-proven')}
 </div>
 
 <h2>Executive summary</h2>
@@ -519,28 +530,44 @@ ${plain(`This is the raw evidence behind section 10: every question the ${n(smok
 <p class="sub">A = App routes &middot; B = Security rules &middot; C = Catalog &middot; D = Quotes &middot; E = Org config &middot; F = Release ceremony &middot; H = Roadmap &middot; I = MPF parity &middot; J = Assignment web. Generated from <code>tasks/test-evidence/smoke-data.json</code> (committed) — no row hand-entered.</p>
 <table class="appx"><thead><tr><th>§</th><th>Check</th><th>Observed</th><th>Result</th></tr></thead><tbody>${appendixRows}</tbody></table>` : '';
 
+const specInvRows = specInv.map((r) =>
+  `<tr><td><code>${esc(r.file)}</code></td><td class="num">${n(r.tests || 0)}</td><td class="num">${n(r.assertions || 0)}</td></tr>`).join('');
+const specAssertions = specInv.reduce((a, r) => a + (r.assertions || 0), 0);
 const secArsenal = `
-<h2>10. The testing arsenal — how green is kept green</h2>
-${plain(`One good test run is a snapshot; this is a system. Four independent layers watch HelmLogic: (1) a data battery that asks the live system ${smoke ? n(smoke.total) : 'over 2,000'} individual questions — every boat, every variant, every quote, every part, checked one by one, no sampling — now including two new permanent sections that re-verify MPF parity (I) and the boat–motor–trailer relationship web (J) on every run; (2) ${n(specTests)} browser tests that drive the real application like a salesperson would, through full quotes to the downloaded PDF; (3) 460 unit tests on the money math — which found and pinned three real calculation bugs, now fixed (ledger FFR-8); and (4) visual-regression baselines that catch a page changing its appearance. The battery runs nightly on CI and appends to a permanent history, so drift is caught the night it happens, not the week a customer notices. This run reports ${smoke ? n(smoke.failed) : 'a handful of'} failures — kept in, and each one explained below, because a battery that can flag real data issues is worth more than one that is always green.`)}
+<h2>10. The testing arsenal, how green is kept green</h2>
+${plain(`One good test run is a snapshot; this is a system. Four independent layers watch HelmLogic: (1) a data battery that asks the live system ${smoke ? n(smoke.total) : 'over 2,000'} individual questions, every boat, every variant, every quote, every migrated part, checked one by one with no sampling, now including two new permanent sections that re-verify MPF parity (I) and the boat-to-motor-to-trailer relationship web (J) on every run; (2) ${n(specTests)} browser tests that drive the real application like a salesperson would, through full quotes to the downloaded PDF; (3) 460 unit tests on the money math (451 before this cycle, 9 added alongside the three real calculation bugs they pinned, now fixed, ledger FFR-8); and (4) visual-regression baselines that catch a page changing its appearance. The battery grew from roughly 2,076 checks last cycle to ${smoke ? n(smoke.total) : '34,512'} this one because the two new MPF sections fan out one check per migrated value (every service part, every Highfield variant on both its sell price and its cost) rather than one check per collection. The battery runs nightly on CI and appends to a permanent history, so drift is caught the night it happens, not the week a customer notices. This run reports ${smoke ? n(smoke.failed) : 'a handful of'} failures, kept in and each one explained below, because a battery that can flag real data issues is worth more than one that is always green.`)}
 ${smoke ? `
 <div class="cards">
   ${card(`${n(smoke.passed)}<span class="of">/${n(smoke.total)}</span>`, 'Battery checks passed (committed run)', true)}
   ${card(String(specInv.length), 'Browser spec files')}
   ${card(n(specTests), 'Browser test cases')}
-  ${card('460', 'Unit tests (3 real bugs found & fixed)', true)}
+  ${card('460', 'Unit tests (3 real bugs found &amp; fixed)', true)}
 </div>
 <h3>The battery, by section (run of ${esc((smokeMeta.runStartedUtc || '').slice(0, 10))}, commit <code>${esc(String(smokeMeta.gitCommit || '').slice(0, 8))}</code>)</h3>
 <table><thead><tr><th>Section</th><th class="num" style="width:90px">Checks</th><th class="num" style="width:90px">Passed</th><th class="num" style="width:90px">Failed</th></tr></thead><tbody>${batteryRows}</tbody></table>
-${smoke.failed ? noteBox(`<b>The ${n(smoke.failed)} failures, explained — none swept under the rug:</b>
+${smoke.failed ? noteBox(`<b>The ${n(smoke.failed)} failures, explained, none swept under the rug:</b>
 <ul>
-${eOrgFails.length ? `<li><b>${eOrgFails.length} genuine data findings (section E):</b> ${eOrgFails.map((c) => `<code>${esc(c.name.split(':')[0])}</code> carries a negative sell price (${esc(c.detail)})`).join('; ')} — these values came across from NSM's Parts Maintenance sheet itself and join the findings list returned to NSM (section 4). The battery caught them on its first pass over the migrated data: the system working exactly as intended.</li>` : ''}
-<li><b>${smokeFails.length - eOrgFails.length} assignment-web resolution flags (section J):</b> 12 Merry Fisher boat-<i>package</i> powerplant names (Mercury / Jeanneau-package engines that were approved import skips, so the menu labels have no Yamaha catalog row to point at) and 1 trailer reference that dangles inside the MPF source itself. Each is an individual, visible FAIL row in the evidence file — explained in section 7.</li>
+${eOrgFails.length ? `<li><b>${eOrgFails.length} genuine data findings (section E):</b> ${eOrgFails.map((c) => `<code>${esc(c.name.split(':')[0])}</code> carries a negative sell price (${esc(c.detail)})`).join('; ')}. These values came across from NSM's Parts Maintenance sheet itself and join the findings list returned to NSM (section 4). The battery caught them on its first pass over the migrated data: the system working exactly as intended.</li>` : ''}
+<li><b>${smokeFails.length - eOrgFails.length} assignment-web resolution flags (section J):</b> 12 Merry Fisher boat-<i>package</i> powerplant names (Mercury and Jeanneau-package engines that were approved import skips, so the menu labels have no Yamaha catalog row to point at) and 1 trailer reference that dangles inside the MPF source itself. Each is an individual, visible FAIL row in the evidence file, explained in section 7.</li>
 </ul>`) : ''}
-${noteBox(`Sections <b>I — MPF parity</b> (${n(smokeSections['I. MPF parity']?.total ?? 0)} checks) and <b>J — Assignment web</b> are new this cycle and now run in the nightly battery forever: the migration's correctness is re-proven automatically every night, not asserted once in this report.`)}` : pending('Smoke battery evidence file not found.')}
-${historyMd ? `<h3>Cadence — the nightly history</h3><pre class="mono">${esc(historyMd.split('\n').filter((l) => l.startsWith('|')).join('\n'))}</pre><p class="sub">Appended automatically by the nightly CI job; each row's full evidence JSON is committed beside it.</p>` : ''}
-<h3>The application, as shipped — screenshot gallery</h3>
-<p class="sub">Captured by the visual-regression suite from a signed-in operator session (baselines in <code>tests/visual/__screenshots__/</code>). These are the committed reference images the suite compares against on every run.</p>
-${gallery.length ? `<div class="gallery">${galleryHtml}</div>` : pending('Visual-regression baseline screenshots were not found; gallery omitted.')}`;
+${noteBox(`Sections <b>I, MPF parity</b> (${n(smokeSections['I. MPF parity']?.total ?? 0)} checks) and <b>J, Assignment web</b> are new this cycle and now run in the nightly battery forever: the migration's correctness is re-proven automatically every night, not asserted once in this report.`)}
+
+<h3>Methodology, how each family of checks executes</h3>
+<p class="sub">The battery is data-driven: it fans out one check per document (and, in sections E and I, one per value), which is why the count runs to ${n(smoke.total)}. Every Highfield model, every variant, every quote, every migrated part, every roadmap card and every MPF-parity assertion is individually verified, so spot-checking is structurally impossible. Each block below explains, in plain English then in engineering terms, how that family of checks runs and what a green pass proves.</p>
+${methodBlocks}
+
+<h3>The browser test suite (separate from the data battery)</h3>
+${plain(`Separate from the data battery above, the repository carries a fleet of automated browser tests. Each one opens HelmLogic in a real web browser and uses it exactly like a salesperson would: logging in, picking a boat, stepping through a full quote (boat, factory options, motor, trailer, dealer fit, summary), downloading the customer PDF, and checking what appears on screen at each step. The table below lists every scripted walkthrough and how many individual test cases it contains.`)}
+<div class="cards">
+  ${card(String(specInv.length), 'Browser spec files')}
+  ${card(n(specTests), 'Browser test cases')}
+  ${card(n(specAssertions), 'Assertions')}
+</div>
+<table><thead><tr><th>Spec file</th><th class="num" style="width:90px">Test cases</th><th class="num" style="width:90px">Assertions</th></tr></thead><tbody>${specInvRows}</tbody></table>` : pending('Smoke battery evidence file not found.')}
+${historyMd ? `<h3>Cadence, the nightly history</h3><pre class="mono">${esc(historyMd.split('\n').filter((l) => l.startsWith('|')).join('\n'))}</pre><p class="sub">Appended automatically by the nightly CI job; each row's full evidence JSON is committed beside it.</p>` : ''}
+<h3>The application, as shipped, screenshot gallery</h3>
+<p class="sub">Real, unmasked captures of a signed-in operator session (${esc(GALLERY_SOURCE)}). These show the live application rendering migrated MPF data, not placeholders.</p>
+${gallery.length ? `<div class="gallery">${galleryHtml}</div>` : pending('Screenshot gallery images were not found; gallery omitted.')}`;
 
 // ---------- Section 11 — The ultimate test ----------
 let secUltimate;
@@ -566,7 +593,7 @@ ${pending(`Executing — the HelmLogic side of this exhibit lands here. The harn
 }
 
 // ---------- Section 12 — Provenance ----------
-const commitRows = (reportMeta?.verificationCommits || []).slice(0, 12).map((l) => {
+const commitRows = (reportMeta?.verificationCommits || []).map((l) => {
   const sp = l.indexOf(' ');
   return `<tr><td><code>${esc(sp > 0 ? l.slice(0, sp) : l.slice(0, 8))}</code></td><td>${esc(sp > 0 ? l.slice(sp + 1) : '')}</td></tr>`;
 }).join('');
@@ -638,6 +665,13 @@ pre.mono { background: #f7f9fc; border: 1px solid #dce3ec; border-radius: 6px; p
 .shot img { width: 100%; border: 1px solid #dce3ec; border-radius: 6px; display: block; }
 .shot figcaption { font-size: 9.5px; color: #5a6b82; margin-top: 4px; line-height: 1.4; }
 .foot { margin-top: 26px; color: #8595a8; font-size: 10px; border-top: 1px solid #e7edf4; padding-top: 8px; }
+.mstats { font-weight: 400; color: #5a6b82; font-size: 11px; }
+.appx { table-layout: fixed; }
+.appx td { padding: 2.5px 6px; font-size: 8px; line-height: 1.35; word-break: break-word; }
+.appx th { font-size: 9px; }
+.appx td.sec { white-space: nowrap; color: #5a6b82; width: 26px; }
+.appx td.det { color: #5a6b82; }
+.appx td:nth-child(4) { width: 42px; text-align: right; }
 </style></head><body>
 ${secCover}
 ${secDecoded}
@@ -651,6 +685,7 @@ ${secImages}
 ${secArsenal}
 ${secUltimate}
 ${secProvenance}
+${secAppendix}
 </body></html>`;
 
 // ---------- Render ----------
