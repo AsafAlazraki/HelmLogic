@@ -110,47 +110,42 @@ test('manage — MPF Data admin tab', async ({ page }) => {
   await page.screenshot({ path: `${OUT}/manage-mpf-data.png`, fullPage: true });
 });
 
-test('quote flow — CL380 Step 1 + Step 5 dealer-fit', async ({ page }) => {
+test('quote flow — SP560 Step 1 + Step 5 dealer-fit', async ({ page }) => {
   test.setTimeout(300000);
   await login(page);
-  const m = page.url().match(/\/([^/]+)\/(dashboard|modules|$)/);
-  const orgSlug = m ? m[1] : 'northside-marine';
 
-  // New Quote dialog is intermittent (repo pattern). The "CONTEXT ERROR" build
-  // screen appears when the model wasn't actually selected before the flow
-  // advanced, so we (1) wait for the CL380 card to RENDER before clicking it,
-  // and (2) detect the context-error screen and retry from a fresh module load.
+  // IMPORTANT: use the PLAIN /modules/{id} route, NOT the org-scoped
+  // /{orgSlug}/modules/{id} route. The org-scoped route drops ?range=&vendor=
+  // during the quote-page handoff (OrgSlugLayout slug correction) and lands on a
+  // permanent "Context Error" (documented in tasks/test-evidence/ultimate-test/
+  // ULTIMATE_TEST.md finding #4). The plain route mounts the build cleanly.
   let onStep1 = false;
-  for (let attempt = 1; attempt <= 5 && !onStep1; attempt++) {
-    await page.goto(`${BASE_URL}/${orgSlug}/modules/${MODULE_ID}?_t=${Date.now()}`);
+  for (let attempt = 1; attempt <= 4 && !onStep1; attempt++) {
+    await page.goto(`${BASE_URL}/modules/${MODULE_ID}?_t=${Date.now()}`);
     await page.waitForLoadState('domcontentloaded');
-    // Let the module config (needed by the build context) fully load first.
-    await page.waitForTimeout(6000);
+    await page.waitForTimeout(5000);
     const newQ = page.locator('button:has-text("New Quote"), button:has-text("New Proposal")').first();
     if (!(await newQ.isVisible().catch(() => false))) continue;
     await newQ.click({ force: true });
     const dlg = page.locator('[role="dialog"]');
     if (!(await dlg.waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false))) continue;
-    const classic = dlg.locator('.cursor-pointer:has-text("Classic")').first();
-    if (!(await classic.waitFor({ state: 'visible', timeout: 12000 }).then(() => true).catch(() => false))) continue;
-    await classic.click({ force: true });
-    const cl380 = dlg.locator('.cursor-pointer:has-text("CL380")').first();
-    if (!(await cl380.waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false))) continue;
+    const sport = dlg.locator('.cursor-pointer:has-text("Sport")').first();
+    if (!(await sport.waitFor({ state: 'visible', timeout: 12000 }).then(() => true).catch(() => false))) continue;
+    await sport.click({ force: true });
+    const sp560 = dlg.locator('.cursor-pointer:has-text("SP560")').first();
+    if (!(await sp560.waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false))) continue;
     await page.waitForTimeout(600);
-    await cl380.click({ force: true });
+    await sp560.click({ force: true });
     await page.waitForLoadState('domcontentloaded');
-    // Wait for EITHER the Step-1 chrome or the context-error screen.
     await page.waitForFunction(
       () => /Next Step/i.test(document.body.innerText) || /CONTEXT ERROR/i.test(document.body.innerText),
       { timeout: 30000 },
     ).catch(() => {});
     await page.waitForTimeout(2000);
-    if (/CONTEXT ERROR/i.test(await page.locator('body').innerText().catch(() => ''))) {
-      continue; // fresh retry from a clean module load
-    }
+    if (/CONTEXT ERROR/i.test(await page.locator('body').innerText().catch(() => ''))) continue;
     onStep1 = await page.locator('button:has-text("Next Step")').first().isVisible().catch(() => false);
   }
-  expect(onStep1, 'should land on Step 1 after Classic + CL380').toBe(true);
+  expect(onStep1, 'should land on Step 1 after Sport + SP560').toBe(true);
 
   // Pick a material + first colour so Step 1 renders a fully-configured boat.
   const mat = page.locator('button:has-text("PVC"), button:has-text("Hypalon"), button:has-text("ORCA")').first();
