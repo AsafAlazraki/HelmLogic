@@ -126,6 +126,15 @@
       "fix": "164 WAF-blocked images mirrored via weserv to Firebase Storage (mpf-mirror/), 896 dealerFitSelections docs re-pointed (1,792 refs); 7 recoverable Yamaha images mirrored (31 motor rows patched); unfetchable remainder documented for NSM (38 Yamaha + 7 SharePoint exports + 4 dead)",
       "retest": "GREEN \u2014 all 171 mirrored Storage URLs re-probed 200 image/*; live doc spot-checks confirm Storage URLs serving",
       "class": "data-fix"
+    },
+    {
+      "id": "FFR-16",
+      "failed": "CL380 checklist walkthrough failed at first assertion (land on Step 1) after 3 dialog-open attempts; smoke suite same window passed 5/6 (1 flaky, recovered on retry)",
+      "firstSeen": "2026-07-03",
+      "rootCause": "Under investigation \u2014 a second Playwright browser (the ultimate-test HL leg) was confirmed running concurrently through the single sandbox TLS bridge; contention is the leading hypothesis (smoke login+quote-to-step6 passed in the same window, so the flow itself works on migrated data).",
+      "fix": "Serialize browser jobs \u2014 re-run checklist SOLO after the ultimate-test browser leg completes (quiet bridge).",
+      "retest": "PENDING \u2014 solo re-run queued",
+      "class": "environment-suspected"
     }
   ]
 }
