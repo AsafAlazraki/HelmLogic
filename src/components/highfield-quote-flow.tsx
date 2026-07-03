@@ -1530,7 +1530,13 @@ export function HighfieldQuoteFlow({
                     </div>
                     <button type="button" className="font-black text-destructive uppercase tracking-widest text-[9px] hover:opacity-70 transition-opacity shrink-0" onClick={() => router.push(`/modules/${module.slug || module.id}`)}>Exit Build</button>
                 </div>
-                <div className="flex items-center justify-between min-w-0 overflow-x-auto relative max-w-4xl mx-auto">
+                {/* overflow-y-hidden + py-1 — overflow-x-auto makes computed
+                    overflow-y 'auto' too, and the scale-110 active pill is a
+                    few px taller than the row. On Windows classic scrollbars
+                    that painted a squeezed vertical scrollbar (stacked ▲▼
+                    arrows) at the end of the stepper. py-1 gives the scaled
+                    pill headroom; overflow-y-hidden guarantees no scrollbar. */}
+                <div className="flex items-center justify-between min-w-0 overflow-x-auto overflow-y-hidden py-1 relative max-w-4xl mx-auto">
                     <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-muted -translate-y-1/2 z-0" />
                     <div className="absolute top-1/2 left-0 h-0.5 bg-green-500 -translate-y-1/2 z-0 transition-all" style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }} />
                     {STEPS.map((step) => (
