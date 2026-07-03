@@ -83,3 +83,5 @@ tasks/mpf-audit/extracted/*.json
 !tasks/mpf-audit/extracted/exchange-rates.json
 !tasks/mpf-audit/extracted/rego-catalog.json
 !tasks/mpf-audit/extracted/freight-config.json
+# parts apply log grows to ~35MB during the run — committed ONCE on completion, not per snapshot
+tasks/mpf-audit/apply-log-parts.jsonl
