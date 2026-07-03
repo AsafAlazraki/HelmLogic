@@ -703,15 +703,32 @@ export function HighfieldQuoteFlow({
         return Array.from(new Set(variants.map(v => v.material).filter(Boolean)));
     }, [variants]);
 
+    // NSM MPF — non-Highfield boat brands import as one SKU-per-model
+    // variant with no tube-material / colour axes. When no variant carries
+    // a material, skip the material picker and expose every variant as a
+    // directly selectable option (a single variant auto-selects below).
+    const hasMaterialAxis = availableMaterials.length > 0;
+
     const availableColors = useMemo(() => {
-        if (!variants || !selectedMaterial) return [];
+        if (!variants) return [];
+        if (!hasMaterialAxis) return variants;
+        if (!selectedMaterial) return [];
         return variants.filter(v => v.material === selectedMaterial);
-    }, [variants, selectedMaterial]);
+    }, [variants, selectedMaterial, hasMaterialAxis]);
 
     const activeVariant = useMemo(() => {
         if (!selectedColor || !variants) return null;
         return variants.find(v => v.id === selectedColor);
     }, [selectedColor, variants]);
+
+    // Auto-select the variant when the model has exactly one and no
+    // material picker will render (MPF single-SKU brands) — Step 1 then
+    // opens straight onto the priced build + registration sections.
+    useEffect(() => {
+        if (!variants || variants.length !== 1 || hasMaterialAxis || selectedColor) return;
+        setSelectedColor(variants[0].id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [variants, hasMaterialAxis, selectedColor]);
 
     const buildPreviewSlide = useMemo(() => {
         const imagedOptions = model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id) && f.imageUrl && f.imageUrl !== "") || [];
@@ -1857,6 +1874,7 @@ export function HighfieldQuoteFlow({
                         <div className="px-4 sm:px-8 pb-32 sm:pb-48 space-y-6 mt-4 min-w-0">
                             {currentStep === 1 && (
                                 <div className="space-y-8 animate-in fade-in duration-1000">
+                                    {hasMaterialAxis && (
                                     <div ref={materialSectionRef} className="space-y-4 scroll-mt-10">
                                         <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                             <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
@@ -1871,11 +1889,12 @@ export function HighfieldQuoteFlow({
                                             ))}
                                         </div>
                                     </div>
-                                    {selectedMaterial && (
+                                    )}
+                                    {(selectedMaterial || (!hasMaterialAxis && availableColors.length > 0)) && (
                                         <div ref={colorSectionRef} className="mt-12 space-y-6 animate-in slide-in-from-bottom-4 duration-1000 scroll-mt-10">
                                             <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                                 <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Hull & Tube Color</h3>
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{hasMaterialAxis ? 'Hull & Tube Color' : 'Build Configuration'}</h3>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                 {availableColors.map((color) => (
@@ -2841,7 +2860,7 @@ export function HighfieldQuoteFlow({
                                             <div className="flex items-center justify-between">
                                                 <div className="space-y-0.5">
                                                     <p className="font-black text-sm uppercase tracking-tight text-slate-900">{range?.name} {model?.name}</p>
-                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMaterial} • {activeVariant?.name || 'Standard Color'}</p>
+                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase">{[selectedMaterial, activeVariant?.name || 'Standard Color'].filter(Boolean).join(' • ')}</p>
                                                 </div>
                                                 {/* Resolves through the price level (incl. NSM priceLadder
                                                     when present) instead of raw sellPriceExclGst. */}

@@ -584,6 +584,10 @@ function OperationsPicker({
     );
 }
 
+// MQ-2 (perf) — parts-picker render guards for very large catalogues.
+const PARTS_RENDER_CAP = 50;
+const PARTS_MIN_SEARCH_CHARS = 2;
+
 function PartsPicker({
     catalog, selected, onChange,
 }: {
@@ -592,14 +596,22 @@ function PartsPicker({
     onChange: (next: ServiceQuoteLinePart[]) => void;
 }) {
     const [search, setSearch] = useState('');
-    const filtered = useMemo(() => {
-        if (!search.trim()) return catalog;
-        const q = search.toLowerCase();
+    // MQ-2 (perf) — the org parts catalogue is 26k+ rows; rendering it all on
+    // an empty search locks the dialog up. Large catalogues require ≥2 search
+    // chars, and the rendered list is always capped at 50 rows with a
+    // "refine your search" hint. Small catalogues keep the old show-all UX.
+    const q = search.trim().toLowerCase();
+    const needsSearch = catalog.length > PARTS_RENDER_CAP && q.length < PARTS_MIN_SEARCH_CHARS;
+    const matches = useMemo(() => {
+        if (needsSearch) return [];
+        if (!q) return catalog;
         return catalog.filter(p =>
             p.partNumber.toLowerCase().includes(q) ||
             p.name.toLowerCase().includes(q),
         );
-    }, [catalog, search]);
+    }, [catalog, q, needsSearch]);
+    const filtered = useMemo(() => matches.slice(0, PARTS_RENDER_CAP), [matches]);
+    const overflow = matches.length - filtered.length;
 
     const findSelected = (id: string) => selected.find(s => s.id === id);
     const togglePart = (part: ServicePart) => {
@@ -625,7 +637,11 @@ function PartsPicker({
         <div className="space-y-3">
             <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search parts by number or name…" className="rounded-xl border-2 text-xs" />
             <div className="space-y-1 max-h-[40vh] overflow-y-auto">
-                {filtered.length === 0 ? (
+                {needsSearch ? (
+                    <p className="text-xs text-muted-foreground italic text-center py-6">
+                        Type at least {PARTS_MIN_SEARCH_CHARS} characters to search the {catalog.length.toLocaleString()}-part catalogue.
+                    </p>
+                ) : filtered.length === 0 ? (
                     <p className="text-xs text-muted-foreground italic text-center py-6">
                         No parts match. Parts are managed in /manage → Service Catalog.
                     </p>
@@ -665,6 +681,11 @@ function PartsPicker({
                     );
                 })}
             </div>
+            {overflow > 0 && (
+                <p className="text-[10px] text-muted-foreground italic">
+                    Showing the first {PARTS_RENDER_CAP} of {matches.length.toLocaleString()} matches — refine your search to narrow the list.
+                </p>
+            )}
             <p className="text-[10px] text-muted-foreground">{selected.length} part type{selected.length === 1 ? '' : 's'} selected.</p>
         </div>
     );
