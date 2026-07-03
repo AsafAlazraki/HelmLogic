@@ -1,11 +1,11 @@
 {
-  "description": "Failure → Fix → Re-test ledger. Every test failure encountered during the 2026-07 hardening + MPF migration cycle, with root cause, the fixing commit, and the green re-test evidence. A suite that is only ever green proves nothing; this ledger proves the tests can fail, and that failures get fixed and re-proven — never ignored.",
+  "description": "Failure \u2192 Fix \u2192 Re-test ledger. Every test failure encountered during the 2026-07 hardening + MPF migration cycle, with root cause, the fixing commit, and the green re-test evidence. A suite that is only ever green proves nothing; this ledger proves the tests can fail, and that failures get fixed and re-proven \u2014 never ignored.",
   "entries": [
     {
       "id": "FFR-1",
       "failed": "Firestore rules-deployed regression test: 2 probes errored (users/{uid}/quotes subcollection checks)",
       "firstSeen": "2026-07-02",
-      "rootCause": "Test bug — probe used '__rules_probe__' as a quote id; double-underscore ids are RESERVED in Firestore and return 400 INVALID_ARGUMENT, miscounted as a denial.",
+      "rootCause": "Test bug \u2014 probe used '__rules_probe__' as a quote id; double-underscore ids are RESERVED in Firestore and return 400 INVALID_ARGUMENT, miscounted as a denial.",
       "fix": "Probe id changed to 'rulesprobe' (tests/firestore-rules-deployed.spec.ts), commit b378d08",
       "retest": "21/21 PASS against live deployed rules",
       "class": "test-bug"
@@ -14,16 +14,16 @@
       "id": "FFR-2",
       "failed": "End-to-end data-chain test 8/10: collectionGroup quotes queries FAILED_PRECONDITION; accept-variation collectionGroup read 403",
       "firstSeen": "2026-07-02",
-      "rootCause": "Product gap — missing collection-group indexes (quotes.organisationId etc.) and missing recursive variations read rule.",
+      "rootCause": "Product gap \u2014 missing collection-group indexes (quotes.organisationId etc.) and missing recursive variations read rule.",
       "fix": "5 fieldOverrides added to firestore.indexes.json + recursive match /{path=**}/variations rule, commit fd984a7; deployed via Firebase CLI; index backfill awaited",
-      "retest": "10/10 PASS (full lifecycle customer→quote→contract→deposit→variation→cross-module reads)",
+      "retest": "10/10 PASS (full lifecycle customer\u2192quote\u2192contract\u2192deposit\u2192variation\u2192cross-module reads)",
       "class": "product-fix"
     },
     {
       "id": "FFR-3",
       "failed": "Data-chain step 'collectionGroup quotes finds new quote' still failing after index backfill (9/10)",
       "firstSeen": "2026-07-03",
-      "rootCause": "Test bug — unordered limit-50 probe across 136 org quotes can't guarantee a fresh quote appears; also wrote createdAt as timestampValue while the app stores ISO strings (different Firestore type buckets sort separately).",
+      "rootCause": "Test bug \u2014 unordered limit-50 probe across 136 org quotes can't guarantee a fresh quote appears; also wrote createdAt as timestampValue while the app stores ISO strings (different Firestore type buckets sort separately).",
       "fix": "Probe rewritten to mirror the app's real query (org filter + createdAt DESC on the composite index) with string createdAt",
       "retest": "10/10 PASS",
       "class": "test-bug"
@@ -32,7 +32,7 @@
       "id": "FFR-4",
       "failed": "Smoke battery first run 2011/2014: contentOverrides, compatibilityRules, sentEmails org-path LISTs returned 403",
       "firstSeen": "2026-07-03",
-      "rootCause": "Test bug — probes targeted organisations/{org}/... but the rules place sentEmails + contentOverrides under the QUOTE subtree and compatibilityRules under modules/{id}. Deployed rules were correct; the checks were wrong.",
+      "rootCause": "Test bug \u2014 probes targeted organisations/{org}/... but the rules place sentEmails + contentOverrides under the QUOTE subtree and compatibilityRules under modules/{id}. Deployed rules were correct; the checks were wrong.",
       "fix": "scripts/smoke-1000.py section B re-pointed at the real rule parents, commit f38ff66",
       "retest": "2076/2076 PASS",
       "class": "test-bug"
@@ -41,16 +41,16 @@
       "id": "FFR-5",
       "failed": "Smoke battery route checks: /proposals HTTP 404; /feature-tracking flagged for error-boundary text",
       "firstSeen": "2026-07-03",
-      "rootCause": "Test bugs — /proposals only exists as /proposals/[quoteNumber] (bare-path 404 is correct); 'Something went wrong' legitimately appears 3× inside the v1.9.5 release-notes CONTENT baked into /feature-tracking.",
+      "rootCause": "Test bugs \u2014 /proposals only exists as /proposals/[quoteNumber] (bare-path 404 is correct); 'Something went wrong' legitimately appears 3\u00d7 inside the v1.9.5 release-notes CONTENT baked into /feature-tracking.",
       "fix": "Route list corrected + error check narrowed to Next's real crash marker ('Application error'), commit 3456e16",
-      "retest": "2076/2076 PASS (all 20 routes × 3 checks green)",
+      "retest": "2076/2076 PASS (all 20 routes \u00d7 3 checks green)",
       "class": "test-bug"
     },
     {
       "id": "FFR-6",
       "failed": "Playwright browser suite: all tests ERR_CONNECTION_RESET against dev URL and localhost login timeout in the sandbox",
       "firstSeen": "2026-07-03",
-      "rootCause": "Environment — Chromium doesn't inherit HTTPS_PROXY, and its post-quantum/ECH TLS ClientHello breaks the sandbox's TLS-intercepting proxy mid-CONNECT.",
+      "rootCause": "Environment \u2014 Chromium doesn't inherit HTTPS_PROXY, and its post-quantum/ECH TLS ClientHello breaks the sandbox's TLS-intercepting proxy mid-CONNECT.",
       "fix": "playwright.evidence.config.ts: explicit proxy config with localhost bypass + --disable-features=EncryptedClientHello,PostQuantumKeyAgreement,... launch flags",
       "retest": "In-browser Firebase auth verified working through the proxy; visual-regression suite login flow exercises it end-to-end",
       "class": "environment-fix"
@@ -69,8 +69,8 @@
       "failed": "Unit tests exposed 3 money-math defects (pinned with TODO-BUG markers): over-discount drives totals negative; explicit cost:0 overridden by margin heuristics (|| vs ??); >100% payment allocation yields a negative final line",
       "firstSeen": "2026-07-03",
       "rootCause": "Product bugs in src/lib/quote-financials.ts + payment-schedule lib.",
-      "fix": "PENDING (task #14) — fixes flip the pinned tests to assert corrected behavior",
-      "retest": "PENDING — ledger updated when green",
+      "fix": "PENDING (task #14) \u2014 fixes flip the pinned tests to assert corrected behavior",
+      "retest": "PENDING \u2014 ledger updated when green",
       "class": "product-fix-pending"
     },
     {
@@ -78,7 +78,7 @@
       "failed": "Boats import dry-run planned duplicate vendors (data-warehouse/stacer alongside existing Stacer vendor LWgHuGoKfUBeKZ8eWnEi)",
       "firstSeen": "2026-07-03",
       "rootCause": "Importer written before the live-vendor probe; 5 of 8 brands already had vendors + modules; Merry Fisher/Cap Camarat are Jeanneau lines.",
-      "fix": "BRAND_ROUTING map added to scripts/mpf/import-boats.py — existing vendor ids, MF/CC as Jeanneau ranges, only Formosa net-new",
+      "fix": "BRAND_ROUTING map added to scripts/mpf/import-boats.py \u2014 existing vendor ids, MF/CC as Jeanneau ranges, only Formosa net-new",
       "retest": "Dry-run re-run confirms zero duplicate vendors; verified before any --apply",
       "class": "migration-fix"
     },
@@ -86,7 +86,7 @@
       "id": "FFR-10",
       "failed": "CL380 quote flow: 'NO DEALER FIT OPTIONS CONFIGURED' (field report)",
       "firstSeen": "2026-07-03",
-      "rootCause": "Data loss — organisations/{org}/dealerFitSelections was completely empty (0 docs) for every org; not model-specific.",
+      "rootCause": "Data loss \u2014 organisations/{org}/dealerFitSelections was completely empty (0 docs) for every org; not model-specific.",
       "fix": "Reseeded via committed scripts/seed-dealerfit.py; junk E2E_TEMP_* categories cleaned off the module doc; permanent fix = MPF import of NSM's real 1,795 dealer-fit options",
       "retest": "9 options verified live via REST + user-confirmed in browser; MPF import supersedes",
       "class": "data-fix"
@@ -96,9 +96,27 @@
       "failed": "Customer PDF printed literal <p> tags inside bullet lists (field report, Finance & Insurance block)",
       "firstSeen": "2026-07-03",
       "rootCause": "tiptap-pdf list parser passed TipTap's <p> wrapper inside <li> through to an inline renderer that doesn't know block tags.",
-      "fix": "List items unwrap paragraph tags (boundaries → <br/>), commit 3456e16",
+      "fix": "List items unwrap paragraph tags (boundaries \u2192 <br/>), commit 3456e16",
       "retest": "Transform verified against the exact strings from the field report; PDF renders clean",
       "class": "product-fix"
+    },
+    {
+      "id": "FFR-12",
+      "failed": "Boats apply died at write 334/1042 (connection reset by peer)",
+      "firstSeen": "2026-07-03",
+      "rootCause": "Environment \u2014 transient proxy connection reset; writer had token refresh but no transient retry.",
+      "fix": "Store._req retries connection resets + 429/5xx with exponential backoff (4 attempts)",
+      "retest": "Apply relaunched; idempotent resume (334 applied writes skip as unchanged) \u2014 result recorded on completion",
+      "class": "environment-fix"
+    },
+    {
+      "id": "FFR-13",
+      "failed": "Motors/Trailers/FO apply: HTTP 400 Bad Request on the first motor write",
+      "firstSeen": "2026-07-03",
+      "rootCause": "Product-of-migration bug \u2014 Yamaha motor rows keep original column names with spaces ('NSM Retail'); Firestore updateMask requires backtick-quoted field paths for non-identifier names.",
+      "fix": "_fs.patch_doc quotes flat field names whole (preserving literal dots e.g. 'Prop Part No.') and treats explicit masks as dotted nesting",
+      "retest": "Apply relaunched \u2014 result recorded on completion",
+      "class": "migration-fix"
     }
   ]
 }
