@@ -49,7 +49,7 @@ export interface ReleaseWindow {
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 31;
+const FORWARD_RUNWAY_START = 32;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -249,6 +249,17 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     'v1.29': {},
     // v1.30 — notification system foundation (10.1.1-10.1.5). 5/5 shipped.
     'v1.30': { shipped: true },
+    // v1.31 — MPF migration + testing overhaul. Epic 12 (12.1.1-12.4.1):
+    // NSM's 17-workbook Master Price File migrated 1:1 — boats (810, 9
+    // brands, landed-cost chain, curated menus), motors/trailers/FO
+    // (price levels + hull_campaign, 1,011 FO reprices), parts wave
+    // (1,791 DFO / 3,660 fitUp / 26,345 serviceParts / 846 rigging /
+    // 1,606 suppliers), service + pricing config, NSM Recommended
+    // quote-flow wiring, MPF Data admin tab, image remediation (1,056
+    // patches). Epic 13 (13.1.1-13.2.2): 460-test money-math unit suite
+    // (3 bugs fixed), CI gate + nightly synthetic, visual regression +
+    // TLS bridge, 34,512-check parity battery, fail-fix-retest ledger.
+    'v1.31': { shipped: true },
     ...buildV1MinorReleases(),
 };
 

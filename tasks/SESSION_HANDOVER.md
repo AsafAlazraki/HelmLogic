@@ -24,6 +24,7 @@
 | v1.9.5 | 2026-05-14 | ✅ Shipped (PR #36) | main |
 | v1.10 | 2026-06-02 | ✅ Shipped — Phase A bug pass + Phase B Fit-Up admin + Phase C Service Quoting catalogue + Story 3.7.2 Boats read-view + FirebaseErrorListener denylist defense + v1.9.5 backfill | merged |
 | **v1.11** | **2026-06-02** | 🚢 **Ready for dev → main — Fit-Up release (Phase A pulled Epic 9.2 from v1.16 + Phase B fit-up expansion: categories + customerDescription + packages + per-line qty/override/note + workshop status pill).** Non-fit-up stories built in the same dev cycle (Service Quote Flow, Motors Table, Suggestion Approval Queue) retargeted to v1.12 so v1.11 ships as a focused Fit-Up release. | `claude/app-overview-wKiZ1` |
+| **v1.31** | **2026-07-03** | 🚢 **MPF migration + Testing & Evidence overhaul** — Epic 12 (NSM's 17-workbook Master Price File migrated 1:1: 36,551 writes / 0 errors / parity proven 34,498 of 34,512 with every fail explained) + Epic 13 (460-test money-math unit suite, CI gate + nightly synthetic, visual regression + TLS bridge, fail→fix→retest ledger FFR-1…16). See `tasks/RELEASE_NOTES_v1.31.0.md` + the "v1.31 new Firestore surface" block below. | `claude/app-overview-wKiZ1` |
 
 > **v1.9.5 = planning + groundwork + hotfix** (fractional, like v1.5.1/v1.6.1). Roadmap reshuffled to dealer-ops priority (157 stories re-targeted, Submitted drained, sequential v1.10–v1.40 runway); Epic 11 Service Quoting seeded as backlog (NSM-Hub absorption — PLANNED, not built); clickable release-detail popups; emailTemplates Create-Proposal crash (CODE fix — SendQuoteDialog subscribed to templates unconditionally; not a rules issue). **The actual dealer-ops + Service Quoting BUILD starts at v1.10.**
 
@@ -63,6 +64,17 @@
 - 3.7.3 Motors Table read-view.
 - 3.5.1 Suggestion Approval Queue.
 - The `V111ExpansionRetargetButton` did the bulk retarget — code stays on the dev branch and deploys when v1.11 merges; v1.12 release notes will give them the headline.
+
+**v1.31 new Firestore surface (MPF migration — all under `organisations/{orgId}/`, rules deployed + list-verified):**
+- `riggingKits/{kitId}` — 846 rigging kit docs: kit → components, 3-tier ex-GST pricing, install hours at the org shop rate, inclusion flags. Org-level per decision D8 (NSM shop rate embedded).
+- `suppliers/{supplierId}` — 1,606 supplier registry docs: name, ABN, terms, credit, DMS invoice config.
+- `supplierPriceLists/{listId}` — vendor cost-refresh price-list sources with as-at dates. Per-org per decision D5 (BLA pricing is negotiated). The 15 vendor lists (~60k rows) import in a follow-up wave per D10.
+- `pricingMatrix/{rowId}` — 48 rows: 47 per-franchise markup/margin rows + the retail sliding scale. The org pricing brain, replacing formulas scattered through the MPF.
+- `engineServiceSchedules/{engineId}` — 189 engines × 11 service intervals with priced parts BOMs. Consumed by `engine-schedule-picker.tsx` in the service-quote detail sheet.
+- `freightConfig/{vendorId}` — per-vendor per-linear-metre freight rates + buffer, feeding boat landed cost.
+- **Storage**: `mpf-mirror/motors/{hash}.{ext}` + `mpf-mirror/dfo/{hash}.{ext}` on the app bucket — 171 mirrored catalog images (WAF/CDN-blocked originals); download URLs are token (`alt=media`) URLs which the weserv skip-list routes direct. 1,056 doc patches logged in `tasks/mpf-audit/apply-log-images.jsonl`.
+- **Extended catalog docs** (not new collections): boat variants carry `landedCostChain` (base cost → factory charges → FX → duty → freight legs → landed AUD, with `landedVerified` + `formulaDeviationFlag`), inc-GST price ladders, and curated `motorMenu` / `trailerMenu` / `dealerFitLines` per-boat menus; motors gain the `hull_campaign` price level (hidden unless populated); models gain `standardInclusions` / `depositSchedule` / `leadTimesDays`.
+- **Key architectural notes**: MPF content is authoritative, form upgraded — string-name joins became validated ID references, GST bases normalised to ex-GST with per-row conversion records, hardcoded FX became explicit `exchangeRates`, cached `#N/A`/`#VALUE!` cells quarantined (never imported as prices). All quote-flow MPF surfaces (`nsm-recommended.tsx`) are DATA-GATED: absent MPF fields render the pre-migration flow unchanged. Import pipeline lives in `scripts/mpf/` (extract → diff → dry-run → import, all logged to `tasks/mpf-audit/`); parity proof in `tasks/test-evidence/MPF_PARITY.md`; failure ledger in `tasks/test-evidence/fail-fix-retest.json`.
 
 > **Note**: this table was backfilled at v1.9 from a stale v1.4-era state. Canonical release state lives in **`CLAUDE.md`** top-of-file table; per-release detail lives in **`tasks/RELEASE_NOTES_vX.Y.Z.md`**.
 

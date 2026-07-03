@@ -106,13 +106,20 @@ test('ULTIMATE: SP560 PVC W-W-WB — MPF-identical quote', async ({ page }) => {
   // imported in Phase 4 — select IT so both systems quote the same rego.
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   await page.waitForTimeout(1500);
-  const regoCard = page.locator('div, section').filter({ hasText: /Boat Registration \(Rego Module\)/ }).last();
-  const regoTrigger = regoCard.locator('[role="combobox"], button:has(svg.lucide-chevron-down)').first();
+  // The RegoPicker SelectTrigger shows the auto-matched band's name —
+  // target it directly by its visible text (role=combobox in shadcn).
+  const regoTrigger = page
+    .locator('[role="combobox"]:has-text("Recreational Vessel"), [role="combobox"]:has-text("4.5m"), button:has-text("Recreational Vessel — 4.5m to 8m")')
+    .first();
   if (await regoTrigger.isVisible().catch(() => false)) {
     await regoTrigger.scrollIntoViewIfNeeded().catch(() => {});
     await regoTrigger.click({ force: true });
     await page.waitForTimeout(1000);
-    const mpfBand = page.locator('[role="option"]').filter({ hasText: /4\.51m to 6\.0m/ }).first();
+    const mpfBand = page
+      .locator('[role="option"]')
+      .filter({ hasText: /4\.51m to 6\.0m/ })
+      .filter({ hasNotText: /Pensioner|Concession/i })
+      .first();
     if (await mpfBand.isVisible({ timeout: 4000 }).catch(() => false)) {
       const optText = await mpfBand.textContent();
       await mpfBand.click({ force: true });

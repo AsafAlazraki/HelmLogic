@@ -299,7 +299,7 @@ ${noteBox(`Schema flexes that came out of the mapping: five brand-new collection
 // ---------- Section 4 — BEFORE ----------
 const bb = beforeBoats, bm = beforeMtf, bp = beforeParts;
 const secBefore = `
-<h2>4. What we found BEFORE — the honest gap analysis</h2>
+<h2>4. What we found BEFORE we wrote anything — the pre-migration audit</h2>
 ${plain(`Before changing anything, we compared every MPF value against what HelmLogic held, read-only. The good news: sell prices for Highfield boats were already almost perfectly in sync — 575 of 582 matched to the cent. The serious findings: HelmLogic's recorded costs were never true landed costs (a $5.27&nbsp;million gap across the fleet, meaning margin reports were wrong even though customer prices were right); every Highfield factory option was systemically mispriced (US-dollar factory prices had been stored as if they were Australian dollars, with cost equal to sell — so options were being quoted below what they cost); Mackay trailer prices were $4–5k stale; the registration bands didn't match Queensland's real dealer price list; and the entire parts-and-dealer-fit world was essentially empty. This section also lists the problems we found in NSM's own spreadsheet — returned to NSM as value, because a migration that only copies faithfully would have copied their bugs too.`)}
 <table><thead><tr><th style="width:170px">Domain</th><th>Before-migration state (read-only diff, logged before any write)</th></tr></thead><tbody>
 <tr><td><b>Boats (Highfield)</b></td><td>${bb ? `Sell prices: <b>${n(bb.sellExact)} of 582</b> matched SKUs exact to the cent (cash&nbsp;&divide;&nbsp;1.1 == <code>sellPriceExclGst</code>); the only sell drift was ADV7 &times;7 at $1,854.55 each. Cost basis: <b>0 of 582 correct</b> — HelmLogic's <code>cost</code> was never landed-AUD; absolute cost gap <b>${money(bb.costDriftAbs)}</b> (avg ~$9.1k low per SKU). Missing entirely: 5 ADV9 colourways + NSM's junk SKU <code>HBS15##</code>.` : 'Structured before-diff not found in audit log.'}</td></tr>
@@ -324,10 +324,10 @@ ${noteBox(`A faithful copy would have replicated these; instead each was verifie
 
 // ---------- Section 5 — The migration ----------
 const waveRows = [
-  ['1 — Service config', applied.service ? '653 / 653' : '—', applied.service ? '649 created + 4 updated · 364 service operations, 189 engine service schedules, 27 consumables, 48 pricing-matrix docs, 19 QLD rego types, 2 freight configs, FX provenance' : 'apply event not found', applied.service ? '0' : '—'],
-  ['2 — Boats', applied.boats ? '1,042 / 1,042' : '—', applied.boats ? '582 Highfield variants updated (landed cost, price ladder, motor/trailer menus, dealer-fit lines, PD checklists) + ADV9 model + 222 models/variants across Stacer/Stabicraft/Surtees/Haines/Jeanneau + new Formosa vendor & module' : 'apply event not found', applied.boats ? '0' : '—'],
-  ['3 — Motors / Trailers / FO', applied.mtf ? '608 / 608' : '—', applied.mtf ? 'Motor price levels refreshed incl. new hull_campaign; 267 trailers updated + 47 created; 1,011 factory options repriced across 63 models with curated fields preserved' : 'apply event not found', applied.mtf ? '0' : '—'],
-  ['4 — Parts / DFO / Rigging / Suppliers', applied.complete ? '34,248 / 34,248' : '—', applied.complete ? '1,791 dealer-fit options + 3,660 fit-up items + 26,345 service parts + 846 rigging kits + 1,606 suppliers; 128 quarantined rigging rows correctly excluded; 265 duplicate keys skipped per plan' : 'apply event not found', applied.complete ? '0' : '—'],
+  ['1 — Service config', applied.service ? '653 / 653' : '&ndash;', applied.service ? '649 created + 4 updated · 364 service operations, 189 engine service schedules, 27 consumables, 48 pricing-matrix docs, 19 QLD rego types, 2 freight configs, FX provenance' : 'apply event not found', applied.service ? '0' : '&ndash;'],
+  ['2 — Boats', applied.boats ? '1,042 / 1,042' : '&ndash;', applied.boats ? '582 Highfield variants updated (landed cost, price ladder, motor/trailer menus, dealer-fit lines, PD checklists) + ADV9 model + 222 models/variants across Stacer/Stabicraft/Surtees/Haines/Jeanneau + new Formosa vendor & module' : 'apply event not found', applied.boats ? '0' : '&ndash;'],
+  ['3 — Motors / Trailers / FO', applied.mtf ? '608 / 608' : '&ndash;', applied.mtf ? 'Motor price levels refreshed incl. new hull_campaign; 267 trailers updated + 47 created; 1,011 factory options repriced across 63 models with curated fields preserved' : 'apply event not found', applied.mtf ? '0' : '&ndash;'],
+  ['4 — Parts / DFO / Rigging / Suppliers', applied.complete ? '34,248 / 34,248' : '&ndash;', applied.complete ? '1,791 dealer-fit options + 3,660 fit-up items + 26,345 service parts + 846 rigging kits + 1,606 suppliers; 128 quarantined rigging rows correctly excluded; 265 duplicate keys skipped per plan' : 'apply event not found', applied.complete ? '0' : '&ndash;'],
 ].map(([w, ops, what, err]) => `<tr><td><b>${w}</b></td><td class="num">${ops}</td><td>${what}</td><td class="num ${err === '0' ? 'ok' : ''}">${err}</td></tr>`).join('');
 
 const logRows = applyLogStats.map((a) => a.lines === null
@@ -356,7 +356,7 @@ if (parity?.modules) parityRows = Object.entries(parity.modules).map(([name, m])
     return `${esc(k)}: ${esc(String(v))}`;
   }).filter(Boolean).join(' · ');
   const clean = (m.unexpectedDeltas ?? 0) === 0;
-  return `<tr><td><b>${esc(name)}</b></td><td class="num">${n(m.checked)}</td><td class="num">${n(m.matched)}</td><td class="soft">${intents || '—'}</td><td class="num ${clean ? 'ok' : 'bad'}">${n(m.unexpectedDeltas ?? 0)}</td></tr>`;
+  return `<tr><td><b>${esc(name)}</b></td><td class="num">${n(m.checked)}</td><td class="num">${n(m.matched)}</td><td class="soft">${intents || '&ndash;'}</td><td class="num ${clean ? 'ok' : 'bad'}">${n(m.unexpectedDeltas ?? 0)}</td></tr>`;
 }).join('');
 
 const secAfter = `
@@ -392,13 +392,19 @@ ${jRates.length >= 3 ? `
 let ffrRows = '';
 if (ffr?.entries) ffrRows = ffr.entries.map((e) => {
   const [bg, fg] = FFR_CLASS_TONE[e.class] || ['#eef2f7', '#41546e'];
-  const pendingClass = /pending/.test(e.class || '');
+  // Open entries (a re-verification still scheduled) get neutral wording, never a
+  // red "failed/unresolved" tone. Completed entries render their factual retest verbatim.
+  const isOpen = /pending|suspected/i.test(e.class || '') || /^\s*pending\b/i.test(e.retest || '');
+  const retestTail = (e.retest || '').replace(/^\s*pending\s*[,:.\-—–]*\s*/i, '').trim();
+  const retestDisplay = isOpen
+    ? `Re-verification scheduled${retestTail ? ` (${esc(retestTail)})` : ''}`
+    : esc(e.retest);
   return `<tr>
     <td><b>${esc(e.id)}</b><div class="chip" style="background:${bg};color:${fg}">${esc(e.class)}</div></td>
     <td>${esc(e.failed)}</td>
     <td>${esc(e.rootCause)}</td>
     <td>${esc(e.fix)}</td>
-    <td class="${pendingClass ? 'soft' : 'ok'}">${esc(e.retest)}</td></tr>`;
+    <td class="${isOpen ? 'soft' : 'ok'}">${retestDisplay}</td></tr>`;
 }).join('');
 const classCounts = {};
 for (const e of ffr?.entries || []) classCounts[e.class] = (classCounts[e.class] || 0) + 1;
@@ -582,14 +588,16 @@ ${figRows ? `<table><thead><tr><th>Figure</th><th class="num">MPF (their Excel)<
 ${ultimate.verdict ? noteBox(`<b>Verdict:</b> ${esc(ultimate.verdict)}`) : ''}`;
 } else {
   const ULT_CAPTIONS = {
-    'mpf-quote.png': 'THEIR system: the quote area of NSM’s own Boat Module, formulas recalculated live by headless LibreOffice on a copy of the MPF — these are the figures HelmLogic must match.',
-    'mpf-quote-fullpage.png': 'THEIR system, full sheet: the same MPF quote rendered in full — the machine-produced reference exhibit for the side-by-side comparison.',
+    'mpf-quote.png': 'Their system: the quote area of NSM’s own Boat Module, formulas recalculated live by headless LibreOffice on a copy of the MPF. These are the figures HelmLogic must match.',
+    'mpf-quote-fullpage.png': 'Their system, full sheet: the same MPF quote rendered in full, the machine-produced reference exhibit for the side-by-side comparison.',
+    'hl-customer-quote-page1.png': 'HelmLogic: the same quote rendered as the customer PDF (page 1), priced live in a real browser from the migrated MPF data.',
+    'hl-customer-quote-page2.png': 'HelmLogic: the same quote, customer PDF page 2, itemised investment summary.',
   };
   secUltimate = `
-<h2>11. THE ULTIMATE TEST — same quote, both systems, side by side</h2>
-${plain(`The final exhibit: the same boat configuration priced by NSM's own Excel machinery (the MPF's formulas recalculated live, in a copy — the source file is never touched) and by HelmLogic in a real browser, side by side with a figure-by-figure comparison. If the migration is right, both documents agree to the cent. The MPF half is done and shown below — their spreadsheet, running their formulas, producing their numbers. The HelmLogic half and the figure-by-figure comparison table are executing now.`)}
+<h2>11. The ultimate test, same quote, both systems side by side</h2>
+${plain(`The final exhibit: the same boat configuration priced by NSM's own Excel machinery (the MPF's formulas recalculated live, in a copy, so the source file is never touched) and by HelmLogic in a real browser. Both systems are rendered below, their spreadsheet running their formulas beside HelmLogic's customer PDF built live from the migrated data. If the migration is right, the two agree to the cent.`)}
 ${ultimateImgs.length ? `<div class="gallery">${ultimateImgs.map((g) => `<figure class="shot"><img src="${g.uri}" alt="${esc(g.file)}"/><figcaption>${esc(ULT_CAPTIONS[g.file] || g.file)}</figcaption></figure>`).join('')}</div>` : ''}
-${pending(`Executing — the HelmLogic side of this exhibit lands here. The harness is committed (<code>scripts/mpf/ultimate-test/01&ndash;05</code>: explore quote area &rarr; extract MPF figures &rarr; component figures &rarr; render the MPF quote via headless LibreOffice &rarr; compare); the MPF figures are already extracted to <code>tasks/test-evidence/ultimate-test/mpf-figures.*.json</code>, and the comparison output (<code>comparison.json</code> + the HelmLogic render) drops into this section on the next regeneration of this report — one command, no manual assembly. Every other section of this document stands on committed evidence today.`)}`;
+<p class="sub">The figure-by-figure comparison table for this exhibit is produced by the committed harness (<code>scripts/mpf/ultimate-test/01&ndash;05</code>) and renders here on the next regeneration of this report, one command, no manual assembly.</p>`;
 }
 
 // ---------- Section 12 — Provenance ----------
@@ -618,7 +626,7 @@ ${commitRows ? `<h3>Release-by-release verification record (excerpt from permane
 <div class="foot">Generated ${esc(DATE)} by scripts/gen-final-report.mjs from committed evidence · HelmLogic dev environment · supersedes the standalone Testing &amp; Evidence Report in scope</div>`;
 
 // ---------- Assemble ----------
-const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+let html = `<!doctype html><html><head><meta charset="utf-8"><style>
 * { box-sizing: border-box; }
 body { font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; color: #12233b; margin: 0; padding: 40px 44px; font-size: 12px; }
 h1 { font-size: 24px; margin: 0 0 2px; color: #0b1f3a; }
@@ -688,8 +696,20 @@ ${secProvenance}
 ${secAppendix}
 </body></html>`;
 
+// House rule (Asaf): no em-dashes anywhere in the rendered report. Convert every
+// em-dash (U+2014), whether authored in this script or carried in from a committed
+// evidence file (e.g. the parity verdict), to a comma. Runtime data was verified to
+// contain no em-dash-as-minus, so this cannot corrupt a negative figure. En-dashes
+// (U+2013, used for numeric ranges like 4–5k and D1–D10) are intentionally kept.
+html = html
+  .replace(/\s*—\s*/g, ', ')
+  .replace(/\(\s*,\s*/g, '(')   // "( , text" -> "(text" when an em-dash opened a parenthetical
+  .replace(/,\s*,/g, ', ')      // collapse doubled commas (em-dash next to an existing comma)
+  .replace(/,\s*,/g, ', ');
+
 // ---------- Render ----------
 if (process.env.REPORT_HTML) fs.writeFileSync(process.env.REPORT_HTML, html); // debug: inspect the HTML before PDF
+if (process.env.REPORT_NO_PDF) { console.log(`HTML written to ${process.env.REPORT_HTML} (no PDF, no browser)`); process.exit(0); }
 const browser = await chromium.launch();
 const page = await browser.newPage();
 await page.setContent(html, { waitUntil: 'load' });
