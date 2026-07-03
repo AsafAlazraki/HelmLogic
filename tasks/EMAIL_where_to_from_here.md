@@ -4,7 +4,7 @@ Hi team,
 
 Big milestone. The feature roadmap we set out to build on HelmLogic is essentially done. 244 stories are shipped and tested on our dev environment, spanning everything from the original quoting engine through customers, contracts, deposits, variations, payment schedules, margin controls, pricing at scale, global search and the notification foundation. A year of planned feature work, built.
 
-And it isn't just built, it's verified. This week I ran the full lifecycle end to end against live data, customer to quote to contract to deposit to variation, plus the cross module reads that feed reporting and search, and it passes clean. The security rules and database indexes are published and confirmed. So "done" here means proven, not assumed.
+We've done our own testing across that full lifecycle, customer to quote to contract to deposit to variation, and it's holding up. But our testing doesn't replace yours, and this is where you come in. The most useful thing now is to get in and put it through its paces, and when something isn't right, raise a ticket inside the Roadmap so it's captured and we can work through it. One ask on those tickets: keep them to how the product behaves rather than data issues, we're handling the data side on its own track. We're genuinely looking forward to the feedback.
 
 Open the Roadmap and you'll see it. It's gone green. That's the best way to take in how much has landed.
 
@@ -14,19 +14,20 @@ What's not in "done"
 
 - Dependency blocked. The existing ServiceHub migration (Epic 11.3), the Revolution pieces (settlement reconciliation and pulling existing quote and contract data), and Shopify all wait on external access we don't have yet, not on us. To be clear, this is the existing ServiceHub that already holds live data, not the service quoting we built inside HelmLogic.
 - Operational and launch. Pulling the existing customer list across, the migration cutoff, the parallel run and decommission of the old tool, the training plan and sessions, the announcement to the team. Real work, but logistics rather than software.
-- Legal and decisions. Privacy and refund policy, cooling off text per state, e-signature provider choice, which states we operate in, insurance review, and the email and tax invoice templates that follow from those calls.
+- Go to market. HelmLogic still needs its own marketing website, which is our sales channel, and the sales blurb to actually start selling it to customers. The growth section below picks this up, but it's real work and none of it exists yet.
+- Legal and decisions. Company incorporation and the shareholding agreement, privacy and refund policy, cooling off text per state, e-signature provider choice, which states we operate in, insurance review, and the email and tax invoice templates that follow from those calls.
 - Live field feedback. Real use is already throwing off feedback, and there's a fresh batch of it sitting in the Submitted column now (PDF layout tweaks, catalog requests, a few extra Highfield models, a couple of small bugs). It needs triage and prioritising, which is a call for us rather than something I should quietly slot into releases.
 
 Production readiness
 
 Whether and when we put this live is a decision for the business, not a call I'm making or pushing. What I can do is be clear about what would need to be true first, so that decision is an informed one. That short list:
 
-- Email and SMTP. Every email the system needs (quotes, variations, reminders) is ready, but sending stays switched off until we sort the Office 365 setup and sign off the sender domain. This is the most visible thing still dark and the one most worth sorting this week.
+- Email sending. Every email the system needs (quotes, variations, reminders) is ready, but sending stays switched off until we stand up SendGrid and sign off the sender domain. To be clear, this isn't an open question. We're going with SendGrid, not Office 365, we just need to set it up. This is the most visible thing still dark and the one most worth sorting this week.
 - The existing ServiceHub data migration. Live data in the current ServiceHub needs to come across. It's its own exercise with its own owner, cutoff date and parallel run plan, and shouldn't hide inside "launch tasks."
 - The multi user quote bug. You can't currently edit a quote someone else created. I've found why and I'm fixing it this weekend. Worth being clear on one thing: migrating off the existing app is a big piece of work, and the two systems will run side by side through it, so this fix has to go into both places, the new build and the existing app, not just here. It matters for any dealership where more than one person touches a deal.
 - UAT. The most valuable thing we can do now is use the system in anger, real quotes, real customers, real contracts, and find where it bites. End to end use finds what screen by screen checking doesn't.
 - Shopify data timelines, and the data model change that comes with it. We've done the groundwork on the API. Two things we need next. First, a real read on timing: when data starts flowing to and from Shopify, and what that depends on. Second, and more significant, Shopify is not just an API hookup. Bringing it in means a significant change to our underlying data model, so it has to be planned and resourced as a data project in its own right, not slotted in as a connector. The sooner we get hands on real access the sooner we can put dates and a proper shape against it.
-- Responsiveness and offline. Two requirements we need to actually pin down rather than assume. How responsive does this need to be on tablet and phone, and do we need it to work offline at a boat show with patchy reception. Both change the shape of the work, so I'd rather we decide them deliberately than discover them late.
+- Responsiveness, and a call on offline. Responsiveness we should pin down: how well this needs to work on tablet and phone. Offline is the bigger question, and my current view is that the pain, cost and effort of building true offline support isn't worth it just for the boat show scenario. I'd rather we confirm that than assume it, but I don't think it earns its place right now.
 
 Then, the growth layer
 
@@ -58,7 +59,7 @@ Separate to everything above, there's the public facing Build A Boat, a customer
 
 A few calls to make
 
-Some things wait on decisions rather than work: the e-signature approach, which states we operate in and the compliance text that follows, and the sender domain and SMTP setup above. The faster we make those calls, the faster they clear.
+Some things wait on decisions rather than work: the e-signature approach, and which states we operate in and the compliance text that follows. The faster we make those calls, the faster they clear.
 
 On timing
 
