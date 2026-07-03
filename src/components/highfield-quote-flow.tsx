@@ -1563,10 +1563,12 @@ export function HighfieldQuoteFlow({
                                                         live on media.highfieldboats.com which Cloudflare anti-hotlinking
                                                         blocks through the Next optimisation proxy → blank slide). See
                                                         CLAUDE.md lesson. */}
-                                                    {/* object-CONTAIN (not cover) so the whole boat fits inside the
-                                                        card with breathing room instead of being cropped edge-to-edge.
+                                                    {/* Photography (boat cover / variant / gallery) fills the card
+                                                        edge-to-edge with object-COVER — no white gutters. Motor +
+                                                        trailer product cutouts stay object-contain (cover would
+                                                        crop them off their white background).
                                                         `unoptimized` keeps external-CDN covers from being proxy-blocked. */}
-                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill unoptimized className={cn("transition-all", (slide.type === 'motor' || slide.type === 'trailer') ? "object-contain p-6" : "object-contain p-4")} priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
+                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill unoptimized className={cn("transition-all", (slide.type === 'motor' || slide.type === 'trailer') ? "object-contain p-6" : "object-cover")} priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
                                                     <Button variant="ghost" size="icon" className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20" onClick={() => setLightboxUrl(slide.url || null)}><Maximize2 className="h-5 w-5" /></Button>
                                                 </>
                                             )}
