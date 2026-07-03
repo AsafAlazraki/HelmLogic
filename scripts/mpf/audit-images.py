@@ -11,8 +11,14 @@ READ-ONLY against live Firestore. Collects every image URL reference from:
 
 Dedupes URLs, probes each unique URL (GET stream, browser UA, 10 workers, 10s
 timeout), classifies:
-  ok-image / redirect-to-html / 4xx-dead / timeout / sharepoint-internal /
-  not-http-url / data-uri / other
+  ok-image / redirect-to-html / 403-blocked-wall / 4xx-dead / timeout /
+  sharepoint-internal / not-http-url / data-uri / other
+
+403-blocked-wall is split out from 4xx-dead because it was verified NOT dead:
+www.northsidemarine.com.au serves 403+HTML to datacenter probes but the same
+URL returns 200 image/png via images.weserv.nl (2026-07-03 spot-check).
+Yamaha (.ashx) URLs return 200+HTML (Incapsula challenge) AND weserv gets 404
+on them — those genuinely need the Firebase-Storage mirror (v1.11 pattern).
 
 Outputs:
   tasks/test-evidence/image-audit.json   (machine-readable, per-collection)
@@ -296,6 +302,10 @@ def probe(url):
                 cls = "redirect-to-html"
             else:
                 cls = "other"
+        elif status == 403:
+            # WAF/anti-hotlink wall, not necessarily dead (NSM host verified
+            # recoverable via weserv). Distinct remediation from true 404s.
+            cls = "403-blocked-wall"
         elif 400 <= status < 500:
             cls = "4xx-dead"
         else:
@@ -313,7 +323,8 @@ def probe(url):
 
 # ---------------------------------------------------------------- main
 
-BAD_CLASSES = ("redirect-to-html", "4xx-dead", "timeout", "sharepoint-internal", "not-http-url", "other")
+BAD_CLASSES = ("redirect-to-html", "403-blocked-wall", "4xx-dead", "timeout",
+               "sharepoint-internal", "not-http-url", "other")
 
 
 def rollup_group(g):
@@ -416,8 +427,9 @@ def main():
 
 
 REMEDIATION = {
-    "4xx-dead": "Dead link (404/403/410). MPF-sourced links: report list to NSM for refreshed source data; catalog-authored links: re-upload via the v1.11 motor-photo pattern (mirror to Firebase Storage).",
-    "redirect-to-html": "Anti-hotlink wall (CDN serves an HTML challenge, e.g. Incapsula/Cloudflare). Route through the weserv image-preload pipeline, or mirror to Firebase Storage per the v1.11 motor-photo pattern.",
+    "403-blocked-wall": "WAF/anti-hotlink 403 — the asset is NOT dead. Verified 2026-07-03: a www.northsidemarine.com.au 403 URL returns 200 image/png via images.weserv.nl. Route rendering through the weserv image-preload pipeline (already in the app since v1.11), or mirror to Firebase Storage.",
+    "4xx-dead": "Dead link (404/410). MPF-sourced links: report list to NSM for refreshed source data; catalog-authored links: re-upload via the v1.11 motor-photo pattern (mirror to Firebase Storage).",
+    "redirect-to-html": "Anti-hotlink wall serving an HTML challenge with HTTP 200 (Yamaha = Incapsula). Verified 2026-07-03: weserv gets 404 on these — the weserv pipeline CANNOT recover them (hence WESERV_SKIP_HOSTS). Mirror to Firebase Storage per the v1.11 motor-photo pattern.",
     "sharepoint-internal": "SharePoint/OneDrive internal URL — requires an authed session; will never render for customers. Mirror the asset to Firebase Storage and rewrite the field.",
     "timeout": "Host unreachable within 10s. Re-probe before acting; persistent offenders should be mirrored to Firebase Storage.",
     "not-http-url": "Not an http(s) URL (local/UNC path or bare filename from a source spreadsheet). Cannot render in-app; needs the real asset sourced + uploaded to Firebase Storage.",
