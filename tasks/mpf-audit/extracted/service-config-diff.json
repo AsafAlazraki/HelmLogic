@@ -1,37 +1,16 @@
 {
- "generatedUtc": "2026-07-03T06:52:42.205875+00:00",
+ "generatedUtc": "2026-07-03T09:58:40.600188+00:00",
  "org": "AcFZVEFA5UDJG2hyetWT",
  "mode": "READ-ONLY",
  "sections": {
   "serviceOperations": {
-   "liveCount": 5,
+   "liveCount": 369,
    "extractedCount": 364,
    "extractedUniqueKeys": 285,
-   "matchedByCode": 0,
+   "matchedByCode": 285,
    "rateDrift": [],
-   "inMpfNotLive": 285,
-   "inMpfNotLiveSample": [
-    "DFO_LAB_0.05",
-    "DFO_LAB_0.1",
-    "DFO_LAB_0.25",
-    "DFO_LAB_0.5",
-    "DFO_LAB_0.75",
-    "DFO_LAB_1",
-    "DFO_LAB_1.25",
-    "DFO_LAB_1.5",
-    "DFO_LAB_1.75",
-    "DFO_LAB_2",
-    "DFO_LAB_2.5",
-    "DFO_LAB_3",
-    "DFO_LAB_3.5",
-    "DFO_LAB_4",
-    "DFO_LAB_4.5",
-    "DFO_LAB_5",
-    "DFO_LAB_6",
-    "DFO_LAB_7",
-    "DFO_LAB_8",
-    "DFO_LAB_9"
-   ],
+   "inMpfNotLive": 0,
+   "inMpfNotLiveSample": [],
    "inLiveNotMpf": [
     "DIAG",
     "IMP-REP",
@@ -40,62 +19,106 @@
     "YAM-200"
    ],
    "liveHourlyRates": [
+    144.55,
     165
    ],
    "liveSample": [
     {
-     "_id": "diag",
-     "code": "DIAG",
-     "name": "Engine diagnostic",
-     "flatRateHours": 1,
-     "hourlyRate": 165,
-     "cost": 120,
-     "sellPrice": 165
-    },
-    {
-     "_id": "imp-rep",
-     "code": "IMP-REP",
-     "name": "Impeller replacement",
-     "flatRateHours": 2,
-     "hourlyRate": 165,
-     "cost": 280,
-     "sellPrice": 330
-    },
-    {
-     "_id": "winter",
-     "code": "WINTER",
-     "name": "Winterise outboard",
+     "_id": "9hi-con-cl",
+     "code": "9HI-CON-CL",
+     "name": "Install - Highfield CL Jockey Console",
      "flatRateHours": 1.5,
-     "hourlyRate": 165,
-     "cost": 150,
-     "sellPrice": 247.5
+     "hourlyRate": 144.55,
+     "cost": 205.14,
+     "sellPrice": 236.82
     },
     {
-     "_id": "yam-100",
-     "code": "YAM-100",
-     "name": "100hr Yamaha service",
-     "flatRateHours": 3,
-     "hourlyRate": 165,
-     "cost": 380,
-     "sellPrice": 495
+     "_id": "9hi-con-console",
+     "code": "9HI-CON-CONSOLE",
+     "name": "Install - Highfield Console",
+     "flatRateHours": 1.5,
+     "hourlyRate": 144.55,
+     "cost": 205.14,
+     "sellPrice": 236.82
     },
     {
-     "_id": "yam-200",
-     "code": "YAM-200",
-     "name": "200hr Yamaha service",
-     "flatRateHours": 6,
-     "hourlyRate": 165,
-     "cost": 720,
-     "sellPrice": 990
+     "_id": "9hi-con-fct8",
+     "code": "9HI-CON-FCT8",
+     "name": "Install - Highfield FCT8 Console",
+     "flatRateHours": 2.5,
+     "hourlyRate": 144.55,
+     "cost": 335.23,
+     "sellPrice": 381.36
+    },
+    {
+     "_id": "9hi-con-gt",
+     "code": "9HI-CON-GT",
+     "name": "Install - Highfield GT Console",
+     "flatRateHours": 2.5,
+     "hourlyRate": 144.55,
+     "cost": 335.23,
+     "sellPrice": 381.36
+    },
+    {
+     "_id": "9hi-con-jock",
+     "code": "9HI-CON-JOCK",
+     "name": "Console - Jockey w EP",
+     "flatRateHours": 1.5,
+     "hourlyRate": 144.55,
+     "cost": 205.14,
+     "sellPrice": 236.82
+    },
+    {
+     "_id": "9hi-con-minisd",
+     "code": "9HI-CON-MINISD",
+     "name": "Install - Highfield Mini SD Console",
+     "flatRateHours": 2,
+     "hourlyRate": 144.55,
+     "cost": 270.18,
+     "sellPrice": 309.09
+    },
+    {
+     "_id": "9hi-con-nano",
+     "code": "9HI-CON-NANO",
+     "name": "Install - Highfield Nano Console",
+     "flatRateHours": 2,
+     "hourlyRate": 144.55,
+     "cost": 270.18,
+     "sellPrice": 309.09
+    },
+    {
+     "_id": "9hi-con-sds500",
+     "code": "9HI-CON-SDS500",
+     "name": "Install - Highfield SDS500 Console",
+     "flatRateHours": 1.5,
+     "hourlyRate": 144.55,
+     "cost": 205.14,
+     "sellPrice": 236.82
+    },
+    {
+     "_id": "9hi-con-sds750",
+     "code": "9HI-CON-SDS750",
+     "name": "Install - Highfield SDS750 Console",
+     "flatRateHours": 2,
+     "hourlyRate": 144.55,
+     "cost": 270.18,
+     "sellPrice": 309.09
+    },
+    {
+     "_id": "9hi-con-su500",
+     "code": "9HI-CON-SU500",
+     "name": "Console - SU500 w EP",
+     "flatRateHours": 1.5,
+     "hourlyRate": 144.55,
+     "cost": 205.14,
+     "sellPrice": 236.82
     }
    ]
   },
   "serviceParts": {
-   "liveCount": 6,
+   "liveCount": 26378,
    "extractedCount": 27,
-   "matched": [],
-   "drift": [],
-   "inMpfNotLive": [
+   "matched": [
     "10W30",
     "10W40",
     "90790-BZ404",
@@ -124,13 +147,39 @@
     "SUND7",
     "Wheel Bearing Grease"
    ],
+   "drift": [],
+   "inMpfNotLive": [],
    "inLiveNotMpf": [
-    "FUEL-FLT",
-    "IMP-F90",
-    "SPARK-NGK",
-    "WATER-PMP",
-    "YAM-OIL-1L",
-    "YAM-OIL-4L"
+    "#4*",
+    "#5*",
+    "#6*",
+    "0-0279-500",
+    "0-11133-001",
+    "00-13291-002",
+    "00/00001",
+    "00/00014",
+    "00/103735",
+    "00/2700",
+    "00/360-570P10-67N",
+    "00/3600",
+    "00/607164",
+    "00/607234",
+    "00/T118656",
+    "000-00021-001",
+    "000-00099-006",
+    "000-00128-001",
+    "000-00129-001",
+    "000-00146-001",
+    "000-0051-45",
+    "000-0051-52",
+    "000-0099-06",
+    "000-0099-83",
+    "000-0099-93",
+    "000-0101-78",
+    "000-0106-72",
+    "000-0106-89",
+    "000-0106-91",
+    "000-0119-75"
    ]
   },
   "exchangeRates": {
@@ -237,6 +286,196 @@
        "maxAtmKg": null
       },
       {
+       "_id": "mpf-10.01-to-15m-pensioner-concession",
+       "name": "10.01 to 15m (Pensioner / Concession)",
+       "sellExclGst": 390,
+       "appliesTo": "boat",
+       "minLengthM": 10.01,
+       "maxLengthM": 15,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "mpf-4.51m-to-6.0m-pensioner-concession",
+       "name": "4.51m to 6.0m (Pensioner / Concession)",
+       "sellExclGst": 138,
+       "appliesTo": "boat",
+       "minLengthM": 4.51,
+       "maxLengthM": 6,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "mpf-6.01m-to-10.00m-pensioner-concession",
+       "name": "6.01m to 10.00m (Pensioner / Concession)",
+       "sellExclGst": 220,
+       "appliesTo": "boat",
+       "minLengthM": 6.01,
+       "maxLengthM": 10,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "mpf-boat-registration-not-required",
+       "name": "Boat Registration Not Required",
+       "sellExclGst": 0,
+       "appliesTo": "boat",
+       "minLengthM": null,
+       "maxLengthM": null,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "mpf-heavy-trailers-over-4.55t",
+       "name": "Heavy Trailers - Over 4.55t",
+       "sellExclGst": 998,
+       "appliesTo": "trailer",
+       "minLengthM": null,
+       "maxLengthM": null,
+       "minAtmKg": 4551,
+       "maxAtmKg": 99000
+      },
+      {
+       "_id": "mpf-ppsr-fee",
+       "name": "PPSR Fee",
+       "sellExclGst": 5,
+       "appliesTo": "fee",
+       "minLengthM": null,
+       "maxLengthM": null,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "mpf-registration-not-required",
+       "name": "Registration - NOT REQUIRED",
+       "sellExclGst": 0,
+       "appliesTo": "trailer",
+       "minLengthM": null,
+       "maxLengthM": null,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "mpf-rego-1",
+       "name": "Up to and inc 4.5m",
+       "sellExclGst": 127,
+       "appliesTo": "boat",
+       "minLengthM": 0,
+       "maxLengthM": 4.5,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "mpf-rego-2",
+       "name": "4.51m to 6.0m",
+       "sellExclGst": 250,
+       "appliesTo": "boat",
+       "minLengthM": 4.51,
+       "maxLengthM": 6,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "mpf-rego-3",
+       "name": "6.01m to 10.00m",
+       "sellExclGst": 414,
+       "appliesTo": "boat",
+       "minLengthM": 6.01,
+       "maxLengthM": 10,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "mpf-rego-4",
+       "name": "10.01 to 15m",
+       "sellExclGst": 609,
+       "appliesTo": "boat",
+       "minLengthM": 10.01,
+       "maxLengthM": 15,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "mpf-rego-5",
+       "name": "Boat Transfer Fee",
+       "sellExclGst": 33,
+       "appliesTo": "fee",
+       "minLengthM": null,
+       "maxLengthM": null,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "mpf-rego-6",
+       "name": "Small Trailers - Up to 1.02t",
+       "sellExclGst": 166,
+       "appliesTo": "trailer",
+       "minLengthM": null,
+       "maxLengthM": null,
+       "minAtmKg": 0,
+       "maxAtmKg": 1020
+      },
+      {
+       "_id": "mpf-rego-7",
+       "name": "Large Trailers - Over 1.021t",
+       "sellExclGst": 283,
+       "appliesTo": "trailer",
+       "minLengthM": null,
+       "maxLengthM": null,
+       "minAtmKg": 1020,
+       "maxAtmKg": 4550
+      },
+      {
+       "_id": "mpf-rego-8",
+       "name": "Trailer Transfer Fee",
+       "sellExclGst": 33,
+       "appliesTo": "fee",
+       "minLengthM": null,
+       "maxLengthM": null,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "mpf-replacement-plate",
+       "name": "Replacement Plate",
+       "sellExclGst": 36,
+       "appliesTo": "fee",
+       "minLengthM": null,
+       "maxLengthM": null,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "mpf-unregistered-vehicle-permit",
+       "name": "Unregistered Vehicle Permit",
+       "sellExclGst": 39,
+       "appliesTo": "fee",
+       "minLengthM": null,
+       "maxLengthM": null,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "mpf-up-to-and-inc-4.5m-pensioner-concession",
+       "name": "Up to and inc 4.5m (Pensioner / Concession)",
+       "sellExclGst": 77,
+       "appliesTo": "boat",
+       "minLengthM": 0,
+       "maxLengthM": 4.5,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "mpf-vin-plate",
+       "name": "VIN Plate",
+       "sellExclGst": 9,
+       "appliesTo": "fee",
+       "minLengthM": null,
+       "maxLengthM": null,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
        "_id": "trailer-0-750",
        "name": "Boat Trailer \u2014 up to 750kg ATM",
        "sellExclGst": 95,
@@ -281,16 +520,16 @@
    }
   },
   "pricingMatrix": {
-   "liveCount": null,
-   "error": "HTTP 403: { \"error\": { \"code\": 403, \"message\": \"Missing or insufficient permissions.\", \"status\": \"PERMISSION_DENIED\" } }"
+   "liveCount": 48,
+   "error": null
   },
   "engineServiceSchedules": {
-   "liveCount": null,
-   "error": "HTTP 403: { \"error\": { \"code\": 403, \"message\": \"Missing or insufficient permissions.\", \"status\": \"PERMISSION_DENIED\" } }"
+   "liveCount": 189,
+   "error": null
   },
   "freightConfig": {
-   "liveCount": null,
-   "error": "HTTP 403: { \"error\": { \"code\": 403, \"message\": \"Missing or insufficient permissions.\", \"status\": \"PERMISSION_DENIED\" } }"
+   "liveCount": 2,
+   "error": null
   }
  }
 }

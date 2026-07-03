@@ -1,60 +1,35 @@
 # BOATS — MPF vs HelmLogic reconciliation (Phase 2, read-only)
 
-Generated 2026-07-03T07:02:27.260452+00:00 from `tasks/mpf-audit/extracted/boats.json` against live Firestore (`data-warehouse/LafOLpLb6QIFE856TiD4`: 7 ranges, 84 models, 635 variants).
+Generated 2026-07-03T10:01:12.097200+00:00 from `tasks/mpf-audit/extracted/boats.json` against live Firestore (`data-warehouse/LafOLpLb6QIFE856TiD4`: 7 ranges, 85 models, 640 variants).
 
 ## Headline counts (588 Highfield MPF SKUs)
 
 | Bucket | Count |
 |---|---|
-| Exact match (sell AND cost within $0.01) | 0 |
-| — sell matches (MPF cash ÷ 1.1 == HL sellPriceExclGst) | 575 |
-| — cost matches (MPF landed AUD == HL cost) | 0 |
-| Price mismatch (sell or cost off) | 582 |
-| Missing in HelmLogic | 6 |
+| Exact match (sell AND cost within $0.01) | 587 |
+| — sell matches (MPF cash ÷ 1.1 == HL sellPriceExclGst) | 587 |
+| — cost matches (MPF landed AUD == HL cost) | 587 |
+| Price mismatch (sell or cost off) | 0 |
+| Missing in HelmLogic | 1 |
 | HL-only variants not in MPF current set | 53 |
 
 ## Price drift
 
-- Sell (MPF cash ÷ 1.1 vs HL `sellPriceExclGst`): signed **$12,981.85**, absolute **$12,981.85**
-- Cost (MPF Landed Hull Cost vs HL `cost`): signed **$5,276,426.08**, absolute **$5,276,426.08**
+- Sell (MPF cash ÷ 1.1 vs HL `sellPriceExclGst`): signed **$0.00**, absolute **$0.00**
+- Cost (MPF Landed Hull Cost vs HL `cost`): signed **$0.00**, absolute **$0.00**
 
 Positive delta = MPF is higher than HelmLogic.
 
-## 20 worst offenders by |sell delta|
+## 20 worst offenders by |sell Δ| + |cost Δ|
 
 | SKU | Model | MPF cash exGst | HL sellPriceExclGst | Sell Δ | MPF landed | HL cost | Cost Δ |
 |---|---|---|---|---|---|---|---|
-| HBA001 | ADV7 | 96,300.00 | 94,445.45 | 1,854.55 | 64,198.57 | 23,527.00 | 40,671.57 |
-| HBA002 | ADV7 | 96,300.00 | 94,445.45 | 1,854.55 | 64,198.57 | 23,527.00 | 40,671.57 |
-| HBA003 | ADV7 | 96,300.00 | 94,445.45 | 1,854.55 | 64,198.57 | 23,527.00 | 40,671.57 |
-| HBA004 | ADV7 | 96,300.00 | 94,445.45 | 1,854.55 | 64,198.57 | 23,527.00 | 40,671.57 |
-| HBA005 | ADV7 | 96,300.00 | 94,445.45 | 1,854.55 | 64,198.57 | 23,527.00 | 40,671.57 |
-| HBA006 | ADV7 | 96,300.00 | 94,445.45 | 1,854.55 | 64,198.57 | 23,527.00 | 40,671.57 |
-| HBA007 | ADV7 | 96,300.00 | 94,445.45 | 1,854.55 | 64,198.57 | 23,527.00 | 40,671.57 |
-| HBS201 | SP900 | 118,027.27 | 118,027.27 | 0.00 | 78,551.43 | 37,904.00 | 40,647.43 |
-| HBS202 | SP900 | 118,027.27 | 118,027.27 | 0.00 | 78,551.43 | 37,904.00 | 40,647.43 |
-| HBS203 | SP900 | 118,027.27 | 118,027.27 | 0.00 | 78,551.43 | 37,904.00 | 40,647.43 |
-| HBS204 | SP900 | 118,027.27 | 118,027.27 | 0.00 | 78,551.43 | 37,904.00 | 40,647.43 |
-| HBS205 | SP900 | 118,027.27 | 118,027.27 | 0.00 | 78,551.43 | 37,904.00 | 40,647.43 |
-| HBS206 | SP900 | 118,027.27 | 118,027.27 | 0.00 | 78,551.43 | 37,904.00 | 40,647.43 |
-| HBS207 | SP900 | 118,027.27 | 118,027.27 | 0.00 | 78,551.43 | 37,904.00 | 40,647.43 |
-| HBS208 | SP900 | 118,027.27 | 118,027.27 | 0.00 | 78,551.43 | 37,904.00 | 40,647.43 |
-| HBS193 | SP800 | 101,527.27 | 101,527.27 | 0.00 | 67,568.57 | 32,898.00 | 34,670.57 |
-| HBS194 | SP800 | 101,527.27 | 101,527.27 | 0.00 | 67,568.57 | 32,898.00 | 34,670.57 |
-| HBS195 | SP800 | 101,527.27 | 101,527.27 | 0.00 | 67,568.57 | 32,898.00 | 34,670.57 |
-| HBS196 | SP800 | 101,527.27 | 101,527.27 | 0.00 | 67,568.57 | 32,898.00 | 34,670.57 |
-| HBS197 | SP800 | 101,527.27 | 101,527.27 | 0.00 | 67,568.57 | 32,898.00 | 34,670.57 |
 
 ## Missing in HelmLogic
 
 | SKU | Name | Range | Model found in HL? |
 |---|---|---|---|
 | HBS15## | Highfield - SP660 (HYP) DG-G-WB | Sport | yes — variant missing |
-| HBADV9008 | Highfield - ADV9 (Dune) | Adventure | no — model missing too |
-| HBADV9009 | Highfield - ADV9 (Mangrove) | Adventure | no — model missing too |
-| HBADV9010 | Highfield - ADV9 (Ocean) | Adventure | no — model missing too |
-| HBADV9011 | Highfield - ADV9 (Polar) | Adventure | no — model missing too |
-| HBADV9012 | Highfield - ADV9 (Sky) | Adventure | no — model missing too |
 
 ## HL-only variants (live, not in MPF current section)
 
