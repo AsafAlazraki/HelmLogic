@@ -127,7 +127,7 @@ code { background: #eef2f7; padding: 1px 4px; border-radius: 3px; font-size: 10p
 </div>
 
 <h2>1. Run provenance — when, against what, as whom</h2>
-<div class="note">Nothing in this report is hand-entered. The battery writes its raw results to <code>test-results/smoke-data.json</code>, this PDF is generated from that file by <code>scripts/gen-smoke-report.mjs</code>, and both the harness and its outputs are committed to the repository so any engineer can re-run the identical battery and diff the outcome.</div>
+<div class="note">Nothing in this report is hand-entered. The battery writes its raw results to <code>test-results/smoke-data.json</code> (a copy is committed at <code>tasks/test-evidence/smoke-data.json</code>), this PDF is generated from that file by <code>scripts/gen-smoke-report.mjs</code>, and both the harness and its outputs are committed to the repository so any engineer can re-run the identical battery and diff the outcome.</div>
 <table class="kv">
   <tr><td>Run started (UTC)</td><td>${esc(m.runStartedUtc)}</td></tr>
   <tr><td>Run finished (UTC)</td><td>${esc(m.runFinishedUtc)}</td></tr>
@@ -136,7 +136,7 @@ code { background: #eef2f7; padding: 1px 4px; border-radius: 3px; font-size: 10p
   <tr><td>Database under test</td><td>Live Firestore, project <code>${esc(m.firebaseProject)}</code>, organisation <code>${esc(m.organisationId)}</code> (Northside Marine)</td></tr>
   <tr><td>Authenticated identity</td><td>${esc(m.identity)}</td></tr>
   <tr><td>Reproduce</td><td><code>${esc(m.reproduce)}</code></td></tr>
-  <tr><td>Raw results</td><td><code>test-results/smoke-data.json</code> (every check with its observed value)</td></tr>
+  <tr><td>Raw results</td><td><code>tasks/test-evidence/smoke-data.json</code> (committed; every check with its observed value)</td></tr>
 </table>
 
 <h2>2. Methodology — how each family of checks executes</h2>
