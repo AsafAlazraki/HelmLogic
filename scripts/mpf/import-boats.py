@@ -122,8 +122,17 @@ class Store:
         self.log_f = open(self.log_path, "a")
         self.ops = {"create": 0, "update": 0, "skip_unchanged": 0}
 
+    def _req(self, method, url, **kw):
+        """Request with one automatic token refresh on 401 — long applies
+        (>1h) outlive the Firebase idToken's lifetime."""
+        r = requests.request(method, url, headers=self.h, timeout=60, **kw)
+        if r.status_code == 401:
+            self.h = {"Authorization": f"Bearer {sign_in()}"}
+            r = requests.request(method, url, headers=self.h, timeout=60, **kw)
+        return r
+
     def get(self, path):
-        r = requests.get(f"{BASE}/{path}", headers=self.h, timeout=60)
+        r = self._req("GET", f"{BASE}/{path}")
         if r.status_code == 404:
             return None
         r.raise_for_status()
@@ -133,7 +142,7 @@ class Store:
         docs, token = [], None
         while True:
             url = f"{BASE}/{path}?pageSize=300" + (f"&pageToken={token}" if token else "")
-            r = requests.get(url, headers=self.h, timeout=60)
+            r = self._req("GET", url)
             if r.status_code == 404:
                 return []
             r.raise_for_status()
@@ -162,9 +171,8 @@ class Store:
         }
         if self.apply:
             mask = "&".join(f"updateMask.fieldPaths={requests.utils.quote(k)}" for k in fields)
-            r = requests.patch(f"{BASE}/{path}?{mask}", headers=self.h,
-                               json={"fields": {k: enc(v) for k, v in fields.items()}},
-                               timeout=60)
+            r = self._req("PATCH", f"{BASE}/{path}?{mask}",
+                          json={"fields": {k: enc(v) for k, v in fields.items()}})
             r.raise_for_status()
         self.log_f.write(json.dumps(entry, default=str) + "\n")
         self.ops[op] += 1

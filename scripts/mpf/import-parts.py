@@ -25,6 +25,8 @@ Safety rules (per CLAUDE.md import lesson + phase-2 brief):
 import json
 import os
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import (APPLY_LOG, FS_BASE, ORG_ID, REPO, append_audit, list_collection,
@@ -170,9 +172,12 @@ def build_supplier(row):
 
 # ------------------------------------------------------------------ upsert engine
 
+_LOG_LOCK = threading.Lock()
+
 def log_write(entry):
-    with open(APPLY_LOG, "a") as f:
-        f.write(json.dumps(entry, default=str) + "\n")
+    with _LOG_LOCK:
+        with open(APPLY_LOG, "a") as f:
+            f.write(json.dumps(entry, default=str) + "\n")
 
 
 def managed_equal(payload, live):
@@ -189,6 +194,11 @@ def patch_doc(session, headers, path, payload):
     mask = "&".join(f"updateMask.fieldPaths={requests.utils.quote(k, safe='')}" for k in payload)
     url = f"{FS_BASE}/{path}?{mask}"
     r = session.patch(url, headers=headers, json={"fields": {k: to_fs(v) for k, v in payload.items()}}, timeout=60)
+    if r.status_code == 401:
+        # Long applies (34k docs) outlive the idToken — refresh once in-place
+        # so every caller sharing this headers dict picks up the new token.
+        headers["Authorization"] = f"Bearer {sign_in()}"
+        r = session.patch(url, headers=headers, json={"fields": {k: to_fs(v) for k, v in payload.items()}}, timeout=60)
     return r.status_code, (None if r.status_code == 200 else r.text[:300])
 
 
@@ -201,6 +211,7 @@ def upsert_dataset(session, headers, label, coll, rows, builder, id_field="docId
         plan["warning"] = "list returned 403 — rules do not cover this path yet; apply would fail"
     seen_ids = set()
     dup_ids = []
+    pending = []  # (action, path, payload, before) — executed by thread pool below
     for row in rows:
         doc_id = row[id_field]
         if doc_id in seen_ids:
@@ -219,11 +230,22 @@ def upsert_dataset(session, headers, label, coll, rows, builder, id_field="docId
         plan[action] += 1
         if APPLY and action in ("create", "update"):
             path = f"organisations/{ORG_ID}/{coll}/{doc_id}"
+            pending.append((action, path, payload, before))
+
+    # Execute pending writes in parallel (12 workers ≈ 20-40× the serial
+    # rate; Firestore handles concurrent doc PATCHes fine, log is
+    # lock-guarded, token refresh is shared via the headers dict).
+    if pending:
+        def _do(item):
+            action, path, payload, before = item
             code, err = patch_doc(session, headers, path, payload)
-            if code != 200:
-                plan["errors"] += 1
             log_write({"ts": now_iso(), "wave": WAVE, "action": action, "path": path,
                        "status": code, "error": err, "before": before, "after": payload})
+            return code
+        with ThreadPoolExecutor(max_workers=12) as pool:
+            for code in pool.map(_do, pending):
+                if code != 200:
+                    plan["errors"] += 1
 
     # soft-replacement of seed placeholders (dealerFitSelections df-* docs)
     if soft_replace_ids:

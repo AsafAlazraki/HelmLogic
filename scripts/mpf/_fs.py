@@ -22,11 +22,21 @@ def token():
     return _token
 
 def _req(url, method="GET", body=None):
-    req = urllib.request.Request(url, method=method,
-        data=json.dumps(body).encode() if body is not None else None,
-        headers={"Authorization": f"Bearer {token()}", "Content-Type": "application/json"})
-    with urllib.request.urlopen(req) as r:
-        return json.load(r)
+    # One automatic token refresh on 401 — long applies (>1h) outlive the
+    # Firebase idToken lifetime.
+    global _token
+    for attempt in (1, 2):
+        req = urllib.request.Request(url, method=method,
+            data=json.dumps(body).encode() if body is not None else None,
+            headers={"Authorization": f"Bearer {token()}", "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code == 401 and attempt == 1:
+                _token = None  # force re-sign-in
+                continue
+            raise
 
 def decode_value(v):
     if "stringValue" in v: return v["stringValue"]
