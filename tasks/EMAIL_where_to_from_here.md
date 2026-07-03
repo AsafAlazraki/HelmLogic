@@ -67,7 +67,7 @@ The release itself kicks off tomorrow morning. Because this is a big one, we're 
 
 Where this leaves us
 
-The roadmap we set out to build is done and proven. That's a real milestone, and it's worth marking. But it's a chapter, not the end of the book. Ahead of us are production readiness whenever the business decides to go there, then the module by module pass, with the Shopify data question sitting right at the front of how we sequence it. The reshaped roadmap should reflect all of that, and I'd like us to shape it together rather than me guessing at the order.
+The roadmap we set out to build is done and tested. That's a real milestone, and it's worth marking. But it's a chapter, not the end of the book. Ahead of us are production readiness whenever the business decides to go there, then the module by module pass, with the Shopify data question sitting right at the front of how we sequence it. The reshaped roadmap should reflect all of that, and I'd like us to shape it together rather than me guessing at the order.
 
 Proud of where this has landed.
 
