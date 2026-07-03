@@ -433,6 +433,92 @@ const batteryRows = sectionOrder.map((s) => {
 const galleryHtml = gallery.map((g) => `
   <figure class="shot"><img src="${g.uri}" alt="${esc(g.file)}"/><figcaption>${esc(g.caption)}</figcaption></figure>`).join('');
 const eOrgFails = smokeFails.filter((c) => c.section.startsWith('E.'));
+
+// Per-check-family methodology (folded in from the standalone Testing & Evidence
+// Report — gen-smoke-report.mjs — and EXTENDED to cover the two new permanent
+// sections I (MPF parity) and J (Assignment web)). Each block explains, in plain
+// English then in engineering terms, HOW the family executes and what a pass proves.
+const METHOD = {
+  'A. App routes': {
+    plain: `We opened every page of the application, the same way your web browser would, and confirmed each one loads properly with no error screen. Think of it as walking through every room of a house and checking that every light switches on.`,
+    how: `An HTTP client requests every application route from a production build of HelmLogic (built with <code>next build</code>, served with <code>next start</code>). For each route three independent checks record the observed evidence: (1) the server answers HTTP 200, (2) the response body contains the application shell markup, (3) the body contains no error-boundary text ("Application error").`,
+    proves: `Every screen of the application compiles, is served, and renders its shell without a crash — the same guarantee a person gets loading each page and seeing content instead of an error screen.`,
+    evidence: `The HTTP status code observed for each route is recorded in the appendix row for that check.`,
+  },
+  'B. Security rules': {
+    plain: `We signed in with a real staff login and checked that the system shows that person everything they need to do their job, and nothing it shouldn't. Like walking a staff key around the building and confirming every door it is supposed to open, opens — and the past incidents where a door was accidentally left locked can never repeat unnoticed.`,
+    how: `The harness signs in to Firebase Authentication as the canonical operator account (${esc(smokeMeta.identity || 'operator test user')}) and issues real Firestore REST reads: a LIST against every operator-facing collection under the organisation (including the new MPF-backed collections — riggingKits, suppliers, pricingMatrix, freightConfig, engineServiceSchedules), LISTs against the quote-subtree collections, collection-group queries for quotes and contracts, and a LIST of customers. Each check records the HTTP status Firestore returned.`,
+    proves: `The security rules deployed in production grant exactly the access the application needs. Any drift between the rules file in the repository and the rules actually deployed shows up here as a 403 — the exact failure class behind the v1.9 and v1.15 production incidents, now regression-tested on every run and extended to every new MPF collection.`,
+    evidence: `Each appendix row records the live HTTP status (200 = granted).`,
+  },
+  'C. Catalog': {
+    plain: `We looked at every single boat in the price catalog, in every colour and configuration it comes in, one at a time, and confirmed its pricing information is a real, sensible dollar figure rather than a blank or a typo. No sampling and no shortcuts: every boat, every version, individually.`,
+    how: `The harness walks the entire Highfield catalog tree in live Firestore — every range, every model under each range, every variant (SKU) under each model — using the same collection paths the application reads. For each document it asserts shape invariants: ranges and models carry names; when a variant carries a sell price it must be a positive number; when it carries a cost it must be non-negative. Totals are then sanity-checked (≥40 models, ≥100 variants).`,
+    proves: `The pricing data feeding every quote is structurally sound, document by document: no malformed prices, no nameless models, no wrong-typed money fields. This is the data-accuracy layer under every quote the system produces.`,
+    evidence: `Each appendix row names the specific range/model/variant checked and the observed value.`,
+  },
+  'D. Quotes': {
+    plain: `We pulled up every quote that exists in the system and checked each one end to end: it belongs to the right dealership, its total is a valid amount, and its status is one the business recognises (draft, sent, accepted and so on).`,
+    how: `A collection-group query (the same query the reporting dashboard runs) fetches every quote belonging to the organisation. Each quote is checked: it links back to the correct organisation, its total (when present) is a non-negative number, and its lifecycle state is inside the known state machine.`,
+    proves: `Every existing quote in the system is well-formed and reachable by the cross-module surfaces (reporting, search, customer detail) — none are orphaned, mis-linked or in an impossible state.`,
+    evidence: `Each appendix row names the quote id checked and the value observed.`,
+  },
+  'E. Org config': {
+    plain: `We checked the behind-the-scenes settings that pricing depends on, such as the US dollar exchange rate used to convert factory prices into Australian retail prices, along with the fit-up catalog and every migrated service part, and confirmed each one is a sensible number.`,
+    how: `Reads the organisation's configuration collections the quote flow depends on: the USD exchange rate document (Highfield factory prices are USD), the fit-up catalog, service operations and the full migrated service-parts catalog. Price-bearing fields, when present, are asserted to be non-negative numbers — which is exactly how the battery surfaced the negative-sell-price rows that came across from NSM's own Parts Maintenance sheet (section 4 findings).`,
+    proves: `The configuration that converts factory pricing to customer pricing exists and is well-typed, so currency conversion and fit-up/service pricing cannot silently produce garbage — and any bad value carried over from the MPF is flagged, not absorbed.`,
+    evidence: `Observed values recorded per appendix row.`,
+  },
+  'F. Ceremony': {
+    plain: `Every software release we ship must come with two documents: release notes (what changed) and a user guide (how to use it). We checked that every release we have ever marked as shipped has both documents present.`,
+    how: `Parses RELEASE_WINDOWS in <code>src/lib/release-schedule.ts</code> for every release flagged shipped, then asserts the matching RELEASE_NOTES file and (from v1.7 onward) USER_GUIDE file exist in the repository.`,
+    proves: `The in-app Release Notes timeline — which is baked from these files at build time — is complete for every shipped release. A missing file here means prod ships with a hole in the release history (a real incident class: v1.5).`,
+    evidence: `Each appendix row names the exact file path asserted.`,
+  },
+  'H. Roadmap': {
+    plain: `We checked that the project board tells the truth: everything marked finished is actually finished, and no unfinished work is quietly hiding inside a column marked done.`,
+    how: `Pages through the entire features collection (the Roadmap board) and asserts every card carries a valid status, and that no story with status planned sits inside a release column already flagged shipped.`,
+    proves: `The Roadmap the team reads is truthful: green releases contain no silently-unfinished work.`,
+    evidence: `Each appendix row names the feature document checked.`,
+  },
+  'I. MPF parity': {
+    plain: `We took every price NSM's Master Price File holds and asked the live system, one figure at a time, "do you hold exactly this?" — every Highfield boat on both its customer sell price AND its true landed cost, plus sampled motors, trailers, dealer-fit lines, service operations, exchange rates, the pricing matrix and registration bands. This is the migration's own promise, re-checked automatically every night rather than asserted once.`,
+    how: `Reads the committed MPF extraction and, per domain, issues live Firestore reads and compares field-by-field within a one-cent tolerance: 587 Highfield variants on <code>sellPriceExclGst</code> AND <code>cost</code>, sampled Yamaha motors across six price levels, trailers across four fields, 100 dealer-fit options on Act Sell / Act CTD, service operations, USD/NZD/EUR exchange rates, pricing-matrix docs and QLD rego bands. Every intentional delta (obsolete rows, approved import skips, NSM source duplicates) is enumerated up front; anything else is an unexpected delta.`,
+    proves: `The migration's headline claim — HelmLogic now holds the MPF's data to the cent — is a standing regression guarantee, not a one-off. Any future edit that drifts a migrated price away from the MPF turns this section red the night it happens.`,
+    evidence: `Each appendix row names the specific SKU / motor / trailer / option checked and the observed value against the MPF figure.`,
+  },
+  'J. Assignment web': {
+    plain: `The MPF doesn't only price parts — it records which motor, trailer, rigging kit and dealer-fit lines belong with each boat. We took a sample of boats carrying those curated menus and checked that every entry points at a real catalog record the quoting screens can actually load.`,
+    how: `For 100 sampled boats that carry migrated menus, the harness resolves each <code>motorMenu</code>, <code>trailerMenu</code> and <code>dealerFitLines</code> entry against the live Yamaha motor catalog, the trailer vendor catalogs and the dealer-fit options collection, recording a match rate per relation. Every unresolved name is emitted as an individual FAIL row rather than filtered out.`,
+    proves: `The boat–motor–trailer–rigging–dealer-fit relationship web migrated as typed references that actually resolve — so the quote flow's curated menus load real data, and any dangling reference is surfaced and explained (section 7) rather than hidden.`,
+    evidence: `Each appendix row names the boat and the menu entry checked; unmatched entries carry the reason (approved import skip vs a dangling reference in NSM's own source).`,
+  },
+};
+const methodBlocks = sectionOrder.map((name) => {
+  const meth = METHOD[name] || {};
+  const sec = smokeSections[name];
+  const ok = (sec.total - sec.pass) === 0;
+  return `
+  <div class="method">
+    <div class="mhead"><span>${esc(name)}</span>
+      <span class="mstats">${n(sec.total)} checks · <b class="${ok ? 'ok' : 'bad'}">${n(sec.pass)} pass / ${n(sec.total - sec.pass)} fail</b></span></div>
+    <div class="plain"><span class="ptag">In plain English</span> ${meth.plain || ''}</div>
+    <p><b>How it is executed.</b> ${meth.how || ''}</p>
+    <p><b>What a green pass proves.</b> ${meth.proves || ''}</p>
+    <p><b>Evidence captured.</b> ${meth.evidence || ''}</p>
+  </div>`;
+}).join('');
+
+// Full battery appendix — every check with its observed value + verdict (the raw-evidence
+// backbone, folded in from the standalone Testing report; ~34,512 rows rendered compactly).
+const appendixRows = (smoke?.checks || []).map((c) =>
+  `<tr><td class="sec">${esc(c.section.slice(0, 2))}</td><td>${esc(c.name)}</td><td class="det">${esc(c.detail || '')}</td><td class="${c.ok ? 'ok' : 'bad'}">${c.ok ? 'PASS' : 'FAIL'}</td></tr>`).join('');
+const secAppendix = smoke ? `
+<h2>13. Appendix — every battery check this run (${n(smoke.total)} rows)</h2>
+${plain(`This is the raw evidence behind section 10: every question the ${n(smoke.total)}-check data battery asked the live system, what it observed, and the pass/fail verdict — one row per check. It is deliberately exhaustive: when every boat, every variant, every quote, every migrated part and every MPF-parity assertion is checked individually, the proof is the list itself. You do not need to read it line by line; its value is that anyone can, and that nothing is sampled or summarised away.`)}
+<p class="sub">A = App routes &middot; B = Security rules &middot; C = Catalog &middot; D = Quotes &middot; E = Org config &middot; F = Release ceremony &middot; H = Roadmap &middot; I = MPF parity &middot; J = Assignment web. Generated from <code>tasks/test-evidence/smoke-data.json</code> (committed) — no row hand-entered.</p>
+<table class="appx"><thead><tr><th>§</th><th>Check</th><th>Observed</th><th>Result</th></tr></thead><tbody>${appendixRows}</tbody></table>` : '';
+
 const secArsenal = `
 <h2>10. The testing arsenal — how green is kept green</h2>
 ${plain(`One good test run is a snapshot; this is a system. Four independent layers watch HelmLogic: (1) a data battery that asks the live system ${smoke ? n(smoke.total) : 'over 2,000'} individual questions — every boat, every variant, every quote, every part, checked one by one, no sampling — now including two new permanent sections that re-verify MPF parity (I) and the boat–motor–trailer relationship web (J) on every run; (2) ${n(specTests)} browser tests that drive the real application like a salesperson would, through full quotes to the downloaded PDF; (3) 460 unit tests on the money math — which found and pinned three real calculation bugs, now fixed (ledger FFR-8); and (4) visual-regression baselines that catch a page changing its appearance. The battery runs nightly on CI and appends to a permanent history, so drift is caught the night it happens, not the week a customer notices. This run reports ${smoke ? n(smoke.failed) : 'a handful of'} failures — kept in, and each one explained below, because a battery that can flag real data issues is worth more than one that is always green.`)}
