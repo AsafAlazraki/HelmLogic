@@ -2520,9 +2520,19 @@
    "dealerFitDocsPatched": 896,
    "dealerFitFieldRefsPatched": 1792,
    "patchSkips": {},
-   "boatModelsRefsNotPatched": {
-    "note": "boatModels imageUrl refs hit the same NSM WAF and their mirrors are uploaded and ready, but patching boatModels was not sanctioned for this pass \u2014 listed here for the follow-up.",
-    "count": 129,
+   "boatModelsApplied": {
+    "note": "Deferred set sanctioned + applied on coordinator instruction (same run day). boatModels imageUrl refs patched to their mpf-mirror Storage URLs.",
+    "appliedAt": "2026-07-03T10:28:09.089516+00:00",
+    "refsTargeted": 129,
+    "patchResults": {
+     "patched": 129
+    },
+    "docReadbackMirrored": "129/129",
+    "storageRetest": {
+     "tested": 103,
+     "ok": 103,
+     "failures": []
+    },
     "refs": [
      {
       "collection": "boatModels",
@@ -4516,7 +4526,7 @@
  "summary": {
   "yamaha": "7/45 URLs mirrored, 31 motor-row docs patched, 38 unfetchable (needs NSM-supplied assets)",
   "sharepoint": "0/7 fetchable \u2014 314 refs need NSM export",
-  "nsm403": "164/164 URLs mirrored, 896 dealerFitSelections docs patched (1792 field refs), 129 boatModels refs mirrored-not-patched",
+  "nsm403": "164/164 URLs mirrored, 896 dealerFitSelections docs patched (1792 field refs); boatModels deferred set applied: 129 imageUrl refs patched, retest 103/103 storage URLs OK",
   "dead": "4 stacer.com.au URLs recorded for NSM report",
   "retest": "171/171 Storage URLs verified 200 image/*"
  }

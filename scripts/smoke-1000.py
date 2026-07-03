@@ -50,7 +50,17 @@ def list_docs(path, page_size=300):
     docs, tok = [], None
     while True:
         url = f"{BASE}/{path}?pageSize={page_size}" + (f"&pageToken={tok}" if tok else "")
-        j = requests.get(url, headers=H, timeout=30).json()
+        j = None
+        for attempt in range(4):  # transient resets/5xx happen on long walks
+            try:
+                r2 = requests.get(url, headers=H, timeout=30)
+                if r2.status_code in (429, 500, 502, 503, 504) and attempt < 3:
+                    import time; time.sleep(2 ** attempt); continue
+                j = r2.json()
+                break
+            except requests.exceptions.RequestException:
+                if attempt == 3: raise
+                import time; time.sleep(2 ** attempt)
         docs += j.get("documents", [])
         tok = j.get("nextPageToken")
         if not tok: return docs
