@@ -15,8 +15,11 @@ Sections:
   F. Release ceremony — every shipped release has notes + user guide on disk
   H. Feature/roadmap integrity — valid statuses, no planned-on-shipped
 """
-import json, os, sys, re
+import json, os, sys, re, subprocess, platform
+from datetime import datetime, timezone
 import requests
+
+RUN_STARTED = datetime.now(timezone.utc).isoformat()
 
 PROJECT = "studio-2290360004-3b963"
 API_KEY = "AIzaSyDJ7b5G9zL2uTpDzgwTLvQtVUIyaVBpSBY"
@@ -197,7 +200,22 @@ for f in feats:
 # ---------- write ----------
 os.makedirs("test-results", exist_ok=True)
 passed = sum(1 for c in checks if c["ok"])
-out = {"total": len(checks), "passed": passed, "failed": len(checks) - passed, "checks": checks}
+def sh(cmd):
+    try: return subprocess.check_output(cmd, shell=True, text=True).strip()
+    except Exception: return "n/a"
+meta = {
+    "runStartedUtc": RUN_STARTED,
+    "runFinishedUtc": datetime.now(timezone.utc).isoformat(),
+    "gitCommit": sh("git rev-parse HEAD"),
+    "gitBranchTip": sh("git log --oneline -1"),
+    "identity": "billh@nsmarine.com.au (operator test user, Northside Marine)",
+    "firebaseProject": PROJECT,
+    "organisationId": ORG,
+    "appUnderTest": os.environ.get("SMOKE_APP_URL", "http://localhost:9002") + " (production build, `next build && next start`)",
+    "python": platform.python_version(),
+    "reproduce": "python3 scripts/smoke-1000.py  (requires network access to Firestore + the app URL)",
+}
+out = {"meta": meta, "total": len(checks), "passed": passed, "failed": len(checks) - passed, "checks": checks}
 json.dump(out, open("test-results/smoke-data.json", "w"), indent=1)
 print(f"SMOKE-DATA: {passed}/{len(checks)} passed")
 for c in checks:
