@@ -69,9 +69,9 @@
       "failed": "Unit tests exposed 3 money-math defects (pinned with TODO-BUG markers): over-discount drives totals negative; explicit cost:0 overridden by margin heuristics (|| vs ??); >100% payment allocation yields a negative final line",
       "firstSeen": "2026-07-03",
       "rootCause": "Product bugs in src/lib/quote-financials.ts + payment-schedule lib.",
-      "fix": "PENDING (task #14) \u2014 fixes flip the pinned tests to assert corrected behavior",
-      "retest": "PENDING \u2014 ledger updated when green",
-      "class": "product-fix-pending"
+      "fix": "buildQuoteFinancials clamps discount to subtotal (finalTotalPriceExclGst = Math.max(0, subtotal - discount); GST from the floored value); all 0.7/0.8/0.85 cost fallbacks switched from || to ?? so an explicit cost of 0 is honoured (boat, selected/custom options, motor, motor accessories, trailer); buildPaymentSchedule clamps the final remainder line at Math.max(0, total - allocated) so >100% allocation never yields a negative line. Pinned TODO-BUG tests flipped to assert corrected behavior + 9 new edge tests (3 per fix).",
+      "retest": "GREEN \u2014 12 unit tests assert corrected behavior (3 flipped + 9 new edges); full suite 460/460 PASS; tsc --noEmit 0 errors; production build passes",
+      "class": "product-fix"
     },
     {
       "id": "FFR-9",

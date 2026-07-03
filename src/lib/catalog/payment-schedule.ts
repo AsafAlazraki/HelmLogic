@@ -45,8 +45,10 @@ export function buildPaymentSchedule(totalIncGst: number, defaults: DocumentDefa
     }
     // Final line carries the remainder so the schedule always reconciles
     // exactly to the contract total regardless of rounding / pct gaps.
+    // FFR-8 fix (bug 3): clamp the remainder at 0 — over-allocated defaults
+    // (percentages summing past 100) must never produce a negative line.
     const allocated = lines.reduce((a, l) => a + l.amountIncGst, 0);
-    const finalAmount = total - allocated;
+    const finalAmount = Math.max(0, total - allocated);
     const finalPct = defaults.finalPercent ?? Math.max(0, 100 - lines.reduce((a, l) => a + l.percentage, 0));
     lines.push({ key: 'final', label: 'Balance on delivery', percentage: finalPct, amountIncGst: finalAmount, paid: false });
     return lines;

@@ -171,14 +171,45 @@ describe('buildQuoteFinancials — discount handling', () => {
     expect(f.marginPercent).toBe(0);
   });
 
-  it('discount larger than subtotal produces a negative ex-GST total (no clamping)', () => {
-    // TODO-BUG? buildQuoteFinancials does not clamp over-discounts; current
-    // behavior lets the total go negative. Asserting current behavior.
+  it('discount larger than subtotal clamps the ex-GST total at 0 (FFR-8 fix: over-discount clamp)', () => {
+    // FFR-8: discount is clamped to the subtotal — final total floors at 0
+    // and GST is computed from the floored value, never from a negative.
     const f = buildQuoteFinancials(bare(1000), 1500);
-    expect(f.finalTotalPriceExclGst).toBe(-500);
-    expect(f.totalInclGst).toBe(Math.ceil(-500 * 1.1));
-    expect(f.totalInclGst).toBe(-550);
-    expect(f.marginPercent).toBe(0); // guard only fires for > 0
+    expect(f.finalTotalPriceExclGst).toBe(0);
+    expect(f.totalInclGst).toBe(0);
+    expect(f.gstAmount).toBe(0);
+    expect(f.subtotalExclGst).toBe(1000); // subtotal line itself is untouched
+    expect(f.marginPercent).toBe(0); // division guard: finalTotal not > 0
+  });
+
+  it('FFR-8 edge: discount exceeding subtotal by one cent still floors at 0', () => {
+    const f = buildQuoteFinancials(bare(1000), 1000.01);
+    expect(f.finalTotalPriceExclGst).toBe(0);
+    expect(f.totalInclGst).toBe(0);
+    expect(f.gstAmount).toBe(0);
+  });
+
+  it('FFR-8 edge: massive over-discount on a multi-section quote floors at 0, costs unaffected', () => {
+    const f = buildQuoteFinancials(
+      {
+        variant: { sellPriceExclGst: 10000, cost: 7000 },
+        motor: { sellPriceExclGst: 8000, cost: 6500 },
+      },
+      1_000_000,
+    );
+    expect(f.subtotalExclGst).toBe(18000);
+    expect(f.finalTotalPriceExclGst).toBe(0);
+    expect(f.totalInclGst).toBe(0);
+    // cost side is independent of the discount clamp
+    expect(f.totalDealCostExclGst).toBe(13500);
+    expect(f.grossProfit).toBe(-13500); // 0 revenue - 13500 cost
+    expect(f.marginPercent).toBe(0);
+  });
+
+  it('FFR-8 edge: discount just under subtotal is NOT clamped (near-boundary)', () => {
+    const f = buildQuoteFinancials(bare(1000), 999.99);
+    expect(f.finalTotalPriceExclGst).toBeCloseTo(0.01, 8);
+    expect(f.totalInclGst).toBe(1); // ceil(0.01 * 1.1)
   });
 
   it('fractional discount', () => {
@@ -392,11 +423,42 @@ describe('buildQuoteFinancials — cost fallbacks (0.7 / 0.8 / 0.85 / 0.6 heuris
     expect(f.boatCost).toBeCloseTo(7000, 10);
   });
 
-  it('boat cost: cost of 0 is FALSY and falls back to 0.7 heuristic (|| not ??)', () => {
-    // TODO-BUG? A genuine catalog cost of $0 is overridden by the 70%
-    // heuristic because the fallback uses `||`. Asserting current behavior.
+  it('boat cost: explicit cost of 0 is honoured (FFR-8 fix: ?? not ||)', () => {
+    // FFR-8: cost fallbacks use nullish coalescing so a genuine catalog
+    // cost of $0 is honoured instead of being overridden by the heuristic.
     const f = buildQuoteFinancials({ variant: { sellPriceExclGst: 1000, cost: 0 } });
+    expect(f.boatCost).toBe(0);
+  });
+
+  it('FFR-8 edge: explicit cost 0 honoured on options, motor, accessory and trailer', () => {
+    const f = buildQuoteFinancials({
+      selectedOptions: [{ sellPriceExclGst: 100, cost: 0 }],
+      customOptions: [{ sellPriceExclGst: 100, cost: 0 }],
+      motor: { sellPriceExclGst: 10000, cost: 0, accessories: [{ sellPriceExclGst: 100, cost: 0 }] },
+      trailer: { sellPriceExclGst: 5000, cost: 0 },
+    });
+    expect(f.optionsCost).toBe(0);
+    expect(f.motorCost).toBe(0);
+    expect(f.trailerCost).toBe(0);
+  });
+
+  it('FFR-8 edge: null cost still falls back to the heuristic (nullish, like undefined)', () => {
+    const f = buildQuoteFinancials({
+      variant: { sellPriceExclGst: 1000, cost: null },
+      trailer: { sellPriceExclGst: 5000, cost: null },
+    });
     expect(f.boatCost).toBeCloseTo(700, 10);
+    expect(f.trailerCost).toBeCloseTo(4000, 10);
+  });
+
+  it('FFR-8 edge: all-zero explicit costs give 100% margin (rego-free quote)', () => {
+    const f = buildQuoteFinancials({
+      variant: { sellPriceExclGst: 10000, cost: 0 },
+      motor: { sellPriceExclGst: 5000, cost: 0 },
+    });
+    expect(f.totalDealCostExclGst).toBe(0);
+    expect(f.grossProfit).toBe(15000);
+    expect(f.marginPercent).toBeCloseTo(100, 10);
   });
 
   it('selectedOptions cost fallback is 0.7 of sell', () => {

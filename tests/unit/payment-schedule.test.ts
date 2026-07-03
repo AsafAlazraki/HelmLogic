@@ -58,16 +58,40 @@ describe('buildPaymentSchedule — line construction', () => {
     expect(lines[2].label).toBe('Fit-up complete');
   });
 
-  it('percentages over 100 tolerated — final line goes negative to reconcile', () => {
-    // TODO-BUG? Over-allocated defaults (80% + 50%) produce a negative final
-    // amount with percentage clamped at 0. Documented as "tolerated"; asserting
-    // current behavior.
+  it('percentages over 100 tolerated — final line clamps at 0, never negative (FFR-8 fix)', () => {
+    // FFR-8: the final remainder line is clamped at 0 so over-allocated
+    // defaults (80% + 50%) can never produce a negative schedule line.
     const lines = buildPaymentSchedule(10000, {
       depositPercent: 80,
       paymentMilestones: [{ label: 'M', percentage: 50 }],
     });
-    expect(lines.map((l) => l.amountIncGst)).toEqual([8000, 5000, -3000]);
+    expect(lines.map((l) => l.amountIncGst)).toEqual([8000, 5000, 0]);
     expect(lines[2].percentage).toBe(0); // Math.max(0, 100-130)
+    expect(lines.every((l) => l.amountIncGst >= 0)).toBe(true);
+  });
+
+  it('FFR-8 edge: allocation of exactly 100% leaves a zero (not negative) final line', () => {
+    const lines = buildPaymentSchedule(10000, {
+      depositPercent: 60,
+      paymentMilestones: [{ label: 'M', percentage: 40 }],
+    });
+    expect(lines.map((l) => l.amountIncGst)).toEqual([6000, 4000, 0]);
+    expect(lines[2].percentage).toBe(0);
+  });
+
+  it('FFR-8 edge: extreme over-allocation (deposit 200%) still clamps final at 0', () => {
+    const lines = buildPaymentSchedule(5000, { depositPercent: 200 });
+    expect(lines.map((l) => l.amountIncGst)).toEqual([10000, 0]);
+    expect(lines.every((l) => l.amountIncGst >= 0)).toBe(true);
+  });
+
+  it('FFR-8 edge: under-allocated schedules still reconcile exactly (clamp is inert)', () => {
+    const lines = buildPaymentSchedule(104451, {
+      depositPercent: 10,
+      paymentMilestones: [{ label: 'Hull arrival', percentage: 40 }],
+    });
+    expect(lines.reduce((a, l) => a + l.amountIncGst, 0)).toBe(104451);
+    expect(lines[2].amountIncGst).toBe(52226);
   });
 
   it('all schedules reconcile exactly to the total (property over odd totals)', () => {
