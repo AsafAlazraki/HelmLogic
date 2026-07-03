@@ -78,9 +78,10 @@ check("B. Security rules", "list customers", resp.status_code == 200, f"HTTP {re
 
 # ---------- A. app routes up (local production build) ----------
 APP = os.environ.get("SMOKE_APP_URL", "http://localhost:9002")
+# NOTE: /proposals deliberately absent — it only exists as /proposals/[quoteNumber].
 ROUTES = ["/login", "/dashboard", "/customers", "/pipeline", "/contracts", "/reporting",
           "/my-work", "/quote-comparison", "/search", "/audit-log", "/feature-tracking",
-          "/manage", "/modules", "/pricing-manager", "/price-book", "/proposals",
+          "/manage", "/modules", "/pricing-manager", "/price-book",
           "/sub-dealers", "/suggestions", "/data-warehouse", "/organisations", "/admin"]
 for route in ROUTES:
     try:
@@ -88,7 +89,10 @@ for route in ROUTES:
         body = pr.text or ""
         check("A. App routes", f"{route}: HTTP 200", pr.status_code == 200, f"HTTP {pr.status_code}")
         check("A. App routes", f"{route}: app shell renders", "id=\"__next\"" in body or "HelmLogic" in body or "<div" in body, f"{len(body)} bytes")
-        check("A. App routes", f"{route}: no error boundary text", "Application error" not in body and "Something went wrong" not in body)
+        # 'Application error' = Next's client-crash page. (Do NOT match
+        # 'Something went wrong' — that phrase legitimately appears in the
+        # v1.9.5 release-notes content baked into /feature-tracking.)
+        check("A. App routes", f"{route}: no error boundary text", "Application error" not in body)
     except Exception as e:
         check("A. App routes", f"{route}: reachable", False, str(e)[:80])
 
