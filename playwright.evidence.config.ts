@@ -1,5 +1,11 @@
 import { defineConfig } from '@playwright/test';
 
+// Sandbox TLS bridge (see tests/visual/tls-bridge.mjs header): Chromium's
+// TLS handshake is RESET by the agent proxy itself — flags don't fix it.
+// The bridge terminates Chromium TLS locally and relays via Node's stack.
+const BRIDGE_PORT = Number(process.env.VISUAL_TLS_BRIDGE_PORT || 39555);
+const useBridge = !!process.env.HTTPS_PROXY;
+
 /**
  * Evidence config — full-suite run with video, screenshot and trace
  * captured on EVERY test (not just failures), against a local build so
@@ -25,11 +31,11 @@ export default defineConfig({
     trace: 'on',
     ignoreHTTPSErrors: true,
     serviceWorkers: 'block',
-    // Sandbox routes outbound HTTPS via an agent proxy. Chromium doesn't
-    // inherit HTTPS_PROXY from env, so without this the browser can't
-    // reach identitytoolkit.googleapis.com (Firebase login) or Firestore.
-    proxy: process.env.HTTPS_PROXY
-      ? { server: process.env.HTTPS_PROXY, bypass: 'localhost,127.0.0.1' }
+    // Sandbox routes outbound HTTPS via an agent proxy that RESETS
+    // Chromium's TLS handshake. Route via the local TLS bridge instead
+    // (Chromium → bridge self-signed TLS → Node https via proxy+CA).
+    proxy: useBridge
+      ? { server: `http://127.0.0.1:${BRIDGE_PORT}`, bypass: 'localhost,127.0.0.1' }
       : undefined,
     // Modern Chromium's post-quantum/ECH TLS ClientHello breaks the
     // TLS-intercepting proxy (CONNECT resets mid-handshake). Disable.
@@ -39,6 +45,17 @@ export default defineConfig({
       ],
     },
   },
+  // Auto-start the TLS bridge in sandboxed (HTTPS_PROXY) environments.
+  webServer: useBridge
+    ? [
+        {
+          command: `node tests/visual/tls-bridge.mjs ${BRIDGE_PORT}`,
+          port: BRIDGE_PORT,
+          reuseExistingServer: true,
+          timeout: 15000,
+        },
+      ]
+    : undefined,
   reporter: [
     ['html', { outputFolder: 'test-results/evidence-report', open: 'never' }],
     ['json', { outputFile: 'test-results/evidence.json' }],
