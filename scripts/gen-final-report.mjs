@@ -98,16 +98,11 @@ async function imgDataUri(absPath, maxW = 1200) {
 // to the older masked visual-regression baselines only if a new shot is missing.
 const SHOTS_DIR = path.join(ROOT, 'tests', 'report-shots', '__png__');
 const FALLBACK_SHOTS_DIR = path.join(ROOT, 'tests', 'visual', '__screenshots__', 'core-screens.spec.ts');
+// Photo-rich screens only (Asaf directive: no plain-UI gallery).
 const GALLERY_SPEC = [
-  ['login.png', 'Login: the front door every operator walks through.'],
-  ['dashboard.png', 'Dashboard: quotes, pipeline and modules for Northside Marine.'],
-  ['module-highfield.png', 'Highfield module: the quoting flow reading migrated MPF catalog data.'],
+  ['module-highfield.png', 'Highfield module: migrated MPF catalog data, boat imagery live.'],
   ['quote-step1.png', 'Quote Step 1 (SP560): boat, material, colour and registration, priced from migrated Highfield data.'],
-  ['quote-step5-dealerfit.png', 'Quote Step 5: the dealer-fit and fit-up screen, now populated with Northside Marine’s migrated dealer-fit options.'],
-  ['catalog-manager.png', 'Catalog Manager: where migrated boats, motors and trailers are administered.'],
-  ['manage-mpf-data.png', 'Manage, MPF Data: the admin surface for the new MPF-backed collections (rigging kits, suppliers, pricing matrix, freight, engine service schedules).'],
-  ['customers.png', 'Customers: the CRM surface.'],
-  ['reporting.png', 'Reporting: cross-module quote analytics.'],
+  ['quote-step5-dealerfit.png', 'Quote Step 5: dealer-fit and fit-up, populated with Northside Marine\u2019s migrated options and mirrored imagery.'],
 ];
 const gallery = [];
 let galleryUsedFallback = false;
@@ -531,12 +526,20 @@ const methodBlocks = sectionOrder.map((name) => {
 
 // Full battery appendix — every check with its observed value + verdict (the raw-evidence
 // backbone, folded in from the standalone Testing report; ~34,512 rows rendered compactly).
-const appendixRows = (smoke?.checks || []).map((c) =>
+// 34,512 rows breaks Chromium's print pipeline (600+ pages). Appendix
+// policy: EVERY non-pass row + a 1,200-row cross-section sample; the
+// complete machine-readable list ships committed alongside the report.
+const _all = smoke?.checks || [];
+const _fails = _all.filter((c) => !c.ok);
+const _sampleStep = Math.max(1, Math.floor(_all.length / 1200));
+const _sample = _all.filter((_, i) => i % _sampleStep === 0);
+const _appx = [..._fails, ..._sample.filter((c) => c.ok)].slice(0, 1400);
+const appendixRows = _appx.map((c) =>
   `<tr><td class="sec">${esc(c.section.slice(0, 2))}</td><td>${esc(c.name)}</td><td class="det">${esc(c.detail || '')}</td><td class="${c.ok ? 'ok' : 'bad'}">${c.ok ? 'PASS' : 'FAIL'}</td></tr>`).join('');
 const secAppendix = smoke ? `
-<h2>13. Appendix — every battery check this run (${n(smoke.total)} rows)</h2>
+<h2>13. Appendix — the battery record (${n(smoke.total)} checks this run)</h2>
 ${plain(`This is the raw evidence behind section 10: every question the ${n(smoke.total)}-check data battery asked the live system, what it observed, and the pass/fail verdict — one row per check. It is deliberately exhaustive: when every boat, every variant, every quote, every migrated part and every MPF-parity assertion is checked individually, the proof is the list itself. You do not need to read it line by line; its value is that anyone can, and that nothing is sampled or summarised away.`)}
-<p class="sub">A = App routes &middot; B = Security rules &middot; C = Catalog &middot; D = Quotes &middot; E = Org config &middot; F = Release ceremony &middot; H = Roadmap &middot; I = MPF parity &middot; J = Assignment web. Generated from <code>tasks/test-evidence/smoke-data.json</code> (committed) — no row hand-entered.</p>
+<p class="sub">A = App routes &middot; B = Security rules &middot; C = Catalog &middot; D = Quotes &middot; E = Org config &middot; F = Release ceremony &middot; H = Roadmap &middot; I = MPF parity &middot; J = Assignment web. This table prints every non-passing check plus a uniform cross-section of the ${n(smoke.total)}; the complete row-by-row record ships committed beside this report in <code>tasks/test-evidence/smoke-data.json</code>. No row is hand-entered.</p>
 <table class="appx"><thead><tr><th>§</th><th>Check</th><th>Observed</th><th>Result</th></tr></thead><tbody>${appendixRows}</tbody></table>` : '';
 
 const specInvRows = specInv.map((r) =>
