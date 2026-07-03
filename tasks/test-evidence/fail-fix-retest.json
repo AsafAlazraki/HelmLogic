@@ -135,6 +135,15 @@
       "fix": "Serialize browser jobs \u2014 re-run checklist SOLO after the ultimate-test browser leg completes (quiet bridge).",
       "retest": "PENDING \u2014 solo re-run queued",
       "class": "environment-suspected"
+    },
+    {
+      "id": "FFR-17",
+      "failed": "Service module white-screened on one keystroke in the engine-schedule search (module-quotes verification, MQ-1)",
+      "firstSeen": "2026-07-03",
+      "rootCause": "MPF-imported engineServiceSchedules doc carries numeric familyCode (6000); engine-schedule-picker called .toLowerCase() on it.",
+      "fix": "String() casts on searchable fields in engine-schedule-picker.tsx",
+      "retest": "GREEN \u2014 production build rebuilt, picker re-driven in browser, line added successfully (evidence: module-quotes/debug-schedule-picker.png)",
+      "class": "product-fix"
     }
   ]
 }

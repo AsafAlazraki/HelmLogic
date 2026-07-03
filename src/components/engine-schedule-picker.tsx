@@ -102,9 +102,13 @@ export function EngineSchedulePicker({
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
         if (!q) return schedules;
+        // String() guards: MPF-imported docs can carry numeric fields —
+        // engineServiceSchedules/5c has familyCode 6000 (number). Calling
+        // .toLowerCase() on it crashed the WHOLE page (global error boundary)
+        // on the first search keystroke. Found by tests/module-quotes.spec.ts.
         return schedules.filter(s =>
-            (s.engineModel ?? '').toLowerCase().includes(q) ||
-            (s.familyCode ?? '').toLowerCase().includes(q),
+            String(s.engineModel ?? '').toLowerCase().includes(q) ||
+            String(s.familyCode ?? '').toLowerCase().includes(q),
         );
     }, [schedules, search]);
 

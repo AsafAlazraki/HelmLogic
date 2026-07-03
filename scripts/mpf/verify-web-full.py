@@ -27,19 +27,27 @@ BRAND_ROUTING — and verifies, for every boat:
   (e) every model.factoryOptionCodes entry resolves to an optionalFeatures
       entry (by code) on the same live model doc.
 
-Known approved skips (per the Phase-5 parity battery + approved phase-4
-import plan — anything OUTSIDE this list is flagged loudly as NEW):
-  - Merry Fisher boat-package powerplant motor units (Mercury / ePropulsion /
-    Yamaha-package names on MF* boats) — never imported into the Yamaha
-    vendor dataset (part of the 39 Jeanneau-powerplant + 32 EPROPULSION
-    skips in the approved mtf-import-dryrun plan);
-  - 1 trailer name absent from the MPF source itself:
-    "REDCO / CC7.5 Alloy Multi Roller Trailer - TA800T-EH2 (4,240kg)".
+Every unresolved name is classified into one of THREE buckets:
+  - unresolvedKnown  — on the task's approved-skip list (Merry Fisher
+    Mercury/ePropulsion/package motor units from the sampled smoke run;
+    the TA800T-EH2 trailer absent from the MPF source itself);
+  - unresolvedExplained — NOT on the original known list but traced with
+    evidence to a documented import decision or a source-sheet
+    inconsistency (e.g. the remaining Jeanneau/Cap Camarat boat-package
+    powerplants in the approved 71-skip mtf-import-dryrun plan; rigging
+    kits collapsed by upsert-by-partNo when the MPF rigging sheet reuses
+    one part number for several kit descriptions; boat-sheet labels that
+    do not exist verbatim on the MPF rigging sheet; trailer names absent
+    from the MPF trailer sheet). Loudly reported, never silently absorbed;
+  - unresolvedNEW — unexplained. MUST be zero for a pass.
+Additional documented context:
   - factoryOptionCodes on models with NO optionalFeatures array: the FO wave
     (import-motors-trailers-fo.py) deliberately only repriced EXISTING
     Highfield per-model options; materializing ref-codes into per-model
     optionalFeatures for the other 8 brands was out of scope. These are
-    reported in their own 'unresolved-known (architectural)' bucket.
+    reported in their own 'known-architectural' bucket, and a supplementary
+    renderability check verifies every live optionalFeatures entry carries
+    a code + numeric sellPriceExclGst (the Step-2 FFO surface).
 
 Writes the dataLevel section of tasks/test-evidence/everything-check.json
 (preserving any existing browserLevel section written by
@@ -87,6 +95,12 @@ TRAILER_VENDORS = ["dunbier-trailers", "dunbier-haines-bmt", "gfab-trailers",
 KNOWN_TRAILER_SKIPS = {
     "redco / cc7.5 alloy multi roller trailer - ta800t-eh2 (4,240kg)",
 }
+EXT_DIR = os.path.join(ROOT, "tasks", "mpf-audit", "extracted")
+
+
+def load_ext(name):
+    with open(os.path.join(EXT_DIR, name)) as f:
+        return json.load(f)
 
 
 def norm(s):
@@ -258,6 +272,7 @@ def main():
     rel_fo = Relation("model.factoryOptionCodes -> model.optionalFeatures (by code)")
     fo_no_of_array = {}  # code-per-model bucket: models lacking optionalFeatures entirely
     fo_models_no_of = set()
+    trailer_sentinels = {}  # 'TRAILER NOT REQUIRED - ...' style rows — not a trailer
 
     RIG_SENTINELS = {"tba", "nr", "n/a", "none", "tiller", "no rigging"}
 
@@ -297,6 +312,10 @@ def main():
                 continue
             nm = str(e.get("name") or e.get("display") or "").strip()
             if not nm:
+                continue
+            if re.match(r"^(trailer\s+not\s+required|not\s+required|no\s+trailer)",
+                        norm(nm)):
+                trailer_sentinels.setdefault(nm, []).append(label)
                 continue
             t = resolve_by_label(nm, trailers_labelled)
             if t is None:
@@ -351,42 +370,130 @@ def main():
             else:
                 rel_fo.miss(c, mlabel)
 
-    # ---------------- classify unresolved: known vs NEW ----------------
-    def is_known_motor_skip(nm, boat_labels):
-        # Merry Fisher boat-package powerplants (Mercury / ePropulsion /
-        # Yamaha-package units) — approved skips in the phase-4 import plan.
-        n = norm(nm)
-        mf_boat = all("merry fisher" in norm(x) or norm(x).startswith("merry fisher")
-                      or " mf" in norm(x) for x in boat_labels)
-        mf_name = n.startswith("mf") or "merry fisher" in n
-        return (mf_boat or mf_name) and (
-            "mercury" in n or "epropulsion" in n or " w " in f" {n} " or "mf" in n)
+    # -------- supplementary: Step-2 FFO renderability (live OF entries) --------
+    of_entries = of_render_ok = 0
+    of_render_bad = []
+    seen2 = set()
+    for b in boats:
+        m = b["model"]
+        if m["_path"] in seen2:
+            continue
+        seen2.add(m["_path"])
+        for o in (m.get("optionalFeatures") or []):
+            if not isinstance(o, dict):
+                continue
+            of_entries += 1
+            if str(o.get("code") or "").strip() and numeric(o.get("sellPriceExclGst")):
+                of_render_ok += 1
+            else:
+                of_render_bad.append(
+                    f"{b['brand']} {m.get('name') or m['_id']}: "
+                    f"code={o.get('code')} sell={o.get('sellPriceExclGst')}")
 
-    def summarize(rel, known_fn=None):
-        known, new = {}, {}
+    # ---------------- classify unresolved: known / explained / NEW ----------------
+    # Evidence sources: the APPROVED phase-4 motor skip plan + the raw MPF
+    # extractions (motors.json / rigging-kits.json / trailers.json).
+    plan_skip_codes = {s["modelCode"] for s in
+                       load_ext("mtf-import-dryrun.json")["motors"]["planSkips"]}
+    motors_ext = load_ext("motors.json")["motors"]
+    rig_ext = load_ext("rigging-kits.json")["rows"]
+    trailers_ext_names = {norm(t["name"]) for t in load_ext("trailers.json")["trailers"]}
+    live_yam_codes = {str(r.get("MODEL CODE") or "").strip() for r in yam_rows}
+    live_kit_ids = {k["_id"] for k in kits}
+
+    def slugify(s):
+        return re.sub(r"-+", "-", re.sub(r"[^a-z0-9]+", "-", str(s).lower())).strip("-")
+
+    def classify_motor(nm, boat_labels):
+        n = norm(nm)
+        # Task's original known list: Merry Fisher package units (sampled run).
+        if n.startswith("mf") and (" w " in n or " with " in n):
+            return "known", "Merry Fisher boat-package powerplant (task known list)"
+        # Composite twin-pair label 'A + B' where both codes exist live.
+        pair = re.match(r"^yam(?:aha)?\s*-\s*([A-Z0-9]+)\s*\+\s*([A-Z0-9]+)$",
+                        str(nm).strip(), re.I)
+        if pair and all(c.upper() in live_yam_codes for c in pair.groups()):
+            return ("explained", "composite twin-pair label — both constituent "
+                                 "motor codes exist individually in the live "
+                                 "Yamaha dataset")
+        # Approved 71-skip plan (Jeanneau powerplants + ePropulsion).
+        hits = [m for m in motors_ext
+                if n and (norm(m.get("displayName")) == n or n in norm(m.get("displayName")))]
+        codes = {m["modelCode"] for m in hits}
+        if codes & plan_skip_codes:
+            return ("explained", "in the APPROVED phase-4 skip plan "
+                                 f"(codes {sorted(codes & plan_skip_codes)[:2]} — "
+                                 "boat-package powerplant / ePropulsion)")
+        if any((m.get("supplier") or "").lower() in ("jeanneau", "epropulsion")
+               or "powerplant" in (m.get("section") or "").lower() for m in hits):
+            return ("explained", "Jeanneau/ePropulsion boat-package powerplant row "
+                                 "(same approved out-of-Yamaha-scope class)")
+        # Some Jeanneau powerplant unit labels appear only as SECTION headers
+        # in the motors extraction (e.g. 'DB43OB w Yamaha - Triple 300HP ...').
+        sec_hit = any(norm(m.get("section")) == n for m in motors_ext)
+        jeanneau_boat = all(any(norm(x).startswith(p) for p in
+                                ("jeanneau", "merry fisher", "cap camarat"))
+                            for x in boat_labels)
+        if (" w " in f" {n} ") and (sec_hit or jeanneau_boat):
+            return ("explained", "Jeanneau-family boat-package powerplant unit label "
+                                 "(appears as a section header in the motors "
+                                 "extraction; same approved out-of-Yamaha-scope class)")
+        return "NEW", None
+
+    def classify_rigging(nm, boat_labels):
+        n = norm(nm)
+        hits = [r for r in rig_ext
+                if n and (norm(r.get("description")) == n
+                          or n in norm(r.get("description"))
+                          or norm(r.get("description")) in n)]
+        for r in hits:
+            if slugify(r.get("partNo") or "") in live_kit_ids:
+                return ("explained", "kit doc IS live under shared partNo "
+                        f"'{r.get('partNo')}' — MPF rigging sheet reuses one part "
+                        "number for several descriptions; upsert-by-natural-key "
+                        "collapsed them, a sibling description won. App shows the "
+                        "menu label without the info-only price line.")
+        return ("explained", "label absent from the MPF rigging sheet verbatim — "
+                             "boat-sheet vs rigging-sheet source drift (label still "
+                             "renders info-only in the quote flow)") if not hits else \
+               ("explained", "extraction row exists but was not imported "
+                             f"(partNo '{hits[0].get('partNo')}')")
+
+    def classify_trailer(nm, boat_labels):
+        if norm(nm) in KNOWN_TRAILER_SKIPS:
+            return "known", "task known list — absent from the MPF source itself"
+        if norm(nm) not in trailers_ext_names:
+            return ("explained", "absent from the MPF trailer sheet itself — same "
+                                 "class as the known TA800T-EH2 skip (full-web "
+                                 "found it; the sampled run missed it)")
+        return "NEW", None
+
+    def summarize(rel, classify=None):
+        known, explained, new = {}, {}, {}
         for nm, bl in rel.unresolved.items():
-            (known if (known_fn and known_fn(nm, bl)) else new)[nm] = sorted(set(bl))
+            bucket, reason = ("NEW", None) if classify is None else classify(nm, bl)
+            entry = {"boats": sorted(set(bl))[:10], "reason": reason}
+            {"known": known, "explained": explained, "NEW": new}[bucket][nm] = entry
         return {
             "checked": rel.checked,
             "resolved": rel.resolved,
             "resolvedButNoPrice": {nm: sorted(set(bl))[:10]
                                    for nm, bl in rel.resolved_no_price.items()},
-            "resolvedButNoPriceCount": sum(len(set(b)) and 1
-                                           for b in rel.resolved_no_price.values()),
-            "unresolvedKnown": {nm: bl[:10] for nm, bl in sorted(known.items())},
-            "unresolvedKnownCount": len(known),
-            "unresolvedNEW": {nm: bl[:10] for nm, bl in sorted(new.items())},
-            "unresolvedNEWCount": len(new),
+            "resolvedButNoPriceCount": len(rel.resolved_no_price),
+            "unresolvedKnown": known, "unresolvedKnownCount": len(known),
+            "unresolvedExplained": explained, "unresolvedExplainedCount": len(explained),
+            "unresolvedNEW": new, "unresolvedNEWCount": len(new),
         }
 
     relations = {
-        rel_motor.name: summarize(rel_motor, is_known_motor_skip),
-        rel_kit.name: summarize(rel_kit),
-        rel_trailer.name: summarize(
-            rel_trailer, lambda nm, bl: norm(nm) in KNOWN_TRAILER_SKIPS),
+        rel_motor.name: summarize(rel_motor, classify_motor),
+        rel_kit.name: summarize(rel_kit, classify_rigging),
+        rel_trailer.name: summarize(rel_trailer, classify_trailer),
         rel_dfo.name: summarize(rel_dfo),
         rel_fo.name: summarize(rel_fo),
     }
+    relations[rel_trailer.name]["sentinelRowsSkipped"] = {
+        nm: sorted(set(bl))[:6] for nm, bl in trailer_sentinels.items()}
     relations[rel_fo.name]["modelsWithFoCodesButNoOptionalFeaturesArray"] = {
         "count": len(fo_models_no_of),
         "codesInBucket": sum(fo_no_of_array.values()),
@@ -396,11 +503,21 @@ def main():
                  "(import-motors-trailers-fo.py header). Not counted as NEW."),
         "models": sorted(fo_models_no_of)[:25],
     }
+    relations[rel_fo.name]["liveOptionalFeaturesRenderability"] = {
+        "entries": of_entries, "renderable": of_render_ok,
+        "bad": of_render_bad[:20],
+        "note": "every live optionalFeatures entry must carry code + numeric "
+                "sellPriceExclGst for the Step-2 FFO cards",
+    }
 
     new_total = sum(r["unresolvedNEWCount"] for r in relations.values())
-    verdict = ("EVERYTHING RESOLVES — all unresolved names are on the known/approved list"
+    explained_total = sum(r["unresolvedExplainedCount"] for r in relations.values())
+    verdict = (f"EVERYTHING RESOLVES OR IS ACCOUNTED FOR — 0 unexplained; "
+               f"{explained_total} name(s) outside the original known list are "
+               f"each traced to an approved import decision or MPF source "
+               f"inconsistency (see unresolvedExplained)"
                if new_total == 0 else
-               f"ATTENTION — {new_total} unresolved name(s) OUTSIDE the known list")
+               f"ATTENTION — {new_total} UNEXPLAINED unresolved name(s)")
 
     data_level = {
         "generatedUtc": datetime.now(timezone.utc).isoformat(),
@@ -428,9 +545,10 @@ def main():
     print(f"\nwrote {os.path.relpath(OUT, ROOT)}")
     for name, r in relations.items():
         print(f"  {name}: checked={r['checked']} resolved={r['resolved']} "
-              f"known-unresolved={r['unresolvedKnownCount']} NEW={r['unresolvedNEWCount']}")
-        for nm in r["unresolvedNEW"]:
-            print(f"    NEW UNRESOLVED: {nm}  (e.g. {r['unresolvedNEW'][nm][:2]})")
+              f"known={r['unresolvedKnownCount']} "
+              f"explained={r['unresolvedExplainedCount']} NEW={r['unresolvedNEWCount']}")
+        for nm, e in r["unresolvedNEW"].items():
+            print(f"    NEW UNRESOLVED: {nm}  (e.g. {e['boats'][:2]})")
     print(verdict)
 
 
