@@ -70,3 +70,8 @@ tasks/*-source/*.xlsm
 data-import/*.xlsx
 data-import/*.xls
 data-import/*.xlsm
+
+# NSM Master Price File source workbooks — vendor source data lives in
+# Firestore after import; the spreadsheets must never enter git history
+# (see CLAUDE.md lesson: 6.6MB trailer xlsx → LFS → blocked pushes).
+tasks/mpf-source/
