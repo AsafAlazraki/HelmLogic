@@ -1,0 +1,231 @@
+{
+ "meta": {
+  "source": "tasks/mpf-source/Registration Module.xlsx",
+  "sheet": "Registration Costs",
+  "extractedUtc": "2026-07-03T06:47:37.424887+00:00",
+  "state": "QLD",
+  "asAt": "2025-07-01",
+  "count": 19,
+  "notes": [
+   "SELL = CTD rounded UP to whole dollars (convention, not GST \u2014 rego fees are GST-free)",
+   "Boat rego banded by hull length; trailer rego banded by weight class (tonnes)",
+   "Heavy Trailers band and concession bands have no REV code in source",
+   "Rego prices change every July \u2014 effective-date handling is an open decision"
+  ]
+ },
+ "state": "QLD",
+ "items": [
+  {
+   "name": "Up to and inc 4.5m",
+   "group": "Boat Registration",
+   "appliesTo": "boat",
+   "revCode": "REGO 1",
+   "ctd": 126.35,
+   "sell": 127.0,
+   "concession": false,
+   "sourceRow": 9,
+   "minLengthM": 0,
+   "maxLengthM": 4.5
+  },
+  {
+   "name": "4.51m to 6.0m",
+   "group": "Boat Registration",
+   "appliesTo": "boat",
+   "revCode": "REGO 2",
+   "ctd": 249.5,
+   "sell": 250.0,
+   "concession": false,
+   "sourceRow": 10,
+   "minLengthM": 4.51,
+   "maxLengthM": 6.0
+  },
+  {
+   "name": "6.01m to 10.00m",
+   "group": "Boat Registration",
+   "appliesTo": "boat",
+   "revCode": "REGO 3",
+   "ctd": 414.0,
+   "sell": 414.0,
+   "concession": false,
+   "sourceRow": 11,
+   "minLengthM": 6.01,
+   "maxLengthM": 10.0
+  },
+  {
+   "name": "10.01 to 15m",
+   "group": "Boat Registration",
+   "appliesTo": "boat",
+   "revCode": "REGO 4",
+   "ctd": 608.05,
+   "sell": 609.0,
+   "concession": false,
+   "sourceRow": 12,
+   "minLengthM": 10.01,
+   "maxLengthM": 15.0
+  },
+  {
+   "name": "Boat Registration Not Required",
+   "group": "Boat Registration",
+   "appliesTo": "boat",
+   "revCode": null,
+   "ctd": 0.0,
+   "sell": 0.0,
+   "concession": false,
+   "sourceRow": 13
+  },
+  {
+   "name": "Small Trailers - Up to 1.02t",
+   "group": "Trailer Registration",
+   "appliesTo": "trailer",
+   "revCode": "REGO 6",
+   "ctd": 165.11,
+   "sell": 166.0,
+   "concession": false,
+   "sourceRow": 16,
+   "minWeightT": 0,
+   "maxWeightT": 1.02
+  },
+  {
+   "name": "Large Trailers - Over 1.021t",
+   "group": "Trailer Registration",
+   "appliesTo": "trailer",
+   "revCode": "REGO 7",
+   "ctd": 282.19,
+   "sell": 283.0,
+   "concession": false,
+   "sourceRow": 17,
+   "minWeightT": 1.021,
+   "maxWeightT": 4.55
+  },
+  {
+   "name": "Heavy Trailers - Over 4.55t",
+   "group": "Trailer Registration",
+   "appliesTo": "trailer",
+   "revCode": null,
+   "ctd": 997.5,
+   "sell": 998.0,
+   "concession": false,
+   "sourceRow": 18,
+   "minWeightT": 4.551,
+   "maxWeightT": 99
+  },
+  {
+   "name": "Registration - NOT REQUIRED",
+   "group": "Trailer Registration",
+   "appliesTo": "trailer",
+   "revCode": null,
+   "ctd": 0.0,
+   "sell": 0.0,
+   "concession": false,
+   "sourceRow": 19
+  },
+  {
+   "name": "Boat Transfer Fee",
+   "group": "Other Fees & Charges",
+   "appliesTo": "fee",
+   "revCode": "REGO 5",
+   "ctd": 32.55,
+   "sell": 33.0,
+   "concession": false,
+   "sourceRow": 22
+  },
+  {
+   "name": "Trailer Transfer Fee",
+   "group": "Other Fees & Charges",
+   "appliesTo": "fee",
+   "revCode": "REGO 8",
+   "ctd": 32.55,
+   "sell": 33.0,
+   "concession": false,
+   "sourceRow": 23
+  },
+  {
+   "name": "Replacement Plate",
+   "group": "Other Fees & Charges",
+   "appliesTo": "fee",
+   "revCode": null,
+   "ctd": 35.05,
+   "sell": 36.0,
+   "concession": false,
+   "sourceRow": 24
+  },
+  {
+   "name": "Unregistered Vehicle Permit",
+   "group": "Other Fees & Charges",
+   "appliesTo": "fee",
+   "revCode": null,
+   "ctd": 38.9,
+   "sell": 39.0,
+   "concession": false,
+   "sourceRow": 25
+  },
+  {
+   "name": "VIN Plate",
+   "group": "Other Fees & Charges",
+   "appliesTo": "fee",
+   "revCode": null,
+   "ctd": 8.14,
+   "sell": 9.0,
+   "concession": false,
+   "sourceRow": 26
+  },
+  {
+   "name": "PPSR Fee",
+   "group": "Other Fees & Charges",
+   "appliesTo": "fee",
+   "revCode": null,
+   "ctd": 4.2,
+   "sell": 5.0,
+   "concession": false,
+   "sourceRow": 27
+  },
+  {
+   "name": "Up to and inc 4.5m (Pensioner / Concession)",
+   "group": "Boat Registration - Pensioner / Concession",
+   "appliesTo": "boat",
+   "revCode": null,
+   "ctd": 76.05,
+   "sell": 77.0,
+   "concession": true,
+   "sourceRow": 30,
+   "minLengthM": 0,
+   "maxLengthM": 4.5
+  },
+  {
+   "name": "4.51m to 6.0m (Pensioner / Concession)",
+   "group": "Boat Registration - Pensioner / Concession",
+   "appliesTo": "boat",
+   "revCode": null,
+   "ctd": 137.6,
+   "sell": 138.0,
+   "concession": true,
+   "sourceRow": 31,
+   "minLengthM": 4.51,
+   "maxLengthM": 6.0
+  },
+  {
+   "name": "6.01m to 10.00m (Pensioner / Concession)",
+   "group": "Boat Registration - Pensioner / Concession",
+   "appliesTo": "boat",
+   "revCode": null,
+   "ctd": 219.85,
+   "sell": 220.0,
+   "concession": true,
+   "sourceRow": 32,
+   "minLengthM": 6.01,
+   "maxLengthM": 10.0
+  },
+  {
+   "name": "10.01 to 15m (Pensioner / Concession)",
+   "group": "Boat Registration - Pensioner / Concession",
+   "appliesTo": "boat",
+   "revCode": null,
+   "ctd": 389.65,
+   "sell": 390.0,
+   "concession": true,
+   "sourceRow": 33,
+   "minLengthM": 10.01,
+   "maxLengthM": 15.0
+  }
+ ]
+}

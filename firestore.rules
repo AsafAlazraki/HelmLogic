@@ -318,6 +318,41 @@ service cloud.firestore {
       match /serviceParts/{partId} {
         allow read, write: if isSignedIn();
       }
+      // MPF migration (2026-07) — collections created to hold NSM's
+      // Master Price File data 1:1 (see tasks/mpf-audit/MAPPING.md).
+      // Same lenient org-subcollection policy as their siblings above;
+      // UI-layer org-admin gate via /manage's can_access_settings.
+      //
+      // riggingKits/{kitId}: rigging kit catalog (3-tier ex-GST pricing,
+      //   install hours at org shop rate, components, inclusion flags).
+      // suppliers/{supplierId}: supplier registry (name/ABN/terms/credit
+      //   + DMS invoice config).
+      // supplierPriceLists/{listId}: vendor cost-refresh price lists
+      //   (per-org per decision D5).
+      // pricingMatrix/{rowId}: per-franchise markup/margin + trade tiers
+      //   + retail sliding scale (the MPF "Price Matrix" brain).
+      // engineServiceSchedules/{engineId}: per-engine service interval
+      //   price matrix + 5-year plans + parts BOM.
+      // freightConfig/{vendorId}: per-vendor per-linear-metre freight
+      //   rates + buffer feeding boat landed cost.
+      match /riggingKits/{kitId} {
+        allow read, write: if isSignedIn();
+      }
+      match /suppliers/{supplierId} {
+        allow read, write: if isSignedIn();
+      }
+      match /supplierPriceLists/{listId} {
+        allow read, write: if isSignedIn();
+      }
+      match /pricingMatrix/{rowId} {
+        allow read, write: if isSignedIn();
+      }
+      match /engineServiceSchedules/{engineId} {
+        allow read, write: if isSignedIn();
+      }
+      match /freightConfig/{vendorId} {
+        allow read, write: if isSignedIn();
+      }
       // v1.11 (Epic 11.2.1 — Service-quote flow) — Service quotes
       // composed from serviceOperations + serviceParts on a customer.
       // Owned by the org so multiple service advisors can collaborate.

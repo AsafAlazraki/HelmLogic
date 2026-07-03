@@ -1,0 +1,38 @@
+{
+ "meta": {
+  "source": "tasks/mpf-source/Price Matrix.xlsx",
+  "sheet": "Exchange Rates",
+  "extractedUtc": "2026-07-03T06:47:37.424887+00:00",
+  "direction": "divisor-style buy rates: AUD = foreign / rate (matches HelmLogic convention \u2014 highfield-pricing-workspace computes baseAud = totalUsd / exchangeRate)"
+ },
+ "rates": [
+  {
+   "currency": "AUD",
+   "code": "AUD",
+   "reviewDate": "2026-06-03",
+   "rate": 1.0,
+   "notes": null
+  },
+  {
+   "currency": "NZ",
+   "code": "NZD",
+   "reviewDate": "2025-11-10",
+   "rate": 1.2,
+   "notes": "As per discussion with MM 12.05.2026"
+  },
+  {
+   "currency": "USD",
+   "code": "USD",
+   "reviewDate": "2025-06-11",
+   "rate": 0.7,
+   "notes": "As per discussion with MM 12.05.2026"
+  },
+  {
+   "currency": "EURO",
+   "code": "EUR",
+   "reviewDate": "2025-04-10",
+   "rate": 0.6,
+   "notes": "As per discussion with MM 12.05.2026"
+  }
+ ]
+}

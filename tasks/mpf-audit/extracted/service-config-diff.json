@@ -1,0 +1,296 @@
+{
+ "generatedUtc": "2026-07-03T06:52:42.205875+00:00",
+ "org": "AcFZVEFA5UDJG2hyetWT",
+ "mode": "READ-ONLY",
+ "sections": {
+  "serviceOperations": {
+   "liveCount": 5,
+   "extractedCount": 364,
+   "extractedUniqueKeys": 285,
+   "matchedByCode": 0,
+   "rateDrift": [],
+   "inMpfNotLive": 285,
+   "inMpfNotLiveSample": [
+    "DFO_LAB_0.05",
+    "DFO_LAB_0.1",
+    "DFO_LAB_0.25",
+    "DFO_LAB_0.5",
+    "DFO_LAB_0.75",
+    "DFO_LAB_1",
+    "DFO_LAB_1.25",
+    "DFO_LAB_1.5",
+    "DFO_LAB_1.75",
+    "DFO_LAB_2",
+    "DFO_LAB_2.5",
+    "DFO_LAB_3",
+    "DFO_LAB_3.5",
+    "DFO_LAB_4",
+    "DFO_LAB_4.5",
+    "DFO_LAB_5",
+    "DFO_LAB_6",
+    "DFO_LAB_7",
+    "DFO_LAB_8",
+    "DFO_LAB_9"
+   ],
+   "inLiveNotMpf": [
+    "DIAG",
+    "IMP-REP",
+    "WINTER",
+    "YAM-100",
+    "YAM-200"
+   ],
+   "liveHourlyRates": [
+    165
+   ],
+   "liveSample": [
+    {
+     "_id": "diag",
+     "code": "DIAG",
+     "name": "Engine diagnostic",
+     "flatRateHours": 1,
+     "hourlyRate": 165,
+     "cost": 120,
+     "sellPrice": 165
+    },
+    {
+     "_id": "imp-rep",
+     "code": "IMP-REP",
+     "name": "Impeller replacement",
+     "flatRateHours": 2,
+     "hourlyRate": 165,
+     "cost": 280,
+     "sellPrice": 330
+    },
+    {
+     "_id": "winter",
+     "code": "WINTER",
+     "name": "Winterise outboard",
+     "flatRateHours": 1.5,
+     "hourlyRate": 165,
+     "cost": 150,
+     "sellPrice": 247.5
+    },
+    {
+     "_id": "yam-100",
+     "code": "YAM-100",
+     "name": "100hr Yamaha service",
+     "flatRateHours": 3,
+     "hourlyRate": 165,
+     "cost": 380,
+     "sellPrice": 495
+    },
+    {
+     "_id": "yam-200",
+     "code": "YAM-200",
+     "name": "200hr Yamaha service",
+     "flatRateHours": 6,
+     "hourlyRate": 165,
+     "cost": 720,
+     "sellPrice": 990
+    }
+   ]
+  },
+  "serviceParts": {
+   "liveCount": 6,
+   "extractedCount": 27,
+   "matched": [],
+   "drift": [],
+   "inMpfNotLive": [
+    "10W30",
+    "10W40",
+    "90790-BZ404",
+    "AU43840004",
+    "Automatic Transmission Fluid",
+    "Engine Oil - 2 Stroke",
+    "Fuel - Diesel",
+    "Fuel - Premium Unleaded",
+    "Fuel Disposal",
+    "Gear Box Oil",
+    "LUBE1",
+    "LUBE2",
+    "LUBE3",
+    "LUBE4",
+    "LUBE5",
+    "LUBE6",
+    "LUBE7",
+    "LUBE8",
+    "Oil Disposal",
+    "SUND1",
+    "SUND2",
+    "SUND3",
+    "SUND4",
+    "SUND5",
+    "SUND6",
+    "SUND7",
+    "Wheel Bearing Grease"
+   ],
+   "inLiveNotMpf": [
+    "FUEL-FLT",
+    "IMP-F90",
+    "SPARK-NGK",
+    "WATER-PMP",
+    "YAM-OIL-1L",
+    "YAM-OIL-4L"
+   ]
+  },
+  "exchangeRates": {
+   "liveDocs": {
+    "AUD": 1,
+    "EUR": 0.6,
+    "NZD": 1.2,
+    "USD": 0.7
+   },
+   "comparison": [
+    {
+     "code": "AUD",
+     "mpfRate": 1.0,
+     "liveRate": 1,
+     "liveDoc": true,
+     "delta": 0.0
+    },
+    {
+     "code": "NZD",
+     "mpfRate": 1.2,
+     "liveRate": 1.2,
+     "liveDoc": true,
+     "delta": 0.0
+    },
+    {
+     "code": "USD",
+     "mpfRate": 0.7,
+     "liveRate": 0.7,
+     "liveDoc": true,
+     "delta": 0.0
+    },
+    {
+     "code": "EUR",
+     "mpfRate": 0.6,
+     "liveRate": 0.6,
+     "liveDoc": true,
+     "delta": 0.0
+    }
+   ],
+   "conventionNote": "both sides are divisor-style (AUD = foreign / rate); directly comparable"
+  },
+  "regoCatalog": {
+   "error": null,
+   "path": "data-warehouse/{vendorId}/regoTypes/{regoTypeId} (rego-workspace.tsx; seeded vendor qld-transport)",
+   "vendors": [
+    {
+     "id": "qld-transport",
+     "name": "Queensland Transport (MSQ + TMR)",
+     "state": "QLD"
+    }
+   ],
+   "byVendor": {
+    "qld-transport": {
+     "error": null,
+     "types": [
+      {
+       "_id": "boat-10m-to-15m",
+       "name": "Recreational Vessel \u2014 10m to 15m",
+       "sellExclGst": 408,
+       "appliesTo": "boat",
+       "minLengthM": 10,
+       "maxLengthM": 15,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "boat-45m-to-8m",
+       "name": "Recreational Vessel \u2014 4.5m to 8m",
+       "sellExclGst": 163,
+       "appliesTo": "boat",
+       "minLengthM": 4.5,
+       "maxLengthM": 8,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "boat-8m-to-10m",
+       "name": "Recreational Vessel \u2014 8m to 10m",
+       "sellExclGst": 245,
+       "appliesTo": "boat",
+       "minLengthM": 8,
+       "maxLengthM": 10,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "boat-over-15m",
+       "name": "Recreational Vessel \u2014 over 15m",
+       "sellExclGst": 610,
+       "appliesTo": "boat",
+       "minLengthM": 15,
+       "maxLengthM": 99,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "boat-up-to-45m",
+       "name": "Recreational Vessel \u2014 up to 4.5m",
+       "sellExclGst": 122,
+       "appliesTo": "boat",
+       "minLengthM": 0,
+       "maxLengthM": 4.5,
+       "minAtmKg": null,
+       "maxAtmKg": null
+      },
+      {
+       "_id": "trailer-0-750",
+       "name": "Boat Trailer \u2014 up to 750kg ATM",
+       "sellExclGst": 95,
+       "appliesTo": "trailer",
+       "minLengthM": null,
+       "maxLengthM": null,
+       "minAtmKg": 0,
+       "maxAtmKg": 750
+      },
+      {
+       "_id": "trailer-1501-2500",
+       "name": "Boat Trailer \u2014 1501 to 2500kg ATM",
+       "sellExclGst": 245,
+       "appliesTo": "trailer",
+       "minLengthM": null,
+       "maxLengthM": null,
+       "minAtmKg": 1501,
+       "maxAtmKg": 2500
+      },
+      {
+       "_id": "trailer-2501-4500",
+       "name": "Boat Trailer \u2014 2501 to 4500kg ATM",
+       "sellExclGst": 335,
+       "appliesTo": "trailer",
+       "minLengthM": null,
+       "maxLengthM": null,
+       "minAtmKg": 2501,
+       "maxAtmKg": 4500
+      },
+      {
+       "_id": "trailer-751-1500",
+       "name": "Boat Trailer \u2014 751 to 1500kg ATM",
+       "sellExclGst": 165,
+       "appliesTo": "trailer",
+       "minLengthM": null,
+       "maxLengthM": null,
+       "minAtmKg": 751,
+       "maxAtmKg": 1500
+      }
+     ]
+    }
+   }
+  },
+  "pricingMatrix": {
+   "liveCount": null,
+   "error": "HTTP 403: { \"error\": { \"code\": 403, \"message\": \"Missing or insufficient permissions.\", \"status\": \"PERMISSION_DENIED\" } }"
+  },
+  "engineServiceSchedules": {
+   "liveCount": null,
+   "error": "HTTP 403: { \"error\": { \"code\": 403, \"message\": \"Missing or insufficient permissions.\", \"status\": \"PERMISSION_DENIED\" } }"
+  },
+  "freightConfig": {
+   "liveCount": null,
+   "error": "HTTP 403: { \"error\": { \"code\": 403, \"message\": \"Missing or insufficient permissions.\", \"status\": \"PERMISSION_DENIED\" } }"
+  }
+ }
+}

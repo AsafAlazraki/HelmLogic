@@ -1,0 +1,157 @@
+{
+ "generatedAt": "2026-07-03T06:54:10.831667+00:00",
+ "org": "AcFZVEFA5UDJG2hyetWT",
+ "readOnly": true,
+ "liveHttpStatus": {
+  "dealerFitSelections": 200,
+  "fitUpItems": 200,
+  "serviceParts": 200,
+  "riggingKits": 403,
+  "suppliers": 403
+ },
+ "dealerFitSelections": {
+  "extracted": 1791,
+  "live": 9,
+  "matched": 0,
+  "missingInLive": 1791,
+  "liveOnly": 9,
+  "liveOnlyIds": [
+   "df-electronic-packages-garmin-gpsmap-package",
+   "df-electronic-packages-lowrance-sounder-combo",
+   "df-electronic-packages-vhf- -aerial-package",
+   "df-general-engine-flush-kit",
+   "df-general-fuel-water-separator",
+   "df-propeller-spare-alloy-propeller",
+   "df-propeller-stainless-propeller",
+   "df-rigging-hydraulic-steering-kit",
+   "df-rigging-single-engine-rigging-kit"
+  ],
+  "seedPlaceholders": [
+   "df-electronic-packages-garmin-gpsmap-package",
+   "df-electronic-packages-lowrance-sounder-combo",
+   "df-electronic-packages-vhf- -aerial-package",
+   "df-general-engine-flush-kit",
+   "df-general-fuel-water-separator",
+   "df-propeller-spare-alloy-propeller",
+   "df-propeller-stainless-propeller",
+   "df-rigging-hydraulic-steering-kit",
+   "df-rigging-single-engine-rigging-kit"
+  ],
+  "matchedIds": [],
+  "liveSample": {
+   "df-electronic-packages-garmin-gpsmap-package": {
+    "name": "Garmin GPSMAP Package",
+    "category": "Electronic Packages",
+    "categoryId": "module-Electronic Packages",
+    "type": "item"
+   },
+   "df-electronic-packages-lowrance-sounder-combo": {
+    "name": "Lowrance Sounder Combo",
+    "category": "Electronic Packages",
+    "categoryId": "module-Electronic Packages",
+    "type": "item"
+   },
+   "df-electronic-packages-vhf- -aerial-package": {
+    "name": "VHF + Aerial Package",
+    "category": "Electronic Packages",
+    "categoryId": "module-Electronic Packages",
+    "type": "item"
+   },
+   "df-general-engine-flush-kit": {
+    "name": "Engine Flush Kit",
+    "category": "General",
+    "categoryId": "motor-General",
+    "type": "item"
+   },
+   "df-general-fuel-water-separator": {
+    "name": "Fuel Water Separator",
+    "category": "General",
+    "categoryId": "motor-General",
+    "type": "item"
+   },
+   "df-propeller-spare-alloy-propeller": {
+    "name": "Spare Alloy Propeller",
+    "category": "Propeller",
+    "categoryId": "motor-Propeller",
+    "type": "item"
+   },
+   "df-propeller-stainless-propeller": {
+    "name": "Stainless Propeller",
+    "category": "Propeller",
+    "categoryId": "motor-Propeller",
+    "type": "item"
+   },
+   "df-rigging-hydraulic-steering-kit": {
+    "name": "Hydraulic Steering Kit",
+    "category": "Rigging",
+    "categoryId": "motor-Rigging",
+    "type": "item"
+   },
+   "df-rigging-single-engine-rigging-kit": {
+    "name": "Single Engine Rigging Kit",
+    "category": "Rigging",
+    "categoryId": "motor-Rigging",
+    "type": "item"
+   }
+  }
+ },
+ "fitUpItems": {
+  "extracted": 3660,
+  "live": 12,
+  "matched": 0,
+  "missingInLive": 3660,
+  "liveOnly": 12,
+  "liveOnlyIds": [
+   "demo-fitup-anchor",
+   "demo-fitup-antifoul",
+   "demo-fitup-cover",
+   "demo-fitup-decals",
+   "demo-fitup-detail",
+   "demo-fitup-floor",
+   "demo-fitup-gps",
+   "demo-fitup-led",
+   "demo-fitup-livewell",
+   "demo-fitup-safety",
+   "demo-fitup-stereo",
+   "demo-fitup-vhf"
+  ],
+  "matchedIds": []
+ },
+ "serviceParts": {
+  "extracted": 26345,
+  "live": 6,
+  "matched": 0,
+  "missingInLive": 26345,
+  "liveOnly": 6,
+  "liveOnlyIds": [
+   "fuel-flt",
+   "imp-f90",
+   "spark-ngk",
+   "water-pmp",
+   "yam-oil-1l",
+   "yam-oil-4l"
+  ],
+  "matchedIds": []
+ },
+ "riggingKits": {
+  "extracted": 846,
+  "live": 0,
+  "matched": 0,
+  "missingInLive": 846,
+  "liveOnly": 0,
+  "liveOnlyIds": [],
+  "matchedIds": [],
+  "collectionExists": false,
+  "quarantinedExcluded": 128
+ },
+ "suppliers": {
+  "extracted": 1606,
+  "live": 0,
+  "matched": 0,
+  "missingInLive": 1606,
+  "liveOnly": 0,
+  "liveOnlyIds": [],
+  "matchedIds": [],
+  "collectionExists": false
+ }
+}

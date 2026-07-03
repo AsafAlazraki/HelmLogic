@@ -1,0 +1,231 @@
+{
+ "meta": {
+  "source": "tasks/mpf-source/Freight Module.xlsx",
+  "sheets": [
+   "FCL Import - Highfield",
+   "Quadrant Pacific - Surtees",
+   "Freight Distribution Calculator (operational tooling \u2014 not extracted as config)"
+  ],
+  "extractedUtc": "2026-07-03T06:47:37.424887+00:00",
+  "notes": [
+   "per-lm rates differ 3.4x between suppliers (Highfield $128.47/lm vs Surtees $441.21/lm); buffers differ (10% vs 5%) \u2014 config MUST be per-vendor",
+   "Distribution Calculator allocates a container's landed freight across boats by linear metre with small-boat/loaded-boat split \u2014 per-shipment ops, not catalog"
+  ]
+ },
+ "vendors": [
+  {
+   "vendorKey": "highfield",
+   "supplier": "AWW Global Logistics (Highfield Inflatables)",
+   "contact": "Julie Neoh",
+   "quoteDate": "2026-02-28",
+   "shipmentRef": "S00169820",
+   "originNote": "SEAFREIGHT (Origin Port - Qingdao)",
+   "seafreight": {
+    "name": "Seafreight 40' inc LSS",
+    "currency": "USD",
+    "amount": 3767.5959999999995,
+    "exRate": 0.7,
+    "aud": 5382.28
+   },
+   "localCharges": [
+    {
+     "name": "Destination Port Charges",
+     "currency": "AUD",
+     "amount": 870.0,
+     "exRate": 1.0,
+     "aud": 870.0
+    },
+    {
+     "name": "Delivery Order Fee",
+     "currency": "AUD",
+     "amount": 75.0,
+     "exRate": 1.0,
+     "aud": 75.0
+    },
+    {
+     "name": "CMR / EDI",
+     "currency": "AUD",
+     "amount": 35.0,
+     "exRate": 1.0,
+     "aud": 35.0
+    },
+    {
+     "name": "Destination Documentation Fee",
+     "currency": "AUD",
+     "amount": 110.0,
+     "exRate": 1.0,
+     "aud": 110.0
+    },
+    {
+     "name": "Destination Port Infrastructure Fee",
+     "currency": "AUD",
+     "amount": 620.0,
+     "exRate": 1.0,
+     "aud": 620.0
+    },
+    {
+     "name": "Delivery Cartage (Boondall)",
+     "currency": "AUD",
+     "amount": 550.0,
+     "exRate": 1.0,
+     "aud": 550.0
+    },
+    {
+     "name": "Delivery Fuel Surcharge",
+     "currency": "AUD",
+     "amount": 170.5,
+     "exRate": 1.0,
+     "aud": 170.5
+    },
+    {
+     "name": "Dehire Fee",
+     "currency": "AUD",
+     "amount": 196.0,
+     "exRate": 1.0,
+     "aud": 196.0
+    },
+    {
+     "name": "Road Tolls",
+     "currency": "AUD",
+     "amount": 50.0,
+     "exRate": 1.0,
+     "aud": 50.0
+    },
+    {
+     "name": "Customs Clearance",
+     "currency": "AUD",
+     "amount": 135.0,
+     "exRate": 1.0,
+     "aud": 135.0
+    },
+    {
+     "name": "Quarantine Entry Fee",
+     "currency": "AUD",
+     "amount": 40.0,
+     "exRate": 1.0,
+     "aud": 40.0
+    }
+   ],
+   "localChargesSubtotalAud": 2851.5,
+   "estimateTotalAud": 8233.78,
+   "bufferPct": 0.1,
+   "seafreightCtdAud": 9057.16,
+   "sampleContainerLinearMetres": 70.5,
+   "perLinearMetreAud": 128.47
+  },
+  {
+   "vendorKey": "surtees",
+   "supplier": "Quadrant Pacific Ltd (Surtees Boats)",
+   "contact": "NZ Office",
+   "quoteDate": "22/04/2024",
+   "shipmentRef": "BQ00003235",
+   "originNote": "SEAFREIGHT (Origin Port - Tauranga, New Zealand)",
+   "seafreight": {
+    "name": "Seafreight 40' HC FCL",
+    "currency": "NZD",
+    "amount": 2948.28,
+    "exRate": 1.2,
+    "aud": 2456.9
+   },
+   "localCharges": [
+    {
+     "name": "Customs Clearance",
+     "currency": "NZD",
+     "amount": 85.0,
+     "exRate": 1.2,
+     "aud": 70.83
+    },
+    {
+     "name": "Cartage",
+     "currency": "NZD",
+     "amount": 895.0,
+     "exRate": 1.2,
+     "aud": 745.83
+    },
+    {
+     "name": "Customs Imp/Export Fee",
+     "currency": "NZD",
+     "amount": 25.07,
+     "exRate": 1.2,
+     "aud": 20.89
+    },
+    {
+     "name": "Documentation Fee",
+     "currency": "NZD",
+     "amount": 125.0,
+     "exRate": 1.2,
+     "aud": 104.17
+    },
+    {
+     "name": "EDI Fee",
+     "currency": "NZD",
+     "amount": 20.0,
+     "exRate": 1.2,
+     "aud": 16.67
+    },
+    {
+     "name": "Fuel Surcharge",
+     "currency": "NZD",
+     "amount": 250.0,
+     "exRate": 1.2,
+     "aud": 208.33
+    },
+    {
+     "name": "Compliance / Admin Fees",
+     "currency": "NZD",
+     "amount": 20.0,
+     "exRate": 1.2,
+     "aud": 16.67
+    },
+    {
+     "name": "Pre Receival Advice",
+     "currency": "NZD",
+     "amount": 95.0,
+     "exRate": 1.2,
+     "aud": 79.17
+    },
+    {
+     "name": "Port Service Charges",
+     "currency": "NZD",
+     "amount": 645.0,
+     "exRate": 1.2,
+     "aud": 537.5
+    },
+    {
+     "name": "Origin / Carrier Security Fee",
+     "currency": "NZD",
+     "amount": 90.0,
+     "exRate": 1.2,
+     "aud": 75.0
+    },
+    {
+     "name": "Vehicle Booking System",
+     "currency": "NZD",
+     "amount": 95.0,
+     "exRate": 1.2,
+     "aud": 79.17
+    },
+    {
+     "name": "Solas VGM Fees",
+     "currency": "NZD",
+     "amount": 75.0,
+     "exRate": 1.2,
+     "aud": 62.5
+    },
+    {
+     "name": "Bank Fee",
+     "currency": "NZD",
+     "amount": 27.0,
+     "exRate": 1.2,
+     "aud": 22.5
+    }
+   ],
+   "localChargesSubtotalAud": 2039.23,
+   "estimateTotalAud": 4496.12,
+   "bufferPct": 0.05,
+   "seafreightCtdAud": 4720.93,
+   "sampleContainerLinearMetres": 10.7,
+   "perLinearMetreAud": 441.21
+  }
+ ]
+}
