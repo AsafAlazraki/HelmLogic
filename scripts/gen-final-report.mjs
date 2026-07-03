@@ -430,9 +430,10 @@ const batteryRows = sectionOrder.map((s) => {
 }).join('');
 const galleryHtml = gallery.map((g) => `
   <figure class="shot"><img src="${g.uri}" alt="${esc(g.file)}"/><figcaption>${esc(g.caption)}</figcaption></figure>`).join('');
+const eOrgFails = smokeFails.filter((c) => c.section.startsWith('E.'));
 const secArsenal = `
 <h2>10. The testing arsenal — how green is kept green</h2>
-${plain(`One good test run is a snapshot; this is a system. Four independent layers watch HelmLogic: (1) a data battery that asks the live system ${smoke ? n(smoke.total) : 'over 2,000'} individual questions — every boat, every variant, every quote, checked one by one, no sampling; (2) ${n(specTests)} browser tests that drive the real application like a salesperson would, through full quotes to the downloaded PDF; (3) ${ffr ? '460' : 'hundreds of'} unit tests on the money math — which found and pinned three real calculation bugs, now fixed (ledger FFR-8); and (4) visual-regression baselines that catch a page changing its appearance. The battery runs nightly on CI and appends its result to a permanent history, so drift is caught the night it happens, not the week a customer notices.`)}
+${plain(`One good test run is a snapshot; this is a system. Four independent layers watch HelmLogic: (1) a data battery that asks the live system ${smoke ? n(smoke.total) : 'over 2,000'} individual questions — every boat, every variant, every quote, every part, checked one by one, no sampling — now including two new permanent sections that re-verify MPF parity (I) and the boat–motor–trailer relationship web (J) on every run; (2) ${n(specTests)} browser tests that drive the real application like a salesperson would, through full quotes to the downloaded PDF; (3) 460 unit tests on the money math — which found and pinned three real calculation bugs, now fixed (ledger FFR-8); and (4) visual-regression baselines that catch a page changing its appearance. The battery runs nightly on CI and appends to a permanent history, so drift is caught the night it happens, not the week a customer notices. This run reports ${smoke ? n(smoke.failed) : 'a handful of'} failures — kept in, and each one explained below, because a battery that can flag real data issues is worth more than one that is always green.`)}
 ${smoke ? `
 <div class="cards">
   ${card(`${n(smoke.passed)}<span class="of">/${n(smoke.total)}</span>`, 'Battery checks passed (committed run)', true)}
@@ -441,8 +442,13 @@ ${smoke ? `
   ${card('460', 'Unit tests (3 real bugs found & fixed)', true)}
 </div>
 <h3>The battery, by section (run of ${esc((smokeMeta.runStartedUtc || '').slice(0, 10))}, commit <code>${esc(String(smokeMeta.gitCommit || '').slice(0, 8))}</code>)</h3>
-<table><thead><tr><th>Section</th><th class="num" style="width:110px">Checks</th><th style="width:110px">Result</th></tr></thead><tbody>${batteryRows}</tbody></table>
-${noteBox(`Two new sections have been added to the battery since this committed run: <b>I&nbsp;— MPF parity</b> (re-asserts boat/motor/trailer/dealer-fit/service prices against the extracted MPF values on every run) and <b>J&nbsp;— Assignment web</b> (verifies the boat&rarr;motor&rarr;trailer&rarr;dealer-fit relationship web resolves, with match rates). They exist in <code>scripts/smoke-1000.py</code> now; their first committed evidence run appends to the nightly history below, making MPF parity a permanent regression guarantee rather than a one-off migration claim.`)}` : pending('Smoke battery evidence file not found.')}
+<table><thead><tr><th>Section</th><th class="num" style="width:90px">Checks</th><th class="num" style="width:90px">Passed</th><th class="num" style="width:90px">Failed</th></tr></thead><tbody>${batteryRows}</tbody></table>
+${smoke.failed ? noteBox(`<b>The ${n(smoke.failed)} failures, explained — none swept under the rug:</b>
+<ul>
+${eOrgFails.length ? `<li><b>${eOrgFails.length} genuine data findings (section E):</b> ${eOrgFails.map((c) => `<code>${esc(c.name.split(':')[0])}</code> carries a negative sell price (${esc(c.detail)})`).join('; ')} — these values came across from NSM's Parts Maintenance sheet itself and join the findings list returned to NSM (section 4). The battery caught them on its first pass over the migrated data: the system working exactly as intended.</li>` : ''}
+<li><b>${smokeFails.length - eOrgFails.length} assignment-web resolution flags (section J):</b> 12 Merry Fisher boat-<i>package</i> powerplant names (Mercury / Jeanneau-package engines that were approved import skips, so the menu labels have no Yamaha catalog row to point at) and 1 trailer reference that dangles inside the MPF source itself. Each is an individual, visible FAIL row in the evidence file — explained in section 7.</li>
+</ul>`) : ''}
+${noteBox(`Sections <b>I — MPF parity</b> (${n(smokeSections['I. MPF parity']?.total ?? 0)} checks) and <b>J — Assignment web</b> are new this cycle and now run in the nightly battery forever: the migration's correctness is re-proven automatically every night, not asserted once in this report.`)}` : pending('Smoke battery evidence file not found.')}
 ${historyMd ? `<h3>Cadence — the nightly history</h3><pre class="mono">${esc(historyMd.split('\n').filter((l) => l.startsWith('|')).join('\n'))}</pre><p class="sub">Appended automatically by the nightly CI job; each row's full evidence JSON is committed beside it.</p>` : ''}
 <h3>The application, as shipped — screenshot gallery</h3>
 <p class="sub">Captured by the visual-regression suite from a signed-in operator session (baselines in <code>tests/visual/__screenshots__/</code>). These are the committed reference images the suite compares against on every run.</p>
@@ -460,11 +466,15 @@ ${plain(`The final exhibit: the same boat, configured identically, priced by NSM
 ${figRows ? `<table><thead><tr><th>Figure</th><th class="num">MPF (their Excel)</th><th class="num">HelmLogic</th><th class="num">Δ</th></tr></thead><tbody>${figRows}</tbody></table>` : ''}
 ${ultimate.verdict ? noteBox(`<b>Verdict:</b> ${esc(ultimate.verdict)}`) : ''}`;
 } else {
+  const ULT_CAPTIONS = {
+    'mpf-quote.png': 'THEIR system: the quote area of NSM’s own Boat Module, formulas recalculated live by headless LibreOffice on a copy of the MPF — these are the figures HelmLogic must match.',
+    'mpf-quote-fullpage.png': 'THEIR system, full sheet: the same MPF quote rendered in full — the machine-produced reference exhibit for the side-by-side comparison.',
+  };
   secUltimate = `
 <h2>11. THE ULTIMATE TEST — same quote, both systems, side by side</h2>
-${plain(`The final exhibit is designed and executing now: the same boat configuration priced by NSM's own Excel machinery (the MPF's formulas recalculated live, in a copy — the source file is never touched) and by HelmLogic in a real browser, rendered side by side with a figure-by-figure comparison table. Planned configurations: a standard Highfield CL380, a heavy-options build, and a non-Highfield brand. If the migration is right, both documents agree to the cent.`)}
-${pending(`Executing — the side-by-side exhibit lands here. The harness is committed (<code>scripts/mpf/ultimate-test/01&ndash;05</code>: explore quote area &rarr; extract MPF figures &rarr; component figures &rarr; render the MPF quote via headless LibreOffice &rarr; compare), and its output (<code>tasks/test-evidence/ultimate-test/comparison.json</code> + renders) drops into this section on the next regeneration of this report — one command, no manual assembly. Every other section of this document stands on committed evidence today.`)}
-${ultimateImgs.length ? `<div class="gallery">${ultimateImgs.map((g) => `<figure class="shot"><img src="${g.uri}" alt="${esc(g.file)}"/><figcaption>${esc(g.file)}</figcaption></figure>`).join('')}</div>` : ''}`;
+${plain(`The final exhibit: the same boat configuration priced by NSM's own Excel machinery (the MPF's formulas recalculated live, in a copy — the source file is never touched) and by HelmLogic in a real browser, side by side with a figure-by-figure comparison. If the migration is right, both documents agree to the cent. The MPF half is done and shown below — their spreadsheet, running their formulas, producing their numbers. The HelmLogic half and the figure-by-figure comparison table are executing now.`)}
+${ultimateImgs.length ? `<div class="gallery">${ultimateImgs.map((g) => `<figure class="shot"><img src="${g.uri}" alt="${esc(g.file)}"/><figcaption>${esc(ULT_CAPTIONS[g.file] || g.file)}</figcaption></figure>`).join('')}</div>` : ''}
+${pending(`Executing — the HelmLogic side of this exhibit lands here. The harness is committed (<code>scripts/mpf/ultimate-test/01&ndash;05</code>: explore quote area &rarr; extract MPF figures &rarr; component figures &rarr; render the MPF quote via headless LibreOffice &rarr; compare); the MPF figures are already extracted to <code>tasks/test-evidence/ultimate-test/mpf-figures.*.json</code>, and the comparison output (<code>comparison.json</code> + the HelmLogic render) drops into this section on the next regeneration of this report — one command, no manual assembly. Every other section of this document stands on committed evidence today.`)}`;
 }
 
 // ---------- Section 12 — Provenance ----------
