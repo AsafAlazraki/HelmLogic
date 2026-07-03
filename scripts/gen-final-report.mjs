@@ -49,6 +49,7 @@ const mtfDiffMd = mark('MTF_DIFF.md', tryRead('tasks/mpf-audit/extracted/MTF_DIF
 const partsDiffMd = mark('PARTS_DIFF.md', tryRead('tasks/mpf-audit/extracted/PARTS_DIFF.md'));
 const serviceDiffMd = mark('SERVICE_CONFIG_DIFF.md', tryRead('tasks/mpf-audit/extracted/SERVICE_CONFIG_DIFF.md'));
 const parity = mark('mpf-parity.json', tryJson('tasks/test-evidence/mpf-parity.json'));
+const parityMd = mark('MPF_PARITY.md', tryRead('tasks/test-evidence/MPF_PARITY.md'));
 const ffr = mark('fail-fix-retest.json', tryJson('tasks/test-evidence/fail-fix-retest.json'));
 const smoke = mark('smoke-data.json', tryJson('tasks/test-evidence/smoke-data.json'));
 const reportMeta = mark('report-meta.json', tryJson('tasks/test-evidence/report-meta.json'));
@@ -142,10 +143,22 @@ const applied = {
 const imgAuditEv = ev1('phase5.images')?.detail || null;
 const imgRemEvs = ev('phase5.images.remediated');
 
-// Smoke battery
+// Smoke battery — per-section pass/fail
 const smokeSections = {};
-if (smoke) for (const c of smoke.checks || []) smokeSections[c.section] = (smokeSections[c.section] || 0) + 1;
+if (smoke) for (const c of smoke.checks || []) {
+  const s = (smokeSections[c.section] ||= { total: 0, pass: 0, fails: [] });
+  s.total++; c.ok ? s.pass++ : s.fails.push(c);
+}
 const smokeMeta = smoke?.meta || {};
+const smokeFails = smoke ? (smoke.checks || []).filter((c) => !c.ok) : [];
+
+// Assignment-web match rates (section 2 of MPF_PARITY.md carries the computed rates)
+const jRates = [];
+if (parityMd) {
+  for (const m of parityMd.matchAll(/\*\*(\d+)\/(\d+) = ([\d.]+)%\*\*/g)) {
+    jRates.push({ matched: Number(m[1]), total: Number(m[2]), pct: m[3] });
+  }
+}
 
 // Browser suite
 const specInv = reportMeta?.specInventory || [];
@@ -200,7 +213,7 @@ ${plain(`For years, Northside Marine's entire pricing brain has lived in a web o
   ${card('17', 'MPF workbooks decoded')}
   ${card(n(applied.complete ? 36551 : null) || '36,551', 'Live database writes', true)}
   ${card('0', 'Write errors', true)}
-  ${card(smoke ? n(smoke.total) : '2,000+', 'Automated checks, all green', true)}
+  ${card(smoke ? `${n(smoke.passed)}<span class="of">/${n(smoke.total)}</span>` : '2,000+', 'Automated checks passed', true)}
 </div>
 <div class="cards">
   ${card('587<span class="of">/588</span>', 'Highfield SKUs price-exact to the cent', true)}
@@ -217,7 +230,7 @@ ${plain(`For years, Northside Marine's entire pricing brain has lived in a web o
 <tr><td><b>1 — Decode &amp; map</b></td><td>Four parallel deep-analysis passes decoded every sheet — including the Boat Module's 4,144-column matrix — and mapped each concept to a HelmLogic destination. Ten decisions (D1&ndash;D10) put to Asaf and ruled.</td><td>19 destination mappings, 10 schema extensions, 4 NSM data bugs found</td></tr>
 <tr><td><b>2 — Reconcile (read-only)</b></td><td>Every MPF value compared to the live database <i>before any write</i>. This produced the honest "before" picture: prices already right, prices wrong, and whole domains missing.</td><td>582 boat cost fields wrong ($5.27M gap); 1,011 factory options systemically mispriced; parts world empty</td></tr>
 <tr><td><b>4 — Migrate</b></td><td>Four sequential apply waves, each write recorded with its before-and-after state. Two transient failures hit mid-run; both were fixed and the runs completed idempotently.</td><td><b>36,551 writes, 0 errors</b>, full before/after log</td></tr>
-<tr><td><b>5 — Prove</b></td><td>Re-reconciliation to zero delta, a ${smoke ? n(smoke.total) : '2,076'}-check automated battery, image audit + remediation, and the side-by-side "ultimate test" (in progress).</td><td>Boats 587/588 exact &middot; motors/options drift $0 &middot; ${imagePatches ? n(imagePatches) : '1,056'} image refs fixed</td></tr>
+<tr><td><b>5 — Prove</b></td><td>Re-reconciliation to zero unexpected delta, a ${smoke ? n(smoke.total) : '34,512'}-check automated battery (including two new permanent sections that re-assert MPF parity every night), image audit + remediation, and the side-by-side "ultimate test" (MPF side rendered; comparison landing).</td><td>${parity?.verdict ? esc(parity.verdict) : 'Boats 587/588 exact · drift $0'} &middot; ${imagePatches ? n(imagePatches) : '1,056'} image refs fixed</td></tr>
 </tbody></table>
 ${noteBox(`<b>The one SKU that doesn't match</b> is <code>HBS15##</code> — a junk placeholder row in NSM's own spreadsheet (a literal "##" in the part number). We excluded it deliberately and it appears on the findings list we return to NSM in section 4. Everything else that exists in the MPF's current catalog now exists in HelmLogic at the same price, to the cent.`)}`;
 
