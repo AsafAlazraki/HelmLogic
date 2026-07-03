@@ -2,7 +2,7 @@
 
 import { formatMetres } from '@/lib/units';
 import { resolvePriceLevel } from '@/lib/catalog/derive-pricing';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { Fragment, useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, doc, where, getDoc, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -1516,36 +1516,44 @@ export function HighfieldQuoteFlow({
 
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
-            {/* v1.16 (pcDkqAXa) — Improved heading layout. Added the current
-                model name + step label above the stepper pills so the
-                operator always knows what they're working on. Stepper now
-                has a thin connector line between pills to read as a single
-                progression rather than 6 floating dots. */}
-            <div className="sticky top-0 z-[100] px-4 sm:px-12 py-2 sm:py-3 bg-card border-b border-slate-100 shrink-0">
-                <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-baseline gap-3 min-w-0">
-                        <h2 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] text-primary truncate">{model?.name ?? 'Build'}</h2>
-                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground hidden sm:inline">Step {currentStep} of {STEPS.length}</span>
-                        <span className="text-[9px] font-bold text-slate-500 hidden sm:inline truncate">· {STEPS.find(s => s.id === currentStep)?.label ?? ''}</span>
-                    </div>
-                    <button type="button" className="font-black text-destructive uppercase tracking-widest text-[9px] hover:opacity-70 transition-opacity shrink-0" onClick={() => router.push(`/modules/${module.slug || module.id}`)}>Exit Build</button>
-                </div>
-                {/* overflow-y-hidden + py-1 — overflow-x-auto makes computed
-                    overflow-y 'auto' too, and the scale-110 active pill is a
-                    few px taller than the row. On Windows classic scrollbars
-                    that painted a squeezed vertical scrollbar (stacked ▲▼
-                    arrows) at the end of the stepper. py-1 gives the scaled
-                    pill headroom; overflow-y-hidden guarantees no scrollbar. */}
-                <div className="flex items-center justify-between min-w-0 overflow-x-auto overflow-y-hidden py-1 relative max-w-4xl mx-auto">
-                    <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-muted -translate-y-1/2 z-0" />
-                    <div className="absolute top-1/2 left-0 h-0.5 bg-green-500 -translate-y-1/2 z-0 transition-all" style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }} />
-                    {STEPS.map((step) => (
-                        <div key={step.id} className="flex items-center gap-2 z-10 relative bg-card pr-1">
-                            <div className={cn("h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-black transition-all border-2", currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-md" : currentStep > step.id ? "bg-green-500 border-green-500 text-white" : "bg-muted border-transparent text-muted-foreground")}>{currentStep > step.id ? <CheckCircle2 className="h-4 w-4" /> : step.id}</div>
-                            <span className={cn("text-[10px] font-black uppercase tracking-[0.18em] hidden md:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-muted-foreground")}>{step.label}</span>
+            {/* Single-row build header. Left: model + step context. Center:
+                stepper with flex-based connector segments (no absolute lines,
+                no overflow container → no stray scrollbars on Windows).
+                Right: Exit Build pill. A thin green progress strip runs along
+                the bottom edge of the bar as the overall build progress cue. */}
+            <div className="sticky top-0 z-[100] bg-card/95 backdrop-blur-sm border-b border-slate-200/70 shadow-sm shrink-0 relative">
+                <div className="h-14 px-4 sm:px-8 flex items-center gap-4 sm:gap-6">
+                    <div className="flex items-center gap-3 min-w-0 shrink-0 sm:w-56">
+                        <h2 className="text-sm font-black uppercase tracking-[0.22em] text-primary whitespace-nowrap">{model?.name ?? 'Build'}</h2>
+                        <div className="hidden xl:flex flex-col leading-tight min-w-0 border-l border-slate-200 pl-3">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap">Step {currentStep} of {STEPS.length}</span>
+                            <span className="text-[10px] font-semibold text-slate-500 truncate">{STEPS.find(s => s.id === currentStep)?.label ?? ''}</span>
                         </div>
-                    ))}
+                    </div>
+                    <div className="flex-1 hidden sm:flex items-center justify-center min-w-0">
+                        <div className="flex items-center w-full max-w-3xl">
+                            {STEPS.map((step, i) => (
+                                <Fragment key={step.id}>
+                                    {i > 0 && <div className={cn("h-[3px] flex-1 mx-2 lg:mx-3 rounded-full transition-colors", currentStep >= step.id ? "bg-green-500" : "bg-slate-200")} />}
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <div className={cn(
+                                            "h-8 w-8 rounded-full flex items-center justify-center text-[11px] font-black transition-all",
+                                            currentStep === step.id ? "bg-primary text-white ring-4 ring-primary/15 shadow-md"
+                                                : currentStep > step.id ? "bg-green-500 text-white"
+                                                : "bg-slate-100 text-slate-400 border border-slate-200"
+                                        )}>{currentStep > step.id ? <CheckCircle2 className="h-4 w-4" /> : step.id}</div>
+                                        <span className={cn("text-[10px] font-black uppercase tracking-[0.14em] hidden lg:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-slate-400")}>{step.label}</span>
+                                    </div>
+                                </Fragment>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="sm:hidden flex-1 min-w-0 text-center">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Step {currentStep}/{STEPS.length} · {STEPS.find(s => s.id === currentStep)?.label ?? ''}</span>
+                    </div>
+                    <button type="button" className="shrink-0 h-8 px-4 rounded-full border border-destructive/25 text-destructive text-[9px] font-black uppercase tracking-widest hover:bg-destructive/5 transition-colors" onClick={() => router.push(`/modules/${module.slug || module.id}`)}>Exit Build</button>
                 </div>
+                <div className="absolute bottom-0 left-0 h-[2px] bg-green-500/80 transition-all" style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }} />
             </div>
 
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
