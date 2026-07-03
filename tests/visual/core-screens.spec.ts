@@ -107,12 +107,14 @@ test('highfield module page', async ({ page }) => {
 test('quote flow — CL380 step 1', async ({ page }) => {
   test.setTimeout(300000);
   await login(page);
+  const m = page.url().match(/\/([^/]+)\/(dashboard|modules|$)/);
+  const orgSlug = m ? m[1] : 'northside-marine';
 
   // Same New Quote dialog pattern as tests/bm-email-checklist.spec.ts —
   // dialog open is intermittent, so retry up to 3 times.
   let onStep1 = false;
   for (let attempt = 1; attempt <= 3 && !onStep1; attempt++) {
-    await page.goto(`${BASE_URL}/modules/${MODULE_ID}?_t=${Date.now()}`);
+    await page.goto(`${BASE_URL}/${orgSlug}/modules/${MODULE_ID}?_t=${Date.now()}`);
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(4000);
     const newQ = page.locator('button:has-text("New Quote"), button:has-text("New Proposal")').first();
