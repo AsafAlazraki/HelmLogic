@@ -117,6 +117,15 @@
       "fix": "_fs.patch_doc quotes flat field names whole (preserving literal dots e.g. 'Prop Part No.') and treats explicit masks as dotted nesting",
       "retest": "GREEN \u2014 MTF apply completed 608 writes (motors updated+created, trailers 267 upd + 47 new, 1,011 factory options repriced), APPLY-3B-MTF OK",
       "class": "migration-fix"
+    },
+    {
+      "id": "FFR-15",
+      "failed": "Image audit: 1,921 dealer-fit refs 403-blocked by NSM's own website WAF; 153 motor refs behind Incapsula; 314 SharePoint-internal refs; 4 dead links",
+      "firstSeen": "2026-07-03",
+      "rootCause": "MPF image links depend on external hosts: NSM WAF blocks non-browser fetchers, Yamaha runs a JS challenge, SharePoint links need M365 auth \u2014 none reliable for customer rendering.",
+      "fix": "164 WAF-blocked images mirrored via weserv to Firebase Storage (mpf-mirror/), 896 dealerFitSelections docs re-pointed (1,792 refs); 7 recoverable Yamaha images mirrored (31 motor rows patched); unfetchable remainder documented for NSM (38 Yamaha + 7 SharePoint exports + 4 dead)",
+      "retest": "GREEN \u2014 all 171 mirrored Storage URLs re-probed 200 image/*; live doc spot-checks confirm Storage URLs serving",
+      "class": "data-fix"
     }
   ]
 }

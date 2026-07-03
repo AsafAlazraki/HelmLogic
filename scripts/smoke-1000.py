@@ -231,8 +231,8 @@ def near(a, b, tol=0.01):
     except (TypeError, ValueError): return False
 
 def mpf_slug(s):
-    s = re.sub(r"[^a-z0-9]+", "-", str(s).strip().lower())
-    return s.strip("-")[:200] or "unknown"
+    # import-service-config.py slug (keeps dots — rego doc ids like mpf-heavy-trailers-over-4.55t)
+    return re.sub(r"-+", "-", re.sub(r"[^a-z0-9.]+", "-", str(s).lower())).strip("-")
 
 # --- I.1 Highfield variants: ALL sell + cost vs boats.json (full verify) ---
 boats_ext = load_mpf("boats.json")["boats"]
