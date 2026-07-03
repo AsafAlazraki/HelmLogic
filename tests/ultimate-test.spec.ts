@@ -35,9 +35,11 @@ test('ULTIMATE: SP560 PVC W-W-WB — MPF-identical quote', async ({ page }) => {
   };
 
   await login(page);
-  const m = page.url().match(/\/([^/]+)\/(dashboard|modules|$)/);
-  const orgSlug = m ? m[1] : '';
-  await page.goto(`${BASE_URL}/${orgSlug}/modules/${MODULE_ID}?_t=${Date.now()}`);
+  // Use the NON-org-scoped module route. The /{orgSlug}/... variant strips
+  // ?range=&vendor= during the quote-page handoff (OrgSlugLayout slug
+  // correction replaces pathname without search params) -> Context Error.
+  // Verified via tests/ultimate-debug2.spec.ts: /modules/... mounts fine.
+  await page.goto(`${BASE_URL}/modules/${MODULE_ID}?_t=${Date.now()}`);
   await page.waitForLoadState('domcontentloaded');
   await page.waitForTimeout(3500);
 
@@ -50,7 +52,7 @@ test('ULTIMATE: SP560 PVC W-W-WB — MPF-identical quote', async ({ page }) => {
   for (let attempt = 1; attempt <= 3 && !mounted; attempt++) {
     if (attempt > 1) {
       console.log(`  context error — retry ${attempt}`);
-      await page.goto(`${BASE_URL}/${orgSlug}/modules/${MODULE_ID}?_t=${Date.now()}`);
+      await page.goto(`${BASE_URL}/modules/${MODULE_ID}?_t=${Date.now()}`);
       await page.waitForLoadState('domcontentloaded');
     }
     await page.waitForTimeout(3000 * attempt);
