@@ -39,6 +39,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Download, Send, Lock, Loader2, FileText, Wrench, Package, ClipboardCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { EngineSchedulePicker, type ScheduleOpLine } from '@/components/engine-schedule-picker';
 
 export type ServiceQuoteStatus = 'draft' | 'sent' | 'accepted' | 'in-progress' | 'complete' | 'cancelled';
 
@@ -170,6 +171,19 @@ export function ServiceQuoteDetailSheet({ open, onOpenChange, organisationId, qu
         } catch (err) {
             console.warn('audit-log write failed (non-fatal)', err);
         }
+    };
+
+    /** MPF engine-service-schedule interval → operation line. Mirrors the
+     *  create-wizard serviceOperations line shape ({ id, code, name, hours,
+     *  rate, sellPrice, cost }) and keeps totalSell/totalCost honest. */
+    const handleAddScheduleLine = async (line: ScheduleOpLine) => {
+        if (!quote || isLocked) return;
+        await patch({
+            operations: [...(quote.operations ?? []), line],
+            totalSell: (quote.totalSell ?? 0) + (line.sellPrice ?? 0),
+            totalCost: (quote.totalCost ?? 0) + (line.cost ?? 0),
+        });
+        toast({ title: 'Service interval added', description: line.name });
     };
 
     const buildPdfInput = () => {
@@ -440,6 +454,15 @@ export function ServiceQuoteDetailSheet({ open, onOpenChange, organisationId, qu
                             </div>
                         )}
                     </section>
+
+                    {/* ── Engine service schedule (MPF) — optional one-click interval pricing ── */}
+                    {!isLocked && (
+                        <EngineSchedulePicker
+                            organisationId={organisationId}
+                            disabled={isLocked}
+                            onAdd={handleAddScheduleLine}
+                        />
+                    )}
 
                     {/* ── Parts ── */}
                     <section className="rounded-2xl border-2 bg-white p-4 space-y-3">

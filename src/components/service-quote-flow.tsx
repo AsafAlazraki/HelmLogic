@@ -130,6 +130,17 @@ export function ServiceQuoteDashboard({ organisationId, organisation }: { organi
     );
     const { data: quotes, isLoading } = useCollection<ServiceQuote>(quotesRef);
 
+    // Keep the open detail sheet in sync with the live snapshot — detailQuote is
+    // captured at click time, so without this, edits made from the sheet (status
+    // changes, added schedule intervals) render stale and consecutive array
+    // writes would clobber each other.
+    useEffect(() => {
+        if (!detailQuote || !quotes) return;
+        const fresh = quotes.find(q => q.id === detailQuote.id);
+        if (fresh && fresh !== detailQuote) setDetailQuote(fresh);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [quotes]);
+
     const filtered = useMemo(() => {
         const list = quotes ?? [];
         return statusFilter === 'all' ? list : list.filter(q => q.status === statusFilter);

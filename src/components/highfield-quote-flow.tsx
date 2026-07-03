@@ -97,6 +97,17 @@ import {
     evaluateCompatibility,
     type CompatibilityRule,
 } from '@/lib/compatibility-rules';
+import {
+    NsmMotorMenuSection,
+    NsmTrailerMenuSection,
+    NsmDealerFitStrip,
+    NsmRiggingKitLine,
+    StandardInclusionsCard,
+    DepositScheduleCard,
+    splitInclusionEntries,
+    type NsmMotorMenuEntry,
+    type NsmTrailerMenuEntry,
+} from '@/components/nsm-recommended';
 
 /** Normalize spacing, strip internal model-code suffixes, and extract first color from parenthetical */
 function formatOptionDisplayLabel(name: string): { base: string; color: string | null } {
@@ -123,7 +134,23 @@ interface Variant {
     cost?: number;
     sellPriceExclGst?: number;
     imageUrl?: string;
+    /** NSM Master Price File fields — written by the MPF importer. All
+     *  optional: quote flow must no-op gracefully when absent. */
+    priceLadder?: Record<string, { incGst?: number | null; exGst?: number | null } | null> | null;
+    motorMenu?: any[] | null;
+    trailerMenu?: any[] | null;
+    dealerFitLines?: string[] | null;
 }
+
+/** NSM MPF priceLadder → app price-level mapping. When a variant carries a
+ *  priceLadder (written by the MPF importer), these levels prefer the
+ *  ladder's ex-GST value. Cash / Published stay on sellPriceExclGst. */
+const PRICE_LADDER_LEVEL_MAP: Record<string, string> = {
+    hull_trade: 'trade',
+    hull_subdealer: 'subDealer',
+    hull_subdealer_excl: 'subExclusive',
+    hull_aus_sailing: 'ausSailing',
+};
 
 interface CustomOption {
     id: string;
@@ -230,6 +257,15 @@ export function HighfieldQuoteFlow({
      * wrapper so every call site downstream stays identical.
      */
     function getPriceForLevel(item: any, level: string): number {
+        // NSM MPF — when the item (boat variant) carries a priceLadder,
+        // prefer its ex-GST value for trade / sub-dealer style levels.
+        // Items without a ladder (motors, accessories, trailers, legacy
+        // variants) fall straight through to the existing resolver.
+        const ladderKey = level ? PRICE_LADDER_LEVEL_MAP[level] : undefined;
+        if (ladderKey) {
+            const exGst = item?.priceLadder?.[ladderKey]?.exGst;
+            if (typeof exGst === 'number' && Number.isFinite(exGst)) return exGst;
+        }
         return resolvePriceLevel(item, level);
     }
 
@@ -263,6 +299,23 @@ export function HighfieldQuoteFlow({
     }, [firestore, module?.id]);
     const [selectedMotor, setSelectedMotor] = useState<any | null>(initialState?.selectedMotorObj ?? null);
     const [selectedMotorAccessoryIds, setSelectedMotorAccessoryIds] = useState<string[]>(initialState?.selectedMotorAccessoryIds ?? []);
+    // NSM MPF — when the operator picks a motor from the variant's
+    // motorMenu (NSM Recommended cards), the slot's relationship data
+    // (rigging kit / prop / engine hole) is stashed here so Step 5 +
+    // finalize can use it. Cleared whenever the motor is changed or
+    // removed via any other path.
+    const [selectedMotorMenuSlot, setSelectedMotorMenuSlot] = useState<{
+        slot: number | null;
+        motorName: string | null;
+        riggingKit: string | null;
+        propPartNo: string | null;
+        propDesc: string | null;
+        engineHole: string | null;
+        recommended: boolean;
+    } | null>(null);
+    // NSM MPF — org riggingKits doc matched by name to the selected menu
+    // slot's riggingKit. Info-only display (Step 5 header area).
+    const [riggingKitMatch, setRiggingKitMatch] = useState<{ name: string; retailExGst: number | null } | null>(null);
     // Tracks whether the operator clicked-off the auto-selected motor. The
     // auto-select effect won't re-fire while this is true, so deselect stays
     // sticky. Clears the moment they pick any motor again.
@@ -1514,6 +1567,162 @@ export function HighfieldQuoteFlow({
         return `${vendor} - ${name}`;
     };
 
+    /* ---------------------------------------------------------------- */
+    /* NSM Master Price File relationship data (all optional — every     */
+    /* memo returns [] / falls back to legacy behaviour when the MPF     */
+    /* importer hasn't written the fields yet).                          */
+    /* ---------------------------------------------------------------- */
+
+    const variantMotorMenu = useMemo<any[]>(
+        () => (Array.isArray((activeVariant as any)?.motorMenu) ? (activeVariant as any).motorMenu : []),
+        [activeVariant],
+    );
+
+    // Resolve each menu slot's motorName ('Yamaha - F225UCB') against the
+    // module's motor list: exact display-name match → case-insensitive →
+    // contains (on the model part after ' - '). Unresolved slots render
+    // as info-only cards.
+    const resolvedMotorMenu = useMemo<NsmMotorMenuEntry[]>(() => {
+        if (variantMotorMenu.length === 0) return [];
+        const findMotor = (rawName: any): any | null => {
+            const target = String(rawName || '').replace(/\s+/g, ' ').trim();
+            if (!target || motors.length === 0) return null;
+            const targetLower = target.toLowerCase();
+            let found = motors.find(m => getMotorDisplayName(m).replace(/\s+/g, ' ').trim() === target);
+            if (found) return found;
+            found = motors.find(m => getMotorDisplayName(m).replace(/\s+/g, ' ').trim().toLowerCase() === targetLower);
+            if (found) return found;
+            const parts = target.split(' - ');
+            const modelPart = (parts[parts.length - 1] || target).trim().toLowerCase();
+            if (!modelPart) return null;
+            return motors.find(m => getMotorDisplayName(m).toLowerCase().includes(modelPart)) || null;
+        };
+        return [...variantMotorMenu]
+            .sort((a, b) => (a?.slot ?? 0) - (b?.slot ?? 0))
+            .map(entry => ({ ...entry, motor: findMotor(entry?.motorName) }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [variantMotorMenu, motors]);
+
+    // Picking a menu motor mirrors the grid pick (motor + standard
+    // accessories) and additionally stashes the slot's relationship data
+    // for Step 5 + finalize.
+    const selectMenuMotor = (entry: NsmMotorMenuEntry) => {
+        if (!entry.motor) return;
+        setSelectedMotor(entry.motor);
+        setMotorExplicitlyDeselected(false);
+        setPropComesStandard(false);
+        const standardIds = (entry.motor.masterAccessories || []).filter((a: any) => a.isStandard).map((a: any) => a.id);
+        if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds);
+        setSelectedMotorMenuSlot({
+            slot: entry.slot ?? null,
+            motorName: entry.motorName ?? null,
+            riggingKit: entry.riggingKit ?? null,
+            propPartNo: entry.propPartNo ?? null,
+            propDesc: entry.propDesc ?? null,
+            engineHole: entry.engineHole ?? null,
+            recommended: entry.recommended === true,
+        });
+        setTimeout(() => motorDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
+    };
+
+    const variantTrailerMenu = useMemo<any[]>(
+        () => (Array.isArray((activeVariant as any)?.trailerMenu) ? (activeVariant as any).trailerMenu : []),
+        [activeVariant],
+    );
+
+    // Match trailer-menu names against model.trailerAssignments by name /
+    // code (exact then contains, case-insensitive). Unmatched → info chip.
+    const resolvedTrailerMenu = useMemo<NsmTrailerMenuEntry[]>(() => {
+        if (variantTrailerMenu.length === 0) return [];
+        const norm = (s: any) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        const findAssignment = (label: any): any | null => {
+            const n = norm(label);
+            if (!n || trailerAssignments.length === 0) return null;
+            return (
+                trailerAssignments.find(a => norm(a?.name) === n || norm(a?.code) === n) ||
+                trailerAssignments.find(a => norm(a?.code) && n.includes(norm(a?.code))) ||
+                trailerAssignments.find(a => { const an = norm(a?.name); return !!an && (n.includes(an) || an.includes(n)); }) ||
+                null
+            );
+        };
+        return [...variantTrailerMenu]
+            .sort((a, b) => (a?.slot ?? 0) - (b?.slot ?? 0))
+            .map(entry => ({ ...entry, assignment: findAssignment(entry?.name ?? entry?.display) }));
+    }, [variantTrailerMenu, trailerAssignments]);
+
+    const variantDealerFitLines = useMemo<string[]>(
+        () => (Array.isArray((activeVariant as any)?.dealerFitLines)
+            ? (activeVariant as any).dealerFitLines.map((l: any) => String(l || '').trim()).filter(Boolean)
+            : []),
+        [activeVariant],
+    );
+
+    // Match recommended dealer-fit line names against the org's
+    // dealerFitSelections (case-insensitive trim, then contains).
+    const resolvedDealerFitLines = useMemo(() => {
+        if (variantDealerFitLines.length === 0) return [];
+        const norm = (s: any) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        const sels = dealerFitSelections || [];
+        return variantDealerFitLines.map(name => {
+            const n = norm(name);
+            const hit =
+                sels.find((s: any) => norm(s?.name) === n) ||
+                sels.find((s: any) => { const sn = norm(s?.name); return !!sn && (n.includes(sn) || sn.includes(n)); }) ||
+                null;
+            return { name, match: hit ? { id: hit.id, name: hit.name || name } : null };
+        });
+    }, [variantDealerFitLines, dealerFitSelections]);
+
+    // Standard inclusions (model.standardInclusions, MPF) merged +
+    // deduped with the legacy model.standardFeatures list.
+    const modelStandardInclusions = useMemo<string[]>(
+        () => splitInclusionEntries((model as any)?.standardInclusions),
+        [(model as any)?.standardInclusions],
+    );
+    const mergedStandardFeatures = useMemo<string[]>(() => {
+        const out: string[] = [];
+        const seen = new Set<string>();
+        for (const s of [...((model?.standardFeatures as string[]) || []), ...modelStandardInclusions]) {
+            const t = String(s || '').replace(/\s+/g, ' ').trim();
+            const k = t.toLowerCase();
+            if (!t || seen.has(k)) continue;
+            seen.add(k);
+            out.push(t);
+        }
+        return out;
+    }, [model?.standardFeatures, modelStandardInclusions]);
+
+    // Look up the org rigging-kit doc matching the selected menu slot's
+    // riggingKit name (info-only price display on Step 5). Fetch is lazy —
+    // only fires once a menu motor with a rigging kit is selected.
+    useEffect(() => {
+        const kitName = selectedMotorMenuSlot?.riggingKit;
+        if (!firestore || !orgId || !kitName) { setRiggingKitMatch(null); return; }
+        let cancelled = false;
+        (async () => {
+            try {
+                const snap = await getDocs(collection(firestore, `organisations/${orgId}/riggingKits`));
+                const norm = (s: any) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+                const target = norm(kitName);
+                const kits = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+                const kitLabel = (k: any) => k?.name || k?.desc || k?.description || '';
+                const hit =
+                    kits.find(k => norm(kitLabel(k)) === target) ||
+                    kits.find(k => { const l = norm(kitLabel(k)); return !!l && (l.includes(target) || target.includes(l)); }) ||
+                    null;
+                if (cancelled) return;
+                if (!hit) { setRiggingKitMatch(null); return; }
+                const retail = typeof hit.retailExGst === 'number' ? hit.retailExGst
+                    : typeof hit.kitSellPrice === 'number' ? hit.kitSellPrice
+                    : null;
+                setRiggingKitMatch({ name: kitLabel(hit) || kitName, retailExGst: retail });
+            } catch {
+                if (!cancelled) setRiggingKitMatch(null);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore, orgId, selectedMotorMenuSlot?.riggingKit]);
+
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
             {/* Single-row build header. Left: model + step context. Center:
@@ -1758,6 +1967,11 @@ export function HighfieldQuoteFlow({
                                             </ul>
                                         </div>
                                     )}
+                                    {/* NSM MPF — model.standardInclusions, merged + deduped with the
+                                        legacy standardFeatures list. Renders nothing pre-import. */}
+                                    {modelStandardInclusions.length > 0 && (
+                                        <StandardInclusionsCard items={mergedStandardFeatures} />
+                                    )}
                                     {groupedOptions.map(([cat, opts]) => {
                                         /* Seat category visibility rules:
                                          * - If a console is selected with a paired seat → show only that seat, locked
@@ -1881,12 +2095,23 @@ export function HighfieldQuoteFlow({
                                                 <p className="text-[10px] font-black uppercase tracking-wide leading-relaxed">Pricing not yet configured for this module — motors will show $0. Contact your admin to set up a pricing strategy.</p>
                                             </div>
                                         )}
+                                        {/* NSM MPF — recommended motor menu for this hull (variant.motorMenu).
+                                            Renders nothing when the variant has no menu (pre-import). The
+                                            existing HP-filtered grid stays below under "All compatible motors". */}
+                                        {!motorsLoading && resolvedMotorMenu.length > 0 && (
+                                            <NsmMotorMenuSection
+                                                entries={resolvedMotorMenu}
+                                                selectedMotorId={selectedMotor?.id ?? null}
+                                                onSelect={selectMenuMotor}
+                                                getPrice={(m) => getPriceForLevel(m, priceLevel)}
+                                            />
+                                        )}
                                         {motorsLoading ? <div className="flex flex-col items-center py-16 gap-3"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Scanning Factory Datasets...</p></div> : selectedMotor ? (
                                             /* --- SELECTED MOTOR HERO --- */
                                             <div ref={motorDetailRef} className="animate-in fade-in duration-700">
                                                 <button
                                                     type="button"
-                                                    onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(true); }}
+                                                    onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(true); setSelectedMotorMenuSlot(null); }}
                                                     className="relative w-full text-left border-4 border-primary rounded-[2rem] overflow-hidden bg-white shadow-2xl ring-8 ring-primary/10 group/motor-hero"
                                                     aria-label="Click to remove motor from quote"
                                                     title="Click to remove motor (boat-only quote)"
@@ -1928,10 +2153,10 @@ export function HighfieldQuoteFlow({
                                                     </div>
                                                 </button>
                                                 <div className="flex items-center justify-center gap-2 mt-4">
-                                                    <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-6" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(false); }}>
+                                                    <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-6" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(false); setSelectedMotorMenuSlot(null); }}>
                                                         <ArrowRight className="h-3 w-3 mr-2 rotate-180" /> Choose Another Motor
                                                     </Button>
-                                                    <Button variant="ghost" className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-4 text-rose-600 hover:bg-rose-50 hover:text-rose-700" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(true); }}>
+                                                    <Button variant="ghost" className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-4 text-rose-600 hover:bg-rose-50 hover:text-rose-700" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(true); setSelectedMotorMenuSlot(null); }}>
                                                         <X className="h-3 w-3 mr-2" /> No Motor
                                                     </Button>
                                                 </div>
@@ -1955,7 +2180,7 @@ export function HighfieldQuoteFlow({
                                                     const mUrl = resolveImageUrl(m);
                                                     const displayName = getMotorDisplayName(m);
                                                     return (
-                                                        <button key={m.id} onClick={() => { setSelectedMotor(m); setMotorExplicitlyDeselected(false); setPropComesStandard(false); const standardIds = (m.masterAccessories || []).filter((a: any) => a.isStandard).map((a: any) => a.id); if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds); setTimeout(() => motorDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400); }} className="group relative flex flex-col border-4 rounded-[2rem] overflow-hidden transition-all bg-white shadow-2xl h-full border-transparent hover:border-primary/20">
+                                                        <button key={m.id} onClick={() => { setSelectedMotor(m); setMotorExplicitlyDeselected(false); setPropComesStandard(false); setSelectedMotorMenuSlot(null); const standardIds = (m.masterAccessories || []).filter((a: any) => a.isStandard).map((a: any) => a.id); if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds); setTimeout(() => motorDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400); }} className="group relative flex flex-col border-4 rounded-[2rem] overflow-hidden transition-all bg-white shadow-2xl h-full border-transparent hover:border-primary/20">
                                                             <div className="relative aspect-video w-full bg-slate-50 border-b flex items-center justify-center">
                                                                 {mUrl ? (
                                                                     <Image src={mUrl} alt="Motor" fill className="object-contain p-6 mix-blend-multiply transition-transform group-hover:scale-110" />
@@ -2246,6 +2471,22 @@ export function HighfieldQuoteFlow({
                                             </div>
                                         </div>
 
+                                        {/* NSM MPF — recommended trailers for this hull (variant.trailerMenu).
+                                            Matched entries select the corresponding trailer assignment;
+                                            unmatched names render as info chips. Renders nothing pre-import. */}
+                                        {resolvedTrailerMenu.length > 0 && (
+                                            <NsmTrailerMenuSection
+                                                entries={resolvedTrailerMenu}
+                                                isEntryActive={(entry) =>
+                                                    !!entry.assignment
+                                                    && selectedTrailerId === 'primary-trailer'
+                                                    && catalogTrailerSnapshot?.trailerId === entry.assignment.trailerId
+                                                    && catalogTrailerSnapshot?.brandVendorId === entry.assignment.brandVendorId
+                                                }
+                                                onSelect={(entry) => { if (entry.assignment) loadAssignmentSnapshot(entry.assignment); }}
+                                            />
+                                        )}
+
                                         {/* v1.4 day-1 redesign: trailer cards come from `model.trailerAssignments`
                                             only. No catalog browse button — operators assign trailers in the
                                             boat model editor. Tick to switch the active trailer (only one
@@ -2474,6 +2715,17 @@ export function HighfieldQuoteFlow({
                             )}
                             {currentStep === 5 && (
                                 <div className="space-y-12 animate-in fade-in duration-1000 mt-4">
+                                    {/* NSM MPF — recommended dealer-fit lines for this boat
+                                        (variant.dealerFitLines). Matched names toggle the existing
+                                        dealerFitSelections; unmatched render as info chips. Renders
+                                        nothing pre-import. */}
+                                    {!dealerFitLoading && resolvedDealerFitLines.length > 0 && (
+                                        <NsmDealerFitStrip
+                                            lines={resolvedDealerFitLines}
+                                            selectedIds={selectedDealerFitIds}
+                                            onToggle={toggleDealerFitSelection}
+                                        />
+                                    )}
                                     {dealerFitLoading ? <div className="flex justify-center py-16"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div> : groupedDealerFit.length > 0 ? (
                                         groupedDealerFit.map(([cat, opts]) => (
                                             <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 scroll-mt-10">
@@ -2550,6 +2802,15 @@ export function HighfieldQuoteFlow({
                                       selectedFitUpData and gets snapshotted onto quote.fitUpSelections at
                                       finalize. Customer PDF renders a single summary line per Story 9.2.3.
                                     */}
+                                    {/* NSM MPF — rigging kit from the selected motor-menu slot,
+                                        shown in the Fit-Up & Rigging header area. Info-only; shows
+                                        the org riggingKits retail price when a name match exists. */}
+                                    {selectedMotorMenuSlot?.riggingKit && (
+                                        <NsmRiggingKitLine
+                                            kitName={riggingKitMatch?.name || selectedMotorMenuSlot.riggingKit}
+                                            retailExGst={riggingKitMatch?.retailExGst ?? null}
+                                        />
+                                    )}
                                     {orgId && (
                                         <FitUpQuoteSelector
                                             organisationId={orgId}
@@ -2582,7 +2843,9 @@ export function HighfieldQuoteFlow({
                                                     <p className="font-black text-sm uppercase tracking-tight text-slate-900">{range?.name} {model?.name}</p>
                                                     <p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMaterial} • {activeVariant?.name || 'Standard Color'}</p>
                                                 </div>
-                                                <p className="font-black text-primary italic text-sm">${(activeVariant?.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                {/* Resolves through the price level (incl. NSM priceLadder
+                                                    when present) instead of raw sellPriceExclGst. */}
+                                                <p className="font-black text-primary italic text-sm">${getPriceForLevel(activeVariant, priceLevel).toLocaleString()}</p>
                                             </div>
                                             {isRegoSelected && (
                                                 <div className="mt-4 pt-4 border-t border-dashed space-y-2">
@@ -2666,7 +2929,7 @@ export function HighfieldQuoteFlow({
                                                         <div className="flex items-center gap-3">
                                                             <div className="group/remove h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
                                                                 <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
-                                                                <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(true); }}><X className="h-3 w-3" /></Button>
+                                                                <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(true); setSelectedMotorMenuSlot(null); }}><X className="h-3 w-3" /></Button>
                                                             </div>
                                                             <div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{getMotorDisplayName(selectedMotor)}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Performance</p></div>
                                                         </div>
@@ -2899,6 +3162,17 @@ export function HighfieldQuoteFlow({
                                             </Card>
                                         )}
 
+                                        {/* NSM MPF — deposit schedule (percentages × running total inc
+                                            GST, whole-dollar ceil) + estimated lead time. The card
+                                            renders nothing when the model has neither field. */}
+                                        {((model as any)?.depositSchedule || (model as any)?.leadTimesDays) && (
+                                            <DepositScheduleCard
+                                                schedule={(model as any)?.depositSchedule ?? null}
+                                                leadTimesDays={(model as any)?.leadTimesDays ?? null}
+                                                totalIncGst={Math.ceil(Math.max(0, finalPrice) * 1.1)}
+                                            />
+                                        )}
+
                                         {/* Admin & Trade-In Section */}
                                         <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
                                             <CardHeader className="bg-muted/30 border-b p-4">
@@ -3042,7 +3316,9 @@ export function HighfieldQuoteFlow({
             <Dialog open={showFeatures} onOpenChange={setShowFeatures}>
                 <DialogContent className="sm:max-w-2xl rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-6 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Standard Features</DialogTitle></DialogHeader>
-                    <ScrollArea className="max-h-[60vh]"><div className="p-0"><Table><TableBody>{model?.standardFeatures?.map((f: string, i: number) => (<TableRow key={i} className="hover:bg-primary/5 border-b"><TableCell className="w-10 pl-6"><Check className="h-4 w-4 text-emerald-500" /></TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{f}</TableCell></TableRow>))}</TableBody></Table></div></ScrollArea>
+                    {/* NSM MPF — merged standardFeatures + standardInclusions (deduped).
+                        Identical to model.standardFeatures when no MPF data exists. */}
+                    <ScrollArea className="max-h-[60vh]"><div className="p-0"><Table><TableBody>{mergedStandardFeatures.map((f: string, i: number) => (<TableRow key={i} className="hover:bg-primary/5 border-b"><TableCell className="w-10 pl-6"><Check className="h-4 w-4 text-emerald-500" /></TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{f}</TableCell></TableRow>))}</TableBody></Table></div></ScrollArea>
                 </DialogContent>
             </Dialog>
 
@@ -3173,6 +3449,10 @@ export function HighfieldQuoteFlow({
                     customOptions,
                     selectedMotor,
                     selectedMotorAccessories,
+                    // NSM MPF — the motor-menu slot picked on Step 3 (rigging
+                    // kit / prop / engine hole relationship data). null when
+                    // the motor came from the standard grid or no menu exists.
+                    selectedMotorMenuSlot,
                     selectedTrailerOptionsData,
                     customTrailerOptions,
                     selectedDealerFitData,

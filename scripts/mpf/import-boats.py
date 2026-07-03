@@ -45,15 +45,21 @@ HF_RANGE_IDS = {
     "Patrol": "vfXxDuMpChteKncb7LnG",
     "Coaster": "coaster",
 }
-NEW_BRAND_SLUGS = {
-    "Stacer": "stacer",
-    "Stabicraft": "stabicraft",
-    "Surtees": "surtees",
-    "Jeanneau": "jeanneau",
-    "Merry Fisher": "merry-fisher",
-    "Cap Camarat": "cap-camarat",
-    "Haines Signature": "haines-signature",
-    "Formosa": "formosa",
+# Brand routing (audit: phase2.brand-mapping-refined, 2026-07-03).
+# Five brands ALREADY have live vendors + modules — route into them, never
+# duplicate. Merry Fisher + Cap Camarat are Jeanneau product lines → ranges
+# under the existing Jeanneau vendor. Only Formosa is net-new (vendor+module).
+# MPF models land in a dedicated range per brand so existing ranges/models
+# (e.g. Jeanneau's 21 pre-existing models) stay untouched.
+BRAND_ROUTING = {
+    "Stacer":           {"vendorId": "LWgHuGoKfUBeKZ8eWnEi", "rangeId": "mpf-catalog", "rangeName": "MPF Catalog", "createVendor": False},
+    "Stabicraft":       {"vendorId": "0cUm736tE9ON2WFLRHD0", "rangeId": "mpf-catalog", "rangeName": "MPF Catalog", "createVendor": False},
+    "Surtees":          {"vendorId": "gLAi5eHYiZDgrvjDUaos", "rangeId": "mpf-catalog", "rangeName": "MPF Catalog", "createVendor": False},
+    "Haines Signature": {"vendorId": "DJ5GVMzLaNWNcOlRqzJV", "rangeId": "mpf-catalog", "rangeName": "MPF Catalog", "createVendor": False},
+    "Jeanneau":         {"vendorId": "lwGHoqdqNPuSZYYQAgG7", "rangeId": "jeanneau-mpf", "rangeName": "Jeanneau (MPF)", "createVendor": False},
+    "Merry Fisher":     {"vendorId": "lwGHoqdqNPuSZYYQAgG7", "rangeId": "merry-fisher", "rangeName": "Merry Fisher", "createVendor": False},
+    "Cap Camarat":      {"vendorId": "lwGHoqdqNPuSZYYQAgG7", "rangeId": "cap-camarat", "rangeName": "Cap Camarat", "createVendor": False},
+    "Formosa":          {"vendorId": "formosa", "rangeId": "mpf-catalog", "rangeName": "MPF Catalog", "createVendor": True, "createModule": True},
 }
 
 
@@ -296,27 +302,36 @@ def main():
             hf_stats["skipUnchanged"] += 1
     summary["highfield"] = hf_stats
 
-    # ================= New brand vendors (D4) =================
-    for brand, slug in NEW_BRAND_SLUGS.items():
+    # ============ Non-Highfield brands (D4 + routing refinement) ============
+    for brand, route in BRAND_ROUTING.items():
         bb = [b for b in boats if b["brand"] == brand]
         if not bb:
             continue
         currencies = [b["landedCostChain"]["currency"] for b in bb]
         currency = max(set(currencies), key=currencies.count)
-        stats = {"vendorCreate": 0, "rangeCreate": 0, "modelCreates": 0,
-                 "variantCreates": 0, "modelUpdates": 0, "variantUpdates": 0,
-                 "skipUnchanged": 0}
+        stats = {"vendorCreate": 0, "moduleCreate": 0, "rangeCreate": 0,
+                 "modelCreates": 0, "variantCreates": 0, "modelUpdates": 0,
+                 "variantUpdates": 0, "skipUnchanged": 0}
 
-        vpath = f"data-warehouse/{slug}"
-        op = store.upsert(vpath, {
-            "name": brand, "slug": slug, "vendorType": "Boat Brand",
-            "currency": currency,
-            "mpfSource": {"file": src, "extractedAt": extracted_at},
-        })
-        stats["vendorCreate"] += 1 if op == "create" else 0
+        vendor_id = route["vendorId"]
+        vpath = f"data-warehouse/{vendor_id}"
+        if route.get("createVendor"):
+            op = store.upsert(vpath, {
+                "name": brand, "slug": vendor_id, "vendorType": "Boat Brand",
+                "currency": currency,
+                "mpfSource": {"file": src, "extractedAt": extracted_at},
+            })
+            stats["vendorCreate"] += 1 if op == "create" else 0
+        # existing vendors: doc untouched — models land in a dedicated range.
+        if route.get("createModule"):
+            op = store.upsert(f"modules/{vendor_id}-module", {
+                "name": brand, "slug": vendor_id, "mainVendorId": vendor_id,
+                "mpfSource": {"file": src, "extractedAt": extracted_at},
+            })
+            stats["moduleCreate"] += 1 if op == "create" else 0
 
-        rpath = f"{vpath}/ranges/all"
-        op = store.upsert(rpath, {"name": "All Models",
+        rpath = f"{vpath}/ranges/{route['rangeId']}"
+        op = store.upsert(rpath, {"name": route["rangeName"],
                                   "mpfSource": {"file": src, "extractedAt": extracted_at}})
         stats["rangeCreate"] += 1 if op == "create" else 0
 

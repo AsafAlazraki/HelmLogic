@@ -57,6 +57,18 @@ interface FinalizeQuoteDialogProps {
         customOptions: any[];
         selectedMotor: any;
         selectedMotorAccessories: any[];
+        /** NSM MPF — motor-menu slot relationship data (rigging kit / prop /
+         *  engine hole) captured when the motor was picked from the variant's
+         *  NSM Recommended menu on Step 3. Optional; null pre-import. */
+        selectedMotorMenuSlot?: {
+            slot: number | null;
+            motorName: string | null;
+            riggingKit: string | null;
+            propPartNo: string | null;
+            propDesc: string | null;
+            engineHole: string | null;
+            recommended: boolean;
+        } | null;
         selectedTrailerOptionsData: any[];
         customTrailerOptions?: any[];
         selectedDealerFitData: any[];
@@ -292,6 +304,10 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 fuelTank: selectedMotor['Fuel Tank'] || selectedMotor.fuelTank || null,
                 prop: selectedMotor['Prop'] || selectedMotor.prop || null,
                 warranty: selectedMotor['Warranty'] || selectedMotor.warranty || null,
+                // NSM MPF — snapshot of the motor-menu slot relationship data
+                // (rigging kit / prop part / engine hole) when the motor was
+                // picked from the NSM Recommended menu. null otherwise.
+                menuSlot: quoteData.selectedMotorMenuSlot ?? null,
                 accessories: (selectedMotorAccessories || []).map((a: any) => ({
                     id: a.id || null,
                     name: a.name || 'Unnamed Accessory',
