@@ -29,25 +29,25 @@ _(numbered UI-1…; class tags: [alignment] [truncation] [currency] [empty-state
 - **What:** The selected motor card reserves a ~400px image area; the Yamaha CDN URL (`https://www.yamaha-motor.com.au/-/media/products/marine/outboard/...`, Incapsula-blocked — known since v1.11) 404s/blocks → broken-img alt text ("Motor") floats in a giant white void. Same for the hero carousel slide (alt "Build Preview" top-left, whole hero blank).
 - **Probe evidence:** `probes.jsonl` `07-sp560-step3-motor-selected` brokenImages ×2 (same Yamaha URL).
 - **Suggested fix:** `onError` fallback on the motor `<Image>` sites (~lines 1806-1809, 2140, 2205) hiding the image container or swapping to a BuildBand-style placeholder (Ship icon + model name), mirroring the PDF's SummaryImage fallback chain shipped in v1.11.
-- **Status:** HANDOFF (`highfield-quote-flow.tsx` main-owned).
+- **Status:** **FIXED (FFR-20, 2026-07-04)** — `deadImageUrls` state + `markImageDead` onError on the hero-carousel, selected-motor-card and motor-grid image sites; a dead URL collapses the surface to its existing Ship-icon / no-image state (hero slides self-remove from `carouselSlides`).
 
 ### UI-3 — Trailer card broken image: `imageUrl` points at an auth-walled SharePoint URL — [image] [data] — HANDOFF
 - **Where:** Quote flow Step 4, SP560. `1920/08-sp560-step4-trailer.png`
 - **What:** "GFAB HIGHFIELD PA600 SERIES" trailer card shows browser broken-image + alt text. Probe: `https://northsidemarine1.sharepoint.com/sites/NSMMasterPriceFile/Shared%20Documents/General/Master%20Price%20File/Origin…` — a SharePoint document URL saved as `imageUrl` by the MPF import. It can never render for a customer/salesperson (auth-walled), in any environment.
 - **Suggested fix:** two layers — (a) data: image-remediation pass should mirror-or-null SharePoint-hosted `imageUrl`s (same treatment as the 171 mirrored in v1.31, `mpf-mirror/`); (b) code: same `onError` hide as UI-2 at trailer card image sites (~2542-2551).
-- **Status:** HANDOFF (code file main-owned) + data note for the MPF image remediation owner.
+- **Status:** **CODE FIXED (FFR-20, 2026-07-04)** — `isRenderableImageUrl()` treats `*.sharepoint.com` URLs as broken up front (they can never render client-side); applied in `resolveImageUrl` + trailer assignment/legacy cards + trailer spec sheet + carousel, so the image block simply doesn't render. **Data note for the MPF image-remediation owner still stands** (mirror-or-null SharePoint `imageUrl`s).
 
 ### UI-4 — Quote-flow header title overlaps the step label for long model names — [truncation] [alignment] — HANDOFF
 - **Where:** Quote flow header, all steps, any long model name. Evidence (pre-existing runs, same code): `tasks/test-evidence/module-quotes/allbrands-stacer-step1.png` … `step6` — "STACER - 409 ASSAULT PRO" runs under the "STEP x OF 6 / …" sub-label. Reproduced identically at 1366 (narrower stepper next to it).
 - **Root cause:** `src/components/highfield-quote-flow.tsx` ~line 1752-1753 — title container is `shrink-0 sm:w-56` while the `<h2>` is `whitespace-nowrap`; anything wider than 14rem paints over the adjacent flex sibling.
 - **Suggested fix:** `whitespace-nowrap` → `truncate` on the h2 (+ `title={model?.name}` for hover recovery).
-- **Status:** HANDOFF (main-owned).
+- **Status:** **FIXED (FFR-21, 2026-07-04)** — exactly the suggested fix (`truncate min-w-0` + `title` attr).
 
 ### UI-5 — Hero carousel is a bare white void with orphan arrows when a model has zero imagery — [empty-state] [image] — HANDOFF
 - **Where:** Quote flow, all steps for image-less MPF models (Stacer 409 Assault Pro; most non-HF brands). `1920/11-stacer-step1-build-config.png` (+ pre-existing `module-quotes/allbrands-stacer-*.png`).
 - **What:** `carouselSlides` (highfield-quote-flow.tsx ~761-780) is empty → `<Carousel>` renders nothing, but `CarouselPrevious/Next` arrows still render, pointing at a giant empty white panel — reads as "broken", not "no photos".
 - **Suggested fix:** when `carouselSlides.length === 0` render a placeholder (Ship icon + "No imagery on file" + model name); hide arrows when `length < 2`.
-- **Status:** HANDOFF (main-owned).
+- **Status:** **FIXED (FFR-20, 2026-07-04)** — exactly the suggested fix; `carouselSlides` additionally filters non-renderable URLs (SharePoint + onError'd) so a model whose only imagery is dead also gets the placeholder, not a void.
 
 ### UI-6 — `toLocaleString()` used for prices in NSM Recommended surfaces (can render $1,016.545 / $17,643.5) — [currency] — FIXED
 - **Where:** `src/components/nsm-recommended.tsx` line 173 (motor card price), line 360 (rigging-kit retail).
@@ -79,7 +79,7 @@ _(numbered UI-1…; class tags: [alignment] [truncation] [currency] [empty-state
 ### UI-10 — Step-6 Base Vessel shows $0 at Cash Price level on SP560 — [currency] [data] — HANDOFF (observation)
 - **Where:** `1920/10-sp560-step6-summary.png` — "SPORT SP560 / PVC · STANDARD COLOR — **$0**" while the package total is $28,356.
 - **What:** At the default "Cash Price" level with no explicit variant click, the base-vessel summary line resolves to $0 (honest-fail style) even though Step 1 showed $10,430 package pricing. Needs a pricing-owner ruling: either the line should show the resolved hull price or an explicit "not priced at this level" marker — a silent $0 on a customer-facing summary is the class stakeholders catch.
-- **Status:** HANDOFF (quote-flow owned; money-math domain).
+- **Status:** **FIXED (FFR-23, 2026-07-04)** — root-caused via live Firestore probe. (1) The audited $0 was a **null `activeVariant`** (material picked, hull colour never clicked; "STANDARD COLOR" was the null-fallback label) — the line now renders an explicit amber "Select hull colour on Step 1" / "Not priced at this level" marker instead of a silent $0. (2) Latent money bug fixed in `getPriceForLevel`: boat variants carry legacy-polluted `priceLevels` (e.g. `hull_subdealer: 31`, `hull_aus_sailing: 30` — percent notes, not dollars) that the resolver would serve as dollars when a level missed the MPF `priceLadder`; ladder-carrying items now never resolve through `priceLevels` — mapped levels use the ladder, everything else (incl. Cash) resolves from `sellPriceExclGst` per MPF decision D2. SP560 probe confirms `priceLevels.hull_cash == sellPriceExclGst` on all 15 variants, so selected-variant prices are unchanged.
 
 ### UI-11 — Reporting: every quote renders STATE "—" and TOTAL "$0" — [currency] [empty-state] [data] — FIXED
 - **Where:** `/reporting` → All quotes table + metrics strip. `1920/22-reporting.png` — 18 quotes this month, Pipeline **$0**, Conversion **0%**, all 100 rows **$0** / **—**, while the same quotes show real totals elsewhere (e.g. SP560 $71,837.82 on the module landing).
@@ -156,15 +156,15 @@ The first after-pass overlapped another agent's rebuild of `.next`; several shot
 | # | Finding | Class | Status |
 |---|---|---|---|
 | UI-1 | SP560 Step 5 shows Patrol option packs (FFR-18 gap) | data/empty-state | HANDOFF → fixed by main agent as FFR-19 (e86cbe7); retested PASS |
-| UI-2 | Selected-motor card giant white void on dead image | image/empty-state | HANDOFF (quote-flow, main-owned) |
-| UI-3 | Trailer imageUrl is auth-walled SharePoint link | image/data | HANDOFF + data note |
-| UI-4 | Header title overlaps stepper for long model names | truncation/alignment | HANDOFF (quote-flow) |
-| UI-5 | Hero carousel blank void + orphan arrows (no imagery) | empty-state/image | HANDOFF (quote-flow) |
+| UI-2 | Selected-motor card giant white void on dead image | image/empty-state | **FIXED** (FFR-20, 2026-07-04) |
+| UI-3 | Trailer imageUrl is auth-walled SharePoint link | image/data | **CODE FIXED** (FFR-20) + data note open |
+| UI-4 | Header title overlaps stepper for long model names | truncation/alignment | **FIXED** (FFR-21) |
+| UI-5 | Hero carousel blank void + orphan arrows (no imagery) | empty-state/image | **FIXED** (FFR-20) |
 | UI-6 | `toLocaleString()` prices in NSM surfaces | currency | **FIXED** (nsm-recommended.tsx) |
 | UI-7 | overflow-x-auto strips missing overflow-y-hidden | scrollbar | **FIXED** ×4 components; 2 forbidden-path handoffs + 1 out-of-scope note |
 | UI-8 | Dashboard module cards inconsistent empty-logo treatment | empty-state/image | DOCUMENTED (src/app, out of authority; partially load-timing) |
 | UI-9 | Step-6 Powertrain stale sellPriceExclGst ($13,912.21 vs $17,643) | currency/data | HANDOFF (known ledger item, re-confirmed) |
-| UI-10 | Step-6 Base Vessel $0 at Cash Price level | currency/data | HANDOFF (pricing-owner ruling needed) |
+| UI-10 | Step-6 Base Vessel $0 at Cash Price level | currency/data | **FIXED** (FFR-23) — null-variant marker + priceLevels-pollution bypass |
 | UI-11 | Reporting all-$0 totals + "—" states | currency/empty-state | **FIXED** (reporting-dashboard.tsx) |
 | UI-12 | Rigging Kits manager em-dash wall | empty-state/data | **FIXED** (rigging-kits-manager.tsx) |
 | UI-13 | Pricing Matrix manager slugs + em-dashes | empty-state/data | **FIXED** (pricing-matrix-manager.tsx) |
@@ -173,6 +173,9 @@ The first after-pass overlapped another agent's rebuild of `.next`; several shot
 | UI-16/17/18 | Service dashboard, catalog manager, suppliers, customers, login, 1366 pass | — | PASS |
 
 **Fixed: 6 findings (9 files) · Handoff: 6 (5 quote-flow + 1 data) · Documented: 2 · Pass: 3 screen groups.**
+
+### Handoff close-out addendum (2026-07-04, FFR-20…FFR-24)
+Quote-flow handoffs UI-2 / UI-3(code) / UI-4 / UI-5 / UI-10 fixed in `src/components/highfield-quote-flow.tsx` (+ `finalize-quote-dialog.tsx` for the FFR-22 trailer-rego field report) — see `fail-fix-retest.json` FFR-20…FFR-24 for root causes and retests. Also folded in `PER_BOAT_SETS.md` NEW-1 (residual same-digit / digitless-brand pack passes, incl. ZeroJet + "To suit Highfield Boats" on non-HF hulls) and NEW-2 (Roll-Up Airmat↔Aluminium floor packs) via the Step-5 classifier — verified with a 33-case verbatim-port harness (ALL PASS) incl. FFR-19 regression guards. Still open from this audit: UI-1 (already fixed as FFR-19), UI-3 **data** remediation (mirror-or-null SharePoint imageUrls), UI-8 (out of authority), UI-9 (Step-6 Powertrain stale price — separate ledger item).
 
 ## Visual-regression baseline refresh (last step)
 `npm run test:visual:update` run after all fixes with no other playwright active: **6 of 7 baselines refreshed/verified** — only `reporting.png` actually changed (UI-11's real totals; regenerated intentionally). The 7th test (`quote flow — CL380 step 1`) errored twice **before reaching the screenshot**: it drives the org-route New Quote dialog, which hits the ledger-known "org-route strips `?range=&vendor=` → Context Error" bug (see `phase6.ultimate` finding in `tasks/mpf-audit/AUDIT_LOG.jsonl`). Its existing baseline is untouched and remains valid — none of this audit's fixes affect Step 1 rendering. Suggested follow-up for the visual-suite owner: point that test at the non-org `/modules/{id}/quote/{modelId}?range&vendor` route like every other green spec.

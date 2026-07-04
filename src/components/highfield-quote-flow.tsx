@@ -261,10 +261,21 @@ export function HighfieldQuoteFlow({
         // prefer its ex-GST value for trade / sub-dealer style levels.
         // Items without a ladder (motors, accessories, trailers, legacy
         // variants) fall straight through to the existing resolver.
-        const ladderKey = level ? PRICE_LADDER_LEVEL_MAP[level] : undefined;
-        if (ladderKey) {
-            const exGst = item?.priceLadder?.[ladderKey]?.exGst;
-            if (typeof exGst === 'number' && Number.isFinite(exGst)) return exGst;
+        const ladder = item?.priceLadder;
+        if (ladder && typeof ladder === 'object') {
+            const ladderKey = level ? PRICE_LADDER_LEVEL_MAP[level] : undefined;
+            if (ladderKey) {
+                const exGst = ladder?.[ladderKey]?.exGst;
+                if (typeof exGst === 'number' && Number.isFinite(exGst)) return exGst;
+            }
+            // UI-10 (2026-07-04 audit) — ladder-carrying variants NEVER
+            // resolve through item.priceLevels: boat variants carry legacy
+            // polluted priceLevels values (e.g. hull_subdealer: 31, a
+            // percent-off note, NOT dollars) that must never price a quote.
+            // Cash / Published basis is sellPriceExclGst per MPF decision D2
+            // (derived from NSM's authoritative inc-GST cash price), which
+            // the plain fallback chain resolves first.
+            return resolvePriceLevel(item, null);
         }
         return resolvePriceLevel(item, level);
     }
@@ -748,14 +759,29 @@ export function HighfieldQuoteFlow({
         );
     }, [selectedOptionIds, model.optionalFeatures]);
 
+    /** UI-2/UI-3/UI-5 (2026-07-04 audit) — dead-image handling. URLs that
+     *  fail to load are remembered here so every surface (hero carousel,
+     *  motor cards, trailer cards) collapses to its no-image state instead
+     *  of a giant white void with a broken-img glyph. SharePoint document
+     *  URLs (MPF import artifacts) are auth-walled and can NEVER render for
+     *  a customer, so they're treated as broken up front. */
+    const [deadImageUrls, setDeadImageUrls] = useState<Set<string>>(() => new Set());
+    const markImageDead = (url?: string | null) => {
+        if (!url) return;
+        setDeadImageUrls(prev => (prev.has(url) ? prev : new Set(prev).add(url)));
+    };
+    const isRenderableImageUrl = (url?: string | null): boolean =>
+        !!url && !/\.sharepoint\.com/i.test(url) && !deadImageUrls.has(url);
+
     const resolveImageUrl = (item: any) => {
         const path = item?.imageUrl || item?.imageLink || item?.['Image Link'] || item?.SummaryImage || item?.url || item?.image;
         if (!path || typeof path !== 'string') return null;
-        if (path.startsWith('http') || path.startsWith('data:image')) return path;
-        if (path.includes('images/products') || path.includes('images/accessories')) {
-            return `https://www.yamaha-motor.com.au${path.startsWith('/') ? '' : '/'}${path.trim().replace(/\\/g, '/')}`;
-        }
-        return path.trim().replace(/\\/g, '/');
+        let out: string;
+        if (path.startsWith('http') || path.startsWith('data:image')) out = path;
+        else if (path.includes('images/products') || path.includes('images/accessories')) {
+            out = `https://www.yamaha-motor.com.au${path.startsWith('/') ? '' : '/'}${path.trim().replace(/\\/g, '/')}`;
+        } else out = path.trim().replace(/\\/g, '/');
+        return isRenderableImageUrl(out) ? out : null;
     };
 
     const carouselSlides = useMemo(() => {
@@ -763,21 +789,22 @@ export function HighfieldQuoteFlow({
         // Only push slides that actually have a renderable URL — empty
         // strings used to push a "broken Build Preview" tile into the
         // carousel.
-        if (model.coverImageUrl) slides.push({ type: 'boat', url: model.coverImageUrl });
-        if (activeVariant?.imageUrl) slides.push({ type: 'variant', url: activeVariant.imageUrl });
+        if (isRenderableImageUrl(model.coverImageUrl)) slides.push({ type: 'boat', url: model.coverImageUrl });
+        if (isRenderableImageUrl(activeVariant?.imageUrl)) slides.push({ type: 'variant', url: activeVariant!.imageUrl });
         if (buildPreviewSlide) slides.push({ type: 'build', content: buildPreviewSlide });
         if (selectedMotor) {
             const mUrl = resolveImageUrl(selectedMotor);
             if (mUrl) slides.push({ type: 'motor', url: mUrl });
         }
-        if (selectedTrailerId && effectiveTrailerConfig?.imageUrl) slides.push({ type: 'trailer', url: effectiveTrailerConfig.imageUrl });
+        if (selectedTrailerId && isRenderableImageUrl(effectiveTrailerConfig?.imageUrl)) slides.push({ type: 'trailer', url: effectiveTrailerConfig.imageUrl });
         if (model.galleryImageUrls) {
             model.galleryImageUrls.forEach((url: string) => {
-                if (url && url !== model.coverImageUrl) slides.push({ type: 'gallery', url });
+                if (isRenderableImageUrl(url) && url !== model.coverImageUrl) slides.push({ type: 'gallery', url });
             });
         }
         return slides;
-    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId, effectiveTrailerConfig?.imageUrl]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId, effectiveTrailerConfig?.imageUrl, deadImageUrls]);
 
     const selectedOptionsData = useMemo<any[]>(() => {
         return model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id)) || [];
@@ -923,31 +950,51 @@ export function HighfieldQuoteFlow({
         const modelDigits = (modelName.match(/(\d{3,4})/) || [])[1] || '';
         const modelRangeWord = RANGE_WORDS[modelName.slice(0, 2).toUpperCase()] || '';
         const vendorNameUpper = (vendor?.name || '').toUpperCase();
-        const RANGE_WORD_LIST = Array.from(new Set(Object.values(RANGE_WORDS)));
+        // Section-side range vocabulary: model-prefix range words PLUS ranges
+        // that exist in the MPF Dealer Fit sheet but have no live models yet
+        // (NEW-1 residual: 'HIGHFIELD - ZeroJet 330' digit-collided onto SP330
+        // because ZEROJET wasn't a recognised range word).
+        const RANGE_WORD_LIST = Array.from(new Set([...Object.values(RANGE_WORDS), 'ZEROJET']));
+        const BRAND_WORD_RE = /(HIGHFIELD|STACER|STABICRAFT|SURTEES|JEANNEAU|FORMOSA|HAINES)/;
         const classifySection = (raw: string): 'hidden' | 'model' | 'general' => {
             const c = raw.toUpperCase();
             if (c.startsWith('###') || c.includes('OBSELETE') || c.includes('OBSOLETE')) return 'hidden';
             if (c.includes('PRE DELIVERY') || c.includes('PRE-DELIVERY')) return 'hidden';
             if (c.includes('RIGGING KIT') || c.includes('HELM MASTER') || c.includes('ADD ON KITS')) return 'hidden';
-            // Brand-scoped packs: digits OR a range word make it model-scoped
-            // (UI-1: 'HIGHFIELD - PATROL' has no digits but is a Patrol pack).
-            if (/(HIGHFIELD|STACER|STABICRAFT|SURTEES|JEANNEAU|FORMOSA|HAINES)/.test(c)
-                && (/\d{3}/.test(c) || RANGE_WORD_LIST.some(w => c.includes(w)))) return 'model';
+            // Any section naming a brand is brand/model-scoped (NEW-1 residual:
+            // digitless, rangeless 'TUBE COVER OPTIONS - To suit Highfield
+            // Boats' was 'general' and leaked onto Surtees/Stacer hulls).
+            if (BRAND_WORD_RE.test(c)) return 'model';
             if (c.includes('SPECIFIC OPTIONS')) return 'model';
             return 'general';
         };
         const modelSectionMatches = (raw: string): boolean => {
             const c = raw.toUpperCase();
+            // Brand agreement first (NEW-1 defense-in-depth): a section naming
+            // a brand only ever shows on that brand's hulls, whatever the
+            // digits say ('HIGHFIELD - ZeroJet 700' never on a Surtees 700).
+            const secBrand = (c.match(BRAND_WORD_RE) || [])[1] || '';
+            if (secBrand && !vendorNameUpper.includes(secBrand)) return false;
             const secDigits = (c.match(/(\d{3,4})/) || [])[1] || '';
             const secRange = RANGE_WORD_LIST.find(w => c.includes(w)) || '';
             // A section naming a range only ever shows on that range (UI-1).
             if (secRange && secRange !== modelRangeWord) return false;
+            // NEW-2 (per-boat-sets) — Roll-Up floor packs: the section's floor
+            // keyword must agree with the model code's floor designation
+            // (RU230KAM = Airmat, RU230AL = Aluminium; 'Easy Go' models carry
+            // neither suffix and see neither floor pack).
+            const mUpper = modelName.toUpperCase();
+            if (c.includes('AIRMAT') && !(/\dKAM\b/.test(mUpper) || mUpper.includes('AIRMAT'))) return false;
+            if (c.includes('ALUMINIUM') && !(/\dAL\b/.test(mUpper) || mUpper.includes('ALUMINIUM'))) return false;
             // Digits present on both sides must agree.
             if (secDigits && modelDigits && secDigits !== modelDigits) return false;
             if (secDigits && modelDigits && secDigits === modelDigits) return true;
             // Range agrees, no digits ('HIGHFIELD - PATROL' on a PA boat).
             if (secRange && secRange === modelRangeWord) return true;
-            // Brand-specific digitless, rangeless packs (JEANNEAU SPECIFIC OPTIONS).
+            // Brand-specific digitless, rangeless packs ('JEANNEAU SPECIFIC
+            // OPTIONS', 'TUBE COVER OPTIONS - To suit Highfield Boats') —
+            // brand↔vendor agreement was already enforced above.
+            if (!secDigits && !secRange && secBrand) return true;
             if (!secDigits && !secRange && vendorNameUpper && c.includes(vendorNameUpper.split(' ')[0])) return true;
             return false;
         };
@@ -1340,6 +1387,17 @@ export function HighfieldQuoteFlow({
         }, 50);
     };
     const hasTrailer = !!effectiveTrailerConfig;
+    /** Field report (2026-07-04, FFR-22) — deselecting the trailer must also
+     *  clear the trailer REGISTRATION, otherwise the rego line survives onto
+     *  the finalized quote/summary while every other trailer artifact is
+     *  gone. Single helper so every "no trailer" path clears the same set. */
+    const clearTrailerSelection = () => {
+        setSelectedTrailerId(null);
+        setCatalogTrailerSnapshot(null);
+        setSelectedTrailerOptionIds([]);
+        setIsTrailerRegoSelected(false);
+        setTrailerRegoSnapshot(null);
+    };
     const nextStep = () => {
         if (currentStep < STEPS.length) {
             // Skip trailer step (4) if this model has no trailer configured
@@ -1799,7 +1857,10 @@ export function HighfieldQuoteFlow({
             <div className="sticky top-0 z-[100] bg-card/95 backdrop-blur-sm border-b border-slate-200/70 shadow-sm shrink-0 relative">
                 <div className="h-14 px-4 sm:px-8 flex items-center gap-4 sm:gap-6">
                     <div className="flex items-center gap-3 min-w-0 shrink-0 sm:w-56">
-                        <h2 className="text-sm font-black uppercase tracking-[0.22em] text-primary whitespace-nowrap">{model?.name ?? 'Build'}</h2>
+                        {/* UI-4 — long model names (e.g. "STACER - 409 ASSAULT PRO")
+                            truncate instead of painting over the step label; hover
+                            recovers the full name via title. */}
+                        <h2 className="text-sm font-black uppercase tracking-[0.22em] text-primary truncate min-w-0" title={model?.name ?? 'Build'}>{model?.name ?? 'Build'}</h2>
                         <div className="hidden xl:flex flex-col leading-tight min-w-0 border-l border-slate-200 pl-3">
                             <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap">Step {currentStep} of {STEPS.length}</span>
                             <span className="text-[10px] font-semibold text-slate-500 truncate">{STEPS.find(s => s.id === currentStep)?.label ?? ''}</span>
@@ -1836,6 +1897,16 @@ export function HighfieldQuoteFlow({
                 <div className="w-full lg:w-7/12 relative flex flex-col bg-slate-50/50 overflow-hidden">
                     <div className="flex-1 px-4 sm:px-8 pt-4 sm:pt-8 pb-0 flex flex-col min-w-0">
                         <div className="relative flex-1 w-full bg-white rounded-[2rem] border-2 border-slate-100 shadow-xl overflow-hidden group">
+                            {/* UI-5 (2026-07-04 audit) — models with zero renderable imagery
+                                get an explicit placeholder instead of a bare white void with
+                                orphan carousel arrows. */}
+                            {carouselSlides.length === 0 && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-50/60">
+                                    <Ship className="h-16 w-16 text-slate-200" />
+                                    <p className="text-sm font-black uppercase tracking-[0.22em] text-slate-400">{model?.name ?? 'Build'}</p>
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">No imagery on file</p>
+                                </div>
+                            )}
                             <Carousel className="w-full h-full" opts={{ loop: true }} setApi={setApi}>
                                 <CarouselContent className="h-full">
                                     {carouselSlides.map((slide, idx) => (
@@ -1852,10 +1923,13 @@ export function HighfieldQuoteFlow({
                                                         image fills the card behind it so there are no white gutters.
                                                         Motor + trailer product cutouts stay plain object-contain.
                                                         `unoptimized` keeps external-CDN covers from being proxy-blocked. */}
-                                                    {slide.url && (slide.type === 'motor' || slide.type === 'trailer') && <Image src={slide.url} alt="Build Preview" fill unoptimized className="object-contain p-6 transition-all" priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
+                                                    {/* UI-2 (2026-07-04 audit) — onError marks the URL dead, which
+                                                        drops the slide from carouselSlides on re-render (no white
+                                                        void with a broken-img glyph in the hero). */}
+                                                    {slide.url && (slide.type === 'motor' || slide.type === 'trailer') && <Image src={slide.url} alt="Build Preview" fill unoptimized className="object-contain p-6 transition-all" priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} onError={() => markImageDead(slide.url)} />}
                                                     {slide.url && !(slide.type === 'motor' || slide.type === 'trailer') && <>
                                                         <Image src={slide.url} alt="" aria-hidden fill unoptimized className="object-cover blur-2xl scale-110 opacity-50" loading={idx === 0 ? undefined : 'lazy'} />
-                                                        <Image src={slide.url} alt="Build Preview" fill unoptimized className="object-contain transition-all" priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />
+                                                        <Image src={slide.url} alt="Build Preview" fill unoptimized className="object-contain transition-all" priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} onError={() => markImageDead(slide.url)} />
                                                     </>}
                                                     <Button variant="ghost" size="icon" className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20" onClick={() => setLightboxUrl(slide.url || null)}><Maximize2 className="h-5 w-5" /></Button>
                                                 </>
@@ -1863,8 +1937,12 @@ export function HighfieldQuoteFlow({
                                         </CarouselItem>
                                     ))}
                                 </CarouselContent>
-                                <CarouselPrevious className="left-6 h-10 w-10 bg-white/90 border-2 border-slate-200 shadow-xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
-                                <CarouselNext className="right-6 h-10 w-10 bg-white/90 border-2 border-slate-200 shadow-xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
+                                {/* Arrows only make sense with 2+ slides (UI-5: orphan arrows
+                                    over an empty panel read as "broken"). */}
+                                {carouselSlides.length > 1 && <>
+                                    <CarouselPrevious className="left-6 h-10 w-10 bg-white/90 border-2 border-slate-200 shadow-xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
+                                    <CarouselNext className="right-6 h-10 w-10 bg-white/90 border-2 border-slate-200 shadow-xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
+                                </>}
                             </Carousel>
                         </div>
                     </div>
@@ -2185,8 +2263,10 @@ export function HighfieldQuoteFlow({
                                                     title="Click to remove motor (boat-only quote)"
                                                 >
                                                     <div className="relative aspect-[21/9] w-full bg-slate-50 border-b flex items-center justify-center">
+                                                        {/* UI-2 — dead image collapses to the Ship placeholder via
+                                                            markImageDead instead of a ~400px white void. */}
                                                         {resolveImageUrl(selectedMotor) ? (
-                                                            <Image src={resolveImageUrl(selectedMotor)!} alt="Motor" fill unoptimized className="object-contain p-8 mix-blend-multiply" />
+                                                            <Image src={resolveImageUrl(selectedMotor)!} alt="Motor" fill unoptimized className="object-contain p-8 mix-blend-multiply" onError={() => markImageDead(resolveImageUrl(selectedMotor))} />
                                                         ) : (
                                                             <Ship className="h-16 w-16 text-slate-200" />
                                                         )}
@@ -2251,7 +2331,7 @@ export function HighfieldQuoteFlow({
                                                         <button key={m.id} onClick={() => { setSelectedMotor(m); setMotorExplicitlyDeselected(false); setPropComesStandard(false); setSelectedMotorMenuSlot(null); const standardIds = (m.masterAccessories || []).filter((a: any) => a.isStandard).map((a: any) => a.id); if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds); setTimeout(() => motorDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400); }} className="group relative flex flex-col border-4 rounded-[2rem] overflow-hidden transition-all bg-white shadow-2xl h-full border-transparent hover:border-primary/20">
                                                             <div className="relative aspect-video w-full bg-slate-50 border-b flex items-center justify-center">
                                                                 {mUrl ? (
-                                                                    <Image src={mUrl} alt="Motor" fill className="object-contain p-6 mix-blend-multiply transition-transform group-hover:scale-110" />
+                                                                    <Image src={mUrl} alt="Motor" fill className="object-contain p-6 mix-blend-multiply transition-transform group-hover:scale-110" onError={() => markImageDead(mUrl)} />
                                                                 ) : (
                                                                     <Ship className="h-12 w-12 text-slate-200" />
                                                                 )}
@@ -2526,10 +2606,7 @@ export function HighfieldQuoteFlow({
                                                 {selectedTrailerId && (
                                                     <button
                                                         type="button"
-                                                        onClick={() => {
-                                                            setSelectedTrailerId(null);
-                                                            setCatalogTrailerSnapshot(null);
-                                                        }}
+                                                        onClick={clearTrailerSelection}
                                                         className="text-[9px] font-black uppercase tracking-widest text-white/90 bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-full border border-white/30 transition-colors"
                                                         title="Clear the trailer from this quote (boat-only)"
                                                     >
@@ -2571,10 +2648,8 @@ export function HighfieldQuoteFlow({
                                                             type="button"
                                                             onClick={() => {
                                                                 if (isActive) {
-                                                                    // Untick — clear the active trailer.
-                                                                    setSelectedTrailerId(null);
-                                                                    setCatalogTrailerSnapshot(null);
-                                                                    setSelectedTrailerOptionIds([]);
+                                                                    // Untick — clear the active trailer (incl. rego, FFR-22).
+                                                                    clearTrailerSelection();
                                                                 } else {
                                                                     loadAssignmentSnapshot(a);
                                                                 }
@@ -2586,9 +2661,11 @@ export function HighfieldQuoteFlow({
                                                                     : "border-transparent hover:border-primary/20",
                                                             )}
                                                         >
-                                                            {/* Image only renders when an imageUrl exists — no
-                                                                broken-img placeholder, no empty grey box. */}
-                                                            {a.imageUrl ? (
+                                                            {/* Image only renders when a RENDERABLE imageUrl exists — no
+                                                                broken-img placeholder, no empty grey box. UI-3: MPF-imported
+                                                                auth-walled SharePoint URLs + onError'd URLs are treated as
+                                                                absent. */}
+                                                            {isRenderableImageUrl(a.imageUrl) ? (
                                                                 <div className="relative aspect-video w-full bg-slate-50 shrink-0">
                                                                     <Image
                                                                         src={a.imageUrl}
@@ -2596,6 +2673,7 @@ export function HighfieldQuoteFlow({
                                                                         fill
                                                                         className="object-contain p-3"
                                                                         unoptimized
+                                                                        onError={() => markImageDead(a.imageUrl)}
                                                                     />
                                                                 </div>
                                                             ) : null}
@@ -2626,10 +2704,10 @@ export function HighfieldQuoteFlow({
                                             // Legacy: model has no assignments but has a `trailerConfig`.
                                             // Render the legacy single-trailer card so old data still works.
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); if (!isSelected) setSelectedTrailerOptionIds((effectiveTrailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                    {effectiveTrailerConfig.imageUrl ? (
+                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; if (isSelected) { clearTrailerSelection(); } else { setSelectedTrailerId('primary-trailer'); setSelectedTrailerOptionIds((effectiveTrailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); } }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                    {isRenderableImageUrl(effectiveTrailerConfig.imageUrl) ? (
                                                         <div className="relative aspect-video w-full bg-slate-50 shrink-0">
-                                                            <Image src={effectiveTrailerConfig.imageUrl} alt="Trailer" fill className="object-contain p-4" unoptimized />
+                                                            <Image src={effectiveTrailerConfig.imageUrl} alt="Trailer" fill className="object-contain p-4" unoptimized onError={() => markImageDead(effectiveTrailerConfig.imageUrl)} />
                                                         </div>
                                                     ) : null}
                                                     <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
@@ -2909,11 +2987,23 @@ export function HighfieldQuoteFlow({
                                             <div className="flex items-center justify-between">
                                                 <div className="space-y-0.5">
                                                     <p className="font-black text-sm uppercase tracking-tight text-slate-900">{range?.name} {model?.name}</p>
-                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase">{[selectedMaterial, activeVariant?.name || 'Standard Color'].filter(Boolean).join(' • ')}</p>
+                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase">{[selectedMaterial, activeVariant ? (activeVariant.name || 'Standard Color') : 'No hull colour selected'].filter(Boolean).join(' • ')}</p>
                                                 </div>
                                                 {/* Resolves through the price level (incl. NSM priceLadder
-                                                    when present) instead of raw sellPriceExclGst. */}
-                                                <p className="font-black text-primary italic text-sm">${getPriceForLevel(activeVariant, priceLevel).toLocaleString()}</p>
+                                                    when present) instead of raw sellPriceExclGst. UI-10
+                                                    (2026-07-04 audit): a silent $0 on the customer-facing
+                                                    summary is the class stakeholders catch — when no hull
+                                                    variant is selected (or it resolves to no price) show an
+                                                    explicit marker instead. */}
+                                                {(() => {
+                                                    const basePrice = activeVariant ? getPriceForLevel(activeVariant, priceLevel) : 0;
+                                                    if (basePrice > 0) return <p className="font-black text-primary italic text-sm">${basePrice.toLocaleString()}</p>;
+                                                    return (
+                                                        <span className="text-[9px] font-black uppercase tracking-widest text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full whitespace-nowrap">
+                                                            {activeVariant ? 'Not priced at this level' : 'Select hull colour on Step 1'}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </div>
                                             {isRegoSelected && (
                                                 <div className="mt-4 pt-4 border-t border-dashed space-y-2">
@@ -3071,7 +3161,7 @@ export function HighfieldQuoteFlow({
                                                         <div className="flex items-center gap-3">
                                                             <div className="group/remove h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
                                                                 <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
-                                                                <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => setSelectedTrailerId(null)}><X className="h-3 w-3" /></Button>
+                                                                <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={clearTrailerSelection}><X className="h-3 w-3" /></Button>
                                                             </div>
                                                             <div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{effectiveTrailerConfig.name}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">Precision Chassis</p></div>
                                                         </div>
@@ -3442,7 +3532,9 @@ export function HighfieldQuoteFlow({
                                 const brand = t?.brandName || '';
                                 const series = t?.seriesName || '';
                                 const sell = (t?.sellPriceExclGst ?? cfg?.sellPriceExclGst) ?? null;
-                                const imageUrl = t?.imageUrl || cfg?.imageUrl || '';
+                                const rawSpecImageUrl = t?.imageUrl || cfg?.imageUrl || '';
+                                // UI-3 — auth-walled SharePoint / known-dead URLs never render.
+                                const imageUrl = isRenderableImageUrl(rawSpecImageUrl) ? rawSpecImageUrl : '';
 
                                 const rows: Array<{ label: string; value: any }> = [];
                                 if (code) rows.push({ label: 'Code', value: code });
@@ -3466,7 +3558,7 @@ export function HighfieldQuoteFlow({
                                         {imageUrl && (
                                             <div className="px-6 pt-6">
                                                 <div className="relative h-40 w-full bg-slate-50 rounded-2xl overflow-hidden border-2 border-slate-100">
-                                                    <img src={imageUrl} alt={cfg?.name || 'Trailer'} className="w-full h-full object-contain p-4" />
+                                                    <img src={imageUrl} alt={cfg?.name || 'Trailer'} className="w-full h-full object-contain p-4" onError={() => markImageDead(imageUrl)} />
                                                 </div>
                                             </div>
                                         )}

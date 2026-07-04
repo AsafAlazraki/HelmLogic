@@ -128,8 +128,8 @@ Result: **780/809 boats fully resolve; 29 boats (Stacer FF9-series 15, Jeanneau 
 
 | # | Finding | Scale | Suggested owner action |
 |---|---|---|---|
-| NEW-1 | Step-5 digit-collision pack leak (same-vendor-word / empty-range-word pass in `modelSectionMatches`) | 26 packs / 388 HF + 4 Surtees boats | Extend the UI-1 fix: on digit agreement, require range-word equality when the section has a range word; remove the same-brand auto-pass |
-| NEW-2 | Step-5 Roll-Up floor-pack leak (Airmat ↔ Aluminium) | 8 packs / 32 RU boats | Same classifier fix: match floor token (`KAM`→Airmat / `AL`→Aluminium) |
+| NEW-1 | Step-5 digit-collision pack leak (same-vendor-word / empty-range-word pass in `modelSectionMatches`) | 26 packs / 388 HF + 4 Surtees boats | **FIXED (FFR-24, 2026-07-04)** — brand↔vendor agreement enforced first in `modelSectionMatches`; ZEROJET added to the section-side range vocabulary; digitless/rangeless brand packs now model-scoped (e.g. "TUBE COVER OPTIONS - To suit Highfield Boats" no longer on Surtees/Stacer hulls). 33-case verbatim-port harness ALL PASS. |
+| NEW-2 | Step-5 Roll-Up floor-pack leak (Airmat ↔ Aluminium) | 8 packs / 32 RU boats | **FIXED (FFR-24, 2026-07-04)** — floor keyword matched against the model name (`/\dKAM\b/`→Airmat, `/\dAL\b/`→Aluminium; Easy Go models see neither pack). |
 | NEW-3 | HF sibling-material FO codes visible cross-variant (`applicableVariantIds` empty) | 5 codes / 118 boats | Data patch: scope `BC001P`/`BC002H`/`HEO034`/`HEP005`/`HEP006` |
 | NEW-4 | Pre-MPF curated FO options visible beyond the boat's MPF row | 51 codes / 211 boats | Product ruling (NSM): prune to MPF parity vs keep curated richness (upsert doctrine kept them deliberately) |
 

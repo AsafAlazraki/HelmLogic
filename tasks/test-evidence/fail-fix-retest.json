@@ -162,6 +162,51 @@
       "fix": "Range words now mark sections model-scoped; a section naming a range only shows on that range; cross-digit mismatches hard-fail; brand-only packs still match by vendor.",
       "retest": "typecheck 0; UI-audit after-pass re-screenshots SP560 + CL290 Step 5",
       "class": "product-fix"
+    },
+    {
+      "id": "FFR-20",
+      "failed": "UI audit UI-2/UI-3/UI-5: dead-image white voids \u2014 selected-motor card + hero carousel render a huge blank panel when the Yamaha CDN URL is Incapsula-blocked; trailer cards render broken-img for MPF-imported auth-walled SharePoint imageUrls; models with zero imagery show a bare white hero with orphan carousel arrows",
+      "firstSeen": "2026-07-04",
+      "rootCause": "No onError handling on external-CDN <Image> sites; SharePoint document URLs saved as imageUrl by the MPF import can never render client-side (auth wall); carouselSlides renders arrows unconditionally and has no empty state.",
+      "fix": "highfield-quote-flow.tsx: deadImageUrls state + markImageDead onError on hero/motor/trailer image sites; isRenderableImageUrl() treats *.sharepoint.com as broken up front and is applied in resolveImageUrl + carouselSlides + trailer card/spec-sheet gates (dead images collapse to the existing Ship-icon/no-image states); hero renders a Ship + 'No imagery on file' placeholder when 0 slides and hides arrows when <2 slides.",
+      "retest": "typecheck 0 + build green; browser spot-check on CL290/SP560/RU Step 3 (evidence config, after fleet walk released the server)",
+      "class": "product-fix"
+    },
+    {
+      "id": "FFR-21",
+      "failed": "UI audit UI-4: quote-flow header title overlaps the 'STEP x OF 6' sub-label for long model names (e.g. STACER - 409 ASSAULT PRO), both viewports",
+      "firstSeen": "2026-07-04",
+      "rootCause": "Title h2 was whitespace-nowrap inside a fixed sm:w-56 container \u2014 anything wider than 14rem painted over the adjacent flex sibling.",
+      "fix": "h2 whitespace-nowrap -> truncate min-w-0 + title={model.name} for hover recovery.",
+      "retest": "typecheck 0 + build green; visual check in browser spot-check pass",
+      "class": "product-fix"
+    },
+    {
+      "id": "FFR-22",
+      "failed": "Field report (Asaf): selecting 'no trailer' clears everything trailer EXCEPT the trailer registration \u2014 the rego line still shows on the final quote/summary and its price stays in the saved financials",
+      "firstSeen": "2026-07-04",
+      "rootCause": "The four trailer-deselect paths cleared selectedTrailerId/catalogTrailerSnapshot but never reset isTrailerRegoSelected/trailerRegoSnapshot; finalize-quote-dialog then wrote registration.trailerRego/trailerRegoPrice ungated by trailer presence, so proposal-view/pdf + quote-financials rendered and summed it (the quote flow's own running total was gated, so Step 6 totals and the saved quote disagreed).",
+      "fix": "highfield-quote-flow.tsx: clearTrailerSelection() helper (id + snapshot + options + isTrailerRegoSelected=false + trailerRegoSnapshot=null) wired into all four deselect paths ('No trailer' pill, card untick, legacy card untick, Step-6 remove). finalize-quote-dialog.tsx: registration.trailerRego/trailerRegoPrice/trailerRegoSnapshot gated on (selectedTrailerId && trailerSource) \u2014 defense-in-depth since Step 4 lets rego be toggled with no trailer selected.",
+      "retest": "typecheck 0 + build green; browser spot-check: deselect trailer -> no trailer-rego line on Step 6 + total drops",
+      "class": "product-fix"
+    },
+    {
+      "id": "FFR-23",
+      "failed": "UI audit UI-10: Step-6 Base Vessel line shows a silent $0 at the default Cash Price level (SP560, 'PVC \u00b7 STANDARD COLOR \u2014 $0' while package total was real money)",
+      "firstSeen": "2026-07-04",
+      "rootCause": "Two layers. (1) The audited $0 was a null activeVariant \u2014 material picked but no hull colour clicked; nothing gates Step 6 on a variant and getPriceForLevel(null) returns 0, rendered as $0. (2) Latent resolution bug confirmed by data probe: boat variants carry legacy-polluted priceLevels values (e.g. hull_subdealer: 31, hull_aus_sailing: 30 \u2014 percent-off notes, not dollars) which resolvePriceLevel would serve as dollars whenever a level missed the MPF priceLadder. Cash basis must come from sellPriceExclGst (MPF decision D2).",
+      "fix": "getPriceForLevel: ladder-carrying items never fall through to item.priceLevels \u2014 mapped levels use priceLadder exGst, everything else resolves the plain fallback chain starting at sellPriceExclGst. Step-6 Base Vessel line renders an explicit amber marker ('Select hull colour on Step 1' / 'Not priced at this level') instead of a silent $0; subtitle no longer claims 'Standard Color' when no variant is selected.",
+      "retest": "typecheck 0 + build green; SP560 Firestore probe confirms hull_cash==sellPriceExclGst so selected-variant prices are unchanged; browser spot-check Step 6",
+      "class": "product-fix"
+    },
+    {
+      "id": "FFR-24",
+      "failed": "PER_BOAT_SETS NEW-1 + NEW-2: residual Step-5 dealer-fit pack leaks after FFR-19 \u2014 digit-collision on unrecognised range words (HIGHFIELD - ZeroJet 330 visible on SP330), digitless/rangeless brand packs classified 'general' (TUBE COVER OPTIONS - To suit Highfield Boats visible on Surtees/Stacer hulls), and every RU boat seeing BOTH Airmat and Aluminium floor packs for its size",
+      "firstSeen": "2026-07-04",
+      "rootCause": "classifySection only marked brand sections model-scoped when digits or a known range word were present; ZEROJET was not in the range vocabulary; modelSectionMatches had no brand<->vendor agreement check; the classifier could not distinguish Roll-Up floor variants (RU230KAM=Airmat vs RU230AL=Aluminium).",
+      "fix": "Any section naming a brand is model-scoped; brand<->vendor agreement enforced first in modelSectionMatches; ZEROJET added to the section-side range vocabulary; floor-keyword gate \u2014 AIRMAT sections require /\\dKAM\\b/ (or AIRMAT) in the model name, ALUMINIUM sections require /\\dAL\\b/ (or ALUMINIUM); Easy Go RU models match neither and see neither pack.",
+      "retest": "Classifier ported verbatim to a 33-case harness covering FFR-19 regression guards + every NEW-1/NEW-2 example from PER_BOAT_SETS (CL290/SP560/SP330/CL460/Coaster/Surtees/Stacer/Jeanneau/Stabicraft/RU*KAM/RU*AL/Easy Go/UL): ALL 33 PASS. typecheck 0 + build green; CL290+SP560+RU browser Step-5 spot-check",
+      "class": "product-fix"
     }
   ]
 }

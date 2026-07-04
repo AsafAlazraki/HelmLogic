@@ -1,180 +1,6 @@
 {
- "updatedUtc": "2026-07-04T08:45:01.632Z",
+ "updatedUtc": "2026-07-04T09:09:49.619Z",
  "models": {
-  "Coaster/Coaster 540 Open": {
-   "range": "Coaster",
-   "model": "Coaster 540 Open",
-   "modelId": "coaster-540-open",
-   "variants": {
-    "total": 3,
-    "pricePass": 3,
-    "priceFail": 0
-   },
-   "steps": {
-    "s1": "pass",
-    "s2": "pass",
-    "s3": "pass",
-    "s4": "pass",
-    "s5": "pass",
-    "s6": "pass"
-   },
-   "priceAsserts": {
-    "s1_variants": {
-     "checked": 3,
-     "failed": 0
-    },
-    "s1_rego": {
-     "checked": 1,
-     "failed": 0
-    },
-    "s2_options": {
-     "checked": 3,
-     "failed": 0
-    },
-    "s3_motorCards": {
-     "checked": 4,
-     "failed": 0
-    },
-    "s4_trailers": {
-     "checked": 1,
-     "failed": 0
-    },
-    "s4_rego": {
-     "checked": 1,
-     "failed": 0
-    },
-    "s5_dealerFit": {
-     "checked": 316,
-     "failed": 0
-    },
-    "s5_fitUp": {
-     "checked": 10,
-     "failed": 0
-    },
-    "s6_summary": {
-     "checked": 4,
-     "failed": 0
-    }
-   },
-   "failures": [],
-   "durationMs": 39508
-  },
-  "Coaster/Coaster 540 ST": {
-   "range": "Coaster",
-   "model": "Coaster 540 ST",
-   "modelId": "coaster-540-st",
-   "variants": {
-    "total": 3,
-    "pricePass": 3,
-    "priceFail": 0
-   },
-   "steps": {
-    "s1": "pass",
-    "s2": "pass",
-    "s3": "pass",
-    "s4": "pass",
-    "s5": "pass",
-    "s6": "pass"
-   },
-   "priceAsserts": {
-    "s1_variants": {
-     "checked": 3,
-     "failed": 0
-    },
-    "s1_rego": {
-     "checked": 1,
-     "failed": 0
-    },
-    "s2_options": {
-     "checked": 1,
-     "failed": 0
-    },
-    "s3_motorCards": {
-     "checked": 4,
-     "failed": 0
-    },
-    "s4_trailers": {
-     "checked": 1,
-     "failed": 0
-    },
-    "s4_rego": {
-     "checked": 1,
-     "failed": 0
-    },
-    "s5_dealerFit": {
-     "checked": 316,
-     "failed": 0
-    },
-    "s5_fitUp": {
-     "checked": 10,
-     "failed": 0
-    },
-    "s6_summary": {
-     "checked": 4,
-     "failed": 0
-    }
-   },
-   "failures": [],
-   "durationMs": 41756
-  },
-  "Coaster/Coaster 600 ST": {
-   "range": "Coaster",
-   "model": "Coaster 600 ST",
-   "modelId": "coaster-600-st",
-   "variants": {
-    "total": 1,
-    "pricePass": 1,
-    "priceFail": 0
-   },
-   "steps": {
-    "s1": "pass",
-    "s2": "pass",
-    "s3": "pass",
-    "s4": "pass",
-    "s5": "pass",
-    "s6": "pass"
-   },
-   "priceAsserts": {
-    "s1_variants": {
-     "checked": 1,
-     "failed": 0
-    },
-    "s1_rego": {
-     "checked": 1,
-     "failed": 0
-    },
-    "s2_options": {
-     "checked": 1,
-     "failed": 0
-    },
-    "s3_motorCards": {
-     "checked": 6,
-     "failed": 0
-    },
-    "s4_trailers": {
-     "checked": 1,
-     "failed": 0
-    },
-    "s4_rego": {
-     "checked": 1,
-     "failed": 0
-    },
-    "s5_dealerFit": {
-     "checked": 316,
-     "failed": 0
-    },
-    "s5_fitUp": {
-     "checked": 10,
-     "failed": 0
-    },
-    "s6_summary": {
-     "checked": 4,
-     "failed": 0
-    }
-   },
-   "failures": [],
-   "durationMs": 39578
-  },
   "Adventure/ADV7": {
    "range": "Adventure",
    "model": "ADV7",
@@ -187,10 +13,10 @@
    "steps": {
     "s1": "pass",
     "s2": "pass",
-    "s3": "pass",
+    "s3": "fail",
     "s4": "pass",
-    "s5": "pass",
-    "s6": "pass"
+    "s5": "fail",
+    "s6": "fail"
    },
    "priceAsserts": {
     "s1_variants": {
@@ -202,7 +28,7 @@
      "failed": 0
     },
     "s3_motorCards": {
-     "checked": 9,
+     "checked": 0,
      "failed": 0
     },
     "s4_trailers": {
@@ -218,16 +44,70 @@
      "failed": 0
     },
     "s5_fitUp": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 1
+    }
+   },
+   "failures": [
+    "[s3] NSM section visible=false but variant.motorMenu has 9 slots",
+    "[s5] Fit-Up selector did not mount",
+    "[s6] total 119951 != sum of picks 102308 (boat 94445 + rego 0 + motor 0 + trailer 7580 + trailer rego 283)"
+   ],
+   "durationMs": 46838
+  },
+  "Adventure/ADV9": {
+   "range": "Adventure",
+   "model": "ADV9",
+   "modelId": "adv9",
+   "variants": {
+    "total": 5,
+    "pricePass": 5,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 5,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 316,
+     "failed": 0
+    },
+    "s5_fitUp": {
      "checked": 10,
      "failed": 0
     },
     "s6_summary": {
-     "checked": 4,
+     "checked": 2,
      "failed": 0
     }
    },
    "failures": [],
-   "durationMs": 37273
+   "durationMs": 29371
   }
  }
 }

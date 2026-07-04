@@ -403,6 +403,12 @@ async function nextStep(page: Page, settleMs: number) {
     await page.locator('button:has-text("Next Step"), button:has-text("Summary")').first().click({ force: true });
     await page.waitForTimeout(settleMs);
 }
+/** Read the "STEP N OF 6" indicator so asserts never run against the wrong step. */
+async function stepNo(page: Page): Promise<number | null> {
+    const t = await page.locator('text=/STEP \\d+ OF 6/i').first().innerText({ timeout: 4000 }).catch(() => '');
+    const m = t.match(/STEP\s+(\d+)/i);
+    return m ? parseInt(m[1], 10) : null;
+}
 /** Read the auto-applied rego chip (name + $) if present in the given scope. */
 async function readRegoChip(page: Page): Promise<{ name: string; amount: number } | null> {
     const badge = page.locator('text=/ex GST/').first();
@@ -426,6 +432,7 @@ for (const rg of FX.ranges) {
 
 async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
     const t0 = Date.now();
+    page.setDefaultTimeout(10000); // never let one dead locator eat the test budget
     const override = FX.modelOverrides[master.id] || null;
     const model = getEffectiveModel(master, override);
     model.__rangeId = rg.id;
@@ -569,6 +576,7 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
     await nextStep(page, 2800);
     res.steps.s2 = 'pass';
     pa.s2_options = { checked: 0, failed: 0 };
+    if ((await stepNo(page)) !== 2) { res.steps.s2 = 'fail'; fail('s2', 'not on STEP 2 OF 6 after Next'); await shot('s2-step'); }
     const expOpts = expectedStep2Options(model, activeVariant, activeMaterial);
     const renderedCards: string[] = await page.$$eval('button.rounded-\\[1\\.5rem\\]', els => els.map(e => (e as HTMLElement).innerText));
     for (const opt of expOpts) {
@@ -594,6 +602,7 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
     await nextStep(page, 4200);
     res.steps.s3 = 'pass';
     pa.s3_motorCards = { checked: 0, failed: 0 };
+    if ((await stepNo(page)) !== 3) { res.steps.s3 = 'fail'; fail('s3', 'not on STEP 3 OF 6 after Next'); await shot('s3-step'); }
     const menu: any[] = Array.isArray(activeVariant.motorMenu) ? [...activeVariant.motorMenu].sort((a, b) => (a?.slot ?? 0) - (b?.slot ?? 0)) : [];
     const motors = buildMotorsForModel(model);
     const nsmHeader = page.locator('h3:has-text("NSM Recommended for this hull")');
@@ -659,9 +668,25 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
     }
 
     /* ----------- Step 4 — trailer menu + per-card price checks ----------- */
+    // The app skips Step 4 entirely when hasTrailer is false (no auto-loaded
+    // assignment snapshot AND no legacy model.trailerConfig) — Next on Step 3
+    // jumps straight to Step 5. Replicate to keep step-aligned.
+    const allAssignments: any[] = model.trailerAssignments || [];
+    const defAssignment = allAssignments.find((a: any) => a?.isDefault) || allAssignments[0] || null;
+    const defTrailerDoc = defAssignment ? FX.trailers[`${defAssignment.brandVendorId}/${defAssignment.seriesId}/${defAssignment.trailerId}`] : null;
+    const hasTrailerStep = !!defTrailerDoc || !!model.trailerConfig;
+    let expTrailerContrib = 0;
+    let finalTrailerDoc: any = null; let finalTrailerAssignment: any = null;
+    let trailerRegoAmount = 0;
+    if (!hasTrailerStep) {
+        res.steps.s4 = 'skip';
+        pa.s4_trailers = { checked: 0, failed: 0 };
+    } else {
     await nextStep(page, 3200);
     res.steps.s4 = 'pass';
     pa.s4_trailers = { checked: 0, failed: 0 };
+    const s4No = await stepNo(page);
+    if (s4No !== 4) { res.steps.s4 = 'fail'; fail('s4', `expected STEP 4 OF 6, got STEP ${s4No}`); await shot('s4-step'); }
     const tMenu: any[] = Array.isArray(activeVariant.trailerMenu) ? [...activeVariant.trailerMenu].sort((a, b) => (a?.slot ?? 0) - (b?.slot ?? 0)) : [];
     const tHeader = page.locator('h3:has-text("NSM Recommended trailers")');
     const tHeaderVis = await tHeader.isVisible().catch(() => false);
@@ -719,8 +744,6 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
         await page.waitForTimeout(400);
     }
     // Deterministic end-state: trailerMenu slot-1's assignment, else no trailer.
-    let expTrailerContrib = 0;
-    let finalTrailerDoc: any = null; let finalTrailerAssignment: any = null;
     const slot1T = tMenu[0];
     if (slot1T) {
         const findAssignment = (label: any): any | null => {
@@ -756,7 +779,6 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
         if (await noTrailer.isVisible().catch(() => false)) { await noTrailer.click({ force: true }); await page.waitForTimeout(800); }
     }
     // Trailer rego chip (auto-matched from ATM) — validate against live regoTypes
-    let trailerRegoAmount = 0;
     if (finalTrailerAssignment) {
         await page.waitForTimeout(1500);
         const chips = page.locator('div.bg-primary\\/5:has(:text("ex GST"))');
@@ -776,11 +798,13 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
             }
         }
     }
+    } // end hasTrailerStep
 
     /* --- Step 5 — dealer-fit strip + classifier + card prices + fit-up --- */
     await nextStep(page, 5000);
     res.steps.s5 = 'pass';
     pa.s5_dealerFit = { checked: 0, failed: 0 };
+    if ((await stepNo(page)) !== 5) { res.steps.s5 = 'fail'; fail('s5', 'not on STEP 5 OF 6 after Next'); await shot('s5-step'); }
     pa.s5_fitUp = { checked: 0, failed: 0 };
     const dfLines: string[] = Array.isArray(activeVariant.dealerFitLines)
         ? activeVariant.dealerFitLines.map((l: any) => String(l || '').trim()).filter(Boolean) : [];
@@ -891,6 +915,7 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
     await nextStep(page, 3500);
     res.steps.s6 = 'pass';
     pa.s6_summary = { checked: 0, failed: 0 };
+    if ((await stepNo(page)) !== 6) { res.steps.s6 = 'fail'; fail('s6', 'not on STEP 6 OF 6 after Next'); await shot('s6-step'); }
     const vPrice = getPriceForLevel(activeVariant);
     pa.s6_summary.checked++;
     const baseLine = `$${vPrice.toLocaleString('en-US')}`;

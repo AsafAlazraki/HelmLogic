@@ -272,11 +272,17 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 stickerPrice: isStickerSelected ? (model?.registration?.stickerPrice || 0) : 0,
                 tenderTo: isTenderToSelected || false,
                 tenderToPrice: isTenderToSelected ? (model?.registration?.tenderToStickerPrice || 0) : 0,
-                trailerRego: !!trailerRegoSnapshot || isTrailerRegoSelected || false,
-                trailerRegoPrice: trailerRegoSnapshot
-                    ? (trailerRegoSnapshot.sellExclGst || 0)
-                    : (isTrailerRegoSelected ? (model?.registration?.trailerPrice12Months || 0) : 0),
-                trailerRegoSnapshot: trailerRegoSnapshot || null,
+                // FFR-22 (field report 2026-07-04) — trailer rego only exists
+                // when a trailer is actually on the quote. Without this gate a
+                // quote whose trailer was deselected late still carried the
+                // rego line onto the proposal/summary + financials.
+                trailerRego: !!(selectedTrailerId && trailerSource) && (!!trailerRegoSnapshot || isTrailerRegoSelected),
+                trailerRegoPrice: (selectedTrailerId && trailerSource)
+                    ? (trailerRegoSnapshot
+                        ? (trailerRegoSnapshot.sellExclGst || 0)
+                        : (isTrailerRegoSelected ? (model?.registration?.trailerPrice12Months || 0) : 0))
+                    : 0,
+                trailerRegoSnapshot: (selectedTrailerId && trailerSource) ? (trailerRegoSnapshot || null) : null,
             },
 
             // Motor
