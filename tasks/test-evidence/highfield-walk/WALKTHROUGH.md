@@ -1,6 +1,6 @@
 # Highfield full-catalogue walkthrough — Steps 1→6 vs live MPF connections
 
-Updated: 2026-07-04T10:03:05.230Z · 71 models walked
+Updated: 2026-07-04T10:12:51.527Z · 85 models walked
 
 | Range | Model | Variants (price ✓/total) | S1 | S2 | S3 | S4 | S5 | S6 | Price asserts (fail/checked) | Failures |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -75,3 +75,17 @@ Updated: 2026-07-04T10:03:05.230Z · 71 models walked
 | Patrol | PA540ST | 10/10 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/476 |  |
 | Patrol | PA600 | 1/1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/473 |  |
 | Patrol | PA600 Open | 10/10 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/503 |  |
+| Patrol | PA600EW | 10/10 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/503 |  |
+| Patrol | PA600ST | 10/10 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/504 |  |
+| Patrol | PA660 | 1/1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/453 |  |
+| Patrol | PA660EW | 10/10 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/485 |  |
+| Patrol | PA660ST | 10/10 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/486 |  |
+| Patrol | PA700 | 1/1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/443 |  |
+| Patrol | PA700EW | 5/5 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/470 |  |
+| Patrol | PA700ST | 5/5 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/471 |  |
+| Patrol | PA760 | 1/1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/443 |  |
+| Patrol | PA760EW | 5/5 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/469 |  |
+| Patrol | PA760ST | 5/5 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/469 |  |
+| Patrol | PA860 | 1/1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/444 |  |
+| Patrol | PA860EW | 5/5 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/469 |  |
+| Patrol | PA860ST | 5/5 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/470 |  |

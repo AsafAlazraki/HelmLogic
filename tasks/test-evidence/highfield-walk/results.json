@@ -1,5 +1,5 @@
 {
- "updatedUtc": "2026-07-04T10:03:05.229Z",
+ "updatedUtc": "2026-07-04T10:12:51.526Z",
  "models": {
   "Roll-Up/RU200AL": {
    "range": "Roll-Up",
@@ -4024,6 +4024,814 @@
    },
    "failures": [],
    "durationMs": 43524
+  },
+  "Patrol/PA600EW": {
+   "range": "Patrol",
+   "model": "PA600EW",
+   "modelId": "pa600ew",
+   "variants": {
+    "total": 10,
+    "pricePass": 10,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 14,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 6,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 456,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 42842
+  },
+  "Patrol/PA600ST": {
+   "range": "Patrol",
+   "model": "PA600ST",
+   "modelId": "pa600st",
+   "variants": {
+    "total": 10,
+    "pricePass": 10,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 15,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 6,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 456,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 42390
+  },
+  "Patrol/PA660": {
+   "range": "Patrol",
+   "model": "PA660",
+   "modelId": "pa660",
+   "variants": {
+    "total": 1,
+    "pricePass": 1,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 436,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 42166
+  },
+  "Patrol/PA660EW": {
+   "range": "Patrol",
+   "model": "PA660EW",
+   "modelId": "pa660ew",
+   "variants": {
+    "total": 10,
+    "pricePass": 10,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 14,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 436,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 43627
+  },
+  "Patrol/PA660ST": {
+   "range": "Patrol",
+   "model": "PA660ST",
+   "modelId": "pa660st",
+   "variants": {
+    "total": 10,
+    "pricePass": 10,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 15,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 436,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41359
+  },
+  "Patrol/PA700": {
+   "range": "Patrol",
+   "model": "PA700",
+   "modelId": "pa700",
+   "variants": {
+    "total": 1,
+    "pricePass": 1,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 426,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 42004
+  },
+  "Patrol/PA700EW": {
+   "range": "Patrol",
+   "model": "PA700EW",
+   "modelId": "pa700ew",
+   "variants": {
+    "total": 5,
+    "pricePass": 5,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 5,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 14,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 426,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 42049
+  },
+  "Patrol/PA700ST": {
+   "range": "Patrol",
+   "model": "PA700ST",
+   "modelId": "pa700st",
+   "variants": {
+    "total": 5,
+    "pricePass": 5,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 5,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 15,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 426,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 38907
+  },
+  "Patrol/PA760": {
+   "range": "Patrol",
+   "model": "PA760",
+   "modelId": "pa760",
+   "variants": {
+    "total": 1,
+    "pricePass": 1,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 426,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 39310
+  },
+  "Patrol/PA760EW": {
+   "range": "Patrol",
+   "model": "PA760EW",
+   "modelId": "pa760ew",
+   "variants": {
+    "total": 5,
+    "pricePass": 5,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 5,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 15,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 6,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 426,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41454
+  },
+  "Patrol/PA760ST": {
+   "range": "Patrol",
+   "model": "PA760ST",
+   "modelId": "pa760st",
+   "variants": {
+    "total": 5,
+    "pricePass": 5,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 5,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 16,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 6,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 426,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 48515
+  },
+  "Patrol/PA860": {
+   "range": "Patrol",
+   "model": "PA860",
+   "modelId": "pa860",
+   "variants": {
+    "total": 1,
+    "pricePass": 1,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 427,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 39769
+  },
+  "Patrol/PA860EW": {
+   "range": "Patrol",
+   "model": "PA860EW",
+   "modelId": "pa860ew",
+   "variants": {
+    "total": 5,
+    "pricePass": 5,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 5,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 15,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 6,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 427,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41141
+  },
+  "Patrol/PA860ST": {
+   "range": "Patrol",
+   "model": "PA860ST",
+   "modelId": "pa860st",
+   "variants": {
+    "total": 5,
+    "pricePass": 5,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 5,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 16,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 6,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 427,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 40746
   }
  }
 }
