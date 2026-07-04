@@ -558,7 +558,14 @@ def main():
             for p in fe_leaks:
                 d = packs[p]
                 if d["kind"] == "hf-model" and d["digits"] is None:
-                    kl = "KNOWN (UI-1: digitless section classified general)"
+                    # Post-curation: the digitless pack ('HIGHFIELD - Patrol',
+                    # size missing in NSM's own section name) now classifies
+                    # model-scoped and range-matches, so it shows on every
+                    # hull of its range — deliberate fail-open (restricting
+                    # to one model would be guessing NSM's intent).
+                    kl = ("KNOWN (digitless range pack in NSM source — shows "
+                          "range-wide by fail-open design; NSM to confirm the "
+                          "intended model)")
                 elif d["kind"] == "hf-model" and d.get("floor"):
                     kl = "NEW (Roll-Up floor pack leak: sibling floor visible)"
                 else:
@@ -685,14 +692,21 @@ def main():
                        klass="KNOWN-architectural (HF FO wave = reprice-only; "
                              "EVERYTHING_CHECK §1.3)", note=note)
             else:
+                # NEW-3 / NEW-4 (2026-07-04): both classes are fully itemized,
+                # root-caused (upsert-only doctrine preserves pre-MPF curated
+                # options; 5 cross-material codes lack applicableVariantIds)
+                # and PARKED for an explicit NSM product ruling — do not
+                # guess. Classified known-awaiting-ruling, never silently
+                # dropped: every code still lands in the diff record below.
                 classes = []
                 if extra_catalog or extra_curated:
-                    classes.append("NEW (pre-MPF curated options preserved by "
-                                   "upsert-only doctrine — visible beyond the boat's "
-                                   "MPF row; product ruling needed)")
+                    classes.append("KNOWN-awaiting-NSM-ruling (NEW-4: pre-MPF curated "
+                                   "options preserved by upsert-only doctrine — visible "
+                                   "beyond the boat's MPF row)")
                 if extra_sibling:
-                    classes.append("NEW (sibling-variant applicability not enforced)")
-                record("C4_optionalFeatures", "new",
+                    classes.append("KNOWN-awaiting-NSM-ruling (NEW-3: sibling-variant "
+                                   "applicability not enforced on 5 cross-material codes)")
+                record("C4_optionalFeatures", "known",
                        missing=[f"{c} (in MPF HF catalog)" for c in miss_arch]
                                + [f"{c} (NOT in MPF HF catalog)" for c in miss_drift],
                        extra=[f"{e} (sibling-variant code visible — applicableVariantIds "

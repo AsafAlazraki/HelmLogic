@@ -8,6 +8,26 @@ Comparison semantics: **sets** — order-insensitive, whitespace-collapsed, case
 
 ## 1. Verdict at a glance
 
+### RE-RUN 2026-07-04 (post Step-5 curation batch + FFR-31, C1F port synced) — **ALL SETS EQUAL, 0 unexplained**
+
+| Check | Pass | Known-diff | NEW-diff |
+|---|---:|---:|---:|
+| C1 — dealerFitLines (live variant ≡ MPF boat row) | 809 | 0 | **0** |
+| C1F — front-end Step-5 visibility simulation | 679 | 130 | **0** |
+| C2 — motorMenu slots (motor / rigging / prop no. / prop desc) | 809 | 0 | **0** |
+| C3 — trailerMenu names | 809 | 0 | **0** |
+| C4 — optionalFeatures vs MPF FO section | 491 | 318 | **0** |
+| C5 — rigging-kit slot names resolve to org riggingKits | 780 | 29 | **0** |
+
+Every "known" is a named, itemized class:
+- **C1F 130** — all one class: NSM's own Dealer Fit sheet carries a digitless `HIGHFIELD - Patrol` pack (the size is missing in *their* section name), which now classifies model-scoped and range-matches, so it shows on every Patrol hull by deliberate fail-open design (restricting it to one model would be guessing NSM's intent). The NEW-1 digit-collision and NEW-2 Roll-Up floor-pack leaks found by the first run below are **fixed and re-proven 0** by this run.
+- **C4 318** — 43 KNOWN-architectural (HF FO wave was reprice-only, EVERYTHING_CHECK §1.3) + 275 KNOWN-awaiting-NSM-ruling (NEW-3: 5 cross-material codes lack `applicableVariantIds`; NEW-4: pre-MPF curated options preserved by the upsert-only doctrine — both fully itemized, parked for an explicit NSM product ruling rather than guessed at).
+- **C5 29** — the already-registered rigging labels (unchanged).
+
+The original run below is preserved verbatim as the honest before-picture — it is the run that FOUND the front-end leaks the curation batch then fixed.
+
+### ORIGINAL RUN 2026-07-04 08:17 (pre-curation-fix)
+
 | Check | Pass | Known-diff | NEW-diff |
 |---|---:|---:|---:|
 | C1 — dealerFitLines (live variant ≡ MPF boat row) | 809 | 0 | 0 |
