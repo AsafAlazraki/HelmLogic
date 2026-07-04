@@ -26,6 +26,7 @@ const PROBES = `${OUT}/probes.jsonl`;
 const HIGHFIELD_MODULE_ID = 'M1Yf3R9igpJDxJnOVr6f';
 const HIGHFIELD_VENDOR_ID = 'LafOLpLb6QIFE856TiD4';
 const SPORT_RANGE_ID = 'nQ2LE50z9Tbf2uss0Ote';
+const CLASSIC_RANGE_ID = 'qo7IePnRzJxjrYyLWhTn';
 const STACER_MODULE_ID = 'I0dGRbh39uhNJ3gotEb0';
 const STACER_VENDOR_ID = 'LWgHuGoKfUBeKZ8eWnEi';
 const SERVICE_MODULE_ID = 'service-module';
@@ -174,6 +175,45 @@ for (const vp of VIEWPORTS) {
       // Step 6 — summary incl deposit schedule card.
       await probeAndShoot(page, vp, '10-sp560-step6-summary');
       // NEVER Finalize.
+    });
+
+    test(`cl290 step5 dealer-fit FFR-18 retest (${vp.w})`, async ({ page }) => {
+      // FFR-18 (MPF section classifier in groupedDealerFit) retest:
+      // expect NO '### OBSELETE' category, NO other-model packs (e.g.
+      // 'Patrol 600'), NO 'PRE DELIVERY' / 'RIGGING KITS' sections; general
+      // accessory categories (Tube Covers / Garmin / TV / Outboard
+      // Accessories) present. Assertions are recorded to the probe log as
+      // text-scan results; screenshots are the primary evidence.
+      test.setTimeout(420_000);
+      await login(page);
+      await page.goto(`${BASE_URL}/modules/${HIGHFIELD_MODULE_ID}/quote/cl290?range=${CLASSIC_RANGE_ID}&vendor=${HIGHFIELD_VENDOR_ID}`);
+      await settle(page, 9000);
+      await page.locator('button:has-text("PVC")').first().click({ force: true }).catch(() => {});
+      await page.waitForTimeout(2000);
+      // Advance 1 → 5 (motor picked on Step 3 so dealer-fit context is real).
+      await nextStep(page); // 2
+      await nextStep(page); // 3
+      await page.locator('button.rounded-\\[1\\.5rem\\]').first().click({ force: true }).catch(() => {});
+      await page.waitForTimeout(2500);
+      await nextStep(page); // 4
+      await nextStep(page); // 5
+      const body = (await page.locator('body').innerText().catch(() => '')).replace(/\s+/g, ' ');
+      const checks = {
+        noObselete: !/OBSELETE/i.test(body),
+        noPatrol600Pack: !/PATROL 600/i.test(body),
+        noPreDelivery: !/PRE DELIVERY/i.test(body),
+        noRiggingKitsSection: !/RIGGING KITS/i.test(body),
+        hasTubeCovers: /TUBE COVERS/i.test(body),
+        hasGarmin: /GARMIN/i.test(body),
+        hasOutboardAccessories: /OUTBOARD ACCESSORIES/i.test(body),
+      };
+      console.log('FFR-18 CL290 Step 5 checks:', JSON.stringify(checks));
+      fs.appendFileSync(PROBES, JSON.stringify({ screen: 'ffr18-cl290-step5', viewport: `${vp.w}x${vp.h}`, checks }) + '\n');
+      await probeAndShoot(page, vp, '23-cl290-step5-ffr18');
+      // Scroll the dealer-fit column mid-way for a second evidence frame.
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight / 2)).catch(() => {});
+      await page.waitForTimeout(800);
+      await probeAndShoot(page, vp, '24-cl290-step5-ffr18-mid', { fullPage: false });
     });
 
     test(`stacer quote steps 1-2 gate-lifted (${vp.w})`, async ({ page }) => {
