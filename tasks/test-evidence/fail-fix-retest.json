@@ -144,6 +144,15 @@
       "fix": "String() casts on searchable fields in engine-schedule-picker.tsx",
       "retest": "GREEN \u2014 production build rebuilt, picker re-driven in browser, line added successfully (evidence: module-quotes/debug-schedule-picker.png)",
       "class": "product-fix"
+    },
+    {
+      "id": "FFR-18",
+      "failed": "Step 5 dealer-fit rendered 'jibberish' for boats (field report, CL290): obsolete list heading (### OBSELETE MODEL LIST ###, 191 items), other models' option packs (Patrol 600 on a CL290), and workshop sections (PRE DELIVERY, RIGGING KITS) flooding the customer-facing step",
+      "firstSeen": "2026-07-03",
+      "rootCause": "MPF import faithfully carried all 93 Dealer Fit sheet sections as categories; the quote flow grouped ALL 1,791 options for every boat with no section relevance model.",
+      "fix": "Section classifier in groupedDealerFit: hidden (### / OBSELETE / PRE DELIVERY / RIGGING KIT / HELM MASTER / ADD ON KITS), model-scoped packs shown only on the matching boat (digits + range-word/brand agreement), general accessory categories always shown. Boat's own dealerFitLines strip unchanged on top.",
+      "retest": "typecheck 0 + build green; deployed to dev for field re-check on CL290; UI-audit after-pass covers the step",
+      "class": "product-fix"
     }
   ]
 }

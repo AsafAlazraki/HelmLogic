@@ -907,11 +907,54 @@ export function HighfieldQuoteFlow({
         const modelCatAllowlist: string[] = Array.isArray((model as any)?.applicableDealerFitCategories)
             ? (model as any).applicableDealerFitCategories.map((c: string) => c.toLowerCase())
             : [];
+        /** MPF section classifier (field report: Step 5 rendered "jibberish").
+         *  The MPF's Dealer Fit sheet has 93 sections; imported verbatim they
+         *  flood every boat with obsolete lists, workshop operations, rigging
+         *  kits (which live on the motor menu / counter quotes), and OTHER
+         *  models' option packs. Classify each section:
+         *    hidden  — never a customer-facing boat DFO category
+         *    model   — model-scoped pack: show ONLY on the matching boat
+         *    general — genuine accessory category: always show */
+        const RANGE_WORDS: Record<string, string> = {
+            CL: 'CLASSIC', SP: 'SPORT', RU: 'ROLL', UL: 'ULTRAL',
+            PA: 'PATROL', AL: 'ADVENTURE', AD: 'ADVENTURE', CO: 'COASTER',
+        };
+        const modelName: string = (model?.name || '');
+        const modelDigits = (modelName.match(/(\d{3,4})/) || [])[1] || '';
+        const modelRangeWord = RANGE_WORDS[modelName.slice(0, 2).toUpperCase()] || '';
+        const vendorNameUpper = (vendor?.name || '').toUpperCase();
+        const classifySection = (raw: string): 'hidden' | 'model' | 'general' => {
+            const c = raw.toUpperCase();
+            if (c.startsWith('###') || c.includes('OBSELETE') || c.includes('OBSOLETE')) return 'hidden';
+            if (c.includes('PRE DELIVERY') || c.includes('PRE-DELIVERY')) return 'hidden';
+            if (c.includes('RIGGING KIT') || c.includes('HELM MASTER') || c.includes('ADD ON KITS')) return 'hidden';
+            if (/(HIGHFIELD|STACER|STABICRAFT|SURTEES|JEANNEAU|FORMOSA|HAINES)/.test(c) && /\d{3}/.test(c)) return 'model';
+            if (c.includes('SPECIFIC OPTIONS')) return 'model';
+            return 'general';
+        };
+        const modelSectionMatches = (raw: string): boolean => {
+            const c = raw.toUpperCase();
+            const secDigits = (c.match(/(\d{3,4})/) || [])[1] || '';
+            if (secDigits && modelDigits && secDigits === modelDigits) {
+                // digits agree — require range word or brand agreement too
+                if (modelRangeWord && c.includes(modelRangeWord)) return true;
+                if (vendorNameUpper && c.includes(vendorNameUpper.split(' ')[0])) return true;
+                return !modelRangeWord; // non-HF single-variant models: digits suffice
+            }
+            // brand-specific (no digits) packs e.g. 'JEANNEAU SPECIFIC OPTIONS'
+            if (!secDigits && vendorNameUpper && c.includes(vendorNameUpper.split(' ')[0])) return true;
+            return false;
+        };
         const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
             const cat = sel.category || 'Gear';
             // Skip motor and trailer categories — they're shown separately
             if (motorCats.has(cat.toLowerCase())) return acc;
             if (trailerCats.has(cat.toLowerCase())) return acc;
+            // MPF section relevance (field report fix): hide noise, scope
+            // model packs to THIS boat only.
+            const klass = classifySection(cat);
+            if (klass === 'hidden') return acc;
+            if (klass === 'model' && !modelSectionMatches(cat)) return acc;
             // v1.16 (3.9.3) — model-level category allowlist
             if (modelCatAllowlist.length > 0 && !modelCatAllowlist.includes(cat.toLowerCase())) return acc;
             // v1.16 (ZidKJczh) — Dealer Fit option only model-specific. When
