@@ -341,7 +341,15 @@ def main():
     counts["motorRows"]["menuMissingRetail"] = len(menu_missing_retail)
 
     # ====================== 5. trailer docs ==================================
-    tcount, tmissing = 0, []
+    # names referenced by boat trailerMenus (so a $0/missing sell on a MENU
+    # trailer outranks the same defect on an unreferenced row)
+    menu_trailer_refs = {}
+    for b in boats_ext:
+        for e in (b.get("trailerMenu") or []):
+            nm = (e.get("name") or "").strip().lower()
+            if nm:
+                menu_trailer_refs.setdefault(nm, set()).add(b["modelCode"])
+    tcount, tmissing, tzero = 0, [], []
     for tv in TRAILER_VENDORS:
         for sd in _fs.list_docs(f"data-warehouse/{tv}/series"):
             for t in _fs.list_docs(f"data-warehouse/{tv}/series/{sd['_id']}/trailers"):
@@ -350,12 +358,24 @@ def main():
                 if JUNK_RE.search(nm) or not nm.strip():
                     finding("trailers", "medium", t["_path"],
                             f"junk/empty trailer name: '{nm[:70]}'", "handoff")
-                if num(t.get("sellPriceExclGst")) is None and tv != "obsolete-trailers":
+                if tv == "obsolete-trailers":
+                    continue
+                sell = num(t.get("sellPriceExclGst"))
+                refs = sorted(menu_trailer_refs.get(nm.strip().lower(), set()))
+                if sell is None:
                     tmissing.append((tv, nm))
+                    finding("trailers", "high" if refs else "medium", t["_path"],
+                            f"'{nm[:60]}' has no sellPriceExclGst — menu card renders price-less"
+                            + (f" (referenced by {len(refs)} boat menus)" if refs else ""),
+                            "nsm-ask+handoff", {"referencedBy": refs})
+                elif sell == 0 and refs:
+                    tzero.append((tv, nm))
                     finding("trailers", "high", t["_path"],
-                            f"'{nm[:60]}' has no sellPriceExclGst — menu card renders price-less",
-                            "nsm-ask+handoff")
-    counts["trailers"] = {"docs": tcount, "missingSell": len(tmissing)}
+                            f"'{nm[:60]}' has sellPriceExclGst == 0 but is on {len(refs)} boats' trailer menus "
+                            "— menu card shows $0 / free trailer",
+                            "nsm-ask+handoff", {"referencedBy": refs})
+    counts["trailers"] = {"docs": tcount, "missingSell": len(tmissing),
+                          "zeroSellOnMenus": len(tzero)}
 
     # ====================== 8. regoTypes =====================================
     rego = _fs.list_docs("data-warehouse/qld-transport/regoTypes")
