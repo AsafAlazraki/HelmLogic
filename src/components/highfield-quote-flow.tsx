@@ -50,8 +50,21 @@ import {
     Banknote,
     Clock,
     MessageSquare,
-    Paperclip
+    Paperclip,
+    Search,
+    Eye,
+    EyeOff
 } from 'lucide-react';
+import {
+    classifySection,
+    modelSectionMatches,
+    routeSection,
+    itemRelevance,
+    selectVariantRows,
+    prettifySectionName,
+    type CurationContext,
+    type SectionClass,
+} from '@/lib/step5-curation';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -393,6 +406,17 @@ export function HighfieldQuoteFlow({
     const colorSectionRef = useRef<HTMLDivElement>(null);
     const registrationSectionRef = useRef<HTMLDivElement>(null);
     const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+    // v1.31 Step-5 curation — search box + category chips + "Show all"
+    // escape hatch (relevance narrowing must never hard-block a sale).
+    const [dfSearchInput, setDfSearchInput] = useState('');
+    const [dfSearch, setDfSearch] = useState('');
+    const [dfCatFilter, setDfCatFilter] = useState<string[]>([]);
+    const [dfShowAll, setDfShowAll] = useState(false);
+    useEffect(() => {
+        const t = setTimeout(() => setDfSearch(dfSearchInput.trim().toLowerCase()), 200);
+        return () => clearTimeout(t);
+    }, [dfSearchInput]);
 
     // 2. Data Resolvers
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -924,143 +948,176 @@ export function HighfieldQuoteFlow({
         return ids;
     }, [selectedDealerFitData]);
 
+    /** v1.31 Step-5 curation context — feeds the named relevance rules in
+     *  src/lib/step5-curation.ts (R-HP, R-LEN, R-MATERIAL, R-CONFIG,
+     *  R-SIZE-*). Missing fields make each rule fail OPEN. */
+    const curationCtx = useMemo<CurationContext>(() => {
+        const parseNum = (v: any): number | undefined => {
+            const n = parseFloat(String(v ?? '').replace(/[^\d.]/g, ''));
+            return Number.isFinite(n) && n > 0 ? n : undefined;
+        };
+        const env: any = (model as any)?.motorEnvelope || {};
+        const cfgEngine: any = model?.specifications?.motorConfigurations?.[0]?.engines?.[0] || {};
+        return {
+            modelName: model?.name || (model as any)?.modelCode || '',
+            vendorName: vendor?.name || '',
+            hullLengthM: boatLengthM,
+            minHp: parseNum(env.minHp) ?? parseNum(cfgEngine.minHp),
+            maxHp: parseNum(env.maxHp) ?? parseNum(cfgEngine.maxHp),
+            engConfiguration: typeof env.engConfiguration === 'string' ? env.engConfiguration : undefined,
+            variantSku: activeVariant?.sku ?? undefined,
+            variantName: activeVariant?.name,
+            variantMaterial: activeVariant?.material,
+        };
+    }, [model, vendor?.name, boatLengthM, activeVariant]);
+
+    /** MPF section classifier + item-level curation (field report fix:
+     *  Step 5 rendered "jibberish"; 2026-07-04 audit: data-consistent but
+     *  product-senseless presentation). Classifier + named relevance rules
+     *  + per-SKU model-pack dedupe all live in src/lib/step5-curation.ts,
+     *  covered by tests/unit/step5-curation.test.ts. `dfShowAll` is the
+     *  operator escape hatch that bypasses every relevance narrowing;
+     *  already-selected items are never hidden. */
     const groupedDealerFit = useMemo(() => {
-        if (!dealerFitSelections) return [];
+        type Group = { category: string; display: string; items: any[]; hiddenCount: number; klass: SectionClass };
+        if (!dealerFitSelections) return [] as Group[];
         const motorCats = new Set(motorModuleCategories.map(c => c.toLowerCase()));
         const trailerCats = new Set(trailerModuleCategories.map(c => c.toLowerCase()));
         const currentModelId = model?.id ?? null;
+        const selectedIds = new Set(selectedDealerFitIds);
         /** v1.16 (Story 3.9.3) — model-level dealer-fit category allowlist.
          *  When set on the model, only listed categories show on Step 5. */
         const modelCatAllowlist: string[] = Array.isArray((model as any)?.applicableDealerFitCategories)
             ? (model as any).applicableDealerFitCategories.map((c: string) => c.toLowerCase())
             : [];
-        /** MPF section classifier (field report: Step 5 rendered "jibberish").
-         *  The MPF's Dealer Fit sheet has 93 sections; imported verbatim they
-         *  flood every boat with obsolete lists, workshop operations, rigging
-         *  kits (which live on the motor menu / counter quotes), and OTHER
-         *  models' option packs. Classify each section:
-         *    hidden  — never a customer-facing boat DFO category
-         *    model   — model-scoped pack: show ONLY on the matching boat
-         *    general — genuine accessory category: always show */
-        const RANGE_WORDS: Record<string, string> = {
-            CL: 'CLASSIC', SP: 'SPORT', RU: 'ROLL', UL: 'ULTRAL',
-            PA: 'PATROL', AL: 'ADVENTURE', AD: 'ADVENTURE', CO: 'COASTER',
-        };
-        const modelName: string = (model?.name || '');
-        const modelDigits = (modelName.match(/(\d{3,4})/) || [])[1] || '';
-        const modelRangeWord = RANGE_WORDS[modelName.slice(0, 2).toUpperCase()] || '';
-        const vendorNameUpper = (vendor?.name || '').toUpperCase();
-        // Section-side range vocabulary: model-prefix range words PLUS ranges
-        // that exist in the MPF Dealer Fit sheet but have no live models yet
-        // (NEW-1 residual: 'HIGHFIELD - ZeroJet 330' digit-collided onto SP330
-        // because ZEROJET wasn't a recognised range word).
-        const RANGE_WORD_LIST = Array.from(new Set([...Object.values(RANGE_WORDS), 'ZEROJET']));
-        const BRAND_WORD_RE = /(HIGHFIELD|STACER|STABICRAFT|SURTEES|JEANNEAU|FORMOSA|HAINES)/;
-        const classifySection = (raw: string): 'hidden' | 'model' | 'general' => {
-            const c = raw.toUpperCase();
-            if (c.startsWith('###') || c.includes('OBSELETE') || c.includes('OBSOLETE')) return 'hidden';
-            if (c.includes('PRE DELIVERY') || c.includes('PRE-DELIVERY')) return 'hidden';
-            if (c.includes('RIGGING KIT') || c.includes('HELM MASTER') || c.includes('ADD ON KITS')) return 'hidden';
-            // Any section naming a brand is brand/model-scoped (NEW-1 residual:
-            // digitless, rangeless 'TUBE COVER OPTIONS - To suit Highfield
-            // Boats' was 'general' and leaked onto Surtees/Stacer hulls).
-            if (BRAND_WORD_RE.test(c)) return 'model';
-            if (c.includes('SPECIFIC OPTIONS')) return 'model';
-            return 'general';
-        };
-        const modelSectionMatches = (raw: string): boolean => {
-            const c = raw.toUpperCase();
-            // Brand agreement first (NEW-1 defense-in-depth): a section naming
-            // a brand only ever shows on that brand's hulls, whatever the
-            // digits say ('HIGHFIELD - ZeroJet 700' never on a Surtees 700).
-            const secBrand = (c.match(BRAND_WORD_RE) || [])[1] || '';
-            if (secBrand && !vendorNameUpper.includes(secBrand)) return false;
-            const secDigits = (c.match(/(\d{3,4})/) || [])[1] || '';
-            const secRange = RANGE_WORD_LIST.find(w => c.includes(w)) || '';
-            // A section naming a range only ever shows on that range (UI-1).
-            if (secRange && secRange !== modelRangeWord) return false;
-            // NEW-2 (per-boat-sets) — Roll-Up floor packs: the section's floor
-            // keyword must agree with the model code's floor designation
-            // (RU230KAM = Airmat, RU230AL = Aluminium; 'Easy Go' models carry
-            // neither suffix and see neither floor pack).
-            const mUpper = modelName.toUpperCase();
-            if (c.includes('AIRMAT') && !(/\dKAM\b/.test(mUpper) || mUpper.includes('AIRMAT'))) return false;
-            if (c.includes('ALUMINIUM') && !(/\dAL\b/.test(mUpper) || mUpper.includes('ALUMINIUM'))) return false;
-            // Digits present on both sides must agree.
-            if (secDigits && modelDigits && secDigits !== modelDigits) return false;
-            if (secDigits && modelDigits && secDigits === modelDigits) return true;
-            // Range agrees, no digits ('HIGHFIELD - PATROL' on a PA boat).
-            if (secRange && secRange === modelRangeWord) return true;
-            // Brand-specific digitless, rangeless packs ('JEANNEAU SPECIFIC
-            // OPTIONS', 'TUBE COVER OPTIONS - To suit Highfield Boats') —
-            // brand↔vendor agreement was already enforced above.
-            if (!secDigits && !secRange && secBrand) return true;
-            if (!secDigits && !secRange && vendorNameUpper && c.includes(vendorNameUpper.split(' ')[0])) return true;
-            return false;
-        };
-        const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
+        const groups: Record<string, { items: any[]; klass: SectionClass }> = {};
+        dealerFitSelections.forEach((sel: any) => {
             const cat = sel.category || 'Gear';
             // Skip motor and trailer categories — they're shown separately
-            if (motorCats.has(cat.toLowerCase())) return acc;
-            if (trailerCats.has(cat.toLowerCase())) return acc;
-            // MPF section relevance (field report fix): hide noise, scope
-            // model packs to THIS boat only.
+            if (motorCats.has(cat.toLowerCase())) return;
+            if (trailerCats.has(cat.toLowerCase())) return;
+            // v1.31 keyword routing — outboard/tiller/prop sections render
+            // under MOTOR dealer fit, trailer-accessory sections under
+            // TRAILER dealer fit (see groupedMotorDealerFit /
+            // groupedTrailerDealerFit below).
+            if (routeSection(cat)) return;
             const klass = classifySection(cat);
-            if (klass === 'hidden') return acc;
-            if (klass === 'model' && !modelSectionMatches(cat)) return acc;
+            if (klass === 'hidden') return;
+            // 'workshop' (engine removals, survey sublets) hides on a
+            // NEW-boat quote but stays reachable via "Show all".
+            if (klass === 'workshop' && !dfShowAll) return;
+            if (klass === 'model' && !modelSectionMatches(cat, curationCtx)) return;
             // v1.16 (3.9.3) — model-level category allowlist
-            if (modelCatAllowlist.length > 0 && !modelCatAllowlist.includes(cat.toLowerCase())) return acc;
+            if (modelCatAllowlist.length > 0 && !modelCatAllowlist.includes(cat.toLowerCase())) return;
             // v1.16 (ZidKJczh) — Dealer Fit option only model-specific. When
             // `sel.applicableModelIds` is set and non-empty, the option only
             // shows when the current model matches. Empty / missing = applies
             // to all models (existing behaviour).
             const restricted: string[] = Array.isArray(sel.applicableModelIds) ? sel.applicableModelIds : [];
-            if (restricted.length > 0 && currentModelId && !restricted.includes(currentModelId)) return acc;
-            if (!acc[cat]) acc[cat] = [];
-            acc[cat].push(sel);
-            return acc;
-        }, {});
-        return Object.entries(groups) as [string, any][];
-    }, [dealerFitSelections, motorModuleCategories, trailerModuleCategories, model?.id, (model as any)?.applicableDealerFitCategories]);
+            if (restricted.length > 0 && currentModelId && !restricted.includes(currentModelId)) return;
+            if (!groups[cat]) groups[cat] = { items: [], klass };
+            groups[cat].items.push(sel);
+        });
+        return Object.entries(groups)
+            .map(([cat, g]): Group => {
+                let items = g.items;
+                let hiddenCount = 0;
+                if (!dfShowAll) {
+                    // Named item-level relevance rules (selected items always stay).
+                    const kept = items.filter((sel: any) =>
+                        selectedIds.has(sel.id) || itemRelevance(sel.name || '', curationCtx).visible);
+                    hiddenCount += items.length - kept.length;
+                    items = kept;
+                    // Per-SKU model-pack dedupe: one card for the ACTIVE variant,
+                    // not eight near-identical material×colour rows.
+                    if (g.klass === 'model' && items.length > 1) {
+                        const chosen = new Set(selectVariantRows(items, curationCtx).map((r: any) => r.id));
+                        const deduped = items.filter((sel: any) => selectedIds.has(sel.id) || chosen.has(sel.id));
+                        hiddenCount += items.length - deduped.length;
+                        items = deduped;
+                    }
+                }
+                return { category: cat, display: prettifySectionName(cat), items, hiddenCount, klass: g.klass };
+            })
+            .filter(g => g.items.length > 0);
+    }, [dealerFitSelections, motorModuleCategories, trailerModuleCategories, model?.id, (model as any)?.applicableDealerFitCategories, curationCtx, dfShowAll, selectedDealerFitIds]);
 
+    /** Search + category-chip narrowed view of groupedDealerFit (Step-5
+     *  toolbar). Client-side, debounced; matches option name + raw + display
+     *  category. */
+    const filteredGroupedDealerFit = useMemo(() => {
+        let out = groupedDealerFit;
+        if (dfCatFilter.length > 0) {
+            const active = new Set(dfCatFilter);
+            out = out.filter(g => active.has(g.category));
+        }
+        if (dfSearch) {
+            out = out
+                .map(g => {
+                    const catHit = g.category.toLowerCase().includes(dfSearch) || g.display.toLowerCase().includes(dfSearch);
+                    const items = catHit ? g.items : g.items.filter((sel: any) => String(sel.name || '').toLowerCase().includes(dfSearch));
+                    return { ...g, items };
+                })
+                .filter(g => g.items.length > 0);
+        }
+        return out;
+    }, [groupedDealerFit, dfCatFilter, dfSearch]);
+
+    /** Motor dealer fit = module-config categories (existing) + v1.31
+     *  keyword-routed sections (OUTBOARD / TILLER / PROP — e.g. 'OUTBOARD
+     *  ACCESSORIES', 'TILLER FITTING KITS' belong beside the motor, not on
+     *  the boat step). Item-level relevance rules apply here too (an F300
+     *  cowl cover never fits a 15–30hp envelope). */
     const groupedMotorDealerFit = useMemo(() => {
-        if (!dealerFitSelections || motorModuleCategories.length === 0) return [];
+        if (!dealerFitSelections) return [] as [string, any[]][];
         const motorCatsLower = motorModuleCategories.map(c => c.toLowerCase());
+        const selectedIds = new Set(selectedDealerFitIds);
         const groups: Record<string, any[]> = {};
+        const routedOrder: string[] = [];
         dealerFitSelections.forEach((sel: any) => {
             const cat = sel.category || '';
-            if (!motorCatsLower.includes(cat.toLowerCase())) return;
-            if (!groups[cat]) groups[cat] = [];
+            const inConfig = motorCatsLower.includes(cat.toLowerCase());
+            const routed = !inConfig && routeSection(cat) === 'motor' && classifySection(cat) !== 'hidden';
+            if (!inConfig && !routed) return;
+            if (!dfShowAll && !selectedIds.has(sel.id) && !itemRelevance(sel.name || '', curationCtx).visible) return;
+            if (!groups[cat]) { groups[cat] = []; if (routed && !routedOrder.includes(cat)) routedOrder.push(cat); }
             groups[cat].push(sel);
         });
-        // Return in the order defined in motorModuleCategories
-        return motorModuleCategories
-            .filter(cat => groups[cat] || Object.keys(groups).some(k => k.toLowerCase() === cat.toLowerCase()))
-            .map(cat => {
-                const key = Object.keys(groups).find(k => k.toLowerCase() === cat.toLowerCase()) || cat;
-                return [key, groups[key] || []] as [string, any[]];
-            })
+        // Module-config order first, then routed sections alphabetically.
+        const configured = motorModuleCategories
+            .map(cat => Object.keys(groups).find(k => k.toLowerCase() === cat.toLowerCase()))
+            .filter((k): k is string => !!k);
+        const ordered = [...configured, ...routedOrder.sort((a, b) => a.localeCompare(b))];
+        return ordered
+            .map(key => [key, groups[key] || []] as [string, any[]])
             .filter(([, items]) => items.length > 0);
-    }, [dealerFitSelections, motorModuleCategories]);
+    }, [dealerFitSelections, motorModuleCategories, curationCtx, dfShowAll, selectedDealerFitIds]);
 
+    /** Trailer dealer fit = module-config categories + v1.31 keyword-routed
+     *  trailer-accessory sections ('TRAILER SETUPS' etc.). */
     const groupedTrailerDealerFit = useMemo(() => {
-        if (!dealerFitSelections || trailerModuleCategories.length === 0) return [];
+        if (!dealerFitSelections) return [] as [string, any[]][];
         const trailerCatsLower = trailerModuleCategories.map(c => c.toLowerCase());
+        const selectedIds = new Set(selectedDealerFitIds);
         const groups: Record<string, any[]> = {};
+        const routedOrder: string[] = [];
         dealerFitSelections.forEach((sel: any) => {
             const cat = sel.category || '';
-            if (!trailerCatsLower.includes(cat.toLowerCase())) return;
-            if (!groups[cat]) groups[cat] = [];
+            const inConfig = trailerCatsLower.includes(cat.toLowerCase());
+            const routed = !inConfig && routeSection(cat) === 'trailer' && classifySection(cat) !== 'hidden';
+            if (!inConfig && !routed) return;
+            if (!dfShowAll && !selectedIds.has(sel.id) && !itemRelevance(sel.name || '', curationCtx).visible) return;
+            if (!groups[cat]) { groups[cat] = []; if (routed && !routedOrder.includes(cat)) routedOrder.push(cat); }
             groups[cat].push(sel);
         });
-        return trailerModuleCategories
-            .filter(cat => groups[cat] || Object.keys(groups).some(k => k.toLowerCase() === cat.toLowerCase()))
-            .map(cat => {
-                const key = Object.keys(groups).find(k => k.toLowerCase() === cat.toLowerCase()) || cat;
-                return [key, groups[key] || []] as [string, any[]];
-            })
+        const configured = trailerModuleCategories
+            .map(cat => Object.keys(groups).find(k => k.toLowerCase() === cat.toLowerCase()))
+            .filter((k): k is string => !!k);
+        const ordered = [...configured, ...routedOrder.sort((a, b) => a.localeCompare(b))];
+        return ordered
+            .map(key => [key, groups[key] || []] as [string, any[]])
             .filter(([, items]) => items.length > 0);
-    }, [dealerFitSelections, trailerModuleCategories]);
+    }, [dealerFitSelections, trailerModuleCategories, curationCtx, dfShowAll, selectedDealerFitIds]);
 
     const totalPrice = useMemo(() => {
         let total = getPriceForLevel(activeVariant, priceLevel);
@@ -2485,23 +2542,24 @@ export function HighfieldQuoteFlow({
                                                     </div>
                                                     {groupedMotorDealerFit.map(([cat, opts]) => (
                                                         <div key={`mdf-${cat}`} ref={el => { categoryRefs.current[`mdf-${cat}`] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
-                                                            <div className="flex items-center gap-3 bg-blue-500 px-6 py-3 rounded-2xl shadow-xl w-full">
-                                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                                            <div className="flex items-center gap-3 bg-blue-500 px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
+                                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                                                                <h3 title={cat} className="text-[10px] font-black uppercase tracking-[0.3em] text-white truncate">{prettifySectionName(cat)}</h3>
                                                             </div>
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
                                                                 {opts.map((sel: any) => {
                                                                     const isSelected = selectedDealerFitIds.includes(sel.id);
                                                                     const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
                                                                     const isPropCategory = (sel.category || '').toLowerCase() === 'propeller';
+                                                                    const imgUrl = resolveImageUrl(sel.items?.[0]?.data);
                                                                     return (
-                                                                    <button key={sel.id} onClick={() => { toggleDealerFitSelection(sel.id); if (isPropCategory && !isSelected) setPropComesStandard(false); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1 relative", isSelected ? "bg-blue-50 border-blue-500 shadow-md ring-2 ring-blue-500/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-blue-500/20")}>
+                                                                    <button key={sel.id} onClick={() => { toggleDealerFitSelection(sel.id); if (isPropCategory && !isSelected) setPropComesStandard(false); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1 relative min-w-0", isSelected ? "bg-blue-50 border-blue-500 shadow-md ring-2 ring-blue-500/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-blue-500/20")}>
                                                                         {hasOverlap && <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5"><CopyCheck className="h-3 w-3 text-amber-600" /><span className="text-[7px] font-black uppercase tracking-wide text-amber-700">Already Included</span></div>}
-                                                                        <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
-                                                                        <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                                            <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-blue-600" : "text-slate-900")}>{sel.name}</p>
+                                                                        <div className={cn("p-4 pb-2 flex flex-col items-center text-center gap-1 w-full min-w-0 flex-grow", hasOverlap && "pt-8")}>
+                                                                            <p title={sel.name} className={cn("text-[10px] font-black uppercase tracking-tight leading-tight line-clamp-3 break-words w-full", isSelected ? "text-blue-600" : "text-slate-900")}>{sel.name}</p>
                                                                             <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-blue-500/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.['Act Sell'] || i.data?.sellPriceExclGst || i.data?.['Store Price'] || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
                                                                         </div>
+                                                                        {imgUrl && <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 mt-auto"><Image src={imgUrl} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" /></div>}
                                                                     </button>
                                                                     );
                                                                 })}
@@ -2807,22 +2865,23 @@ export function HighfieldQuoteFlow({
                                                     </div>
                                                     {groupedTrailerDealerFit.map(([cat, opts]) => (
                                                         <div key={`tdf-${cat}`} ref={el => { categoryRefs.current[`tdf-${cat}`] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
-                                                            <div className="flex items-center gap-3 bg-amber-600 px-6 py-3 rounded-2xl shadow-xl w-full">
-                                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                                            <div className="flex items-center gap-3 bg-amber-600 px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
+                                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                                                                <h3 title={cat} className="text-[10px] font-black uppercase tracking-[0.3em] text-white truncate">{prettifySectionName(cat)}</h3>
                                                             </div>
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
                                                                 {opts.map((sel: any) => {
                                                                     const isSelected = selectedDealerFitIds.includes(sel.id);
                                                                     const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
+                                                                    const imgUrl = resolveImageUrl(sel.items?.[0]?.data);
                                                                     return (
-                                                                    <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1 relative", isSelected ? "bg-amber-50 border-amber-600 shadow-md ring-2 ring-amber-600/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-amber-600/20")}>
+                                                                    <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1 relative min-w-0", isSelected ? "bg-amber-50 border-amber-600 shadow-md ring-2 ring-amber-600/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-amber-600/20")}>
                                                                         {hasOverlap && <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5"><CopyCheck className="h-3 w-3 text-amber-600" /><span className="text-[7px] font-black uppercase tracking-wide text-amber-700">Already Included</span></div>}
-                                                                        <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
-                                                                        <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                                            <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-amber-700" : "text-slate-900")}>{sel.name}</p>
+                                                                        <div className={cn("p-4 pb-2 flex flex-col items-center text-center gap-1 w-full min-w-0 flex-grow", hasOverlap && "pt-8")}>
+                                                                            <p title={sel.name} className={cn("text-[10px] font-black uppercase tracking-tight leading-tight line-clamp-3 break-words w-full", isSelected ? "text-amber-700" : "text-slate-900")}>{sel.name}</p>
                                                                             <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-amber-600/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.['Act Sell'] || i.data?.sellPriceExclGst || i.data?.['Store Price'] || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
                                                                         </div>
+                                                                        {imgUrl && <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 mt-auto"><Image src={imgUrl} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" /></div>}
                                                                     </button>
                                                                     );
                                                                 })}
@@ -2872,38 +2931,106 @@ export function HighfieldQuoteFlow({
                                             onToggle={toggleDealerFitSelection}
                                         />
                                     )}
-                                    {dealerFitLoading ? <div className="flex justify-center py-16"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div> : groupedDealerFit.length > 0 ? (
-                                        groupedDealerFit.map(([cat, opts]) => (
-                                            <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 scroll-mt-10">
+                                    {/* v1.31 Step-5 curation toolbar — search + category chips +
+                                        "Show all" escape hatch. Relevance narrowing (named R-* rules
+                                        in src/lib/step5-curation.ts) must never hard-block a sale:
+                                        everything stays reachable via Show all + search. */}
+                                    {!dealerFitLoading && groupedDealerFit.length > 0 && (
+                                        <div className="bg-white border-2 rounded-[1.5rem] shadow-lg p-4 space-y-3">
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                                <div className="relative flex-1 min-w-[220px]">
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                                    <Input
+                                                        value={dfSearchInput}
+                                                        onChange={e => setDfSearchInput(e.target.value)}
+                                                        placeholder="Search dealer fit options..."
+                                                        className="pl-9 h-9 rounded-xl text-xs"
+                                                    />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDfShowAll(v => !v)}
+                                                    title="Relevance rules hide items that don't fit this boat (wrong HP band, wrong length, wrong tube material, workshop-only operations). Toggle to see everything."
+                                                    className={cn("flex items-center gap-1.5 px-3 h-9 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all", dfShowAll ? "bg-primary text-white border-primary" : "bg-white text-slate-500 border-slate-200 hover:border-primary/30")}
+                                                >
+                                                    {dfShowAll ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                                                    {dfShowAll ? 'Showing all items' : 'Show all items'}
+                                                </button>
+                                            </div>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {groupedDealerFit.map(g => {
+                                                    const toggled = dfCatFilter.includes(g.category);
+                                                    return (
+                                                        <button
+                                                            key={g.category}
+                                                            type="button"
+                                                            title={g.category}
+                                                            onClick={() => setDfCatFilter(prev => prev.includes(g.category) ? prev.filter(c => c !== g.category) : [...prev, g.category])}
+                                                            className={cn("px-2.5 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest transition-all", toggled ? "bg-primary text-white border-primary" : "bg-slate-50 text-slate-500 border-slate-200 hover:border-primary/40", dfCatFilter.length > 0 && !toggled && "opacity-50")}
+                                                        >
+                                                            {g.display} ({g.items.length})
+                                                        </button>
+                                                    );
+                                                })}
+                                                {dfCatFilter.length > 0 && (
+                                                    <button type="button" onClick={() => setDfCatFilter([])} className="px-2.5 py-1 rounded-full border border-transparent text-[8px] font-black uppercase tracking-widest text-primary hover:underline">
+                                                        Clear filters
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {(() => {
+                                                const totalHidden = groupedDealerFit.reduce((a, g) => a + g.hiddenCount, 0);
+                                                return !dfShowAll && totalHidden > 0 ? (
+                                                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">
+                                                        {totalHidden} item{totalHidden === 1 ? '' : 's'} hidden as not relevant to this build — use &quot;Show all items&quot; to reveal
+                                                    </p>
+                                                ) : null;
+                                            })()}
+                                        </div>
+                                    )}
+                                    {dealerFitLoading ? <div className="flex justify-center py-16"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div> : filteredGroupedDealerFit.length > 0 ? (
+                                        filteredGroupedDealerFit.map(g => (
+                                            <div key={g.category} ref={el => { categoryRefs.current[g.category] = el; }} className="space-y-6 scroll-mt-10">
                                                 {/* v1.16 (VyZ4AonV) — restructured dealer-fit heading: category
                                                     name + option count + a gold accent rule + a quick subtitle
-                                                    distinguishing accessory categories from packages. */}
+                                                    distinguishing accessory categories from packages.
+                                                    v1.31 — prettified display name; raw MPF heading stays in the
+                                                    title attribute for traceability. */}
                                                 <div className="bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                                     <div className="flex items-center justify-between gap-3 flex-wrap">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                                        <div className="flex items-center gap-3 min-w-0">
+                                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                                                            <h3 title={g.category} className="text-[10px] font-black uppercase tracking-[0.3em] text-white truncate">{g.display}</h3>
                                                         </div>
-                                                        <span className="text-[8px] font-black uppercase tracking-widest text-white/70">
-                                                            {opts.length} option{opts.length === 1 ? '' : 's'}
-                                                            {(opts as any[]).some((o: any) => o.type === 'package') ? ' · packages incl.' : ''}
+                                                        <span className="text-[8px] font-black uppercase tracking-widest text-white/70 shrink-0">
+                                                            {g.items.length} option{g.items.length === 1 ? '' : 's'}
+                                                            {g.items.some((o: any) => o.type === 'package') ? ' · packages incl.' : ''}
+                                                            {g.hiddenCount > 0 ? ` · ${g.hiddenCount} hidden` : ''}
                                                         </span>
                                                     </div>
                                                 </div>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                                    {opts.map((sel: any) => {
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
+                                                    {g.items.map((sel: any) => {
                                                         const isSelected = selectedDealerFitIds.includes(sel.id);
                                                         // Detect if items in this (unselected) selection are already included via another category
                                                         const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
+                                                        const imgUrl = resolveImageUrl(sel.items?.[0]?.data);
                                                         return (
-                                                        <div key={sel.id} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent relative", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-primary/20")}>
+                                                        <div key={sel.id} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent relative min-w-0", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-primary/20")}>
                                                             {hasOverlap && <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5"><CopyCheck className="h-3 w-3 text-amber-600" /><span className="text-[7px] font-black uppercase tracking-wide text-amber-700">Already Included</span></div>}
-                                                            <button type="button" onClick={() => toggleDealerFitSelection(sel.id)} className="flex flex-col p-1 text-left w-full">
-                                                                <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
-                                                                <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                                    <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{sel.name}</p>
+                                                            {/* v1.31 — title-top consistent layout: name + price always
+                                                                lead the card; the image area only exists when a real
+                                                                image resolves (no empty white voids). */}
+                                                            <button type="button" onClick={() => toggleDealerFitSelection(sel.id)} className="flex flex-col p-1 text-left w-full h-full">
+                                                                <div className={cn("p-4 pb-2 flex flex-col items-center text-center gap-1 w-full min-w-0 flex-grow", hasOverlap && "pt-8")}>
+                                                                    <p title={sel.name} className={cn("text-[10px] font-black uppercase tracking-tight leading-tight line-clamp-3 break-words w-full", isSelected ? "text-primary" : "text-slate-900")}>{sel.name}</p>
                                                                     <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.['Act Sell'] || i.data?.sellPriceExclGst || i.data?.['Store Price'] || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
                                                                 </div>
+                                                                {imgUrl && (
+                                                                    <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 mt-auto">
+                                                                        <Image src={imgUrl} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />
+                                                                    </div>
+                                                                )}
                                                             </button>
                                                             {/* v1.16 (rI21WRhH) — Dealer fit option expander. Visible for
                                                                 packages (multi-item) so operators can see what's inside
@@ -2940,7 +3067,7 @@ export function HighfieldQuoteFlow({
                                                 </div>
                                             </div>
                                         ))
-                                    ) : <div className="py-16 text-center border-2 border-dashed rounded-xl opacity-20"><Box className="h-10 w-10 mx-auto mb-3" /><p className="text-[9px] font-black uppercase tracking-widest">No dealer fit options configured.</p></div>}
+                                    ) : <div className="py-16 text-center border-2 border-dashed rounded-xl opacity-20"><Box className="h-10 w-10 mx-auto mb-3" /><p className="text-[9px] font-black uppercase tracking-widest">{groupedDealerFit.length > 0 ? 'No options match your search or filters.' : 'No dealer fit options configured.'}</p></div>}
                                     {/*
                                       v1.11 (Epic 9.2.1 + 9.2.2) — Fit-Up section under Dealer Fit on the
                                       same step. Catalog-wide picker (per-module filtering deferred). Each

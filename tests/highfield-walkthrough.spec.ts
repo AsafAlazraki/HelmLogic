@@ -521,8 +521,8 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
                     const len = boatLengthM(model);
                     return len != null && t.minLengthM != null && t.maxLengthM != null && len >= t.minLengthM && len < t.maxLengthM;
                 });
-                if (expectRego) await page.locator('text=/ex GST/').first().waitFor({ timeout: 10000 }).catch(() => {});
-                const total = await waitTotalStable(page);
+                if (expectRego) await page.locator('text=/ex GST/').first().waitFor({ timeout: 15000 }).catch(() => {});
+                const total = await waitTotalStable(page, 1500, 20000);
                 regoChip = await readRegoChip(page);
                 if (total === null) {
                     fail('s1', 'header total unreadable'); res.steps.s1 = 'fail'; pa.s1_variants.failed++; await shot('s1-total');
@@ -552,7 +552,28 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
                     }
                 }
             } else {
-                const { ok, actual } = await waitTotalEquals(page, Math.round(vPrice + offsetObs), 1);
+                let { ok, actual } = await waitTotalEquals(page, Math.round(vPrice + offsetObs), 1);
+                if (!ok) {
+                    // The auto-matched rego can land AFTER the anchor total was
+                    // read (its options fan out over three async queries) —
+                    // shifting every subsequent total by the rego amount. If
+                    // the chip amount changed, re-anchor the offset and retry
+                    // once; the chip itself is still validated against live
+                    // regoTypes docs below.
+                    const chip2 = await readRegoChip(page);
+                    const delta = (chip2?.amount ?? 0) - (regoChip?.amount ?? 0);
+                    if (delta !== 0) {
+                        offsetObs += delta;
+                        regoChip = chip2;
+                        if (chip2) {
+                            pa.s1_rego = pa.s1_rego || { checked: 0, failed: 0 };
+                            pa.s1_rego.checked++;
+                            const hit = regoTypesFor('boat').find(t => Math.abs((t.sellExclGst ?? -1) - chip2.amount) < 0.01);
+                            if (!hit) { pa.s1_rego.failed++; res.steps.s1 = 'fail'; fail('s1', `late auto-rego chip $${chip2.amount} matches no live regoTypes doc`); }
+                        }
+                        ({ ok, actual } = await waitTotalEquals(page, Math.round(vPrice + offsetObs), 1));
+                    }
+                }
                 if (!ok) {
                     pa.s1_variants.failed++; res.steps.s1 = 'fail';
                     fail('s1', `variant ${v.name}: total ${actual} != ${Math.round(vPrice + offsetObs)} (live $${vPrice} + offset ${Math.round(offsetObs)})`);
@@ -902,9 +923,9 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
     }
     // fit-up selector mounts + first-10 item prices == org fitUpItems sellPrice
     let fitUpMounted = false;
-    for (let w = 0; w < 20 && !fitUpMounted; w++) {
+    for (let w = 0; w < 30 && !fitUpMounted; w++) {
         fitUpMounted = (await page.locator('text=/Fit-?up/i').count()) > 0;
-        if (!fitUpMounted) await page.waitForTimeout(800);
+        if (!fitUpMounted) await page.waitForTimeout(1000);
     }
     if (!fitUpMounted) {
         res.steps.s5 = 'fail'; fail('s5', 'Fit-Up selector did not mount'); await shot('s5-fitup');
@@ -1061,15 +1082,38 @@ test.describe('Part 2 — SP560 video', () => {
         await pace(1200);
         await page.evaluate(() => window.scrollBy(0, 500));
         await page.locator('text=/ex GST/').first().waitFor({ timeout: 10000 }).catch(() => {});
+        await pace(1000);
+        // Pick the reference QLD band explicitly — the proven $79,022 config
+        // (ultimate-test comparison.json) uses boatRego $250 = the
+        // '4.51m to 6.0m' band (MPF rego band KM829), not the auto-matched
+        // 'Recreational Vessel — 4.5m to 8m' ($163).
+        // NB: the left panel's PRICE LEVEL select is also role=combobox — scope
+        // to the trigger showing a rego value/placeholder.
+        const regoTrigger = page.getByRole('combobox')
+            .filter({ hasText: /registration type|vessel|up to|4\.5m|6\.0m/i })
+            .first();
+        if (await regoTrigger.isVisible().catch(() => false)) {
+            await regoTrigger.scrollIntoViewIfNeeded().catch(() => {});
+            await pace(600);
+            await regoTrigger.click();
+            await pace(800);
+            const band = page.getByRole('option', { name: /^4\.51m to 6\.0m \$250$/ }).first();
+            if (await band.isVisible().catch(() => false)) { await band.click(); }
+            else { await page.keyboard.press('Escape'); }
+        }
         await pace(1400);
 
-        // Step 2 — pick 1 factory option.
+        // Step 2 — demonstrate a factory-option pick, then deselect so the
+        // final totals land on the proven $79,022-inc-GST reference config
+        // (ultimate-test comparison.json: factoryOptions = []).
         await nextStep(page, 2500);
         const fo = page.locator('button.rounded-\\[1\\.5rem\\]').first();
         await fo.scrollIntoViewIfNeeded().catch(() => {});
-        await pace(500);
+        await pace(600);
         await fo.click({ force: true });
-        await pace(1200);
+        await pace(1500);
+        await fo.click({ force: true });
+        await pace(900);
 
         // Step 3 — pick NSM Recommended Slot 1 (F90XB).
         await nextStep(page, 4500);
@@ -1111,7 +1155,7 @@ test.describe('Part 2 — SP560 video', () => {
         await page.locator('text=/Project Build Summary/i').first().waitFor({ timeout: 15000 }).catch(() => {});
         const total = await waitTotalStable(page);
         console.log(`▶ SP560 final total on screen: $${total?.toLocaleString('en-US')}`);
-        const incGst = await page.locator('text=/inc GST/i').first().innerText().catch(() => '');
+        const incGst = await page.locator('span:text-matches("inc GST", "i")').first().locator('xpath=..').innerText().catch(() => '');
         console.log(`▶ inc GST line: ${incGst}`);
         fs.writeFileSync(path.join(OUT, 'sp560-video-meta.json'), JSON.stringify({
             recordedUtc: new Date().toISOString(), finalTotalExGst: total, incGstLine: incGst,

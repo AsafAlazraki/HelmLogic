@@ -1,6 +1,6 @@
 # Highfield full-catalogue walkthrough — Steps 1→6 vs live MPF connections
 
-Updated: 2026-07-04T10:17:00.908Z · 85 models walked
+Updated: 2026-07-04T10:42:47.721Z · 85 models walked
 
 | Range | Model | Variants (price ✓/total) | S1 | S2 | S3 | S4 | S5 | S6 | Price asserts (fail/checked) | Failures |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -28,14 +28,14 @@ Updated: 2026-07-04T10:17:00.908Z · 85 models walked
 | Coaster | Coaster 540 Open | 3/3 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/343 |  |
 | Coaster | Coaster 540 ST | 3/3 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/341 |  |
 | Coaster | Coaster 600 ST | 1/1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/341 |  |
-| Sport | SP300 | 15/15 | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | 0/356 | [s5] Fit-Up selector did not mount |
+| Sport | SP300 | 15/15 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/366 |  |
 | Sport | SP330 | 15/15 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/372 |  |
 | Sport | SP360 | 15/15 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/367 |  |
 | Sport | SP390 | 15/15 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/371 |  |
 | Sport | SP420 | 15/15 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/371 |  |
 | Sport | SP460 | 15/15 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/372 |  |
 | Sport | SP520 | 15/15 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/370 |  |
-| Sport | SP560 | 15/15 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | 1/371 | [s4] trailer TA600-MOB (SP560): expected $10,430 (live doc sell + overrides) — card "REDCO CUSTOM / HIGHFIELD SP560 ALUMINIUM - TA600-MOB /  / RECOMMENDED / SEL |
+| Sport | SP560 | 15/15 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/371 |  |
 | Sport | SP600 | 15/15 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/372 |  |
 | Sport | SP660 | 15/15 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/373 |  |
 | Sport | SP700 | 1/1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/349 |  |

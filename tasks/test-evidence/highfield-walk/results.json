@@ -1,5 +1,5 @@
 {
- "updatedUtc": "2026-07-04T10:17:00.907Z",
+ "updatedUtc": "2026-07-04T10:42:47.720Z",
  "models": {
   "Roll-Up/RU200AL": {
    "range": "Roll-Up",
@@ -1323,7 +1323,7 @@
     "s2": "pass",
     "s3": "pass",
     "s4": "pass",
-    "s5": "fail",
+    "s5": "pass",
     "s6": "pass"
    },
    "priceAsserts": {
@@ -1356,7 +1356,7 @@
      "failed": 0
     },
     "s5_fitUp": {
-     "checked": 0,
+     "checked": 10,
      "failed": 0
     },
     "s6_summary": {
@@ -1364,10 +1364,8 @@
      "failed": 0
     }
    },
-   "failures": [
-    "[s5] Fit-Up selector did not mount"
-   ],
-   "durationMs": 65097
+   "failures": [],
+   "durationMs": 42748
   },
   "Sport/SP330": {
    "range": "Sport",
@@ -1425,7 +1423,7 @@
     }
    },
    "failures": [],
-   "durationMs": 43534
+   "durationMs": 43186
   },
   "Sport/SP360": {
    "range": "Sport",
@@ -1483,7 +1481,7 @@
     }
    },
    "failures": [],
-   "durationMs": 69745
+   "durationMs": 43607
   },
   "Sport/SP390": {
    "range": "Sport",
@@ -1541,7 +1539,7 @@
     }
    },
    "failures": [],
-   "durationMs": 43253
+   "durationMs": 42235
   },
   "Sport/SP420": {
    "range": "Sport",
@@ -1599,7 +1597,7 @@
     }
    },
    "failures": [],
-   "durationMs": 41887
+   "durationMs": 44981
   },
   "Sport/SP460": {
    "range": "Sport",
@@ -1657,7 +1655,7 @@
     }
    },
    "failures": [],
-   "durationMs": 42936
+   "durationMs": 44875
   },
   "Sport/SP520": {
    "range": "Sport",
@@ -1715,7 +1713,7 @@
     }
    },
    "failures": [],
-   "durationMs": 43336
+   "durationMs": 43474
   },
   "Sport/SP560": {
    "range": "Sport",
@@ -1730,7 +1728,7 @@
     "s1": "pass",
     "s2": "pass",
     "s3": "pass",
-    "s4": "fail",
+    "s4": "pass",
     "s5": "pass",
     "s6": "pass"
    },
@@ -1753,7 +1751,7 @@
     },
     "s4_trailers": {
      "checked": 2,
-     "failed": 1
+     "failed": 0
     },
     "s4_rego": {
      "checked": 1,
@@ -1772,10 +1770,8 @@
      "failed": 0
     }
    },
-   "failures": [
-    "[s4] trailer TA600-MOB (SP560): expected $10,430 (live doc sell + overrides) — card \"REDCO CUSTOM / HIGHFIELD SP560 ALUMINIUM - TA600-MOB |  | RECOMMENDED | SELECTED | MATCHES ASSIGNED TRAILER TA600-MOB (S\""
-   ],
-   "durationMs": 58114
+   "failures": [],
+   "durationMs": 46458
   },
   "Sport/SP600": {
    "range": "Sport",
@@ -1833,7 +1829,7 @@
     }
    },
    "failures": [],
-   "durationMs": 42646
+   "durationMs": 42426
   },
   "Sport/SP660": {
    "range": "Sport",
@@ -1891,7 +1887,7 @@
     }
    },
    "failures": [],
-   "durationMs": 43665
+   "durationMs": 44065
   },
   "Sport/SP700": {
    "range": "Sport",
@@ -1949,7 +1945,7 @@
     }
    },
    "failures": [],
-   "durationMs": 39597
+   "durationMs": 40026
   },
   "Sport/SP700ST": {
    "range": "Sport",
@@ -2007,7 +2003,7 @@
     }
    },
    "failures": [],
-   "durationMs": 39400
+   "durationMs": 41816
   },
   "Sport/SP700 Windlass": {
    "range": "Sport",
@@ -2065,7 +2061,7 @@
     }
    },
    "failures": [],
-   "durationMs": 40576
+   "durationMs": 41886
   },
   "Sport/SP760": {
    "range": "Sport",
@@ -2123,7 +2119,7 @@
     }
    },
    "failures": [],
-   "durationMs": 40116
+   "durationMs": 40681
   },
   "Sport/SP760ST": {
    "range": "Sport",
@@ -2181,7 +2177,7 @@
     }
    },
    "failures": [],
-   "durationMs": 43060
+   "durationMs": 43907
   },
   "Sport/SP760 Windlass": {
    "range": "Sport",
@@ -2239,7 +2235,7 @@
     }
    },
    "failures": [],
-   "durationMs": 40430
+   "durationMs": 42229
   },
   "Sport/SP800": {
    "range": "Sport",
@@ -2297,7 +2293,7 @@
     }
    },
    "failures": [],
-   "durationMs": 41829
+   "durationMs": 41319
   },
   "Sport/SP900": {
    "range": "Sport",
@@ -2355,7 +2351,7 @@
     }
    },
    "failures": [],
-   "durationMs": 42382
+   "durationMs": 42617
   },
   "Classic/CL260": {
    "range": "Classic",

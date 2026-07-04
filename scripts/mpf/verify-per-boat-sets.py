@@ -174,13 +174,20 @@ RANGE_WORDS = {"CL": "CLASSIC", "SP": "SPORT", "RU": "ROLL", "UL": "ULTRAL",
 
 
 def classify_section(raw):
-    """Port of classifySection (highfield-quote-flow.tsx ~926)."""
+    """Port of classifySection — canonical implementation now lives in
+    src/lib/step5-curation.ts (moved out of highfield-quote-flow.tsx in the
+    v1.31 Step-5 curation pass, unit-tested in
+    tests/unit/step5-curation.test.ts)."""
     c = str(raw).upper()
     if c.startswith("###") or "OBSELETE" in c or "OBSOLETE" in c:
         return "hidden"
     if "PRE DELIVERY" in c or "PRE-DELIVERY" in c:
         return "hidden"
     if "RIGGING KIT" in c or "HELM MASTER" in c or "ADD ON KITS" in c:
+        return "hidden"
+    # v1.31 Step-5 curation: workshop operations hide on the NEW-boat step
+    # (reachable only via the operator "Show all" escape hatch).
+    if "ENGINE REMOVAL" in c or "SURVEYING SUBLET" in c:
         return "hidden"
     if re.search(r"(HIGHFIELD|STACER|STABICRAFT|SURTEES|JEANNEAU|FORMOSA|HAINES)", c) \
             and re.search(r"\d{3}", c):
@@ -225,6 +232,14 @@ def simulate_step5_categories(dfs, model_doc, vendor_name, motor_cats, trailer_c
         cat = sel.get("category") or "Gear"
         cl = norm(cat)
         if cl in motor_l or cl in trailer_l:
+            continue
+        # v1.31 keyword routing (src/lib/step5-curation.ts routeSection):
+        # outboard/tiller/prop sections render under MOTOR dealer fit and
+        # trailer-accessory sections under TRAILER dealer fit, not here.
+        cu = str(cat).upper()
+        if re.search(r"\bOUTBOARD\b|\bTILLER\b|\bPROP(ELLER)?S?\b", cu):
+            continue
+        if re.search(r"TRAILER\s+(ACCESSOR|SETUP|OPTION)", cu):
             continue
         klass = classify_section(cat)
         if klass == "hidden":
