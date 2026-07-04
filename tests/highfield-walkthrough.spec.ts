@@ -728,7 +728,12 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
         assignmentByKey[`${a.brandVendorId}/${a.seriesId}/${a.trailerId}`] = a;
         const tdoc = FX.trailers[`${a.brandVendorId}/${a.seriesId}/${a.trailerId}`];
         pa.s4_trailers.checked++;
-        const cardSel = page.locator('button.rounded-\\[1\\.5rem\\]').filter({ hasText: a.code || a.name || a.trailerId }).first();
+        // NB: the NSM trailer-menu card carries the same code text but never a
+        // price — exclude menu cards by their footer copy.
+        const cardSel = page.locator('button.rounded-\\[1\\.5rem\\]')
+            .filter({ hasText: a.code || a.name || a.trailerId })
+            .filter({ hasNotText: /Matches assigned trailer|Not assigned to this boat/i })
+            .first();
         if (!(await cardSel.isVisible().catch(() => false))) {
             pa.s4_trailers.failed++; res.steps.s4 = 'fail';
             fail('s4', `assignment card "${a.code || a.name}" not visible`); await shot('s4-card');
@@ -775,7 +780,10 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
     }
     if (finalTrailerAssignment) {
         finalTrailerDoc = FX.trailers[`${finalTrailerAssignment.brandVendorId}/${finalTrailerAssignment.seriesId}/${finalTrailerAssignment.trailerId}`];
-        const cardSel = page.locator('button.rounded-\\[1\\.5rem\\]').filter({ hasText: finalTrailerAssignment.code || finalTrailerAssignment.name || '' }).first();
+        const cardSel = page.locator('button.rounded-\\[1\\.5rem\\]')
+            .filter({ hasText: finalTrailerAssignment.code || finalTrailerAssignment.name || '' })
+            .filter({ hasNotText: /Matches assigned trailer|Not assigned to this boat/i })
+            .first();
         if (finalTrailerDoc) {
             const expStr = `$${(trailerEffectiveSell(finalTrailerAssignment.trailerId, finalTrailerDoc) || 0).toLocaleString('en-US')}`;
             // activate only if not already active (clicking an active card unticks it)

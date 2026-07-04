@@ -1,5 +1,5 @@
 {
- "updatedUtc": "2026-07-04T09:17:06.429Z",
+ "updatedUtc": "2026-07-04T09:54:06.401Z",
  "models": {
   "Roll-Up/RU200AL": {
    "range": "Roll-Up",
@@ -216,6 +216,3072 @@
    },
    "failures": [],
    "durationMs": 36588
+  },
+  "Roll-Up/RU250 Easy Go": {
+   "range": "Roll-Up",
+   "model": "RU250 Easy Go",
+   "modelId": "ru250-easy-go",
+   "variants": {
+    "total": 1,
+    "pricePass": 1,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 2,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 33573
+  },
+  "Roll-Up/RU250AL": {
+   "range": "Roll-Up",
+   "model": "RU250AL",
+   "modelId": "ru250al",
+   "variants": {
+    "total": 4,
+    "pricePass": 4,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 35989
+  },
+  "Roll-Up/RU250KAM": {
+   "range": "Roll-Up",
+   "model": "RU250KAM",
+   "modelId": "ru250kam",
+   "variants": {
+    "total": 4,
+    "pricePass": 4,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 37726
+  },
+  "Roll-Up/RU280AL": {
+   "range": "Roll-Up",
+   "model": "RU280AL",
+   "modelId": "ru280al",
+   "variants": {
+    "total": 4,
+    "pricePass": 4,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 36342
+  },
+  "Roll-Up/RU280KAM": {
+   "range": "Roll-Up",
+   "model": "RU280KAM",
+   "modelId": "ru280kam",
+   "variants": {
+    "total": 4,
+    "pricePass": 4,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 38037
+  },
+  "Roll-Up/RU300 Easy Go": {
+   "range": "Roll-Up",
+   "model": "RU300 Easy Go",
+   "modelId": "ru300-easy-go",
+   "variants": {
+    "total": 1,
+    "pricePass": 1,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 316,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 2,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 34535
+  },
+  "Roll-Up/RU320AL": {
+   "range": "Roll-Up",
+   "model": "RU320AL",
+   "modelId": "ru320al",
+   "variants": {
+    "total": 4,
+    "pricePass": 4,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 36099
+  },
+  "Roll-Up/RU320KAM": {
+   "range": "Roll-Up",
+   "model": "RU320KAM",
+   "modelId": "ru320kam",
+   "variants": {
+    "total": 4,
+    "pricePass": 4,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 36603
+  },
+  "Ultralite/UL220": {
+   "range": "Ultralite",
+   "model": "UL220",
+   "modelId": "ul220",
+   "variants": {
+    "total": 8,
+    "pricePass": 8,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 2,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 35975
+  },
+  "Ultralite/UL240": {
+   "range": "Ultralite",
+   "model": "UL240",
+   "modelId": "ul240",
+   "variants": {
+    "total": 8,
+    "pricePass": 8,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 36652
+  },
+  "Ultralite/UL240LT": {
+   "range": "Ultralite",
+   "model": "UL240LT",
+   "modelId": "ul240lt",
+   "variants": {
+    "total": 8,
+    "pricePass": 8,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 35649
+  },
+  "Ultralite/UL260": {
+   "range": "Ultralite",
+   "model": "UL260",
+   "modelId": "ul260",
+   "variants": {
+    "total": 8,
+    "pricePass": 8,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 35218
+  },
+  "Ultralite/UL260LT": {
+   "range": "Ultralite",
+   "model": "UL260LT",
+   "modelId": "ul260lt",
+   "variants": {
+    "total": 8,
+    "pricePass": 8,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 34105
+  },
+  "Ultralite/UL290": {
+   "range": "Ultralite",
+   "model": "UL290",
+   "modelId": "ul290",
+   "variants": {
+    "total": 8,
+    "pricePass": 8,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 36070
+  },
+  "Ultralite/UL290LT": {
+   "range": "Ultralite",
+   "model": "UL290LT",
+   "modelId": "ul290lt",
+   "variants": {
+    "total": 8,
+    "pricePass": 8,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 34944
+  },
+  "Ultralite/UL310": {
+   "range": "Ultralite",
+   "model": "UL310",
+   "modelId": "ul310",
+   "variants": {
+    "total": 8,
+    "pricePass": 8,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 39940
+  },
+  "Ultralite/UL340": {
+   "range": "Ultralite",
+   "model": "UL340",
+   "modelId": "ul340",
+   "variants": {
+    "total": 8,
+    "pricePass": 8,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 348,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 36313
+  },
+  "Coaster/Coaster 540 Open": {
+   "range": "Coaster",
+   "model": "Coaster 540 Open",
+   "modelId": "coaster-540-open",
+   "variants": {
+    "total": 3,
+    "pricePass": 3,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 316,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 38411
+  },
+  "Coaster/Coaster 540 ST": {
+   "range": "Coaster",
+   "model": "Coaster 540 ST",
+   "modelId": "coaster-540-st",
+   "variants": {
+    "total": 3,
+    "pricePass": 3,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 316,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41165
+  },
+  "Coaster/Coaster 600 ST": {
+   "range": "Coaster",
+   "model": "Coaster 600 ST",
+   "modelId": "coaster-600-st",
+   "variants": {
+    "total": 1,
+    "pricePass": 1,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 6,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 316,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 40974
+  },
+  "Sport/SP300": {
+   "range": "Sport",
+   "model": "SP300",
+   "modelId": "sp300",
+   "variants": {
+    "total": 15,
+    "pricePass": 15,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 15,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 331,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 53724
+  },
+  "Sport/SP330": {
+   "range": "Sport",
+   "model": "SP330",
+   "modelId": "sp330",
+   "variants": {
+    "total": 15,
+    "pricePass": 15,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 15,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 335,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 42846
+  },
+  "Sport/SP360": {
+   "range": "Sport",
+   "model": "SP360",
+   "modelId": "sp360",
+   "variants": {
+    "total": 15,
+    "pricePass": 15,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 15,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 330,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 42597
+  },
+  "Sport/SP390": {
+   "range": "Sport",
+   "model": "SP390",
+   "modelId": "sp390",
+   "variants": {
+    "total": 15,
+    "pricePass": 15,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 15,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 331,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 43865
+  },
+  "Sport/SP420": {
+   "range": "Sport",
+   "model": "SP420",
+   "modelId": "sp420",
+   "variants": {
+    "total": 15,
+    "pricePass": 15,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 15,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 331,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41887
+  },
+  "Sport/SP460": {
+   "range": "Sport",
+   "model": "SP460",
+   "modelId": "sp460",
+   "variants": {
+    "total": 15,
+    "pricePass": 15,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 15,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 5,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 331,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 42936
+  },
+  "Sport/SP520": {
+   "range": "Sport",
+   "model": "SP520",
+   "modelId": "sp520",
+   "variants": {
+    "total": 15,
+    "pricePass": 15,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 15,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 331,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 43336
+  },
+  "Sport/SP560": {
+   "range": "Sport",
+   "model": "SP560",
+   "modelId": "sp560",
+   "variants": {
+    "total": 15,
+    "pricePass": 15,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "fail",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 15,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 2,
+     "failed": 1
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 331,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [
+    "[s4] trailer TA600-MOB (SP560): expected $10,430 (live doc sell + overrides) — card \"REDCO CUSTOM / HIGHFIELD SP560 ALUMINIUM - TA600-MOB |  | RECOMMENDED | SELECTED | MATCHES ASSIGNED TRAILER TA600-MOB (S\""
+   ],
+   "durationMs": 58114
+  },
+  "Sport/SP600": {
+   "range": "Sport",
+   "model": "SP600",
+   "modelId": "sp600",
+   "variants": {
+    "total": 15,
+    "pricePass": 15,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 15,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 7,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 331,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 42646
+  },
+  "Sport/SP660": {
+   "range": "Sport",
+   "model": "SP660",
+   "modelId": "sp660",
+   "variants": {
+    "total": 15,
+    "pricePass": 15,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 15,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 7,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 331,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 43665
+  },
+  "Sport/SP700": {
+   "range": "Sport",
+   "model": "SP700",
+   "modelId": "sp700",
+   "variants": {
+    "total": 1,
+    "pricePass": 1,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 332,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 39597
+  },
+  "Sport/SP700ST": {
+   "range": "Sport",
+   "model": "SP700ST",
+   "modelId": "sp700st",
+   "variants": {
+    "total": 8,
+    "pricePass": 8,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 332,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 39400
+  },
+  "Sport/SP700 Windlass": {
+   "range": "Sport",
+   "model": "SP700 Windlass",
+   "modelId": "sp700wlwindlass",
+   "variants": {
+    "total": 8,
+    "pricePass": 8,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 332,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 40576
+  },
+  "Sport/SP760": {
+   "range": "Sport",
+   "model": "SP760",
+   "modelId": "sp760",
+   "variants": {
+    "total": 1,
+    "pricePass": 1,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 341,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 40116
+  },
+  "Sport/SP760ST": {
+   "range": "Sport",
+   "model": "SP760ST",
+   "modelId": "sp760st",
+   "variants": {
+    "total": 8,
+    "pricePass": 8,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 12,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 341,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 43060
+  },
+  "Sport/SP760 Windlass": {
+   "range": "Sport",
+   "model": "SP760 Windlass",
+   "modelId": "sp760wlwindlass",
+   "variants": {
+    "total": 8,
+    "pricePass": 8,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 12,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 341,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 40430
+  },
+  "Sport/SP800": {
+   "range": "Sport",
+   "model": "SP800",
+   "modelId": "sp800",
+   "variants": {
+    "total": 8,
+    "pricePass": 8,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 316,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41829
+  },
+  "Sport/SP900": {
+   "range": "Sport",
+   "model": "SP900",
+   "modelId": "sp900",
+   "variants": {
+    "total": 8,
+    "pricePass": 8,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 8,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 13,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 42382
+  },
+  "Classic/CL260": {
+   "range": "Classic",
+   "model": "CL260",
+   "modelId": "cl260",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41228
+  },
+  "Classic/CL290": {
+   "range": "Classic",
+   "model": "CL290",
+   "modelId": "cl290",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 43024
+  },
+  "Classic/CL290FT": {
+   "range": "Classic",
+   "model": "CL290FT",
+   "modelId": "cl290ft",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41607
+  },
+  "Classic/CL310": {
+   "range": "Classic",
+   "model": "CL310",
+   "modelId": "cl310",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 42368
+  },
+  "Classic/CL310FT": {
+   "range": "Classic",
+   "model": "CL310FT",
+   "modelId": "cl310ft",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41501
+  },
+  "Classic/CL310LS": {
+   "range": "Classic",
+   "model": "CL310LS",
+   "modelId": "cl310ls",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41330
+  },
+  "Classic/CL340": {
+   "range": "Classic",
+   "model": "CL340",
+   "modelId": "cl340",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 6,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 44280
+  },
+  "Classic/CL340FT": {
+   "range": "Classic",
+   "model": "CL340FT",
+   "modelId": "cl340ft",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 42013
+  },
+  "Classic/CL340LS": {
+   "range": "Classic",
+   "model": "CL340LS",
+   "modelId": "cl340ls",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 5,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41901
+  },
+  "Classic/CL340MAX": {
+   "range": "Classic",
+   "model": "CL340MAX",
+   "modelId": "cl340max",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 40745
+  },
+  "Classic/CL360": {
+   "range": "Classic",
+   "model": "CL360",
+   "modelId": "cl360",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 5,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 42960
+  },
+  "Classic/CL360LS": {
+   "range": "Classic",
+   "model": "CL360LS",
+   "modelId": "cl360ls",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 5,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 49518
+  },
+  "Classic/CL360MAX": {
+   "range": "Classic",
+   "model": "CL360MAX",
+   "modelId": "cl360max",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41592
+  },
+  "Classic/CL380": {
+   "range": "Classic",
+   "model": "CL380",
+   "modelId": "cl380",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 5,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 40624
+  },
+  "Classic/CL380LS": {
+   "range": "Classic",
+   "model": "CL380LS",
+   "modelId": "cl380ls",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 5,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 40796
+  },
+  "Classic/CL380MAX": {
+   "range": "Classic",
+   "model": "CL380MAX",
+   "modelId": "cl380max",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 2,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41894
   }
  }
 }
