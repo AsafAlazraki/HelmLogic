@@ -135,6 +135,7 @@ for (const vp of VIEWPORTS) {
       await settle(page, 2500);
       await probeAndShoot(page, vp, '01-login', { fullPage: false });
       await login(page);
+      page.setDefaultTimeout(20000);
       await settle(page, 3500);
       await probeAndShoot(page, vp, '02-dashboard');
     });
@@ -142,6 +143,7 @@ for (const vp of VIEWPORTS) {
     test(`highfield module landing (${vp.w})`, async ({ page }) => {
       test.setTimeout(240_000);
       await login(page);
+      page.setDefaultTimeout(20000);
       await page.goto(`${BASE_URL}/modules/${HIGHFIELD_MODULE_ID}`);
       await settle(page, 7000);
       await probeAndShoot(page, vp, '03-highfield-landing');
@@ -150,10 +152,12 @@ for (const vp of VIEWPORTS) {
     test(`sp560 quote steps 1-6 (${vp.w})`, async ({ page }) => {
       test.setTimeout(420_000);
       await login(page);
+      page.setDefaultTimeout(20000);
       await page.goto(`${BASE_URL}/modules/${HIGHFIELD_MODULE_ID}/quote/sp560?range=${SPORT_RANGE_ID}&vendor=${HIGHFIELD_VENDOR_ID}`);
       await settle(page, 9000);
       // Step 1 — pick PVC so a variant is active (read-only in-page state).
-      await page.locator('button:has-text("PVC")').first().click({ force: true }).catch(() => {});
+      const pvc = page.locator('button:has-text("PVC")').first();
+      if (await pvc.isVisible({ timeout: 3000 }).catch(() => false)) await pvc.click({ force: true }).catch(() => {});
       await page.waitForTimeout(2000);
       await probeAndShoot(page, vp, '04-sp560-step1');
       await nextStep(page);
@@ -186,9 +190,11 @@ for (const vp of VIEWPORTS) {
       // text-scan results; screenshots are the primary evidence.
       test.setTimeout(420_000);
       await login(page);
+      page.setDefaultTimeout(20000);
       await page.goto(`${BASE_URL}/modules/${HIGHFIELD_MODULE_ID}/quote/cl290?range=${CLASSIC_RANGE_ID}&vendor=${HIGHFIELD_VENDOR_ID}`);
       await settle(page, 9000);
-      await page.locator('button:has-text("PVC")').first().click({ force: true }).catch(() => {});
+      const pvc = page.locator('button:has-text("PVC")').first();
+      if (await pvc.isVisible({ timeout: 3000 }).catch(() => false)) await pvc.click({ force: true }).catch(() => {});
       await page.waitForTimeout(2000);
       // Advance 1 → 5 (motor picked on Step 3 so dealer-fit context is real).
       await nextStep(page); // 2
@@ -219,6 +225,7 @@ for (const vp of VIEWPORTS) {
     test(`stacer quote steps 1-2 gate-lifted (${vp.w})`, async ({ page }) => {
       test.setTimeout(300_000);
       await login(page);
+      page.setDefaultTimeout(20000);
       await page.goto(`${BASE_URL}/modules/${STACER_MODULE_ID}/quote/sa409apr?range=mpf-catalog&vendor=${STACER_VENDOR_ID}`);
       await settle(page, 9000);
       await probeAndShoot(page, vp, '11-stacer-step1-build-config');
@@ -229,6 +236,7 @@ for (const vp of VIEWPORTS) {
     test(`catalog manager (${vp.w})`, async ({ page }) => {
       test.setTimeout(240_000);
       await login(page);
+      page.setDefaultTimeout(20000);
       await page.goto(`${BASE_URL}/pricing-manager`);
       await settle(page, 7000);
       await probeAndShoot(page, vp, '13-catalog-manager');
@@ -237,6 +245,7 @@ for (const vp of VIEWPORTS) {
     test(`manage mpf-data all five managers (${vp.w})`, async ({ page }) => {
       test.setTimeout(300_000);
       await login(page);
+      page.setDefaultTimeout(20000);
       await page.goto(`${BASE_URL}/manage`);
       await settle(page, 5000);
       // Switch to the MPF Data section.
@@ -259,11 +268,12 @@ for (const vp of VIEWPORTS) {
     test(`service quoting dashboard + detail sheet (${vp.w})`, async ({ page }) => {
       test.setTimeout(300_000);
       await login(page);
+      page.setDefaultTimeout(20000);
       await page.goto(`${BASE_URL}/modules/${SERVICE_MODULE_ID}`);
       await settle(page, 8000);
       await probeAndShoot(page, vp, '19-service-dashboard');
       // Open the first quote card's detail sheet (read-only look; close after).
-      const card = page.locator('[data-testid="service-quote-card"], .cursor-pointer:has-text("SQ-")').first();
+      const card = page.locator('[data-testid="service-quote-card"], .cursor-pointer:has-text("SQ-"), div.cursor-pointer:has-text("ops")').first();
       if (await card.isVisible().catch(() => false)) {
         await card.click({ force: true }).catch(() => {});
         await page.waitForTimeout(3500);
@@ -277,6 +287,7 @@ for (const vp of VIEWPORTS) {
     test(`customers + reporting (${vp.w})`, async ({ page }) => {
       test.setTimeout(300_000);
       await login(page);
+      page.setDefaultTimeout(20000);
       await page.goto(`${BASE_URL}/customers`);
       await settle(page, 6000);
       await probeAndShoot(page, vp, '21-customers');
