@@ -86,9 +86,40 @@ Screenshot-baseline visual regression for the core screens (`tests/visual/`) plu
 
 ---
 
+## v1.31 addendum — Story 12.4.2: Step-5 curation engine (2026-07-04)
+
+Asaf's field audit of quote-flow Step 5 (screenshots, 2026-07-04) named a CLASS of problem the MPF migration created: **data-consistent but product-senseless presentation**. The data was right — parity-proven — but a CL380 tender saw eight identical $813 per-SKU "HIGHFIELD - CLASSIC 380" pack cards, F300 cowl covers against a 15–30hp motor envelope, 5.6-metre tube covers on a 3.8-metre hull, "SUPPLY & INSTALL -" job-card sub-items and "Engine Removal" workshop rows as standalone-selectable options, and supplier headings like "MAJESTIC TV OPTIONS" — with most card images showing the NSM logo (the WAF had served its logo to the 12.4.1 mirror fetch).
+
+### The curation engine (`src/lib/step5-curation.ts`)
+
+New pure module — no React, no Firestore — consumed by `highfield-quote-flow.tsx`; the FFR-24 section classifier moved here verbatim (plus a new `workshop` class for ENGINE REMOVALS / SURVEYING SUBLETS), so the 33-case harness now tests the REAL implementation instead of a port:
+
+- **Per-SKU model-pack dedupe** — a model-scoped section shows ONE Boat Pack card matching the ACTIVE hull variant, not eight material×colour rows. Primary match: the MPF part code embeds the variant SKU (`9HI_HBC 065_PD` ↔ `HBC065`); fallback: progressive model-token → material → colour-code name parse, each step applied only when it leaves ≥1 row.
+- **Named item relevance rules** (`RELEVANCE_RULES`, each with a written rationale; all fail OPEN on missing context): `R-SUBITEM` (Supply & Install job-card sub-items never standalone), `R-NEWBOAT` (engine removals stay in counter/service quotes), `R-HP` (HP-scoped items must overlap the model motor envelope — parses "115 to 225HP", "up to 70HP", F/VF/XF/T engine codes incl. slash lists `F225/250/300`; radio model codes like VHF115i deliberately excluded), `R-LEN` (metre-scoped items within ±0.4 m of hull length, range names like "3.6 to 4.5mtr" must span it; component dimensions "1.8mtr Aerial" exempt), `R-MATERIAL` (PVC vs Hypalon follows the active variant), `R-CONFIG` (tiller kits only on tiller-steer boats), `R-SIZE-TV`/`R-SIZE-RADAR`/`R-SIZE-UWLIGHT`/`R-SIZE-EREEL` (big-ticket gear gated at documented hull thresholds 7.0 / 6.0 / 5.0 / 6.0 m).
+- **Keyword section routing** — OUTBOARD / TILLER / PROP sections render under Motor Dealer Fit; TRAILER ACCESSOR/SETUP sections under Trailer Dealer Fit (on top of the module-config category lists).
+- **Display-name prettifier** — the 93 raw MPF headings map to operator-facing names ("MAJESTIC TV OPTIONS" → "TV & Entertainment", "GARMIN ELECTRONIC OPTIONS" → "Electronics — Garmin", model packs → "Boat Pack — Classic 380"); generic fallback title-cases and strips supplier prefixes; the raw heading stays in the `title` attribute for traceability.
+- **Step-5 toolbar** — debounced search (name + category), category filter chips, and a **"Show all items" escape hatch** that bypasses every relevance narrowing. Narrowing can never hard-block a legitimate sale: already-selected items never hide, and everything stays reachable via search + Show all. A footer line reports "N items hidden as not relevant to this build".
+- **Card + grid polish** — title-top consistent layout (the image area only exists when a real image resolves — no more empty voids or some-top/some-bottom inconsistency), `line-clamp` titles with full name in `title`, grid `sm:2 / xl:3 / 2xl:4` columns fixing the cramped 1366/1920 layout. Same treatment applied to the Motor and Trailer dealer-fit card grids.
+
+Live effect on a CL380 (simulated over all 1,791 live rows): Boat Pack 8→1 cards · Tube Covers 60→6 (PVC, 3.4–4.2 m only) · 14 radomes + underwater lights + electric-reel wiring hidden by size class · 18 workshop rows + 20 job-card sub-items hidden · 15 rows routed to the motor/trailer steps. An SP760 (7.6 m, remote steer) keeps its radar/TV/underwater-light options and loses tiller kits.
+
+### Image data patch (sanctioned, logged)
+
+Hashed all 164 `mpf-mirror/dfo/` Storage objects (metadata md5): one hash accounted for **1,526 of 1,792** mirror references in `dealerFitSelections` — downloaded and visually verified as the **NSM logo**. Patch: nulled `imageLink` + `items[].data['Image Link']` on every doc pointing at a logo-hash mirror — **763 docs / 1,525 fields**, updateMask-scoped, logged to `tasks/mpf-audit/apply-log-images.jsonl` (class `dfo-logo-mirror`). Post-patch scan of all 1,791 docs: **0 logo refs remaining**; genuine product mirrors (Minn Kota, Garmin, Lone Star) untouched.
+
+### Evidence
+
+- `tests/unit/step5-curation.test.ts` — 67 tests: the FFR-24 33-case classifier harness (now importing the real module) + one suite per named rule, routing, dedupe, prettifier. Full unit suite 527/527, typecheck 0.
+- `tasks/test-evidence/fail-fix-retest.json` — **FFR-25** (presentation-relevance class), **FFR-26** (logo-mirror imagery), **FFR-27** (R-LEN "1.8mtr Aerial" false positive caught by the harness during the cycle — the fail→fix→retest loop firing inside a single day's work).
+- `scripts/mpf/verify-per-boat-sets.py` C1F front-end port synced to the new classifier + routing.
+- Browser spot-check queued behind the fleet walk (the Playwright slot and the `next start` build it drives were occupied by the walk throughout this pass).
+
+---
+
 ## Roadmap ceremony
 
 - `scripts/seed-v131-mpf-release.py` — one-shot idempotent seed (DRY-RUN default, `--apply`): creates Epic 12 + Epic 13 and the 14 shipped v1.31 stories. Applied + read back 2026-07-03 (14/14 shipped, both epics HTTP 200).
+- `scripts/seed-v131-step5-curation-story.py` — addendum seed for Story **12.4.2 Step-5 curation engine** (same idempotent pattern). Applied + read back 2026-07-04 (`features/v131-12-4-2`, status shipped, targetRelease v1.31, epic `mpf-migration`).
 - `RELEASE_WINDOWS['v1.31'] = { shipped: true }`; `FORWARD_RUNWAY_START` bumped 31 → 32.
 
 ---
