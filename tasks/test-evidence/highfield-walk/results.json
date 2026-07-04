@@ -1,84 +1,30 @@
 {
- "updatedUtc": "2026-07-04T09:09:49.619Z",
+ "updatedUtc": "2026-07-04T09:15:53.134Z",
  "models": {
-  "Adventure/ADV7": {
-   "range": "Adventure",
-   "model": "ADV7",
-   "modelId": "adv7",
+  "Roll-Up/RU200AL": {
+   "range": "Roll-Up",
+   "model": "RU200AL",
+   "modelId": "ru200al",
    "variants": {
-    "total": 7,
-    "pricePass": 7,
-    "priceFail": 0
-   },
-   "steps": {
-    "s1": "pass",
-    "s2": "pass",
-    "s3": "fail",
-    "s4": "pass",
-    "s5": "fail",
-    "s6": "fail"
-   },
-   "priceAsserts": {
-    "s1_variants": {
-     "checked": 7,
-     "failed": 0
-    },
-    "s2_options": {
-     "checked": 4,
-     "failed": 0
-    },
-    "s3_motorCards": {
-     "checked": 0,
-     "failed": 0
-    },
-    "s4_trailers": {
-     "checked": 1,
-     "failed": 0
-    },
-    "s4_rego": {
-     "checked": 1,
-     "failed": 0
-    },
-    "s5_dealerFit": {
-     "checked": 316,
-     "failed": 0
-    },
-    "s5_fitUp": {
-     "checked": 0,
-     "failed": 0
-    },
-    "s6_summary": {
-     "checked": 3,
-     "failed": 1
-    }
-   },
-   "failures": [
-    "[s3] NSM section visible=false but variant.motorMenu has 9 slots",
-    "[s5] Fit-Up selector did not mount",
-    "[s6] total 119951 != sum of picks 102308 (boat 94445 + rego 0 + motor 0 + trailer 7580 + trailer rego 283)"
-   ],
-   "durationMs": 46838
-  },
-  "Adventure/ADV9": {
-   "range": "Adventure",
-   "model": "ADV9",
-   "modelId": "adv9",
-   "variants": {
-    "total": 5,
-    "pricePass": 5,
+    "total": 4,
+    "pricePass": 4,
     "priceFail": 0
    },
    "steps": {
     "s1": "pass",
     "s2": "pass",
     "s3": "pass",
-    "s4": "skip",
+    "s4": "pass",
     "s5": "pass",
     "s6": "pass"
    },
    "priceAsserts": {
     "s1_variants": {
-     "checked": 5,
+     "checked": 4,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
      "failed": 0
     },
     "s2_options": {
@@ -86,7 +32,7 @@
      "failed": 0
     },
     "s3_motorCards": {
-     "checked": 9,
+     "checked": 0,
      "failed": 0
     },
     "s4_trailers": {
@@ -94,7 +40,7 @@
      "failed": 0
     },
     "s5_dealerFit": {
-     "checked": 316,
+     "checked": 324,
      "failed": 0
     },
     "s5_fitUp": {
@@ -107,7 +53,61 @@
     }
    },
    "failures": [],
-   "durationMs": 29371
+   "durationMs": 38658
+  },
+  "Roll-Up/RU200KAM": {
+   "range": "Roll-Up",
+   "model": "RU200KAM",
+   "modelId": "ru200kam",
+   "variants": {
+    "total": 4,
+    "pricePass": 4,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 2,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 38935
   }
  }
 }

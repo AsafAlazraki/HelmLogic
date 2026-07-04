@@ -605,13 +605,17 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
     if ((await stepNo(page)) !== 3) { res.steps.s3 = 'fail'; fail('s3', 'not on STEP 3 OF 6 after Next'); await shot('s3-step'); }
     const menu: any[] = Array.isArray(activeVariant.motorMenu) ? [...activeVariant.motorMenu].sort((a, b) => (a?.slot ?? 0) - (b?.slot ?? 0)) : [];
     const motors = buildMotorsForModel(model);
-    const nsmHeader = page.locator('h3:has-text("NSM Recommended for this hull")');
-    const headerVisible = await nsmHeader.isVisible().catch(() => false);
-    if (menu.length > 0 && !headerVisible) {
-        // motors may still be loading — give it one more beat
-        await page.waitForTimeout(4000);
+    // Wait for the motor fetch to finish (vendors + dataSets + 235 rows can
+    // take >10s cold) — the "Scanning Factory Datasets" spinner must clear
+    // before any Step-3 render assertion means anything.
+    const spinner = page.locator('text=/Scanning Factory Datasets/i').first();
+    const spinDeadline = Date.now() + 35000;
+    while (Date.now() < spinDeadline && (await spinner.isVisible().catch(() => false))) {
+        await page.waitForTimeout(700);
     }
-    const headerVisible2 = headerVisible || (await nsmHeader.isVisible().catch(() => false));
+    await page.waitForTimeout(1200); // auto-default + NSM section settle
+    const nsmHeader = page.locator('h3:has-text("NSM Recommended for this hull")');
+    const headerVisible2 = await nsmHeader.isVisible().catch(() => false);
     if (menu.length > 0 !== headerVisible2) {
         res.steps.s3 = 'fail';
         fail('s3', `NSM section visible=${headerVisible2} but variant.motorMenu has ${menu.length} slots`);
@@ -659,8 +663,18 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
         const std = (slot1Resolved.motor.masterAccessories || []).filter((a: any) => a.isStandard);
         expMotorContrib = getPriceForLevel(slot1Resolved.motor, 'hull_cash') + std.reduce((s: number, a: any) => s + getPriceForLevel(a, 'hull_cash'), 0);
     } else {
+        // No resolvable slot-1 → force a motor-less build so the Step-6 sum
+        // stays deterministic (the auto-default motor otherwise contributes).
         const hero = page.locator('button[aria-label*="remove motor" i]').first();
-        if (await hero.isVisible().catch(() => false)) { await hero.click({ force: true }); await page.waitForTimeout(800); }
+        if (await hero.isVisible().catch(() => false)) {
+            await hero.click({ force: true });
+            await page.waitForTimeout(1000);
+        }
+        if (await hero.isVisible().catch(() => false)) {
+            res.steps.s3 = 'fail';
+            fail('s3', 'could not remove auto-default motor for a deterministic Step-6 sum');
+            await shot('s3-remove');
+        }
     }
     if (await page.locator('text=/Total Savings/i').isVisible().catch(() => false)) {
         fail('s3', 'unexpected active promotion discount visible (fixture says no active promos)');
@@ -879,7 +893,11 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
         }
     }
     // fit-up selector mounts + first-10 item prices == org fitUpItems sellPrice
-    const fitUpMounted = (await page.locator('text=/Fit-?up/i').count()) > 0;
+    let fitUpMounted = false;
+    for (let w = 0; w < 20 && !fitUpMounted; w++) {
+        fitUpMounted = (await page.locator('text=/Fit-?up/i').count()) > 0;
+        if (!fitUpMounted) await page.waitForTimeout(800);
+    }
     if (!fitUpMounted) {
         res.steps.s5 = 'fail'; fail('s5', 'Fit-Up selector did not mount'); await shot('s5-fitup');
     } else {
