@@ -424,7 +424,7 @@ for (const rg of FX.ranges) {
     for (const m of rg._models) ALL_MODELS.push({ range: rg, model: m });
 }
 
-async function walkModel(page: Page, orgSlug: string, rg: any, master: any, res: ModelResult) {
+async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
     const t0 = Date.now();
     const override = FX.modelOverrides[master.id] || null;
     const model = getEffectiveModel(master, override);
@@ -439,16 +439,31 @@ async function walkModel(page: Page, orgSlug: string, rg: any, master: any, res:
         await page.screenshot({ path: path.join(FAILS, `${model.name.replace(/[^\w-]/g, '_')}-${tag}.png`), fullPage: false }).catch(() => {});
     };
 
-    await page.goto(`${BASE_URL}/${orgSlug}/modules/${MODULE_ID}/quote/${master.id}?range=${rg.id}&vendor=${VENDOR_ID}&_t=${Date.now()}`);
-    await page.waitForLoadState('domcontentloaded');
-    const onFlow = await page.locator('button:has-text("Next Step")').first().waitFor({ timeout: 30000 }).then(() => true).catch(() => false);
+    // Mount with retries — the context loaders (module/model/vendor useDoc
+    // fan-out) intermittently miss on a cold navigation and render the
+    // "Context Error" screen; a reload recovers.
+    let onFlow = false;
+    for (let attempt = 1; attempt <= 3 && !onFlow; attempt++) {
+        // slug-less route — locally the app lives at /modules/... (post-login
+        // URL is /dashboard; there is no org slug segment on this deployment)
+        await page.goto(`${BASE_URL}/modules/${MODULE_ID}/quote/${master.id}?range=${rg.id}&vendor=${VENDOR_ID}&_t=${Date.now()}_${attempt}`);
+        await page.waitForLoadState('domcontentloaded');
+        const deadline = Date.now() + 30000;
+        while (Date.now() < deadline) {
+            if (await page.locator('button:has-text("Next Step")').first().isVisible().catch(() => false)) { onFlow = true; break; }
+            if (await page.locator('text=/Context Error/i').first().isVisible().catch(() => false)) break; // retry loop
+            await page.waitForTimeout(500);
+        }
+    }
     if (!onFlow) {
         for (const s of ['s1', 's2', 's3', 's4', 's5', 's6']) res.steps[s] = 'fail';
-        fail('s1', 'quote flow did not mount (no Next Step button)');
+        fail('s1', 'quote flow did not mount (no Next Step button after 3 attempts)');
         await shot('mount');
         return;
     }
-    await page.waitForTimeout(1500);
+    // Variants hydrate async — wait for the material picker / build cards.
+    await page.locator('button.h-32, button.rounded-\\[1\\.5rem\\]').first().waitFor({ timeout: 20000 }).catch(() => {});
+    await page.waitForTimeout(1000);
 
     /* ---------------- Step 1 — variants + price + rego ---------------- */
     res.steps.s1 = 'pass';
@@ -914,8 +929,6 @@ test.describe('Part 1 — full Highfield catalogue walk', () => {
             test.setTimeout(Math.max(20, rg._models.length * 4) * 60_000);
             page.on('dialog', d => d.dismiss().catch(() => {}));
             await login(page);
-            const m = page.url().match(/\/([^/]+)\/(dashboard|modules|$)/);
-            const orgSlug = m ? m[1] : 'northside-marine';
 
             const results = loadResults();
             for (const model of rg._models) {
@@ -926,7 +939,7 @@ test.describe('Part 1 — full Highfield catalogue walk', () => {
                     steps: {}, priceAsserts: {}, failures: [], durationMs: 0,
                 };
                 try {
-                    await walkModel(page, orgSlug, rg, model, res);
+                    await walkModel(page, rg, model, res);
                 } catch (e: any) {
                     res.failures.push(`[crash] ${String(e?.message || e).slice(0, 300)}`);
                     for (const s of ['s1', 's2', 's3', 's4', 's5', 's6']) res.steps[s] = res.steps[s] || 'fail';
@@ -969,11 +982,9 @@ test.describe('Part 2 — SP560 video', () => {
         expect(sp560, 'SP560 must exist in the live catalogue').not.toBeNull();
 
         await login(page);
-        const m = page.url().match(/\/([^/]+)\/(dashboard|modules|$)/);
-        const orgSlug = m ? m[1] : 'northside-marine';
         await pace(800);
 
-        await page.goto(`${BASE_URL}/${orgSlug}/modules/${MODULE_ID}/quote/${sp560!.model.id}?range=${sp560!.rg.id}&vendor=${VENDOR_ID}`);
+        await page.goto(`${BASE_URL}/modules/${MODULE_ID}/quote/${sp560!.model.id}?range=${sp560!.rg.id}&vendor=${VENDOR_ID}`);
         await page.waitForLoadState('domcontentloaded');
         await page.locator('button:has-text("Next Step")').first().waitFor({ timeout: 30000 });
         await pace(1500);

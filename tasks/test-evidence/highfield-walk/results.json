@@ -1,0 +1,75 @@
+{
+ "updatedUtc": "2026-07-04T08:39:10.830Z",
+ "models": {
+  "Coaster/Coaster 540 Open": {
+   "range": "Coaster",
+   "model": "Coaster 540 Open",
+   "modelId": "coaster-540-open",
+   "variants": {
+    "total": 3,
+    "pricePass": 3,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "fail",
+    "s5": "fail",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 1
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 316,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 10
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [
+    "[s4] trailer 9223: expected $6,880 (live doc sell + overrides) — card \"DEFAULT |  | 9223 |  | DUNBIER Centre Line - CLW 5.7M-13BHD\"",
+    "[s5] fit-up item \"1.1m Stainless Masthead VHF Whip Antenna\": expected $79 — not rendered",
+    "[s5] fit-up item \"10 Pin Main Harness  (2.0M)  -  Extension\": expected $143 — not rendered",
+    "[s5] fit-up item \"10 Pin Main Harness  (3.0M)  -  Extension\": expected $163 — not rendered",
+    "[s5] fit-up item \"10 Pin Main Harness  5.00M (16'-4\")\": expected $169 — not rendered",
+    "[s5] fit-up item \"10 Pin Main Harness  6.00M (19'-7\")\": expected $182 — not rendered",
+    "[s5] fit-up item \"10 Pin Main Harness  8.00M (26'-2\")\": expected $234 — not rendered",
+    "[s5] fit-up item \"10 Pin Main Harness  9.5M (31')\": expected $230 — not rendered",
+    "[s5] fit-up item \"10 Pin Main Harness 7.00M (23')\": expected $208 — not rendered",
+    "[s5] fit-up item \"10' (3.05m) Extreme 33C Control Cable\": expected $123 — not rendered",
+    "[s5] fit-up item \"100133 - Transom Spacer 8mm\": expected $19 — not rendered"
+   ],
+   "durationMs": 41371
+  }
+ }
+}

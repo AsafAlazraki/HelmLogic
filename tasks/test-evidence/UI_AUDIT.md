@@ -112,4 +112,64 @@ _(numbered UI-1…; class tags: [alignment] [truncation] [currency] [empty-state
 ### UI-17 — Catalog Manager, Suppliers manager, Customers, login — PASS (no defects)
 - `13-catalog-manager.png` (proper empty state, brand list), `15-mpf-suppliers.png` (ID/Name/ABN populated; Terms/Credit "—" is honest data), `21-customers.png`, `01-login.png` — clean at both viewports.
 
-_(further findings from 1366 pass + FFR-18 retest appended below)_
+### UI-18 — 1366×768 pass — no viewport-specific regressions
+- Every screen re-audited at 1366×768 (`tasks/test-evidence/ui-audit/1366/*.png`). Layouts hold: quote-flow stepper keeps labels, hull-color grid reflows to 2-col, summary cards stack, no horizontal document overflow on any screen (probe-verified), no new truncation. The only 1366 probe hits are the same broken-image URLs as 1920 plus date-string false-positives ("01.07.2024" matching the raw-float regex).
+
+---
+
+## FFR-18 / FFR-19 retest — CL290 (Classic) Step 5 dealer fit
+
+Requested by main agent as FFR-18's retest; executed post-FFR-19 (commit `e86cbe7`, which fixed UI-1 from this audit).
+
+**Text-scan checks (`after/probes.jsonl`, screen `ffr18-cl290-step5`, 1920×1080): ALL PASS**
+- no `### OBSELETE` ✓ · no `PATROL 600` pack ✓ · no `PRE DELIVERY` ✓ · no `RIGGING KITS` section ✓
+- Tube Covers ✓ · Garmin ✓ · Outboard Accessories ✓ (present, per mid-scroll evidence)
+
+**Visual evidence:** `after/1920/23-cl290-step5-ffr18.png` — first section is **HIGHFIELD - CLASSIC 290 · 8 OPTIONS** (this hull's own covers, $813 each) followed by general accessory categories (Tiller Fitting Kits etc.). `after/1920/24-cl290-step5-ffr18-mid.png` for the scrolled half.
+
+**SP560 counter-check (UI-1 after):** `after/1920/09-sp560-step5-dealerfit.png` — the "HIGHFIELD - PATROL · 100 OPTIONS" leak is gone; first section is **HIGHFIELD - SPORT 560 · 15 OPTIONS**. FFR-19 verified both ways.
+
+_(1366 CL290/managers/service/customers/reporting after-shots were re-captured after a concurrent agent's rebuild invalidated the first attempt's chunks — see run log note below.)_
+
+---
+
+## After-fixes verification
+
+- `npm run typecheck` — **0 errors** after every fix.
+- `npm run build` — **green** (production build served for the after-pass).
+- After-shots in `tasks/test-evidence/ui-audit/after/{1920,1366}/` mirror the before-shot filenames:
+  - `14-mpf-rigging-kits.png` — part numbers, names (long MPF names truncate with ellipsis), all five price tiers, install hrs, MPF badges all render (UI-12).
+  - `16-mpf-pricing-matrix.png` — real franchise labels + markup % + trade-tier readouts (UI-13). First capture exposed a `−null%` render for NaN discounts — fixed with finite-guards in the same cycle.
+  - `17-mpf-freight.png` — `AWW Global Logistics (Highfield Inflatables) · $128.47 · 10%` and `Quadrant Pacific Ltd (Surtees Boats) · $441.21 · 5%` (UI-14).
+  - `18-mpf-engine-servicing.png` — populated schedules (11 intervals / 31-32 BOM lines) lead the table; legacy zero-rows sink (UI-15).
+  - `22-reporting.png` — real totals + draft state badges (UI-11).
+- NSM Recommended currency swap (UI-6) is behaviour-preserving for the whole-dollar prices on file; `after/1920/06-sp560-step3-motor.png` confirms no regression.
+- Scrollbar-strip fixes (UI-7) are Windows-specific overlay behaviour — not screenshot-provable on Linux headless; evidence is the code diff (4 files, `overflow-y-hidden` added) plus the requested static grep inventory above.
+
+## Run log note — concurrent-agent interference
+The first after-pass overlapped another agent's rebuild of `.next`; several shots captured the "Loading chunk … failed" error boundary instead of the app (two distinct stale layout-chunk hashes). Those shots were re-captured in a follow-up pass once the tree was quiet. If a future audit sees `Something went wrong / Loading chunk NNN failed`, suspect a mid-run rebuild, not an app defect.
+
+---
+
+## Summary
+
+| # | Finding | Class | Status |
+|---|---|---|---|
+| UI-1 | SP560 Step 5 shows Patrol option packs (FFR-18 gap) | data/empty-state | HANDOFF → fixed by main agent as FFR-19 (e86cbe7); retested PASS |
+| UI-2 | Selected-motor card giant white void on dead image | image/empty-state | HANDOFF (quote-flow, main-owned) |
+| UI-3 | Trailer imageUrl is auth-walled SharePoint link | image/data | HANDOFF + data note |
+| UI-4 | Header title overlaps stepper for long model names | truncation/alignment | HANDOFF (quote-flow) |
+| UI-5 | Hero carousel blank void + orphan arrows (no imagery) | empty-state/image | HANDOFF (quote-flow) |
+| UI-6 | `toLocaleString()` prices in NSM surfaces | currency | **FIXED** (nsm-recommended.tsx) |
+| UI-7 | overflow-x-auto strips missing overflow-y-hidden | scrollbar | **FIXED** ×4 components; 2 forbidden-path handoffs + 1 out-of-scope note |
+| UI-8 | Dashboard module cards inconsistent empty-logo treatment | empty-state/image | DOCUMENTED (src/app, out of authority; partially load-timing) |
+| UI-9 | Step-6 Powertrain stale sellPriceExclGst ($13,912.21 vs $17,643) | currency/data | HANDOFF (known ledger item, re-confirmed) |
+| UI-10 | Step-6 Base Vessel $0 at Cash Price level | currency/data | HANDOFF (pricing-owner ruling needed) |
+| UI-11 | Reporting all-$0 totals + "—" states | currency/empty-state | **FIXED** (reporting-dashboard.tsx) |
+| UI-12 | Rigging Kits manager em-dash wall | empty-state/data | **FIXED** (rigging-kits-manager.tsx) |
+| UI-13 | Pricing Matrix manager slugs + em-dashes | empty-state/data | **FIXED** (pricing-matrix-manager.tsx) |
+| UI-14 | Freight manager em-dashes + fraction buffer | empty-state/currency | **FIXED** (freight-config-manager.tsx) |
+| UI-15 | Engine Servicing legacy rows float to top | alignment/empty-state | **FIXED** (engine-service-schedules-manager.tsx) |
+| UI-16/17/18 | Service dashboard, catalog manager, suppliers, customers, login, 1366 pass | — | PASS |
+
+**Fixed: 6 findings (9 files) · Handoff: 6 (5 quote-flow + 1 data) · Documented: 2 · Pass: 3 screen groups.**
