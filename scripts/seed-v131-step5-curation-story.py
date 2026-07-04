@@ -99,7 +99,7 @@ put("features/v131-12-4-2", {
         "One harness suite per named relevance rule (R-SUBITEM/R-NEWBOAT/R-HP/R-LEN/R-MATERIAL/R-CONFIG/R-SIZE-*), routing, dedupe, prettifier — 67 tests green (33 legacy + 34 new)",
         "763-doc logo-image data patch applied + re-scanned: 0 logo refs remain in dealerFitSelections",
         "Every hidden item stays reachable via Step-5 search + Show-all escape hatch",
-        "typecheck 0; unit suite green; browser spot-check queued behind the fleet walk",
+        "typecheck 0; unit suite green; browser spot-check GREEN post-walk (tests/step5-curation-spotcheck.spec.ts, screenshots in tasks/test-evidence/step5-curation/)",
     ],
     "createdAt": NOW, "updatedAt": NOW,
 })

@@ -19,7 +19,7 @@ This release is the largest data event in HelmLogic's history and the release th
 | New Firestore collections | 6 (`riggingKits`, `suppliers`, `supplierPriceLists`, `pricingMatrix`, `engineServiceSchedules`, `freightConfig` — all under `organisations/{orgId}/`) |
 | Unit tests | 460 / 460 green (3 real money-math bugs found + fixed) |
 | Image remediation | 171 images mirrored to Storage `mpf-mirror/` · 1,056 doc patches |
-| Fail→fix→retest ledger | FFR-1 … FFR-16 |
+| Fail→fix→retest ledger | FFR-1 … FFR-16 (+ FFR-25 … FFR-29 in the 12.4.2 addendum) |
 | New release-schedule entries | 1 (`'v1.31': { shipped: true }`) |
 
 ---
@@ -107,12 +107,17 @@ Live effect on a CL380 (simulated over all 1,791 live rows): Boat Pack 8→1 car
 
 Hashed all 164 `mpf-mirror/dfo/` Storage objects (metadata md5): one hash accounted for **1,526 of 1,792** mirror references in `dealerFitSelections` — downloaded and visually verified as the **NSM logo**. Patch: nulled `imageLink` + `items[].data['Image Link']` on every doc pointing at a logo-hash mirror — **763 docs / 1,525 fields**, updateMask-scoped, logged to `tasks/mpf-audit/apply-log-images.jsonl` (class `dfo-logo-mirror`). Post-patch scan of all 1,791 docs: **0 logo refs remaining**; genuine product mirrors (Minn Kota, Garmin, Lone Star) untouched.
 
+### Fleet-walk handoff fixes folded into the same batch
+
+- **FFR-28 (UI-9, money-visible)** — the Step-6 Powertrain line rendered raw `sellPriceExclGst` (Store Price $13,912.21) while the running total resolved NSM Retail ($17,643). Motor line + accessory lines now render `getPriceForLevel(item, priceLevel)` — the identical call the total uses.
+- **FFR-29 (rego auto-match)** — `parseBoatLengthM` + `pickAutoRegoBand` extracted to `src/lib/rego-automatch.ts`: SKU-style model codes (HBS113) no longer parse as "1.13 m" hull lengths (specs are authoritative; code fallback requires a Highfield range prefix or a space-bounded token); overlapping QLD band catalogs now prefer the MPF bands (`mpf-*`, e.g. $250 "4.51m to 6.0m") over the v1.4 legacy seeds ($163 "4.5m to 8m"), and pensioner/concession bands are never auto-applied. Harness: `tests/unit/rego-automatch.test.ts` (9 tests).
+
 ### Evidence
 
-- `tests/unit/step5-curation.test.ts` — 67 tests: the FFR-24 33-case classifier harness (now importing the real module) + one suite per named rule, routing, dedupe, prettifier. Full unit suite 527/527, typecheck 0.
-- `tasks/test-evidence/fail-fix-retest.json` — **FFR-25** (presentation-relevance class), **FFR-26** (logo-mirror imagery), **FFR-27** (R-LEN "1.8mtr Aerial" false positive caught by the harness during the cycle — the fail→fix→retest loop firing inside a single day's work).
+- `tests/unit/step5-curation.test.ts` — 67 tests: the FFR-24 33-case classifier harness (now importing the real module) + one suite per named rule, routing, dedupe, prettifier. Plus `tests/unit/rego-automatch.test.ts` (9). Full unit suite 536/536, typecheck 0, production build green.
+- `tasks/test-evidence/fail-fix-retest.json` — **FFR-25** (presentation-relevance class), **FFR-26** (logo-mirror imagery), **FFR-27** (R-LEN "1.8mtr Aerial" false positive caught by the harness during the cycle — the fail→fix→retest loop firing inside a single day's work), **FFR-28** (Step-6 Powertrain price basis), **FFR-29** (rego auto-match length parse + band preference).
 - `scripts/mpf/verify-per-boat-sets.py` C1F front-end port synced to the new classifier + routing.
-- Browser spot-check queued behind the fleet walk (the Playwright slot and the `next start` build it drives were occupied by the walk throughout this pass).
+- Browser spot-check GREEN (`tests/step5-curation-spotcheck.spec.ts`, run post-fleet-walk on the fresh `:9002` production build): toolbar + prettified chips, "85 items hidden as not relevant" footer, "Boat Pack — Classic 380 · 1 option · 7 hidden" with the single PVC W-W card, no Supply & Install / Engine Removal / radome rows, Show-all reveal, search narrowing, zero horizontal overflow at 1366 and 1920. Screenshots: `tasks/test-evidence/step5-curation/*.png`.
 
 ---
 
@@ -137,3 +142,5 @@ Hashed all 164 `mpf-mirror/dfo/` Storage objects (metadata md5): one hash accoun
 **Modified**: `highfield-quote-flow.tsx` (NSM Recommended wiring), `highfield-pricing-workspace.tsx` (landed-cost breakdown), `service-quote-detail-sheet.tsx` (schedule picker), `manage/page.tsx` (MPF Data section), `quote-financials.ts` + `payment-schedule` libs (3 money-bug fixes), `firestore.rules` (6 new MPF collections, deployed + list-verified), `src/lib/release-schedule.ts`, ~20 files for the FFR-7 typecheck fix-up.
 
 **Roadmap**: `scripts/seed-v131-mpf-release.py` (this release's ceremony seed).
+
+**Addendum (Story 12.4.2, 2026-07-04)** — New: `src/lib/step5-curation.ts`, `src/lib/rego-automatch.ts`, `tests/unit/step5-curation.test.ts`, `tests/unit/rego-automatch.test.ts`, `tests/step5-curation-spotcheck.spec.ts`, `scripts/seed-v131-step5-curation-story.py`. Modified: `src/components/highfield-quote-flow.tsx` (Step-5 toolbar + curated grouping + title-top cards + responsive grid + Step-6 Powertrain price basis + boatLengthM), `src/components/rego-picker.tsx` (auto-match preference), `scripts/mpf/verify-per-boat-sets.py` (C1F port sync). Data: 763-doc / 1,525-field logo-mirror patch in `tasks/mpf-audit/apply-log-images.jsonl`.

@@ -65,6 +65,7 @@ import {
     type CurationContext,
     type SectionClass,
 } from '@/lib/step5-curation';
+import { parseBoatLengthM } from '@/lib/rego-automatch';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -512,20 +513,17 @@ export function HighfieldQuoteFlow({
     // 3. Derived Memos (CRITICAL: Order of initialization to prevent ReferenceErrors)
 
     // v1.11 — auto-match context for the QLD rego pickers.
-    // Boat hull length: parse the metres from the model code (e.g. CL260
-    // -> 2.60m, SP700 -> 7.00m) — Highfield codes encode length×100.
-    // Falls back to a Length spec if present.
-    const boatLengthM = useMemo<number | undefined>(() => {
-        const code = String(model?.modelCode || model?.name || '');
-        const m = code.match(/(\d{3})/);
-        if (m) return parseInt(m[1], 10) / 100;
-        const lenSpec = (model?.specifications?.otherSpecs || []).find((s: any) => /length/i.test(s?.label || ''));
-        if (lenSpec) {
-            const lm = String(lenSpec.value || '').match(/(\d+(?:\.\d+)?)/);
-            if (lm) return parseFloat(lm[1]);
-        }
-        return undefined;
-    }, [model?.modelCode, model?.name, model?.specifications?.otherSpecs]);
+    // 2026-07-04 fleet-walk handoff fix: specs are authoritative; the code
+    // fallback only trusts a Highfield range prefix (CL260 → 2.60m) or a
+    // space-bounded token ("Coaster 540" → 5.4m). SKU-style codes (HBS113)
+    // no longer parse as 1.13m nonsense. Logic + tests live in
+    // src/lib/rego-automatch.ts.
+    const boatLengthM = useMemo<number | undefined>(() =>
+        parseBoatLengthM(
+            [model?.modelCode, model?.name],
+            model?.specifications?.otherSpecs,
+        ),
+    [model?.modelCode, model?.name, model?.specifications?.otherSpecs]);
 
     // Trailer ATM (kg): parse from the selected trailer's specifications /
     // name (e.g. "1,450kg", "ATM 1990kg"). Used to auto-match a trailer
@@ -3218,7 +3216,11 @@ export function HighfieldQuoteFlow({
                                                             </div>
                                                             <div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{getMotorDisplayName(selectedMotor)}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Performance</p></div>
                                                         </div>
-                                                        <p className="font-black text-primary italic text-sm">${(selectedMotor.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                        {/* UI-9 (2026-07-04 fleet-walk handoff) — the Powertrain line must
+                                                            resolve through the SAME price level as the running total
+                                                            (raw sellPriceExclGst rendered Store Price $13,912.21 while the
+                                                            total used NSM Retail $17,643). */}
+                                                        <p className="font-black text-primary italic text-sm">${getPriceForLevel(selectedMotor, priceLevel).toLocaleString()}</p>
                                                     </div>
                                                     {selectedMotorAccessories.length > 0 && (
                                                         <div className="divide-y bg-slate-50/50">
@@ -3231,7 +3233,9 @@ export function HighfieldQuoteFlow({
                                                                         </div>
                                                                         <div><p className="text-[10px] font-black uppercase tracking-tight">{acc.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1 border-primary/10 text-primary/60">{acc.category || 'Standard'}</Badge></div>
                                                                     </div>
-                                                                    <p className="text-[10px] font-bold text-slate-600">+${(acc.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                                    {/* UI-9 companion — accessories on the Powertrain card resolve
+                                                                        through the price level like the total does. */}
+                                                                    <p className="text-[10px] font-bold text-slate-600">+${getPriceForLevel(acc, priceLevel).toLocaleString()}</p>
                                                                 </div>
                                                             ))}
                                                         </div>

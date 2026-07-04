@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileCheck, X } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
+import { pickAutoRegoBand } from '@/lib/rego-automatch';
 
 export interface RegoTypeSnapshot {
     id: string;                    // `${vendorId}/${regoTypeId}` for provenance
@@ -209,22 +210,16 @@ export function RegoPicker({
     }, [autoCtxKey]);
     useEffect(() => {
         if (value || autoApplied) return;
-        const len = autoMatchLengthM;
-        const atm = autoMatchAtmKg;
-        if (len == null && atm == null) return;
-        const hit = options.find(o => {
-            const t = o.type;
-            if (len != null && t.minLengthM != null && t.maxLengthM != null) {
-                if (len >= t.minLengthM && len < t.maxLengthM) return true;
-            }
-            if (atm != null && t.minAtmKg != null && t.maxAtmKg != null) {
-                if (atm >= t.minAtmKg && atm <= t.maxAtmKg) return true;
-            }
-            return false;
-        });
+        // 2026-07-04 fleet-walk handoff fix — the QLD catalog holds BOTH the
+        // legacy seeded bands and the MPF-imported bands; both can match one
+        // hull ($163 legacy vs $250 MPF for 5.6m). pickAutoRegoBand prefers
+        // 'mpf-*' bands (NSM source of truth) and never auto-applies
+        // pensioner/concession bands. Pure logic + tests in
+        // src/lib/rego-automatch.ts.
+        const hit = pickAutoRegoBand(options, { lengthM: autoMatchLengthM, atmKg: autoMatchAtmKg });
         if (hit) {
             setAutoApplied(true);
-            onChange(snapOf(hit));
+            onChange(snapOf(hit as Option));
         }
     }, [options, value, autoApplied, autoMatchLengthM, autoMatchAtmKg]); // eslint-disable-line react-hooks/exhaustive-deps
 

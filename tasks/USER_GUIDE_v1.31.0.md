@@ -17,6 +17,8 @@ v1.31 is a data release more than a feature release: everything NSM's Master Pri
 | Price a service from an engine's factory schedule | Service quote → engine schedule picker | [4](#4-engine-service-schedule-picker) |
 | Quote a non-Highfield brand (Stacer, Stabicraft, Surtees…) | Same catalog surfaces — 9 brands now populated | [5](#5-nine-brands-of-boats) |
 | Trust the numbers | Nothing to do — see the parity proof | [6](#6-how-we-know-the-data-is-right) |
+| Find a dealer-fit option fast on Step 5 (search / filter) | Quote flow → Step 5 toolbar | [7](#7-step-5-dealer-fit-search-filters-and-curation) |
+| See a dealer-fit item that seems to be "missing" from Step 5 | Step 5 → **Show all items** | [7](#7-step-5-dealer-fit-search-filters-and-curation) |
 
 ---
 
@@ -87,6 +89,34 @@ You don't have to take the migration on faith:
 - **A fail→fix→retest ledger** (FFR-1…FFR-16) records every failure hit during the cycle, its root cause, the fix and the green re-run.
 - The migration also **fixed live data that was already wrong**: 1,011 Highfield factory options had USD prices stored as AUD with cost equal to sell; they're now correct.
 - Money math itself is under 460 unit tests that run on every merge, plus a nightly synthetic pass of the whole app.
+
+---
+
+## 7. Step 5 dealer fit — search, filters and curation
+
+*(Added in the v1.31 addendum, Story 12.4.2 — 2026-07-04.)*
+
+Step 5 no longer shows the raw MPF Dealer Fit sheet. It now curates to the boat you're quoting, and gives you tools to find things fast.
+
+**To find an option:**
+- Use the **search box** at the top of Step 5 — it matches option names and category names as you type.
+- Click **category chips** to focus on one or more categories (click again to unfocus; "Clear filters" resets).
+- Category names are now customer-friendly ("TV & Entertainment", "Electronics — Garmin", "Batteries & Power"). Hover a heading to see the original MPF section name.
+
+**What gets hidden, and why** (each rule is named and documented in the release notes):
+- **Boat packs**: you see ONE pre-delivery pack card — the one matching the exact hull colour/material you picked on Step 1 — instead of every SKU's row.
+- **Wrong-fit items**: gear scoped to an HP band outside the boat's motor envelope (an F300 cowl cover on a 15–30hp tender), tube covers more than ±0.4 m from the hull length, and Hypalon covers on a PVC hull (or vice versa) are hidden.
+- **Workshop lines**: "Supply & Install -" job-card sub-items and "Engine Removal" operations don't belong on a new-boat quote (they remain available in counter/service quotes).
+- **Boat-size sense**: fixed TVs only show on 7 m+ boats, radar on 6 m+, underwater lights on 5 m+, electric-reel wiring on 6 m+ — a 3.8 m tender doesn't get offered a radar dome.
+- **Right section**: outboard accessories, tiller kits and props now appear under **Motor Dealer Fit** (Step 3), trailer setups under **Trailer Dealer Fit** (Step 4), not on the boat step.
+
+**The escape hatch — narrowing never blocks a sale:**
+- Click **"Show all items"** to reveal everything the rules hid (a footer line tells you how many items are hidden). Anything you select stays visible even if a rule would hide it — switching hull colour never silently removes a selected option.
+- If a customer genuinely wants a radar on a small boat, turn on Show all, pick it, and carry on. The rules guide; they don't gate.
+
+**What this affects:** only what Step 5 *displays*. Pricing, finalize payloads and PDFs are unchanged — a hidden item that was already on a quote still prices and prints.
+
+**Also fixed in this addendum:** dealer-fit cards no longer show the Northside Marine logo as a product image (a web-firewall artifact from the image mirroring — 763 catalog rows cleaned); cards without a real product image now simply have no image area. The Step-6 Powertrain line now shows the same price basis as the total (no more Store Price vs NSM Retail mismatch), and the auto-matched QLD rego band now comes from the MPF band table (concession bands are never auto-picked — select those manually when they apply).
 
 ---
 
