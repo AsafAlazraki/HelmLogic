@@ -1,6 +1,6 @@
 {
- "startedAt": "2026-07-04T08:00:58.728895+00:00",
- "finishedAt": "2026-07-04T08:04:03.945958+00:00",
+ "startedAt": "2026-07-04T08:06:12.977316+00:00",
+ "finishedAt": "2026-07-04T08:09:28.330262+00:00",
  "auditAccount": "billh@nsmarine.com.au",
  "readOnly": true,
  "stats": {
@@ -17,7 +17,8 @@
     "writes": false,
     "sites": [
      "src/components/price-book-table.tsx:96"
-    ]
+    ],
+    "liveProbe": "HTTP 403"
    },
    {
     "path": "organisations/*/priceLevelDefinitions",
@@ -27,7 +28,8 @@
      "src/components/price-book-table.tsx:136 [w]",
      "src/components/price-book-table.tsx:152 [w]",
      "src/components/price-book-table.tsx:171 [w]"
-    ]
+    ],
+    "liveProbe": "HTTP 403"
    },
    {
     "path": "organisations/*/priceLists",
@@ -38,7 +40,8 @@
      "src/components/price-list-manager.tsx:805",
      "src/components/price-list-manager.tsx:822 [w]",
      "src/components/price-list-manager.tsx:842 [w]"
-    ]
+    ],
+    "liveProbe": "HTTP 403"
    },
    {
     "path": "organisations/*/productPrices",
@@ -48,7 +51,8 @@
      "src/components/price-book-table.tsx:182",
      "src/components/price-book-table.tsx:183",
      "src/components/price-book-table.tsx:205 [w]"
-    ]
+    ],
+    "liveProbe": "HTTP 403"
    },
    {
     "path": "organisations/*/serviceQuotes/*/sentEmails",
@@ -56,7 +60,8 @@
     "sites": [
      "src/components/service-quote-detail-sheet.tsx:286",
      "src/components/service-quote-detail-sheet.tsx:315 [w]"
-    ]
+    ],
+    "liveProbe": null
    },
    {
     "path": "products",
@@ -64,7 +69,8 @@
     "sites": [
      "src/components/price-book-table.tsx:108",
      "src/components/price-book-table.tsx:110"
-    ]
+    ],
+    "liveProbe": "HTTP 403"
    }
   ],
   "writeGaps": [
@@ -184,6 +190,57 @@
     "/reporting"
    ],
    "missingPages": []
+  },
+  "brandStats": {
+   "Stabicraft": {
+    "vendorId": "0cUm736tE9ON2WFLRHD0",
+    "ranges": 7,
+    "models": 40,
+    "variants": 37,
+    "pricedVariants": 37
+   },
+   "Haines Signature": {
+    "vendorId": "DJ5GVMzLaNWNcOlRqzJV",
+    "ranges": 1,
+    "models": 9,
+    "variants": 9,
+    "pricedVariants": 0
+   },
+   "Stacer": {
+    "vendorId": "LWgHuGoKfUBeKZ8eWnEi",
+    "ranges": 10,
+    "models": 91,
+    "variants": 91,
+    "pricedVariants": 91
+   },
+   "Highfield": {
+    "vendorId": "LafOLpLb6QIFE856TiD4",
+    "ranges": 7,
+    "models": 85,
+    "variants": 640,
+    "pricedVariants": 640
+   },
+   "Formosa": {
+    "vendorId": "formosa",
+    "ranges": 1,
+    "models": 39,
+    "variants": 39,
+    "pricedVariants": 30
+   },
+   "Surtees": {
+    "vendorId": "gLAi5eHYiZDgrvjDUaos",
+    "ranges": 5,
+    "models": 21,
+    "variants": 19,
+    "pricedVariants": 19
+   },
+   "Jeanneau": {
+    "vendorId": "lwGHoqdqNPuSZYYQAgG7",
+    "ranges": 8,
+    "models": 48,
+    "variants": 27,
+    "pricedVariants": 19
+   }
   }
  },
  "class3_typeConsistency": {
@@ -2648,6 +2705,188 @@
   "motors.total": 235,
   "motors.byNameDiffPrice": [],
   "motors.byNameDiffPriceCount": 0,
+  "motors.duplicateModelCodes": [
+   {
+    "modelCode": "F90XB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F90XB",
+     "Yamaha - F90XB (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F300XSB / LF300XSB",
+    "count": 2,
+    "displays": [
+     "Yamaha Twin Rig - F300XSB2 / LF300XSB2 (White) 25\" Shafts",
+     "Yamaha Twin Rig - F300XSB / LF300XSB (25\" Shafts)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "T60LC",
+    "count": 2,
+    "displays": [
+     "Yamaha - T60LC",
+     "Yamaha - T60LC (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F70LB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F70LB",
+     "Yamaha - F70LB (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F90LB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F90LB (Tiller)",
+     "Yamaha - F90LB"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F40SA",
+    "count": 2,
+    "displays": [
+     "Yamaha - F40SA",
+     "Yamaha - F40SA (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F300USB2 / LF300USB2",
+    "count": 2,
+    "displays": [
+     "Yamaha Twin Rig - F300USB2 / LF300USB2 (White) 30\" Shafts",
+     "Yamaha Twin Rig - F300USB / LF300USB (30\" Shafts)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F50LC",
+    "count": 2,
+    "displays": [
+     "Yamaha - F50LC",
+     "Yamaha - F50LC (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F115XB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F115XB",
+     "Yamaha - F115XB (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F75XB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F75XB (Tiller)",
+     "Yamaha - F75XB"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F30LA",
+    "count": 2,
+    "displays": [
+     "Yamaha - F30LA",
+     "Yamaha - F30LA (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F250XSB / LF250XSB",
+    "count": 2,
+    "displays": [
+     "Yamaha Twin Rig - F250XSB2 / LF250XSB2 (White) 25\" Shafts",
+     "Yamaha Twin Rig - F250XSB / LF250XSB (25\" Shafts)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F75LB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F75LB",
+     "Yamaha - F75LB (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F40LA",
+    "count": 2,
+    "displays": [
+     "Yamaha - F40LA",
+     "Yamaha - F40LA (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F60LC",
+    "count": 2,
+    "displays": [
+     "Yamaha - F60LC",
+     "Yamaha - F60LC (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F250USB2 / LF250USB2",
+    "count": 2,
+    "displays": [
+     "Yamaha Twin Rig - F250USB / LF250USB (30\" Shafts)",
+     "Yamaha Twin Rig - F250USB2 / LF250USB2 (White) 30\" Shafts"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F70XB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F70XB (Tiller)",
+     "Yamaha - F70XB"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "T60XC",
+    "count": 2,
+    "displays": [
+     "Yamaha - T60XC (Tiller)",
+     "Yamaha - T60XC"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F115LB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F115LB (Tiller)",
+     "Yamaha - F115LB"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F130LA",
+    "count": 2,
+    "displays": [
+     "Yamaha - F130LA",
+     "Yamaha - F130LA (Tiller)"
+    ],
+    "samePrice": true
+   }
+  ],
   "trailers.total": 496,
   "trailers.byNameDiffPrice": [
    {

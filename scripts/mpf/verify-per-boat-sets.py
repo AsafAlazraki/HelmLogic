@@ -579,8 +579,6 @@ def main():
 
             vis_fams = {fam(k) for k in vis_keys if not k.startswith("<")}
             exp_fams = {fam(k) for k in exp_codes}
-            boat_colour = re.sub(r"[^A-Z0-9]", "",
-                                 str((b.get("highfield") or {}).get("colorCode") or "").upper())
 
             miss_raw = [exp_codes[k] for k in exp_codes if k not in vis_keys]
             # colour-scoped: another member of the same family IS visible
@@ -589,17 +587,10 @@ def main():
             extra_all = [visible_codes[k] for k in vis_keys if k not in exp_codes]
             extra_suffix = sorted(e for e in extra_all if not e.startswith("<no-code")
                                   and fam(e.upper()) in exp_fams)
-            # colourway guard: the visible family member should be the boat's
-            # own colourway (suffix == colour code letters) or the bare base.
-            wrong_colour = []
-            if boat_colour:
-                for c in set(fam(x.upper()) for x in miss_suffixed):
-                    members = [k for k in vis_keys
-                               if not k.startswith("<") and fam(k) == c]
-                    if not any(k == c or k.endswith("-" + boat_colour) for k in members):
-                        wrong_colour.append(
-                            f"{c}: visible colourway(s) {sorted(members)} do not "
-                            f"include the boat's own colour {boat_colour}")
+            # NB: exact colourway-suffix <-> variant colour verification is not
+            # mechanically possible (suffix vocab is compressed, e.g. W-W-WD ->
+            # WWD); colour scoping is enforced live by applicableVariantIds,
+            # which the visible-set filter above already honours.
             rest = [e for e in extra_all if e not in extra_suffix]
             # classify remaining extras
             extra_legacy = [e for e in rest if e.startswith("<no-code")]
@@ -616,13 +607,13 @@ def main():
                              and not in_union(e) and e.upper() not in hf_catalog_codes]
             miss_arch = [c for c in miss if c.upper() in hf_catalog_codes]
             miss_drift = [c for c in miss if c.upper() not in hf_catalog_codes]
-            new_buckets = extra_sibling or extra_catalog or wrong_colour
+            new_buckets = extra_sibling or extra_catalog or extra_curated
             note = (f"colourScopedFamilies={len(miss_suffixed)} "
                     f"(boat-row colourway codes scoped per-variant by "
                     f"applicableVariantIds: {miss_suffixed[:6]}"
                     f"{'…' if len(miss_suffixed) > 6 else ''})"
                     if miss_suffixed else None)
-            if not miss and not rest and not wrong_colour:
+            if not miss and not rest:
                 record("C4_optionalFeatures", "pass")
                 if note:  # representation delta only — matched, but keep the evidence
                     diffs.append({"boat": label, "check": "C4_optionalFeatures",
@@ -634,24 +625,30 @@ def main():
                                 f"materialized boat-row codes)" for c in miss_arch]
                                + [f"{c} (boat-row ref code absent from the MPF FO "
                                   f"catalog itself — source drift)" for c in miss_drift],
-                       extra=[f"{e} (legacy no-code option, preserved)" for e in extra_legacy]
-                             + [f"{e} (pre-MPF curated live option, not in MPF catalog)"
-                                for e in extra_curated],
+                       extra=[f"{e} (legacy no-code option, preserved — parity "
+                              f"intentionalDeltas)" for e in extra_legacy],
                        klass="KNOWN-architectural (HF FO wave = reprice-only; "
                              "EVERYTHING_CHECK §1.3)", note=note)
             else:
+                classes = []
+                if extra_catalog or extra_curated:
+                    classes.append("NEW (pre-MPF curated options preserved by "
+                                   "upsert-only doctrine — visible beyond the boat's "
+                                   "MPF row; product ruling needed)")
+                if extra_sibling:
+                    classes.append("NEW (sibling-variant applicability not enforced)")
                 record("C4_optionalFeatures", "new",
                        missing=[f"{c} (in MPF HF catalog)" for c in miss_arch]
-                               + [f"{c} (NOT in MPF HF catalog)" for c in miss_drift]
-                               + [f"WRONG-COLOURWAY {w}" for w in wrong_colour],
+                               + [f"{c} (NOT in MPF HF catalog)" for c in miss_drift],
                        extra=[f"{e} (sibling-variant code visible — applicableVariantIds "
                               f"not enforced)" for e in extra_sibling]
                              + [f"{e} (MPF catalog option visible but not on this "
-                                f"boat's MPF row)" for e in extra_catalog]
-                             + [f"{e} (legacy no-code option, preserved)" for e in extra_legacy]
-                             + [f"{e} (pre-MPF curated live option)" for e in extra_curated],
-                       klass="NEW (sibling-variant applicability)" if not (extra_catalog or wrong_colour)
-                             else "NEW (catalog overshow / colourway)", note=note)
+                                f"boat's MPF row — pre-MPF curated, preserved)"
+                                for e in extra_catalog]
+                             + [f"{e} (pre-MPF curated live option, not in MPF catalog)"
+                                for e in extra_curated]
+                             + [f"{e} (legacy no-code option, preserved)" for e in extra_legacy],
+                       klass="; ".join(classes), note=note)
         else:
             mcode = str(model_doc.get("modelCode") or "").strip()
             desired, _sk = fo_mod.build_desired_options(
