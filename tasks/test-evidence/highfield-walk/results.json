@@ -1,5 +1,5 @@
 {
- "updatedUtc": "2026-07-04T10:12:51.526Z",
+ "updatedUtc": "2026-07-04T10:17:00.907Z",
  "models": {
   "Roll-Up/RU200AL": {
    "range": "Roll-Up",
@@ -1323,7 +1323,7 @@
     "s2": "pass",
     "s3": "pass",
     "s4": "pass",
-    "s5": "pass",
+    "s5": "fail",
     "s6": "pass"
    },
    "priceAsserts": {
@@ -1356,7 +1356,7 @@
      "failed": 0
     },
     "s5_fitUp": {
-     "checked": 10,
+     "checked": 0,
      "failed": 0
     },
     "s6_summary": {
@@ -1364,8 +1364,10 @@
      "failed": 0
     }
    },
-   "failures": [],
-   "durationMs": 53724
+   "failures": [
+    "[s5] Fit-Up selector did not mount"
+   ],
+   "durationMs": 65097
   },
   "Sport/SP330": {
    "range": "Sport",
@@ -1423,7 +1425,7 @@
     }
    },
    "failures": [],
-   "durationMs": 42846
+   "durationMs": 43534
   },
   "Sport/SP360": {
    "range": "Sport",
@@ -1481,7 +1483,7 @@
     }
    },
    "failures": [],
-   "durationMs": 42597
+   "durationMs": 69745
   },
   "Sport/SP390": {
    "range": "Sport",
@@ -1539,7 +1541,7 @@
     }
    },
    "failures": [],
-   "durationMs": 43865
+   "durationMs": 43253
   },
   "Sport/SP420": {
    "range": "Sport",

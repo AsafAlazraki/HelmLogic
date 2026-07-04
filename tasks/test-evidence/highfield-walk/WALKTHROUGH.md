@@ -1,6 +1,6 @@
 # Highfield full-catalogue walkthrough — Steps 1→6 vs live MPF connections
 
-Updated: 2026-07-04T10:12:51.527Z · 85 models walked
+Updated: 2026-07-04T10:17:00.908Z · 85 models walked
 
 | Range | Model | Variants (price ✓/total) | S1 | S2 | S3 | S4 | S5 | S6 | Price asserts (fail/checked) | Failures |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -28,7 +28,7 @@ Updated: 2026-07-04T10:12:51.527Z · 85 models walked
 | Coaster | Coaster 540 Open | 3/3 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/343 |  |
 | Coaster | Coaster 540 ST | 3/3 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/341 |  |
 | Coaster | Coaster 600 ST | 1/1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/341 |  |
-| Sport | SP300 | 15/15 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/366 |  |
+| Sport | SP300 | 15/15 | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | 0/356 | [s5] Fit-Up selector did not mount |
 | Sport | SP330 | 15/15 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/372 |  |
 | Sport | SP360 | 15/15 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/367 |  |
 | Sport | SP390 | 15/15 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/371 |  |
