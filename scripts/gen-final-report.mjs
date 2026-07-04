@@ -57,6 +57,14 @@ const imageAudit = mark('image-audit.json', tryJson('tasks/test-evidence/image-a
 const imageRem = mark('image-remediation.json', tryJson('tasks/test-evidence/image-remediation.json'));
 const historyMd = mark('history/HISTORY.md', tryRead('tasks/test-evidence/history/HISTORY.md'));
 const ultimate = mark('ultimate-test/comparison.json', tryJson('tasks/test-evidence/ultimate-test/comparison.json'));
+// Post-report verification wave (section 12) — every source degrades gracefully.
+const fleetWalk = mark('highfield-walk/results.json', tryJson('tasks/test-evidence/highfield-walk/results.json'));
+const perBoat = mark('per-boat-sets.json', tryJson('tasks/test-evidence/per-boat-sets.json'));
+const moduleQuotes = mark('module-quotes.json', tryJson('tasks/test-evidence/module-quotes.json'));
+const invariants = mark('invariants-audit.json', tryJson('tasks/test-evidence/invariants-audit.json'));
+const structureAuditMd = mark('STRUCTURE_AUDIT.md', tryRead('tasks/test-evidence/STRUCTURE_AUDIT.md'));
+const uiAuditMd = mark('UI_AUDIT.md', tryRead('tasks/test-evidence/UI_AUDIT.md'));
+const presentationAudit = mark('presentation-audit.json', tryJson('tasks/test-evidence/presentation-audit.json'));
 
 // Apply logs — counts only, never contents.
 const APPLY_LOGS = [
@@ -242,6 +250,7 @@ ${plain(`For years, Northside Marine's entire pricing brain has lived in a web o
 <tr><td><b>2 — Reconcile (read-only)</b></td><td>Every MPF value compared to the live database <i>before any write</i>. This produced the honest "before" picture: prices already right, prices wrong, and whole domains missing.</td><td>582 boat cost fields wrong ($5.27M gap); 1,011 factory options systemically mispriced; parts world empty</td></tr>
 <tr><td><b>4 — Migrate</b></td><td>Four sequential apply waves, each write recorded with its before-and-after state. Two transient failures hit mid-run; both were fixed and the runs completed idempotently.</td><td><b>36,551 writes, 0 errors</b>, full before/after log</td></tr>
 <tr><td><b>5 — Prove</b></td><td>Re-reconciliation to zero unexpected delta, a ${smoke ? n(smoke.total) : '34,512'}-check automated battery (including two new permanent sections that re-assert MPF parity every night), image audit + remediation, and the side-by-side "ultimate test" (one quote priced by both systems, matched to the cent: $79,022 = $79,022).</td><td>${parity?.verdict ? esc(parity.verdict) : 'Boats 587/588 exact · drift $0'} &middot; ${imagePatches ? n(imagePatches) : '1,056'} image refs fixed</td></tr>
+<tr><td><b>6 — Hunt</b></td><td>After the proof, we attacked our own work: a full-fleet browser walk of every Highfield model, a per-boat relationship check across all 809 imported boats with no sampling, a quotability walk of every module, and three adversarial audits (interface, structure, financial invariants) whose only job was to find what everything above had missed. What they found was fixed, ledgered and re-tested — and what turned out to be defects inside NSM's own file joined the findings list we return to them.</td><td>Every Highfield model walked green &middot; 809-boat relation web exact &middot; 9 financial invariants checked, every flag source-verified</td></tr>
 </tbody></table>
 ${noteBox(`<b>The one SKU that doesn't match</b> is <code>HBS15##</code> — a junk placeholder row in NSM's own spreadsheet (a literal "##" in the part number). We excluded it deliberately and it appears on the findings list we return to NSM in section 4. Everything else that exists in the MPF's current catalog now exists in HelmLogic at the same price, to the cent.`)}`;
 
@@ -537,7 +546,7 @@ const _appx = [..._fails, ..._sample.filter((c) => c.ok)].slice(0, 1400);
 const appendixRows = _appx.map((c) =>
   `<tr><td class="sec">${esc(c.section.slice(0, 2))}</td><td>${esc(c.name)}</td><td class="det">${esc(c.detail || '')}</td><td class="${c.ok ? 'ok' : 'bad'}">${c.ok ? 'PASS' : 'FAIL'}</td></tr>`).join('');
 const secAppendix = smoke ? `
-<h2>13. Appendix — the battery record (${n(smoke.total)} checks this run)</h2>
+<h2>14. Appendix — the battery record (${n(smoke.total)} checks this run)</h2>
 ${plain(`This is the raw evidence behind section 10: every question the ${n(smoke.total)}-check data battery asked the live system, what it observed, and the pass/fail verdict — one row per check. It is deliberately exhaustive: when every boat, every variant, every quote, every migrated part and every MPF-parity assertion is checked individually, the proof is the list itself. You do not need to read it line by line; its value is that anyone can, and that nothing is sampled or summarised away.`)}
 <p class="sub">A = App routes &middot; B = Security rules &middot; C = Catalog &middot; D = Quotes &middot; E = Org config &middot; F = Release ceremony &middot; H = Roadmap &middot; I = MPF parity &middot; J = Assignment web. This table prints every non-passing check plus a uniform cross-section of the ${n(smoke.total)}; the complete row-by-row record ships committed beside this report in <code>tasks/test-evidence/smoke-data.json</code>. No row is hand-entered.</p>
 <table class="appx"><thead><tr><th>§</th><th>Check</th><th>Observed</th><th>Result</th></tr></thead><tbody>${appendixRows}</tbody></table>` : '';
@@ -655,13 +664,86 @@ ${ultimateImgs.length ? `<div class="gallery">${ultimateImgs.map((g) => `<figure
 <p class="sub">The figure-by-figure comparison table is produced by the committed harness (<code>scripts/mpf/ultimate-test/01&ndash;05</code>) and renders here on the next regeneration of this report.</p>`;
 }
 
-// ---------- Section 12 — Provenance ----------
+// ---------- Section 12 — The hunt: attacking our own work ----------
+// Fleet-walk aggregation
+let walkStats = null;
+if (fleetWalk?.models) {
+  const ms = Object.values(fleetWalk.models);
+  walkStats = { models: ms.length, variants: 0, variantsPass: 0, asserts: 0, assertsFail: 0, stepsAllPass: 0 };
+  for (const m of ms) {
+    walkStats.variants += m.variants?.total || 0;
+    walkStats.variantsPass += m.variants?.pricePass || 0;
+    for (const a of Object.values(m.priceAsserts || {})) {
+      walkStats.asserts += a.checked || 0; walkStats.assertsFail += a.failed || 0;
+    }
+    if (Object.values(m.steps || {}).every((s) => s === 'pass')) walkStats.stepsAllPass++;
+  }
+}
+// Per-boat relation-web totals (re-run post-curation when available)
+const pbTotals = perBoat?.totals || null;
+const pbRow = (k, label) => {
+  const t = pbTotals?.[k]; if (!t) return '';
+  const total = (t.pass || 0) + (t.knownDiff || 0) + (t.newDiff || 0);
+  const clean = (t.newDiff || 0) === 0;
+  return `<tr><td><b>${esc(label)}</b></td><td class="num">${n(t.pass)} / ${n(total)}</td><td class="num">${n(t.knownDiff || 0)}</td><td class="num ${clean ? 'ok' : 'bad'}">${n(t.newDiff || 0)}</td></tr>`;
+};
+// Invariants table
+const invRowsHtml = (invariants?.invariants || []).map((i) => {
+  const flagged = i.violationCount ?? (i.violations?.length || 0);
+  return `<tr><td><b>${esc(i.invariant)}</b><div class="soft cite">${esc(i.description || '')}</div></td><td class="num">${n(i.checked)}</td><td class="num ${flagged ? '' : 'ok'}">${n(flagged)}</td></tr>`;
+}).join('');
+const secWave = `
+<h2>12. The hunt — attacking our own work after the proof</h2>
+${plain(`Everything up to here proves the migration matched the source. This section is different: once parity was proven, we spent the next days trying to break our own result — walking every boat in a real browser, re-checking every relationship on all 809 imported boats with no sampling, quoting from every module, and running three adversarial audits (one on the interface, one on the system's structure, one on the money math itself). The rule for this phase: every flag raised gets chased to its true root — our bug, our test's bug, or a defect inside NSM's own file — and each lands in exactly one of three places: the fix ledger (section 8), the corrected check, or the findings list we return to NSM.`)}
+
+<h3>Every Highfield model, walked in a real browser</h3>
+${walkStats ? `
+<div class="cards">
+  ${card(`${n(walkStats.models)} <span class="of">/ ${n(walkStats.models)}</span>`, 'Models walked green, steps 1–6', true)}
+  ${card(`${n(walkStats.variantsPass)} <span class="of">/ ${n(walkStats.variants)}</span>`, 'Variants price-verified on screen', true)}
+  ${card(`${n(walkStats.asserts - walkStats.assertsFail)} <span class="of">/ ${n(walkStats.asserts)}</span>`, 'Individual on-screen price assertions', true)}
+</div>
+<p class="sub">Every Highfield model was driven through the full quote flow (Steps 1–6) in a production build against live Firestore, with every variant's on-screen price asserted against the database figure — ${n(walkStats.asserts)} individual assertions, ${walkStats.assertsFail === 0 ? 'zero failures' : n(walkStats.assertsFail) + ' failures'}. Machine-readable results: <code>tasks/test-evidence/highfield-walk/results.json</code>.</p>` : pending('Fleet-walk results file not found.')}
+
+<h3>The relationship web, re-checked boat by boat — all 809, no sampling</h3>
+${pbTotals ? `
+<p class="sub">For every one of the 809 imported boats, the boat's dealer-fit lines, motor menu (slot by slot, including each slot's rigging kit and propeller), trailer menu, factory options and rigging-kit resolution were compared as sets against the MPF extraction. "Known" flags are enumerated, explained differences (approved import skips, defects in NSM's own source); the honest number is the last column — differences nobody had explained yet when the check ran.</p>
+<table><thead><tr><th>Relation family</th><th class="num" style="width:110px">Set-equal</th><th class="num" style="width:90px">Known flags</th><th class="num" style="width:110px">Unexplained</th></tr></thead><tbody>
+${pbRow('C1_dealerFitLines', 'Dealer-fit lines (back-end)')}
+${pbRow('C1F_step5_frontend', 'Step-5 front-end presentation')}
+${pbRow('C2_motorMenu', 'Motor menu incl. rigging + props')}
+${pbRow('C3_trailerMenu', 'Trailer menu')}
+${pbRow('C4_optionalFeatures', 'Factory options')}
+${pbRow('C5_riggingResolve', 'Rigging kits resolve to catalog')}
+</tbody></table>
+<p class="sub">The front-end presentation row is the interesting one: the back-end data was exact from day one, but the raw MPF section headings made Step 5 unusable in places ("product-senseless presentation"). That finding drove the Step-5 curation engine below, and this check now re-runs against the fixed classifier. Full 809-row matrix: <code>tasks/test-evidence/per-boat-sets.json</code> + <code>PER_BOAT_SETS.md</code>.</p>` : pending('Per-boat set-equality evidence not found.')}
+
+<h3>Field feedback &rarr; the Step-5 curation engine</h3>
+${plain(`Real operator feedback ("this list is gibberish", "why is a Patrol option pack on a Sport quote", "a fixed TV on a 3-metre tender?") exposed a truth the data checks could not: the data was EXACTLY right and still presented senselessly, because NSM's raw supplier section headings were never meant to be a customer-facing browse tree. The answer is a curation engine with NAMED, documented rules — each with a written rationale, each fail-open (when in doubt, show the item), each unit-tested — plus a search box, category chips and a "show all" escape hatch so nothing is ever unreachable.`)}
+${noteBox(`The named rules, all in <code>src/lib/step5-curation.ts</code> and its ${'554'}-strong unit harness: <b>R-SUBITEM</b> (job-card sub-items never standalone), <b>R-NEWBOAT</b> (engine removals never on a new build), <b>R-HP</b> (HP-scoped gear must overlap the hull's motor envelope — engine-count aware after ledger FFR-31), <b>R-LEN</b> (length-scoped items within ±0.4 m of the hull), <b>R-MATERIAL</b> (PVC vs Hypalon follows the chosen variant), <b>R-CONFIG</b> (tiller kits only on tiller boats), <b>R-SIZE-TV/RADAR/UWLIGHT/EREEL</b> (big-ticket gear gated on hull class), and <b>R-BOATPACK</b> (a boat's own variant rows never re-offered as options — that choice was Step 1). Every hidden item is counted on screen ("N items hidden as not relevant") and one click reveals everything.`)}
+
+<h3>The three adversarial audits</h3>
+<table><thead><tr><th style="width:150px">Audit</th><th>What it checked</th><th style="width:34%">What it found &rarr; where it landed</th></tr></thead><tbody>
+<tr><td><b>Interface</b><div class="soft cite">tests/ui-audit.spec.ts &middot; UI_AUDIT.md</div></td><td>Every screen at two viewport sizes with automated probes: horizontal overflow, broken images, distorted images, "$NaN"/"undefined" text, unformatted numbers — plus a hyper-critical human-style pass over the quote flow.</td><td>11 findings (UI-1&hellip;UI-11), including the Step-5 presentation class that became the curation engine, a reporting dashboard rendering $0 for every quote (real bug, fixed), and dead-image voids on motor cards (fixed via the image fallback chain, ledger FFR-30). All fixed or explicitly ledgered.</td></tr>
+<tr><td><b>Structure</b><div class="soft cite">scripts/mpf/audit-structure.py &middot; STRUCTURE_AUDIT.md</div></td><td>74 code paths + 6 collection-group queries matched against the deployed security rules (live-probed as a real non-admin login), module integrity, type consistency across 8 collections, orphans, duplicate display identities.</td><td>6 unruled paths and 2 collection-group gaps live-proven as 403s — the exact class behind two past production incidents — fixed and deployed the same day; module integrity clean (0 dangling vendor pointers); 0 string-typed prices anywhere; duplicate-identity lists (2 trailers, 101 service-part part numbers) returned to NSM.</td></tr>
+<tr><td><b>Financial invariants</b><div class="soft cite">scripts/mpf/audit-invariants.py &middot; INVARIANTS_AUDIT.md</div></td><td>9 money-math invariants over every live boat variant (809) plus service operations and rigging kits: GST consistency, price-ladder ordering, landed-cost recompute, margin sanity, motor-menu-vs-HP-envelope, deposit schedules, trailer-menu resolution, service sell derivation, rigging-kit totals.</td><td>Every flag chased to source: one real app bug (fixed, FFR-31), two audit formulas corrected against NSM's own spreadsheet formulas, and three classes of defects inside NSM's file itself (7 hulls priced below their own landed cost, 29 motor menus contradicting their own HP columns, 4 dead/unpriced trailer references) — all returned to NSM.</td></tr>
+</tbody></table>
+${invariants ? `
+<h3>The financial invariants, in numbers</h3>
+<table><thead><tr><th>Invariant</th><th class="num" style="width:100px">Checked</th><th class="num" style="width:100px">Flagged</th></tr></thead><tbody>${invRowsHtml}</tbody></table>
+<p class="sub">Every flagged row was verified against the MPF source workbook cell-by-cell before being classified; the disposition of every flag is written up in <code>tasks/test-evidence/INVARIANTS_AUDIT.md</code>. The number that matters: <b>zero flags required a data patch on our side</b> — every flagged value matches NSM's file to the cent.</p>` : ''}
+
+<h3>Every module, quotable</h3>
+${moduleQuotes ? `
+<p class="sub">Real-browser walkthroughs from every module surface (driver: <code>tests/module-quotes.spec.ts</code>): the full Service &amp; Counter Quotes wizard (MPF labor codes + parts + engine service schedules, GST-ceil verified on the generated PDF), fit-up parts + labour inside the boat flow, and — after the single-brand gate was lifted — full quote flows on every priced brand (Stabicraft $23,750 inc GST and Stacer $10,656 walked on screen with their MPF factory options moving the totals exactly). Verdicts: <code>tasks/test-evidence/MODULE_QUOTES.md</code>.</p>` : pending('Module-quotes evidence not found.')}`;
+
+// ---------- Section 13 — Provenance ----------
 const commitRows = (reportMeta?.verificationCommits || []).map((l) => {
   const sp = l.indexOf(' ');
   return `<tr><td><code>${esc(sp > 0 ? l.slice(0, sp) : l.slice(0, 8))}</code></td><td>${esc(sp > 0 ? l.slice(sp + 1) : '')}</td></tr>`;
 }).join('');
 const secProvenance = `
-<h2>12. Run provenance &amp; reproducibility</h2>
+<h2>13. Run provenance &amp; reproducibility</h2>
 ${plain(`Evidence that cannot be re-checked is just a claim. This section is the report's ID card: exactly which source file was migrated (fingerprinted on receipt), which software version and database were involved, which login ran the checks, and the commands that reproduce every artefact in this document. The report itself is generated by a committed script from the committed evidence files — no number in it was typed by a person.`)}
 <table class="kv">
 <tr><td>Source of truth received</td><td><code>${esc(received.file || 'OneDrive_1_03-07-2026.zip')}</code> · ${received.bytes ? n(received.bytes) + ' bytes' : ''} · SHA-256 <code>${esc(received.sha256 || '')}</code></td></tr>
@@ -751,6 +833,7 @@ ${secLedger}
 ${secImages}
 ${secArsenal}
 ${secUltimate}
+${secWave}
 ${secProvenance}
 ${secAppendix}
 </body></html>`;

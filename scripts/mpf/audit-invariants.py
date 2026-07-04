@@ -30,9 +30,10 @@ Org-level:
       hourlyRate). Flags where NEITHER holds. Also (informational) counts where
       an explicit sellPrice deviates from hours x rate — MPF sell is
       authoritative, so those are classified, not violations.
-  I9  riggingKits — totalSellInstalledExclGst vs recompute
-      sellPriceExclGst + installLabour + installAdditionalParts + installSundry
-      within 1c.
+  I9  riggingKits — totalCostInstalled vs recompute kitCost +
+      installLabour + installAdditionalParts + installSundry +
+      sum(components[].ctd) within 1c. (Sell-side has NO additive identity
+      in the MPF — the Rig+Install sell is hand-set off Total CTD.)
 
 Outputs:
   tasks/test-evidence/invariants-audit.json   (machine-readable, every violation)
@@ -266,7 +267,7 @@ def main():
     i6 = Inv("I6.depositSchedule", "deposit stages sum to 100% / 1.0")
     i7 = Inv("I7.trailerMenu", "trailerMenu names resolve to live trailers with positive sellPriceExclGst")
     i8 = Inv("I8.serviceOps", "serviceOperations sellPrice present or derivable (flatRateHours x hourlyRate)")
-    i9 = Inv("I9.riggingKits", "riggingKits totalSellInstalledExclGst == sell + labour + addl parts + sundry (1c)")
+    i9 = Inv("I9.riggingKits", "riggingKits totalCostInstalled == kitCost + labour + sundry + parts-allowance-once (1c)")
 
     seen_models = set()
     for b in boats:
@@ -393,14 +394,25 @@ def main():
             i5.checked += 1
             lo = min_hp if min_hp is not None else float("-inf")
             hi = max_hp if max_hp is not None else float("inf")
-            if not (lo - 1e-9 <= hp <= hi + 1e-9):
+            # MPF envelopes are TOTAL installed HP (proven 2026-07-04: the
+            # twin-F150 Stabicraft 2350 carries envelope 225-350). A menu
+            # entry fits if EITHER its per-engine HP or its total HP lands
+            # in the envelope — anything else is a genuine inconsistency
+            # inside NSM's own file between the curated menu and the
+            # Min/Max HP columns.
+            total_hp = hp * (engines or 1)
+            per_engine_ok = lo - 1e-9 <= hp <= hi + 1e-9
+            total_ok = lo - 1e-9 <= total_hp <= hi + 1e-9
+            if not (per_engine_ok or total_ok):
                 i5.violations.append({"id": vid, "slot": e.get("slot"),
                                       "recommended": bool(e.get("recommended")),
                                       "motorName": nm, "perEngineHp": hp,
-                                      "engines": engines,
+                                      "engines": engines, "totalHp": total_hp,
                                       "envelopeMinHp": min_hp, "envelopeMaxHp": max_hp,
-                                      "impact": "card shown in menu but quote-flow "
-                                      "HP filter would exclude"})
+                                      "impact": "NSM curated menu contradicts NSM's own "
+                                      "Min/Max HP columns (the app shows the curated "
+                                      "menu regardless; the envelope only steers "
+                                      "Step-5 curation, which fails open)"})
 
         # ---------------- I6: deposit schedule (per unique model) ----------------
         if m["_path"] not in seen_models:
@@ -458,27 +470,45 @@ def main():
                                   "(authoritative — informational only)"})
 
     # ---------------- I9: riggingKits ----------------
+    # COST-side identity only. The 2026-07-04 audit first asserted
+    # totalSell == sell + labour + parts + sundry and flagged 840/845 —
+    # that identity does NOT exist in the MPF: NSM hand-sets the combined
+    # "Rig + Install" Sell Price off Total CTD with a back-derived markup
+    # (verified against Rigging Module.xlsx, e.g. kit 704-6Y52R-SE-50:
+    # rollup sell 1062 vs kit-sell 940 + lab 520.36 + sundry 10 = 1470.36).
+    # totalSellInstalledExclGst is imported VERBATIM and its parity with
+    # the MPF is proven by the battery. The identity that DOES hold:
+    #   totalCostInstalled == kitCost + installLabour
+    #                         + installAdditionalParts + installSundry
+    #                         + sum(components[].ctd)
     for k in rigging_kits:
-        total = k.get("totalSellInstalledExclGst")
-        sell = k.get("sellPriceExclGst")
-        parts = [k.get("installLabour"), k.get("installAdditionalParts"),
-                 k.get("installSundry")]
-        if not numeric(total):
+        total_ctd = k.get("totalCostInstalled")
+        if not numeric(total_ctd):
             i9.skipped += 1
             continue
+        comp_ctd = sum(num_or_none(c.get("ctd")) or 0.0
+                       for c in (k.get("components") or [])
+                       if isinstance(c, dict))
+        # In the sheet the "Additional Parts" cell IS a formula summing the
+        # component CTD cells (=AH+AJ+AL+AN), so the parts allowance is
+        # counted ONCE — take whichever representation the row carries
+        # (they are equal when both are present).
+        addl = k.get("installAdditionalParts")
+        parts_allowance = max(addl if numeric(addl) else 0.0, comp_ctd)
+        base = [k.get("kitCost"), k.get("installLabour"), k.get("installSundry")]
+        recomputed = sum(x for x in base if numeric(x)) + parts_allowance
         i9.checked += 1
-        recomputed = (sell if numeric(sell) else 0.0) + \
-            sum(x for x in parts if numeric(x))
-        if abs(recomputed - total) > TOL:
+        if abs(recomputed - total_ctd) > TOL:
             i9.violations.append({"id": k["_id"],
                                   "description": k.get("description"),
-                                  "totalSellInstalledExclGst": total,
+                                  "totalCostInstalled": total_ctd,
                                   "recomputed": r2(recomputed),
-                                  "delta": r2(recomputed - total),
-                                  "sellPriceExclGst": sell,
+                                  "delta": r2(recomputed - total_ctd),
+                                  "kitCost": k.get("kitCost"),
                                   "installLabour": k.get("installLabour"),
                                   "installAdditionalParts": k.get("installAdditionalParts"),
-                                  "installSundry": k.get("installSundry")})
+                                  "installSundry": k.get("installSundry"),
+                                  "componentsCtd": r2(comp_ctd)})
 
     invs = [i1, i2, i3, i4, i5, i6, i7, i8, i9]
     report = {

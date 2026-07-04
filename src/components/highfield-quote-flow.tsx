@@ -954,12 +954,21 @@ export function HighfieldQuoteFlow({
         };
         const env: any = (model as any)?.motorEnvelope || {};
         const cfgEngine: any = model?.specifications?.motorConfigurations?.[0]?.engines?.[0] || {};
+        // MPF envelopes are TOTAL installed HP; R-HP needs to know the hull
+        // can run twins/triples so per-engine-named items aren't hidden.
+        const shaft = String(env.shaft ?? '');
+        const cfgType = String(model?.specifications?.motorConfigurations?.[0]?.type ?? '');
+        const maxEngines =
+            /quad/i.test(shaft) || cfgType === 'Quad' ? 4 :
+            /tri/i.test(shaft) || cfgType === 'Triple' ? 3 :
+            /twin|dual/i.test(shaft) || cfgType === 'Twin' ? 2 : 1;
         return {
             modelName: model?.name || (model as any)?.modelCode || '',
             vendorName: vendor?.name || '',
             hullLengthM: boatLengthM,
             minHp: parseNum(env.minHp) ?? parseNum(cfgEngine.minHp),
             maxHp: parseNum(env.maxHp) ?? parseNum(cfgEngine.maxHp),
+            maxEngines,
             engConfiguration: typeof env.engConfiguration === 'string' ? env.engConfiguration : undefined,
             variantSku: activeVariant?.sku ?? undefined,
             variantName: activeVariant?.name,

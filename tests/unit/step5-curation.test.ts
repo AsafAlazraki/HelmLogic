@@ -191,6 +191,30 @@ describe('R-HP — HP-scoped items must overlap the motor envelope (finding 2a)'
         const noEnv: CurationContext = { modelName: 'X', vendorName: 'Y' };
         expect(itemRelevance('Cowl Cover to suit F115/F130', noEnv).visible).toBe(true);
     });
+    // Invariants audit 2026-07-04 (I5): MPF envelopes are TOTAL installed
+    // HP. A Stabicraft 2350 (envelope 225–350, shaft "Sng UL / Twin XL")
+    // runs twin F150s — F150-named gear must stay visible.
+    it('keeps per-engine-named gear on a twin-capable hull (total-HP envelope)', () => {
+        const twinHull: CurationContext = {
+            modelName: 'Stabicraft - 2350 Supercab', vendorName: 'Stabicraft',
+            minHp: 225, maxHp: 350, maxEngines: 2,
+        };
+        expect(itemRelevance('Cowl Cover to suit F150', twinHull).visible).toBe(true);
+        expect(itemRelevance('Fuel Line , Yamaha - 115 to 225HP Genuine', twinHull).visible).toBe(true);
+    });
+    it('still hides gear no engine count can fit', () => {
+        const twinHull: CurationContext = {
+            modelName: 'Stabicraft - 2350 Supercab', vendorName: 'Stabicraft',
+            minHp: 225, maxHp: 350, maxEngines: 2,
+        };
+        // 2 × 70 = 140 < 225 and 1 × 70 < 225 — genuinely too small.
+        expect(itemRelevance('Yamaha Small Fuel Filter - Up to 70HP', twinHull).rule).toBe('R-HP');
+        // 1 × 425 > 350 and scaling up only overshoots further.
+        expect(itemRelevance('Cowl Cover to suit F425', twinHull).rule).toBe('R-HP');
+    });
+    it('single-engine hulls behave exactly as before (maxEngines omitted)', () => {
+        expect(itemRelevance('Cowl Cover to suit F115/F130', cl380).rule).toBe('R-HP');
+    });
 });
 
 describe('R-LEN — length-scoped items within ±0.4m of hull length (finding 2b)', () => {

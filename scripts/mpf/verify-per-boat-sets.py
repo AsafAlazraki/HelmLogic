@@ -173,11 +173,23 @@ RANGE_WORDS = {"CL": "CLASSIC", "SP": "SPORT", "RU": "ROLL", "UL": "ULTRAL",
                "PA": "PATROL", "AL": "ADVENTURE", "AD": "ADVENTURE", "CO": "COASTER"}
 
 
+BRAND_WORD_RE = re.compile(r"(HIGHFIELD|STACER|STABICRAFT|SURTEES|JEANNEAU|FORMOSA|HAINES)")
+RANGE_WORD_LIST = ["CLASSIC", "SPORT", "ROLL", "ULTRAL", "PATROL",
+                   "ADVENTURE", "COASTER", "ZEROJET"]
+VARIANT_ROW_RE = re.compile(
+    r"^[A-Z ]{3,15}-\s*[A-Z]{2,3}\d{3}[A-Z]{0,3}\s+(PVC|HYP|ALU)\s*-\s*[A-Z]{1,3}(-[A-Z]{1,3}){0,3}$",
+    re.I)
+
+
+def is_variant_row_item(name):
+    """Port of isVariantRowItem (src/lib/step5-curation.ts R-BOATPACK)."""
+    return bool(VARIANT_ROW_RE.match(str(name or "").strip()))
+
+
 def classify_section(raw):
-    """Port of classifySection — canonical implementation now lives in
-    src/lib/step5-curation.ts (moved out of highfield-quote-flow.tsx in the
-    v1.31 Step-5 curation pass, unit-tested in
-    tests/unit/step5-curation.test.ts)."""
+    """Port of classifySection — canonical implementation in
+    src/lib/step5-curation.ts (post NEW-1/NEW-2 curation batch), verified
+    against tests/unit/step5-curation.test.ts."""
     c = str(raw).upper()
     if c.startswith("###") or "OBSELETE" in c or "OBSOLETE" in c:
         return "hidden"
@@ -185,30 +197,51 @@ def classify_section(raw):
         return "hidden"
     if "RIGGING KIT" in c or "HELM MASTER" in c or "ADD ON KITS" in c:
         return "hidden"
-    # v1.31 Step-5 curation: workshop operations hide on the NEW-boat step
-    # (reachable only via the operator "Show all" escape hatch).
+    # workshop class hides on the default new-boat view (Show-all reveals).
     if "ENGINE REMOVAL" in c or "SURVEYING SUBLET" in c:
-        return "hidden"
-    if re.search(r"(HIGHFIELD|STACER|STABICRAFT|SURTEES|JEANNEAU|FORMOSA|HAINES)", c) \
-            and re.search(r"\d{3}", c):
+        return "workshop"
+    # NEW-1 residual fix: ANY brand-naming section is model-scoped, digits
+    # or not ('TUBE COVER OPTIONS - To suit Highfield Boats').
+    if BRAND_WORD_RE.search(c):
         return "model"
     if "SPECIFIC OPTIONS" in c:
         return "model"
     return "general"
 
 
-def model_section_matches(raw, model_digits, model_range_word, vendor_first_word):
-    """Port of modelSectionMatches (highfield-quote-flow.tsx ~935)."""
+def model_section_matches(raw, model_name, vendor_name):
+    """Port of modelSectionMatches (src/lib/step5-curation.ts, post
+    NEW-1/NEW-2): brand agreement first, range-word agreement, Roll-Up
+    floor-pack discrimination, then digit agreement."""
     c = str(raw).upper()
+    model_name = str(model_name or "")
+    vendor_upper = str(vendor_name or "").upper()
+    m = re.search(r"(\d{3,4})", model_name)
+    model_digits = m.group(1) if m else ""
+    model_range_word = RANGE_WORDS.get(model_name[:2].upper(), "")
+    sec_brand_m = BRAND_WORD_RE.search(c)
+    sec_brand = sec_brand_m.group(1) if sec_brand_m else ""
+    if sec_brand and sec_brand not in vendor_upper:
+        return False
     m = re.search(r"(\d{3,4})", c)
     sec_digits = m.group(1) if m else ""
+    sec_range = next((w for w in RANGE_WORD_LIST if w in c), "")
+    if sec_range and sec_range != model_range_word:
+        return False
+    m_upper = model_name.upper()
+    if "AIRMAT" in c and not (re.search(r"\dKAM\b", m_upper) or "AIRMAT" in m_upper):
+        return False
+    if "ALUMINIUM" in c and not (re.search(r"\dAL\b", m_upper) or "ALUMINIUM" in m_upper):
+        return False
+    if sec_digits and model_digits and sec_digits != model_digits:
+        return False
     if sec_digits and model_digits and sec_digits == model_digits:
-        if model_range_word and model_range_word in c:
-            return True
-        if vendor_first_word and vendor_first_word in c:
-            return True
-        return not model_range_word
-    if not sec_digits and vendor_first_word and vendor_first_word in c:
+        return True
+    if sec_range and sec_range == model_range_word:
+        return True
+    if not sec_digits and not sec_range and sec_brand:
+        return True
+    if not sec_digits and not sec_range and vendor_upper and vendor_upper.split(" ")[0] in c:
         return True
     return False
 
@@ -222,10 +255,6 @@ def simulate_step5_categories(dfs, model_doc, vendor_name, motor_cats, trailer_c
     allow = model_doc.get("applicableDealerFitCategories")
     allow_l = [norm(c) for c in allow] if isinstance(allow, list) else []
     model_name = str(model_doc.get("name") or "")
-    m = re.search(r"(\d{3,4})", model_name)
-    model_digits = m.group(1) if m else ""
-    model_range_word = RANGE_WORDS.get(model_name[:2].upper(), "")
-    vendor_first = str(vendor_name or "").upper().split(" ")[0] if vendor_name else ""
 
     visible = set()
     for sel in dfs:
@@ -242,15 +271,19 @@ def simulate_step5_categories(dfs, model_doc, vendor_name, motor_cats, trailer_c
         if re.search(r"TRAILER\s+(ACCESSOR|SETUP|OPTION)", cu):
             continue
         klass = classify_section(cat)
-        if klass == "hidden":
+        if klass in ("hidden", "workshop"):
             continue
-        if klass == "model" and not model_section_matches(
-                cat, model_digits, model_range_word, vendor_first):
+        if klass == "model" and not model_section_matches(cat, model_name, vendor_name):
             continue
         if allow_l and cl not in allow_l:
             continue
         restricted = sel.get("applicableModelIds")
         if isinstance(restricted, list) and restricted and model_id not in restricted:
+            continue
+        # R-BOATPACK: a section renders only if at least one of its items
+        # survives the variant-row filter (a boat pack made entirely of the
+        # boat's own SKU rows never shows — that choice was Step 1).
+        if is_variant_row_item(sel.get("name")):
             continue
         visible.add(cat)
     return visible
@@ -506,7 +539,13 @@ def main():
                                             motor_cats, trailer_cats)
         own = own_packs_for_boat(b, packs)
         own_live = {p for p in own if p in live_df_categories}
-        fe_missing = sorted(own_live - visible)                      # (a)
+        # R-BOATPACK (Asaf ruling): a boat's own option pack made entirely
+        # of its variant rows is CORRECTLY absent (the choice was Step 1).
+        suppressed = {p for p in own_live
+                      if all(is_variant_row_item(d.get("name"))
+                             for d in dfs
+                             if norm(d.get("category") or "Gear") == norm(p))}
+        fe_missing = sorted(own_live - visible - suppressed)         # (a)
         pack_names = set(packs.keys())
         fe_leaks = sorted((visible & pack_names) - own)              # (b)
         fe_hidden = sorted(c for c in visible if classify_section(c) == "hidden")  # (c)

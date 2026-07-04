@@ -47,9 +47,15 @@ export interface CurationContext {
     /** Hull length in metres (Highfield codes encode length×100). */
     hullLengthM?: number;
     /** Motor envelope — model.motorEnvelope (MPF) or
-     *  specifications.motorConfigurations[0].engines[0]. */
+     *  specifications.motorConfigurations[0].engines[0]. MPF envelopes are
+     *  TOTAL installed HP (a twin-F150 boat carries min 225 / max 350). */
     minHp?: number;
     maxHp?: number;
+    /** Highest engine count the hull runs (1 single, 2 twin, …), derived
+     *  from motorEnvelope.shaft ("Sng UL / Twin XL") or the motor config
+     *  type. Lets R-HP accept per-engine-named items (an "F150" kit on a
+     *  twin-F150 boat) against the total-HP envelope. Defaults to 1. */
+    maxEngines?: number;
     /** 'Remote' | 'Tiller' (model.motorEnvelope.engConfiguration). */
     engConfiguration?: string;
     /** Active hull variant (Step-1 selection). */
@@ -328,10 +334,18 @@ export function itemRelevance(name: string, ctx: CurationContext): RelevanceResu
     // R-NEWBOAT — no engine to remove on a new build.
     if (/\bENGINE\s+REMOVAL/i.test(n)) return { visible: false, rule: 'R-NEWBOAT' };
     // R-HP — any parsed HP interval must overlap the motor envelope.
+    // Item names carry PER-ENGINE HP ("F150 cowl cover") while MPF
+    // envelopes are TOTAL installed HP, so on multi-engine hulls the item
+    // interval is also tested scaled by each plausible engine count
+    // (invariants audit 2026-07-04: twin-F150 boats with envelope 225–350
+    // wrongly hid every F150-named item). Fail-open as ever.
     if (ctx.minHp != null && ctx.maxHp != null && ctx.maxHp > 0) {
         const intervals = parseHpIntervals(n);
         if (intervals.length > 0) {
-            const overlaps = intervals.some(([lo, hi]) => hi >= ctx.minHp! && lo <= ctx.maxHp!);
+            const engineCounts: number[] = [];
+            for (let k = 1; k <= Math.max(1, ctx.maxEngines ?? 1); k++) engineCounts.push(k);
+            const overlaps = intervals.some(([lo, hi]) =>
+                engineCounts.some(k => hi * k >= ctx.minHp! && lo * k <= ctx.maxHp!));
             if (!overlaps) return { visible: false, rule: 'R-HP' };
         }
     }
