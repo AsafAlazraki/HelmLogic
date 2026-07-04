@@ -203,6 +203,16 @@ service cloud.firestore {
       allow read: if isSignedIn();
     }
 
+    // Structure-audit P0 (2026-07-03): collectionGroup reads used by
+    // stock-import, delivered-deals-import and maritime-assistant —
+    // data-warehouse/{allPaths=**} does NOT satisfy group queries.
+    match /{path=**}/models/{modelId} {
+      allow read: if isSignedIn();
+    }
+    match /{path=**}/ranges/{rangeId} {
+      allow read: if isSignedIn();
+    }
+
     match /roles_admin/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
@@ -336,6 +346,18 @@ service cloud.firestore {
       // freightConfig/{vendorId}: per-vendor per-linear-metre freight
       //   rates + buffer feeding boat landed cost.
       match /riggingKits/{kitId} {
+        allow read, write: if isSignedIn();
+      }
+      // Structure-audit P0: live price-list manager surface (modules/[id]).
+      match /priceLists/{listId} {
+        allow read, write: if isSignedIn();
+      }
+      // Structure-audit P0: v1.13 service-quote Send pipeline writes these
+      // awaited subcollections; unruled = pipeline breaks when email flips on.
+      match /serviceQuotes/{sqId}/sentEmails/{sendId} {
+        allow read, write: if isSignedIn();
+      }
+      match /serviceQuotes/{sqId}/auditLog/{eventId} {
         allow read, write: if isSignedIn();
       }
       match /suppliers/{supplierId} {
