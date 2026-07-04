@@ -569,22 +569,37 @@ def main():
                          for c in b["factoryOptionCodes"] if str(c).strip()}
             vis_keys = set(visible_codes)
 
-            def suffix_covered(base):
-                """Boat-row BASE code covered by a color-suffixed live code
-                (e.g. HES016 -> HES016-GDG)? The MPF Boat Module FO ref
-                columns use base codes; the FO catalog + live options carry
-                colour-refined SKUs."""
-                return any(k == base or k.startswith(base + "-") for k in vis_keys)
+            def fam(code):
+                """Colour-family base: strip a trailing -<1-4 letter> colour
+                suffix (HEC001-BC / HES016-GDG -> HEC001 / HES016). The MPF
+                boat row lists EVERY colourway of an option; the live model
+                colour-scopes them per variant via applicableVariantIds."""
+                m = re.match(r"^(.+)-([A-Z]{1,4})$", code)
+                return m.group(1) if m else code
 
-            def base_of_expected(code):
-                return any(code.startswith(e + "-") for e in exp_codes)
+            vis_fams = {fam(k) for k in vis_keys if not k.startswith("<")}
+            exp_fams = {fam(k) for k in exp_codes}
+            boat_colour = re.sub(r"[^A-Z0-9]", "",
+                                 str((b.get("highfield") or {}).get("colorCode") or "").upper())
 
             miss_raw = [exp_codes[k] for k in exp_codes if k not in vis_keys]
-            miss_suffixed = sorted(c for c in miss_raw if suffix_covered(c.upper()))
-            miss = sorted(c for c in miss_raw if not suffix_covered(c.upper()))
+            # colour-scoped: another member of the same family IS visible
+            miss_suffixed = sorted(c for c in miss_raw if fam(c.upper()) in vis_fams)
+            miss = sorted(c for c in miss_raw if fam(c.upper()) not in vis_fams)
             extra_all = [visible_codes[k] for k in vis_keys if k not in exp_codes]
             extra_suffix = sorted(e for e in extra_all if not e.startswith("<no-code")
-                                  and base_of_expected(e.upper()))
+                                  and fam(e.upper()) in exp_fams)
+            # colourway guard: the visible family member should be the boat's
+            # own colourway (suffix == colour code letters) or the bare base.
+            wrong_colour = []
+            if boat_colour:
+                for c in set(fam(x.upper()) for x in miss_suffixed):
+                    members = [k for k in vis_keys
+                               if not k.startswith("<") and fam(k) == c]
+                    if not any(k == c or k.endswith("-" + boat_colour) for k in members):
+                        wrong_colour.append(
+                            f"{c}: visible colourway(s) {sorted(members)} do not "
+                            f"include the boat's own colour {boat_colour}")
             rest = [e for e in extra_all if e not in extra_suffix]
             # classify remaining extras
             extra_legacy = [e for e in rest if e.startswith("<no-code")]
@@ -601,16 +616,17 @@ def main():
                              and not in_union(e) and e.upper() not in hf_catalog_codes]
             miss_arch = [c for c in miss if c.upper() in hf_catalog_codes]
             miss_drift = [c for c in miss if c.upper() not in hf_catalog_codes]
-            new_buckets = extra_sibling or extra_catalog
-            note = (f"suffixRefinedMatches={len(miss_suffixed)} "
-                    f"(boat-row base codes covered by colour-suffixed live codes: "
-                    f"{miss_suffixed[:6]}{'…' if len(miss_suffixed) > 6 else ''})"
+            new_buckets = extra_sibling or extra_catalog or wrong_colour
+            note = (f"colourScopedFamilies={len(miss_suffixed)} "
+                    f"(boat-row colourway codes scoped per-variant by "
+                    f"applicableVariantIds: {miss_suffixed[:6]}"
+                    f"{'…' if len(miss_suffixed) > 6 else ''})"
                     if miss_suffixed else None)
-            if not miss and not rest:
+            if not miss and not rest and not wrong_colour:
                 record("C4_optionalFeatures", "pass")
                 if note:  # representation delta only — matched, but keep the evidence
                     diffs.append({"boat": label, "check": "C4_optionalFeatures",
-                                  "class": "MATCH-with-suffix-refinement",
+                                  "class": "MATCH-with-colour-scoping",
                                   "missing": [], "extra": [], "note": note})
             elif not new_buckets:
                 record("C4_optionalFeatures", "known",
@@ -626,15 +642,16 @@ def main():
             else:
                 record("C4_optionalFeatures", "new",
                        missing=[f"{c} (in MPF HF catalog)" for c in miss_arch]
-                               + [f"{c} (NOT in MPF HF catalog)" for c in miss_drift],
+                               + [f"{c} (NOT in MPF HF catalog)" for c in miss_drift]
+                               + [f"WRONG-COLOURWAY {w}" for w in wrong_colour],
                        extra=[f"{e} (sibling-variant code visible — applicableVariantIds "
                               f"not enforced)" for e in extra_sibling]
                              + [f"{e} (MPF catalog option visible but not on this "
                                 f"boat's MPF row)" for e in extra_catalog]
                              + [f"{e} (legacy no-code option, preserved)" for e in extra_legacy]
                              + [f"{e} (pre-MPF curated live option)" for e in extra_curated],
-                       klass="NEW (sibling-variant applicability)" if not extra_catalog
-                             else "NEW (catalog overshow)", note=note)
+                       klass="NEW (sibling-variant applicability)" if not (extra_catalog or wrong_colour)
+                             else "NEW (catalog overshow / colourway)", note=note)
         else:
             mcode = str(model_doc.get("modelCode") or "").strip()
             desired, _sk = fo_mod.build_desired_options(
