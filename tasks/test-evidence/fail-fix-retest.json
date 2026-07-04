@@ -131,10 +131,10 @@
    "id": "FFR-16",
    "failed": "CL380 checklist walkthrough failed at first assertion (land on Step 1) after 3 dialog-open attempts; smoke suite same window passed 5/6 (1 flaky, recovered on retry)",
    "firstSeen": "2026-07-03",
-   "rootCause": "Under investigation \u2014 a second Playwright browser (the ultimate-test HL leg) was confirmed running concurrently through the single sandbox TLS bridge; contention is the leading hypothesis (smoke login+quote-to-step6 passed in the same window, so the flow itself works on migrated data).",
-   "fix": "Serialize browser jobs \u2014 re-run checklist SOLO after the ultimate-test browser leg completes (quiet bridge).",
-   "retest": "PENDING \u2014 solo re-run queued",
-   "class": "environment-suspected"
+   "rootCause": "CONFIRMED environment contention, twice over: the original failure ran beside the ultimate-test browser leg; a second 'solo' attempt (2026-07-04) failed the same way while two Firestore REST audits (invariants + per-boat) were saturating the sandbox proxy \u2014 the module page starved at 'Synchronizing maritime data sets\u2026'. The flow itself was never at fault.",
+   "fix": "Serialize: production build server on :9002, verified ZERO concurrent Firestore jobs, then ran tests/bm-email-checklist.spec.ts alone.",
+   "retest": "GREEN 2026-07-04 \u2014 11/11 checklist ticks passed solo (2.2m) on the post-curation, post-FFR-31 build, so Mark's 8 items also re-validate against the Step-5 curation engine.",
+   "class": "environment-fix"
   },
   {
    "id": "FFR-17",
