@@ -20,7 +20,9 @@ import { test, type Page } from '@playwright/test';
 import { login, BASE_URL } from './helpers/auth';
 import fs from 'fs';
 
-const OUT = 'tasks/test-evidence/ui-audit';
+// Override for the after-fixes pass so before-evidence is never clobbered:
+//   UI_AUDIT_OUT=tasks/test-evidence/ui-audit/after
+const OUT = process.env.UI_AUDIT_OUT || 'tasks/test-evidence/ui-audit';
 const PROBES = `${OUT}/probes.jsonl`;
 
 const HIGHFIELD_MODULE_ID = 'M1Yf3R9igpJDxJnOVr6f';

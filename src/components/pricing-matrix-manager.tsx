@@ -227,13 +227,20 @@ export function PricingMatrixManager({ organisationId }: { organisationId: strin
                                             <TableCell className="text-xs">
                                                 {tierCount > 0 ? (
                                                     <Badge variant="outline" className="text-[9px] font-bold">{tierCount} tier{tierCount === 1 ? '' : 's'}</Badge>
-                                                ) : (row.tradeDiscount != null || row.subDealerDiscount != null) ? (
-                                                    <span className="tabular-nums text-muted-foreground">
-                                                        {row.tradeDiscount != null && `Trade −${pctFromFraction(row.tradeDiscount)}%`}
-                                                        {row.tradeDiscount != null && row.subDealerDiscount != null && ' · '}
-                                                        {row.subDealerDiscount != null && `Sub-dealer −${pctFromFraction(row.subDealerDiscount)}%`}
-                                                    </span>
-                                                ) : '—'}
+                                                ) : (() => {
+                                                    // NaN survives the Firestore round-trip on some MPF
+                                                    // rows — only render finite discounts.
+                                                    const trade = pctFromFraction(row.tradeDiscount);
+                                                    const sub = pctFromFraction(row.subDealerDiscount);
+                                                    if (trade == null && sub == null) return '—';
+                                                    return (
+                                                        <span className="tabular-nums text-muted-foreground">
+                                                            {trade != null && `Trade −${trade}%`}
+                                                            {trade != null && sub != null && ' · '}
+                                                            {sub != null && `Sub-dealer −${sub}%`}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </TableCell>
                                             <TableCell className="text-xs text-muted-foreground max-w-[16rem] truncate">{row.notes ?? '—'}</TableCell>
                                             <TableCell>
