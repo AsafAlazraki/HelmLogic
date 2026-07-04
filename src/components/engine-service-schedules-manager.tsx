@@ -153,7 +153,14 @@ export function EngineServiceSchedulesManager({ organisationId }: { organisation
     const [deleting, setDeleting] = useState(false);
 
     const filtered = useMemo(() => {
-        const list = [...(schedules ?? [])].sort((a, b) => (a.engineModel ?? '').localeCompare(b.engineModel ?? ''));
+        // Legacy no-pricing engines (2C / 3A / 115C …) have 0 intervals + 0 BOM
+        // and numeric-leading names, so plain alphabetical sort floats a wall
+        // of "0 · 0" rows to the top and the manager reads as broken. Rank
+        // populated schedules first, alphabetical within each group.
+        const rank = (s: EngineServiceSchedule) => (Array.isArray(s.intervals) && s.intervals.length > 0 ? 0 : 1);
+        const list = [...(schedules ?? [])].sort(
+            (a, b) => rank(a) - rank(b) || (a.engineModel ?? '').localeCompare(b.engineModel ?? ''),
+        );
         const q = search.trim().toLowerCase();
         if (!q) return list;
         return list.filter(s =>

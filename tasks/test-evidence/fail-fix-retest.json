@@ -153,6 +153,15 @@
       "fix": "Section classifier in groupedDealerFit: hidden (### / OBSELETE / PRE DELIVERY / RIGGING KIT / HELM MASTER / ADD ON KITS), model-scoped packs shown only on the matching boat (digits + range-word/brand agreement), general accessory categories always shown. Boat's own dealerFitLines strip unchanged on top.",
       "retest": "typecheck 0 + build green; deployed to dev for field re-check on CL290; UI-audit after-pass covers the step",
       "class": "product-fix"
+    },
+    {
+      "id": "FFR-19",
+      "failed": "UI audit (UI-1): FFR-18 classifier gap \u2014 digitless range packs ('HIGHFIELD - PATROL', 100 options) still rendered on every boat (seen on SP560)",
+      "firstSeen": "2026-07-03",
+      "rootCause": "classifySection required digits to mark a section model-scoped; range-word-only sections fell through to 'general'.",
+      "fix": "Range words now mark sections model-scoped; a section naming a range only shows on that range; cross-digit mismatches hard-fail; brand-only packs still match by vendor.",
+      "retest": "typecheck 0; UI-audit after-pass re-screenshots SP560 + CL290 Step 5",
+      "class": "product-fix"
     }
   ]
 }

@@ -53,7 +53,7 @@ export function SalesPipelineBoard({ organisationId, organisation }: { organisat
     }
 
     return (
-        <div className="overflow-x-auto" data-testid="sales-pipeline-board">
+        <div className="overflow-x-auto overflow-y-hidden" data-testid="sales-pipeline-board">
             <div className="flex gap-3 min-w-max pb-4">
                 {stages.map(stage => {
                     const list = byStage.map[stage] ?? [];

@@ -81,4 +81,35 @@ _(numbered UI-1…; class tags: [alignment] [truncation] [currency] [empty-state
 - **What:** At the default "Cash Price" level with no explicit variant click, the base-vessel summary line resolves to $0 (honest-fail style) even though Step 1 showed $10,430 package pricing. Needs a pricing-owner ruling: either the line should show the resolved hull price or an explicit "not priced at this level" marker — a silent $0 on a customer-facing summary is the class stakeholders catch.
 - **Status:** HANDOFF (quote-flow owned; money-math domain).
 
-_(further findings from 1366 pass + remaining screens appended below)_
+### UI-11 — Reporting: every quote renders STATE "—" and TOTAL "$0" — [currency] [empty-state] [data] — FIXED
+- **Where:** `/reporting` → All quotes table + metrics strip. `1920/22-reporting.png` — 18 quotes this month, Pipeline **$0**, Conversion **0%**, all 100 rows **$0** / **—**, while the same quotes show real totals elsewhere (e.g. SP560 $71,837.82 on the module landing).
+- **Root cause:** `src/components/reporting-dashboard.tsx` `quoteTotal()` read `financials.totalInclGst ?? totalInclGst` — fields finalized quote docs don't have. `finalize-quote-dialog.tsx` stores **`totalPriceExclGst`** + **`finalPriceExclGst`** (ex GST). State column read `q.lifecycleState` raw, but `src/lib/quote-lifecycle.ts` documents "default 'draft' when absent" — most docs never transitioned.
+- **Fix:** `quoteTotal()` falls back to `finalPriceExclGst ?? totalPriceExclGst` with the whole-dollar inc-GST `Math.ceil(ex * 1.1)` rule; state badge renders `lifecycleState ?? 'draft'`. Pipeline metric now computes from real totals.
+
+### UI-12 — MPF Rigging Kits manager: Part No / Name / 4 price columns / Install Hrs all "—" for every imported row — [empty-state] [data] — FIXED
+- **Where:** `/manage → MPF Data → Rigging Kits`. `1920/14-mpf-rigging-kits.png` — 846 imported kits render only Section + Dealer Cost; everything else em-dash.
+- **Root cause:** field-name mismatch. `scripts/mpf/import-parts.py build_rigging_kit()` writes `partNumber / description / kitCost / sellPriceExclGst / tradePriceExclGst / subDealerPriceExclGst / installHours / mpfImport{}`; the manager read `partNo / name·desc / kitCtd / retailExGst / tradeExGst / subDealerExGst / installHrs / mpfSource`.
+- **Fix:** read-time fallbacks in `rigging-kits-manager.tsx` (cells, label, search, sort, MPF badge via `mpfImport.source`). Manual-entry writes unchanged.
+
+### UI-13 — MPF Pricing Matrix manager: doc-id slugs as labels; Markup / Trade Tiers all "—" — [empty-state] [data] — FIXED
+- **Where:** `/manage → MPF Data → Pricing Matrix`. `1920/16-mpf-pricing-matrix.png` — rows labelled `9du-dunbier-trailers` (raw doc ids), Markup % / Margin % / Trade Tiers all "—".
+- **Root cause:** import (`import-service-config.py`) writes `brand / franchiseCode / sellMarkup / tradeDiscount / subDealerDiscount` (fractions, 0.21 = 21%); manager read `franchise / key / markupPct / marginPct / tradeTiers`.
+- **Fix:** `pricing-matrix-manager.tsx` — label falls back to `brand · franchiseCode`; Markup % falls back to `sellMarkup` (fraction → %); Trade Tiers cell falls back to a compact `Trade −x% · Sub-dealer −y%` readout. Margin % deliberately left "—" for MPF rows (no honest source field — not mislabelled).
+
+### UI-14 — MPF Freight manager: Vendor and Rate columns "—" on both rows; buffer shown as "0.1%" — [empty-state] [currency] [data] — FIXED
+- **Where:** `/manage → MPF Data → Freight`. `1920/17-mpf-freight.png`.
+- **Root cause:** import writes `vendorKey / supplier / perLinearMetreAud / bufferPct(fraction)`; manager read `vendor / ratePerLinearMetre` and rendered `bufferPct` raw (0.1 → "0.1%" instead of 10%).
+- **Fix:** `freight-config-manager.tsx` — vendor falls back to `supplier ?? vendorKey`; rate falls back to `perLinearMetreAud`; buffer normalised fraction→percent **only** for MPF-shaped docs (identified by their import-only fields) so a manually-entered whole-percent row is untouched.
+
+### UI-15 — Engine Servicing manager: default sort floats 32 legacy "0 · 0" rows to the top — [alignment] [empty-state] — FIXED
+- **Where:** `/manage → MPF Data → Engine Servicing`. `1920/18-mpf-engine-servicing.png` — first screenful is all `115C / 2 Stroke / 2C / 3A …` with Intervals 0 · BOM 0, reading as a broken import.
+- **Root cause:** NOT missing data — those are genuine `legacyNoPricing` engines with empty intervals/BOM (verified against `tasks/mpf-audit/extracted/engine-service-schedules.json`: 32 of 189 legacy). Alphabetical sort puts numeric-leading legacy names first.
+- **Fix:** `engine-service-schedules-manager.tsx` — rank populated schedules first, alphabetical within group. No data change.
+
+### UI-16 — Service quoting dashboard + detail sheet — PASS (no defects)
+- `1920/19-service-dashboard.png` — counts, status filter pills, card truncation, $1,250 formatting all correct. Detail sheet captured on the re-run pass (`20-service-detail-sheet.png`).
+
+### UI-17 — Catalog Manager, Suppliers manager, Customers, login — PASS (no defects)
+- `13-catalog-manager.png` (proper empty state, brand list), `15-mpf-suppliers.png` (ID/Name/ABN populated; Terms/Credit "—" is honest data), `21-customers.png`, `01-login.png` — clean at both viewports.
+
+_(further findings from 1366 pass + FFR-18 retest appended below)_

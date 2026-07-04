@@ -32,7 +32,15 @@ import { TrendingUp, FileText, DollarSign, CheckCircle2, Loader2 } from 'lucide-
 const ACCEPTED_STATES = new Set(['accepted', 'contracted', 'won', 'delivered']);
 
 function quoteTotal(q: any): number {
-    return Number(q.financials?.totalInclGst ?? q.totalInclGst ?? 0);
+    // Finalized quote docs (finalize-quote-dialog.tsx) store ex-GST totals
+    // (`finalPriceExclGst` / `totalPriceExclGst`) — the incl-GST fields only
+    // exist on newer docs. Fall back and apply the whole-dollar inc-GST ceil
+    // rule so the table doesn't render $0 for every real quote.
+    const incl = q.financials?.totalInclGst ?? q.totalInclGst;
+    if (incl != null && Number(incl) > 0) return Number(incl);
+    const ex = q.finalPriceExclGst ?? q.totalPriceExclGst;
+    if (ex != null) return Math.ceil(Math.max(0, Number(ex)) * 1.1);
+    return 0;
 }
 
 function toMs(ts: any): number {
@@ -145,7 +153,10 @@ export function ReportingDashboard({ organisationId }: { organisationId: string 
                                         <tr key={q.id} className="border-b last:border-b-0 hover:bg-slate-50">
                                             <td className="px-3 py-2 font-mono font-bold">{q.quoteNumber ?? q.id?.slice(0, 8)}</td>
                                             <td className="px-3 py-2">{q.customer?.name ?? q.customerName ?? '—'}</td>
-                                            <td className="px-3 py-2">{q.lifecycleState ? <Badge variant="outline" className="text-[9px]">{q.lifecycleState}</Badge> : '—'}</td>
+                                            {/* lifecycleState defaults to 'draft' when absent
+                                                (src/lib/quote-lifecycle.ts contract) — render the
+                                                default instead of an em-dash wall. */}
+                                            <td className="px-3 py-2"><Badge variant="outline" className="text-[9px]">{q.lifecycleState ?? 'draft'}</Badge></td>
                                             <td className="px-3 py-2 text-right tabular-nums font-bold">${quoteTotal(q).toLocaleString('en-AU')}</td>
                                         </tr>
                                     ))}

@@ -169,7 +169,11 @@ export function FreightConfigManager({ organisationId }: { organisationId: strin
                                 {filtered.map(row => (
                                     <TableRow key={row.id}>
                                         <TableCell className="text-xs">
-                                            <span className="font-semibold">{row.vendor ?? '—'}</span>
+                                            {/* MPF-imported docs (import-service-config.py) carry
+                                                `supplier`/`vendorKey` + `perLinearMetreAud`, not
+                                                `vendor`/`ratePerLinearMetre` — fall back so imported
+                                                rows aren't rendered as em-dashes. */}
+                                            <span className="font-semibold">{row.vendor ?? row.supplier ?? row.vendorKey ?? '—'}</span>
                                             {row.mpfSource && (
                                                 <Badge variant="outline" className="ml-2 text-[9px] font-bold uppercase text-muted-foreground">
                                                     MPF · {row.mpfSource}
@@ -177,10 +181,18 @@ export function FreightConfigManager({ organisationId }: { organisationId: strin
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right text-xs tabular-nums font-semibold">
-                                            {row.ratePerLinearMetre != null ? formatCurrency(row.ratePerLinearMetre) : '—'}
+                                            {(row.ratePerLinearMetre ?? row.perLinearMetreAud) != null
+                                                ? formatCurrency(row.ratePerLinearMetre ?? row.perLinearMetreAud)
+                                                : '—'}
                                         </TableCell>
                                         <TableCell className="text-right text-xs tabular-nums">
-                                            {row.bufferPct != null ? `${row.bufferPct}%` : '—'}
+                                            {/* MPF stores bufferPct as a fraction (0.1 = 10%); MPF docs
+                                                are identified by their import-only fields. */}
+                                            {row.bufferPct != null
+                                                ? `${(row.perLinearMetreAud != null || row.vendorKey != null) && Math.abs(row.bufferPct) <= 1
+                                                    ? Number((row.bufferPct * 100).toFixed(2))
+                                                    : row.bufferPct}%`
+                                                : '—'}
                                         </TableCell>
                                         <TableCell className="text-xs text-muted-foreground max-w-[18rem] truncate">{row.notes ?? '—'}</TableCell>
                                         <TableCell>

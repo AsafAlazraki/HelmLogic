@@ -93,7 +93,17 @@ interface RiggingKit {
 }
 
 function kitLabel(kit: RiggingKit): string {
-    return kit.name || kit.desc || kit.partNo || kit.id;
+    return kit.name || kit.desc || kit.description || kit.partNo || kit.partNumber || kit.id;
+}
+
+/** The MPF import (scripts/mpf/import-parts.py build_rigging_kit) writes
+ *  partNumber / description / kitCost / sellPriceExclGst / tradePriceExclGst /
+ *  subDealerPriceExclGst / installHours — resolve those alongside the
+ *  manager's manual-entry field names so imported rows don't render as
+ *  a wall of em-dashes. */
+function kitField<T>(...vals: (T | null | undefined)[]): T | null {
+    for (const v of vals) if (v != null) return v;
+    return null;
 }
 
 function money(v: number | null | undefined): string {
@@ -132,11 +142,11 @@ export function RiggingKitsManager({ organisationId }: { organisationId: string 
     const [deleting, setDeleting] = useState(false);
 
     const filtered = useMemo(() => {
-        const list = [...(kits ?? [])].sort((a, b) => (a.partNo ?? '').localeCompare(b.partNo ?? ''));
+        const list = [...(kits ?? [])].sort((a, b) => (a.partNo ?? a.partNumber ?? '').localeCompare(b.partNo ?? b.partNumber ?? ''));
         const q = search.trim().toLowerCase();
         if (!q) return list;
         return list.filter(k =>
-            [k.partNo, k.name, k.desc, k.section, k.mpfSource]
+            [k.partNo, k.partNumber, k.name, k.desc, k.description, k.section, k.mpfSource]
                 .some(f => (f ?? '').toLowerCase().includes(q)),
         );
     }, [kits, search]);
@@ -220,22 +230,22 @@ export function RiggingKitsManager({ organisationId }: { organisationId: string 
                             <TableBody>
                                 {filtered.map(kit => (
                                     <TableRow key={kit.id}>
-                                        <TableCell className="font-mono text-xs font-semibold">{kit.partNo ?? '—'}</TableCell>
+                                        <TableCell className="font-mono text-xs font-semibold">{kitField(kit.partNo, kit.partNumber) ?? '—'}</TableCell>
                                         <TableCell className="text-xs max-w-[16rem]">
-                                            <span className="truncate block font-semibold">{kit.name ?? kit.desc ?? '—'}</span>
-                                            {kit.mpfSource && (
+                                            <span className="truncate block font-semibold">{kitField(kit.name, kit.desc, kit.description) ?? '—'}</span>
+                                            {(kit.mpfSource || kit.mpfImport?.source) && (
                                                 <Badge variant="outline" className="mt-0.5 text-[9px] font-bold uppercase text-muted-foreground">
-                                                    MPF · {kit.mpfSource}
+                                                    MPF · {kit.mpfSource ?? kit.mpfImport?.source}
                                                 </Badge>
                                             )}
                                         </TableCell>
                                         <TableCell className="text-xs">{kit.section ?? '—'}</TableCell>
                                         <TableCell className="text-right text-xs tabular-nums">{money(kit.dealerCost)}</TableCell>
-                                        <TableCell className="text-right text-xs tabular-nums">{money(kit.kitCtd)}</TableCell>
-                                        <TableCell className="text-right text-xs tabular-nums font-semibold">{money(kit.retailExGst)}</TableCell>
-                                        <TableCell className="text-right text-xs tabular-nums">{money(kit.tradeExGst)}</TableCell>
-                                        <TableCell className="text-right text-xs tabular-nums">{money(kit.subDealerExGst)}</TableCell>
-                                        <TableCell className="text-right text-xs tabular-nums">{kit.installHrs ?? '—'}</TableCell>
+                                        <TableCell className="text-right text-xs tabular-nums">{money(kitField(kit.kitCtd, kit.kitCost))}</TableCell>
+                                        <TableCell className="text-right text-xs tabular-nums font-semibold">{money(kitField(kit.retailExGst, kit.sellPriceExclGst))}</TableCell>
+                                        <TableCell className="text-right text-xs tabular-nums">{money(kitField(kit.tradeExGst, kit.tradePriceExclGst))}</TableCell>
+                                        <TableCell className="text-right text-xs tabular-nums">{money(kitField(kit.subDealerExGst, kit.subDealerPriceExclGst))}</TableCell>
+                                        <TableCell className="text-right text-xs tabular-nums">{kitField(kit.installHrs, kit.installHours) ?? '—'}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-1 justify-end">
                                                 <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={() => { setEditing(kit); setEditorOpen(true); }}>

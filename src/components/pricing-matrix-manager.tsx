@@ -75,11 +75,21 @@ interface PricingMatrixRow {
 const HIDDEN_DETAIL_KEYS = new Set(['id', 'createdAt', 'updatedAt']);
 
 function rowLabel(row: PricingMatrixRow): string {
-    return row.franchise || row.key || row.id;
+    // MPF-imported rows (import-service-config.py) carry `brand` +
+    // `franchiseCode`, not `franchise`/`key` — fall back so the table
+    // shows "Surtees · 9SR" instead of the raw doc id slug.
+    if (row.franchise || row.key) return row.franchise || row.key!;
+    if (row.brand) return row.franchiseCode ? `${row.brand} · ${row.franchiseCode}` : row.brand;
+    return row.id;
 }
 
 function pct(v: number | null | undefined): string {
     return v != null ? `${v}%` : '—';
+}
+
+/** MPF fraction fields (sellMarkup 0.21 = 21%) → whole percent for display. */
+function pctFromFraction(v: number | null | undefined): number | null {
+    return typeof v === 'number' && Number.isFinite(v) ? Number((v * 100).toFixed(2)) : null;
 }
 
 function detailValueLabel(v: any): string {
@@ -208,11 +218,21 @@ export function PricingMatrixManager({ organisationId }: { organisationId: strin
                                                     </Badge>
                                                 )}
                                             </TableCell>
-                                            <TableCell className="text-right text-xs tabular-nums font-semibold">{pct(row.markupPct)}</TableCell>
+                                            {/* MPF-imported rows carry fraction fields (sellMarkup /
+                                                dealerFitMarkup / tradeDiscount / subDealerDiscount)
+                                                instead of markupPct / marginPct / tradeTiers — fall
+                                                back so the table isn't a wall of em-dashes. */}
+                                            <TableCell className="text-right text-xs tabular-nums font-semibold">{pct(row.markupPct ?? pctFromFraction(row.sellMarkup))}</TableCell>
                                             <TableCell className="text-right text-xs tabular-nums font-semibold">{pct(row.marginPct)}</TableCell>
                                             <TableCell className="text-xs">
                                                 {tierCount > 0 ? (
                                                     <Badge variant="outline" className="text-[9px] font-bold">{tierCount} tier{tierCount === 1 ? '' : 's'}</Badge>
+                                                ) : (row.tradeDiscount != null || row.subDealerDiscount != null) ? (
+                                                    <span className="tabular-nums text-muted-foreground">
+                                                        {row.tradeDiscount != null && `Trade −${pctFromFraction(row.tradeDiscount)}%`}
+                                                        {row.tradeDiscount != null && row.subDealerDiscount != null && ' · '}
+                                                        {row.subDealerDiscount != null && `Sub-dealer −${pctFromFraction(row.subDealerDiscount)}%`}
+                                                    </span>
                                                 ) : '—'}
                                             </TableCell>
                                             <TableCell className="text-xs text-muted-foreground max-w-[16rem] truncate">{row.notes ?? '—'}</TableCell>

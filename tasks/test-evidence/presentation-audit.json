@@ -1,10 +1,10 @@
 {
  "meta": {
-  "startedUtc": "2026-07-04T07:46:19.673091+00:00",
-  "finishedUtc": "2026-07-04T07:50:39.309923+00:00",
+  "startedUtc": "2026-07-04T07:56:44.204987+00:00",
+  "finishedUtc": "2026-07-04T08:01:18.312193+00:00",
   "identity": "billh@nsmarine.com.au (operator test user)",
   "org": "AcFZVEFA5UDJG2hyetWT",
-  "mode": "apply-sanctioned",
+  "mode": "audit-only",
   "reproduce": "python3 scripts/mpf/audit-presentation.py"
  },
  "counts": {
@@ -116,7 +116,7 @@
   },
   "fitUpItems": {
    "docs": 3672,
-   "negativeSellVisible": 2
+   "negativeSellVisible": 0
   },
   "models": {
    "total": 307,
@@ -163,11 +163,51 @@
   }
  },
  "severity": {
-  "high": 103,
-  "medium": 207,
-  "low": 7
+  "high": 104,
+  "medium": 209,
+  "low": 10
  },
  "findings": [
+  {
+   "surface": "dealerFitSelections",
+   "severity": "high",
+   "id": "HIGHFIELD - Patrol",
+   "issue": "brand+range section with no model digits evades the 'model' bucket and classifies 'general' \u2014 its 100 options show on EVERY boat of every brand",
+   "disposition": "handoff",
+   "detail": {
+    "items": 100
+   }
+  },
+  {
+   "surface": "dealerFitSelections",
+   "severity": "medium",
+   "id": "ENGINE REMOVALS",
+   "issue": "workshop-operation category classifies 'general' and renders as a Step-5 heading (16 items)",
+   "disposition": "handoff",
+   "detail": {
+    "items": 16
+   }
+  },
+  {
+   "surface": "dealerFitSelections",
+   "severity": "low",
+   "id": "MPF \u2013 Uncategorised",
+   "issue": "import fallback bucket renders verbatim as a customer-facing heading (21 items)",
+   "disposition": "handoff",
+   "detail": {
+    "items": 21
+   }
+  },
+  {
+   "surface": "dealerFitSelections",
+   "severity": "medium",
+   "id": "SURVEYING SUBLETS",
+   "issue": "workshop-operation category classifies 'general' and renders as a Step-5 heading (2 items)",
+   "disposition": "handoff",
+   "detail": {
+    "items": 2
+   }
+  },
   {
    "surface": "fitUpItems",
    "severity": "medium",
@@ -178,33 +218,27 @@
   },
   {
    "surface": "fitUpItems",
+   "severity": "low",
+   "id": "2-x-mfm70-2",
+   "issue": "negative sellPrice -519 on 'CREDIT - Batteries (2 x MFM70)' is hidden:true \u2014 sanctioned patch verified (reason: MPF deduction line \u2014 not directly sellable)",
+   "disposition": "patched",
+   "detail": {}
+  },
+  {
+   "surface": "fitUpItems",
+   "severity": "low",
+   "id": "bs-6007-2",
+   "issue": "negative sellPrice -115 on 'CREDIT - Battery Switch - Dual (Blue Sea)' is hidden:true \u2014 sanctioned patch verified (reason: MPF deduction line \u2014 not directly sellable)",
+   "disposition": "patched",
+   "detail": {}
+  },
+  {
+   "surface": "fitUpItems",
    "severity": "medium",
    "id": "hfi-rollbar-l",
    "issue": "item name contains MPF artifact: 'Roll Bar - SP520 ###'",
    "disposition": "handoff",
    "detail": {}
-  },
-  {
-   "surface": "fitUpItems",
-   "severity": "high",
-   "id": "2-x-mfm70-2",
-   "issue": "NEGATIVE sellPrice -519 on 'CREDIT - Batteries (2 x MFM70)' \u2014 customer-facing picker must not offer deduction lines",
-   "disposition": "patched",
-   "detail": {
-    "sellPrice": -519,
-    "category": "LABOUR ESTIMATES"
-   }
-  },
-  {
-   "surface": "fitUpItems",
-   "severity": "high",
-   "id": "bs-6007-2",
-   "issue": "NEGATIVE sellPrice -115 on 'CREDIT - Battery Switch - Dual (Blue Sea)' \u2014 customer-facing picker must not offer deduction lines",
-   "disposition": "patched",
-   "detail": {
-    "sellPrice": -115,
-    "category": "LABOUR ESTIMATES"
-   }
   },
   {
    "surface": "standardInclusions",
@@ -2567,6 +2601,28 @@
    "issue": "inclusion is a 1133-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
    "disposition": "handoff",
    "detail": {}
+  },
+  {
+   "surface": "trailers",
+   "severity": "high",
+   "id": "data-warehouse/mackay-trailers/series/offroad-kr-2010-series-trailers/trailers/trailer-not-required",
+   "issue": "sentinel row imported as a real trailer: 'TRAILER NOT REQUIRED' \u2014 would render as a selectable $0 trailer card",
+   "disposition": "handoff",
+   "detail": {
+    "referencedBy": []
+   }
+  },
+  {
+   "surface": "trailers",
+   "severity": "high",
+   "id": "data-warehouse/mackay-trailers/series/offroad-kr-2010-series-trailers/trailers/trailer-not-required-800-gamefisher",
+   "issue": "sentinel row imported as a real trailer: 'TRAILER NOT REQUIRED - 800 Gamefisher' \u2014 would render as a selectable $0 trailer card",
+   "disposition": "handoff",
+   "detail": {
+    "referencedBy": [
+     "SUR-800GF"
+    ]
+   }
   },
   {
    "surface": "trailers",

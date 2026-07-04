@@ -16,6 +16,10 @@ Sections:
   H. Feature/roadmap integrity — valid statuses, no planned-on-shipped
   I. MPF parity — live values equal tasks/mpf-audit/extracted/*.json (Phase 5)
   J. Assignment web — boat motorMenu/trailerMenu/dealerFitLines names resolve live
+  K. Presentation relevance — FFR-18 class ("faithful import != faithful
+     presentation"): obsolete/### categories never visible-classified, no
+     negative-price customer-facing lines unless hidden, deposit sums valid,
+     no junk-marker names in picker collections, dup-display-name budget
 """
 import json, os, sys, re, subprocess, platform, random
 from datetime import datetime, timezone
@@ -460,6 +464,206 @@ for rel, (hit, tot) in j_stats.items():
           f"{hit}/{tot} = {rate:.1f}% across {len(sample_boats)} sampled boats")
     for nm in sorted(j_unmatched[rel]):
         check("J. Assignment web", f"{rel}: unresolved name", False, nm)
+
+# ---------- K. Presentation relevance (FFR-18 class hunt, permanent) ----------
+# Full audit + rationale: scripts/mpf/audit-presentation.py +
+# tasks/test-evidence/PRESENTATION_AUDIT.md. These checks pin the invariants.
+K = "K. Presentation relevance"
+# same artifact alphabet as scripts/mpf/audit-presentation.py JUNK_RE so the
+# budgets below line up with the audit's counts
+JUNK_NAME_RE = re.compile(r"(###|#N/A|#REF|\bNLA\b|\bPOA\b|\bERROR\b)", re.I)
+
+# K.1 dealer-fit Step-5 classifier (port of highfield-quote-flow.tsx classifySection)
+BRAND_RE = re.compile(r"(HIGHFIELD|STACER|STABICRAFT|SURTEES|JEANNEAU|FORMOSA|HAINES)")
+
+
+def k_classify(raw):
+    c = (raw or "").upper()
+    if c.startswith("###") or "OBSELETE" in c or "OBSOLETE" in c: return "hidden"
+    if "PRE DELIVERY" in c or "PRE-DELIVERY" in c: return "hidden"
+    if "RIGGING KIT" in c or "HELM MASTER" in c or "ADD ON KITS" in c: return "hidden"
+    if BRAND_RE.search(c) and re.search(r"\d{3}", c): return "model"
+    if "SPECIFIC OPTIONS" in c: return "model"
+    return "general"
+
+
+k_cats = {}
+for d in dfs_docs:  # fetched in I.4
+    k_cats.setdefault(str(d.get("category") or "Gear"), []).append(d)
+K_NOISE_RE = re.compile(r"(###|#N/A|\bNLA\b|OBSELETE|OBSOLETE|DISCONTINU|SUPERSEDED|WORKSHOP|"
+                        r"PRE.?DELIVERY|RIGGING KIT|DO NOT USE|\bDNU\b)", re.I)
+for cat in sorted(k_cats):
+    kl = k_classify(cat)
+    if K_NOISE_RE.search(cat):
+        check(K, f"dealer-fit category '{cat[:60]}': obsolete/### noise never visible-classified",
+              kl == "hidden", f"classified {kl}")
+# KNOWN-ESCAPE BUDGET: sections the classifier still lets through as 'general'
+# (found by the 2026-07-04 audit; each is a handoff — shrink, never grow):
+#   'HIGHFIELD - Patrol' (brand+range, no digits) + 'ENGINE REMOVALS' +
+#   'SURVEYING SUBLETS' + 'MPF – Uncategorised'
+K_ESCAPE_RE = re.compile(r"\b(REMOVALS?|SUBLETS?|SURVEYING|UNCATEGORISED|UNCATEGORIZED)\b", re.I)
+escapes = []
+for cat in sorted(k_cats):
+    if k_classify(cat) != "general":
+        continue
+    cu = cat.upper()
+    brandish = bool(BRAND_RE.search(cu) and re.search(r"\b(PATROL|SPORT|CLASSIC|ROLL.?UP|ULTRA|ADVENTURE|COASTER)\b", cu)
+                    and not re.search(r"\d{3}", cu))
+    if brandish or K_ESCAPE_RE.search(cat):
+        escapes.append(cat)
+check(K, "dealer-fit visible-classified noise escapes within budget (<=4 known)",
+      len(escapes) <= 4, "; ".join(escapes[:6]))
+# no visible (general-classified) option with negative Act Sell or junk-marker name
+k_neg_vis = k_junk_vis = 0
+for cat, docs_ in k_cats.items():
+    if k_classify(cat) != "general":
+        continue
+    for d in docs_:
+        nm = str(d.get("name") or "")
+        if JUNK_NAME_RE.search(nm):
+            k_junk_vis += 1
+        data = ((d.get("items") or [{}])[0] or {}).get("data") or {}
+        sell = data.get("Act Sell")
+        if isinstance(sell, (int, float)) and sell < 0:
+            k_neg_vis += 1
+check(K, "dealer-fit: no visible option has negative Act Sell", k_neg_vis == 0, f"{k_neg_vis} negative")
+check(K, "dealer-fit: no visible option name carries ###/#N/A markers", k_junk_vis == 0, f"{k_junk_vis} junk")
+
+# K.2 fitUpItems — negative sells must be hidden; no junk names; no workshop categories unhidden
+k_fit = [ddec(d) for d in list_docs(f"organisations/{ORG}/fitUpItems")]
+k_bad_neg = [d["_id"] for d in k_fit
+             if isinstance(d.get("sellPrice"), (int, float)) and d.get("sellPrice") < 0 and not d.get("hidden")]
+check(K, "fitUpItems: every negative-sellPrice line is hidden:true", not k_bad_neg,
+      f"{len(k_bad_neg)} visible: {k_bad_neg[:5]}")
+k_fit_junk = [d["_id"] for d in k_fit if JUNK_NAME_RE.search(str(d.get("name") or "")) and not d.get("hidden")]
+check(K, "fitUpItems: junk-marker names within budget (<=2 known, handoff pending)",
+      len(k_fit_junk) <= 2, f"{len(k_fit_junk)}: {k_fit_junk[:5]}")
+k_fit_empty = sum(1 for d in k_fit if not str(d.get("name") or "").strip())
+check(K, "fitUpItems: no empty item names", k_fit_empty == 0, f"{k_fit_empty} empty")
+
+# K.3 model optionalFeatures + standardInclusions + depositSchedule/leadTimesDays
+K_NONHF_RANGES = [("LWgHuGoKfUBeKZ8eWnEi", "mpf-catalog"), ("0cUm736tE9ON2WFLRHD0", "mpf-catalog"),
+                  ("gLAi5eHYiZDgrvjDUaos", "mpf-catalog"), ("DJ5GVMzLaNWNcOlRqzJV", "mpf-catalog"),
+                  ("lwGHoqdqNPuSZYYQAgG7", "jeanneau-mpf"), ("lwGHoqdqNPuSZYYQAgG7", "merry-fisher"),
+                  ("lwGHoqdqNPuSZYYQAgG7", "cap-camarat"), ("formosa", "mpf-catalog")]
+k_models = []
+for rg in ranges:  # HF ranges fetched in C
+    rid = rg["name"].rsplit("/", 1)[-1]
+    k_models += [ddec(m) for m in list_docs(f"data-warehouse/{HIGHFIELD}/ranges/{rid}/models")]
+for vid, rid in K_NONHF_RANGES:
+    k_models += [ddec(m) for m in list_docs(f"data-warehouse/{vid}/ranges/{rid}/models")]
+check(K, "models loaded for presentation checks (>=300)", len(k_models) >= 300, f"{len(k_models)} models")
+k_of_junk = k_of_absurd = k_dep_bad = k_lead_bad = k_inc_wall_models = 0
+k_of_neg = []
+for m in k_models:
+    mid = str(m.get("modelCode") or m.get("name") or m["_id"])
+    for o in (m.get("optionalFeatures") or []):
+        if not isinstance(o, dict):
+            continue
+        nm, cat = str(o.get("name") or ""), str(o.get("category") or "")
+        if JUNK_NAME_RE.search(nm) or JUNK_NAME_RE.search(cat):
+            k_of_junk += 1
+        p = o.get("sellPriceExclGst")
+        if isinstance(p, (int, float)):
+            if p < 0:
+                k_of_neg.append(f"{mid}:{nm[:40]}")
+            elif p > 500_000:
+                k_of_absurd += 1
+    ds = m.get("depositSchedule") or {}
+    stages = [v for v in ds.values() if isinstance(v, (int, float))]
+    if stages:
+        tot = sum(stages)
+        if any(v < 0 for v in stages) or not (abs(tot - 1.0) < 0.005 or abs(tot - 100.0) < 0.5):
+            k_dep_bad += 1
+    for v in (m.get("leadTimesDays") or {}).values():
+        if isinstance(v, (int, float)) and (v < 0 or v > 365):
+            k_lead_bad += 1
+    if any(isinstance(s, str) and len(s) > 200 for s in (m.get("standardInclusions") or [])):
+        k_inc_wall_models += 1
+check(K, "optionalFeatures: junk-marker names/categories within budget (<=4 known Merry Fisher NLA rows)",
+      k_of_junk <= 4, f"{k_of_junk} junk")
+check(K, "optionalFeatures: no absurd prices (> $500k)", k_of_absurd == 0, f"{k_of_absurd}")
+# Negative option prices are REAL MPF delete-credits (93 Stabicraft + 6 Haines)
+# — a product decision (render as 'Credit'?) is pending; budget must not grow.
+check(K, "optionalFeatures: negative-price options within known credit budget (<=95)",
+      len(k_of_neg) <= 95, f"{len(k_of_neg)}: {k_of_neg[:3]}")
+check(K, "depositSchedule: every present schedule sums to 100% with no negative stages",
+      k_dep_bad == 0, f"{k_dep_bad} bad")
+check(K, "leadTimesDays: no absurd lead times (0..365)", k_lead_bad == 0, f"{k_lead_bad} bad")
+check(K, "standardInclusions: render-wall (>200 char lines) model budget (<=168 known, handoff pending)",
+      k_inc_wall_models <= 168, f"{k_inc_wall_models} models")
+
+# K.4 motors — dup display names visible in pickers must not diverge on price
+def k_motor_display(r):
+    for kk in ("MODEL", "Model Name", "MODEL CODE", "Model", "name"):
+        v = r.get(kk)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    return r.get("_id", "")
+
+
+k_by_disp = {}
+for rrow in yam_rows:  # fetched in I.2
+    k_by_disp.setdefault(k_motor_display(rrow).lower(), []).append(rrow)
+k_dup_diff = [dn for dn, g in k_by_disp.items() if len(g) > 1
+              and len({gg.get("NSM Retail") for gg in g}) > 1]
+check(K, "motors: dup-display-name-with-different-NSM-Retail budget == 0",
+      len(k_dup_diff) == 0, f"{len(k_dup_diff)}: {k_dup_diff[:5]}")
+k_menu_no_retail = set()
+for b in boats_ext:  # loaded in I.1
+    for e in (b.get("motorMenu") or []):
+        nm = re.sub(r"\s+", " ", str(e.get("motorName") or "")).strip().lower()
+        if nm in k_by_disp and not isinstance(k_by_disp[nm][0].get("NSM Retail"), (int, float)):
+            k_menu_no_retail.add(nm)
+check(K, "motors: every motorMenu-resolved row has numeric NSM Retail",
+      len(k_menu_no_retail) == 0, f"{len(k_menu_no_retail)}: {sorted(k_menu_no_retail)[:4]}")
+
+# K.5 trailers — sentinel names + $0 sells on menu-referenced docs (NSM-ask pending)
+k_menu_trailers = {str(e.get("name") or "").strip().lower()
+                   for b in boats_ext for e in (b.get("trailerMenu") or [])}
+k_sentinels = [n for n in live_trailer_by_name if re.search(r"NOT REQUIRED|\bTBA\b|\bTBC\b", n, re.I)]
+check(K, "trailers: sentinel-name rows within budget (<=2 known 'TRAILER NOT REQUIRED', handoff pending)",
+      len(k_sentinels) <= 2, f"{len(k_sentinels)}: {k_sentinels[:4]}")
+k_zero_menu = [n for n, t in live_trailer_by_name.items()
+               if n.lower() in k_menu_trailers and t.get("sellPriceExclGst") == 0]
+check(K, "trailers: $0-sell menu-referenced docs within budget (<=2 known, NSM-ask pending)",
+      len(k_zero_menu) <= 2, f"{len(k_zero_menu)}: {k_zero_menu[:4]}")
+k_tr_junk = [n for n in live_trailer_by_name if JUNK_NAME_RE.search(n)]
+check(K, "trailers: no junk-marker names", len(k_tr_junk) == 0, f"{k_tr_junk[:4]}")
+
+# K.6 rego labels
+k_rego = [ddec(d) for d in list_docs("data-warehouse/qld-transport/regoTypes")]
+k_rego_bad = []
+for d in k_rego:
+    label = str(d.get("name") or d.get("label") or "")
+    sell = d.get("sellExclGst") if isinstance(d.get("sellExclGst"), (int, float)) else d.get("sellPriceExclGst")
+    if not label.strip() or JUNK_NAME_RE.search(label):
+        k_rego_bad.append(f"{d['_id']}:junk-label")
+    if isinstance(sell, (int, float)) and sell < 0:
+        k_rego_bad.append(f"{d['_id']}:negative-sell")
+    if re.search(r"not required", label, re.I) and sell not in (0, None):
+        k_rego_bad.append(f"{d['_id']}:not-required-nonzero")
+check(K, "regoTypes: labels sane ('Not Required' = $0, no junk, no negatives)",
+      len(k_rego_bad) == 0, "; ".join(k_rego_bad[:5]))
+
+# K.7 service collections + riggingKits — no negative sells, junk-name budgets
+for coll, name_keys, sell_key, junk_budget in (
+        ("serviceOperations", ("name", "description", "code"), "sellPrice", 0),
+        ("engineServiceSchedules", ("name", "engine", "model"), "sellPrice", 0),
+        ("riggingKits", ("description", "partNumber"), "sellPriceExclGst", 0),
+        ("serviceParts", ("name", "partNumber"), "sellPrice", 150)):
+    k_docs = [ddec(d) for d in list_docs(f"organisations/{ORG}/{coll}")]
+    k_neg = sum(1 for d in k_docs if isinstance(d.get(sell_key), (int, float)) and d[sell_key] < 0)
+    k_junk = sum(1 for d in k_docs
+                 if JUNK_NAME_RE.search(next((str(d.get(kk)) for kk in name_keys
+                                              if str(d.get(kk) or "").strip()), "")))
+    check(K, f"{coll}: zero negative {sell_key}", k_neg == 0, f"{k_neg} negative / {len(k_docs)} docs")
+    check(K, f"{coll}: junk-marker names within budget (<= {junk_budget})",
+          k_junk <= junk_budget, f"{k_junk} junk / {len(k_docs)} docs")
+    k_secs = {str(d.get("section") or "") for d in k_docs}
+    k_bad_secs = [s for s in k_secs if s.startswith("###")]
+    check(K, f"{coll}: no ###-marker section labels (picker group headings)",
+          len(k_bad_secs) == 0, "; ".join(k_bad_secs[:3]))
 
 # ---------- write ----------
 os.makedirs("test-results", exist_ok=True)

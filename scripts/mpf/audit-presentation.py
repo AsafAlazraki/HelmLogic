@@ -128,11 +128,29 @@ def main():
         "docs": len(dfs), "categories": len(cats),
         "hidden": len(buckets["hidden"]), "model": len(buckets["model"]),
         "general": len(buckets["general"])}
+    RANGE_WORD_RE = re.compile(r"\b(PATROL|SPORT|CLASSIC|ROLL.?UP|ULTRA|ADVENTURE|COASTER)\b")
     for c in buckets["general"]:
+        cu = c.upper()
         m = GENERAL_NOISE_RE.search(c)
         if m:
             finding("dealerFitSelections", "high", c,
                     f"category classifies 'general' (always visible on Step 5) but contains noise marker '{m.group(0)}'",
+                    "handoff", {"items": len(cats[c])})
+        # classifier escape: brand-scoped pack WITHOUT the 3-digit model number
+        # ('HIGHFIELD - Patrol') falls through to 'general' → renders on every
+        # boat of every brand — the exact FFR-18 symptom, different spelling.
+        if BRAND_WORDS_RE.search(cu) and RANGE_WORD_RE.search(cu) and not re.search(r"\d{3}", cu):
+            finding("dealerFitSelections", "high", c,
+                    "brand+range section with no model digits evades the 'model' bucket and classifies "
+                    f"'general' — its {len(cats[c])} options show on EVERY boat of every brand",
+                    "handoff", {"items": len(cats[c])})
+        if re.search(r"\b(REMOVALS?|SUBLETS?|SURVEYING)\b", cu):
+            finding("dealerFitSelections", "medium", c,
+                    f"workshop-operation category classifies 'general' and renders as a Step-5 heading "
+                    f"({len(cats[c])} items)", "handoff", {"items": len(cats[c])})
+        if "UNCATEGORISED" in cu or "UNCATEGORIZED" in cu:
+            finding("dealerFitSelections", "low", c,
+                    f"import fallback bucket renders verbatim as a customer-facing heading ({len(cats[c])} items)",
                     "handoff", {"items": len(cats[c])})
     # item-level junk inside VISIBLE (general) categories
     for c in buckets["general"]:
@@ -172,8 +190,13 @@ def main():
             finding("fitUpItems", "high", d["_id"],
                     f"workshop-noise category '{cat}' would render as a picker group heading (item '{nm[:50]}')",
                     "handoff")
-        if sell is not None and sell < 0 and not d.get("hidden"):
-            neg_sell.append(d)
+        if sell is not None and sell < 0:
+            if d.get("hidden"):
+                finding("fitUpItems", "low", d["_id"],
+                        f"negative sellPrice {sell} on '{nm[:60]}' is hidden:true — sanctioned patch verified "
+                        f"(reason: {d.get('hiddenReason')})", "patched")
+            else:
+                neg_sell.append(d)
     counts["fitUpItems"]["negativeSellVisible"] = len(neg_sell)
     for d in neg_sell:
         finding("fitUpItems", "high", d["_id"],
@@ -358,6 +381,11 @@ def main():
                 if JUNK_RE.search(nm) or not nm.strip():
                     finding("trailers", "medium", t["_path"],
                             f"junk/empty trailer name: '{nm[:70]}'", "handoff")
+                if re.search(r"NOT REQUIRED|\bTBA\b|\bTBC\b", nm, re.I):
+                    finding("trailers", "high", t["_path"],
+                            f"sentinel row imported as a real trailer: '{nm[:70]}' — "
+                            "would render as a selectable $0 trailer card", "handoff",
+                            {"referencedBy": sorted(menu_trailer_refs.get(nm.strip().lower(), set()))})
                 if tv == "obsolete-trailers":
                     continue
                 sell = num(t.get("sellPriceExclGst"))

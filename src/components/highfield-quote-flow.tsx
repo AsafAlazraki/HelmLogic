@@ -923,26 +923,32 @@ export function HighfieldQuoteFlow({
         const modelDigits = (modelName.match(/(\d{3,4})/) || [])[1] || '';
         const modelRangeWord = RANGE_WORDS[modelName.slice(0, 2).toUpperCase()] || '';
         const vendorNameUpper = (vendor?.name || '').toUpperCase();
+        const RANGE_WORD_LIST = Array.from(new Set(Object.values(RANGE_WORDS)));
         const classifySection = (raw: string): 'hidden' | 'model' | 'general' => {
             const c = raw.toUpperCase();
             if (c.startsWith('###') || c.includes('OBSELETE') || c.includes('OBSOLETE')) return 'hidden';
             if (c.includes('PRE DELIVERY') || c.includes('PRE-DELIVERY')) return 'hidden';
             if (c.includes('RIGGING KIT') || c.includes('HELM MASTER') || c.includes('ADD ON KITS')) return 'hidden';
-            if (/(HIGHFIELD|STACER|STABICRAFT|SURTEES|JEANNEAU|FORMOSA|HAINES)/.test(c) && /\d{3}/.test(c)) return 'model';
+            // Brand-scoped packs: digits OR a range word make it model-scoped
+            // (UI-1: 'HIGHFIELD - PATROL' has no digits but is a Patrol pack).
+            if (/(HIGHFIELD|STACER|STABICRAFT|SURTEES|JEANNEAU|FORMOSA|HAINES)/.test(c)
+                && (/\d{3}/.test(c) || RANGE_WORD_LIST.some(w => c.includes(w)))) return 'model';
             if (c.includes('SPECIFIC OPTIONS')) return 'model';
             return 'general';
         };
         const modelSectionMatches = (raw: string): boolean => {
             const c = raw.toUpperCase();
             const secDigits = (c.match(/(\d{3,4})/) || [])[1] || '';
-            if (secDigits && modelDigits && secDigits === modelDigits) {
-                // digits agree — require range word or brand agreement too
-                if (modelRangeWord && c.includes(modelRangeWord)) return true;
-                if (vendorNameUpper && c.includes(vendorNameUpper.split(' ')[0])) return true;
-                return !modelRangeWord; // non-HF single-variant models: digits suffice
-            }
-            // brand-specific (no digits) packs e.g. 'JEANNEAU SPECIFIC OPTIONS'
-            if (!secDigits && vendorNameUpper && c.includes(vendorNameUpper.split(' ')[0])) return true;
+            const secRange = RANGE_WORD_LIST.find(w => c.includes(w)) || '';
+            // A section naming a range only ever shows on that range (UI-1).
+            if (secRange && secRange !== modelRangeWord) return false;
+            // Digits present on both sides must agree.
+            if (secDigits && modelDigits && secDigits !== modelDigits) return false;
+            if (secDigits && modelDigits && secDigits === modelDigits) return true;
+            // Range agrees, no digits ('HIGHFIELD - PATROL' on a PA boat).
+            if (secRange && secRange === modelRangeWord) return true;
+            // Brand-specific digitless, rangeless packs (JEANNEAU SPECIFIC OPTIONS).
+            if (!secDigits && !secRange && vendorNameUpper && c.includes(vendorNameUpper.split(' ')[0])) return true;
             return false;
         };
         const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
