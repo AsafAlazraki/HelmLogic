@@ -1,10 +1,10 @@
 {
  "meta": {
-  "startedUtc": "2026-07-04T07:40:29.198825+00:00",
-  "finishedUtc": "2026-07-04T07:44:30.763423+00:00",
+  "startedUtc": "2026-07-04T07:46:19.673091+00:00",
+  "finishedUtc": "2026-07-04T07:50:39.309923+00:00",
   "identity": "billh@nsmarine.com.au (operator test user)",
   "org": "AcFZVEFA5UDJG2hyetWT",
-  "mode": "audit-only",
+  "mode": "apply-sanctioned",
   "reproduce": "python3 scripts/mpf/audit-presentation.py"
  },
  "counts": {
@@ -88,6 +88,30 @@
     "PRE DELIVERY OPERATIONS - Stabicraft",
     "PRE DELIVERY OPERATIONS - Stacer",
     "PRE DELIVERY OPERATIONS - Surtees"
+   ],
+   "generalSections": [
+    "BATTERY INSTALLATIONS",
+    "ENGINE REMOVALS",
+    "FRESHWATER PLUMBING OPTIONS",
+    "FUSION STEREO OPTIONS",
+    "GARMIN ELECTRONIC OPTIONS",
+    "HIGHFIELD - Patrol",
+    "LONESTAR WINCH OPTIONS",
+    "LOWRANCE ELECTRONIC OPTIONS",
+    "MAJESTIC TV OPTIONS",
+    "MINN KOTA MOTOR OPTIONS",
+    "MOMENTUM - Electric Motor Packs",
+    "MPF \u2013 Uncategorised",
+    "NAVICO ELECTRONIC OPTIONS",
+    "OUTBOARD ACCESSORIES",
+    "RAYMARINE ELECTRONIC OPTIONS",
+    "SARCA ANCHOR INSTALLS",
+    "SIMRAD ELECTRONIC OPTIONS",
+    "SOLAR SETUPS",
+    "SURVEYING SUBLETS",
+    "TILLER FITTING KITS",
+    "TRAILER SETUPS",
+    "TUBE COVER OPTIONS - To suit Highfield Boats"
    ]
   },
   "fitUpItems": {
@@ -107,7 +131,8 @@
   },
   "trailers": {
    "docs": 496,
-   "missingSell": 0
+   "missingSell": 0,
+   "zeroSellOnMenus": 2
   },
   "regoTypes": {
    "docs": 28
@@ -138,7 +163,7 @@
   }
  },
  "severity": {
-  "high": 101,
+  "high": 103,
   "medium": 207,
   "low": 7
  },
@@ -164,7 +189,7 @@
    "severity": "high",
    "id": "2-x-mfm70-2",
    "issue": "NEGATIVE sellPrice -519 on 'CREDIT - Batteries (2 x MFM70)' \u2014 customer-facing picker must not offer deduction lines",
-   "disposition": "patch-pending",
+   "disposition": "patched",
    "detail": {
     "sellPrice": -519,
     "category": "LABOUR ESTIMATES"
@@ -175,7 +200,7 @@
    "severity": "high",
    "id": "bs-6007-2",
    "issue": "NEGATIVE sellPrice -115 on 'CREDIT - Battery Switch - Dual (Blue Sea)' \u2014 customer-facing picker must not offer deduction lines",
-   "disposition": "patch-pending",
+   "disposition": "patched",
    "detail": {
     "sellPrice": -115,
     "category": "LABOUR ESTIMATES"
@@ -2542,6 +2567,32 @@
    "issue": "inclusion is a 1133-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
    "disposition": "handoff",
    "detail": {}
+  },
+  {
+   "surface": "trailers",
+   "severity": "high",
+   "id": "data-warehouse/mackay-trailers/series/offroad-kr-2010-series-trailers/trailers/trailer-not-required-800-gamefisher",
+   "issue": "'TRAILER NOT REQUIRED - 800 Gamefisher' has sellPriceExclGst == 0 but is on 1 boats' trailer menus \u2014 menu card shows $0 / free trailer",
+   "disposition": "nsm-ask+handoff",
+   "detail": {
+    "referencedBy": [
+     "SUR-800GF"
+    ]
+   }
+  },
+  {
+   "surface": "trailers",
+   "severity": "high",
+   "id": "data-warehouse/redco-tinka-trailers/series/redco-formosa/trailers/NXlNKluVeCNZc4OC9c0R",
+   "issue": "'Formosa GRT Tow Catch - RE1513Q-MO (Gal Steel, Single Axle)' has sellPriceExclGst == 0 but is on 3 boats' trailer menus \u2014 menu card shows $0 / free trailer",
+   "disposition": "nsm-ask+handoff",
+   "detail": {
+    "referencedBy": [
+     "GRT 425 TIL",
+     "GRT 455 SC",
+     "GRT 455 TIL"
+    ]
+   }
   },
   {
    "surface": "serviceParts",

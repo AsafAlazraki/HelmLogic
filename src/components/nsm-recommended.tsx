@@ -16,6 +16,7 @@
  */
 
 import { cn } from '@/lib/utils';
+import { formatCurrency } from '@/lib/currency-utils';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -170,7 +171,9 @@ export function NsmMotorMenuSection({
                                     <>
                                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Excl. GST</span>
                                         <span className={cn('font-black italic text-sm', isSelected ? 'text-primary' : 'text-slate-900')}>
-                                            ${price.toLocaleString()}
+                                            {/* formatCurrency enforces the whole-dollar / 2-dp rule —
+                                                bare toLocaleString() can emit 1-or-3-decimal prices. */}
+                                            {formatCurrency(price)}
                                         </span>
                                     </>
                                 ) : (
@@ -357,7 +360,7 @@ export function NsmRiggingKitLine({
             </div>
             {retailExGst != null && (
                 <span className="text-[10px] font-black text-primary tabular-nums shrink-0">
-                    ${retailExGst.toLocaleString()} <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">retail ex GST</span>
+                    {formatCurrency(retailExGst)} <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">retail ex GST</span>
                 </span>
             )}
         </div>
