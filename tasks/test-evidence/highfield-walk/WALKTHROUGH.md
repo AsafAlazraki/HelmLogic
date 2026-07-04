@@ -1,6 +1,6 @@
 # Highfield full-catalogue walkthrough — Steps 1→6 vs live MPF connections
 
-Updated: 2026-07-04T09:54:06.402Z · 58 models walked
+Updated: 2026-07-04T10:03:05.230Z · 71 models walked
 
 | Range | Model | Variants (price ✓/total) | S1 | S2 | S3 | S4 | S5 | S6 | Price asserts (fail/checked) | Failures |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -62,3 +62,16 @@ Updated: 2026-07-04T09:54:06.402Z · 58 models walked
 | Classic | CL380 | 9/9 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/358 |  |
 | Classic | CL380LS | 9/9 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/358 |  |
 | Classic | CL380MAX | 9/9 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/351 |  |
+| Classic | CL400 | 9/9 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/356 |  |
+| Classic | CL420 | 9/9 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/363 |  |
+| Classic | CL460 | 9/9 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/419 |  |
+| Adventure | ADV7 | 7/7 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/352 |  |
+| Adventure | ADV9 | 5/5 | ✅ | ✅ | ✅ | — | ✅ | ✅ | 0/342 |  |
+| Patrol | PA420 | 10/10 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/472 |  |
+| Patrol | PA460 | 10/10 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/475 |  |
+| Patrol | PA500 | 10/10 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/478 |  |
+| Patrol | PA540 | 1/1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/453 |  |
+| Patrol | PA540 Open | 10/10 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/477 |  |
+| Patrol | PA540ST | 10/10 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/476 |  |
+| Patrol | PA600 | 1/1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/473 |  |
+| Patrol | PA600 Open | 10/10 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 0/503 |  |

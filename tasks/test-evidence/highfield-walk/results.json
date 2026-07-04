@@ -1,5 +1,5 @@
 {
- "updatedUtc": "2026-07-04T09:54:06.401Z",
+ "updatedUtc": "2026-07-04T10:03:05.229Z",
  "models": {
   "Roll-Up/RU200AL": {
    "range": "Roll-Up",
@@ -3282,6 +3282,748 @@
    },
    "failures": [],
    "durationMs": 41894
+  },
+  "Classic/CL400": {
+   "range": "Classic",
+   "model": "CL400",
+   "modelId": "cl400",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41741
+  },
+  "Classic/CL420": {
+   "range": "Classic",
+   "model": "CL420",
+   "modelId": "cl420",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41316
+  },
+  "Classic/CL460": {
+   "range": "Classic",
+   "model": "CL460",
+   "modelId": "cl460",
+   "variants": {
+    "total": 9,
+    "pricePass": 9,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 380,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 40625
+  },
+  "Adventure/ADV7": {
+   "range": "Adventure",
+   "model": "ADV7",
+   "modelId": "adv7",
+   "variants": {
+    "total": 7,
+    "pricePass": 7,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 7,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 316,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 37169
+  },
+  "Adventure/ADV9": {
+   "range": "Adventure",
+   "model": "ADV9",
+   "modelId": "adv9",
+   "variants": {
+    "total": 5,
+    "pricePass": 5,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 5,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 316,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 2,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 29895
+  },
+  "Patrol/PA420": {
+   "range": "Patrol",
+   "model": "PA420",
+   "modelId": "pa420",
+   "variants": {
+    "total": 10,
+    "pricePass": 10,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 6,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 3,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 436,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41915
+  },
+  "Patrol/PA460": {
+   "range": "Patrol",
+   "model": "PA460",
+   "modelId": "pa460",
+   "variants": {
+    "total": 10,
+    "pricePass": 10,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 6,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 6,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 436,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 42971
+  },
+  "Patrol/PA500": {
+   "range": "Patrol",
+   "model": "PA500",
+   "modelId": "pa500",
+   "variants": {
+    "total": 10,
+    "pricePass": 10,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 11,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 436,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 42685
+  },
+  "Patrol/PA540": {
+   "range": "Patrol",
+   "model": "PA540",
+   "modelId": "pa540",
+   "variants": {
+    "total": 1,
+    "pricePass": 1,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 436,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 40833
+  },
+  "Patrol/PA540 Open": {
+   "range": "Patrol",
+   "model": "PA540 Open",
+   "modelId": "pa540-open",
+   "variants": {
+    "total": 10,
+    "pricePass": 10,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 436,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 43100
+  },
+  "Patrol/PA540ST": {
+   "range": "Patrol",
+   "model": "PA540ST",
+   "modelId": "pa540st",
+   "variants": {
+    "total": 10,
+    "pricePass": 10,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 9,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 436,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 41859
+  },
+  "Patrol/PA600": {
+   "range": "Patrol",
+   "model": "PA600",
+   "modelId": "pa600",
+   "variants": {
+    "total": 1,
+    "pricePass": 1,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 456,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 39455
+  },
+  "Patrol/PA600 Open": {
+   "range": "Patrol",
+   "model": "PA600 Open",
+   "modelId": "pa600-open",
+   "variants": {
+    "total": 10,
+    "pricePass": 10,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "pass",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 14,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 6,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 456,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 4,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 43524
   }
  }
 }
