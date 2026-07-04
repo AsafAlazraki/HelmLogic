@@ -700,12 +700,18 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
             fail('s4', `assignment "${a.code || a.name}" has no live trailer doc at data-warehouse/${a.brandVendorId}/series/${a.seriesId}/trailers/${a.trailerId}`);
             continue;
         }
-        await cardSel.click({ force: true });
         const expSell = trailerEffectiveSell(a.trailerId, tdoc);
         const expStr = `$${(expSell || 0).toLocaleString('en-US')}`;
-        const shown = await cardSel.locator(`text=${expStr}`).first().waitFor({ timeout: 6000 }).then(() => true).catch(() => false);
-        if (!shown) {
-            const cardTxt = await cardSel.innerText().catch(() => '');
+        // The card only shows its price while ACTIVE — and clicking an active
+        // card unticks it. If it already displays a price (auto-default), read
+        // in place; otherwise select it and wait for the snapshot price.
+        let cardTxt = await cardSel.innerText().catch(() => '');
+        if (!/\$[\d,]/.test(cardTxt)) {
+            await cardSel.click({ force: true });
+            await cardSel.locator(`text=${expStr}`).first().waitFor({ timeout: 6000 }).catch(() => {});
+            cardTxt = await cardSel.innerText().catch(() => '');
+        }
+        if (!cardTxt.includes(expStr)) {
             pa.s4_trailers.failed++; res.steps.s4 = 'fail';
             fail('s4', `trailer ${a.code || a.name}: expected ${expStr} (live doc sell + overrides) — card "${cardTxt.replace(/\n/g, ' | ').slice(0, 120)}"`);
             await shot('s4-price');
@@ -733,13 +739,15 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
     if (finalTrailerAssignment) {
         finalTrailerDoc = FX.trailers[`${finalTrailerAssignment.brandVendorId}/${finalTrailerAssignment.seriesId}/${finalTrailerAssignment.trailerId}`];
         const cardSel = page.locator('button.rounded-\\[1\\.5rem\\]').filter({ hasText: finalTrailerAssignment.code || finalTrailerAssignment.name || '' }).first();
-        // ensure it's the active one (it may already be from the loop's last click)
-        await cardSel.click({ force: true }).catch(() => {});
-        await page.waitForTimeout(1500);
-        // clicking an active card unticks — re-check and re-click if the price vanished
         if (finalTrailerDoc) {
             const expStr = `$${(trailerEffectiveSell(finalTrailerAssignment.trailerId, finalTrailerDoc) || 0).toLocaleString('en-US')}`;
-            const active = await cardSel.locator(`text=${expStr}`).isVisible().catch(() => false);
+            // activate only if not already active (clicking an active card unticks it)
+            let active = (await cardSel.innerText().catch(() => '')).includes(expStr);
+            if (!active) {
+                await cardSel.click({ force: true }).catch(() => {});
+                await cardSel.locator(`text=${expStr}`).first().waitFor({ timeout: 6000 }).catch(() => {});
+                active = (await cardSel.innerText().catch(() => '')).includes(expStr);
+            }
             if (!active) { await cardSel.click({ force: true }).catch(() => {}); await page.waitForTimeout(1500); }
             expTrailerContrib = trailerEffectiveSell(finalTrailerAssignment.trailerId, finalTrailerDoc) + trailerStdOptionsSum(finalTrailerDoc);
         }
@@ -851,6 +859,12 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
     if (!fitUpMounted) {
         res.steps.s5 = 'fail'; fail('s5', 'Fit-Up selector did not mount'); await shot('s5-fitup');
     } else {
+        // Item grid lives behind the collapsed "Custom Fit-Up" section — open it.
+        const customToggle = page.locator('button:has-text("Custom Fit-Up")').first();
+        if (await customToggle.isVisible().catch(() => false)) {
+            await customToggle.click({ force: true });
+            await page.waitForTimeout(2500); // 3k+ item grid render
+        }
         for (const item of fitUpFirstN(model, activeVariant.id, 10)) {
             pa.s5_fitUp.checked++;
             const expStr = `$${resolveFitUpSell(item).toLocaleString('en-US')}`;

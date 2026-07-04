@@ -173,3 +173,6 @@ The first after-pass overlapped another agent's rebuild of `.next`; several shot
 | UI-16/17/18 | Service dashboard, catalog manager, suppliers, customers, login, 1366 pass | — | PASS |
 
 **Fixed: 6 findings (9 files) · Handoff: 6 (5 quote-flow + 1 data) · Documented: 2 · Pass: 3 screen groups.**
+
+## Visual-regression baseline refresh (last step)
+`npm run test:visual:update` run after all fixes with no other playwright active: **6 of 7 baselines refreshed/verified** — only `reporting.png` actually changed (UI-11's real totals; regenerated intentionally). The 7th test (`quote flow — CL380 step 1`) errored twice **before reaching the screenshot**: it drives the org-route New Quote dialog, which hits the ledger-known "org-route strips `?range=&vendor=` → Context Error" bug (see `phase6.ultimate` finding in `tasks/mpf-audit/AUDIT_LOG.jsonl`). Its existing baseline is untouched and remains valid — none of this audit's fixes affect Step 1 rendering. Suggested follow-up for the visual-suite owner: point that test at the non-org `/modules/{id}/quote/{modelId}?range&vendor` route like every other green spec.
