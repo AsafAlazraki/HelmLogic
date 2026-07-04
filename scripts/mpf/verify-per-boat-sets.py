@@ -567,40 +567,74 @@ def main():
                     c or f"<no-code: {o.get('name')}>"
             exp_codes = {str(c).strip().upper(): str(c).strip()
                          for c in b["factoryOptionCodes"] if str(c).strip()}
-            miss = sorted(exp_codes[k] for k in exp_codes if k not in visible_codes)
-            extra_all = [visible_codes[k] for k in visible_codes if k not in exp_codes]
-            # classify extras
-            extra_legacy = [e for e in extra_all if e.startswith("<no-code")]
+            vis_keys = set(visible_codes)
+
+            def suffix_covered(base):
+                """Boat-row BASE code covered by a color-suffixed live code
+                (e.g. HES016 -> HES016-GDG)? The MPF Boat Module FO ref
+                columns use base codes; the FO catalog + live options carry
+                colour-refined SKUs."""
+                return any(k == base or k.startswith(base + "-") for k in vis_keys)
+
+            def base_of_expected(code):
+                return any(code.startswith(e + "-") for e in exp_codes)
+
+            miss_raw = [exp_codes[k] for k in exp_codes if k not in vis_keys]
+            miss_suffixed = sorted(c for c in miss_raw if suffix_covered(c.upper()))
+            miss = sorted(c for c in miss_raw if not suffix_covered(c.upper()))
+            extra_all = [visible_codes[k] for k in vis_keys if k not in exp_codes]
+            extra_suffix = sorted(e for e in extra_all if not e.startswith("<no-code")
+                                  and base_of_expected(e.upper()))
+            rest = [e for e in extra_all if e not in extra_suffix]
+            # classify remaining extras
+            extra_legacy = [e for e in rest if e.startswith("<no-code")]
             model_union = hf_model_code_union.get((b.get("highfield") or {}).get("model"), set())
-            extra_sibling = [e for e in extra_all if not e.startswith("<no-code")
-                             and e.upper() in model_union and e.upper() not in exp_codes]
-            extra_curated = [e for e in extra_all if not e.startswith("<no-code")
-                             and e.upper() not in model_union
-                             and e.upper() not in hf_catalog_codes]
-            extra_unexplained = [e for e in extra_all if e not in extra_legacy
-                                 and e not in extra_sibling and e not in extra_curated]
+
+            def in_union(code):
+                cu = code.upper()
+                return cu in model_union or any(cu.startswith(u + "-") for u in model_union)
+
+            extra_sibling = [e for e in rest if not e.startswith("<no-code") and in_union(e)]
+            extra_catalog = [e for e in rest if not e.startswith("<no-code")
+                             and not in_union(e) and e.upper() in hf_catalog_codes]
+            extra_curated = [e for e in rest if not e.startswith("<no-code")
+                             and not in_union(e) and e.upper() not in hf_catalog_codes]
             miss_arch = [c for c in miss if c.upper() in hf_catalog_codes]
-            miss_new = [c for c in miss if c.upper() not in hf_catalog_codes]
-            if not miss and not extra_all:
+            miss_drift = [c for c in miss if c.upper() not in hf_catalog_codes]
+            new_buckets = extra_sibling or extra_catalog
+            note = (f"suffixRefinedMatches={len(miss_suffixed)} "
+                    f"(boat-row base codes covered by colour-suffixed live codes: "
+                    f"{miss_suffixed[:6]}{'…' if len(miss_suffixed) > 6 else ''})"
+                    if miss_suffixed else None)
+            if not miss and not rest:
                 record("C4_optionalFeatures", "pass")
-            elif not miss_new and not extra_unexplained and not extra_sibling:
+                if note:  # representation delta only — matched, but keep the evidence
+                    diffs.append({"boat": label, "check": "C4_optionalFeatures",
+                                  "class": "MATCH-with-suffix-refinement",
+                                  "missing": [], "extra": [], "note": note})
+            elif not new_buckets:
                 record("C4_optionalFeatures", "known",
                        missing=[f"{c} (in MPF HF catalog; reprice-only FO wave never "
-                                f"materialized boat-row codes)" for c in miss_arch],
+                                f"materialized boat-row codes)" for c in miss_arch]
+                               + [f"{c} (boat-row ref code absent from the MPF FO "
+                                  f"catalog itself — source drift)" for c in miss_drift],
                        extra=[f"{e} (legacy no-code option, preserved)" for e in extra_legacy]
-                             + [f"{e} (pre-MPF curated live option)" for e in extra_curated],
+                             + [f"{e} (pre-MPF curated live option, not in MPF catalog)"
+                                for e in extra_curated],
                        klass="KNOWN-architectural (HF FO wave = reprice-only; "
-                             "EVERYTHING_CHECK §1.3)")
+                             "EVERYTHING_CHECK §1.3)", note=note)
             else:
                 record("C4_optionalFeatures", "new",
-                       missing=miss_arch + [f"{c} (NOT in MPF HF catalog)" for c in miss_new],
+                       missing=[f"{c} (in MPF HF catalog)" for c in miss_arch]
+                               + [f"{c} (NOT in MPF HF catalog)" for c in miss_drift],
                        extra=[f"{e} (sibling-variant code visible — applicableVariantIds "
                               f"not enforced)" for e in extra_sibling]
-                             + extra_unexplained
+                             + [f"{e} (MPF catalog option visible but not on this "
+                                f"boat's MPF row)" for e in extra_catalog]
                              + [f"{e} (legacy no-code option, preserved)" for e in extra_legacy]
                              + [f"{e} (pre-MPF curated live option)" for e in extra_curated],
-                       klass="NEW" if (miss_new or extra_unexplained) else
-                             "NEW (sibling-variant applicability)")
+                       klass="NEW (sibling-variant applicability)" if not extra_catalog
+                             else "NEW (catalog overshow)", note=note)
         else:
             mcode = str(model_doc.get("modelCode") or "").strip()
             desired, _sk = fo_mod.build_desired_options(
@@ -661,9 +695,12 @@ def main():
                                  "per-boat fit-up assignment exists in the MPF)",
         },
         "totals": totals,
-        "frontendLeakRollup": {p: {"class": v["class"], "boatCount": len(v["boats"]),
-                                   "boats": v["boats"][:12]}
-                               for p, v in sorted(fe_leak_rollup.items())},
+        "frontendLeakRollup": {
+            p: {"class": v["class"], "boatCount": len(v["boats"]),
+                "nonHighfieldBoatCount": sum(1 for x in v["boats"]
+                                             if not x.startswith("Highfield")),
+                "boats": v["boats"][:12]}
+            for p, v in sorted(fe_leak_rollup.items())},
         "diffs": diffs,
         "matrix": matrix,
         "knownRegisterSources": [

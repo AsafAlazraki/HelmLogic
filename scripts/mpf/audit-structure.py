@@ -198,12 +198,29 @@ def audit_rules_coverage():
     findings = {"unruledPaths": [], "writeGaps": [], "collectionGroupGaps": [],
                 "rulesWithoutCode": [], "crossUserWriteConflicts": []}
 
+    def live_probe(segs):
+        """Read-only list probe with wildcards bound to real ids."""
+        bound = []
+        for i, s in enumerate(segs):
+            if s != "*":
+                bound.append(s)
+            elif i == 1 and segs[0] == "organisations":
+                bound.append(NSM_ORG)
+            else:
+                return None  # deeper wildcard — can't bind without a doc id
+        try:
+            docs = _fs.list_docs("/".join(bound))
+            return f"OK ({len(docs)} docs)"
+        except urllib.error.HTTPError as e:
+            return f"HTTP {e.code}"
+
     for key, ent in sorted(refs.items()):
         doc_path = ent["segments"] + ["*"]
         matches = [r for r in non_admin_rules if _seg_match(r["segments"], doc_path)]
         if not matches:
             findings["unruledPaths"].append({
-                "path": key, "writes": ent["writes"], "sites": ent["sites"]})
+                "path": key, "writes": ent["writes"], "sites": ent["sites"],
+                "liveProbe": live_probe(ent["segments"])})
             continue
         can_write = any(any(o in ("write", "create", "update", "delete") for o in r["ops"])
                         for r in matches)
@@ -566,6 +583,14 @@ def audit_duplicates(tree, vendors):
     findings["motors.total"] = len(motor_rows)
     findings["motors.byNameDiffPrice"] = dup_groups(motor_rows, name_key, "_retail")[:60]
     findings["motors.byNameDiffPriceCount"] = len(dup_groups(motor_rows, name_key, "_retail"))
+    # informational: duplicate natural keys (MODEL CODE) — matters for
+    # upsert-by-key imports even when display names are distinct
+    mc_groups = _group(motor_rows, "MODEL CODE")
+    findings["motors.duplicateModelCodes"] = [
+        {"modelCode": c, "count": len(g),
+         "displays": [x.get(name_key) for x in g],
+         "samePrice": len({json.dumps(x.get("_retail")) for x in g}) == 1}
+        for c, g in mc_groups.items() if len(g) > 1]
 
     # trailers — across every Trailer Brand vendor (series + direct)
     trailer_rows = []
@@ -633,6 +658,15 @@ def main():
     n_models = sum(len(r["models"]) for n in tree.values() for r in n["ranges"].values())
     n_vars = sum(len(m["variants"]) for n in tree.values()
                  for r in n["ranges"].values() for m in r["models"].values())
+    mod_findings["brandStats"] = {
+        node["name"]: {
+            "vendorId": vid,
+            "ranges": len(node["ranges"]),
+            "models": sum(len(r["models"]) for r in node["ranges"].values()),
+            "variants": sum(len(m["variants"]) for r in node["ranges"].values()
+                            for m in r["models"].values()),
+            "pricedVariants": node.get("_pricedVariants", 0),
+        } for vid, node in tree.items()}
     print(f"  vendors {len(vendors)} | modules {len(modules)} | boat models "
           f"{n_models} | variants {n_vars}")
 
@@ -689,7 +723,7 @@ def main():
     for k in ["motors.byNameDiffPriceCount", "trailers.byNameDiffPriceCount",
               "serviceParts.duplicatePartNumberCount", "serviceParts.byNameDiffPriceCount",
               "dealerFitSelections.byNameDiffPriceCount",
-              "variants.sameModelByNameDiffPriceCount"]:
+              "variants.sameModelByDisplayDiffPriceCount"]:
         print(f"C5 {k}: {dup_findings.get(k)}")
     print(f"C5 fitUpItems dup-name groups: {len(dup_findings['fitUpItems.byName'])}")
     print(f"C5 serviceOperations dup-name groups: {len(dup_findings['serviceOperations.byName'])}"
