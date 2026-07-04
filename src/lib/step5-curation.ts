@@ -67,6 +67,16 @@ export interface CurationContext {
 
 export type SectionClass = 'hidden' | 'workshop' | 'model' | 'general';
 
+/** R-BOATPACK (Asaf field ruling): items that ARE the model's own
+ *  variant rows ('CLASSIC - CL380 PVC - W-W') duplicate the Step-1
+ *  variant choice — never browsable on Step 5. Matches
+ *  RANGE - MODEL MATERIAL - COLOURCODES shape with no other words. */
+export function isVariantRowItem(name: string): boolean {
+    return /^[A-Z ]{3,15}-\s*[A-Z]{2,3}\d{3}[A-Z]{0,3}\s+(PVC|HYP|ALU)\s*-\s*[A-Z]{1,3}(-[A-Z]{1,3}){0,3}$/i
+        .test((name || '').trim());
+}
+
+
 const RANGE_WORDS: Record<string, string> = {
     CL: 'CLASSIC', SP: 'SPORT', RU: 'ROLL', UL: 'ULTRAL',
     PA: 'PATROL', AL: 'ADVENTURE', AD: 'ADVENTURE', CO: 'COASTER',
@@ -94,6 +104,7 @@ export function classifySection(raw: string): SectionClass {
     // are not new-boat accessories — revealable via "Show all".
     if (c.includes('ENGINE REMOVAL')) return 'workshop';
     if (c.includes('SURVEYING SUBLET')) return 'workshop';
+
     // Any section naming a brand is brand/model-scoped (NEW-1 residual:
     // digitless, rangeless 'TUBE COVER OPTIONS - To suit Highfield
     // Boats' was 'general' and leaked onto Surtees/Stacer hulls).

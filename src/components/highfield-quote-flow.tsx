@@ -55,7 +55,7 @@ import {
     Eye,
     EyeOff
 } from 'lucide-react';
-import {
+import { isVariantRowItem,
     classifySection,
     modelSectionMatches,
     routeSection,
@@ -999,6 +999,8 @@ export function HighfieldQuoteFlow({
             // TRAILER dealer fit (see groupedMotorDealerFit /
             // groupedTrailerDealerFit below).
             if (routeSection(cat)) return;
+            // R-BOATPACK: variant-row pack items duplicate Step 1 — never browsable.
+            if (isVariantRowItem(sel.name)) return;
             const klass = classifySection(cat);
             if (klass === 'hidden') return;
             // 'workshop' (engine removals, survey sublets) hides on a
