@@ -1,5 +1,5 @@
 {
- "updatedUtc": "2026-07-04T09:15:53.134Z",
+ "updatedUtc": "2026-07-04T09:17:06.429Z",
  "models": {
   "Roll-Up/RU200AL": {
    "range": "Roll-Up",
@@ -108,6 +108,114 @@
    },
    "failures": [],
    "durationMs": 38935
+  },
+  "Roll-Up/RU230AL": {
+   "range": "Roll-Up",
+   "model": "RU230AL",
+   "modelId": "ru230al",
+   "variants": {
+    "total": 4,
+    "pricePass": 4,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 36705
+  },
+  "Roll-Up/RU230KAM": {
+   "range": "Roll-Up",
+   "model": "RU230KAM",
+   "modelId": "ru230kam",
+   "variants": {
+    "total": 4,
+    "pricePass": 4,
+    "priceFail": 0
+   },
+   "steps": {
+    "s1": "pass",
+    "s2": "pass",
+    "s3": "pass",
+    "s4": "skip",
+    "s5": "pass",
+    "s6": "pass"
+   },
+   "priceAsserts": {
+    "s1_variants": {
+     "checked": 4,
+     "failed": 0
+    },
+    "s1_rego": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s2_options": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s3_motorCards": {
+     "checked": 1,
+     "failed": 0
+    },
+    "s4_trailers": {
+     "checked": 0,
+     "failed": 0
+    },
+    "s5_dealerFit": {
+     "checked": 324,
+     "failed": 0
+    },
+    "s5_fitUp": {
+     "checked": 10,
+     "failed": 0
+    },
+    "s6_summary": {
+     "checked": 3,
+     "failed": 0
+    }
+   },
+   "failures": [],
+   "durationMs": 36588
   }
  }
 }
