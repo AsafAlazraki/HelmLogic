@@ -508,7 +508,8 @@ def main():
                 elif d["kind"] == "hf-model" and d.get("floor"):
                     kl = "NEW (Roll-Up floor pack leak: sibling floor visible)"
                 else:
-                    kl = "NEW (digit-collision leak: modelSectionMatches vendor-word pass)"
+                    kl = ("NEW (digit-collision leak: modelSectionMatches digits-agree "
+                          "pass — same-vendor-word / empty-range-word fallback)")
                 leak_classes.add(kl)
                 fe_leak_rollup.setdefault(p, {"class": kl, "boats": []})["boats"].append(label)
             status = "known" if leak_classes and all(
