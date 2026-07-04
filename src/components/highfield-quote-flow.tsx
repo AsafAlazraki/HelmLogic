@@ -66,6 +66,7 @@ import { isVariantRowItem,
     type SectionClass,
 } from '@/lib/step5-curation';
 import { parseBoatLengthM } from '@/lib/rego-automatch';
+import { resolveItemImageUrl, findSelectionScrollIndex } from '@/lib/hero-carousel';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -795,16 +796,13 @@ export function HighfieldQuoteFlow({
     const isRenderableImageUrl = (url?: string | null): boolean =>
         !!url && !/\.sharepoint\.com/i.test(url) && !deadImageUrls.has(url);
 
-    const resolveImageUrl = (item: any) => {
-        const path = item?.imageUrl || item?.imageLink || item?.['Image Link'] || item?.SummaryImage || item?.url || item?.image;
-        if (!path || typeof path !== 'string') return null;
-        let out: string;
-        if (path.startsWith('http') || path.startsWith('data:image')) out = path;
-        else if (path.includes('images/products') || path.includes('images/accessories')) {
-            out = `https://www.yamaha-motor.com.au${path.startsWith('/') ? '' : '/'}${path.trim().replace(/\\/g, '/')}`;
-        } else out = path.trim().replace(/\\/g, '/');
-        return isRenderableImageUrl(out) ? out : null;
-    };
+    /** FFR-30 — full candidate-chain resolution (imageUrl → imageLink →
+     *  'Image Link' → SummaryImage → url → image). The old inline version
+     *  picked the first POPULATED field and gave up if that one URL was
+     *  dead, so a motor with a dead imageUrl but a good SummaryImage got
+     *  no hero slide at all. Logic lives in src/lib/hero-carousel.ts with
+     *  unit coverage. */
+    const resolveImageUrl = (item: any) => resolveItemImageUrl(item, isRenderableImageUrl);
 
     const carouselSlides = useMemo(() => {
         const slides: { type: string; url?: string; content?: React.ReactNode }[] = [];
@@ -1487,11 +1485,20 @@ export function HighfieldQuoteFlow({
     // Auto-scroll to the motor slide only while the operator is on the
     // Motor step (3) — otherwise a pre-selected/auto-loaded motor would
     // hijack the carousel on the Boat step.
+    //
+    // FFR-30 (Asaf's SP560 video) — when the picked motor has NO
+    // renderable image there is no motor slide, and the old `if idx !==
+    // -1` bail left the carousel parked on whatever slide had shifted
+    // into the previous numeric index after embla's reInit — the slide
+    // order is …motor → trailer, so the auto-assigned trailer (REDCO
+    // brand shot) took the motor slide's place. Now the scroll target
+    // falls back variant → boat (hull imagery) and NEVER an unrelated
+    // slide type; -1 (no safe slide at all) means don't scroll.
     useEffect(() => {
         if (!api || !selectedMotor || currentStep !== 3) return;
         const scroll = () => {
-            const motorIdx = carouselSlides.findIndex(s => s.type === 'motor');
-            if (motorIdx !== -1) api.scrollTo(motorIdx);
+            const target = findSelectionScrollIndex(carouselSlides, 'motor');
+            if (target !== -1) api.scrollTo(target);
         };
         const timer = setTimeout(scroll, 150);
         api.on('reInit', scroll);
@@ -1505,8 +1512,10 @@ export function HighfieldQuoteFlow({
     useEffect(() => {
         if (!api || !selectedTrailerId || currentStep !== 4) return;
         const scroll = () => {
-            const trailerIdx = carouselSlides.findIndex(s => s.type === 'trailer');
-            if (trailerIdx !== -1) api.scrollTo(trailerIdx);
+            // FFR-30 — same fallback discipline as the motor effect: no
+            // trailer slide → land on hull imagery, never an unrelated type.
+            const target = findSelectionScrollIndex(carouselSlides, 'trailer');
+            if (target !== -1) api.scrollTo(target);
         };
         const timer = setTimeout(scroll, 150);
         api.on('reInit', scroll);
