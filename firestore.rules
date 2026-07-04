@@ -89,8 +89,15 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isOwner(userId) || isAdmin();
 
+      // Structure-audit P1 (2026-07-04, H4): hold requests and @-mentions
+      // write OTHER users' notifications (hold-request-dialog notifies the
+      // brand captain, hold-requests-dashboard notifies the requester,
+      // lib/notifications.ts is the generic helper). Any signed-in user
+      // may CREATE a notification for anyone; reading, editing and
+      // deleting stay owner/admin-only.
       match /notifications/{notifId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow create: if isSignedIn();
+        allow read, update, delete: if isOwner(userId) || isAdmin();
       }
       match /quotes/{quoteId} {
         // v1.8 (story 1.3.1.a) — quote-lock enforcement at the rules
@@ -454,6 +461,13 @@ service cloud.firestore {
     match /features/{featureId} {
       allow read, write: if isSignedIn();
       match /comments/{commentId} {
+        allow read, write: if isSignedIn();
+      }
+      // Structure-audit P1 (2026-07-04, H5): the suggestion approval
+      // queue writes an audit event under the feature on approve/reject;
+      // the recursive /{path=**}/auditLog rule is read-only, so without
+      // this block those writes 403 for non-HelmLogic-admins.
+      match /auditLog/{eventId} {
         allow read, write: if isSignedIn();
       }
     }
