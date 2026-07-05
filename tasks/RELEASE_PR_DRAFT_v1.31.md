@@ -41,7 +41,7 @@ Fourteen dev releases (185 commits since main's v1.17 tip `c9b8b2c`), each with 
 - **Full fleet walk**: every Highfield model (85) driven through Steps 1–6, 640/640 variants, 32,816/32,816 on-screen price assertions (`tasks/test-evidence/highfield-walk/`)
 - **Relation web**: all 809 imported boats, six relation families, **ALL SETS EQUAL, 0 unexplained** (`tasks/test-evidence/PER_BOAT_SETS.md`)
 - **Three adversarial audits** (interface / structure / financial invariants) closed with every flag source-verified; zero data patches needed on our side (`UI_AUDIT.md`, `STRUCTURE_AUDIT.md`, `INVARIANTS_AUDIT.md`)
-- **Fail→Fix→Retest ledger**: FFR-1…31, every failure with root cause, fix and green re-run (`fail-fix-retest.json`)
+- **Fail→Fix→Retest ledger**: FFR-1…32, every failure with root cause, fix and green re-run (`fail-fix-retest.json`) — latest: FFR-32, GT consoles never offer or charge a seat (FCT comes standard), found by Asaf in the field and closed same-day
 - **Unit suite**: 554/554 (money math + curation + carousel + rego), CI gate + nightly synthetic battery
 - **Release-tip battery**: fresh full run at this PR's tip (`40a44bf`): **34,580 / 34,594** — the only 14 fails are the standing, individually-explained set (2 negative-sell rows faithful to NSM's own Parts Maintenance sheet + 12 documented menu skips: 11 Mercury/Jeanneau package powerplants approved as import skips + the CC7.5 trailer reference dangling in NSM's own source)
 - **Grand report**: `tasks/HelmLogic_Evidence_Report.pdf` (31 pp, regenerated 2026-07-05, all 26 data sources live)
