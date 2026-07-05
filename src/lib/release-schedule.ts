@@ -49,7 +49,7 @@ export interface ReleaseWindow {
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 18;
+const FORWARD_RUNWAY_START = 32;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -155,6 +155,111 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // customer surfaces (Epic 8.1 v1.21+), quote variations (Epic 2.4
     // v1.18+), margin threshold (Epic 2.2 v1.19).
     'v1.17': { shipped: true },
+    // v1.18 — Catalog polish + first customer-facing surface + Shopify
+    // spike. Phase A (6 stories): 3.10.4 saved filter views per user
+    // (stored on user profile doc, no new collection), 2.1.1 structured
+    // price sources (canonical resolvePriceLevel + PRICE_FALLBACK_FIELDS
+    // in derive-pricing.ts; motors + finalize migrated), Edit Stock Item
+    // (inline edit on StockList rows for stockNumber / location / label),
+    // Export Data brand -> range -> model (one-CSV hierarchy export for
+    // boats), Receipt PDF branding (shared pdf-branding.ts tokens lib),
+    // 1.4.2 Send Quote Action stale-flip (already shipped v1.8/1.2.4.c;
+    // regression test added). Phase C: Shopify research spike, doc + code
+    // stubs only (tasks/shopify-exploration-notes.md, src/lib/shopify/*).
+    // Held / retargeted: 1.3.2 Contract Signing Pack v1.18 -> v1.20,
+    // 2.3.1 Quote Variations v1.18 -> v1.19. NSM-Hub trio (11.3.1/.2/.3)
+    // carries to v1.19, still service-account-blocked.
+    'v1.18': { shipped: true },
+    // v1.19 — Pricing discipline + variations foundation. Phase A
+    // (3 code-shipped + 1 schema-only): 2.2.1 margin threshold
+    // enforcement + GM override (margin-gate.ts + finalize gate +
+    // override dialog), 2.1.2 model-specific fit-out pricing (3-tier
+    // package prices + admin UI on HighfieldModelEditor), 2.3.1 quote
+    // variations schema + helpers + Firestore rules + regression test
+    // (UI v1.20), 2.6.3 customer agreement schema fields baked into
+    // QuoteVariation (UI v1.20). New Firestore path: users/{uid}/
+    // quotes/{qid}/variations/{vid}. Rules updated + regression test
+    // extended. Retargeted out of v1.19: 8.2.1 Reporting Dashboard ->
+    // v1.20. NSM-Hub trio (11.3.1/.2/.3) carries to v1.20, still
+    // service-account-blocked. PUBLISH firestore.rules to prod before
+    // announcing - new variations path is the gate.
+    'v1.19': { shipped: true },
+    // v1.20 — Quote-to-contract lifecycle + variation surfaces.
+    // Phase A (6 shippable): 2.4.1 Convert Quote -> Contract (schema +
+    // helpers + Convert button + dialog + contract detail sheet),
+    // 2.4.2 Deposit Recording with Receipt PDF foundation
+    // (RecordDepositDialog, deposits list in the detail sheet),
+    // 1.4.4 Quote Validity / Expiry (banner + Send/Convert gates),
+    // 1.3.2 Contract Signing Pack PDF (first multi-document PDF
+    // consuming pdf-branding.ts shared tokens), 2.3.1 Quote
+    // Variations editor (mounts on locked quotes; schema v1.19),
+    // 2.6.3 Customer Agreement on Variation public accept page at
+    // /accept-variation/[token] with canvas signature + token lookup
+    // via collectionGroup + anonymous auth (server-side endpoint v1.21
+    // hardening). New Firestore paths: users/{uid}/quotes/{qid}/
+    // contracts/{cid} + nested /deposits/{depositId}. Rules updated +
+    // regression test extended. Retargeted out of v1.20: 8.2.1
+    // Reporting Dashboard -> v1.21, 5.2.1 RBAC -> v1.22. NSM-Hub
+    // trio carries to v1.21, still service-account-blocked. PUBLISH
+    // firestore.rules to prod before announcing - new contracts +
+    // deposits paths are the gate.
+    'v1.20': { shipped: true },
+    // v1.21 — Customer CRM foundation. 8.1.2 Customer Detail Sheet
+    // (new /customers page mounts CustomerList + clickable detail sheet),
+    // 8.2.1 Reporting Dashboard + 8.1.4 cross-module quotes view (metrics
+    // strip + sortable/filterable collectionGroup quote list on
+    // /reporting), plus lifecycle foundation libs 1.4.3 acceptance,
+    // 1.5.5 trade-in, 2.5.3 inventory-allocation. E2E browser-tested on
+    // dev (5/5) + 27/27 file ticks. NEW recursive Firestore rule
+    // /{path=**}/quotes/{quoteId} for collectionGroup reads — PUBLISH to
+    // prod before announcing. NSM-Hub trio stays blocked. NOT faked.
+    'v1.21': { shipped: true },
+    // v1.22 — Sales workspace shell. 8.1.1 Sales nav group (Customers/
+    // Contracts/Reporting), 8.1.5 cross-module Contracts view
+    // (/contracts), 2.7.1 margin-threshold config UI on /manage, 1.7.3
+    // recent activity feed on /reporting, + libs 4.1.1 promotions,
+    // 2.6.1 variation-order doc, 1.8.3 content-block layout toggle.
+    // E2E 5/5 + 30/30 file. NEW recursive rules for contracts + auditLog
+    // collectionGroup reads — publish before announcing. NSM-Hub blocked.
+    'v1.22': { shipped: true },
+    // v1.23 — Pipeline + payments + my-work. 1.7.1 sales pipeline board
+    // (/pipeline, customers grouped by lifecycle stage), 2.4.3 payment
+    // schedule (per-contract, in the contract detail sheet), 8.1.6 My
+    // Work (/my-work, 3 tabs scoped to createdByUid). E2E 3/3 + 19/19
+    // file. NSM-Hub blocked.
+    'v1.23': { shipped: true },
+    // v1.24 — Customer depth. 1.5.3 notes timeline + 8.1.3 customer
+    // journey strip (customer detail sheet), 2.5.1 order tracking strip
+    // (contract sheet). E2E 3/3. New customers/{id}/notes rule.
+    'v1.24': { shipped: true },
+    // v1.25 — Quote tooling. 1.1.4 quote comparison (/quote-comparison),
+    // 1.4.5 versioning lib, 1.6.1 comms-log lib, 2.4.6 final-invoice lib.
+    // E2E 2/2 + 18/18 file.
+    'v1.25': { shipped: true },
+    // v1.26 — Global Search + customer/quote feature helpers (1.5.4 /
+    // 1.7.4 / 1.9.1 / 2.2.2 / 2.4.4 / 2.6.2 / 4.1.2). 7/7 shipped.
+    'v1.26': { shipped: true },
+    // v1.27 — customer doc storage (1.5.7) + customer-specific promos
+    // (4.2.2). NOT fully shipped: 2.5.2 Settlement-to-Revolution is
+    // BLOCKED on Revolution access. Column left unflagged honestly.
+    'v1.27': {},
+    // v1.28 — spouse/co-buyer (1.5.6) + refund handling (2.4.5) +
+    // promotion stacking (4.2.1). 3/3 shipped.
+    'v1.28': { shipped: true },
+    'v1.29': {},
+    // v1.30 — notification system foundation (10.1.1-10.1.5). 5/5 shipped.
+    'v1.30': { shipped: true },
+    // v1.31 — MPF migration + testing overhaul. Epic 12 (12.1.1-12.4.1):
+    // NSM's 17-workbook Master Price File migrated 1:1 — boats (810, 9
+    // brands, landed-cost chain, curated menus), motors/trailers/FO
+    // (price levels + hull_campaign, 1,011 FO reprices), parts wave
+    // (1,791 DFO / 3,660 fitUp / 26,345 serviceParts / 846 rigging /
+    // 1,606 suppliers), service + pricing config, NSM Recommended
+    // quote-flow wiring, MPF Data admin tab, image remediation (1,056
+    // patches). Epic 13 (13.1.1-13.2.2): 460-test money-math unit suite
+    // (3 bugs fixed), CI gate + nightly synthetic, visual regression +
+    // TLS bridge, 34,512-check parity battery, fail-fix-retest ledger.
+    'v1.31': { shipped: true },
     ...buildV1MinorReleases(),
 };
 

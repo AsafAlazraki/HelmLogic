@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { formatCurrency } from "@/lib/currency-utils";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { LandedCostBreakdown, type LandedCostChain, type PriceLadder } from "@/components/landed-cost-breakdown";
 
 interface Range {
     id: string;
@@ -50,7 +51,20 @@ interface Variant {
     sku: string | null;
     name: string;
     cost?: number;
+    /** MPF import fields (v-next) — absent on pre-import variants. */
+    landedCostChain?: LandedCostChain | null;
+    priceLadder?: PriceLadder | null;
+    priceIncGst?: number | null;
+    mpfSource?: { formulaDeviationFlag?: boolean | null } | null;
 }
+
+/** MPF health check — verified tick vs warning pill (delta / formula deviation). */
+const isMpfHealthy = (item: any): boolean => {
+    const chain = item?.landedCostChain;
+    if (!chain) return false;
+    const delta = typeof chain.landedDelta === 'number' ? chain.landedDelta : 0;
+    return !!chain.landedVerified && Math.abs(delta) <= 0.005 && !item?.mpfSource?.formulaDeviationFlag;
+};
 
 const getSellPrice = (cost: number, marginPercent: number) => {
     const factor = 1 - (marginPercent / 100);
@@ -105,9 +119,14 @@ function EditableCell({ value, onChange, placeholder, align = 'center' }: any) {
 }
 
 function PricingRow({
-    id, name, sku, cost, strategy, onUpdateValue, indent, isOption, vendor, organisation, exchangeRate, rowIndex, activeView, rangeDefaultMargin
+    id, name, sku, cost, strategy, onUpdateValue, indent, isOption, vendor, organisation, exchangeRate, rowIndex, activeView, rangeDefaultMargin, item, onOpenLandedCost
 }: any) {
     const itemValues = strategy?.itemValues?.[id] || {};
+    // MPF landed-cost import (graceful fallback — pre-import rows have no chain and render unchanged)
+    const landedChain = item?.landedCostChain;
+    const mpfHealthy = isMpfHealthy(item);
+    const costIsLanded = !!(landedChain && typeof landedChain.landedAUD === 'number' && typeof cost === 'number' && Math.abs(cost - landedChain.landedAUD) < 0.005);
+    const landedTag = costIsLanded ? <span className="text-[7px] font-black text-emerald-600 ml-0.5 align-middle" title="cost = MPF landed AUD">(landed)</span> : null;
     const orgCurrency = organisation?.tradingCurrency || 'AUD';
     const gstRate = (organisation?.gstPercentage || 10) / 100;
     const gstMultiplier = 1 + gstRate;
@@ -155,7 +174,25 @@ function PricingRow({
             <TableCell className={cn("sticky left-0 z-[80] border-r-2 border-b border-slate-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)] transition-colors group-hover:bg-primary/5", rowBgClass, indent ? "pl-16" : "px-8")}>
                 <div className="flex flex-col min-w-[240px] relative z-10">
                     <span className={cn("font-black text-[11px] uppercase truncate tracking-tight", isOption ? "text-slate-700" : "text-slate-950")}>{name}</span>
-                    <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-tighter">{sku || 'NO SKU'}</span>
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-mono font-bold text-slate-500 uppercase tracking-tighter">{sku || 'NO SKU'}</span>
+                        {landedChain && (
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onOpenLandedCost?.(item); }}
+                                title="Landed Cost (MPF) — read-only breakdown"
+                                className={cn(
+                                    "inline-flex items-center gap-0.5 rounded border px-1 py-[1px] text-[7px] font-black uppercase tracking-wider transition-colors",
+                                    mpfHealthy
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                        : "bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100",
+                                )}
+                            >
+                                {mpfHealthy ? <CheckCircle2 className="h-2 w-2" /> : <AlertTriangle className="h-2 w-2" />}
+                                MPF
+                            </button>
+                        )}
+                    </div>
                 </div>
             </TableCell>
 
@@ -208,7 +245,7 @@ function PricingRow({
 
             <TableCell className="text-right text-[10px] font-black text-slate-950 border-r-2 border-b border-slate-300 px-4 bg-slate-100 relative"><span className="relative z-10">{formatCurrency(totalStrategicLandedEx, orgCurrency)}</span></TableCell>
             <TableCell className="p-0 border-r border-b border-slate-300 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues['strat_package_margin_percent'] || ''} onChange={(val: any) => onUpdateValue(id, 'strat_package_margin_percent', val)} /></TableCell>
-            <TableCell className="text-right text-[10px] font-black text-green-600 border-r-2 border-b border-slate-300 px-4 bg-green-500/10 relative"><span className="relative z-10">{formatCurrency(totalPackageGP, orgCurrency)}</span></TableCell>
+            <TableCell className="text-right text-[10px] font-black text-green-600 border-r-2 border-b border-slate-300 px-4 bg-green-500/10 relative"><span className="relative z-10">{formatCurrency(totalPackageGP, orgCurrency)}{landedTag}</span></TableCell>
 
             {activeView === 'boats' ? (
                 ['hull_cash', 'hull_trade', 'hull_subdealer', 'hull_subdealer_excl', 'hull_aus_sailing'].map(l => {
@@ -219,7 +256,7 @@ function PricingRow({
                         <React.Fragment key={l}>
                             <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues[`${l}_price`] || ''} onChange={(val: any) => onUpdateValue(id, `${l}_price`, val)} align="right" /></TableCell>
                             <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50 relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
-                            <TableCell className="text-center text-[10px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
+                            <TableCell className="text-center text-[10px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%{landedTag}</span></TableCell>
                         </React.Fragment>
                     );
                 })
@@ -233,7 +270,7 @@ function PricingRow({
                         return (
                             <React.Fragment>
                                 <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50 relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
-                                <TableCell className="text-center text-[10px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
+                                <TableCell className="text-center text-[10px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%{landedTag}</span></TableCell>
                             </React.Fragment>
                         );
                     })()}
@@ -251,7 +288,7 @@ function PricingRow({
                     <React.Fragment key={l.id}>
                         <TableCell className="p-0 border-r border-b border-slate-200 hover:bg-primary/10 relative bg-white"><EditableCell value={itemValues[l.id] || ''} onChange={(val: any) => onUpdateValue(id, l.id, val)} align="right" /></TableCell>
                         <TableCell className="text-right text-[10px] font-black text-slate-900 border-r border-b border-slate-200 px-4 bg-slate-50 relative"><span className="relative z-10">{formatCurrency(sellIn, orgCurrency)}</span></TableCell>
-                        <TableCell className="text-center text-[10px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%</span></TableCell>
+                        <TableCell className="text-center text-[10px] font-black text-green-600 border-r border-b border-slate-200 bg-green-500/5 relative"><span className="relative z-10">{gpPercent.toFixed(1)}%{landedTag}</span></TableCell>
                     </React.Fragment>
                 );
             })}
@@ -262,7 +299,7 @@ function PricingRow({
 const OPTION_CATEGORY_ORDER = ['Consoles', 'Seats', 'Rigging', 'Electronics', 'Covers', 'Tops', 'EVA Teak', 'Hardware', 'Accessories'];
 
 function PricingTable({
-    filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate, rangeMargins, onUpdateRangeMargin, searchTerm
+    filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate, rangeMargins, onUpdateRangeMargin, searchTerm, onOpenLandedCost
 }: any) {
     const isOptions = activeView === 'options';
     const shortCode = (organisation?.shortCode || 'NSM').toUpperCase();
@@ -453,6 +490,8 @@ function PricingTable({
                                                         rowIndex={idx}
                                                         activeView={activeView}
                                                         rangeDefaultMargin={rangeDefaultMargin}
+                                                        item={item}
+                                                        onOpenLandedCost={onOpenLandedCost}
                                                         isOption
                                                         indent
                                                     />
@@ -474,6 +513,8 @@ function PricingTable({
                                                 rowIndex={idx}
                                                 activeView={activeView}
                                                 rangeDefaultMargin={rangeDefaultMargin}
+                                                item={item}
+                                                onOpenLandedCost={onOpenLandedCost}
                                                 indent
                                             />
                                         ))}
@@ -516,9 +557,10 @@ function MatrixContent({
     searchTerm,
     setSearchTerm,
     isPublishing,
+    onOpenLandedCost,
 }: any) {
     const commonProps = {
-        filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate, rangeMargins, onUpdateRangeMargin, searchTerm
+        filteredRanges, expandedRanges, toggleRange, allModels, allVariants, activeView, strategy, onUpdateValue, vendor, organisation, activeExchangeRate, rangeMargins, onUpdateRangeMargin, searchTerm, onOpenLandedCost
     };
 
     return (
@@ -792,6 +834,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
     const [isGlobalUpdateOpen, setIsGlobalUpdateOpen] = useState(false);
     const [isPublishOpen, setIsPublishOpen] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
+    const [landedCostItem, setLandedCostItem] = useState<any | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedRanges, setExpandedRanges] = useState<string[]>([]);
     const [activeView, setActiveView] = useState<'boats' | 'options'>('boats');
@@ -1275,6 +1318,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
         onExportHulls: exportHullsCsv, onExportOptions: exportOptionsCsv,
         onImportHulls: importHulls, onImportOptions: importOptions,
         rangeMargins, onUpdateRangeMargin, searchTerm, setSearchTerm, isPublishing,
+        onOpenLandedCost: setLandedCostItem,
     };
 
     return (
@@ -1290,6 +1334,7 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                         isOpen={isGlobalUpdateOpen}
                         onOpenChange={setIsGlobalUpdateOpen}
                         onApply={handleGlobalUpdate}
+                        activeView={activeView}
                     />
                 </div>
             )}
@@ -1310,6 +1355,26 @@ export function HighfieldPricingWorkspace({ vendor, organisationId }: { vendor: 
                 allModels={allModels}
                 allVariants={allVariants}
             />
+
+            {/* MPF landed-cost breakdown — read-only decomposition (z above focus mode overlay) */}
+            <Dialog open={!!landedCostItem} onOpenChange={(open) => { if (!open) setLandedCostItem(null); }}>
+                <DialogContent className="sm:max-w-lg rounded-[2rem] border-2 shadow-2xl z-[10000] max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-black uppercase tracking-tight text-primary">Landed Cost (MPF)</DialogTitle>
+                        <DialogDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            {landedCostItem?.name || landedCostItem?.sku || ''}
+                            {landedCostItem?.sku && landedCostItem?.name ? ` · ${landedCostItem.sku}` : ''}
+                            {' — read-only import decomposition'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <LandedCostBreakdown
+                        chain={landedCostItem?.landedCostChain}
+                        priceLadder={landedCostItem?.priceLadder}
+                        priceIncGst={landedCostItem?.priceIncGst}
+                        deviationFlag={landedCostItem?.mpfSource?.formulaDeviationFlag}
+                    />
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

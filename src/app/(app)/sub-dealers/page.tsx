@@ -6,7 +6,7 @@ import { useDoc } from "@/firebase/firestore/use-doc";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useFirestore, useMemoFirebase } from "@/firebase/provider";
 import { doc, collection, query, where } from "firebase/firestore";
-import { Loader2, Users, Building, ShieldAlert, ChevronRight } from "lucide-react";
+import { Loader2, Users, Building, ShieldAlert, ChevronRight, PlusCircle } from "lucide-react";
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

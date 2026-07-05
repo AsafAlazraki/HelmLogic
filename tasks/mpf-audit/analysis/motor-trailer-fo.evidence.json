@@ -1,0 +1,387 @@
+{
+ "generated": "2026-07-03",
+ "method": "openpyxl 3.1.5 read_only=True data_only=True; full-row scans (no formulas evaluated, cached values only); empty-run cutoff 2500 rows for the 1,048,576-row phantom sheet, verified by independent full scan",
+ "files": {
+  "Motor Module.xlsx": {
+   "sheets": {
+    "Motor Library": {
+     "state": "visible",
+     "declared_dims": "A1:AAI2186 (711 cols)",
+     "real_extent": "last non-empty row 628; last headered col YA (649); 509 non-empty rows; 376 motor data rows (col D key); 124 section-banner rows; declared rows 629-2186 and cols 650-711 are phantom formatting",
+     "layout": "R1-R3 = price-audience banners in col A ('Yamaha - Retail'/'Yamaha - Trade'/'Yamaha - Commercial') + column-number ruler in R1 (C=1..); R4 = real header row; R5+ = data with section banners in col C where col D empty; blank spacer rows between models",
+     "natural_key": "col D MODEL (Yamaha model code e.g. F250XSB); col C = display key 'Yamaha - {code}' used by Boat Module Motor Option columns; 279 distinct col-D codes over 376 rows (dups = same code re-listed under twin/triple-rig + campaign sections; rigging-kit part numbers like 12L3AI repeat up to 7x)",
+     "price_level_columns": {
+      "BC NSM Retail": "RRP+freight inc GST, whole dollars -> HelmLogic hull_cash",
+      "BF Sell Price": "NSM Retail minus Factory Rebate(BD) & Dealer Discount(BE)",
+      "BL Trade Price": "-> hull_trade & hull_subdealer (Dropdowns sheet shows BMT Trade == BMT Sub Dealer)",
+      "BS Commercial Price": "-> hull_commercial",
+      "BY Boating Alliance Price": "-> hull_boating_alliance (numerically == Commercial in probed rows)",
+      "cost_chain": "R Dealer List -> S Holdback 3% -> T Store Price -> U DIGS -> V Dealer Buy -> W Freight -> X Landed CTD -> Y/Z Rebate -> AA Nett CTD -> AV Total PD Allowance -> AX Total CTD (true cost -> HelmLogic `cost`)"
+     },
+     "spec_columns": "E HP Rating (numeric or '2 x 300'/'3 x 300'/'Electric' strings \u2014 NOTE letter 'x', HelmLogic getMotorHp parses this), F Shaft Length (15\"/20\"/25\"/30\"/LS/SS/XS/'25\" / 30\" / 25\"'), G Cylinders/Displacement, H Engine Colour, I Image Link (yamaha-motor.com.au CDN), J Control (steering vocab: Tiller handle/Remote mech/Mech with Hydraulic Steering/DEC.../DBW/SBW), K Starting, L Tilt & Trim, N Fuel Tank, O Prop, FF WEIGHT, FG REV RANGE, FH Alternate Model Code, FI Gearbox",
+     "option_link_columns": "DA-EX Rigging Option 01-50 (description strings from Rigging Module; '.' = empty), FT-GR Additional FO's 01-25 (fuel tanks/lines), GT-KO Prop Option Default+02-100 (propeller description strings), CI-CY install/removal/PDI labour, AC-AV pre-delivery charges, KQ-LA..SP servicing parts matrix, TZ-YA service schedules 20Hr-1000Hr + 6yr plan + tech instructions",
+     "hp_string_values": [
+      "2 x 115",
+      "2 x 150",
+      "2 x 200",
+      "2 x 225",
+      "2 x 250",
+      "2 x 300",
+      "2 x 350",
+      "2 x 400",
+      "2 x 425",
+      "2 x 450",
+      "2 x 70",
+      "2 x 75",
+      "2 x 90",
+      "3 x 250",
+      "3 x 300",
+      "3 x 350",
+      "Electric"
+     ],
+     "vocab": {
+      "shaft": {
+       "25\"": 137,
+       "30\"": 78,
+       "20\"": 72,
+       "15\"": 14,
+       "LS": 11,
+       "25\" / 30\" / 25\"": 8,
+       "SS": 8,
+       "XS": 2
+      },
+      "control": {
+       "Tiller handle": 44,
+       "In Box - 703 Remote": 2,
+       "Remote mech": 66,
+       "Mech with Hydraulic Steering": 13,
+       "Mech. Tie Bar Required for Steering^": 4,
+       "DEC with Hydraulic Steering": 12,
+       "DEC with Digital Electro Hydraulic Steering": 12,
+       "DEC - Digital Electronic Control": 18,
+       "DEC with Digital Electric Steering": 101,
+       "DBW": 5,
+       "SBW": 7
+      },
+      "starting": {
+       "Manual": 13,
+       "Electric": 351,
+       "Manual (E-Kit OP)": 4,
+       "Manual & Electric": 7
+      },
+      "tilt": {
+       "TotalTilt": 135,
+       "Power Trim & Tilt": 95,
+       "Manual": 19,
+       "Power Tilt": 3,
+       "TotalTiltTM": 2
+      },
+      "supplier": {
+       "Yamaha": 234,
+       "EPROPULSION - Electric Outboards": 32,
+       "Jeanneau": 109
+      }
+     },
+     "price_probe_rows": [
+      {
+       "row": 6,
+       "model": "F2.5SMHB",
+       "NSM_Retail_BC": 1485,
+       "Sell_Price_BF": 1468,
+       "Trade_Price_BL": 1468,
+       "Commercial_Price_BS": 1359.79,
+       "Boating_Alliance_Price_BY": 1359.79,
+       "Total_CTD_AX": 1219.3194288687782
+      },
+      {
+       "row": 8,
+       "model": "F4SMHA",
+       "NSM_Retail_BC": 2055,
+       "Sell_Price_BF": 1936,
+       "Trade_Price_BL": 1901,
+       "Commercial_Price_BS": 1885.68,
+       "Boating_Alliance_Price_BY": 1885.68,
+       "Total_CTD_AX": 1606.955736148747
+      },
+      {
+       "row": 9,
+       "model": "F4LMHA",
+       "NSM_Retail_BC": 2085,
+       "Sell_Price_BF": 1959,
+       "Trade_Price_BL": 1928,
+       "Commercial_Price_BS": 1913.36,
+       "Boating_Alliance_Price_BY": 1913.36,
+       "Total_CTD_AX": 1629.6466419407454
+      }
+     ],
+     "duplicate_model_codes": {
+      "F30LA": 2,
+      "F40SA": 2,
+      "F40LA": 2,
+      "F50LC": 2,
+      "F60LC": 2,
+      "T60LC": 2,
+      "T60XC": 2,
+      "F70LB": 2,
+      "F70XB": 2,
+      "F75LB": 2,
+      "F75XB": 2,
+      "F90LB": 2,
+      "F90XB": 2,
+      "F115LB": 2,
+      "F115XB": 2,
+      "F130LA": 2,
+      "F250XSB / LF250XSB": 3,
+      "F250USB2 / LF250USB2": 2,
+      "F300XSB / LF300XSB": 3,
+      "F300USB2 / LF300USB2": 2,
+      "F350XSA / F350USA / LF350XSA": 2,
+      "11H2AI": 3,
+      "12H2AI": 3,
+      "12J2AI": 3,
+      "16H2AI": 3,
+      "16J2AI": 3,
+      "16J2AJ": 3,
+      "12L3AI": 6,
+      "12L3AJ": 6,
+      "16L3AI": 7,
+      "16L3AJ": 7,
+      "12L3AK": 2,
+      "12L3AL": 2,
+      "16L3AK": 3,
+      "16L3AL": 3,
+      "12L2AP": 3,
+      "16L2AP": 4,
+      "16L2AR": 2,
+      "A*1 16L3BJ": 2,
+      "12O3AJ": 6,
+      "12S3AJ": 6,
+      "16Q3BJ": 3,
+      "12O3AI": 4,
+      "16O3AJ": 4,
+      "16R3AJ": 4,
+      "F50LB": 2,
+      "F60LB": 2,
+      "T60LB": 2,
+      "T60XB": 2,
+      "F70LA": 2,
+      "F70XA": 2
+     }
+    },
+    "Rebate Programs": {
+     "state": "visible",
+     "extent": "C4:C16, 13 campaign names w validity dates, feeds Motor Library col Y 'Rebate Program' dropdown"
+    },
+    "Dropdowns": {
+     "state": "hidden",
+     "extent": "2094 rows",
+     "columns": {
+      "C": "'Yamaha - {model}' display keys (336) \u2014 THE vocabulary Boat Module Motor Option columns validate against",
+      "D": "NSM Retail",
+      "E": "BMT Sell",
+      "F": "BMT Trade",
+      "G": "BMT Sub Dealer",
+      "H": "Commercial",
+      "I": "installation labour ops",
+      "P": "propeller list (1906)",
+      "R": "tiller conversion kits + mech rigging kits (1932)"
+     }
+    },
+    "Yamaha_Dealer_Current": {
+     "state": "hidden",
+     "extent": "267 rows",
+     "purpose": "pasted Yamaha CONFIDENTIAL DEALER PRICE LIST, two effective dates side-by-side (1 Jul 2024 cols C-O, 30 Jan 2024 cols R-W) \u2014 STALE vs 2026 campaigns on visible sheet"
+    },
+    "Data Drop": {
+     "state": "hidden",
+     "extent": "4 rows",
+     "purpose": "3 unit rates: Labour-Internal 130.09, Oil 4-Stroke 7.41, Fuel 95 Premium 2.2"
+    }
+   }
+  },
+  "Trailer Module.xlsx": {
+   "sheets": {
+    "Trailer Spec Enquiry": {
+     "state": "visible",
+     "declared_max_row": 91,
+     "real_extent": "last non-empty row 34; interactive quote/spec calculator form for one trailer (Custom TA700T-EH example), not a data table"
+    },
+    "Trailer Module": {
+     "state": "visible",
+     "declared_max_row": 913,
+     "real_extent": "last non-empty row 695; 470 trailer rows (col C name + col D supplier present); 51 brand/series banner rows in col A; OBSOLETE section rows 654-695 (39 rows); R3 is a column-number ruler row (1..); many spacer rows contain whitespace-only strings",
+     "natural_key": "col C 'Brand / Make / Model' display string (468 distinct/470 rows) \u2014 THE key Boat Module 'Std Trailer'/'Trailer - Option 2..10' columns store; col E 'Code' supplier SKU (452 distinct, 14 dup values incl 4x SRW5.7M-13TB)",
+     "columns": "C name, D Supplier (6: Dunbier Marine Products 231, Mayfair Marine 2000 113, GFAB 46, Telwater 37, Formosa 24, Haines/Dunbier BMT 19), E Code, F Long Description, G Image Link, H Boat Size (Mtr \u2014 MIXED types incl '1450 Exp' strings), I Wheel Size, J Tare (Kg), K ATM (KG), L Winch, M Between Guards, N Trailer Length, O Trailer Plug, R-AL Trailer Features 1-21, AN Dealer / AO Discount / AP Settlement / AQ Nett / AR Freight / AS Landed (cost chain), AU-AZ factory lead-time day-counts, BB-BQ PD ops+parts, BS Total Nett CTD, BT MU%, BU GP, BV RRP, BW Sell, BY Rego Type, BZ Rego $, CA Sell inc Rego, CD-DZ Factory Option 1-10 (code+desc+cost+sell quads; 11-20 headered but empty), FZ-GS Dealer Fit Option 1-20 (desc strings, mostly plugs/adjustments/stone guards)",
+     "rego_linkage": {
+      "BY_vocab": {
+       "Small Trailers - Up to 1.02t": 43,
+       "Large Trailers - Over 1.021t": 427
+      },
+      "BZ_dollars": {
+       "Small Trailers - Up to 1.02t": 166,
+       "Large Trailers - Over 1.021t": 283
+      },
+      "note": "single-state (QLD) flat rego by ATM band, NOT state-aware; sentinel 'Registration - NOT REQUIRED' exists in vocab (0 rows probed use it in active set); HelmLogic must keep state-aware rego from ATM at quote time (v1.4 Rego module) and treat BZ as legacy hint"
+     },
+     "supplier_counts": {
+      "Mayfair Marine 2000": 113,
+      "Formosa": 24,
+      "GFAB Trailers": 46,
+      "Telwater Pty Ltd": 37,
+      "Dunbier Marine Products": 231,
+      "Haines / Dunbier BMT Packages Only": 19
+     },
+     "dup_codes": {
+      "TA800T-EH1": 2,
+      "RS610T-MO Stabicraft": 2,
+      "TA450MO-B 1300kg Stabicraft": 2,
+      "TA800T-EH2 4240kg Stabicraft": 2,
+      "DOUBLE Sportski TRAILER - Uncoated": 2,
+      "TA1595T13SB": 2,
+      "TA1850T13SB": 2,
+      "9307": 2,
+      "8164": 2,
+      "SRW5.7M-13TB": 4,
+      "AS5.7M-13TB": 4,
+      "SRW6.2M-14THE 3T": 2,
+      "AS6.2M-14THE 3T": 2,
+      "TA600T-MOB Stabicraft": 2
+     }
+    },
+    "Dropdowns": {
+     "state": "hidden",
+     "declared_max_row": 1048576,
+     "real_extent": "last non-empty row 645 (verified by full scan to row 50,000 and empty-run scan); 1,048,576 is phantom formatting from a full-column style/data-validation",
+     "columns": "C-H per-brand trailer name lists (REDCO/TINKA 57, STACER 40, DUNBIER 117, MACKAY 128, GFAB 39, NSM CUSTOM 62); T = master flat list headed 'TRAILER NOT REQUIRED' with 483 entries = validation source for Boat Module trailer dropdowns"
+    }
+   }
+  },
+  "Factory Options Module.xlsx": {
+   "sheets": {
+    "Factory Options Module": {
+     "state": "visible",
+     "declared_max_row": 25150,
+     "real_extent": "last non-empty row 25102; 25,000 non-empty rows; 19,171 option rows carrying a code; 706 boat-model section headers in col A; 'OBSOLETE OPTIONS' meta-section starts row 19068 (~6,000 rows of retired options)",
+     "layout": "R1 headers (C NSM Code, D Description, E Factory Code, F Matrix, G Base Price, H Misc, I CTD, J MU, K GP, L Sell, N Service Operation, O Image Link, P unheaded calc col); per-brand banners in col C ('STACER FACTORY OPTIONS' etc.); col A = boat-model header rows; FIRST row of each section = the hull itself (code+base price), following rows = that model's factory options; '.' rows = blank separators",
+     "natural_key": "col C NSM Code (== col E Factory Code for most brands); codes are per-brand formats: Stacer mnemonic (BIM35PL), Stabicraft 10-digit numeric (7552323012), Highfield HIG-{range}-{seq}, Jeanneau/MF JEA-MF605S2-{seq}, Stacer SE bundles SEOL429SC-{seq}",
+     "matrix_vocab_row_counts": {
+      "Stacer": 3821,
+      "Stabicraft": 3070,
+      "Merry Fisher": 2744,
+      "Haines Signature": 1815,
+      "Formosa": 1792,
+      "Surtees": 1548,
+      "Highfield Inflatables": 1428,
+      "Mackay Trailers": 96,
+      "Redco/Tinka Trailers": 82,
+      "GFab": 27,
+      "Dunbier Trailers": 46,
+      "header/noise": "'Matrix' 7, 'MATRIX' 1"
+     },
+     "note_trailer_FOs": "trailer-brand factory options live HERE too (Dunbier/Mackay/Redco-Tinka/GFab matrices) in addition to the quads inside Trailer Module",
+     "currency": {
+      "Highfield": "Base Price is USD; CTD = USD/0.70 observed (5780 -> 8257.14); H Misc header band shows ' Ex Rate ' ' WS Charges '",
+      "Merry Fisher/Jeanneau": "Base Price EUR; CTD = EUR*1.75 observed (22391.6 -> 39185.3); banner 'B2026 Base w 1.5% Load (Euro)'",
+      "others": "AUD"
+     },
+     "sell_semantics": {
+      "numeric": "retail sell rounded to nearest $10",
+      "Std": "142 rows standard inclusion (no charge)",
+      "Bundle": "347 rows priced only inside a bundle/pack",
+      "POA": 1,
+      "zero/dash": "no-cost option",
+      "#N/A": 33,
+      "#VALUE!": 5
+     },
+     "stale_cached_errors": {
+      "base_price_#N/A": 155,
+      "sell_#N/A": 33,
+      "sell_#VALUE!": 5,
+      "note": "cached formula error VALUES (data_only) \u2014 broken VLOOKUPs frozen into the file"
+     }
+    },
+    "Dropdowns": {
+     "state": "hidden",
+     "real_extent": "2206 rows BUT with a >200-row internal gap: col S rows 1-768 labour-estimate ops (415) then rows 769-2206 electronic-install ops (1070); col AA rows 1-768 per-model bimini list (767). Data island beyond the gap \u2014 naive early-stop scans undercount",
+     "warning": "profiler with 200-empty-row cutoff initially reported 768; full scan found 2206"
+    },
+    "Stabicraft": {
+     "state": "hidden",
+     "extent": "EMPTY (A1:A1) \u2014 vestigial per-brand source sheet, content cleared when Stabicraft was re-keyed to numeric codes (see anomaly A7)"
+    },
+    "Stacer": {
+     "state": "hidden",
+     "extent": "753 rows; per-brand source list, same column layout as main sheet (596 Stacer option rows, flat MU 0.291)"
+    }
+   }
+  }
+ },
+ "cross_module_linkage": {
+  "boat_to_motor": "Boat Module cols 'Recommended Motor Option' + 'Motor Option 2..13' store the Motor Library col-C DISPLAY STRING 'Yamaha - {model code}' (e.g. 'Yamaha - F225UCB'), sentinel 'NR - ENGINE NOT REQUIRED'; each motor slot has adjacent 'Prop Part No.' + 'Prop Description' columns; vocabulary = Motor Module hidden Dropdowns col C",
+  "boat_to_trailer": "Boat Module cols 'Std Trailer' + 'Trailer - Option 2..10' store Trailer Module col-C display string, sentinel 'TRAILER NOT REQUIRED'; vocabulary = Trailer Module hidden Dropdowns col T (483 names incl sentinel); membership verified 3/3 probes",
+  "boat_to_factory_options": "Boat Module 'Factory Options - 01..150' (+ 'Additional Factory Options') store FO codes matching FO Module col C/E ('.' = empty slot)",
+  "fo_resolution_check": {
+   "2350 - Supercab Adventure (Stabicraft)": {
+    "refs_excluding_MU_column_artifact": 73,
+    "resolve_in_active_FO_section": 12,
+    "resolve_only_in_OBSOLETE_OPTIONS_section": 61,
+    "truly_unresolved": 0,
+    "truly_unresolved_codes": []
+   },
+   "2350 - Supercab Sportfish": {
+    "refs_excluding_MU_column_artifact": 57,
+    "resolve_in_active_FO_section": 0,
+    "resolve_only_in_OBSOLETE_OPTIONS_section": 57,
+    "truly_unresolved": 0,
+    "truly_unresolved_codes": []
+   },
+   "2050 - Treker (Adventure)": {
+    "refs_excluding_MU_column_artifact": 51,
+    "resolve_in_active_FO_section": 0,
+    "resolve_only_in_OBSOLETE_OPTIONS_section": 50,
+    "truly_unresolved": 1,
+    "truly_unresolved_codes": [
+     "STB-2050TREAD-219"
+    ]
+   }
+  },
+  "fo_resolution_note": "Header 'Factory Options - MU' (markup %) matches the 'Factory Options - ' column-name prefix and must be excluded when harvesting FO ref columns; naive prefix matching pulls a '29.00%' cell into the ref list.",
+  "fo_section_to_boat_model_join": "VERIFIED: the first (hull) row of each FO Module boat section carries the boat Model Code as its NSM Code \u2014 e.g. 7002323000 for 2350 Supercab (Adv) == Boat Module Model Code for \"2350 - Supercab Adventure\". Join FO sections to boats on this code, not the drifting section names."
+ },
+ "anomalies": [
+  "A1 PHANTOM EXTENTS: Trailer Dropdowns declares 1,048,576 rows (real 645); Motor Library declares 2,186 rows x 711 cols (real 628 x 649); Trailer Module declares 913 (real 695); FO Module declares 25,150 (real 25,102). Cause: whole-column formatting/data-validation.",
+  "A2 DATA ISLAND: FO Dropdowns col S has a >200-row gap; real extent 2206 not 768. Any importer using consecutive-empty-row cutoffs must use a large threshold or full scan.",
+  "A3 MULTI-ROW/BANNER HEADERS: Motor Library header is R4 (R1-R3 = audience banners + column ruler); Trailer Module has a column-number ruler at R3 mid-data; both sheets embed section banner rows inside the data range (Motor: banner in col C w empty col D; Trailer: col A).",
+  "A4 STALE CACHED FORMULA ERRORS: FO Module carries 155 '#N/A' Base Price and 38 '#N/A'/'#VALUE!' Sell cached values; Motor Library has stray '.'-filled option cells; these are frozen formula results, not live errors.",
+  "A5 STALE REFERENCE DATA: Motor Module hidden Yamaha_Dealer_Current is the Jul-2024 dealer price list while visible sheets carry Jun-2026 campaigns \u2014 do not import it as current cost.",
+  "A6 DUPLICATE KEYS: 51 Motor Library col-D codes duplicated (re-listed under twin/triple-rig + white-colour + campaign sections; rigging kit codes repeat up to 7x) \u2014 model code alone is NOT unique, needs section context or dedupe-by-priority; Trailer Module has 14 duplicated supplier codes and 2 duplicated display names.",
+  "A7 OBSOLETE-SECTION FO REFERENCES (HEADLINE): Boat Module Stabicraft rows reference FO codes that overwhelmingly resolve ONLY inside the FO Module's 'OBSOLETE OPTIONS' meta-section (row 19068+): '2350 - Supercab Adventure' 73 refs -> 12 active / 61 obsolete-only / 0 missing; '2350 - Supercab Sportfish' 57 refs -> 0 active / 57 obsolete-only; '2050 - Treker (Adventure)' 51 refs -> 0 active / 50 obsolete-only / 1 missing (STB-2050TREAD-219). The active Stabicraft section re-keys the same options to 10-digit numeric factory codes (e.g. 7552323012) and the Boat Module was only partially migrated; hidden empty 'Stabicraft' sheet is the vestige of the old source. Any importer joining Boat->FO must search the obsolete section AND build a legacy-key crosswalk, or the join loses ~80-100% of Stabicraft options.",
+  "A8 WHITESPACE-ONLY CELLS: Trailer Module spacer rows contain single-space strings \u2014 naive `is not None` row filters overcount; must strip.",
+  "A9 MIXED TYPES IN NUMERIC COLUMNS: Trailer 'Boat Size (Mtr)' mixes ints/floats/strings ('1450 Exp', '4.3'); Motor 'HP Rating' mixes numbers and 'n x HP'/'Electric' strings; FO 'Base Price' mixes numbers, 'TBC', 'POA', '-', '#N/A'.",
+  "A10 HP MULTI-ENGINE FORMAT: MPF writes '2 x 300' (lowercase letter x), HelmLogic lesson references '2 \u00d7 300' (multiplication sign) \u2014 parser must accept both.",
+  "A11 FO 'Matrix' column noise: 8 rows carry literal 'Matrix'/'MATRIX' header text; 265+2397 code rows have empty Matrix (brand inferable only from section banner above).",
+  "A12 'Factory Options - MU' header shares the 'Factory Options - NN' prefix (Boat Module col 267, a 29% markup cell) \u2014 regex for FO ref columns must anchor on trailing digits."
+ ],
+ "helmlogic_mapping_confidence": {
+  "motor_priceLevels": {
+   "mapping": "BC NSM Retail->hull_cash, BL Trade Price->hull_trade AND hull_subdealer (Dropdowns proves Trade==SubDealer), BS Commercial Price->hull_commercial, BY Boating Alliance Price->hull_boating_alliance, AX Total CTD->cost",
+   "confidence": "HIGH \u2014 exact header names match CLAUDE.md; hidden Dropdowns sheet enumerates the same five levels",
+   "open_question": "BF 'Sell Price' (campaign-discounted retail) has no HelmLogic priceLevel \u2014 decide whether to import as promo price or ignore (rebates are time-boxed)"
+  },
+  "trailer": {
+   "mapping": "col C->trailer name, E->code, K ATM, J Tare, I Wheels, BS Total Nett CTD->cost, BW Sell->sell, G imageUrl, R-AL features[]",
+   "confidence": "HIGH for spec/pricing columns",
+   "open_question": "BZ Rego$ is QLD-flat by ATM band \u2014 confirm it stays 'info only' per v1.4 lesson (state-aware rego computed from ATM at quote time)"
+  },
+  "factory_options": {
+   "mapping": "per-boat-section option rows -> model.optionalFeatures (name=D, code=C, price=L Sell ex-GST? \u2014 VERIFY: L appears GST-inclusive-rounded, see open question), Std rows -> standardInclusions, Bundle rows -> package members, first-row-of-section = hull base price",
+   "confidence": "MEDIUM-HIGH structure / MEDIUM pricing",
+   "open_questions": [
+    "Is FO 'Sell' ex-GST or inc-GST? (rounded to $10; Motor Library BC is inc-GST; needs NSM confirmation)",
+    "How to key options shared across models (same code repeats per boat section) -> applicableVariantIds vs per-model duplication",
+    "Whether to import OBSOLETE OPTIONS section (rows 19068+) at all",
+    "Resolve A7 dangling Stabicraft refs before wiring Boat->FO joins"
+   ]
+  }
+ }
+}

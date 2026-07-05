@@ -29,7 +29,7 @@ interface Vendor {
     logoUrl?: string;
 }
 
-export function ModulesPage() {
+function ModulesPage() {
     const firestore = useFirestore();
     const modulesQuery = useMemoFirebase(() => collection(firestore, 'modules'), [firestore]);
     const vendorsQuery = useMemoFirebase(() => collection(firestore, 'data-warehouse'), [firestore]);

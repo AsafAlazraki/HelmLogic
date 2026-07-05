@@ -40,6 +40,7 @@ import {
     Sparkles,
     Lock,
     LockOpen,
+    FileSignature,
     GitBranch,
     Edit3,
     Percent,
@@ -57,7 +58,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { useQuoteAuditLog, type AuditEventType, type QuoteAuditEvent } from '@/lib/quote-audit-log';
 import { isEmailSendEnabled } from '@/lib/email-send';
+import { evaluateExpiry, formatExpiryDate } from '@/lib/catalog/quote-expiry';
+import { canTransitionContractState, buildContractReference, computeContractTotals } from '@/lib/catalog/contract';
 import { SendQuoteDialog } from '@/components/send-quote-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { ContractDetailSheet } from '@/components/contract-detail-sheet';
+import { VariationEditorDialog } from '@/components/variation-editor-dialog';
 import { PersonaliseContentSheet } from '@/components/personalise-content-sheet';
 import { QuotePreviewSheet } from '@/components/quote-preview-sheet';
 import { CreateScenarioDialog } from '@/components/create-scenario-dialog';
@@ -184,6 +190,15 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
     const [isUnlockOpen, setIsUnlockOpen] = useState(false);
     const [isUnlocking, setIsUnlocking] = useState(false);
 
+    /** v1.20 (Story 2.4.1) — Convert to Contract dialog state. */
+    const [isConvertOpen, setIsConvertOpen] = useState(false);
+    const [convertSaving, setConvertSaving] = useState(false);
+    /** v1.20 (Story 2.4.1 / 2.4.2 surface) — Contract detail sheet state.
+     *  Opens from the "View contract" pill once the quote has a contractId. */
+    const [isContractDetailOpen, setIsContractDetailOpen] = useState(false);
+    /** v1.20 (Story 2.3.1 surface) — Variation editor dialog state.
+     *  Opens from the "Create variation" button once the quote is locked. */
+    const [isVariationOpen, setIsVariationOpen] = useState(false);
     /** v1.8 (story 1.2.4.c) — Send Quote dialog state. Opens from the
      *  Send button in the header. Disabled when email infra is not yet
      *  wired (NEXT_PUBLIC_EMAIL_SEND_ENABLED flag — gating the BUTTON,
@@ -675,7 +690,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                        wrap the right-side button cluster onto a second line
                        below lg, and add overflow-x-auto as the last-resort
                        fallback so the bar can scroll if a label runs long. */
-                    <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b shadow-sm no-print w-full px-4 sm:px-6 xl:px-10 py-2 xl:py-0 xl:h-16 flex flex-col xl:flex-row xl:items-center justify-between gap-2 xl:gap-4 overflow-x-auto">
+                    <div className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b shadow-sm no-print w-full px-4 sm:px-6 xl:px-10 py-2 xl:py-0 xl:h-16 flex flex-col xl:flex-row xl:items-center justify-between gap-2 xl:gap-4 overflow-x-auto overflow-y-hidden">
                         <div className="flex items-center gap-3 min-w-0">
                             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl border-2 shrink-0" onClick={() => router.back()}>
                                 <ArrowLeft className="h-4 w-4" />
@@ -987,6 +1002,73 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     </Button>
                                 );
                             })()}
+                            {/* v1.20 (Story 2.4.1) — Convert to Contract action.
+                                Available once the quote has been sent + accepted.
+                                Disabled when the quote is expired (1.4.4 gate),
+                                still in draft, or already converted. */}
+                            {(() => {
+                                const exp = evaluateExpiry(quote?.expiryAt);
+                                const lifecycleState = quote?.lifecycleState ?? 'draft';
+                                const alreadyConverted = !!quote?.contractId;
+                                const blockedReason = exp.band === 'expired'
+                                    ? 'Quote is expired. Reissue with a new expiry first.'
+                                    : alreadyConverted
+                                        ? 'Quote already converted to a contract.'
+                                        : !['sent', 'viewed', 'accepted'].includes(lifecycleState)
+                                            ? 'Send the quote first, then convert once the customer accepts.'
+                                            : null;
+                                const disabled = blockedReason != null;
+                                return (
+                                    <Button
+                                        data-testid="convert-to-contract-button"
+                                        variant={disabled ? 'outline' : 'default'}
+                                        size="sm"
+                                        className={cn(
+                                            'h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5',
+                                            disabled && 'bg-slate-100 text-slate-400 hover:bg-slate-100 cursor-not-allowed',
+                                        )}
+                                        onClick={() => { if (!disabled) setIsConvertOpen(true); }}
+                                        disabled={disabled}
+                                        title={blockedReason ?? 'Convert this quote to a signable contract'}
+                                    >
+                                        <FileSignature className="h-3.5 w-3.5" />
+                                        <span className="hidden sm:inline">Convert to Contract</span>
+                                    </Button>
+                                );
+                            })()}
+                            {/* v1.20 (Story 2.4.1 / 2.4.2 surface) — View contract pill.
+                                Mounts once quote.contractId is set. Opens the
+                                ContractDetailSheet with snapshot + deposits + Record
+                                Deposit button. */}
+                            {quote?.contractId && (
+                                <Button
+                                    data-testid="view-contract-button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5"
+                                    onClick={() => setIsContractDetailOpen(true)}
+                                    title="View the contract details, deposits, and signing pack"
+                                >
+                                    <FileSignature className="h-3.5 w-3.5 text-emerald-600" />
+                                    <span className="hidden sm:inline">View Contract</span>
+                                </Button>
+                            )}
+                            {/* v1.20 (Story 2.3.1 surface) — Create variation button.
+                                Available on a locked quote (variation is the only way to
+                                modify after lock). */}
+                            {quote?.isLocked && (
+                                <Button
+                                    data-testid="create-variation-button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9 px-4 rounded-xl font-black uppercase text-[9px] tracking-widest gap-1.5"
+                                    onClick={() => setIsVariationOpen(true)}
+                                    title="Create a priced variation against this locked quote"
+                                >
+                                    <GitBranch className="h-3.5 w-3.5 text-sky-600" />
+                                    <span className="hidden sm:inline">Variation</span>
+                                </Button>
+                            )}
                             {/* v1.9 (story 1.1.3) — Create Scenario button.
                                 Opens CreateScenarioDialog → spawns a sibling
                                 quote under the same root + redirects. Hidden
@@ -1032,6 +1114,32 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                         </div>
                     </div>
                 )}
+
+                {/* v1.20 (Story 1.4.4) — Quote Validity / Expiry banner.
+                    Renders only when quote.expiryAt is set AND the band is
+                    'expired' or 'expiring-soon'. Pure render; the gate on
+                    Send Quote + Convert to Contract is wired separately. */}
+                {(() => {
+                    const exp = evaluateExpiry(quote?.expiryAt);
+                    if (exp.band === 'fresh' || exp.band === 'no-expiry') return null;
+                    const tone = exp.band === 'expired'
+                        ? 'bg-rose-50 border-rose-300 text-rose-800'
+                        : 'bg-amber-50 border-amber-300 text-amber-800';
+                    const headline = exp.band === 'expired'
+                        ? `This quote expired on ${formatExpiryDate(exp.expiryAt, organisation?.timezone)}.`
+                        : `This quote expires in ${exp.daysUntilExpiry} day${exp.daysUntilExpiry === 1 ? '' : 's'} (${formatExpiryDate(exp.expiryAt, organisation?.timezone)}).`;
+                    return (
+                        <div data-testid="quote-expiry-banner" className={`no-print w-full px-4 sm:px-6 xl:px-10 py-2 border-b-2 ${tone} flex items-center gap-3`}>
+                            <Clock className="h-4 w-4 shrink-0" />
+                            <p className="text-xs font-bold">{headline}</p>
+                            {exp.band === 'expired' && (
+                                <span className="text-[10px] uppercase tracking-widest font-black ml-auto">
+                                    Send + Convert blocked until reissued
+                                </span>
+                            )}
+                        </div>
+                    );
+                })()}
 
                 <div className="max-w-screen-2xl mx-auto px-6 sm:px-10 py-8 md:py-12 space-y-6 md:space-y-8">
                     {/* HERO */}
@@ -1852,6 +1960,100 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                     financials={f}
                     senderUid={user.uid}
                     senderName={userProfile?.displayName || user.displayName || user.email || 'Someone'}
+                />
+            )}
+
+            {/* v1.20 (Story 2.4.1) — Convert to Contract dialog. */}
+            {auditOwnerUid && user && quote && (
+                <Dialog open={isConvertOpen} onOpenChange={setIsConvertOpen}>
+                    <DialogContent className="max-w-md" data-testid="convert-to-contract-dialog">
+                        <DialogHeader>
+                            <DialogTitle>Convert quote to contract</DialogTitle>
+                            <DialogDescription className="text-xs">
+                                Snapshot this quote's line items into a signable contract. Variations
+                                after conversion flow through the variations editor. The quote stays
+                                locked while the contract is pending signature.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-3 text-xs">
+                            <div className="rounded-xl border-2 p-3 bg-slate-50">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Quote</p>
+                                <p className="font-bold mt-1">{quote.quoteNumber ?? quote.id?.slice(0, 8)}</p>
+                                <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total (inc GST)</p>
+                                <p className="font-black text-base mt-0.5">${(f?.totalInclGst ?? 0).toLocaleString('en-AU')}</p>
+                            </div>
+                            <div className="rounded-xl border-2 border-dashed p-3 text-[10px] text-muted-foreground">
+                                The contract reference is generated at save time using your org code and the current date.
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="ghost" onClick={() => setIsConvertOpen(false)} disabled={convertSaving}>Cancel</Button>
+                            <Button
+                                disabled={convertSaving}
+                                onClick={async () => {
+                                    if (!user || !quote) return;
+                                    setConvertSaving(true);
+                                    try {
+                                        const { addDoc, collection, doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
+                                        const ref = collection(firestore, 'users', auditOwnerUid, 'quotes', quote.id, 'contracts');
+                                        const orgShort = (organisation?.shortCode ?? 'ORG').toUpperCase();
+                                        const snapshotLines = [
+                                            { section: 'boat', label: quote.variant?.name ?? 'Boat', quantity: 1, unitPriceExclGst: quote.variant?.sellPriceExclGst ?? 0, lineTotalExclGst: quote.variant?.sellPriceExclGst ?? 0 },
+                                        ];
+                                        const totals = computeContractTotals(snapshotLines as any);
+                                        const contractRef = buildContractReference(orgShort, new Date(), 1);
+                                        const docRef = await addDoc(ref, {
+                                            quoteId: quote.id,
+                                            contractNumber: 1,
+                                            contractReference: contractRef,
+                                            state: 'pending-signature',
+                                            snapshotLines,
+                                            ...totals,
+                                            previousContractId: null,
+                                            createdAt: serverTimestamp(),
+                                            createdByUid: user.uid,
+                                            createdByName: userProfile?.displayName || user.displayName || user.email || 'Unknown',
+                                        });
+                                        // Pin the contractId onto the quote so the button can disable on re-render.
+                                        await updateDoc(doc(firestore, 'users', auditOwnerUid, 'quotes', quote.id), { contractId: docRef.id, contractReference: contractRef });
+                                        toast({ title: 'Contract created', description: contractRef });
+                                        setIsConvertOpen(false);
+                                    } catch (err: any) {
+                                        toast({ variant: 'destructive', title: 'Convert failed', description: err?.message ?? String(err) });
+                                    } finally {
+                                        setConvertSaving(false);
+                                    }
+                                }}
+                            >
+                                {convertSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                                Create contract
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* v1.20 (Story 2.4.1 / 2.4.2 surface) — Contract detail sheet. */}
+            {auditOwnerUid && quote?.contractId && (
+                <ContractDetailSheet
+                    open={isContractDetailOpen}
+                    onOpenChange={setIsContractDetailOpen}
+                    ownerUid={auditOwnerUid}
+                    quoteId={quote.id}
+                    contractId={quote.contractId}
+                    orgShortCode={organisation?.shortCode}
+                />
+            )}
+
+            {/* v1.20 (Story 2.3.1 surface) — Variation editor dialog. */}
+            {auditOwnerUid && user && quote && (
+                <VariationEditorDialog
+                    open={isVariationOpen}
+                    onOpenChange={setIsVariationOpen}
+                    ownerUid={auditOwnerUid}
+                    quoteId={quote.id}
+                    nextVariationNumber={(quote.variationCount ?? 0) + 1}
+                    createdByName={userProfile?.displayName || user.displayName || user.email || 'Unknown'}
                 />
             )}
 

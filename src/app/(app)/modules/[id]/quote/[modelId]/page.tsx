@@ -107,10 +107,21 @@ function QuoteFlowContent() {
     [firestore, vendorId]);
     const { data: vendor, isLoading: vendorLoading } = useDoc<any>(vendorRef);
 
-    const rangeRef = useMemoFirebase(() => 
+    const rangeRef = useMemoFirebase(() =>
         vendorId && rangeId ? doc(firestore, `data-warehouse/${vendorId}/ranges`, rangeId) : null,
     [firestore, vendorId, rangeId]);
     const { data: range, isLoading: rangeLoading } = useDoc<any>(rangeRef);
+
+    // 6b. Variant probe — MPF gate for non-Highfield boat brands. Any
+    // 'Boat Brand' vendor whose model carries at least one variant with a
+    // resolvable sell price mounts the same quote flow; brands without
+    // priced data keep the "being developed" placeholder.
+    const variantProbeQuery = useMemoFirebase(() =>
+        vendorId && rangeId && modelId
+            ? collection(firestore, `data-warehouse/${vendorId}/ranges/${rangeId}/models/${modelId}/variants`)
+            : null,
+    [firestore, vendorId, rangeId, modelId]);
+    const { data: variantProbe, isLoading: variantProbeLoading } = useCollection<any>(variantProbeQuery);
 
     const currentMemberOrg = useMemo(() => {
         if (!orgId) return null;
@@ -159,7 +170,7 @@ function QuoteFlowContent() {
         };
     }, [duplicateQuoteId, oldQuote]);
 
-    const loading = moduleLoading || modelDetailsLoading || vendorLoading || rangeLoading || profileLoading || overrideLoading || (!!duplicateQuoteId && duplicateLoading);
+    const loading = moduleLoading || modelDetailsLoading || vendorLoading || rangeLoading || profileLoading || overrideLoading || variantProbeLoading || (!!duplicateQuoteId && duplicateLoading);
 
     if (loading) {
         return (
@@ -184,8 +195,14 @@ function QuoteFlowContent() {
         );
     }
 
-    // Highfield Specific Flow
-    if (vendor.slug === 'highfield') {
+    // Quote flow — Highfield-native, extended to every MPF-imported boat
+    // brand: any vendorType 'Boat Brand' model with ≥1 priced variant
+    // (sellPriceExclGst) mounts the same flow. Defensive predicate: models
+    // without priced MPF data fall through to the placeholder below.
+    const hasPricedVariant = (variantProbe ?? []).some(
+        (v: any) => typeof v?.sellPriceExclGst === 'number' && Number.isFinite(v.sellPriceExclGst)
+    );
+    if (vendor.slug === 'highfield' || (vendor.vendorType === 'Boat Brand' && hasPricedVariant)) {
         return (
             <HighfieldQuoteFlow
                 module={moduleData}

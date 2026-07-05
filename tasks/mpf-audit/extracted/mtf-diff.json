@@ -1,0 +1,1263 @@
+{
+ "generatedAt": "2026-07-03T09:58:39.100262+00:00",
+ "readOnly": true,
+ "motors": {
+  "liveRows": 235,
+  "extractedPrimaryCodes": 279,
+  "matchedByCode": 208,
+  "matchedClean": 208,
+  "priceMismatches": 0,
+  "missingInLive": {
+   "count": 71,
+   "codes": [
+    "11H2AI",
+    "11H2AK",
+    "12H2AI",
+    "12H2AK",
+    "12J2AI",
+    "12J2AK",
+    "12L2AP",
+    "12L2AR",
+    "12L3AI",
+    "12L3AJ",
+    "12L3AK",
+    "12L3AL",
+    "12O3AI",
+    "12O3AJ",
+    "12S3AJ",
+    "16H2AI",
+    "16J2AI",
+    "16J2AJ",
+    "16L2AP",
+    "16L2AR",
+    "16L3AI",
+    "16L3AJ",
+    "16L3AK",
+    "16L3AL",
+    "16O2BP",
+    "16O3AJ",
+    "16Q3BJ",
+    "16R3AJ",
+    "A*1 11H2AI",
+    "A*1 12H2AI",
+    "A*1 12J2AI",
+    "A*1 16H2AI",
+    "A*1 16J2AI",
+    "A*1 16J2AJ",
+    "A*1 16L3AI",
+    "A*1 16L3BJ",
+    "A*1 16O3CJ",
+    "A1-0000-01",
+    "A2-0000-01",
+    "A4-0000-00",
+    "EL-0500-00",
+    "EL-0500-LO",
+    "EXP*1 16J3AI",
+    "NE-3000-L1",
+    "NE-3000-S1",
+    "NE-6000-L1",
+    "NE-6000-S1",
+    "No Engine",
+    "P1-0000-EO",
+    "P3-0000-EO",
+    "P6-0000-EO",
+    "PA-AC00-00",
+    "PB-0000-00",
+    "SE-1111-LO",
+    "SE-1111-SO",
+    "SE-RRRR-LO",
+    "SE-RRRR-SO",
+    "SE-TTTT-LO",
+    "SE-TTTT-SO",
+    "SP-0000-L1",
+    "SP-0000-S1",
+    "SP-0000-X1",
+    "SP-1111-L1",
+    "SP-1111-S1",
+    "SP-1111-X1",
+    "X1-0000-LO",
+    "X1-0000-SO",
+    "X2-0000-LO",
+    "X2-0000-SO",
+    "X4-0000-LO",
+    "X4-0000-SO"
+   ]
+  },
+  "staleInLive": {
+   "count": 0,
+   "codes": []
+  },
+  "mismatches": []
+ },
+ "trailers": {
+  "liveTrailers": 496,
+  "extractedCurrent": 431,
+  "matchedByName": 431,
+  "matchedClean": 427,
+  "fieldMismatches": 4,
+  "missingInLive": {
+   "count": 0,
+   "trailers": []
+  },
+  "staleInLive": {
+   "count": 65,
+   "trailers": [
+    {
+     "name": "DUNBIER Alloy Centre Line - ACL 5.7M-13B (1,450kg)",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "DUNBIER Alloy Suparolla - AS5.3M-13TB (1,999)",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "DUNBIER Centre Line - CLW 5.3M-13BHD (1,450kg)",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "DUNBIER Sports - 4.3M-13L",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "DUNBIER Supa Rolla - SR5.3M-13B",
+     "vendor": "dunbier-trailers",
+     "isActive": true
+    },
+    {
+     "name": "DUNBIER Supa Rolla - SR5.3M-13TB",
+     "vendor": "dunbier-trailers",
+     "isActive": true
+    },
+    {
+     "name": "DUNBIER Supa Rolla - SRH5.3M-14B",
+     "vendor": "dunbier-trailers",
+     "isActive": true
+    },
+    {
+     "name": "Dunbier Alloy AS6.2M-14THE (3,000kg) - 640SF Signature Package",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "Dunbier Alloy AS8.5M-15THE - 788SF Signature Package",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "Dunbier SRW6.2M-14THE (3,000kg) - 640SF Signature Package",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "Formosa 525 - RS560-MO (Gal Steel, Single Axle)",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "Formosa 525 - RS560T-MO (Gal Steel, Tandem Axle)",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "Formosa 525 - TA500-MOB (Aluminium, Single Axle)",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "Formosa 525 - TA600T-MOB (Aluminium, Tandem Axle)",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "Formosa 595 - RS610T-MO (Gal Steel, Tandem Axle)",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "Formosa 595 - TA600T-MOB (Aluminium, Tandem Axle)",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "Formosa GRT - RE1513Q-MO (Gal Steel, Single Axle)",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "Formosa GRT - RSX450-MO (Offroad, Single Axle)",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "Formosa GRT - TA480-MOB (Aluminium, Single Axle)",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "Formosa SRT 495 Tow Catch - RS510-MO (Gal Steel, Single Axle)",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "Formosa SRT 495 Tow Catch - TA500MO-B (Aluminium, Single Axle)",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "GFAB Single Axel Trailer t/s Stabicraft 1450 Series w 13\"",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "GFAB Single Axel Trailer t/s Stabicraft 1550 Series w 13\"",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "GFAB Single Axel Trailer t/s Surtees 495 Series w 13\" Wheels",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "GFAB Single Axel Trailer t/s Surtees 540 Series",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "GFAB Tandem Axel Sng Sportski Trailer - Black",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "GFAB Tandem Axel Sng Sportski Trailer - Uncoated",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "GFAB Tandem Axel Sng Sportski Trailer - White",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "GFAB Tandem Axel Trailer t/s Stabicraft 2100 Series",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "GFAB Tandem Axel Trailer t/s Stabicraft 2250 Series",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "GFAB Tandem Axel Trailer t/s Stabicraft 2400 Series",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "GFAB Tandem Axel Trailer t/s Surtees 610 Series",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "GFAB Tandem Axel Trailer t/s Surtees 650 Series",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "GFAB Tandem Axel Trailer t/s Surtees 700 Series",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "GFAB Tandem Axel Trailer t/s Surtees 750 Series",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "REDCO 610 Surtees Alum - TA600TMO-B",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "REDCO 650 Surtees Alum - TA600TMO-B (Alloy Keel & Skids)",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "REDCO 700 Surtees Alum - TA700T-EH",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "REDCO Custom / Highfield ADV7 Aluminium - TA700T-EH",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "REDCO Sportsman - RE160T-MO",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "REDCO Stabicraft - RS610T-MO (1,900kg) Steel / Keel / Skid",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "REDCO Stabicraft 1850 Alloy - TA600T-MOB (1,990kg)",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "REDCO Stabicraft 2050 Alloy - TA600T-MOB (1,990kg)",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "REDCO Stabicraft Alloy - TA900T-EH (4,200kg)",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "REDCO Surtees Alum - TA730T-EH (Multi Roller - 3,500kg)",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "REDCO/Stabicraft Alloy Multi Roller - TA700T-EH (3,500kg)",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    },
+    {
+     "name": "T Alloy Blade 610 2000 ATM Tandem 13\" Roller Braked - 6 - 6.3m",
+     "vendor": "stacer-trailers",
+     "isActive": true
+    },
+    {
+     "name": "T Alloy Blade 650 2000 ATM Tandem 13\" Roller Braked - 6.4- 6.65m",
+     "vendor": "stacer-trailers",
+     "isActive": true
+    },
+    {
+     "name": "T Alloy Blade 650 2600 ATM Tandem 14\" Roller Braked - 6.0 - 7.0m",
+     "vendor": "stacer-trailers",
+     "isActive": true
+    },
+    {
+     "name": "T Alloy Blade 690 2600 ATM Tandem 14\" Roller Braked - 6.0 - 7.0m",
+     "vendor": "stacer-trailers",
+     "isActive": true
+    },
+    {
+     "name": "T Alloy Blade 690 2750 ATM Tandem 14\" Roller Braked - 6.8 - 7m",
+     "vendor": "stacer-trailers",
+     "isActive": true
+    },
+    {
+     "name": "T Alloy Yellowfin 620 2000 ATM Tandem 13\" Roller Braked - 6.2- 6.5m",
+     "vendor": "stacer-trailers",
+     "isActive": true
+    },
+    {
+     "name": "T Alloy Yellowfin 620 2600 ATM Tandem 14\" Roller Braked - 6.0 - 7.0m",
+     "vendor": "stacer-trailers",
+     "isActive": true
+    },
+    {
+     "name": "TA1595T13TB - T Alloy 1595 ATM Tandem 13\" Skid Braked - 5.3 - 5.7m",
+     "vendor": "stacer-trailers",
+     "isActive": true
+    },
+    {
+     "name": "TA1850T13TB - T Alloy 1850 ATM Tandem 13\" Skid Braked - 5.4 - 5.8m",
+     "vendor": "stacer-trailers",
+     "isActive": true
+    },
+    {
+     "name": "TALL749S13 - T Light Alloy Long 749 ATM S 13\" L/Skid - 4 - 4.4m",
+     "vendor": "stacer-trailers",
+     "isActive": true
+    },
+    {
+     "name": "TALS650S13PCT - T Light Alloy 650 ATM S 13\" Long Plastic Skid (PCT)",
+     "vendor": "obsolete-trailers",
+     "isActive": false
+    },
+    {
+     "name": "TALS749S13 - T Light Alloy Short 749 ATM S 13\" L/Skid - 3.5 - 4 m",
+     "vendor": "stacer-trailers",
+     "isActive": true
+    },
+    {
+     "name": "TASC1298S13RB - T S C Alloy 1298 ATM S 13\" Roller Braked - 4.8 - 5.2m",
+     "vendor": "stacer-trailers",
+     "isActive": true
+    },
+    {
+     "name": "TASC1750S14RB - T S C Alloy 1750 ATM S 14\" Roller Braked - 5.3 - 5.9m",
+     "vendor": "stacer-trailers",
+     "isActive": true
+    },
+    {
+     "name": "TASC1850T13RB - T S C Alloy 1850 ATM Tandem 13\" Roller Braked - 5.3 - 5.9m",
+     "vendor": "stacer-trailers",
+     "isActive": true
+    },
+    {
+     "name": "TASC2000T13RB - T S C Alloy 2000 ATM Tandem 13\" Roller Braked - 5.9 - 6.2m",
+     "vendor": "stacer-trailers",
+     "isActive": true
+    },
+    {
+     "name": "TRAILER NOT REQUIRED",
+     "vendor": "mackay-trailers",
+     "isActive": true
+    },
+    {
+     "name": "TRAILER NOT REQUIRED - 800 Gamefisher",
+     "vendor": "mackay-trailers",
+     "isActive": true
+    },
+    {
+     "name": "Tinka Stabicraft Alloy - TA450MO-B (1,300kg) Keel Rollers / Skids",
+     "vendor": "redco-tinka-trailers",
+     "isActive": true
+    }
+   ]
+  },
+  "mismatches": [
+   {
+    "name": "MACKAY PU Series Trailer - PU5000-14-M",
+    "code": "8126",
+    "vendor": "mackay-trailers",
+    "maxAbsDelta": 620.0,
+    "fields": {
+     "sellPriceExclGst": {
+      "live": 9760.0,
+      "mpf": 9140.0,
+      "delta": -620.0
+     },
+     "cost": {
+      "live": 7455.66,
+      "mpf": 6976.42,
+      "delta": -479.24
+     }
+    }
+   },
+   {
+    "name": "MACKAY MLJ Series Trailer - MLJ6000T-14-HB",
+    "code": "8003",
+    "vendor": "mackay-trailers",
+    "maxAbsDelta": 420.0,
+    "fields": {
+     "sellPriceExclGst": {
+      "live": 21400.0,
+      "mpf": 20980.0,
+      "delta": -420.0
+     },
+     "cost": {
+      "live": 16342.48,
+      "mpf": 16024.11,
+      "delta": -318.37
+     }
+    }
+   },
+   {
+    "name": "MACKAY MLJ Series Trailer - MLJ6000T-14-HB",
+    "code": "8005",
+    "vendor": "mackay-trailers",
+    "maxAbsDelta": 400.0,
+    "fields": {
+     "atmKg": {
+      "live": 2600.0,
+      "mpf": 3000.0,
+      "delta": 400.0
+     }
+    }
+   },
+   {
+    "name": "MACKAY PU Series Trailer - PU5000-14-M",
+    "code": "8128",
+    "vendor": "mackay-trailers",
+    "maxAbsDelta": 170.0,
+    "fields": {
+     "atmKg": {
+      "live": 1480.0,
+      "mpf": 1650.0,
+      "delta": 170.0
+     }
+    }
+   }
+  ]
+ },
+ "factoryOptions": {
+  "scope": "Highfield only \u2014 MPF Highfield flat catalog (HE*/HIG- codes) vs live model optionalFeatures. Other brands have no live models yet (D4 pending).",
+  "mpfHighfieldCatalogOptions": 1057,
+  "totals": {
+   "liveOptions": 1038,
+   "matchedByCode": 1011,
+   "priceMatch": 1011,
+   "priceMismatch": 0,
+   "missingInMpf": 27
+  },
+  "mpfOptionsNotReferencedByAnyLiveModel": 869,
+  "perModel": [
+   {
+    "range": "Classic",
+    "model": "cl260",
+    "name": "CL260",
+    "liveOptions": 5,
+    "matched": 5,
+    "priceMatch": 5,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl290",
+    "name": "CL290",
+    "liveOptions": 5,
+    "matched": 5,
+    "priceMatch": 5,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl290ft",
+    "name": "CL290FT",
+    "liveOptions": 5,
+    "matched": 5,
+    "priceMatch": 5,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl310",
+    "name": "CL310",
+    "liveOptions": 9,
+    "matched": 9,
+    "priceMatch": 9,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl310ft",
+    "name": "CL310FT",
+    "liveOptions": 5,
+    "matched": 5,
+    "priceMatch": 5,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl310ls",
+    "name": "CL310LS",
+    "liveOptions": 9,
+    "matched": 9,
+    "priceMatch": 9,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl340",
+    "name": "CL340",
+    "liveOptions": 15,
+    "matched": 15,
+    "priceMatch": 15,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl340ft",
+    "name": "CL340FT",
+    "liveOptions": 5,
+    "matched": 5,
+    "priceMatch": 5,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl340ls",
+    "name": "CL340LS",
+    "liveOptions": 15,
+    "matched": 15,
+    "priceMatch": 15,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl340max",
+    "name": "CL340MAX",
+    "liveOptions": 10,
+    "matched": 10,
+    "priceMatch": 10,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl360",
+    "name": "CL360",
+    "liveOptions": 15,
+    "matched": 15,
+    "priceMatch": 15,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl360ls",
+    "name": "CL360LS",
+    "liveOptions": 15,
+    "matched": 15,
+    "priceMatch": 15,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl360max",
+    "name": "CL360MAX",
+    "liveOptions": 10,
+    "matched": 10,
+    "priceMatch": 10,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl380",
+    "name": "CL380",
+    "liveOptions": 15,
+    "matched": 15,
+    "priceMatch": 15,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl380ls",
+    "name": "CL380LS",
+    "liveOptions": 15,
+    "matched": 15,
+    "priceMatch": 15,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl380max",
+    "name": "CL380MAX",
+    "liveOptions": 10,
+    "matched": 10,
+    "priceMatch": 10,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl400",
+    "name": "CL400",
+    "liveOptions": 9,
+    "matched": 9,
+    "priceMatch": 9,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl420",
+    "name": "CL420",
+    "liveOptions": 14,
+    "matched": 14,
+    "priceMatch": 14,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Classic",
+    "model": "cl460",
+    "name": "CL460",
+    "liveOptions": 14,
+    "matched": 14,
+    "priceMatch": 14,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Ultra-Light",
+    "model": "ul220",
+    "name": "UL220",
+    "liveOptions": 1,
+    "matched": 1,
+    "priceMatch": 1,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Ultra-Light",
+    "model": "ul240",
+    "name": "UL240",
+    "liveOptions": 1,
+    "matched": 1,
+    "priceMatch": 1,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Ultra-Light",
+    "model": "ul240lt",
+    "name": "UL240LT",
+    "liveOptions": 1,
+    "matched": 1,
+    "priceMatch": 1,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Ultra-Light",
+    "model": "ul260",
+    "name": "UL260",
+    "liveOptions": 1,
+    "matched": 1,
+    "priceMatch": 1,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Ultra-Light",
+    "model": "ul260lt",
+    "name": "UL260LT",
+    "liveOptions": 1,
+    "matched": 1,
+    "priceMatch": 1,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Ultra-Light",
+    "model": "ul290",
+    "name": "UL290",
+    "liveOptions": 1,
+    "matched": 1,
+    "priceMatch": 1,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Ultra-Light",
+    "model": "ul290lt",
+    "name": "UL290LT",
+    "liveOptions": 1,
+    "matched": 1,
+    "priceMatch": 1,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Ultra-Light",
+    "model": "ul310",
+    "name": "UL310",
+    "liveOptions": 1,
+    "matched": 1,
+    "priceMatch": 1,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Ultra-Light",
+    "model": "ul340",
+    "name": "UL340",
+    "liveOptions": 1,
+    "matched": 1,
+    "priceMatch": 1,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Sport",
+    "model": "sp300",
+    "name": "SP300",
+    "liveOptions": 1,
+    "matched": 1,
+    "priceMatch": 1,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Sport",
+    "model": "sp330",
+    "name": "SP330",
+    "liveOptions": 3,
+    "matched": 3,
+    "priceMatch": 3,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Sport",
+    "model": "sp360",
+    "name": "SP360",
+    "liveOptions": 3,
+    "matched": 3,
+    "priceMatch": 3,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Sport",
+    "model": "sp390",
+    "name": "SP390",
+    "liveOptions": 4,
+    "matched": 4,
+    "priceMatch": 4,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Sport",
+    "model": "sp420",
+    "name": "SP420",
+    "liveOptions": 4,
+    "matched": 4,
+    "priceMatch": 4,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Sport",
+    "model": "sp460",
+    "name": "SP460",
+    "liveOptions": 4,
+    "matched": 4,
+    "priceMatch": 4,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Sport",
+    "model": "sp520",
+    "name": "SP520",
+    "liveOptions": 3,
+    "matched": 3,
+    "priceMatch": 3,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Sport",
+    "model": "sp560",
+    "name": "SP560",
+    "liveOptions": 3,
+    "matched": 3,
+    "priceMatch": 3,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Sport",
+    "model": "sp600",
+    "name": "SP600",
+    "liveOptions": 2,
+    "matched": 2,
+    "priceMatch": 2,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Sport",
+    "model": "sp660",
+    "name": "SP660",
+    "liveOptions": 3,
+    "matched": 3,
+    "priceMatch": 3,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Sport",
+    "model": "sp700st",
+    "name": "SP700ST",
+    "liveOptions": 3,
+    "matched": 3,
+    "priceMatch": 3,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Sport",
+    "model": "sp700wlwindlass",
+    "name": "SP700 Windlass",
+    "liveOptions": 3,
+    "matched": 3,
+    "priceMatch": 3,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Sport",
+    "model": "sp760st",
+    "name": "SP760ST",
+    "liveOptions": 3,
+    "matched": 3,
+    "priceMatch": 3,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Sport",
+    "model": "sp760wlwindlass",
+    "name": "SP760 Windlass",
+    "liveOptions": 3,
+    "matched": 3,
+    "priceMatch": 3,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Sport",
+    "model": "sp900",
+    "name": "SP900",
+    "liveOptions": 3,
+    "matched": 3,
+    "priceMatch": 3,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Adventure",
+    "model": "adv7",
+    "name": "ADV7",
+    "liveOptions": 4,
+    "matched": 4,
+    "priceMatch": 4,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Patrol",
+    "model": "pa420",
+    "name": "PA420",
+    "liveOptions": 28,
+    "matched": 26,
+    "priceMatch": 26,
+    "priceMismatch": 0,
+    "missingInMpf": 2,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat",
+     "Bollard for PA420"
+    ]
+   },
+   {
+    "range": "Patrol",
+    "model": "pa460",
+    "name": "PA460",
+    "liveOptions": 28,
+    "matched": 26,
+    "priceMatch": 26,
+    "priceMismatch": 0,
+    "missingInMpf": 2,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat",
+     "Bollard for PA460"
+    ]
+   },
+   {
+    "range": "Patrol",
+    "model": "pa500",
+    "name": "PA500",
+    "liveOptions": 50,
+    "matched": 48,
+    "priceMatch": 48,
+    "priceMismatch": 0,
+    "missingInMpf": 2,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat",
+     "Bollard for PA500"
+    ]
+   },
+   {
+    "range": "Patrol",
+    "model": "pa540-open",
+    "name": "PA540 Open",
+    "liveOptions": 58,
+    "matched": 57,
+    "priceMatch": 57,
+    "priceMismatch": 0,
+    "missingInMpf": 1,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat"
+    ]
+   },
+   {
+    "range": "Patrol",
+    "model": "pa540st",
+    "name": "PA540ST",
+    "liveOptions": 32,
+    "matched": 31,
+    "priceMatch": 31,
+    "priceMismatch": 0,
+    "missingInMpf": 1,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat"
+    ]
+   },
+   {
+    "range": "Patrol",
+    "model": "pa600-open",
+    "name": "PA600 Open",
+    "liveOptions": 60,
+    "matched": 58,
+    "priceMatch": 58,
+    "priceMismatch": 0,
+    "missingInMpf": 2,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat",
+     "Bollard for PA600"
+    ]
+   },
+   {
+    "range": "Patrol",
+    "model": "pa600ew",
+    "name": "PA600EW",
+    "liveOptions": 52,
+    "matched": 50,
+    "priceMatch": 50,
+    "priceMismatch": 0,
+    "missingInMpf": 2,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat",
+     "Bollard for PA600"
+    ]
+   },
+   {
+    "range": "Patrol",
+    "model": "pa600st",
+    "name": "PA600ST",
+    "liveOptions": 53,
+    "matched": 52,
+    "priceMatch": 52,
+    "priceMismatch": 0,
+    "missingInMpf": 1,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat"
+    ]
+   },
+   {
+    "range": "Patrol",
+    "model": "pa660ew",
+    "name": "PA660EW",
+    "liveOptions": 49,
+    "matched": 48,
+    "priceMatch": 48,
+    "priceMismatch": 0,
+    "missingInMpf": 1,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat"
+    ]
+   },
+   {
+    "range": "Patrol",
+    "model": "pa660st",
+    "name": "PA660ST",
+    "liveOptions": 50,
+    "matched": 49,
+    "priceMatch": 49,
+    "priceMismatch": 0,
+    "missingInMpf": 1,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat"
+    ]
+   },
+   {
+    "range": "Patrol",
+    "model": "pa700ew",
+    "name": "PA700EW",
+    "liveOptions": 49,
+    "matched": 47,
+    "priceMatch": 47,
+    "priceMismatch": 0,
+    "missingInMpf": 2,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat",
+     "Bollard for PA700"
+    ]
+   },
+   {
+    "range": "Patrol",
+    "model": "pa700st",
+    "name": "PA700ST",
+    "liveOptions": 50,
+    "matched": 48,
+    "priceMatch": 48,
+    "priceMismatch": 0,
+    "missingInMpf": 2,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat",
+     "Bollard for PA700"
+    ]
+   },
+   {
+    "range": "Patrol",
+    "model": "pa760ew",
+    "name": "PA760EW",
+    "liveOptions": 51,
+    "matched": 49,
+    "priceMatch": 49,
+    "priceMismatch": 0,
+    "missingInMpf": 2,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat",
+     "Bollard for PA760"
+    ]
+   },
+   {
+    "range": "Patrol",
+    "model": "pa760st",
+    "name": "PA760ST",
+    "liveOptions": 52,
+    "matched": 50,
+    "priceMatch": 50,
+    "priceMismatch": 0,
+    "missingInMpf": 2,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat",
+     "Bollard for PA760"
+    ]
+   },
+   {
+    "range": "Patrol",
+    "model": "pa860ew",
+    "name": "PA860EW",
+    "liveOptions": 51,
+    "matched": 49,
+    "priceMatch": 49,
+    "priceMismatch": 0,
+    "missingInMpf": 2,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat",
+     "Bollard for PA860"
+    ]
+   },
+   {
+    "range": "Patrol",
+    "model": "pa860st",
+    "name": "PA860ST",
+    "liveOptions": 52,
+    "matched": 50,
+    "priceMatch": 50,
+    "priceMismatch": 0,
+    "missingInMpf": 2,
+    "mismatches": [],
+    "missingCodes": [
+     "No Seat",
+     "Bollard for PA860"
+    ]
+   },
+   {
+    "range": "Coaster",
+    "model": "coaster-540-open",
+    "name": "Coaster 540 Open",
+    "liveOptions": 13,
+    "matched": 13,
+    "priceMatch": 13,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Coaster",
+    "model": "coaster-540-st",
+    "name": "Coaster 540 ST",
+    "liveOptions": 1,
+    "matched": 1,
+    "priceMatch": 1,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   },
+   {
+    "range": "Coaster",
+    "model": "coaster-600-st",
+    "name": "Coaster 600 ST",
+    "liveOptions": 1,
+    "matched": 1,
+    "priceMatch": 1,
+    "priceMismatch": 0,
+    "missingInMpf": 0,
+    "mismatches": []
+   }
+  ]
+ }
+}

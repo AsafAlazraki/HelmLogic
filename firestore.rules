@@ -89,8 +89,15 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isOwner(userId) || isAdmin();
 
+      // Structure-audit P1 (2026-07-04, H4): hold requests and @-mentions
+      // write OTHER users' notifications (hold-request-dialog notifies the
+      // brand captain, hold-requests-dashboard notifies the requester,
+      // lib/notifications.ts is the generic helper). Any signed-in user
+      // may CREATE a notification for anyone; reading, editing and
+      // deleting stay owner/admin-only.
       match /notifications/{notifId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow create: if isSignedIn();
+        allow read, update, delete: if isOwner(userId) || isAdmin();
       }
       match /quotes/{quoteId} {
         // v1.8 (story 1.3.1.a) — quote-lock enforcement at the rules
@@ -140,10 +147,77 @@ service cloud.firestore {
         match /contentOverrides/{blockType} {
           allow read, write: if isSignedIn();
         }
+        // v1.19 (Story 2.3.1) — Post-contract quote variations. Sit
+        // under the parent quote so they inherit the user-owns model.
+        // Reads + writes signed-in; quote-lock + variation-status
+        // gating handled at the UI layer (canTransitionVariationStatus
+        // in src/lib/catalog/quote-variation.ts).
+        match /variations/{variationId} {
+          allow read, write: if isSignedIn();
+        }
+        // v1.20 (Story 2.4.1) — Contracts created when a quote is
+        // converted. Immutable line-item snapshot. Subsequent changes
+        // flow through variations or a re-converted contract.
+        match /contracts/{contractId} {
+          allow read, write: if isSignedIn();
+          // v1.20 (Story 2.4.2) — Deposits recorded against a contract.
+          // Each deposit also gets a receipt PDF generated from the
+          // v1.18 pdf-branding.ts tokens.
+          match /deposits/{depositId} {
+            allow read, write: if isSignedIn();
+          }
+        }
       }
       match /routes/{routeId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
+    }
+
+    // v1.21 (Story 8.1.4 + 8.2.1) — collection-group reads of quotes.
+    // The path-scoped /users/{uid}/quotes/{qid} rule above does NOT
+    // enable collectionGroup('quotes') queries; Firestore requires a
+    // recursive-wildcard rule for that. The reporting dashboard +
+    // cross-module quotes view + customer detail sheet all run
+    // collectionGroup('quotes') filtered by organisationId / customerId.
+    // Reads signed-in (org-scoping enforced in the query's where()).
+    // Writes stay on the path-scoped rule above (no write via group).
+    match /{path=**}/quotes/{quoteId} {
+      allow read: if isSignedIn();
+    }
+
+    // v1.22 (Story 8.1.5) — collection-group reads of contracts for the
+    // cross-module Contracts view. Same rationale as the quotes rule
+    // above. Writes stay on the path-scoped rule under the quote subtree.
+    match /{path=**}/contracts/{contractId} {
+      allow read: if isSignedIn();
+    }
+
+    // v1.22 (Story 1.7.3) — collection-group reads of auditLog for the
+    // recent-activity feed. Writes stay on the path-scoped quote auditLog
+    // rule. Read signed-in.
+    match /{path=**}/auditLog/{eventId} {
+      allow read: if isSignedIn();
+    }
+
+    // v1.20 (Story 2.6.3) — collection-group reads of variations for the
+    // public accept-variation page. It looks a variation up by its
+    // unguessable publicAcceptToken via collectionGroup('variations'),
+    // authenticated anonymously (signInAnonymously). Anonymous users are
+    // signed-in, so isSignedIn() permits the token lookup; the token
+    // itself is the access control. Writes stay on the path-scoped
+    // users/{uid}/quotes/{qid}/variations rule.
+    match /{path=**}/variations/{variationId} {
+      allow read: if isSignedIn();
+    }
+
+    // Structure-audit P0 (2026-07-03): collectionGroup reads used by
+    // stock-import, delivered-deals-import and maritime-assistant —
+    // data-warehouse/{allPaths=**} does NOT satisfy group queries.
+    match /{path=**}/models/{modelId} {
+      allow read: if isSignedIn();
+    }
+    match /{path=**}/ranges/{rangeId} {
+      allow read: if isSignedIn();
     }
 
     match /roles_admin/{userId} {
@@ -261,6 +335,53 @@ service cloud.firestore {
       match /serviceParts/{partId} {
         allow read, write: if isSignedIn();
       }
+      // MPF migration (2026-07) — collections created to hold NSM's
+      // Master Price File data 1:1 (see tasks/mpf-audit/MAPPING.md).
+      // Same lenient org-subcollection policy as their siblings above;
+      // UI-layer org-admin gate via /manage's can_access_settings.
+      //
+      // riggingKits/{kitId}: rigging kit catalog (3-tier ex-GST pricing,
+      //   install hours at org shop rate, components, inclusion flags).
+      // suppliers/{supplierId}: supplier registry (name/ABN/terms/credit
+      //   + DMS invoice config).
+      // supplierPriceLists/{listId}: vendor cost-refresh price lists
+      //   (per-org per decision D5).
+      // pricingMatrix/{rowId}: per-franchise markup/margin + trade tiers
+      //   + retail sliding scale (the MPF "Price Matrix" brain).
+      // engineServiceSchedules/{engineId}: per-engine service interval
+      //   price matrix + 5-year plans + parts BOM.
+      // freightConfig/{vendorId}: per-vendor per-linear-metre freight
+      //   rates + buffer feeding boat landed cost.
+      match /riggingKits/{kitId} {
+        allow read, write: if isSignedIn();
+      }
+      // Structure-audit P0: live price-list manager surface (modules/[id]).
+      match /priceLists/{listId} {
+        allow read, write: if isSignedIn();
+      }
+      // Structure-audit P0: v1.13 service-quote Send pipeline writes these
+      // awaited subcollections; unruled = pipeline breaks when email flips on.
+      match /serviceQuotes/{sqId}/sentEmails/{sendId} {
+        allow read, write: if isSignedIn();
+      }
+      match /serviceQuotes/{sqId}/auditLog/{eventId} {
+        allow read, write: if isSignedIn();
+      }
+      match /suppliers/{supplierId} {
+        allow read, write: if isSignedIn();
+      }
+      match /supplierPriceLists/{listId} {
+        allow read, write: if isSignedIn();
+      }
+      match /pricingMatrix/{rowId} {
+        allow read, write: if isSignedIn();
+      }
+      match /engineServiceSchedules/{engineId} {
+        allow read, write: if isSignedIn();
+      }
+      match /freightConfig/{vendorId} {
+        allow read, write: if isSignedIn();
+      }
       // v1.11 (Epic 11.2.1 — Service-quote flow) — Service quotes
       // composed from serviceOperations + serviceParts on a customer.
       // Owned by the org so multiple service advisors can collaborate.
@@ -342,6 +463,13 @@ service cloud.firestore {
       match /comments/{commentId} {
         allow read, write: if isSignedIn();
       }
+      // Structure-audit P1 (2026-07-04, H5): the suggestion approval
+      // queue writes an audit event under the feature on approve/reject;
+      // the recursive /{path=**}/auditLog rule is read-only, so without
+      // this block those writes 403 for non-HelmLogic-admins.
+      match /auditLog/{eventId} {
+        allow read, write: if isSignedIn();
+      }
     }
 
     // Epics (v1.6) — same gating as features.
@@ -381,6 +509,10 @@ service cloud.firestore {
 
     match /customers/{customerId} {
       allow read, write: if isSignedIn();
+      // v1.24 (Story 1.5.3) — customer notes timeline.
+      match /notes/{noteId} {
+        allow read, write: if isSignedIn();
+      }
     }
 
     // Legacy support for clients collection

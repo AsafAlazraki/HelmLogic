@@ -1,0 +1,2925 @@
+{
+ "startedAt": "2026-07-04T08:06:12.977316+00:00",
+ "finishedAt": "2026-07-04T08:09:28.330262+00:00",
+ "auditAccount": "billh@nsmarine.com.au",
+ "readOnly": true,
+ "stats": {
+  "vendors": 21,
+  "modules": 16,
+  "boatModels": 333,
+  "boatVariants": 862,
+  "codePaths": 74
+ },
+ "class1_rulesCoverage": {
+  "unruledPaths": [
+   {
+    "path": "brands",
+    "writes": false,
+    "sites": [
+     "src/components/price-book-table.tsx:96"
+    ],
+    "liveProbe": "HTTP 403"
+   },
+   {
+    "path": "organisations/*/priceLevelDefinitions",
+    "writes": true,
+    "sites": [
+     "src/components/price-book-table.tsx:116",
+     "src/components/price-book-table.tsx:136 [w]",
+     "src/components/price-book-table.tsx:152 [w]",
+     "src/components/price-book-table.tsx:171 [w]"
+    ],
+    "liveProbe": "HTTP 403"
+   },
+   {
+    "path": "organisations/*/priceLists",
+    "writes": true,
+    "sites": [
+     "src/components/price-list-viewer.tsx:417",
+     "src/components/price-list-manager.tsx:323",
+     "src/components/price-list-manager.tsx:805",
+     "src/components/price-list-manager.tsx:822 [w]",
+     "src/components/price-list-manager.tsx:842 [w]"
+    ],
+    "liveProbe": "HTTP 403"
+   },
+   {
+    "path": "organisations/*/productPrices",
+    "writes": true,
+    "sites": [
+     "src/components/price-book-table.tsx:122",
+     "src/components/price-book-table.tsx:182",
+     "src/components/price-book-table.tsx:183",
+     "src/components/price-book-table.tsx:205 [w]"
+    ],
+    "liveProbe": "HTTP 403"
+   },
+   {
+    "path": "organisations/*/serviceQuotes/*/sentEmails",
+    "writes": true,
+    "sites": [
+     "src/components/service-quote-detail-sheet.tsx:286",
+     "src/components/service-quote-detail-sheet.tsx:315 [w]"
+    ],
+    "liveProbe": null
+   },
+   {
+    "path": "products",
+    "writes": false,
+    "sites": [
+     "src/components/price-book-table.tsx:108",
+     "src/components/price-book-table.tsx:110"
+    ],
+    "liveProbe": "HTTP 403"
+   }
+  ],
+  "writeGaps": [
+   {
+    "path": "dealerFitCategories",
+    "sites": [
+     "src/components/dealer-fit-options.tsx:61",
+     "src/components/catalog-export-import.tsx:272",
+     "src/app/(app)/modules/dealer-fit-options/page.tsx:44",
+     "src/app/(app)/modules/dealer-fit-options/page.tsx:58 [w]",
+     "src/app/(app)/modules/dealer-fit-options/page.tsx:75 [w]",
+     "src/app/(app)/modules/[id]/page.tsx:442"
+    ],
+    "matchedRules": [
+     "dealerFitCategories/{catId} read"
+    ]
+   },
+   {
+    "path": "features/*/auditLog",
+    "sites": [
+     "src/components/suggestion-approval-queue.tsx:58 [w]"
+    ],
+    "matchedRules": [
+     "{path=**}/auditLog/{eventId} read"
+    ]
+   },
+   {
+    "path": "organisations/*/serviceQuotes/*/auditLog",
+    "sites": [
+     "src/components/service-quote-detail-sheet.tsx:164 [w]",
+     "src/components/service-quote-detail-sheet.tsx:339 [w]",
+     "src/components/service-quote-detail-sheet.tsx:348 [w]"
+    ],
+    "matchedRules": [
+     "{path=**}/auditLog/{eventId} read"
+    ]
+   }
+  ],
+  "collectionGroupGaps": [
+   {
+    "collectionId": "models",
+    "ruleFound": false,
+    "liveProbe": "HTTP 403",
+    "sites": [
+     "src/components/stock-import.tsx:148",
+     "src/components/delivered-deals-import.tsx:163",
+     "src/ai/flows/maritime-assistant-flow.ts:76",
+     "src/ai/flows/maritime-assistant-flow.ts:167"
+    ]
+   },
+   {
+    "collectionId": "ranges",
+    "ruleFound": false,
+    "liveProbe": "HTTP 403",
+    "sites": [
+     "src/ai/flows/maritime-assistant-flow.ts:59"
+    ]
+   }
+  ],
+  "rulesWithoutCode": [
+   "organisations/{orgId}/supplierPriceLists/{listId}",
+   "users/{userId}/quotes/{quoteId}/service_items/{itemId}",
+   "users/{userId}/routes/{routeId}"
+  ],
+  "crossUserWriteConflicts": [
+   {
+    "path": "users/*/notifications",
+    "sites": [
+     "src/components/hold-requests-dashboard.tsx:105 [w]",
+     "src/components/hold-request-dialog.tsx:174 [w]",
+     "src/components/notification-bell.tsx:31",
+     "src/components/notification-bell.tsx:45 [w]",
+     "src/components/notification-bell.tsx:58",
+     "src/lib/notifications.ts:9 [w]"
+    ],
+    "rule": "users/{userId}/notifications requires isOwner(userId) || isAdmin() \u2014 writing another user's notifications 403s for non-admins"
+   }
+  ],
+  "collectionGroupOk": [
+   {
+    "collectionId": "auditLog",
+    "liveProbe": "OK"
+   },
+   {
+    "collectionId": "contracts",
+    "liveProbe": "OK"
+   },
+   {
+    "collectionId": "quotes",
+    "liveProbe": "OK"
+   },
+   {
+    "collectionId": "variations",
+    "liveProbe": "OK"
+   }
+  ]
+ },
+ "class2_moduleIntegrity": {
+  "danglingMainVendorId": [],
+  "pricedBrandsWithoutModule": [],
+  "duplicateModuleNames": [],
+  "nav": {
+   "navHrefs": [
+    "/admin",
+    "/admin/agent-team",
+    "/contracts",
+    "/customers",
+    "/dashboard",
+    "/data-warehouse",
+    "/feature-tracking",
+    "/manage",
+    "/modules",
+    "/my-work",
+    "/organisations",
+    "/pipeline",
+    "/pricing-manager",
+    "/reporting"
+   ],
+   "missingPages": []
+  },
+  "brandStats": {
+   "Stabicraft": {
+    "vendorId": "0cUm736tE9ON2WFLRHD0",
+    "ranges": 7,
+    "models": 40,
+    "variants": 37,
+    "pricedVariants": 37
+   },
+   "Haines Signature": {
+    "vendorId": "DJ5GVMzLaNWNcOlRqzJV",
+    "ranges": 1,
+    "models": 9,
+    "variants": 9,
+    "pricedVariants": 0
+   },
+   "Stacer": {
+    "vendorId": "LWgHuGoKfUBeKZ8eWnEi",
+    "ranges": 10,
+    "models": 91,
+    "variants": 91,
+    "pricedVariants": 91
+   },
+   "Highfield": {
+    "vendorId": "LafOLpLb6QIFE856TiD4",
+    "ranges": 7,
+    "models": 85,
+    "variants": 640,
+    "pricedVariants": 640
+   },
+   "Formosa": {
+    "vendorId": "formosa",
+    "ranges": 1,
+    "models": 39,
+    "variants": 39,
+    "pricedVariants": 30
+   },
+   "Surtees": {
+    "vendorId": "gLAi5eHYiZDgrvjDUaos",
+    "ranges": 5,
+    "models": 21,
+    "variants": 19,
+    "pricedVariants": 19
+   },
+   "Jeanneau": {
+    "vendorId": "lwGHoqdqNPuSZYYQAgG7",
+    "ranges": 8,
+    "models": 48,
+    "variants": 27,
+    "pricedVariants": 19
+   }
+  }
+ },
+ "class3_typeConsistency": {
+  "variants (data-warehouse/*/ranges/*/models/*/variants)": {
+   "sampled": 50,
+   "stringPriceFields": [],
+   "stringPriceCount": 0,
+   "dateFieldTypeMixtures": {},
+   "dateFieldsNeverTimestamp": {}
+  },
+  "organisations/{org}/dealerFitSelections": {
+   "sampled": 50,
+   "stringPriceFields": [],
+   "stringPriceCount": 0,
+   "dateFieldTypeMixtures": {},
+   "dateFieldsNeverTimestamp": {
+    "importedAt": {
+     "stringValue": 50
+    }
+   }
+  },
+  "organisations/{org}/fitUpItems": {
+   "sampled": 50,
+   "stringPriceFields": [],
+   "stringPriceCount": 0,
+   "dateFieldTypeMixtures": {},
+   "dateFieldsNeverTimestamp": {
+    "importedAt": {
+     "stringValue": 50
+    }
+   }
+  },
+  "organisations/{org}/serviceParts": {
+   "sampled": 50,
+   "stringPriceFields": [],
+   "stringPriceCount": 0,
+   "dateFieldTypeMixtures": {},
+   "dateFieldsNeverTimestamp": {
+    "importedAt": {
+     "stringValue": 50
+    }
+   }
+  },
+  "organisations/{org}/riggingKits": {
+   "sampled": 50,
+   "stringPriceFields": [],
+   "stringPriceCount": 0,
+   "dateFieldTypeMixtures": {},
+   "dateFieldsNeverTimestamp": {
+    "importedAt": {
+     "stringValue": 50
+    }
+   }
+  },
+  "organisations/{org}/serviceOperations": {
+   "sampled": 50,
+   "stringPriceFields": [],
+   "stringPriceCount": 0,
+   "dateFieldTypeMixtures": {},
+   "dateFieldsNeverTimestamp": {
+    "importedAt": {
+     "stringValue": 50
+    }
+   }
+  },
+  "organisations/{org}/engineServiceSchedules": {
+   "sampled": 50,
+   "stringPriceFields": [],
+   "stringPriceCount": 0,
+   "dateFieldTypeMixtures": {},
+   "dateFieldsNeverTimestamp": {
+    "importedAt": {
+     "stringValue": 50
+    }
+   }
+  },
+  "motor rows (data-warehouse/yamaha/dataSets/*/rows)": {
+   "sampled": 25,
+   "stringPriceFields": [],
+   "stringPriceCount": 0,
+   "dateFieldTypeMixtures": {},
+   "dateFieldsNeverTimestamp": {}
+  }
+ },
+ "class4_orphans": {
+  "modelsWithZeroVariants": [
+   {
+    "brand": "Stabicraft",
+    "path": "data-warehouse/0cUm736tE9ON2WFLRHD0/ranges/D3qeNycErlQ45tnJJwf4/models/FLjN0zhgLyzFHaGYK0vW",
+    "modelName": "tet"
+   },
+   {
+    "brand": "Stabicraft",
+    "path": "data-warehouse/0cUm736tE9ON2WFLRHD0/ranges/qXOQfnQU7qRb1IXVTmwi/models/72I8yhqoCC2zFBRGz0gC",
+    "modelName": "2750"
+   },
+   {
+    "brand": "Stabicraft",
+    "path": "data-warehouse/0cUm736tE9ON2WFLRHD0/ranges/qXOQfnQU7qRb1IXVTmwi/models/TggMDTATvhdrEfuaJgWg",
+    "modelName": "2350"
+   },
+   {
+    "brand": "Surtees",
+    "path": "data-warehouse/gLAi5eHYiZDgrvjDUaos/ranges/DOALNzaqhtiA5BiDQXVL/models/H3nAJ2FDsJkz2vMqzvcD",
+    "modelName": "770 "
+   },
+   {
+    "brand": "Surtees",
+    "path": "data-warehouse/gLAi5eHYiZDgrvjDUaos/ranges/DOALNzaqhtiA5BiDQXVL/models/rFQjoyUo9oW2KYgPJSdg",
+    "modelName": "800"
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/DjTMHO7FUb07u3Tl53VU/models/1CGBDdYxv0TVV5h8kgx3",
+    "modelName": "1095 Fly S2 "
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/DjTMHO7FUb07u3Tl53VU/models/Jg0n47r4oM4ehSgVJPmj",
+    "modelName": "1295 Fly "
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/DjTMHO7FUb07u3Tl53VU/models/NY0WQJ7iuZCXPpbmn6BC",
+    "modelName": "795 S2 "
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/DjTMHO7FUb07u3Tl53VU/models/OJpprp8QUcShryXCQ6d4",
+    "modelName": "895 S2 "
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/DjTMHO7FUb07u3Tl53VU/models/XnCElc151GVM2xvLlP1E",
+    "modelName": "1095 Coupe S2 "
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/DjTMHO7FUb07u3Tl53VU/models/YtVGl6VmmVkjN5nUWYS6",
+    "modelName": "1295 Coupe"
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/DjTMHO7FUb07u3Tl53VU/models/oFMuPTwPGNf5CTgNKBfW",
+    "modelName": "695 S2 "
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/cuPJMMVhL5JtG6EXVsPj/models/FJhVKxSYzCTrIaFpSy6f",
+    "modelName": "695 Sport S2 "
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/eijNNYhrWgKuUnZu7VaK/models/3yLIEA4vPWINbqwLg2tJ",
+    "modelName": "Cap Camarat 6.5WA S3 "
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/eijNNYhrWgKuUnZu7VaK/models/67tluCRxzyYHdNaxvnw1",
+    "modelName": "Cap Camarat 7.5CC S3 "
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/eijNNYhrWgKuUnZu7VaK/models/87K42pOF3z0V5kHOJj9i",
+    "modelName": "Cap Camarat 5.5WA S2"
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/eijNNYhrWgKuUnZu7VaK/models/HV9fL6XjcoQK9wdFQE9z",
+    "modelName": "Cap Camarat 6.5CC S3 "
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/eijNNYhrWgKuUnZu7VaK/models/QOpFEHzrRM61lk9VRNOA",
+    "modelName": "Cap Camarat 12.5WA"
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/eijNNYhrWgKuUnZu7VaK/models/Z15fkxSTjtAF2OlUvdjG",
+    "modelName": "Cap Camarat 5.5CC S2 "
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/eijNNYhrWgKuUnZu7VaK/models/bVpk4n1zsLG82Fj9uG26",
+    "modelName": "Cap Camarat 7.5WA S3 "
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/eijNNYhrWgKuUnZu7VaK/models/eBWe0k5tZ1OcgEG7Ws6i",
+    "modelName": "Cap Camarat 9.0CC S2 "
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/eijNNYhrWgKuUnZu7VaK/models/sGWN0SzENv49sv2KS0zI",
+    "modelName": "Cap Camarat 9.0WA "
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/eijNNYhrWgKuUnZu7VaK/models/t4nW5t5pwiTmoutmjOLI",
+    "modelName": "Cap Camarat 10.5WA "
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/eijNNYhrWgKuUnZu7VaK/models/y9tQV8XZB55o7c27px1h",
+    "modelName": "Cap Camarat 10.5CC"
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/mz94Y3zuDscwIUmYU4mK/models/Kxx6H85eJ9Rk162T33hi",
+    "modelName": "TH38"
+   },
+   {
+    "brand": "Jeanneau",
+    "path": "data-warehouse/lwGHoqdqNPuSZYYQAgG7/ranges/mz94Y3zuDscwIUmYU4mK/models/iTiyc9jWgrqIXgj2IMIe",
+    "modelName": "TH33"
+   }
+  ],
+  "variantsUnderNamelessModels": [],
+  "dealerFitSelectionsEmptyItems": [],
+  "engineServiceSchedulesEmptyIntervals": {
+   "legacyNoPricing": 32,
+   "unexplained": []
+  },
+  "dealerFitSelectionsTotal": 1791,
+  "engineServiceSchedulesTotal": 189
+ },
+ "class5_duplicates": {
+  "fitUpItems.byName": [
+   {
+    "name": "DISCONTINUED - No Longer Available",
+    "count": 7,
+    "entries": [
+     {
+      "id": "000-13237-001-nb-obsolete",
+      "price": 1669
+     },
+     {
+      "id": "000-13238-001-nb-obsolete",
+      "price": 3049
+     },
+     {
+      "id": "000-13239-001-nb-obsolete",
+      "price": 4389
+     },
+     {
+      "id": "000-13240-001-nb-obsolete",
+      "price": 6279
+     },
+     {
+      "id": "000-13793-001-nb-obsolete",
+      "price": 3609
+     },
+     {
+      "id": "000-13794-001-nb-obsolete",
+      "price": 4809
+     },
+     {
+      "id": "000-13795-001-nb-obsolete",
+      "price": 6009
+     }
+    ]
+   },
+   {
+    "name": "Propeller - Aluminium SDS GP K Series - 15\"",
+    "count": 2,
+    "entries": [
+     {
+      "id": "6fp-45943-00",
+      "price": 247
+     },
+     {
+      "id": "6fp-45943-00-nb-obsolete",
+      "price": 240
+     }
+    ]
+   },
+   {
+    "name": "Propeller - Aluminium SDS GP K Series - 16\"",
+    "count": 2,
+    "entries": [
+     {
+      "id": "6fp-45945-00",
+      "price": 247
+     },
+     {
+      "id": "6fp-45945-00-nb-obsolete",
+      "price": 240
+     }
+    ]
+   },
+   {
+    "name": "Yamalube GL5 Gearcase Oil - 1Ltr",
+    "count": 2,
+    "entries": [
+     {
+      "id": "90790-bs811-1ltr",
+      "price": 27
+     },
+     {
+      "id": "ymd-73011-10-03",
+      "price": 28
+     }
+    ]
+   },
+   {
+    "name": "Yamaha Small Fuel Filter - Up to 70HP",
+    "count": 2,
+    "entries": [
+     {
+      "id": "90794-46909-nb-obsolete",
+      "price": 100
+     },
+     {
+      "id": "90798-1m745",
+      "price": 95
+     }
+    ]
+   },
+   {
+    "name": "Console Cover - SDS750",
+    "count": 2,
+    "entries": [
+     {
+      "id": "heo-045",
+      "price": 460
+     },
+     {
+      "id": "hfi-cov-hee443",
+      "price": 470
+     }
+    ]
+   },
+   {
+    "name": "Boat Cover - SP360",
+    "count": 2,
+    "entries": [
+     {
+      "id": "heo036",
+      "price": 990
+     },
+     {
+      "id": "hfi-cov-hee459",
+      "price": 750
+     }
+    ]
+   },
+   {
+    "name": "Console Cover - SUS700",
+    "count": 2,
+    "entries": [
+     {
+      "id": "heo043",
+      "price": 440
+     },
+     {
+      "id": "hfi-cov-hee432",
+      "price": 450
+     }
+    ]
+   },
+   {
+    "name": "Console Cover - SUS750",
+    "count": 2,
+    "entries": [
+     {
+      "id": "heo044",
+      "price": 460
+     },
+     {
+      "id": "hfi-cov-hee449",
+      "price": 470
+     }
+    ]
+   },
+   {
+    "name": "Console Cover - SUS900",
+    "count": 2,
+    "entries": [
+     {
+      "id": "heo046",
+      "price": 470
+     },
+     {
+      "id": "hfi-cov-hee433",
+      "price": 490
+     }
+    ]
+   },
+   {
+    "name": "Console Cover - SUS950",
+    "count": 2,
+    "entries": [
+     {
+      "id": "heo047",
+      "price": 540
+     },
+     {
+      "id": "hfi-cov-hee445",
+      "price": 560
+     }
+    ]
+   },
+   {
+    "name": "Sundeck - SP330/360",
+    "count": 2,
+    "entries": [
+     {
+      "id": "heo071",
+      "price": 780
+     },
+     {
+      "id": "hfi-sundeck360",
+      "price": 750
+     }
+    ]
+   },
+   {
+    "name": "Sundeck - SP390/420/460",
+    "count": 2,
+    "entries": [
+     {
+      "id": "heo073",
+      "price": 970
+     },
+     {
+      "id": "hfi-sundeck460",
+      "price": 940
+     }
+    ]
+   },
+   {
+    "name": "Sundeck - SP520",
+    "count": 2,
+    "entries": [
+     {
+      "id": "heo075",
+      "price": 1090
+     },
+     {
+      "id": "hfi-sundeck520",
+      "price": 1050
+     }
+    ]
+   },
+   {
+    "name": "Towpost",
+    "count": 2,
+    "entries": [
+     {
+      "id": "hfi-towpost",
+      "price": 530
+     },
+     {
+      "id": "tow-post",
+      "price": 700
+     }
+    ]
+   },
+   {
+    "name": "Towpost - SP520",
+    "count": 2,
+    "entries": [
+     {
+      "id": "hfi-towpost-l",
+      "price": 1420
+     },
+     {
+      "id": "tow-post-2",
+      "price": 1900
+     }
+    ]
+   }
+  ],
+  "serviceOperations.byName": [],
+  "serviceOperations.duplicateCodes": [
+   {
+    "code": "DFO_",
+    "count": 34
+   },
+   {
+    "code": "DFO_ELE_",
+    "count": 2
+   },
+   {
+    "code": "DFO_ELE_0206",
+    "count": 2
+   },
+   {
+    "code": "DFO_ELE_0606",
+    "count": 2
+   },
+   {
+    "code": "DFO_ELE_0820",
+    "count": 2
+   },
+   {
+    "code": "DFO_ELE_Auto6.5",
+    "count": 2
+   },
+   {
+    "code": "DFO-FEN-G3",
+    "count": 2
+   },
+   {
+    "code": "DFO-GEN",
+    "count": 7
+   },
+   {
+    "code": "DFO-LON",
+    "count": 5
+   },
+   {
+    "code": "DFO-TRA-",
+    "count": 20
+   },
+   {
+    "code": "Factory",
+    "count": 6
+   },
+   {
+    "code": "Sublet",
+    "count": 7
+   }
+  ],
+  "serviceParts.duplicatePartNumbers": [
+   {
+    "partNumber": "293714",
+    "count": 3,
+    "prices": [
+     "1.77",
+     "1100",
+     "380.91"
+    ]
+   },
+   {
+    "partNumber": "MISC",
+    "count": 3,
+    "prices": [
+     "0.91",
+     "4.54",
+     "90.91"
+    ]
+   },
+   {
+    "partNumber": "2364",
+    "count": 2,
+    "prices": [
+     "11.36",
+     "408.18"
+    ]
+   },
+   {
+    "partNumber": "FREIGHT",
+    "count": 2,
+    "prices": [
+     "0",
+     "32.73"
+    ]
+   },
+   {
+    "partNumber": "12152",
+    "count": 2,
+    "prices": [
+     "10.12",
+     "54.5"
+    ]
+   },
+   {
+    "partNumber": "30540",
+    "count": 2,
+    "prices": [
+     "11",
+     "6.33"
+    ]
+   },
+   {
+    "partNumber": "30596",
+    "count": 2,
+    "prices": [
+     "12",
+     "12.65"
+    ]
+   },
+   {
+    "partNumber": "307471",
+    "count": 2,
+    "prices": [
+     "42.42",
+     "7.01"
+    ]
+   },
+   {
+    "partNumber": "309744",
+    "count": 2,
+    "prices": [
+     "14.04",
+     "77.27"
+    ]
+   },
+   {
+    "partNumber": "35918",
+    "count": 2,
+    "prices": [
+     "2.2",
+     "9.96"
+    ]
+   },
+   {
+    "partNumber": "36112",
+    "count": 2,
+    "prices": [
+     "414.98",
+     "48.18"
+    ]
+   },
+   {
+    "partNumber": "37383",
+    "count": 2,
+    "prices": [
+     "22.99",
+     "499.1"
+    ]
+   },
+   {
+    "partNumber": "38279",
+    "count": 2,
+    "prices": [
+     "6.49",
+     "70"
+    ]
+   },
+   {
+    "partNumber": "39840",
+    "count": 2,
+    "prices": [
+     "24.97",
+     "47.27"
+    ]
+   },
+   {
+    "partNumber": "46080",
+    "count": 2,
+    "prices": [
+     "4.46",
+     "90"
+    ]
+   },
+   {
+    "partNumber": "49118",
+    "count": 2,
+    "prices": [
+     "36.35",
+     "9.57"
+    ]
+   },
+   {
+    "partNumber": "49120",
+    "count": 2,
+    "prices": [
+     "12.65",
+     "27.26"
+    ]
+   },
+   {
+    "partNumber": "55642",
+    "count": 2,
+    "prices": [
+     "0",
+     "944.55"
+    ]
+   },
+   {
+    "partNumber": "56680",
+    "count": 2,
+    "prices": [
+     "18",
+     "24.92"
+    ]
+   },
+   {
+    "partNumber": "63196",
+    "count": 2,
+    "prices": [
+     "140.09",
+     "200"
+    ]
+   },
+   {
+    "partNumber": "817595",
+    "count": 2,
+    "prices": [
+     "33.83",
+     "63.59"
+    ]
+   },
+   {
+    "partNumber": "864926",
+    "count": 2,
+    "prices": [
+     "1034.15",
+     "311.41"
+    ]
+   },
+   {
+    "partNumber": "90902",
+    "count": 2,
+    "prices": [
+     "5.56",
+     "72.73"
+    ]
+   },
+   {
+    "partNumber": "91118",
+    "count": 2,
+    "prices": [
+     "12.54",
+     "22.72"
+    ]
+   },
+   {
+    "partNumber": "93576",
+    "count": 2,
+    "prices": [
+     "0",
+     "1.09"
+    ]
+   },
+   {
+    "partNumber": "115700",
+    "count": 2,
+    "prices": [
+     "74.14",
+     "90"
+    ]
+   },
+   {
+    "partNumber": "116130",
+    "count": 2,
+    "prices": [
+     "27.18",
+     "45.02"
+    ]
+   },
+   {
+    "partNumber": "122506",
+    "count": 2,
+    "prices": [
+     "734.4",
+     "9.25"
+    ]
+   },
+   {
+    "partNumber": "123550",
+    "count": 2,
+    "prices": [
+     "23.31",
+     "81"
+    ]
+   },
+   {
+    "partNumber": "125799",
+    "count": 2,
+    "prices": [
+     "200",
+     "247.86"
+    ]
+   },
+   {
+    "partNumber": "2003",
+    "count": 2,
+    "prices": [
+     "217.6",
+     "238.02"
+    ]
+   },
+   {
+    "partNumber": "2070",
+    "count": 2,
+    "prices": [
+     "537.2",
+     "7.26"
+    ]
+   },
+   {
+    "partNumber": "4410",
+    "count": 2,
+    "prices": [
+     "13.59",
+     "4.56"
+    ]
+   },
+   {
+    "partNumber": "4490",
+    "count": 2,
+    "prices": [
+     "11",
+     "9.9"
+    ]
+   },
+   {
+    "partNumber": "S18-3050",
+    "count": 2,
+    "prices": [
+     "26.2",
+     "32.97"
+    ]
+   },
+   {
+    "partNumber": "S18-3098",
+    "count": 2,
+    "prices": [
+     "29.64",
+     "39.36"
+    ]
+   },
+   {
+    "partNumber": "SPCOVER",
+    "count": 2,
+    "prices": [
+     "113.64",
+     "27.22"
+    ]
+   },
+   {
+    "partNumber": "268034",
+    "count": 2,
+    "prices": [
+     "22.5",
+     "23.64"
+    ]
+   },
+   {
+    "partNumber": "530000",
+    "count": 2,
+    "prices": [
+     "1.8",
+     "36.35"
+    ]
+   },
+   {
+    "partNumber": "81144BL",
+    "count": 2,
+    "prices": [
+     "32.44",
+     "52.8"
+    ]
+   }
+  ],
+  "serviceParts.duplicatePartNumberCount": 101,
+  "serviceParts.byNameDiffPrice": [
+   {
+    "name": "S/S",
+    "count": 347,
+    "entries": [
+     {
+      "id": "9me-1026065",
+      "price": 3.47
+     },
+     {
+      "id": "9me-10275546",
+      "price": 103.35
+     },
+     {
+      "id": "9me-1028638",
+      "price": 3.58
+     },
+     {
+      "id": "9me-1029608",
+      "price": 20.74
+     },
+     {
+      "id": "9me-1036003",
+      "price": 3.08
+     },
+     {
+      "id": "9me-10400035",
+      "price": 3.69
+     },
+     {
+      "id": "9me-1045264",
+      "price": 18.32
+     },
+     {
+      "id": "9me-1045379",
+      "price": 12.1
+     }
+    ]
+   },
+   {
+    "name": "SCREW",
+    "count": 341,
+    "entries": [
+     {
+      "id": "9me-1013954",
+      "price": 8.53
+     },
+     {
+      "id": "9me-1014070",
+      "price": 7.79
+     },
+     {
+      "id": "9me-10160941",
+      "price": 2.86
+     },
+     {
+      "id": "9me-10162612",
+      "price": 11.11
+     },
+     {
+      "id": "9me-1021637",
+      "price": 2.28
+     },
+     {
+      "id": "9me-1034505",
+      "price": 10.12
+     },
+     {
+      "id": "9me-1035785",
+      "price": 7.92
+     },
+     {
+      "id": "9me-10358701",
+      "price": 21.62
+     }
+    ]
+   },
+   {
+    "name": "GASKET",
+    "count": 307,
+    "entries": [
+     {
+      "id": "9me-12714621",
+      "price": 14.19
+     },
+     {
+      "id": "9me-258m2010475",
+      "price": 0.77
+     },
+     {
+      "id": "9me-27151724",
+      "price": 5.21
+     },
+     {
+      "id": "9me-2716158009",
+      "price": 5.56
+     },
+     {
+      "id": "9me-2716158010",
+      "price": 11
+     },
+     {
+      "id": "9me-2716158011",
+      "price": 6.55
+     },
+     {
+      "id": "9me-2716158017",
+      "price": 5.85
+     },
+     {
+      "id": "9me-27161582",
+      "price": 4.24
+     }
+    ]
+   },
+   {
+    "name": "O-RING",
+    "count": 223,
+    "entries": [
+     {
+      "id": "9ho-16073-zz5-003",
+      "price": 11.25
+     },
+     {
+      "id": "9ho-16075-zw5-000",
+      "price": 12.32
+     },
+     {
+      "id": "9ho-16078-zy3-000",
+      "price": 25.75
+     },
+     {
+      "id": "9ho-91318-zv5-822",
+      "price": 8.02
+     },
+     {
+      "id": "9me-2526318t",
+      "price": 5.17
+     },
+     {
+      "id": "9me-25851815006",
+      "price": 9.82
+     },
+     {
+      "id": "9me-258m0065566",
+      "price": 1.62
+     },
+     {
+      "id": "9me-258m0087846",
+      "price": 3.3
+     }
+    ]
+   },
+   {
+    "name": "WASHER",
+    "count": 165,
+    "entries": [
+     {
+      "id": "9ho-28432-zv4-003",
+      "price": 4.5
+     },
+     {
+      "id": "9me-1213031",
+      "price": 5.73
+     },
+     {
+      "id": "9me-1216335",
+      "price": 2.48
+     },
+     {
+      "id": "9me-1216826",
+      "price": 2.75
+     },
+     {
+      "id": "9me-1219619",
+      "price": 7.1
+     },
+     {
+      "id": "9me-1220572",
+      "price": 2.26
+     },
+     {
+      "id": "9me-1228051",
+      "price": 37.95
+     },
+     {
+      "id": "9me-1228053",
+      "price": 3.96
+     }
+    ]
+   },
+   {
+    "name": "SEAL",
+    "count": 118,
+    "entries": [
+     {
+      "id": "9me-12077",
+      "price": 5.12
+     },
+     {
+      "id": "9me-12708",
+      "price": 19.75
+     },
+     {
+      "id": "9me-258m0011870",
+      "price": 32.24
+     },
+     {
+      "id": "9me-2612224",
+      "price": 32.73
+     },
+     {
+      "id": "9me-26125661",
+      "price": 30.47
+     },
+     {
+      "id": "9me-2614077",
+      "price": 40.83
+     },
+     {
+      "id": "9me-2616130",
+      "price": 26.74
+     },
+     {
+      "id": "9me-2616162",
+      "price": 17.82
+     }
+    ]
+   },
+   {
+    "name": "NUT",
+    "count": 93,
+    "entries": [
+     {
+      "id": "9me-11113161",
+      "price": 3.8
+     },
+     {
+      "id": "9me-1117224",
+      "price": 5.23
+     },
+     {
+      "id": "9me-1130506",
+      "price": 5.94
+     },
+     {
+      "id": "9me-11400211",
+      "price": 4.57
+     },
+     {
+      "id": "9me-1143528",
+      "price": 12.87
+     },
+     {
+      "id": "9me-1146335",
+      "price": 5.46
+     },
+     {
+      "id": "9me-11826135",
+      "price": 16.23
+     },
+     {
+      "id": "9me-118267118",
+      "price": 6.11
+     }
+    ]
+   },
+   {
+    "name": "SPRING",
+    "count": 88,
+    "entries": [
+     {
+      "id": "9me-2416216",
+      "price": 9.3
+     },
+     {
+      "id": "9me-2435214",
+      "price": 16.5
+     },
+     {
+      "id": "9me-24804905",
+      "price": 2.31
+     },
+     {
+      "id": "9me-248126451",
+      "price": 49.13
+     },
+     {
+      "id": "9me-248126452",
+      "price": 3.69
+     },
+     {
+      "id": "9me-248126455",
+      "price": 5.34
+     },
+     {
+      "id": "9me-248126456",
+      "price": 3.36
+     },
+     {
+      "id": "9me-2483588m",
+      "price": 89.32
+     }
+    ]
+   },
+   {
+    "name": "BOLT",
+    "count": 83,
+    "entries": [
+     {
+      "id": "9ho-90002-zw1-000",
+      "price": 7.14
+     },
+     {
+      "id": "9ho-90102-zw9-000",
+      "price": 5.3
+     },
+     {
+      "id": "9ho-90320-ge2-760",
+      "price": 4.7
+     },
+     {
+      "id": "9ho-92101-06012-4j",
+      "price": 3.03
+     },
+     {
+      "id": "9ho-95701-06040-02",
+      "price": 2.68
+     },
+     {
+      "id": "9me-1016125",
+      "price": 9.3
+     },
+     {
+      "id": "9me-10162111",
+      "price": 3.08
+     },
+     {
+      "id": "9me-10162312",
+      "price": 22
+     }
+    ]
+   },
+   {
+    "name": "OIL SEAL",
+    "count": 82,
+    "entries": [
+     {
+      "id": "9me-26161301",
+      "price": 19.95
+     },
+     {
+      "id": "9me-26161302",
+      "price": 14.41
+     },
+     {
+      "id": "9me-26161622",
+      "price": 20.8
+     },
+     {
+      "id": "9me-26803667",
+      "price": 13.09
+     },
+     {
+      "id": "9me-26803752",
+      "price": 13.31
+     },
+     {
+      "id": "9me-26853707",
+      "price": 20.13
+     },
+     {
+      "id": "9me-268537072",
+      "price": 11.06
+     },
+     {
+      "id": "9me-26879635",
+      "price": 34.82
+     }
+    ]
+   },
+   {
+    "name": "BUSHING",
+    "count": 74,
+    "entries": [
+     {
+      "id": "9me-2316176",
+      "price": 10.4
+     },
+     {
+      "id": "9me-2316176009",
+      "price": 8.09
+     },
+     {
+      "id": "9me-2316176010",
+      "price": 3.84
+     },
+     {
+      "id": "9me-2316220",
+      "price": 6.38
+     },
+     {
+      "id": "9me-23163361",
+      "price": 3.74
+     },
+     {
+      "id": "9me-2325901",
+      "price": 11.72
+     },
+     {
+      "id": "9me-2330676a1",
+      "price": 87.62
+     },
+     {
+      "id": "9me-23335891",
+      "price": 6.55
+     }
+    ]
+   },
+   {
+    "name": "GROMMET",
+    "count": 67,
+    "entries": [
+     {
+      "id": "9ho-35643-zw4-h02",
+      "price": 16.59
+     },
+     {
+      "id": "9me-238m0071559",
+      "price": 5.89
+     },
+     {
+      "id": "9me-2516117",
+      "price": 16.35
+     },
+     {
+      "id": "9me-2516823",
+      "price": 13.32
+     },
+     {
+      "id": "9me-25822556003",
+      "price": 19.64
+     },
+     {
+      "id": "9me-25883203",
+      "price": 9.96
+     },
+     {
+      "id": "9me-2589417004",
+      "price": 2.86
+     },
+     {
+      "id": "9me-25953611",
+      "price": 3.91
+     }
+    ]
+   },
+   {
+    "name": "HOSE",
+    "count": 63,
+    "entries": [
+     {
+      "id": "9me-3216012",
+      "price": 64.46
+     },
+     {
+      "id": "9me-32160211",
+      "price": 49.12
+     },
+     {
+      "id": "9me-321983389",
+      "price": 36.14
+     },
+     {
+      "id": "9me-3252481",
+      "price": 56.76
+     },
+     {
+      "id": "9me-3277245",
+      "price": 134.48
+     },
+     {
+      "id": "9me-328062091",
+      "price": 83.94
+     },
+     {
+      "id": "9me-328062215",
+      "price": 108.24
+     },
+     {
+      "id": "9me-32806433",
+      "price": 86.57
+     }
+    ]
+   },
+   {
+    "name": "BEARING",
+    "count": 62,
+    "entries": [
+     {
+      "id": "9me-2319606",
+      "price": 7.59
+     },
+     {
+      "id": "9me-2342080t01",
+      "price": 3.3
+     },
+     {
+      "id": "9me-2342139",
+      "price": 5.67
+     },
+     {
+      "id": "9me-23421402",
+      "price": 27.12
+     },
+     {
+      "id": "9me-23847637",
+      "price": 56.78
+     },
+     {
+      "id": "9me-23847638",
+      "price": 51.93
+     },
+     {
+      "id": "9me-30898101936",
+      "price": 35.92
+     },
+     {
+      "id": "9me-3130895t",
+      "price": 32.18
+     }
+    ]
+   },
+   {
+    "name": "BUSH",
+    "count": 62,
+    "entries": [
+     {
+      "id": "9vo-20-3853423-6",
+      "price": 0.97
+     },
+     {
+      "id": "9vo-20-826341-0",
+      "price": 1.38
+     },
+     {
+      "id": "9vo-20-832153-1",
+      "price": 0.65
+     },
+     {
+      "id": "brp-304352",
+      "price": 0
+     },
+     {
+      "id": "brp-304738",
+      "price": 2.63
+     },
+     {
+      "id": "brp-304862",
+      "price": 1.38
+     },
+     {
+      "id": "brp-310270",
+      "price": 3.4
+     },
+     {
+      "id": "brp-311226",
+      "price": 19.55
+     }
+    ]
+   },
+   {
+    "name": "IMPELLER",
+    "count": 60,
+    "entries": [
+     {
+      "id": "9ho-19210-zw9-a32",
+      "price": 35.41
+     },
+     {
+      "id": "9me-47161542",
+      "price": 62.45
+     },
+     {
+      "id": "9me-4759362t1",
+      "price": 83.93
+     },
+     {
+      "id": "9me-478037481",
+      "price": 39.82
+     },
+     {
+      "id": "9me-4784027t",
+      "price": 41.48
+     },
+     {
+      "id": "9me-4784797m",
+      "price": 55.33
+     },
+     {
+      "id": "9me-4789980",
+      "price": 32.78
+     },
+     {
+      "id": "9me-4789981",
+      "price": 35.32
+     }
+    ]
+   },
+   {
+    "name": "WASHER, PLATE",
+    "count": 60,
+    "entries": [
+     {
+      "id": "yam-90201-03313",
+      "price": 3.74
+     },
+     {
+      "id": "yam-90201-06m30",
+      "price": 4.97
+     },
+     {
+      "id": "yam-90201-06m31",
+      "price": 2.95
+     },
+     {
+      "id": "yam-90201-08818",
+      "price": 18.14
+     },
+     {
+      "id": "yam-90201-08m03",
+      "price": 7.79
+     },
+     {
+      "id": "yam-90201-08m07",
+      "price": 5.68
+     },
+     {
+      "id": "yam-90201-08m14",
+      "price": 10.8
+     },
+     {
+      "id": "yam-90201-08m54",
+      "price": 7
+     }
+    ]
+   },
+   {
+    "name": "O RING",
+    "count": 57,
+    "entries": [
+     {
+      "id": "9ho-16918-zy3-003",
+      "price": 14.5
+     },
+     {
+      "id": "9ho-91301-216-000",
+      "price": 7.42
+     },
+     {
+      "id": "9ho-91301-zg3-000",
+      "price": 7.12
+     },
+     {
+      "id": "9ho-91308-mj0-003",
+      "price": 10.43
+     },
+     {
+      "id": "9ho-91351-740-003",
+      "price": 6.02
+     },
+     {
+      "id": "9ho-91353-mb0-003",
+      "price": 9.75
+     },
+     {
+      "id": "9me-2511332",
+      "price": 13.1
+     },
+     {
+      "id": "9me-2516131",
+      "price": 8.97
+     }
+    ]
+   },
+   {
+    "name": "WATER PUMP REPAIR KIT",
+    "count": 53,
+    "entries": [
+     {
+      "id": "9ho-06193-zv5-010",
+      "price": 109.34
+     },
+     {
+      "id": "yam-60x-w0078-00",
+      "price": 218.46
+     },
+     {
+      "id": "yam-61a-w0078-a1",
+      "price": 202.47
+     },
+     {
+      "id": "yam-61a-w0078-a4",
+      "price": 202.36
+     },
+     {
+      "id": "yam-61n-w0078-11",
+      "price": 130.52
+     },
+     {
+      "id": "yam-61n-w0078-14",
+      "price": 130.52
+     },
+     {
+      "id": "yam-63d-w0078-03",
+      "price": 127.27
+     },
+     {
+      "id": "yam-63v-w0078-00",
+      "price": 83.93
+     }
+    ]
+   },
+   {
+    "name": "THERMOSTAT",
+    "count": 52,
+    "entries": [
+     {
+      "id": "9ho-19300-zy3-023",
+      "price": 64.41
+     },
+     {
+      "id": "9ho-19300-zy6-003",
+      "price": 58.24
+     },
+     {
+      "id": "9me-803665",
+      "price": 79.46
+     },
+     {
+      "id": "9me-804540",
+      "price": 79.04
+     },
+     {
+      "id": "9me-814554t01",
+      "price": 82.39
+     },
+     {
+      "id": "9me-83282m",
+      "price": 71.28
+     },
+     {
+      "id": "9me-833072003",
+      "price": 76.23
+     },
+     {
+      "id": "9me-833072004",
+      "price": 53.88
+     }
+    ]
+   },
+   {
+    "name": "CLAMP",
+    "count": 51,
+    "entries": [
+     {
+      "id": "9me-52185",
+      "price": 21.4
+     },
+     {
+      "id": "9me-54815504212",
+      "price": 8.14
+     },
+     {
+      "id": "9me-54815504224",
+      "price": 11.66
+     },
+     {
+      "id": "9me-54815504256",
+      "price": 25.36
+     },
+     {
+      "id": "9me-54815504272",
+      "price": 5.89
+     },
+     {
+      "id": "9me-54815504320",
+      "price": 32.89
+     },
+     {
+      "id": "9me-54815504348",
+      "price": 34.93
+     },
+     {
+      "id": "9me-54815504372",
+      "price": 12.39
+     }
+    ]
+   },
+   {
+    "name": "PLATE",
+    "count": 47,
+    "entries": [
+     {
+      "id": "9me-16113",
+      "price": 34.43
+     },
+     {
+      "id": "9me-18806",
+      "price": 0
+     },
+     {
+      "id": "9me-52100",
+      "price": 8.53
+     },
+     {
+      "id": "9me-f523562",
+      "price": 15.62
+     },
+     {
+      "id": "9vo-3853628",
+      "price": 18.02
+     },
+     {
+      "id": "9vo-vop3853628",
+      "price": 13.76
+     },
+     {
+      "id": "brp-203132",
+      "price": 12
+     },
+     {
+      "id": "brp-205041",
+      "price": 1.92
+     }
+    ]
+   },
+   {
+    "name": "PLUG",
+    "count": 46,
+    "entries": [
+     {
+      "id": "9me-12154",
+      "price": 15.84
+     },
+     {
+      "id": "9me-1932652",
+      "price": 9.57
+     },
+     {
+      "id": "9me-19824473",
+      "price": 5.12
+     },
+     {
+      "id": "9me-19824928001",
+      "price": 4.74
+     },
+     {
+      "id": "9me-19855566",
+      "price": 4.07
+     },
+     {
+      "id": "9me-2212524",
+      "price": 3.52
+     },
+     {
+      "id": "9me-2248336",
+      "price": 11.33
+     },
+     {
+      "id": "9me-2288847",
+      "price": 18.7
+     }
+    ]
+   },
+   {
+    "name": "SPACER",
+    "count": 43,
+    "entries": [
+     {
+      "id": "9ho-91560-zy3-000",
+      "price": 4.12
+     },
+     {
+      "id": "9me-2333763",
+      "price": 1.65
+     },
+     {
+      "id": "9me-2335985",
+      "price": 32.89
+     },
+     {
+      "id": "9me-23420911",
+      "price": 9.57
+     },
+     {
+      "id": "9me-2366824",
+      "price": 51.59
+     },
+     {
+      "id": "9me-2378861",
+      "price": 1.6
+     },
+     {
+      "id": "9me-23806981",
+      "price": 2.53
+     },
+     {
+      "id": "9me-23816039",
+      "price": 6.61
+     }
+    ]
+   },
+   {
+    "name": "ANODE",
+    "count": 42,
+    "entries": [
+     {
+      "id": "9me-803731",
+      "price": 17.38
+     },
+     {
+      "id": "9vo-3857857",
+      "price": 126.85
+     },
+     {
+      "id": "9vo-838929",
+      "price": 14.51
+     },
+     {
+      "id": "brp-5031705",
+      "price": 20.96
+     },
+     {
+      "id": "suz-55321-87j00",
+      "price": 13.13
+     },
+     {
+      "id": "suz-55321-87j01",
+      "price": 12.17
+     },
+     {
+      "id": "suz-55321-90j01",
+      "price": 15.74
+     },
+     {
+      "id": "yam-61n-45251-01",
+      "price": 42.19
+     }
+    ]
+   },
+   {
+    "name": "RETAINER",
+    "count": 39,
+    "entries": [
+     {
+      "id": "9me-113171",
+      "price": 3.47
+     },
+     {
+      "id": "9me-12152",
+      "price": 10.12
+     },
+     {
+      "id": "9me-125522",
+      "price": 32.55
+     },
+     {
+      "id": "9me-14863844",
+      "price": 12.05
+     },
+     {
+      "id": "9me-8538021",
+      "price": 53.13
+     },
+     {
+      "id": "9me-8m0076452",
+      "price": 3.85
+     },
+     {
+      "id": "9me-8m0168577",
+      "price": 45.38
+     },
+     {
+      "id": "9vo-3840759",
+      "price": 24.77
+     }
+    ]
+   },
+   {
+    "name": "PIN",
+    "count": 36,
+    "entries": [
+     {
+      "id": "9me-1716150",
+      "price": 4.62
+     },
+     {
+      "id": "9me-1716179",
+      "price": 2.37
+     },
+     {
+      "id": "9me-17161791",
+      "price": 3.47
+     },
+     {
+      "id": "9me-1734673",
+      "price": 35.86
+     },
+     {
+      "id": "9me-1771418a2",
+      "price": 73.04
+     },
+     {
+      "id": "9me-178m0073409",
+      "price": 62.52
+     },
+     {
+      "id": "brp-203127",
+      "price": 2.63
+     },
+     {
+      "id": "brp-300402",
+      "price": 2.51
+     }
+    ]
+   },
+   {
+    "name": "COVER",
+    "count": 34,
+    "entries": [
+     {
+      "id": "9me-14408",
+      "price": 32.4
+     },
+     {
+      "id": "9me-19106",
+      "price": 47.63
+     },
+     {
+      "id": "9me-305181",
+      "price": 13.62
+     },
+     {
+      "id": "9me-41271m",
+      "price": 51.7
+     },
+     {
+      "id": "9me-54163",
+      "price": 126.67
+     },
+     {
+      "id": "9me-76254",
+      "price": 11.44
+     },
+     {
+      "id": "9me-76867",
+      "price": 225.78
+     },
+     {
+      "id": "9me-814702",
+      "price": 78.82
+     }
+    ]
+   },
+   {
+    "name": "BOLT, WITH WASHER",
+    "count": 33,
+    "entries": [
+     {
+      "id": "yam-90119-06256",
+      "price": 14.56
+     },
+     {
+      "id": "yam-90119-06283",
+      "price": 12.19
+     },
+     {
+      "id": "yam-90119-06m10",
+      "price": 6.8
+     },
+     {
+      "id": "yam-90119-06m92",
+      "price": 21.4
+     },
+     {
+      "id": "yam-90119-06ma2",
+      "price": 3.65
+     },
+     {
+      "id": "yam-90119-06ma4",
+      "price": 3.74
+     },
+     {
+      "id": "yam-90119-06ma5",
+      "price": 4.37
+     },
+     {
+      "id": "yam-90119-06me1",
+      "price": 27.35
+     }
+    ]
+   },
+   {
+    "name": "DIAPHRAGM",
+    "count": 31,
+    "entries": [
+     {
+      "id": "9me-13959635",
+      "price": 62.11
+     },
+     {
+      "id": "9me-144791",
+      "price": 25.85
+     },
+     {
+      "id": "9me-648771",
+      "price": 12.27
+     },
+     {
+      "id": "9me-812887002",
+      "price": 10.56
+     },
+     {
+      "id": "9me-853731",
+      "price": 35.31
+     },
+     {
+      "id": "9me-8537311",
+      "price": 40.96
+     },
+     {
+      "id": "9me-8537312",
+      "price": 30.91
+     },
+     {
+      "id": "brp-377327",
+      "price": 8.25
+     }
+    ]
+   },
+   {
+    "name": "COLLAR",
+    "count": 30,
+    "entries": [
+     {
+      "id": "9me-239528613",
+      "price": 6.77
+     },
+     {
+      "id": "9me-23952867",
+      "price": 4.4
+     },
+     {
+      "id": "brp-303244",
+      "price": 10.03
+     },
+     {
+      "id": "brp-316471",
+      "price": 71.12
+     },
+     {
+      "id": "yam-68v-14265-00",
+      "price": 25.13
+     },
+     {
+      "id": "yam-6c5-13716-00",
+      "price": 3.28
+     },
+     {
+      "id": "yam-6cb-11478-00",
+      "price": 141.55
+     },
+     {
+      "id": "yam-90387-05004",
+      "price": 8.02
+     }
+    ]
+   },
+   {
+    "name": "STUD",
+    "count": 29,
+    "entries": [
+     {
+      "id": "9me-1611989",
+      "price": 9.55
+     },
+     {
+      "id": "9me-1630667",
+      "price": 15.46
+     },
+     {
+      "id": "9me-1638525",
+      "price": 7.15
+     },
+     {
+      "id": "9me-1646911",
+      "price": 4.79
+     },
+     {
+      "id": "9me-1659579",
+      "price": 16.34
+     },
+     {
+      "id": "9me-1664066",
+      "price": 20.35
+     },
+     {
+      "id": "9me-1668166",
+      "price": 11.44
+     },
+     {
+      "id": "9me-1668167",
+      "price": 21.84
+     }
+    ]
+   },
+   {
+    "name": "SHIM",
+    "count": 27,
+    "entries": [
+     {
+      "id": "9ho-90540-zv5-000",
+      "price": 10.75
+     },
+     {
+      "id": "9me-15813276001",
+      "price": 4.29
+     },
+     {
+      "id": "9vo-20-3852887-3",
+      "price": 0.78
+     },
+     {
+      "id": "9vo-20-833498-9",
+      "price": 0
+     },
+     {
+      "id": "9vo-vop3582090",
+      "price": 26.38
+     },
+     {
+      "id": "brp-313164",
+      "price": 9.14
+     },
+     {
+      "id": "brp-313165",
+      "price": 9.14
+     },
+     {
+      "id": "brp-313167",
+      "price": 9.14
+     }
+    ]
+   },
+   {
+    "name": "CLIP",
+    "count": 27,
+    "entries": [
+     {
+      "id": "9me-11100",
+      "price": 3.96
+     },
+     {
+      "id": "9me-5316057",
+      "price": 3.19
+     },
+     {
+      "id": "9me-5495224",
+      "price": 3.63
+     },
+     {
+      "id": "9vo-3888543",
+      "price": 3.78
+     },
+     {
+      "id": "brp-303721",
+      "price": 6.04
+     },
+     {
+      "id": "brp-305480",
+      "price": 1.28
+     },
+     {
+      "id": "brp-307549",
+      "price": 1.72
+     },
+     {
+      "id": "brp-319951",
+      "price": 15.36
+     }
+    ]
+   },
+   {
+    "name": "CIRCLIP",
+    "count": 26,
+    "entries": [
+     {
+      "id": "brp-120110",
+      "price": 7.47
+     },
+     {
+      "id": "brp-120960",
+      "price": 3.79
+     },
+     {
+      "id": "brp-305133",
+      "price": 0
+     },
+     {
+      "id": "brp-316968",
+      "price": 3.08
+     },
+     {
+      "id": "yam-63v-15744-00",
+      "price": 2.11
+     },
+     {
+      "id": "yam-93410-12m08",
+      "price": 4.97
+     },
+     {
+      "id": "yam-93410-18m05",
+      "price": 7.79
+     },
+     {
+      "id": "yam-93410-22m11",
+      "price": 11.09
+     }
+    ]
+   },
+   {
+    "name": "GRAPHIC, REAR",
+    "count": 26,
+    "entries": [
+     {
+      "id": "yam-60a-42678-10",
+      "price": 82.68
+     },
+     {
+      "id": "yam-61t-42678-40",
+      "price": 17.09
+     },
+     {
+      "id": "yam-63p-42678-00",
+      "price": 57.68
+     },
+     {
+      "id": "yam-63p-42678-41",
+      "price": 51.33
+     },
+     {
+      "id": "yam-63p-42678-60",
+      "price": 50.11
+     },
+     {
+      "id": "yam-68v-42678-10",
+      "price": 33.17
+     },
+     {
+      "id": "yam-68v-42678-41",
+      "price": 50.11
+     },
+     {
+      "id": "yam-69w-42678-00",
+      "price": 31.02
+     }
+    ]
+   },
+   {
+    "name": "GRAPHIC, FRONT",
+    "count": 23,
+    "entries": [
+     {
+      "id": "yam-60a-42677-00",
+      "price": 31.02
+     },
+     {
+      "id": "yam-60c-42677-10",
+      "price": 33.85
+     },
+     {
+      "id": "yam-63p-42677-00",
+      "price": 33.17
+     },
+     {
+      "id": "yam-63p-42677-40",
+      "price": 33.17
+     },
+     {
+      "id": "yam-63p-42677-60",
+      "price": 33.17
+     },
+     {
+      "id": "yam-63w-42677-30",
+      "price": 24.74
+     },
+     {
+      "id": "yam-68v-42677-30",
+      "price": 33.17
+     },
+     {
+      "id": "yam-69p-42677-h0",
+      "price": 18.91
+     }
+    ]
+   },
+   {
+    "name": "BOLT, FLANGE",
+    "count": 23,
+    "entries": [
+     {
+      "id": "yam-90105-06m07",
+      "price": 4.36
+     },
+     {
+      "id": "yam-90105-06m24",
+      "price": 4.36
+     },
+     {
+      "id": "yam-90105-06m69",
+      "price": 5.68
+     },
+     {
+      "id": "yam-90105-07m05",
+      "price": 4.91
+     },
+     {
+      "id": "yam-90105-08m78",
+      "price": 10.14
+     },
+     {
+      "id": "yam-90105-09005",
+      "price": 20.91
+     },
+     {
+      "id": "yam-90105-09009",
+      "price": 17.86
+     },
+     {
+      "id": "yam-90105-10257",
+      "price": 18.18
+     }
+    ]
+   },
+   {
+    "name": "IGNITION COIL ASSY",
+    "count": 22,
+    "entries": [
+     {
+      "id": "yam-61a-85570-00",
+      "price": 123.15
+     },
+     {
+      "id": "yam-61n-85570-10",
+      "price": 119.74
+     },
+     {
+      "id": "yam-62y-85570-00",
+      "price": 202.88
+     },
+     {
+      "id": "yam-63p-82310-01",
+      "price": 339.17
+     },
+     {
+      "id": "yam-66m-85570-02",
+      "price": 159.71
+     },
+     {
+      "id": "yam-66t-85570-00",
+      "price": 194.2
+     },
+     {
+      "id": "yam-67c-85570-00",
+      "price": 216.01
+     },
+     {
+      "id": "yam-67f-85570-00",
+      "price": 389.75
+     }
+    ]
+   },
+   {
+    "name": "DAMPER, WATER SEAL",
+    "count": 22,
+    "entries": [
+     {
+      "id": "yam-63d-44367-00",
+      "price": 15.28
+     },
+     {
+      "id": "yam-63v-44365-10",
+      "price": 13.14
+     },
+     {
+      "id": "yam-63v-44365-11",
+      "price": 13.14
+     },
+     {
+      "id": "yam-63v-44366-00",
+      "price": 6.46
+     },
+     {
+      "id": "yam-646-44365-00",
+      "price": 1.98
+     },
+     {
+      "id": "yam-663-44366-01",
+      "price": 13.73
+     },
+     {
+      "id": "yam-663-44367-00",
+      "price": 15.08
+     },
+     {
+      "id": "yam-663-44367-01",
+      "price": 15.08
+     }
+    ]
+   }
+  ],
+  "serviceParts.byNameDiffPriceCount": 1115,
+  "serviceParts.total": 26378,
+  "riggingKits.byPartNumber": [],
+  "dealerFitSelections.byNameDiffPrice": [
+   {
+    "name": "Helm Master EX - Sng Eng | 6x9 Binnacle | Bolt On DES | Straight Helm",
+    "count": 2,
+    "entries": [
+     {
+      "id": "6x9-hbs00-bo-1e-nla",
+      "price": 14957
+     },
+     {
+      "id": "6x9-hbt00-bo-1e-nla",
+      "price": 15205
+     }
+    ]
+   },
+   {
+    "name": "Helm Master EX - Twin Eng | 6x9 Binnacle | Bolt On DES | Straight Helm",
+    "count": 2,
+    "entries": [
+     {
+      "id": "6x9-hbs00-bo-2e-nla",
+      "price": 26758
+     },
+     {
+      "id": "6x9-hbt00-bo-2e-nla",
+      "price": 27006
+     }
+    ]
+   },
+   {
+    "name": "Helm Master EX - Sng Eng | 6x9 Binnacle | Bolt On DES | Straight Helm | Full Maneuverability Kit",
+    "count": 2,
+    "entries": [
+     {
+      "id": "6x9-hbsfm-bo-1e-nla",
+      "price": 27073
+     },
+     {
+      "id": "6x9-hbtfm-bo-1e-nla",
+      "price": 27321
+     }
+    ]
+   },
+   {
+    "name": "Helm Master EX - Twin Eng | 6x9 Binnacle | Bolt On DES | Straight Helm | Full Maneuverability Kit",
+    "count": 2,
+    "entries": [
+     {
+      "id": "6x9-hbsfm-bo-2e-nla",
+      "price": 45064
+     },
+     {
+      "id": "6x9-hbtfm-bo-2e-nla",
+      "price": 45312
+     }
+    ]
+   },
+   {
+    "name": "Helm Master EX - Sng Eng | 6x9 Side Mnt | Bolt On DES | Straight Helm",
+    "count": 2,
+    "entries": [
+     {
+      "id": "6x9-hfs00-bo-1e-nla",
+      "price": 15692
+     },
+     {
+      "id": "6x9-hft00-bo-1e-nla",
+      "price": 15940
+     }
+    ]
+   },
+   {
+    "name": "Helm Master EX - Sng Eng | 6x9 Side Mnt | Bolt On DES | Straight Helm | Full Maneuverability Kit",
+    "count": 2,
+    "entries": [
+     {
+      "id": "6x9-hfsfm-bo-1e-nla",
+      "price": 27808
+     },
+     {
+      "id": "6x9-hftfm-bo-1e-nla",
+      "price": 28056
+     }
+    ]
+   }
+  ],
+  "dealerFitSelections.byNameDiffPriceCount": 6,
+  "motors.total": 235,
+  "motors.byNameDiffPrice": [],
+  "motors.byNameDiffPriceCount": 0,
+  "motors.duplicateModelCodes": [
+   {
+    "modelCode": "F90XB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F90XB",
+     "Yamaha - F90XB (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F300XSB / LF300XSB",
+    "count": 2,
+    "displays": [
+     "Yamaha Twin Rig - F300XSB2 / LF300XSB2 (White) 25\" Shafts",
+     "Yamaha Twin Rig - F300XSB / LF300XSB (25\" Shafts)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "T60LC",
+    "count": 2,
+    "displays": [
+     "Yamaha - T60LC",
+     "Yamaha - T60LC (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F70LB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F70LB",
+     "Yamaha - F70LB (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F90LB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F90LB (Tiller)",
+     "Yamaha - F90LB"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F40SA",
+    "count": 2,
+    "displays": [
+     "Yamaha - F40SA",
+     "Yamaha - F40SA (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F300USB2 / LF300USB2",
+    "count": 2,
+    "displays": [
+     "Yamaha Twin Rig - F300USB2 / LF300USB2 (White) 30\" Shafts",
+     "Yamaha Twin Rig - F300USB / LF300USB (30\" Shafts)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F50LC",
+    "count": 2,
+    "displays": [
+     "Yamaha - F50LC",
+     "Yamaha - F50LC (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F115XB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F115XB",
+     "Yamaha - F115XB (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F75XB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F75XB (Tiller)",
+     "Yamaha - F75XB"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F30LA",
+    "count": 2,
+    "displays": [
+     "Yamaha - F30LA",
+     "Yamaha - F30LA (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F250XSB / LF250XSB",
+    "count": 2,
+    "displays": [
+     "Yamaha Twin Rig - F250XSB2 / LF250XSB2 (White) 25\" Shafts",
+     "Yamaha Twin Rig - F250XSB / LF250XSB (25\" Shafts)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F75LB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F75LB",
+     "Yamaha - F75LB (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F40LA",
+    "count": 2,
+    "displays": [
+     "Yamaha - F40LA",
+     "Yamaha - F40LA (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F60LC",
+    "count": 2,
+    "displays": [
+     "Yamaha - F60LC",
+     "Yamaha - F60LC (Tiller)"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F250USB2 / LF250USB2",
+    "count": 2,
+    "displays": [
+     "Yamaha Twin Rig - F250USB / LF250USB (30\" Shafts)",
+     "Yamaha Twin Rig - F250USB2 / LF250USB2 (White) 30\" Shafts"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F70XB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F70XB (Tiller)",
+     "Yamaha - F70XB"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "T60XC",
+    "count": 2,
+    "displays": [
+     "Yamaha - T60XC (Tiller)",
+     "Yamaha - T60XC"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F115LB",
+    "count": 2,
+    "displays": [
+     "Yamaha - F115LB (Tiller)",
+     "Yamaha - F115LB"
+    ],
+    "samePrice": true
+   },
+   {
+    "modelCode": "F130LA",
+    "count": 2,
+    "displays": [
+     "Yamaha - F130LA",
+     "Yamaha - F130LA (Tiller)"
+    ],
+    "samePrice": true
+   }
+  ],
+  "trailers.total": 496,
+  "trailers.byNameDiffPrice": [
+   {
+    "name": "MACKAY MLJ Series Trailer - MLJ6000T-14-HB",
+    "count": 2,
+    "entries": [
+     {
+      "id": "8003",
+      "price": 18400
+     },
+     {
+      "id": "8005",
+      "price": 21400
+     }
+    ]
+   },
+   {
+    "name": "MACKAY PU Series Trailer - PU5000-14-M",
+    "count": 2,
+    "entries": [
+     {
+      "id": "8126",
+      "price": 8030
+     },
+     {
+      "id": "8128",
+      "price": 9760
+     }
+    ]
+   }
+  ],
+  "trailers.byNameDiffPriceCount": 2,
+  "variants.sameModelByDisplayDiffPrice": [],
+  "variants.sameModelByDisplayDiffPriceCount": 0
+ }
+}

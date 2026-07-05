@@ -1,0 +1,171 @@
+# HelmLogic CI
+#
+# Two jobs:
+#   gate      — runs on every push to the dev branch + every PR into main.
+#               typecheck (soft, see TODO) → unit tests (tolerated absence) → build (hard gate).
+#   synthetic — nightly (4am AEST ≈ 18:00 UTC) + manual dispatch.
+#               Builds, boots the prod server, runs the smoke-1000 synthetic pass against it,
+#               archives the evidence JSON, and appends a history row back to the repo.
+#
+# See tasks/ADMIN_TASK_ci-setup.md for setup / operations notes.
+
+name: CI
+
+on:
+  push:
+    branches:
+      - claude/app-overview-wKiZ1
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+  schedule:
+    # 18:00 UTC ≈ 4:00am AEST (Brisbane, no DST) — nightly synthetic run.
+    - cron: '0 18 * * *'
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: Gate (typecheck + unit + build)
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # TODO(T1): flip this to a hard gate (remove continue-on-error) once
+      # `npm run typecheck` is green. As of 2026-07-03 tsc reports pre-existing
+      # errors (firebase/storage export, @react-pdf Style, es2018 regex flags
+      # in test specs), so a hard gate would block every merge on old debt.
+      - name: Typecheck (soft gate — see TODO above)
+        id: typecheck
+        continue-on-error: true
+        run: npm run typecheck
+
+      - name: Typecheck summary annotation
+        if: always()
+        run: |
+          if [ "${{ steps.typecheck.outcome }}" = "failure" ]; then
+            echo "::warning title=Typecheck failing (soft gate)::npm run typecheck failed. This does NOT fail CI yet — flip to a hard gate in .github/workflows/ci.yml once T1 lands and tsc is green."
+            echo "### Typecheck: FAILING (soft gate — does not block)" >> "$GITHUB_STEP_SUMMARY"
+            echo "Flip \`continue-on-error\` off in \`.github/workflows/ci.yml\` once \`npm run typecheck\` is green." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Typecheck: PASSING — safe to flip to a hard gate" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # No unit-test suite exists yet (no vitest.config.ts, no test:unit script).
+      # This step tolerates absence gracefully and becomes a real gate the day
+      # a vitest config lands.
+      - name: Unit tests (tolerated absence)
+        run: |
+          if [ -f vitest.config.ts ]; then
+            npm run test:unit
+          else
+            echo "unit tests not yet present (no vitest.config.ts) — skipping"
+          fi
+
+      - name: Build (hard gate)
+        run: npm run build
+
+  synthetic:
+    name: Synthetic (nightly smoke-1000)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout dev branch
+        uses: actions/checkout@v4
+        with:
+          # Scheduled runs fire on the default branch; the synthetic pass and its
+          # history commits belong on the active dev branch.
+          ref: ${{ github.event_name == 'schedule' && 'claude/app-overview-wKiZ1' || github.ref }}
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Start production server
+        run: |
+          nohup npx next start -p 9002 > next-server.log 2>&1 &
+          echo "server started (pid $!)"
+
+      - name: Wait for app to be reachable
+        run: npx wait-on --timeout 120000 http://localhost:9002/login
+
+      - name: Install Python deps
+        run: pip install requests openpyxl
+
+      - name: Run smoke-1000 synthetic pass
+        run: SMOKE_APP_URL=http://localhost:9002 python3 scripts/smoke-1000.py
+
+      # scripts/smoke-1000.py exits 0 even when checks fail — it only writes the
+      # evidence JSON. Gate on the parsed result instead of the exit code.
+      - name: Gate on smoke results
+        run: |
+          python3 -c "
+          import json, sys
+          d = json.load(open('test-results/smoke-data.json'))
+          passed, failed, total = d['passed'], d['failed'], d['total']
+          print(f'smoke-1000: {passed}/{total} passed, {failed} failed')
+          with open('${GITHUB_STEP_SUMMARY}', 'a') as s:
+              s.write(f'### Synthetic smoke: {passed}/{total} passed, {failed} failed\n')
+          sys.exit(1 if failed != 0 else 0)
+          "
+
+      - name: Upload smoke evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-data-${{ github.run_id }}
+          path: test-results/smoke-data.json
+          if-no-files-found: error
+
+      - name: Append history row
+        if: always()
+        run: |
+          mkdir -p tasks/test-evidence/history
+          STAMP="$(date +%Y-%m-%d)"
+          SHORT_SHA="${GITHUB_SHA::7}"
+          cp test-results/smoke-data.json "tasks/test-evidence/history/${STAMP}-${SHORT_SHA}.json"
+          if [ ! -f tasks/test-evidence/history/HISTORY.md ]; then
+            printf '# Synthetic Smoke History\n\n| Date | Commit | Passed / Total | Failed |\n|---|---|---|---|\n' > tasks/test-evidence/history/HISTORY.md
+          fi
+          python3 -c "
+          import json
+          d = json.load(open('test-results/smoke-data.json'))
+          row = f\"| ${STAMP} | \`${SHORT_SHA}\` | {d['passed']} / {d['total']} | {d['failed']} |\n\"
+          open('tasks/test-evidence/history/HISTORY.md', 'a').write(row)
+          "
+
+      - name: Commit history back to branch
+        if: always()
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore(ci): nightly synthetic evidence ${{ github.run_id }} [skip ci]'
+          commit_user_name: github-actions[bot]
+          commit_user_email: 41898282+github-actions[bot]@users.noreply.github.com
+          commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          file_pattern: 'tasks/test-evidence/history/*'

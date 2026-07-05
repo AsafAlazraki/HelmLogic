@@ -46,19 +46,24 @@ export function buildQuoteFinancials(quote: any, discount = 0) {
   );
 
   const subtotalExclGst = boatBasePrice + optionsTotal + regoTotal + motorTotal + trailerTotal + dealerFitTotal + fitUpTotal;
-  const finalTotalPriceExclGst = subtotalExclGst - discount;
+  // FFR-8 fix (bug 1): clamp over-discounts — the final ex-GST total floors
+  // at 0 (never negative), and GST is computed from the floored value.
+  const finalTotalPriceExclGst = Math.max(0, subtotalExclGst - discount);
   const totalInclGst = Math.ceil(finalTotalPriceExclGst * 1.1);
   const gstAmount = totalInclGst - finalTotalPriceExclGst;
 
-  // Simplified cost estimates (used when no landed-cost lookup is available)
-  const boatCost = quote.variant?.cost || boatBasePrice * 0.7;
+  // Simplified cost estimates (used when no landed-cost lookup is available).
+  // FFR-8 fix (bug 2): use nullish coalescing (??) so an explicit catalog
+  // cost of 0 is honoured — only missing (undefined/null) costs fall back
+  // to the 0.7 / 0.8 / 0.85 heuristics.
+  const boatCost = quote.variant?.cost ?? boatBasePrice * 0.7;
   const optionsCost =
-    (quote.selectedOptions || []).reduce((a: number, o: any) => a + (o.cost || (o.sellPriceExclGst || 0) * 0.7), 0) +
-    (quote.customOptions || []).reduce((a: number, o: any) => a + (o.cost || (o.sellPriceExclGst || 0) * 0.8), 0);
+    (quote.selectedOptions || []).reduce((a: number, o: any) => a + (o.cost ?? (o.sellPriceExclGst || 0) * 0.7), 0) +
+    (quote.customOptions || []).reduce((a: number, o: any) => a + (o.cost ?? (o.sellPriceExclGst || 0) * 0.8), 0);
   const motorCost =
-    (quote.motor?.cost || (quote.motor?.sellPriceExclGst || 0) * 0.85) +
-    (quote.motor?.accessories || []).reduce((a: number, acc: any) => a + (acc.cost || (acc.sellPriceExclGst || 0) * 0.7), 0);
-  const trailerCost = quote.trailer?.cost || (quote.trailer?.sellPriceExclGst || 0) * 0.8;
+    (quote.motor?.cost ?? (quote.motor?.sellPriceExclGst || 0) * 0.85) +
+    (quote.motor?.accessories || []).reduce((a: number, acc: any) => a + (acc.cost ?? (acc.sellPriceExclGst || 0) * 0.7), 0);
+  const trailerCost = quote.trailer?.cost ?? (quote.trailer?.sellPriceExclGst || 0) * 0.8;
   const dealerFitCost = dealerFitTotal * 0.6;
   // v1.11 (+ expansion) — Fit-Up cost: prefer the per-snapshot cost
   // field (catalogued explicitly), otherwise 60% of catalog sell as a

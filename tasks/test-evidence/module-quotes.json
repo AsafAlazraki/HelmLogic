@@ -1,0 +1,318 @@
+{
+ "phase": "phase5b.module-quotes",
+ "generatedAt": "2026-07-03T14:06:33.777484+00:00",
+ "org": "AcFZVEFA5UDJG2hyetWT",
+ "server": "production build @ localhost:9002 (rebuilt once mid-phase for Bug 1 fix)",
+ "driver": "tests/module-quotes.spec.ts",
+ "matrix": {
+  "service-module (Service Quoting)": {
+   "quoteStart": "PASS",
+   "linesAdd": "PASS (MPF op 9HI-CON-GT $381.36 \u00b7 part 90790-BZ404 $15x2 \u00b7 engine schedule F150LC 100h $1,047/5.00hrs)",
+   "totals": "PASS ($411.36 -> $1,458.36 ex GST; PDF $1,458 + GST $147 = $1,605 incl = ceil rule)",
+   "pdf": "PASS (service-quote.pdf + page render)",
+   "lifecycle": "PASS (draft->sent->draft; terminal states locked)"
+  },
+  "M1Yf3R9igpJDxJnOVr6f (Highfield boat flow, parts+labor via Fit-Up Step 5)": {
+   "quoteStart": "PASS (CL380)",
+   "linesAdd": "PASS (imported fitUpItem '4-Pin Power Cable', installHours 0.5, op LOW-000-00128-001, qty 2)",
+   "totals": "PASS (line $158 = 2 x $79; package total +$158 exactly: 17,877 -> 18,035 ex GST)",
+   "pdf": "single Fit-up & Rigging summary line by design (Story 9.2.3; verified in prior phases)"
+  },
+  "trailers-module + TNxHmr6BmjEBeTZcrl6p (Trailers)": {
+   "quoteStart": "GAP - catalog/pricing workspace only; trailers quotable inside boat flow Step 4",
+   "linesAdd": "n/a standalone",
+   "totals": "n/a",
+   "pdf": "n/a"
+  },
+  "KddayQaREA5tdZzzXjDW (Yamaha Outboards)": {
+   "quoteStart": "GAP - catalog/pricing/promotions/fit-up tabs only; motors quotable inside boat flow Step 3",
+   "linesAdd": "n/a standalone",
+   "totals": "n/a",
+   "pdf": "n/a"
+  },
+  "fit-up-module (Fit-Up & Rigging)": {
+   "quoteStart": "GAP - catalog manager only; items quotable inside boat flow Step 5",
+   "linesAdd": "via boat flow (PASS above)",
+   "totals": "via boat total",
+   "pdf": "summary line by design"
+  },
+  "xt4zMPPE97QfT28owE1O (Stabicraft)": {
+   "quoteStart": "GAP - 'Quotation Engine ... being developed' placeholder (vendor.slug !== 'highfield' gate)",
+   "linesAdd": "unreachable",
+   "totals": "unreachable (catalog pricing IS live: 1450 Explorer $19,000 ex)",
+   "pdf": "unreachable"
+  },
+  "eKfpwpuYl0EAlAxIMPtG (Haines Signature)": {
+   "quoteStart": "GAP - same placeholder gate",
+   "linesAdd": "unreachable",
+   "totals": "unreachable + ALL 9 models $0 in MPF source (data gap)",
+   "pdf": "unreachable"
+  }
+ },
+ "gaps": [
+  "Boat quote flow is Highfield-only: hard gate vendor.slug === 'highfield' in src/app/(app)/modules/[id]/quote/[modelId]/page.tsx (~line 188); all other boat brands land on the Quotation Engine placeholder despite full v1.31 MPF catalogs/menus/price ladders.",
+  "No standalone dealer-fit / parts-only quote flow (no boat) exists anywhere in the app; the parts+labor use case is served today by service quotes (recommended path).",
+  "Trailers + motors are catalog-only standalone; quotable only inside the Highfield boat flow (Steps 4/3).",
+  "factoryOptionCodes written by the MPF boats import has NO consumer in src/ (grep-verified); Stabicraft/Haines models have empty optionalFeatures, so Step 2 would show no FO for them even after the gate is lifted.",
+  "Haines Signature pricing is $0 on all 9 models/variants/price ladders (faithful to MPF source; data gap, not app bug).",
+  "Known v1.31 bug still reproduces: /{orgSlug}/modules/.../quote/... intermittently strips ?range=&vendor= -> Context Error; non-org route is the workaround (used by tests)."
+ ],
+ "bugs": [
+  {
+   "id": "MQ-1",
+   "severity": "high",
+   "status": "FIXED in dev worktree (uncommitted) + rebuilt + re-verified",
+   "title": "Engine-schedule search crash white-screens the service module",
+   "detail": "engineServiceSchedules/5c has familyCode 6000 (number, from MPF import). engine-schedule-picker.tsx filter called (s.familyCode ?? '').toLowerCase() -> TypeError on the FIRST keystroke in the schedule search -> global error boundary replaced the whole page. Fix: String() casts on engineModel/familyCode in the filter. Evidence: module-quotes/debug-schedule-picker.png."
+  },
+  {
+   "id": "MQ-2",
+   "severity": "medium",
+   "status": "OPEN (reported, not fixed)",
+   "title": "Service-quote wizard Step 3 renders all 26,345 serviceParts rows when search is empty",
+   "detail": "PartsPicker in service-quote-flow.tsx has no virtualization or row cap; empty-search render is a multi-second DOM hang. Recommend slice(0,200) + refine-search hint or virtualization."
+  }
+ ],
+ "firestoreWriteFootprint": "2 test service quotes created via app UI, both deleted via app UI; verified read-only after (only pre-existing v1.12 walkthrough quote remains). Boat quotes never finalized.",
+ "checks": [
+  {
+   "area": "service",
+   "check": "quote-start: dashboard mounts at /modules/service-module",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "service",
+   "check": "lines-add: op 9HI-CON-GT found in catalog search",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "service",
+   "check": "lines-add: op sell $381.36 + 2.50h \u00d7 $144.55/h shown",
+   "ok": true,
+   "detail": "9HI-CON-GT Install - Highfield GT Console $381.36 2.50h \u00d7 $144.55/h"
+  },
+  {
+   "area": "service",
+   "check": "lines-add: part 90790-BZ404 found in catalog search",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "service",
+   "check": "lines-add: part sell $15 shown",
+   "ok": true,
+   "detail": "90790-BZ404 Engine Oil - 4 Stroke $15 cost $7.41"
+  },
+  {
+   "area": "service",
+   "check": "totals: create-wizard review total $411.36 ex GST",
+   "ok": true,
+   "detail": "Total (ex GST) $411.36"
+  },
+  {
+   "area": "service",
+   "check": "quote-start: created quote card appears on dashboard (status draft)",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "service",
+   "check": "lines-add: engine-schedule picker mounted (189 schedules imported)",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "service",
+   "check": "lines-add: F150LC 100h interval shows 5.0 hrs + $1,047",
+   "ok": true,
+   "detail": "100h 5.0 hrs $1,047 Add"
+  },
+  {
+   "area": "service",
+   "check": "lines-add: schedule line landed (F150LC \u2014 100h service \u00b7 5.00 hrs \u00b7 $1,047)",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "service",
+   "check": "totals: sheet total $1,458 ex GST (411.36 + 1,047 = 1,458.36)",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "service",
+   "check": "lifecycle: draft offers exactly sent/cancelled transitions",
+   "ok": true,
+   "detail": null,
+   "overrideJustification": "false-negative: check string-matched lowercase 'draft' vs CSS-uppercased 'DRAFT' innerText; the transitions themselves passed (draft->sent->draft records + service-quote-lines.png shows DRAFT badge with -> SENT / -> CANCELLED as the only options); check since fixed in the spec"
+  },
+  {
+   "area": "service",
+   "check": "lifecycle: draft \u2192 sent transition applied (audit-logged), back-transition offered",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "service",
+   "check": "lifecycle: sent \u2192 draft restores draft",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "service",
+   "check": "PDF: download event fired",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "service",
+   "check": "PDF: file saved",
+   "ok": true,
+   "detail": "5 KB"
+  },
+  {
+   "area": "service",
+   "check": "cleanup: test quote(s) deleted via app UI",
+   "ok": true,
+   "detail": "2 deleted",
+   "overrideJustification": "false-negative: the deletion toast still displayed the quote name when the gone-check ran; Firestore verified clean via read-only REST immediately after (only the pre-existing 'TEST CUSTOMER - v1.12 walkthrough' quote remains)"
+  },
+  {
+   "area": "standalone",
+   "check": "Trailers: module workspace mounts",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "standalone",
+   "check": "Trailers: standalone quote-start affordance",
+   "ok": false,
+   "detail": "none \u2014 catalog/admin surface only (GAP: not standalone-quotable)"
+  },
+  {
+   "area": "standalone",
+   "check": "Trailers Module: module workspace mounts",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "standalone",
+   "check": "Trailers Module: standalone quote-start affordance",
+   "ok": false,
+   "detail": "none \u2014 catalog/admin surface only (GAP: not standalone-quotable)"
+  },
+  {
+   "area": "standalone",
+   "check": "Yamaha Outboards: module workspace mounts",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "standalone",
+   "check": "Yamaha Outboards: standalone quote-start affordance",
+   "ok": false,
+   "detail": "none \u2014 catalog/admin surface only (GAP: not standalone-quotable)"
+  },
+  {
+   "area": "standalone",
+   "check": "Fit-Up & Rigging: module workspace mounts",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "standalone",
+   "check": "Fit-Up & Rigging: standalone quote-start affordance",
+   "ok": false,
+   "detail": "none \u2014 catalog/admin surface only (GAP: not standalone-quotable)"
+  },
+  {
+   "area": "stabicraft",
+   "check": "quote-start: 1450 Explorer Step 1 loads with variant",
+   "ok": false,
+   "detail": null
+  },
+  {
+   "area": "haines",
+   "check": "quote-start: 545F Step 1 loads with variant",
+   "ok": false,
+   "detail": null
+  },
+  {
+   "area": "boat-fitup",
+   "check": "quote-start: CL380 Step 1 loads",
+   "ok": true,
+   "detail": null,
+   "overrideJustification": "verified PASS in the final green run (1 passed, 1.7m); a stale concurrent run using the org-route (Context Error param-strip bug, gaps #6) appended a late GAP record after it"
+  },
+  {
+   "area": "boat-fitup",
+   "check": "lines-add: Step 5 Fit-Up section present",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "boat-fitup",
+   "check": "lines-add: imported fitUpItem \"4-Pin Power Cable\" (0.5 installHours, op LOW-000-00128-001) searchable",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "boat-fitup",
+   "check": "lines-add: item card shows catalog sell $79",
+   "ok": true,
+   "detail": "SIMPLE LOWRANCE 4-PIN POWER CABLE 4-Pin Power Cable $79"
+  },
+  {
+   "area": "boat-fitup",
+   "check": "lines-add: Selected fit-up items panel shows the line",
+   "ok": true,
+   "detail": null
+  },
+  {
+   "area": "boat-fitup",
+   "check": "lines-add: qty 2 line prices 2 \u00d7 $79 = $158",
+   "ok": true,
+   "detail": "lineTotal true qtyUnit true"
+  },
+  {
+   "area": "boat-fitup",
+   "check": "totals: running package total up by $158 (before 17877 \u2192 after 18035)",
+   "ok": true,
+   "detail": "delta 158"
+  },
+  {
+   "area": "boat-fitup",
+   "check": "totals: running package total up by $158 (before 10637 \u2192 after 10795)",
+   "ok": true,
+   "detail": "delta 158"
+  },
+  {
+   "area": "stabicraft",
+   "check": "quote-start GAP root cause: Quotation Engine placeholder (flow gated to Highfield)",
+   "ok": true,
+   "detail": "vendor.slug !== 'highfield' \u2192 generic fallback; MPF catalog/pricing imported but no flow consumes it"
+  },
+  {
+   "area": "stabicraft",
+   "check": "lines-add / totals / PDF",
+   "ok": false,
+   "detail": "unreachable behind the placeholder gate"
+  },
+  {
+   "area": "haines",
+   "check": "quote-start GAP root cause: Quotation Engine placeholder (flow gated to Highfield)",
+   "ok": true,
+   "detail": "vendor.slug !== 'highfield' \u2192 generic fallback; MPF catalog/pricing imported but no flow consumes it"
+  },
+  {
+   "area": "haines",
+   "check": "lines-add / totals / PDF",
+   "ok": false,
+   "detail": "unreachable behind the placeholder gate"
+  }
+ ],
+ "rawLog": "tasks/test-evidence/module-quotes-raw.json",
+ "screenshots": "tasks/test-evidence/module-quotes/"
+}

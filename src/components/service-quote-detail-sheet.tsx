@@ -39,6 +39,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Download, Send, Lock, Loader2, FileText, Wrench, Package, ClipboardCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { EngineSchedulePicker, type ScheduleOpLine } from '@/components/engine-schedule-picker';
+import { CatalogItemPicker, type CatalogAdd } from '@/components/catalog-item-picker';
 
 export type ServiceQuoteStatus = 'draft' | 'sent' | 'accepted' | 'in-progress' | 'complete' | 'cancelled';
 
@@ -172,6 +174,39 @@ export function ServiceQuoteDetailSheet({ open, onOpenChange, organisationId, qu
         }
     };
 
+    /** MPF engine-service-schedule interval → operation line. Mirrors the
+     *  create-wizard serviceOperations line shape ({ id, code, name, hours,
+     *  rate, sellPrice, cost }) and keeps totalSell/totalCost honest. */
+    const handleAddScheduleLine = async (line: ScheduleOpLine) => {
+        if (!quote || isLocked) return;
+        await patch({
+            operations: [...(quote.operations ?? []), line],
+            totalSell: (quote.totalSell ?? 0) + (line.sellPrice ?? 0),
+            totalCost: (quote.totalCost ?? 0) + (line.cost ?? 0),
+        });
+        toast({ title: 'Service interval added', description: line.name });
+    };
+
+    /** Counter-quote catalog item (motor / trailer / dealer-fit / rigging
+     *  kit) → part line, plus (rigging kits with install hours) the labour
+     *  op line — written in ONE patch so totals stay honest against the
+     *  captured `quote` snapshot. Line shapes match the create wizard's, so
+     *  totals / lifecycle / PDF need no schema change. */
+    const handleAddCatalogItem = async ({ part, installOp }: CatalogAdd) => {
+        if (!quote || isLocked) return;
+        const fields: Record<string, any> = {
+            parts: [...(quote.parts ?? []), part],
+            totalSell: (quote.totalSell ?? 0) + (part.sellPrice ?? 0) * (part.qty ?? 1) + (installOp?.sellPrice ?? 0),
+            totalCost: (quote.totalCost ?? 0) + (part.cost ?? 0) * (part.qty ?? 1) + (installOp?.cost ?? 0),
+        };
+        if (installOp) fields.operations = [...(quote.operations ?? []), installOp];
+        await patch(fields);
+        toast({
+            title: 'Catalog item added',
+            description: installOp ? `${part.name} + install labour` : part.name,
+        });
+    };
+
     const buildPdfInput = () => {
         if (!quote) return null;
         return {
@@ -191,6 +226,7 @@ export function ServiceQuoteDetailSheet({ open, onOpenChange, organisationId, qu
             parts: (quote.parts || []).map((p: any) => ({
                 id: p.id, partNumber: p.partNumber, name: p.name,
                 qty: p.qty ?? 1, sellPrice: p.sellPrice ?? 0, cost: p.cost ?? 0,
+                itemType: p.itemType ?? undefined,
             })),
             status: quote.status,
             totalSell: quote.totalSell ?? 0,
@@ -441,11 +477,31 @@ export function ServiceQuoteDetailSheet({ open, onOpenChange, organisationId, qu
                         )}
                     </section>
 
+                    {/* ── Engine service schedule (MPF) — optional one-click interval pricing ── */}
+                    {!isLocked && (
+                        <EngineSchedulePicker
+                            organisationId={organisationId}
+                            disabled={isLocked}
+                            onAdd={handleAddScheduleLine}
+                        />
+                    )}
+
+                    {/* ── Catalog items (counter quotes) — motors / trailers / dealer fit / rigging kits ── */}
+                    {!isLocked && (
+                        <CatalogItemPicker
+                            organisationId={organisationId}
+                            disabled={isLocked}
+                            onAdd={handleAddCatalogItem}
+                        />
+                    )}
+
                     {/* ── Parts ── */}
                     <section className="rounded-2xl border-2 bg-white p-4 space-y-3">
                         <div className="flex items-center gap-2">
                             <Package className="h-3 w-3 text-emerald-600" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-700">Parts · {(quote.parts ?? []).length}</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-700">
+                                {(quote.parts ?? []).some((p: any) => p.itemType) ? 'Parts & Catalog Items' : 'Parts'} · {(quote.parts ?? []).length}
+                            </p>
                         </div>
                         {(quote.parts ?? []).length === 0 ? (
                             <p className="text-[10px] text-muted-foreground italic">No parts on this quote.</p>
@@ -455,7 +511,10 @@ export function ServiceQuoteDetailSheet({ open, onOpenChange, organisationId, qu
                                     <div key={p.id} className="flex items-start justify-between gap-3 p-2 rounded-lg bg-slate-50 border">
                                         <div className="min-w-0">
                                             <p className="text-xs font-bold truncate">{p.name}{(p.qty ?? 1) > 1 ? ` ×${p.qty}` : ''}</p>
-                                            {p.partNumber && <p className="text-[10px] text-muted-foreground">{p.partNumber}</p>}
+                                            <p className="text-[10px] text-muted-foreground">
+                                                {p.itemType && <span className="uppercase font-bold text-amber-700 mr-1.5">{String(p.itemType).replace('-', ' ')}</span>}
+                                                {p.partNumber}
+                                            </p>
                                         </div>
                                         <p className="text-xs font-bold tabular-nums">{currency((p.sellPrice ?? 0) * Math.max(1, p.qty ?? 1))}</p>
                                     </div>

@@ -96,6 +96,15 @@ export const highfieldModelSchema = z.object({
      *  this in the model editor; the value snapshots onto the quote so the
      *  customer PDF reflects the bundle's identity. */
     fitUpComplexity: z.enum(['auto', 'simple', 'medium', 'complex']).optional().default('auto'),
+    /** v1.19 (Story 2.1.2) — Model-Specific Fit-Out Pricing.
+     *  Each tier optional. When set, the quote flow surfaces the explicit
+     *  package price instead of summing per-item. When all three are null
+     *  (default), behaviour is unchanged from v1.18. ex GST throughout. */
+    fitOutPricing: z.object({
+        basic: z.number().nullable().optional().default(null),
+        moderate: z.number().nullable().optional().default(null),
+        complex: z.number().nullable().optional().default(null),
+    }).passthrough().nullable().optional().default(null),
     trailerConfig: z.object({
         name: z.string().nullable().optional(),
         imageUrl: z.string().nullable().optional(),
@@ -121,7 +130,12 @@ export const highfieldModelSchema = z.object({
     }).passthrough()).optional().default([]),
 }).passthrough();
 
-type ModelFormData = z.infer<typeof highfieldModelSchema>;
+type ModelFormValues = z.infer<typeof highfieldModelSchema>;
+/** react-hook-form's Path/ArrayPath types collapse to `never` when the form type has a
+ *  top-level index signature (introduced by the schema's `.passthrough()`), which breaks
+ *  every `useFieldArray` name in this file. Strip the index signature for TYPING only —
+ *  runtime validation still passes unknown keys through untouched. */
+type ModelFormData = { [K in keyof ModelFormValues as string extends K ? never : K]: ModelFormValues[K] };
 
 const CollapsibleCardHeader = ({ title, count, onAdd }: { title: string, count?: number, onAdd?: () => void }) => (
     <div className="flex items-center justify-between py-4 px-6 border-b bg-card select-none text-left">
@@ -158,8 +172,8 @@ function SkuCompatibilityDialog({
     onClose: () => void, 
     variants: any[], 
     value: string[], 
-    onChange: (value: string[]) => void, 
-    featureName: string 
+    onChange: (value: string[]) => void,
+    featureName: string | null
 }) {
     const [search, setSearch] = useState('');
     const filteredVariants = useMemo(() => {
@@ -257,8 +271,8 @@ function OptionalFeatureItem({ index, remove, categories, variants, allFeatures 
                             )} />
                         </div>
                         <div className="flex-1 grid grid-cols-2 gap-3 text-left">
-                            <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem className="col-span-2 sm:col-span-1"><FormLabel className="text-[8px] font-black uppercase text-muted-foreground">Display Name</FormLabel><FormControl><Input placeholder="Name" className="h-9 font-bold" {...field} /></FormControl></FormItem> )} />
-                            <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem className="col-span-2 sm:col-span-1"><FormLabel className="text-[8px] font-black uppercase text-muted-foreground">Factory Code</FormLabel><FormControl><Input placeholder="CODE" className="h-9 font-mono font-bold uppercase" {...field} /></FormControl></FormItem> )} />
+                            <FormField control={control} name={`optionalFeatures.${index}.name`} render={({ field }) => ( <FormItem className="col-span-2 sm:col-span-1"><FormLabel className="text-[8px] font-black uppercase text-muted-foreground">Display Name</FormLabel><FormControl><Input placeholder="Name" className="h-9 font-bold" {...field} value={field.value ?? ''} /></FormControl></FormItem> )} />
+                            <FormField control={control} name={`optionalFeatures.${index}.code`} render={({ field }) => ( <FormItem className="col-span-2 sm:col-span-1"><FormLabel className="text-[8px] font-black uppercase text-muted-foreground">Factory Code</FormLabel><FormControl><Input placeholder="CODE" className="h-9 font-mono font-bold uppercase" {...field} value={field.value ?? ''} /></FormControl></FormItem> )} />
                             <FormField control={control} name={`optionalFeatures.${index}.category`} render={({ field }) => ( <FormItem className="col-span-2 sm:col-span-1"><FormLabel className="text-[8px] font-black uppercase text-muted-foreground">Category Matrix</FormLabel><Select onValueChange={field.onChange} value={field.value || 'none'}><FormControl><SelectTrigger className="h-9 font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl border-2"><SelectItem value="none" className="font-bold py-2 uppercase text-[9px]">Uncategorized</SelectItem>{categories.map(cat => (<SelectItem key={cat} value={cat} className="font-bold py-2 uppercase text-[9px]">{cat}</SelectItem>))}</SelectContent></Select></FormItem> )} />
                             <FormField control={control} name={`optionalFeatures.${index}.sellPriceExclGst`} render={({ field }) => ( <FormItem className="col-span-2 sm:col-span-1"><FormLabel className="text-[8px] font-black uppercase text-primary">Sell (Excl.)</FormLabel><FormControl><div className="relative"><DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-primary opacity-40" /><Input type="number" step="0.01" className="h-9 pl-7 font-black" {...field} value={field.value ?? ''} /></div></FormControl></FormItem> )} />
                         </div>
@@ -426,7 +440,8 @@ export function VisualAssetsCard({ model, isModuleView }: { model: any, isModule
     
     const coverImageUrl = watch("coverImageUrl");
     const galleryUrls = watch("galleryImageUrls") || [];
-    const { append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
+    // RHF's FieldArrayPath excludes primitive arrays (string[]) — works fine at runtime.
+    const { append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' as any });
 
     return (
         <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
@@ -647,6 +662,42 @@ function FitUpComplexityCard({ model }: { model: any }) {
                         <span className="text-[9px] text-muted-foreground italic ml-auto">(auto)</span>
                     ) : null}
                 </div>
+                {/* v1.19 (Story 2.1.2) — Model-Specific Fit-Out Pricing.
+                    Three optional ex-GST package prices that, when set,
+                    short-circuit the per-item summation in the quote flow.
+                    Leave blank to keep v1.18 behaviour. */}
+                <div data-testid="fit-out-pricing-fields" className="space-y-2 mt-4 pt-4 border-t-2 border-slate-100">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Package pricing (ex GST)</p>
+                    <p className="text-[9px] text-muted-foreground italic">Optional. When set, replaces the summed-item fit-out total in the quote. Leave blank to use the per-item catalog total.</p>
+                    <div className="grid grid-cols-3 gap-2">
+                        {(['basic', 'moderate', 'complex'] as const).map((tier) => (
+                            <FormField
+                                key={tier}
+                                control={control}
+                                name={`fitOutPricing.${tier}` as any}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[9px] font-black uppercase tracking-widest text-muted-foreground capitalize">{tier}</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                step="100"
+                                                min="0"
+                                                value={field.value ?? ''}
+                                                onChange={(e) => {
+                                                    const v = e.target.value === '' ? null : parseFloat(e.target.value);
+                                                    field.onChange(Number.isFinite(v) ? v : null);
+                                                }}
+                                                placeholder="$ —"
+                                                className="h-10 border-2 font-bold rounded-xl text-xs"
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        ))}
+                    </div>
+                </div>
             </CardContent>
         </Card>
     );
@@ -714,7 +765,9 @@ function StandardFeaturesSection() {
 // ── General Specifications (otherSpecs) ───────────────────────────────────────
 function SpecsSection() {
     const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({ control, name: "specifications.otherSpecs" });
+    // RHF's ArrayPath can't see through the nested `.passthrough()` index signature on
+    // `specifications` — the path is valid at runtime.
+    const { fields, append, remove } = useFieldArray({ control, name: "specifications.otherSpecs" as any });
     const [bulkSpecs, setBulkSpecs] = useState('');
 
     const handleBulkImport = () => {
@@ -738,11 +791,11 @@ function SpecsSection() {
                         {fields.map((field, index) => (
                             <div key={field.id} className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 border-2 border-transparent hover:border-slate-100 transition-all group/field text-left">
                                 <FormField control={control} name={`specifications.otherSpecs.${index}.label`} render={({ field }) => (
-                                    <FormItem className="flex-1"><FormControl><Input placeholder="Param" className="h-8 text-[10px] font-bold border-none bg-transparent shadow-none" {...field} /></FormControl></FormItem>
+                                    <FormItem className="flex-1"><FormControl><Input placeholder="Param" className="h-8 text-[10px] font-bold border-none bg-transparent shadow-none" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                                 )} />
                                 <div className="h-4 w-px bg-slate-200" />
                                 <FormField control={control} name={`specifications.otherSpecs.${index}.value`} render={({ field }) => (
-                                    <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-8 text-[10px] font-black text-primary border-none bg-transparent shadow-none" {...field} /></FormControl></FormItem>
+                                    <FormItem className="flex-1"><FormControl><Input placeholder="Value" className="h-8 text-[10px] font-black text-primary border-none bg-transparent shadow-none" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                                 )} />
                                 <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover/field:opacity-100 transition-opacity" onClick={() => remove(index)}>
                                     <Trash2 className="h-3.5 w-3.5" />
@@ -770,7 +823,9 @@ function SpecsSection() {
 // ── Motor Configurations ──────────────────────────────────────────────────────
 function MotorConfigurationsSection() {
     const { control } = useFormContext<ModelFormData>();
-    const { fields, append, remove } = useFieldArray({ control, name: "specifications.motorConfigurations" });
+    // RHF's ArrayPath can't see through the nested `.passthrough()` index signature on
+    // `specifications` — the path is valid at runtime.
+    const { fields, append, remove } = useFieldArray({ control, name: "specifications.motorConfigurations" as any });
     const configOptions = [
         { id: 'Single', label: 'Single Engine', engineCount: 1, engineLabels: ['Engine'] },
         { id: 'Twin', label: 'Twin Engines', engineCount: 2, engineLabels: ['Engine 1', 'Engine 2'] },
@@ -819,13 +874,13 @@ function MotorConfigurationsSection() {
                                 {((field as any).engines || []).map((_engine: any, eIdx: number) => (
                                     <div key={eIdx} className="grid grid-cols-4 gap-3 items-end bg-white p-3 rounded-xl border text-left">
                                         <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${eIdx}.minHp`} render={({ field }) => (
-                                            <FormItem className="space-y-1 text-left"><FormLabel className="text-[7px] font-black uppercase">Min HP</FormLabel><FormControl><Input type="number" className="h-7 text-[10px] font-black border-none bg-slate-50 rounded-md text-center" {...field} /></FormControl></FormItem>
+                                            <FormItem className="space-y-1 text-left"><FormLabel className="text-[7px] font-black uppercase">Min HP</FormLabel><FormControl><Input type="number" className="h-7 text-[10px] font-black border-none bg-slate-50 rounded-md text-center" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                                         )} />
                                         <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${eIdx}.maxHp`} render={({ field }) => (
-                                            <FormItem className="space-y-1 text-left"><FormLabel className="text-[7px] font-black uppercase">Max HP</FormLabel><FormControl><Input type="number" className="h-7 text-[10px] font-black border-none bg-slate-50 rounded-md text-center" {...field} /></FormControl></FormItem>
+                                            <FormItem className="space-y-1 text-left"><FormLabel className="text-[7px] font-black uppercase">Max HP</FormLabel><FormControl><Input type="number" className="h-7 text-[10px] font-black border-none bg-slate-50 rounded-md text-center" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                                         )} />
                                         <FormField control={control} name={`specifications.motorConfigurations.${index}.engines.${eIdx}.recommendedHp`} render={({ field }) => (
-                                            <FormItem className="space-y-1 text-left"><FormLabel className="text-[7px] font-black uppercase">Rec. HP</FormLabel><FormControl><Input type="number" className="h-7 text-[10px] font-black text-primary border-none bg-primary/5 rounded-md text-center" {...field} /></FormControl></FormItem>
+                                            <FormItem className="space-y-1 text-left"><FormLabel className="text-[7px] font-black uppercase">Rec. HP</FormLabel><FormControl><Input type="number" className="h-7 text-[10px] font-black text-primary border-none bg-primary/5 rounded-md text-center" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                                         )} />
                                     </div>
                                 ))}
@@ -1111,7 +1166,7 @@ export function DocumentsSection() {
                                     <FileText className="h-5 w-5 text-primary/40 shrink-0" />
                                     <div className="flex-1 min-w-0 text-left">
                                         <FormField control={control} name={`documents.${index}.name`} render={({ field }) => (
-                                            <FormControl><Input {...field} className="h-7 text-[11px] font-bold border-none bg-transparent shadow-none focus-visible:ring-0 p-0" placeholder="Document Name" /></FormControl>
+                                            <FormControl><Input {...field} value={field.value ?? ''} className="h-7 text-[11px] font-bold border-none bg-transparent shadow-none focus-visible:ring-0 p-0" placeholder="Document Name" /></FormControl>
                                         )} />
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0">
@@ -1321,7 +1376,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                                                 </div>
                                                 <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat === 'General Options' ? null : cat, imageUrl: null, code: '', applicableVariantIds: [], associatedSkus: [], associatedSeatId: null, isStandard: false })}><Plus className="h-3 w-3" /></Button>
                                             </div>
-                                            <CollapsibleContent><div className="grid gap-2 animate-in slide-in-from-top-1 duration-200 text-left">{items.map(item => (<OptionalFeatureItem key={item.field.id} index={item.idx} remove={removeOptionalFeature} categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'General Options' && n !== 'Consoles' && n !== 'Seats')} variants={variants} allFeatures={watchedOptionalFeatures} />))}</div></CollapsibleContent>
+                                            <CollapsibleContent><div className="grid gap-2 animate-in slide-in-from-top-1 duration-200 text-left">{items.map(item => (<OptionalFeatureItem key={item.field.id} index={item.idx} remove={removeOptionalFeature} categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'General Options' && n !== 'Consoles' && n !== 'Seats')} variants={variants ?? []} allFeatures={watchedOptionalFeatures} />))}</div></CollapsibleContent>
                                         </Collapsible>
                                     ))}
                                 </div>

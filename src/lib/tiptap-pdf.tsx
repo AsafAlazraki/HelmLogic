@@ -16,7 +16,8 @@
  * v1.8.2 (image upload) extends with <img> handling.
  */
 
-import { Image, Text, View, type Style } from '@react-pdf/renderer';
+import { Image, Text, View } from '@react-pdf/renderer';
+import type { Style } from '@react-pdf/types';
 import { Fragment, type ReactNode } from 'react';
 
 interface BlockNode {
@@ -247,7 +248,14 @@ function parseBlocks(html: string): BlockNode[] {
             let li: RegExpExecArray | null;
             LI_RE.lastIndex = 0;
             while ((li = LI_RE.exec(inner)) !== null) {
-                items.push({ tag: 'li', inner: li[1] });
+                // TipTap wraps every list-item's content in <p>…</p>. The
+                // inline renderer only knows <strong>/<em>/<br>/<a>, so a
+                // leftover <p> prints as literal text on the customer PDF.
+                // Unwrap: paragraph boundaries become <br/>, wrappers drop.
+                const liInner = li[1]
+                    .replace(/<\/p>\s*<p\b[^>]*>/gi, '<br/>')
+                    .replace(/<\/?p\b[^>]*>/gi, '');
+                items.push({ tag: 'li', inner: liInner });
             }
             out.push({ tag, inner, children: items });
         } else {

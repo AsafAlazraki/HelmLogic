@@ -1,0 +1,350 @@
+[
+ {
+  "area": "service",
+  "check": "quote-start: dashboard mounts at /modules/service-module",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "lines-add: op 9HI-CON-GT found in catalog search",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "lines-add: op sell $381.36 + 2.50h × $144.55/h shown",
+  "ok": true,
+  "detail": "9HI-CON-GT Install - Highfield GT Console $381.36 2.50h × $144.55/h"
+ },
+ {
+  "area": "service",
+  "check": "lines-add: part 90790-BZ404 found in catalog search",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "lines-add: part sell $15 shown",
+  "ok": true,
+  "detail": "90790-BZ404 Engine Oil - 4 Stroke $15 cost $7.41"
+ },
+ {
+  "area": "service",
+  "check": "totals: create-wizard review total $411.36 ex GST",
+  "ok": true,
+  "detail": "Total (ex GST) $411.36"
+ },
+ {
+  "area": "service",
+  "check": "quote-start: created quote card appears on dashboard (status draft)",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "lines-add: engine-schedule picker mounted (189 schedules imported)",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "quote-start: dashboard mounts at /modules/service-module",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "lines-add: op 9HI-CON-GT found in catalog search",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "lines-add: op sell $381.36 + 2.50h × $144.55/h shown",
+  "ok": true,
+  "detail": "9HI-CON-GT Install - Highfield GT Console $381.36 2.50h × $144.55/h"
+ },
+ {
+  "area": "service",
+  "check": "lines-add: part 90790-BZ404 found in catalog search",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "lines-add: part sell $15 shown",
+  "ok": true,
+  "detail": "90790-BZ404 Engine Oil - 4 Stroke $15 cost $7.41"
+ },
+ {
+  "area": "service",
+  "check": "totals: create-wizard review total $411.36 ex GST",
+  "ok": true,
+  "detail": "Total (ex GST) $411.36"
+ },
+ {
+  "area": "service",
+  "check": "quote-start: created quote card appears on dashboard (status draft)",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "lines-add: engine-schedule picker mounted (189 schedules imported)",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "quote-start: dashboard mounts at /modules/service-module",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "quote-start: created quote card appears on dashboard (status draft)",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "lines-add: engine-schedule picker mounted (189 schedules imported)",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "quote-start: dashboard mounts at /modules/service-module",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "quote-start: created quote card appears on dashboard (status draft)",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "lines-add: engine-schedule picker mounted (189 schedules imported)",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "lines-add: F150LC 100h interval shows 5.0 hrs + $1,047",
+  "ok": true,
+  "detail": "100h 5.0 hrs $1,047 Add"
+ },
+ {
+  "area": "service",
+  "check": "lines-add: schedule line landed (F150LC — 100h service · 5.00 hrs · $1,047)",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "totals: sheet total $1,458 ex GST (411.36 + 1,047 = 1,458.36)",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "lifecycle: draft offers exactly sent/cancelled transitions",
+  "ok": false
+ },
+ {
+  "area": "service",
+  "check": "lifecycle: draft → sent transition applied (audit-logged), back-transition offered",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "lifecycle: sent → draft restores draft",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "PDF: download event fired",
+  "ok": true
+ },
+ {
+  "area": "service",
+  "check": "PDF: file saved",
+  "ok": true,
+  "detail": "5 KB"
+ },
+ {
+  "area": "service",
+  "check": "cleanup: test quote(s) deleted via app UI",
+  "ok": false,
+  "detail": "2 deleted"
+ },
+ {
+  "area": "standalone",
+  "check": "Trailers: module workspace mounts",
+  "ok": true
+ },
+ {
+  "area": "standalone",
+  "check": "Trailers: standalone quote-start affordance",
+  "ok": false,
+  "detail": "none — catalog/admin surface only (GAP: not standalone-quotable)"
+ },
+ {
+  "area": "standalone",
+  "check": "Trailers Module: module workspace mounts",
+  "ok": true
+ },
+ {
+  "area": "standalone",
+  "check": "Trailers Module: standalone quote-start affordance",
+  "ok": false,
+  "detail": "none — catalog/admin surface only (GAP: not standalone-quotable)"
+ },
+ {
+  "area": "standalone",
+  "check": "Yamaha Outboards: module workspace mounts",
+  "ok": true
+ },
+ {
+  "area": "standalone",
+  "check": "Yamaha Outboards: standalone quote-start affordance",
+  "ok": false,
+  "detail": "none — catalog/admin surface only (GAP: not standalone-quotable)"
+ },
+ {
+  "area": "standalone",
+  "check": "Fit-Up & Rigging: module workspace mounts",
+  "ok": true
+ },
+ {
+  "area": "standalone",
+  "check": "Fit-Up & Rigging: standalone quote-start affordance",
+  "ok": false,
+  "detail": "none — catalog/admin surface only (GAP: not standalone-quotable)"
+ },
+ {
+  "area": "stabicraft",
+  "check": "quote-start: 1450 Explorer Step 1 loads with variant",
+  "ok": false
+ },
+ {
+  "area": "haines",
+  "check": "quote-start: 545F Step 1 loads with variant",
+  "ok": false
+ },
+ {
+  "area": "boat-fitup",
+  "check": "quote-start: CL380 Step 1 loads",
+  "ok": false
+ },
+ {
+  "area": "boat-fitup",
+  "check": "quote-start: CL380 Step 1 loads",
+  "ok": true
+ },
+ {
+  "area": "boat-fitup",
+  "check": "lines-add: Step 5 Fit-Up section present",
+  "ok": true
+ },
+ {
+  "area": "boat-fitup",
+  "check": "lines-add: imported fitUpItem \"4-Pin Power Cable\" (0.5 installHours, op LOW-000-00128-001) searchable",
+  "ok": true
+ },
+ {
+  "area": "boat-fitup",
+  "check": "lines-add: item card shows catalog sell $79",
+  "ok": true,
+  "detail": "SIMPLE LOWRANCE 4-PIN POWER CABLE 4-Pin Power Cable $79"
+ },
+ {
+  "area": "boat-fitup",
+  "check": "lines-add: Selected fit-up items panel shows the line",
+  "ok": true
+ },
+ {
+  "area": "boat-fitup",
+  "check": "lines-add: qty 2 line prices 2 × $79 = $158",
+  "ok": false,
+  "detail": "SELECTED FIT-UP ITEMS (1) Qty, price overrides + per-quote notes — operator-only"
+ },
+ {
+  "area": "boat-fitup",
+  "check": "totals: running package total up by $158 (before 17877 → after 18035)",
+  "ok": true,
+  "detail": "delta 158"
+ },
+ {
+  "area": "boat-fitup",
+  "check": "quote-start: CL380 Step 1 loads",
+  "ok": false
+ },
+ {
+  "area": "boat-fitup",
+  "check": "quote-start: CL380 Step 1 loads",
+  "ok": false
+ },
+ {
+  "area": "boat-fitup",
+  "check": "quote-start: CL380 Step 1 loads",
+  "ok": true
+ },
+ {
+  "area": "boat-fitup",
+  "check": "quote-start: CL380 Step 1 loads",
+  "ok": false
+ },
+ {
+  "area": "boat-fitup",
+  "check": "lines-add: Step 5 Fit-Up section present",
+  "ok": true
+ },
+ {
+  "area": "boat-fitup",
+  "check": "lines-add: imported fitUpItem \"4-Pin Power Cable\" (0.5 installHours, op LOW-000-00128-001) searchable",
+  "ok": true
+ },
+ {
+  "area": "boat-fitup",
+  "check": "lines-add: item card shows catalog sell $79",
+  "ok": true,
+  "detail": "SIMPLE LOWRANCE 4-PIN POWER CABLE 4-Pin Power Cable $79"
+ },
+ {
+  "area": "boat-fitup",
+  "check": "lines-add: Selected fit-up items panel shows the line",
+  "ok": true
+ },
+ {
+  "area": "boat-fitup",
+  "check": "lines-add: qty 2 line prices 2 × $79 = $158",
+  "ok": true,
+  "detail": "lineTotal true qtyUnit true"
+ },
+ {
+  "area": "boat-fitup",
+  "check": "totals: running package total up by $158 (before 10637 → after 10795)",
+  "ok": true,
+  "detail": "delta 158"
+ },
+ {
+  "area": "stabicraft",
+  "check": "quote-start: 1450 Explorer Step 1 loads with variant",
+  "ok": false
+ },
+ {
+  "area": "stabicraft",
+  "check": "quote-start GAP root cause: Quotation Engine placeholder (flow gated to Highfield)",
+  "ok": true,
+  "detail": "vendor.slug !== 'highfield' → generic fallback; MPF catalog/pricing imported but no flow consumes it"
+ },
+ {
+  "area": "stabicraft",
+  "check": "lines-add / totals / PDF",
+  "ok": false,
+  "detail": "unreachable behind the placeholder gate"
+ },
+ {
+  "area": "haines",
+  "check": "quote-start: 545F Step 1 loads with variant",
+  "ok": false
+ },
+ {
+  "area": "haines",
+  "check": "quote-start GAP root cause: Quotation Engine placeholder (flow gated to Highfield)",
+  "ok": true,
+  "detail": "vendor.slug !== 'highfield' → generic fallback; MPF catalog/pricing imported but no flow consumes it"
+ },
+ {
+  "area": "haines",
+  "check": "lines-add / totals / PDF",
+  "ok": false,
+  "detail": "unreachable behind the placeholder gate"
+ }
+]

@@ -1,7 +1,8 @@
 'use client';
 
 import { formatMetres } from '@/lib/units';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { resolvePriceLevel } from '@/lib/catalog/derive-pricing';
+import { Fragment, useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, doc, where, getDoc, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -49,8 +50,23 @@ import {
     Banknote,
     Clock,
     MessageSquare,
-    Paperclip
+    Paperclip,
+    Search,
+    Eye,
+    EyeOff
 } from 'lucide-react';
+import { isVariantRowItem,
+    classifySection,
+    modelSectionMatches,
+    routeSection,
+    itemRelevance,
+    selectVariantRows,
+    prettifySectionName,
+    type CurationContext,
+    type SectionClass,
+} from '@/lib/step5-curation';
+import { parseBoatLengthM } from '@/lib/rego-automatch';
+import { resolveItemImageUrl, findSelectionScrollIndex } from '@/lib/hero-carousel';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -96,6 +112,17 @@ import {
     evaluateCompatibility,
     type CompatibilityRule,
 } from '@/lib/compatibility-rules';
+import {
+    NsmMotorMenuSection,
+    NsmTrailerMenuSection,
+    NsmDealerFitStrip,
+    NsmRiggingKitLine,
+    StandardInclusionsCard,
+    DepositScheduleCard,
+    splitInclusionEntries,
+    type NsmMotorMenuEntry,
+    type NsmTrailerMenuEntry,
+} from '@/components/nsm-recommended';
 
 /** Normalize spacing, strip internal model-code suffixes, and extract first color from parenthetical */
 function formatOptionDisplayLabel(name: string): { base: string; color: string | null } {
@@ -122,7 +149,23 @@ interface Variant {
     cost?: number;
     sellPriceExclGst?: number;
     imageUrl?: string;
+    /** NSM Master Price File fields — written by the MPF importer. All
+     *  optional: quote flow must no-op gracefully when absent. */
+    priceLadder?: Record<string, { incGst?: number | null; exGst?: number | null } | null> | null;
+    motorMenu?: any[] | null;
+    trailerMenu?: any[] | null;
+    dealerFitLines?: string[] | null;
 }
+
+/** NSM MPF priceLadder → app price-level mapping. When a variant carries a
+ *  priceLadder (written by the MPF importer), these levels prefer the
+ *  ladder's ex-GST value. Cash / Published stay on sellPriceExclGst. */
+const PRICE_LADDER_LEVEL_MAP: Record<string, string> = {
+    hull_trade: 'trade',
+    hull_subdealer: 'subDealer',
+    hull_subdealer_excl: 'subExclusive',
+    hull_aus_sailing: 'ausSailing',
+};
 
 interface CustomOption {
     id: string;
@@ -222,13 +265,34 @@ export function HighfieldQuoteFlow({
         return motor?.['MODEL'] || motor?.['Model Name'] || motor?.['MODEL CODE'] || motor?.['Model'] || motor?.name || 'Selected Motor';
     }
 
+    /**
+     * v1.18 (Story 2.1.1) — delegate to the shared resolver in
+     * src/lib/catalog/derive-pricing.ts so motor cards + finalize payload
+     * + accessory rows all use one fallback chain. Kept as a 1-line
+     * wrapper so every call site downstream stays identical.
+     */
     function getPriceForLevel(item: any, level: string): number {
-        const fallbackPrice = item?.sellPriceExclGst || item?.['Act Sell'] || item?.['Sell Price'] || item?.['Store Price'] || item?.['NSM Retail'] || item?.PARTS || item?.RRP || item?.Price || item?.Retail || item?.Trade || 0;
-        if (!level || level === 'default' || !item?.priceLevels) {
-            return typeof fallbackPrice === 'number' ? fallbackPrice : parseFloat(fallbackPrice) || 0;
+        // NSM MPF — when the item (boat variant) carries a priceLadder,
+        // prefer its ex-GST value for trade / sub-dealer style levels.
+        // Items without a ladder (motors, accessories, trailers, legacy
+        // variants) fall straight through to the existing resolver.
+        const ladder = item?.priceLadder;
+        if (ladder && typeof ladder === 'object') {
+            const ladderKey = level ? PRICE_LADDER_LEVEL_MAP[level] : undefined;
+            if (ladderKey) {
+                const exGst = ladder?.[ladderKey]?.exGst;
+                if (typeof exGst === 'number' && Number.isFinite(exGst)) return exGst;
+            }
+            // UI-10 (2026-07-04 audit) — ladder-carrying variants NEVER
+            // resolve through item.priceLevels: boat variants carry legacy
+            // polluted priceLevels values (e.g. hull_subdealer: 31, a
+            // percent-off note, NOT dollars) that must never price a quote.
+            // Cash / Published basis is sellPriceExclGst per MPF decision D2
+            // (derived from NSM's authoritative inc-GST cash price), which
+            // the plain fallback chain resolves first.
+            return resolvePriceLevel(item, null);
         }
-        const levelPrice = item?.priceLevels?.[level];
-        return levelPrice ? (typeof levelPrice === 'number' ? levelPrice : parseFloat(levelPrice) || 0) : (typeof fallbackPrice === 'number' ? fallbackPrice : parseFloat(fallbackPrice) || 0);
+        return resolvePriceLevel(item, level);
     }
 
     // 1. Core State — seeded from initialState when duplicating an existing quote
@@ -261,6 +325,23 @@ export function HighfieldQuoteFlow({
     }, [firestore, module?.id]);
     const [selectedMotor, setSelectedMotor] = useState<any | null>(initialState?.selectedMotorObj ?? null);
     const [selectedMotorAccessoryIds, setSelectedMotorAccessoryIds] = useState<string[]>(initialState?.selectedMotorAccessoryIds ?? []);
+    // NSM MPF — when the operator picks a motor from the variant's
+    // motorMenu (NSM Recommended cards), the slot's relationship data
+    // (rigging kit / prop / engine hole) is stashed here so Step 5 +
+    // finalize can use it. Cleared whenever the motor is changed or
+    // removed via any other path.
+    const [selectedMotorMenuSlot, setSelectedMotorMenuSlot] = useState<{
+        slot: number | null;
+        motorName: string | null;
+        riggingKit: string | null;
+        propPartNo: string | null;
+        propDesc: string | null;
+        engineHole: string | null;
+        recommended: boolean;
+    } | null>(null);
+    // NSM MPF — org riggingKits doc matched by name to the selected menu
+    // slot's riggingKit. Info-only display (Step 5 header area).
+    const [riggingKitMatch, setRiggingKitMatch] = useState<{ name: string; retailExGst: number | null } | null>(null);
     // Tracks whether the operator clicked-off the auto-selected motor. The
     // auto-select effect won't re-fire while this is true, so deselect stays
     // sticky. Clears the moment they pick any motor again.
@@ -327,6 +408,17 @@ export function HighfieldQuoteFlow({
     const colorSectionRef = useRef<HTMLDivElement>(null);
     const registrationSectionRef = useRef<HTMLDivElement>(null);
     const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+    // v1.31 Step-5 curation — search box + category chips + "Show all"
+    // escape hatch (relevance narrowing must never hard-block a sale).
+    const [dfSearchInput, setDfSearchInput] = useState('');
+    const [dfSearch, setDfSearch] = useState('');
+    const [dfCatFilter, setDfCatFilter] = useState<string[]>([]);
+    const [dfShowAll, setDfShowAll] = useState(false);
+    useEffect(() => {
+        const t = setTimeout(() => setDfSearch(dfSearchInput.trim().toLowerCase()), 200);
+        return () => clearTimeout(t);
+    }, [dfSearchInput]);
 
     // 2. Data Resolvers
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -422,20 +514,17 @@ export function HighfieldQuoteFlow({
     // 3. Derived Memos (CRITICAL: Order of initialization to prevent ReferenceErrors)
 
     // v1.11 — auto-match context for the QLD rego pickers.
-    // Boat hull length: parse the metres from the model code (e.g. CL260
-    // -> 2.60m, SP700 -> 7.00m) — Highfield codes encode length×100.
-    // Falls back to a Length spec if present.
-    const boatLengthM = useMemo<number | undefined>(() => {
-        const code = String(model?.modelCode || model?.name || '');
-        const m = code.match(/(\d{3})/);
-        if (m) return parseInt(m[1], 10) / 100;
-        const lenSpec = (model?.specifications?.otherSpecs || []).find((s: any) => /length/i.test(s?.label || ''));
-        if (lenSpec) {
-            const lm = String(lenSpec.value || '').match(/(\d+(?:\.\d+)?)/);
-            if (lm) return parseFloat(lm[1]);
-        }
-        return undefined;
-    }, [model?.modelCode, model?.name, model?.specifications?.otherSpecs]);
+    // 2026-07-04 fleet-walk handoff fix: specs are authoritative; the code
+    // fallback only trusts a Highfield range prefix (CL260 → 2.60m) or a
+    // space-bounded token ("Coaster 540" → 5.4m). SKU-style codes (HBS113)
+    // no longer parse as 1.13m nonsense. Logic + tests live in
+    // src/lib/rego-automatch.ts.
+    const boatLengthM = useMemo<number | undefined>(() =>
+        parseBoatLengthM(
+            [model?.modelCode, model?.name],
+            model?.specifications?.otherSpecs,
+        ),
+    [model?.modelCode, model?.name, model?.specifications?.otherSpecs]);
 
     // Trailer ATM (kg): parse from the selected trailer's specifications /
     // name (e.g. "1,450kg", "ATM 1990kg"). Used to auto-match a trailer
@@ -648,15 +737,32 @@ export function HighfieldQuoteFlow({
         return Array.from(new Set(variants.map(v => v.material).filter(Boolean)));
     }, [variants]);
 
+    // NSM MPF — non-Highfield boat brands import as one SKU-per-model
+    // variant with no tube-material / colour axes. When no variant carries
+    // a material, skip the material picker and expose every variant as a
+    // directly selectable option (a single variant auto-selects below).
+    const hasMaterialAxis = availableMaterials.length > 0;
+
     const availableColors = useMemo(() => {
-        if (!variants || !selectedMaterial) return [];
+        if (!variants) return [];
+        if (!hasMaterialAxis) return variants;
+        if (!selectedMaterial) return [];
         return variants.filter(v => v.material === selectedMaterial);
-    }, [variants, selectedMaterial]);
+    }, [variants, selectedMaterial, hasMaterialAxis]);
 
     const activeVariant = useMemo(() => {
         if (!selectedColor || !variants) return null;
         return variants.find(v => v.id === selectedColor);
     }, [selectedColor, variants]);
+
+    // Auto-select the variant when the model has exactly one and no
+    // material picker will render (MPF single-SKU brands) — Step 1 then
+    // opens straight onto the priced build + registration sections.
+    useEffect(() => {
+        if (!variants || variants.length !== 1 || hasMaterialAxis || selectedColor) return;
+        setSelectedColor(variants[0].id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [variants, hasMaterialAxis, selectedColor]);
 
     const buildPreviewSlide = useMemo(() => {
         const imagedOptions = model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id) && f.imageUrl && f.imageUrl !== "") || [];
@@ -676,42 +782,55 @@ export function HighfieldQuoteFlow({
         );
     }, [selectedOptionIds, model.optionalFeatures]);
 
-    const resolveImageUrl = (item: any) => {
-        const path = item?.imageUrl || item?.imageLink || item?.['Image Link'] || item?.SummaryImage || item?.url || item?.image;
-        if (!path || typeof path !== 'string') return null;
-        if (path.startsWith('http') || path.startsWith('data:image')) return path;
-        if (path.includes('images/products') || path.includes('images/accessories')) {
-            return `https://www.yamaha-motor.com.au${path.startsWith('/') ? '' : '/'}${path.trim().replace(/\\/g, '/')}`;
-        }
-        return path.trim().replace(/\\/g, '/');
+    /** UI-2/UI-3/UI-5 (2026-07-04 audit) — dead-image handling. URLs that
+     *  fail to load are remembered here so every surface (hero carousel,
+     *  motor cards, trailer cards) collapses to its no-image state instead
+     *  of a giant white void with a broken-img glyph. SharePoint document
+     *  URLs (MPF import artifacts) are auth-walled and can NEVER render for
+     *  a customer, so they're treated as broken up front. */
+    const [deadImageUrls, setDeadImageUrls] = useState<Set<string>>(() => new Set());
+    const markImageDead = (url?: string | null) => {
+        if (!url) return;
+        setDeadImageUrls(prev => (prev.has(url) ? prev : new Set(prev).add(url)));
     };
+    const isRenderableImageUrl = (url?: string | null): boolean =>
+        !!url && !/\.sharepoint\.com/i.test(url) && !deadImageUrls.has(url);
+
+    /** FFR-30 — full candidate-chain resolution (imageUrl → imageLink →
+     *  'Image Link' → SummaryImage → url → image). The old inline version
+     *  picked the first POPULATED field and gave up if that one URL was
+     *  dead, so a motor with a dead imageUrl but a good SummaryImage got
+     *  no hero slide at all. Logic lives in src/lib/hero-carousel.ts with
+     *  unit coverage. */
+    const resolveImageUrl = (item: any) => resolveItemImageUrl(item, isRenderableImageUrl);
 
     const carouselSlides = useMemo(() => {
         const slides: { type: string; url?: string; content?: React.ReactNode }[] = [];
         // Only push slides that actually have a renderable URL — empty
         // strings used to push a "broken Build Preview" tile into the
         // carousel.
-        if (model.coverImageUrl) slides.push({ type: 'boat', url: model.coverImageUrl });
-        if (activeVariant?.imageUrl) slides.push({ type: 'variant', url: activeVariant.imageUrl });
+        if (isRenderableImageUrl(model.coverImageUrl)) slides.push({ type: 'boat', url: model.coverImageUrl });
+        if (isRenderableImageUrl(activeVariant?.imageUrl)) slides.push({ type: 'variant', url: activeVariant!.imageUrl });
         if (buildPreviewSlide) slides.push({ type: 'build', content: buildPreviewSlide });
         if (selectedMotor) {
             const mUrl = resolveImageUrl(selectedMotor);
             if (mUrl) slides.push({ type: 'motor', url: mUrl });
         }
-        if (selectedTrailerId && effectiveTrailerConfig?.imageUrl) slides.push({ type: 'trailer', url: effectiveTrailerConfig.imageUrl });
+        if (selectedTrailerId && isRenderableImageUrl(effectiveTrailerConfig?.imageUrl)) slides.push({ type: 'trailer', url: effectiveTrailerConfig.imageUrl });
         if (model.galleryImageUrls) {
             model.galleryImageUrls.forEach((url: string) => {
-                if (url && url !== model.coverImageUrl) slides.push({ type: 'gallery', url });
+                if (isRenderableImageUrl(url) && url !== model.coverImageUrl) slides.push({ type: 'gallery', url });
             });
         }
         return slides;
-    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId, effectiveTrailerConfig?.imageUrl]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId, effectiveTrailerConfig?.imageUrl, deadImageUrls]);
 
-    const selectedOptionsData = useMemo(() => {
+    const selectedOptionsData = useMemo<any[]>(() => {
         return model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id)) || [];
     }, [selectedOptionIds, model.optionalFeatures]);
 
-    const relevantFeatures = useMemo(() => {
+    const relevantFeatures = useMemo<any[]>(() => {
         const features = model.optionalFeatures || [];
         if (!activeVariant) return features;
         return features.filter((f: any) => {
@@ -825,74 +944,187 @@ export function HighfieldQuoteFlow({
         return ids;
     }, [selectedDealerFitData]);
 
+    /** v1.31 Step-5 curation context — feeds the named relevance rules in
+     *  src/lib/step5-curation.ts (R-HP, R-LEN, R-MATERIAL, R-CONFIG,
+     *  R-SIZE-*). Missing fields make each rule fail OPEN. */
+    const curationCtx = useMemo<CurationContext>(() => {
+        const parseNum = (v: any): number | undefined => {
+            const n = parseFloat(String(v ?? '').replace(/[^\d.]/g, ''));
+            return Number.isFinite(n) && n > 0 ? n : undefined;
+        };
+        const env: any = (model as any)?.motorEnvelope || {};
+        const cfgEngine: any = model?.specifications?.motorConfigurations?.[0]?.engines?.[0] || {};
+        // MPF envelopes are TOTAL installed HP; R-HP needs to know the hull
+        // can run twins/triples so per-engine-named items aren't hidden.
+        const shaft = String(env.shaft ?? '');
+        const cfgType = String(model?.specifications?.motorConfigurations?.[0]?.type ?? '');
+        const maxEngines =
+            /quad/i.test(shaft) || cfgType === 'Quad' ? 4 :
+            /tri/i.test(shaft) || cfgType === 'Triple' ? 3 :
+            /twin|dual/i.test(shaft) || cfgType === 'Twin' ? 2 : 1;
+        return {
+            modelName: model?.name || (model as any)?.modelCode || '',
+            vendorName: vendor?.name || '',
+            hullLengthM: boatLengthM,
+            minHp: parseNum(env.minHp) ?? parseNum(cfgEngine.minHp),
+            maxHp: parseNum(env.maxHp) ?? parseNum(cfgEngine.maxHp),
+            maxEngines,
+            engConfiguration: typeof env.engConfiguration === 'string' ? env.engConfiguration : undefined,
+            variantSku: activeVariant?.sku ?? undefined,
+            variantName: activeVariant?.name,
+            variantMaterial: activeVariant?.material,
+        };
+    }, [model, vendor?.name, boatLengthM, activeVariant]);
+
+    /** MPF section classifier + item-level curation (field report fix:
+     *  Step 5 rendered "jibberish"; 2026-07-04 audit: data-consistent but
+     *  product-senseless presentation). Classifier + named relevance rules
+     *  + per-SKU model-pack dedupe all live in src/lib/step5-curation.ts,
+     *  covered by tests/unit/step5-curation.test.ts. `dfShowAll` is the
+     *  operator escape hatch that bypasses every relevance narrowing;
+     *  already-selected items are never hidden. */
     const groupedDealerFit = useMemo(() => {
-        if (!dealerFitSelections) return [];
+        type Group = { category: string; display: string; items: any[]; hiddenCount: number; klass: SectionClass };
+        if (!dealerFitSelections) return [] as Group[];
         const motorCats = new Set(motorModuleCategories.map(c => c.toLowerCase()));
         const trailerCats = new Set(trailerModuleCategories.map(c => c.toLowerCase()));
         const currentModelId = model?.id ?? null;
+        const selectedIds = new Set(selectedDealerFitIds);
         /** v1.16 (Story 3.9.3) — model-level dealer-fit category allowlist.
          *  When set on the model, only listed categories show on Step 5. */
         const modelCatAllowlist: string[] = Array.isArray((model as any)?.applicableDealerFitCategories)
             ? (model as any).applicableDealerFitCategories.map((c: string) => c.toLowerCase())
             : [];
-        const groups = dealerFitSelections.reduce((acc: any, sel: any) => {
+        const groups: Record<string, { items: any[]; klass: SectionClass }> = {};
+        dealerFitSelections.forEach((sel: any) => {
             const cat = sel.category || 'Gear';
             // Skip motor and trailer categories — they're shown separately
-            if (motorCats.has(cat.toLowerCase())) return acc;
-            if (trailerCats.has(cat.toLowerCase())) return acc;
+            if (motorCats.has(cat.toLowerCase())) return;
+            if (trailerCats.has(cat.toLowerCase())) return;
+            // v1.31 keyword routing — outboard/tiller/prop sections render
+            // under MOTOR dealer fit, trailer-accessory sections under
+            // TRAILER dealer fit (see groupedMotorDealerFit /
+            // groupedTrailerDealerFit below).
+            if (routeSection(cat)) return;
+            // R-BOATPACK: variant-row pack items duplicate Step 1 — never browsable.
+            if (isVariantRowItem(sel.name)) return;
+            const klass = classifySection(cat);
+            if (klass === 'hidden') return;
+            // 'workshop' (engine removals, survey sublets) hides on a
+            // NEW-boat quote but stays reachable via "Show all".
+            if (klass === 'workshop' && !dfShowAll) return;
+            if (klass === 'model' && !modelSectionMatches(cat, curationCtx)) return;
             // v1.16 (3.9.3) — model-level category allowlist
-            if (modelCatAllowlist.length > 0 && !modelCatAllowlist.includes(cat.toLowerCase())) return acc;
+            if (modelCatAllowlist.length > 0 && !modelCatAllowlist.includes(cat.toLowerCase())) return;
             // v1.16 (ZidKJczh) — Dealer Fit option only model-specific. When
             // `sel.applicableModelIds` is set and non-empty, the option only
             // shows when the current model matches. Empty / missing = applies
             // to all models (existing behaviour).
             const restricted: string[] = Array.isArray(sel.applicableModelIds) ? sel.applicableModelIds : [];
-            if (restricted.length > 0 && currentModelId && !restricted.includes(currentModelId)) return acc;
-            if (!acc[cat]) acc[cat] = [];
-            acc[cat].push(sel);
-            return acc;
-        }, {});
-        return Object.entries(groups) as [string, any][];
-    }, [dealerFitSelections, motorModuleCategories, trailerModuleCategories, model?.id, (model as any)?.applicableDealerFitCategories]);
+            if (restricted.length > 0 && currentModelId && !restricted.includes(currentModelId)) return;
+            if (!groups[cat]) groups[cat] = { items: [], klass };
+            groups[cat].items.push(sel);
+        });
+        return Object.entries(groups)
+            .map(([cat, g]): Group => {
+                let items = g.items;
+                let hiddenCount = 0;
+                if (!dfShowAll) {
+                    // Named item-level relevance rules (selected items always stay).
+                    const kept = items.filter((sel: any) =>
+                        selectedIds.has(sel.id) || itemRelevance(sel.name || '', curationCtx).visible);
+                    hiddenCount += items.length - kept.length;
+                    items = kept;
+                    // Per-SKU model-pack dedupe: one card for the ACTIVE variant,
+                    // not eight near-identical material×colour rows.
+                    if (g.klass === 'model' && items.length > 1) {
+                        const chosen = new Set(selectVariantRows(items, curationCtx).map((r: any) => r.id));
+                        const deduped = items.filter((sel: any) => selectedIds.has(sel.id) || chosen.has(sel.id));
+                        hiddenCount += items.length - deduped.length;
+                        items = deduped;
+                    }
+                }
+                return { category: cat, display: prettifySectionName(cat), items, hiddenCount, klass: g.klass };
+            })
+            .filter(g => g.items.length > 0);
+    }, [dealerFitSelections, motorModuleCategories, trailerModuleCategories, model?.id, (model as any)?.applicableDealerFitCategories, curationCtx, dfShowAll, selectedDealerFitIds]);
 
+    /** Search + category-chip narrowed view of groupedDealerFit (Step-5
+     *  toolbar). Client-side, debounced; matches option name + raw + display
+     *  category. */
+    const filteredGroupedDealerFit = useMemo(() => {
+        let out = groupedDealerFit;
+        if (dfCatFilter.length > 0) {
+            const active = new Set(dfCatFilter);
+            out = out.filter(g => active.has(g.category));
+        }
+        if (dfSearch) {
+            out = out
+                .map(g => {
+                    const catHit = g.category.toLowerCase().includes(dfSearch) || g.display.toLowerCase().includes(dfSearch);
+                    const items = catHit ? g.items : g.items.filter((sel: any) => String(sel.name || '').toLowerCase().includes(dfSearch));
+                    return { ...g, items };
+                })
+                .filter(g => g.items.length > 0);
+        }
+        return out;
+    }, [groupedDealerFit, dfCatFilter, dfSearch]);
+
+    /** Motor dealer fit = module-config categories (existing) + v1.31
+     *  keyword-routed sections (OUTBOARD / TILLER / PROP — e.g. 'OUTBOARD
+     *  ACCESSORIES', 'TILLER FITTING KITS' belong beside the motor, not on
+     *  the boat step). Item-level relevance rules apply here too (an F300
+     *  cowl cover never fits a 15–30hp envelope). */
     const groupedMotorDealerFit = useMemo(() => {
-        if (!dealerFitSelections || motorModuleCategories.length === 0) return [];
+        if (!dealerFitSelections) return [] as [string, any[]][];
         const motorCatsLower = motorModuleCategories.map(c => c.toLowerCase());
+        const selectedIds = new Set(selectedDealerFitIds);
         const groups: Record<string, any[]> = {};
+        const routedOrder: string[] = [];
         dealerFitSelections.forEach((sel: any) => {
             const cat = sel.category || '';
-            if (!motorCatsLower.includes(cat.toLowerCase())) return;
-            if (!groups[cat]) groups[cat] = [];
+            const inConfig = motorCatsLower.includes(cat.toLowerCase());
+            const routed = !inConfig && routeSection(cat) === 'motor' && classifySection(cat) !== 'hidden';
+            if (!inConfig && !routed) return;
+            if (!dfShowAll && !selectedIds.has(sel.id) && !itemRelevance(sel.name || '', curationCtx).visible) return;
+            if (!groups[cat]) { groups[cat] = []; if (routed && !routedOrder.includes(cat)) routedOrder.push(cat); }
             groups[cat].push(sel);
         });
-        // Return in the order defined in motorModuleCategories
-        return motorModuleCategories
-            .filter(cat => groups[cat] || Object.keys(groups).some(k => k.toLowerCase() === cat.toLowerCase()))
-            .map(cat => {
-                const key = Object.keys(groups).find(k => k.toLowerCase() === cat.toLowerCase()) || cat;
-                return [key, groups[key] || []] as [string, any[]];
-            })
+        // Module-config order first, then routed sections alphabetically.
+        const configured = motorModuleCategories
+            .map(cat => Object.keys(groups).find(k => k.toLowerCase() === cat.toLowerCase()))
+            .filter((k): k is string => !!k);
+        const ordered = [...configured, ...routedOrder.sort((a, b) => a.localeCompare(b))];
+        return ordered
+            .map(key => [key, groups[key] || []] as [string, any[]])
             .filter(([, items]) => items.length > 0);
-    }, [dealerFitSelections, motorModuleCategories]);
+    }, [dealerFitSelections, motorModuleCategories, curationCtx, dfShowAll, selectedDealerFitIds]);
 
+    /** Trailer dealer fit = module-config categories + v1.31 keyword-routed
+     *  trailer-accessory sections ('TRAILER SETUPS' etc.). */
     const groupedTrailerDealerFit = useMemo(() => {
-        if (!dealerFitSelections || trailerModuleCategories.length === 0) return [];
+        if (!dealerFitSelections) return [] as [string, any[]][];
         const trailerCatsLower = trailerModuleCategories.map(c => c.toLowerCase());
+        const selectedIds = new Set(selectedDealerFitIds);
         const groups: Record<string, any[]> = {};
+        const routedOrder: string[] = [];
         dealerFitSelections.forEach((sel: any) => {
             const cat = sel.category || '';
-            if (!trailerCatsLower.includes(cat.toLowerCase())) return;
-            if (!groups[cat]) groups[cat] = [];
+            const inConfig = trailerCatsLower.includes(cat.toLowerCase());
+            const routed = !inConfig && routeSection(cat) === 'trailer' && classifySection(cat) !== 'hidden';
+            if (!inConfig && !routed) return;
+            if (!dfShowAll && !selectedIds.has(sel.id) && !itemRelevance(sel.name || '', curationCtx).visible) return;
+            if (!groups[cat]) { groups[cat] = []; if (routed && !routedOrder.includes(cat)) routedOrder.push(cat); }
             groups[cat].push(sel);
         });
-        return trailerModuleCategories
-            .filter(cat => groups[cat] || Object.keys(groups).some(k => k.toLowerCase() === cat.toLowerCase()))
-            .map(cat => {
-                const key = Object.keys(groups).find(k => k.toLowerCase() === cat.toLowerCase()) || cat;
-                return [key, groups[key] || []] as [string, any[]];
-            })
+        const configured = trailerModuleCategories
+            .map(cat => Object.keys(groups).find(k => k.toLowerCase() === cat.toLowerCase()))
+            .filter((k): k is string => !!k);
+        const ordered = [...configured, ...routedOrder.sort((a, b) => a.localeCompare(b))];
+        return ordered
+            .map(key => [key, groups[key] || []] as [string, any[]])
             .filter(([, items]) => items.length > 0);
-    }, [dealerFitSelections, trailerModuleCategories]);
+    }, [dealerFitSelections, trailerModuleCategories, curationCtx, dfShowAll, selectedDealerFitIds]);
 
     const totalPrice = useMemo(() => {
         let total = getPriceForLevel(activeVariant, priceLevel);
@@ -1219,6 +1451,17 @@ export function HighfieldQuoteFlow({
         }, 50);
     };
     const hasTrailer = !!effectiveTrailerConfig;
+    /** Field report (2026-07-04, FFR-22) — deselecting the trailer must also
+     *  clear the trailer REGISTRATION, otherwise the rego line survives onto
+     *  the finalized quote/summary while every other trailer artifact is
+     *  gone. Single helper so every "no trailer" path clears the same set. */
+    const clearTrailerSelection = () => {
+        setSelectedTrailerId(null);
+        setCatalogTrailerSnapshot(null);
+        setSelectedTrailerOptionIds([]);
+        setIsTrailerRegoSelected(false);
+        setTrailerRegoSnapshot(null);
+    };
     const nextStep = () => {
         if (currentStep < STEPS.length) {
             // Skip trailer step (4) if this model has no trailer configured
@@ -1251,11 +1494,20 @@ export function HighfieldQuoteFlow({
     // Auto-scroll to the motor slide only while the operator is on the
     // Motor step (3) — otherwise a pre-selected/auto-loaded motor would
     // hijack the carousel on the Boat step.
+    //
+    // FFR-30 (Asaf's SP560 video) — when the picked motor has NO
+    // renderable image there is no motor slide, and the old `if idx !==
+    // -1` bail left the carousel parked on whatever slide had shifted
+    // into the previous numeric index after embla's reInit — the slide
+    // order is …motor → trailer, so the auto-assigned trailer (REDCO
+    // brand shot) took the motor slide's place. Now the scroll target
+    // falls back variant → boat (hull imagery) and NEVER an unrelated
+    // slide type; -1 (no safe slide at all) means don't scroll.
     useEffect(() => {
         if (!api || !selectedMotor || currentStep !== 3) return;
         const scroll = () => {
-            const motorIdx = carouselSlides.findIndex(s => s.type === 'motor');
-            if (motorIdx !== -1) api.scrollTo(motorIdx);
+            const target = findSelectionScrollIndex(carouselSlides, 'motor');
+            if (target !== -1) api.scrollTo(target);
         };
         const timer = setTimeout(scroll, 150);
         api.on('reInit', scroll);
@@ -1269,8 +1521,10 @@ export function HighfieldQuoteFlow({
     useEffect(() => {
         if (!api || !selectedTrailerId || currentStep !== 4) return;
         const scroll = () => {
-            const trailerIdx = carouselSlides.findIndex(s => s.type === 'trailer');
-            if (trailerIdx !== -1) api.scrollTo(trailerIdx);
+            // FFR-30 — same fallback discipline as the motor effect: no
+            // trailer slide → land on hull imagery, never an unrelated type.
+            const target = findSelectionScrollIndex(carouselSlides, 'trailer');
+            if (target !== -1) api.scrollTo(target);
         };
         const timer = setTimeout(scroll, 150);
         api.on('reInit', scroll);
@@ -1512,32 +1766,205 @@ export function HighfieldQuoteFlow({
         return `${vendor} - ${name}`;
     };
 
+    /* ---------------------------------------------------------------- */
+    /* NSM Master Price File relationship data (all optional — every     */
+    /* memo returns [] / falls back to legacy behaviour when the MPF     */
+    /* importer hasn't written the fields yet).                          */
+    /* ---------------------------------------------------------------- */
+
+    const variantMotorMenu = useMemo<any[]>(
+        () => (Array.isArray((activeVariant as any)?.motorMenu) ? (activeVariant as any).motorMenu : []),
+        [activeVariant],
+    );
+
+    // Resolve each menu slot's motorName ('Yamaha - F225UCB') against the
+    // module's motor list: exact display-name match → case-insensitive →
+    // contains (on the model part after ' - '). Unresolved slots render
+    // as info-only cards.
+    const resolvedMotorMenu = useMemo<NsmMotorMenuEntry[]>(() => {
+        if (variantMotorMenu.length === 0) return [];
+        const findMotor = (rawName: any): any | null => {
+            const target = String(rawName || '').replace(/\s+/g, ' ').trim();
+            if (!target || motors.length === 0) return null;
+            const targetLower = target.toLowerCase();
+            let found = motors.find(m => getMotorDisplayName(m).replace(/\s+/g, ' ').trim() === target);
+            if (found) return found;
+            found = motors.find(m => getMotorDisplayName(m).replace(/\s+/g, ' ').trim().toLowerCase() === targetLower);
+            if (found) return found;
+            const parts = target.split(' - ');
+            const modelPart = (parts[parts.length - 1] || target).trim().toLowerCase();
+            if (!modelPart) return null;
+            return motors.find(m => getMotorDisplayName(m).toLowerCase().includes(modelPart)) || null;
+        };
+        return [...variantMotorMenu]
+            .sort((a, b) => (a?.slot ?? 0) - (b?.slot ?? 0))
+            .map(entry => ({ ...entry, motor: findMotor(entry?.motorName) }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [variantMotorMenu, motors]);
+
+    // Picking a menu motor mirrors the grid pick (motor + standard
+    // accessories) and additionally stashes the slot's relationship data
+    // for Step 5 + finalize.
+    const selectMenuMotor = (entry: NsmMotorMenuEntry) => {
+        if (!entry.motor) return;
+        setSelectedMotor(entry.motor);
+        setMotorExplicitlyDeselected(false);
+        setPropComesStandard(false);
+        const standardIds = (entry.motor.masterAccessories || []).filter((a: any) => a.isStandard).map((a: any) => a.id);
+        if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds);
+        setSelectedMotorMenuSlot({
+            slot: entry.slot ?? null,
+            motorName: entry.motorName ?? null,
+            riggingKit: entry.riggingKit ?? null,
+            propPartNo: entry.propPartNo ?? null,
+            propDesc: entry.propDesc ?? null,
+            engineHole: entry.engineHole ?? null,
+            recommended: entry.recommended === true,
+        });
+        setTimeout(() => motorDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400);
+    };
+
+    const variantTrailerMenu = useMemo<any[]>(
+        () => (Array.isArray((activeVariant as any)?.trailerMenu) ? (activeVariant as any).trailerMenu : []),
+        [activeVariant],
+    );
+
+    // Match trailer-menu names against model.trailerAssignments by name /
+    // code (exact then contains, case-insensitive). Unmatched → info chip.
+    const resolvedTrailerMenu = useMemo<NsmTrailerMenuEntry[]>(() => {
+        if (variantTrailerMenu.length === 0) return [];
+        const norm = (s: any) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        const findAssignment = (label: any): any | null => {
+            const n = norm(label);
+            if (!n || trailerAssignments.length === 0) return null;
+            return (
+                trailerAssignments.find(a => norm(a?.name) === n || norm(a?.code) === n) ||
+                trailerAssignments.find(a => norm(a?.code) && n.includes(norm(a?.code))) ||
+                trailerAssignments.find(a => { const an = norm(a?.name); return !!an && (n.includes(an) || an.includes(n)); }) ||
+                null
+            );
+        };
+        return [...variantTrailerMenu]
+            .sort((a, b) => (a?.slot ?? 0) - (b?.slot ?? 0))
+            .map(entry => ({ ...entry, assignment: findAssignment(entry?.name ?? entry?.display) }));
+    }, [variantTrailerMenu, trailerAssignments]);
+
+    const variantDealerFitLines = useMemo<string[]>(
+        () => (Array.isArray((activeVariant as any)?.dealerFitLines)
+            ? (activeVariant as any).dealerFitLines.map((l: any) => String(l || '').trim()).filter(Boolean)
+            : []),
+        [activeVariant],
+    );
+
+    // Match recommended dealer-fit line names against the org's
+    // dealerFitSelections (case-insensitive trim, then contains).
+    const resolvedDealerFitLines = useMemo(() => {
+        if (variantDealerFitLines.length === 0) return [];
+        const norm = (s: any) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        const sels = dealerFitSelections || [];
+        return variantDealerFitLines.map(name => {
+            const n = norm(name);
+            const hit =
+                sels.find((s: any) => norm(s?.name) === n) ||
+                sels.find((s: any) => { const sn = norm(s?.name); return !!sn && (n.includes(sn) || sn.includes(n)); }) ||
+                null;
+            return { name, match: hit ? { id: hit.id, name: hit.name || name } : null };
+        });
+    }, [variantDealerFitLines, dealerFitSelections]);
+
+    // Standard inclusions (model.standardInclusions, MPF) merged +
+    // deduped with the legacy model.standardFeatures list.
+    const modelStandardInclusions = useMemo<string[]>(
+        () => splitInclusionEntries((model as any)?.standardInclusions),
+        [(model as any)?.standardInclusions],
+    );
+    const mergedStandardFeatures = useMemo<string[]>(() => {
+        const out: string[] = [];
+        const seen = new Set<string>();
+        for (const s of [...((model?.standardFeatures as string[]) || []), ...modelStandardInclusions]) {
+            const t = String(s || '').replace(/\s+/g, ' ').trim();
+            const k = t.toLowerCase();
+            if (!t || seen.has(k)) continue;
+            seen.add(k);
+            out.push(t);
+        }
+        return out;
+    }, [model?.standardFeatures, modelStandardInclusions]);
+
+    // Look up the org rigging-kit doc matching the selected menu slot's
+    // riggingKit name (info-only price display on Step 5). Fetch is lazy —
+    // only fires once a menu motor with a rigging kit is selected.
+    useEffect(() => {
+        const kitName = selectedMotorMenuSlot?.riggingKit;
+        if (!firestore || !orgId || !kitName) { setRiggingKitMatch(null); return; }
+        let cancelled = false;
+        (async () => {
+            try {
+                const snap = await getDocs(collection(firestore, `organisations/${orgId}/riggingKits`));
+                const norm = (s: any) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+                const target = norm(kitName);
+                const kits = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+                const kitLabel = (k: any) => k?.name || k?.desc || k?.description || '';
+                const hit =
+                    kits.find(k => norm(kitLabel(k)) === target) ||
+                    kits.find(k => { const l = norm(kitLabel(k)); return !!l && (l.includes(target) || target.includes(l)); }) ||
+                    null;
+                if (cancelled) return;
+                if (!hit) { setRiggingKitMatch(null); return; }
+                const retail = typeof hit.retailExGst === 'number' ? hit.retailExGst
+                    : typeof hit.kitSellPrice === 'number' ? hit.kitSellPrice
+                    : null;
+                setRiggingKitMatch({ name: kitLabel(hit) || kitName, retailExGst: retail });
+            } catch {
+                if (!cancelled) setRiggingKitMatch(null);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore, orgId, selectedMotorMenuSlot?.riggingKit]);
+
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
-            {/* v1.16 (pcDkqAXa) — Improved heading layout. Added the current
-                model name + step label above the stepper pills so the
-                operator always knows what they're working on. Stepper now
-                has a thin connector line between pills to read as a single
-                progression rather than 6 floating dots. */}
-            <div className="sticky top-0 z-[100] px-4 sm:px-12 py-2 sm:py-3 bg-card border-b border-slate-100 shrink-0">
-                <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-baseline gap-3 min-w-0">
-                        <h2 className="text-[10px] sm:text-xs font-black uppercase tracking-[0.3em] text-primary truncate">{model?.name ?? 'Build'}</h2>
-                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground hidden sm:inline">Step {currentStep} of {STEPS.length}</span>
-                        <span className="text-[9px] font-bold text-slate-500 hidden sm:inline truncate">· {STEPS.find(s => s.id === currentStep)?.label ?? ''}</span>
-                    </div>
-                    <button type="button" className="font-black text-destructive uppercase tracking-widest text-[9px] hover:opacity-70 transition-opacity shrink-0" onClick={() => router.push(`/modules/${module.slug || module.id}`)}>Exit Build</button>
-                </div>
-                <div className="flex items-center justify-between min-w-0 overflow-x-auto relative max-w-4xl mx-auto">
-                    <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-muted -translate-y-1/2 z-0" />
-                    <div className="absolute top-1/2 left-0 h-0.5 bg-green-500 -translate-y-1/2 z-0 transition-all" style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }} />
-                    {STEPS.map((step) => (
-                        <div key={step.id} className="flex items-center gap-2 z-10 relative bg-card pr-1">
-                            <div className={cn("h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-black transition-all border-2", currentStep === step.id ? "bg-primary border-primary text-white scale-110 shadow-md" : currentStep > step.id ? "bg-green-500 border-green-500 text-white" : "bg-muted border-transparent text-muted-foreground")}>{currentStep > step.id ? <CheckCircle2 className="h-4 w-4" /> : step.id}</div>
-                            <span className={cn("text-[10px] font-black uppercase tracking-[0.18em] hidden md:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-muted-foreground")}>{step.label}</span>
+            {/* Single-row build header. Left: model + step context. Center:
+                stepper with flex-based connector segments (no absolute lines,
+                no overflow container → no stray scrollbars on Windows).
+                Right: Exit Build pill. A thin green progress strip runs along
+                the bottom edge of the bar as the overall build progress cue. */}
+            <div className="sticky top-0 z-[100] bg-card/95 backdrop-blur-sm border-b border-slate-200/70 shadow-sm shrink-0 relative">
+                <div className="h-14 px-4 sm:px-8 flex items-center gap-4 sm:gap-6">
+                    <div className="flex items-center gap-3 min-w-0 shrink-0 sm:w-56">
+                        {/* UI-4 — long model names (e.g. "STACER - 409 ASSAULT PRO")
+                            truncate instead of painting over the step label; hover
+                            recovers the full name via title. */}
+                        <h2 className="text-sm font-black uppercase tracking-[0.22em] text-primary truncate min-w-0" title={model?.name ?? 'Build'}>{model?.name ?? 'Build'}</h2>
+                        <div className="hidden xl:flex flex-col leading-tight min-w-0 border-l border-slate-200 pl-3">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap">Step {currentStep} of {STEPS.length}</span>
+                            <span className="text-[10px] font-semibold text-slate-500 truncate">{STEPS.find(s => s.id === currentStep)?.label ?? ''}</span>
                         </div>
-                    ))}
+                    </div>
+                    <div className="flex-1 hidden sm:flex items-center justify-center min-w-0">
+                        <div className="flex items-center w-full px-2">
+                            {STEPS.map((step, i) => (
+                                <Fragment key={step.id}>
+                                    {i > 0 && <div className={cn("h-[3px] flex-1 mx-2 lg:mx-3 rounded-full transition-colors", currentStep >= step.id ? "bg-green-500" : "bg-slate-200")} />}
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <div className={cn(
+                                            "h-8 w-8 rounded-full flex items-center justify-center text-[11px] font-black transition-all",
+                                            currentStep === step.id ? "bg-primary text-white ring-4 ring-primary/15 shadow-md"
+                                                : currentStep > step.id ? "bg-green-500 text-white"
+                                                : "bg-slate-100 text-slate-400 border border-slate-200"
+                                        )}>{currentStep > step.id ? <CheckCircle2 className="h-4 w-4" /> : step.id}</div>
+                                        <span className={cn("text-[10px] font-black uppercase tracking-[0.14em] hidden lg:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-slate-400")}>{step.label}</span>
+                                    </div>
+                                </Fragment>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="sm:hidden flex-1 min-w-0 text-center">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Step {currentStep}/{STEPS.length} · {STEPS.find(s => s.id === currentStep)?.label ?? ''}</span>
+                    </div>
+                    <button type="button" className="shrink-0 h-8 px-4 rounded-full border border-destructive/25 text-destructive text-[9px] font-black uppercase tracking-widest hover:bg-destructive/5 transition-colors" onClick={() => router.push(`/modules/${module.slug || module.id}`)}>Exit Build</button>
                 </div>
+                <div className="absolute bottom-0 left-0 h-[2px] bg-green-500/80 transition-all" style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }} />
             </div>
 
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
@@ -1545,6 +1972,16 @@ export function HighfieldQuoteFlow({
                 <div className="w-full lg:w-7/12 relative flex flex-col bg-slate-50/50 overflow-hidden">
                     <div className="flex-1 px-4 sm:px-8 pt-4 sm:pt-8 pb-0 flex flex-col min-w-0">
                         <div className="relative flex-1 w-full bg-white rounded-[2rem] border-2 border-slate-100 shadow-xl overflow-hidden group">
+                            {/* UI-5 (2026-07-04 audit) — models with zero renderable imagery
+                                get an explicit placeholder instead of a bare white void with
+                                orphan carousel arrows. */}
+                            {carouselSlides.length === 0 && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-50/60">
+                                    <Ship className="h-16 w-16 text-slate-200" />
+                                    <p className="text-sm font-black uppercase tracking-[0.22em] text-slate-400">{model?.name ?? 'Build'}</p>
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-300">No imagery on file</p>
+                                </div>
+                            )}
                             <Carousel className="w-full h-full" opts={{ loop: true }} setApi={setApi}>
                                 <CarouselContent className="h-full">
                                     {carouselSlides.map((slide, idx) => (
@@ -1555,18 +1992,32 @@ export function HighfieldQuoteFlow({
                                                         live on media.highfieldboats.com which Cloudflare anti-hotlinking
                                                         blocks through the Next optimisation proxy → blank slide). See
                                                         CLAUDE.md lesson. */}
-                                                    {/* object-CONTAIN (not cover) so the whole boat fits inside the
-                                                        card with breathing room instead of being cropped edge-to-edge.
+                                                    {/* Photography (boat cover / variant / gallery): the FULL image is
+                                                        contained (nothing cropped — studio renders span edge-to-edge so
+                                                        object-cover clips bow/stern), while a blurred echo of the same
+                                                        image fills the card behind it so there are no white gutters.
+                                                        Motor + trailer product cutouts stay plain object-contain.
                                                         `unoptimized` keeps external-CDN covers from being proxy-blocked. */}
-                                                    {slide.url && <Image src={slide.url} alt="Build Preview" fill unoptimized className={cn("transition-all", (slide.type === 'motor' || slide.type === 'trailer') ? "object-contain p-6" : "object-contain p-4")} priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} />}
+                                                    {/* UI-2 (2026-07-04 audit) — onError marks the URL dead, which
+                                                        drops the slide from carouselSlides on re-render (no white
+                                                        void with a broken-img glyph in the hero). */}
+                                                    {slide.url && (slide.type === 'motor' || slide.type === 'trailer') && <Image src={slide.url} alt="Build Preview" fill unoptimized className="object-contain p-6 transition-all" priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} onError={() => markImageDead(slide.url)} />}
+                                                    {slide.url && !(slide.type === 'motor' || slide.type === 'trailer') && <>
+                                                        <Image src={slide.url} alt="" aria-hidden fill unoptimized className="object-cover blur-2xl scale-110 opacity-50" loading={idx === 0 ? undefined : 'lazy'} />
+                                                        <Image src={slide.url} alt="Build Preview" fill unoptimized className="object-contain transition-all" priority={idx === 0} loading={idx === 0 ? undefined : 'lazy'} onError={() => markImageDead(slide.url)} />
+                                                    </>}
                                                     <Button variant="ghost" size="icon" className="absolute top-6 right-6 h-10 w-10 rounded-full bg-white/20 backdrop-blur-md opacity-0 group-hover/img:opacity-100 transition-opacity text-white border-none shadow-none z-20" onClick={() => setLightboxUrl(slide.url || null)}><Maximize2 className="h-5 w-5" /></Button>
                                                 </>
                                             )}
                                         </CarouselItem>
                                     ))}
                                 </CarouselContent>
-                                <CarouselPrevious className="left-6 h-10 w-10 bg-white/90 border-2 border-slate-200 shadow-xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
-                                <CarouselNext className="right-6 h-10 w-10 bg-white/90 border-2 border-slate-200 shadow-xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
+                                {/* Arrows only make sense with 2+ slides (UI-5: orphan arrows
+                                    over an empty panel read as "broken"). */}
+                                {carouselSlides.length > 1 && <>
+                                    <CarouselPrevious className="left-6 h-10 w-10 bg-white/90 border-2 border-slate-200 shadow-xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
+                                    <CarouselNext className="right-6 h-10 w-10 bg-white/90 border-2 border-slate-200 shadow-xl hover:bg-white hover:border-primary hover:text-primary hover:scale-110 z-[110]" />
+                                </>}
                             </Carousel>
                         </div>
                     </div>
@@ -1625,6 +2076,7 @@ export function HighfieldQuoteFlow({
                         <div className="px-4 sm:px-8 pb-32 sm:pb-48 space-y-6 mt-4 min-w-0">
                             {currentStep === 1 && (
                                 <div className="space-y-8 animate-in fade-in duration-1000">
+                                    {hasMaterialAxis && (
                                     <div ref={materialSectionRef} className="space-y-4 scroll-mt-10">
                                         <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                             <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
@@ -1639,11 +2091,12 @@ export function HighfieldQuoteFlow({
                                             ))}
                                         </div>
                                     </div>
-                                    {selectedMaterial && (
+                                    )}
+                                    {(selectedMaterial || (!hasMaterialAxis && availableColors.length > 0)) && (
                                         <div ref={colorSectionRef} className="mt-12 space-y-6 animate-in slide-in-from-bottom-4 duration-1000 scroll-mt-10">
                                             <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                                 <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Hull & Tube Color</h3>
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{hasMaterialAxis ? 'Hull & Tube Color' : 'Build Configuration'}</h3>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                                 {availableColors.map((color) => (
@@ -1735,6 +2188,11 @@ export function HighfieldQuoteFlow({
                                             </ul>
                                         </div>
                                     )}
+                                    {/* NSM MPF — model.standardInclusions, merged + deduped with the
+                                        legacy standardFeatures list. Renders nothing pre-import. */}
+                                    {modelStandardInclusions.length > 0 && (
+                                        <StandardInclusionsCard items={mergedStandardFeatures} />
+                                    )}
                                     {groupedOptions.map(([cat, opts]) => {
                                         /* Seat category visibility rules:
                                          * - If a console is selected with a paired seat → show only that seat, locked
@@ -1751,7 +2209,12 @@ export function HighfieldQuoteFlow({
                                                             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
                                                         </div>
                                                         <div className="px-6 py-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 text-center">
-                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No paired seat for this console</p>
+                                                            {/* FFR-32 (Asaf field bug): consoles like the GT include their
+                                                                seating as standard (the FCT tank), so instead of the generic
+                                                                no-seat line we surface the console's own inclusion note. */}
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                                {(activeConsoleFeature as any)?.seatsIncludedNote || 'No paired seat for this console'}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 );
@@ -1858,19 +2321,32 @@ export function HighfieldQuoteFlow({
                                                 <p className="text-[10px] font-black uppercase tracking-wide leading-relaxed">Pricing not yet configured for this module — motors will show $0. Contact your admin to set up a pricing strategy.</p>
                                             </div>
                                         )}
+                                        {/* NSM MPF — recommended motor menu for this hull (variant.motorMenu).
+                                            Renders nothing when the variant has no menu (pre-import). The
+                                            existing HP-filtered grid stays below under "All compatible motors". */}
+                                        {!motorsLoading && resolvedMotorMenu.length > 0 && (
+                                            <NsmMotorMenuSection
+                                                entries={resolvedMotorMenu}
+                                                selectedMotorId={selectedMotor?.id ?? null}
+                                                onSelect={selectMenuMotor}
+                                                getPrice={(m) => getPriceForLevel(m, priceLevel)}
+                                            />
+                                        )}
                                         {motorsLoading ? <div className="flex flex-col items-center py-16 gap-3"><Loader2 className="animate-spin h-8 w-8 text-primary" /><p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground animate-pulse">Scanning Factory Datasets...</p></div> : selectedMotor ? (
                                             /* --- SELECTED MOTOR HERO --- */
                                             <div ref={motorDetailRef} className="animate-in fade-in duration-700">
                                                 <button
                                                     type="button"
-                                                    onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(true); }}
+                                                    onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(true); setSelectedMotorMenuSlot(null); }}
                                                     className="relative w-full text-left border-4 border-primary rounded-[2rem] overflow-hidden bg-white shadow-2xl ring-8 ring-primary/10 group/motor-hero"
                                                     aria-label="Click to remove motor from quote"
                                                     title="Click to remove motor (boat-only quote)"
                                                 >
                                                     <div className="relative aspect-[21/9] w-full bg-slate-50 border-b flex items-center justify-center">
+                                                        {/* UI-2 — dead image collapses to the Ship placeholder via
+                                                            markImageDead instead of a ~400px white void. */}
                                                         {resolveImageUrl(selectedMotor) ? (
-                                                            <Image src={resolveImageUrl(selectedMotor)!} alt="Motor" fill unoptimized className="object-contain p-8 mix-blend-multiply" />
+                                                            <Image src={resolveImageUrl(selectedMotor)!} alt="Motor" fill unoptimized className="object-contain p-8 mix-blend-multiply" onError={() => markImageDead(resolveImageUrl(selectedMotor))} />
                                                         ) : (
                                                             <Ship className="h-16 w-16 text-slate-200" />
                                                         )}
@@ -1905,10 +2381,10 @@ export function HighfieldQuoteFlow({
                                                     </div>
                                                 </button>
                                                 <div className="flex items-center justify-center gap-2 mt-4">
-                                                    <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-6" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(false); }}>
+                                                    <Button variant="outline" className="rounded-xl border-2 text-[10px] font-black uppercase tracking-widest h-10 px-6" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(false); setSelectedMotorMenuSlot(null); }}>
                                                         <ArrowRight className="h-3 w-3 mr-2 rotate-180" /> Choose Another Motor
                                                     </Button>
-                                                    <Button variant="ghost" className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-4 text-rose-600 hover:bg-rose-50 hover:text-rose-700" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(true); }}>
+                                                    <Button variant="ghost" className="rounded-xl text-[10px] font-black uppercase tracking-widest h-10 px-4 text-rose-600 hover:bg-rose-50 hover:text-rose-700" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(true); setSelectedMotorMenuSlot(null); }}>
                                                         <X className="h-3 w-3 mr-2" /> No Motor
                                                     </Button>
                                                 </div>
@@ -1932,10 +2408,10 @@ export function HighfieldQuoteFlow({
                                                     const mUrl = resolveImageUrl(m);
                                                     const displayName = getMotorDisplayName(m);
                                                     return (
-                                                        <button key={m.id} onClick={() => { setSelectedMotor(m); setMotorExplicitlyDeselected(false); setPropComesStandard(false); const standardIds = (m.masterAccessories || []).filter((a: any) => a.isStandard).map((a: any) => a.id); if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds); setTimeout(() => motorDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400); }} className="group relative flex flex-col border-4 rounded-[2rem] overflow-hidden transition-all bg-white shadow-2xl h-full border-transparent hover:border-primary/20">
+                                                        <button key={m.id} onClick={() => { setSelectedMotor(m); setMotorExplicitlyDeselected(false); setPropComesStandard(false); setSelectedMotorMenuSlot(null); const standardIds = (m.masterAccessories || []).filter((a: any) => a.isStandard).map((a: any) => a.id); if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds); setTimeout(() => motorDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400); }} className="group relative flex flex-col border-4 rounded-[2rem] overflow-hidden transition-all bg-white shadow-2xl h-full border-transparent hover:border-primary/20">
                                                             <div className="relative aspect-video w-full bg-slate-50 border-b flex items-center justify-center">
                                                                 {mUrl ? (
-                                                                    <Image src={mUrl} alt="Motor" fill className="object-contain p-6 mix-blend-multiply transition-transform group-hover:scale-110" />
+                                                                    <Image src={mUrl} alt="Motor" fill className="object-contain p-6 mix-blend-multiply transition-transform group-hover:scale-110" onError={() => markImageDead(mUrl)} />
                                                                 ) : (
                                                                     <Ship className="h-12 w-12 text-slate-200" />
                                                                 )}
@@ -2089,23 +2565,24 @@ export function HighfieldQuoteFlow({
                                                     </div>
                                                     {groupedMotorDealerFit.map(([cat, opts]) => (
                                                         <div key={`mdf-${cat}`} ref={el => { categoryRefs.current[`mdf-${cat}`] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
-                                                            <div className="flex items-center gap-3 bg-blue-500 px-6 py-3 rounded-2xl shadow-xl w-full">
-                                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                                            <div className="flex items-center gap-3 bg-blue-500 px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
+                                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                                                                <h3 title={cat} className="text-[10px] font-black uppercase tracking-[0.3em] text-white truncate">{prettifySectionName(cat)}</h3>
                                                             </div>
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
                                                                 {opts.map((sel: any) => {
                                                                     const isSelected = selectedDealerFitIds.includes(sel.id);
                                                                     const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
                                                                     const isPropCategory = (sel.category || '').toLowerCase() === 'propeller';
+                                                                    const imgUrl = resolveImageUrl(sel.items?.[0]?.data);
                                                                     return (
-                                                                    <button key={sel.id} onClick={() => { toggleDealerFitSelection(sel.id); if (isPropCategory && !isSelected) setPropComesStandard(false); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1 relative", isSelected ? "bg-blue-50 border-blue-500 shadow-md ring-2 ring-blue-500/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-blue-500/20")}>
+                                                                    <button key={sel.id} onClick={() => { toggleDealerFitSelection(sel.id); if (isPropCategory && !isSelected) setPropComesStandard(false); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1 relative min-w-0", isSelected ? "bg-blue-50 border-blue-500 shadow-md ring-2 ring-blue-500/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-blue-500/20")}>
                                                                         {hasOverlap && <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5"><CopyCheck className="h-3 w-3 text-amber-600" /><span className="text-[7px] font-black uppercase tracking-wide text-amber-700">Already Included</span></div>}
-                                                                        <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
-                                                                        <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                                            <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-blue-600" : "text-slate-900")}>{sel.name}</p>
+                                                                        <div className={cn("p-4 pb-2 flex flex-col items-center text-center gap-1 w-full min-w-0 flex-grow", hasOverlap && "pt-8")}>
+                                                                            <p title={sel.name} className={cn("text-[10px] font-black uppercase tracking-tight leading-tight line-clamp-3 break-words w-full", isSelected ? "text-blue-600" : "text-slate-900")}>{sel.name}</p>
                                                                             <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-blue-500/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.['Act Sell'] || i.data?.sellPriceExclGst || i.data?.['Store Price'] || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
                                                                         </div>
+                                                                        {imgUrl && <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 mt-auto"><Image src={imgUrl} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" /></div>}
                                                                     </button>
                                                                     );
                                                                 })}
@@ -2210,10 +2687,7 @@ export function HighfieldQuoteFlow({
                                                 {selectedTrailerId && (
                                                     <button
                                                         type="button"
-                                                        onClick={() => {
-                                                            setSelectedTrailerId(null);
-                                                            setCatalogTrailerSnapshot(null);
-                                                        }}
+                                                        onClick={clearTrailerSelection}
                                                         className="text-[9px] font-black uppercase tracking-widest text-white/90 bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-full border border-white/30 transition-colors"
                                                         title="Clear the trailer from this quote (boat-only)"
                                                     >
@@ -2222,6 +2696,22 @@ export function HighfieldQuoteFlow({
                                                 )}
                                             </div>
                                         </div>
+
+                                        {/* NSM MPF — recommended trailers for this hull (variant.trailerMenu).
+                                            Matched entries select the corresponding trailer assignment;
+                                            unmatched names render as info chips. Renders nothing pre-import. */}
+                                        {resolvedTrailerMenu.length > 0 && (
+                                            <NsmTrailerMenuSection
+                                                entries={resolvedTrailerMenu}
+                                                isEntryActive={(entry) =>
+                                                    !!entry.assignment
+                                                    && selectedTrailerId === 'primary-trailer'
+                                                    && catalogTrailerSnapshot?.trailerId === entry.assignment.trailerId
+                                                    && catalogTrailerSnapshot?.brandVendorId === entry.assignment.brandVendorId
+                                                }
+                                                onSelect={(entry) => { if (entry.assignment) loadAssignmentSnapshot(entry.assignment); }}
+                                            />
+                                        )}
 
                                         {/* v1.4 day-1 redesign: trailer cards come from `model.trailerAssignments`
                                             only. No catalog browse button — operators assign trailers in the
@@ -2239,10 +2729,8 @@ export function HighfieldQuoteFlow({
                                                             type="button"
                                                             onClick={() => {
                                                                 if (isActive) {
-                                                                    // Untick — clear the active trailer.
-                                                                    setSelectedTrailerId(null);
-                                                                    setCatalogTrailerSnapshot(null);
-                                                                    setSelectedTrailerOptionIds([]);
+                                                                    // Untick — clear the active trailer (incl. rego, FFR-22).
+                                                                    clearTrailerSelection();
                                                                 } else {
                                                                     loadAssignmentSnapshot(a);
                                                                 }
@@ -2254,9 +2742,11 @@ export function HighfieldQuoteFlow({
                                                                     : "border-transparent hover:border-primary/20",
                                                             )}
                                                         >
-                                                            {/* Image only renders when an imageUrl exists — no
-                                                                broken-img placeholder, no empty grey box. */}
-                                                            {a.imageUrl ? (
+                                                            {/* Image only renders when a RENDERABLE imageUrl exists — no
+                                                                broken-img placeholder, no empty grey box. UI-3: MPF-imported
+                                                                auth-walled SharePoint URLs + onError'd URLs are treated as
+                                                                absent. */}
+                                                            {isRenderableImageUrl(a.imageUrl) ? (
                                                                 <div className="relative aspect-video w-full bg-slate-50 shrink-0">
                                                                     <Image
                                                                         src={a.imageUrl}
@@ -2264,6 +2754,7 @@ export function HighfieldQuoteFlow({
                                                                         fill
                                                                         className="object-contain p-3"
                                                                         unoptimized
+                                                                        onError={() => markImageDead(a.imageUrl)}
                                                                     />
                                                                 </div>
                                                             ) : null}
@@ -2294,10 +2785,10 @@ export function HighfieldQuoteFlow({
                                             // Legacy: model has no assignments but has a `trailerConfig`.
                                             // Render the legacy single-trailer card so old data still works.
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; setSelectedTrailerId(isSelected ? null : 'primary-trailer'); if (!isSelected) setSelectedTrailerOptionIds((effectiveTrailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
-                                                    {effectiveTrailerConfig.imageUrl ? (
+                                                <button onClick={() => { const isSelected = selectedTrailerId === 'primary-trailer'; if (isSelected) { clearTrailerSelection(); } else { setSelectedTrailerId('primary-trailer'); setSelectedTrailerOptionIds((effectiveTrailerConfig?.options || []).filter((o: any) => o.isStandard).map((o: any) => o.id)); } }} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-xl border-transparent p-1 h-full", selectedTrailerId === 'primary-trailer' ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20")}>
+                                                    {isRenderableImageUrl(effectiveTrailerConfig.imageUrl) ? (
                                                         <div className="relative aspect-video w-full bg-slate-50 shrink-0">
-                                                            <Image src={effectiveTrailerConfig.imageUrl} alt="Trailer" fill className="object-contain p-4" unoptimized />
+                                                            <Image src={effectiveTrailerConfig.imageUrl} alt="Trailer" fill className="object-contain p-4" unoptimized onError={() => markImageDead(effectiveTrailerConfig.imageUrl)} />
                                                         </div>
                                                     ) : null}
                                                     <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow border-t border-slate-50">
@@ -2397,22 +2888,23 @@ export function HighfieldQuoteFlow({
                                                     </div>
                                                     {groupedTrailerDealerFit.map(([cat, opts]) => (
                                                         <div key={`tdf-${cat}`} ref={el => { categoryRefs.current[`tdf-${cat}`] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
-                                                            <div className="flex items-center gap-3 bg-amber-600 px-6 py-3 rounded-2xl shadow-xl w-full">
-                                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                                            <div className="flex items-center gap-3 bg-amber-600 px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
+                                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                                                                <h3 title={cat} className="text-[10px] font-black uppercase tracking-[0.3em] text-white truncate">{prettifySectionName(cat)}</h3>
                                                             </div>
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
                                                                 {opts.map((sel: any) => {
                                                                     const isSelected = selectedDealerFitIds.includes(sel.id);
                                                                     const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
+                                                                    const imgUrl = resolveImageUrl(sel.items?.[0]?.data);
                                                                     return (
-                                                                    <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1 relative", isSelected ? "bg-amber-50 border-amber-600 shadow-md ring-2 ring-amber-600/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-amber-600/20")}>
+                                                                    <button key={sel.id} onClick={() => toggleDealerFitSelection(sel.id)} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1 relative min-w-0", isSelected ? "bg-amber-50 border-amber-600 shadow-md ring-2 ring-amber-600/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-amber-600/20")}>
                                                                         {hasOverlap && <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5"><CopyCheck className="h-3 w-3 text-amber-600" /><span className="text-[7px] font-black uppercase tracking-wide text-amber-700">Already Included</span></div>}
-                                                                        <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
-                                                                        <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                                            <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-amber-700" : "text-slate-900")}>{sel.name}</p>
+                                                                        <div className={cn("p-4 pb-2 flex flex-col items-center text-center gap-1 w-full min-w-0 flex-grow", hasOverlap && "pt-8")}>
+                                                                            <p title={sel.name} className={cn("text-[10px] font-black uppercase tracking-tight leading-tight line-clamp-3 break-words w-full", isSelected ? "text-amber-700" : "text-slate-900")}>{sel.name}</p>
                                                                             <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-amber-600/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.['Act Sell'] || i.data?.sellPriceExclGst || i.data?.['Store Price'] || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
                                                                         </div>
+                                                                        {imgUrl && <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 mt-auto"><Image src={imgUrl} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" /></div>}
                                                                     </button>
                                                                     );
                                                                 })}
@@ -2451,38 +2943,117 @@ export function HighfieldQuoteFlow({
                             )}
                             {currentStep === 5 && (
                                 <div className="space-y-12 animate-in fade-in duration-1000 mt-4">
-                                    {dealerFitLoading ? <div className="flex justify-center py-16"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div> : groupedDealerFit.length > 0 ? (
-                                        groupedDealerFit.map(([cat, opts]) => (
-                                            <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 scroll-mt-10">
+                                    {/* NSM MPF — recommended dealer-fit lines for this boat
+                                        (variant.dealerFitLines). Matched names toggle the existing
+                                        dealerFitSelections; unmatched render as info chips. Renders
+                                        nothing pre-import. */}
+                                    {!dealerFitLoading && resolvedDealerFitLines.length > 0 && (
+                                        <NsmDealerFitStrip
+                                            lines={resolvedDealerFitLines}
+                                            selectedIds={selectedDealerFitIds}
+                                            onToggle={toggleDealerFitSelection}
+                                        />
+                                    )}
+                                    {/* v1.31 Step-5 curation toolbar — search + category chips +
+                                        "Show all" escape hatch. Relevance narrowing (named R-* rules
+                                        in src/lib/step5-curation.ts) must never hard-block a sale:
+                                        everything stays reachable via Show all + search. */}
+                                    {!dealerFitLoading && groupedDealerFit.length > 0 && (
+                                        <div className="bg-white border-2 rounded-[1.5rem] shadow-lg p-4 space-y-3">
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                                <div className="relative flex-1 min-w-[220px]">
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                                    <Input
+                                                        value={dfSearchInput}
+                                                        onChange={e => setDfSearchInput(e.target.value)}
+                                                        placeholder="Search dealer fit options..."
+                                                        className="pl-9 h-9 rounded-xl text-xs"
+                                                    />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDfShowAll(v => !v)}
+                                                    title="Relevance rules hide items that don't fit this boat (wrong HP band, wrong length, wrong tube material, workshop-only operations). Toggle to see everything."
+                                                    className={cn("flex items-center gap-1.5 px-3 h-9 rounded-xl border-2 text-[9px] font-black uppercase tracking-widest transition-all", dfShowAll ? "bg-primary text-white border-primary" : "bg-white text-slate-500 border-slate-200 hover:border-primary/30")}
+                                                >
+                                                    {dfShowAll ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                                                    {dfShowAll ? 'Showing all items' : 'Show all items'}
+                                                </button>
+                                            </div>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {groupedDealerFit.map(g => {
+                                                    const toggled = dfCatFilter.includes(g.category);
+                                                    return (
+                                                        <button
+                                                            key={g.category}
+                                                            type="button"
+                                                            title={g.category}
+                                                            onClick={() => setDfCatFilter(prev => prev.includes(g.category) ? prev.filter(c => c !== g.category) : [...prev, g.category])}
+                                                            className={cn("px-2.5 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest transition-all", toggled ? "bg-primary text-white border-primary" : "bg-slate-50 text-slate-500 border-slate-200 hover:border-primary/40", dfCatFilter.length > 0 && !toggled && "opacity-50")}
+                                                        >
+                                                            {g.display} ({g.items.length})
+                                                        </button>
+                                                    );
+                                                })}
+                                                {dfCatFilter.length > 0 && (
+                                                    <button type="button" onClick={() => setDfCatFilter([])} className="px-2.5 py-1 rounded-full border border-transparent text-[8px] font-black uppercase tracking-widest text-primary hover:underline">
+                                                        Clear filters
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {(() => {
+                                                const totalHidden = groupedDealerFit.reduce((a, g) => a + g.hiddenCount, 0);
+                                                return !dfShowAll && totalHidden > 0 ? (
+                                                    <p className="text-[8px] font-bold uppercase tracking-widest text-slate-400">
+                                                        {totalHidden} item{totalHidden === 1 ? '' : 's'} hidden as not relevant to this build — use &quot;Show all items&quot; to reveal
+                                                    </p>
+                                                ) : null;
+                                            })()}
+                                        </div>
+                                    )}
+                                    {dealerFitLoading ? <div className="flex justify-center py-16"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div> : filteredGroupedDealerFit.length > 0 ? (
+                                        filteredGroupedDealerFit.map(g => (
+                                            <div key={g.category} ref={el => { categoryRefs.current[g.category] = el; }} className="space-y-6 scroll-mt-10">
                                                 {/* v1.16 (VyZ4AonV) — restructured dealer-fit heading: category
                                                     name + option count + a gold accent rule + a quick subtitle
-                                                    distinguishing accessory categories from packages. */}
+                                                    distinguishing accessory categories from packages.
+                                                    v1.31 — prettified display name; raw MPF heading stays in the
+                                                    title attribute for traceability. */}
                                                 <div className="bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0">
                                                     <div className="flex items-center justify-between gap-3 flex-wrap">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
+                                                        <div className="flex items-center gap-3 min-w-0">
+                                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse shrink-0" />
+                                                            <h3 title={g.category} className="text-[10px] font-black uppercase tracking-[0.3em] text-white truncate">{g.display}</h3>
                                                         </div>
-                                                        <span className="text-[8px] font-black uppercase tracking-widest text-white/70">
-                                                            {opts.length} option{opts.length === 1 ? '' : 's'}
-                                                            {(opts as any[]).some((o: any) => o.type === 'package') ? ' · packages incl.' : ''}
+                                                        <span className="text-[8px] font-black uppercase tracking-widest text-white/70 shrink-0">
+                                                            {g.items.length} option{g.items.length === 1 ? '' : 's'}
+                                                            {g.items.some((o: any) => o.type === 'package') ? ' · packages incl.' : ''}
+                                                            {g.hiddenCount > 0 ? ` · ${g.hiddenCount} hidden` : ''}
                                                         </span>
                                                     </div>
                                                 </div>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                                    {opts.map((sel: any) => {
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
+                                                    {g.items.map((sel: any) => {
                                                         const isSelected = selectedDealerFitIds.includes(sel.id);
                                                         // Detect if items in this (unselected) selection are already included via another category
                                                         const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
+                                                        const imgUrl = resolveImageUrl(sel.items?.[0]?.data);
                                                         return (
-                                                        <div key={sel.id} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent relative", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-primary/20")}>
+                                                        <div key={sel.id} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent relative min-w-0", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-primary/20")}>
                                                             {hasOverlap && <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5"><CopyCheck className="h-3 w-3 text-amber-600" /><span className="text-[7px] font-black uppercase tracking-wide text-amber-700">Already Included</span></div>}
-                                                            <button type="button" onClick={() => toggleDealerFitSelection(sel.id)} className="flex flex-col p-1 text-left w-full">
-                                                                <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !resolveImageUrl(sel.items?.[0]?.data) && "hidden")}>{resolveImageUrl(sel.items?.[0]?.data) && <Image src={resolveImageUrl(sel.items?.[0]?.data)!} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
-                                                                <div className="p-4 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                                    <p className={cn("text-[10px] font-black uppercase tracking-tight leading-tight", isSelected ? "text-primary" : "text-slate-900")}>{sel.name}</p>
+                                                            {/* v1.31 — title-top consistent layout: name + price always
+                                                                lead the card; the image area only exists when a real
+                                                                image resolves (no empty white voids). */}
+                                                            <button type="button" onClick={() => toggleDealerFitSelection(sel.id)} className="flex flex-col p-1 text-left w-full h-full">
+                                                                <div className={cn("p-4 pb-2 flex flex-col items-center text-center gap-1 w-full min-w-0 flex-grow", hasOverlap && "pt-8")}>
+                                                                    <p title={sel.name} className={cn("text-[10px] font-black uppercase tracking-tight leading-tight line-clamp-3 break-words w-full", isSelected ? "text-primary" : "text-slate-900")}>{sel.name}</p>
                                                                     <p className={cn("text-[8px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{sel.type === 'package' ? `${sel.items.length} COMPONENTS • ` : ''}${(sel.items.reduce((acc: number, i: any) => acc + (i.data?.['Act Sell'] || i.data?.sellPriceExclGst || i.data?.['Store Price'] || i.data?.PARTS || i.data?.RRP || i.data?.Price || i.data?.Retail || i.data?.Trade || 0), 0)).toLocaleString()}</p>
                                                                 </div>
+                                                                {imgUrl && (
+                                                                    <div className="relative aspect-video w-full bg-white overflow-hidden shrink-0 mt-auto">
+                                                                        <Image src={imgUrl} alt={sel.name} fill unoptimized className="object-contain p-3 mix-blend-multiply transition-transform group-hover:scale-105" />
+                                                                    </div>
+                                                                )}
                                                             </button>
                                                             {/* v1.16 (rI21WRhH) — Dealer fit option expander. Visible for
                                                                 packages (multi-item) so operators can see what's inside
@@ -2519,7 +3090,7 @@ export function HighfieldQuoteFlow({
                                                 </div>
                                             </div>
                                         ))
-                                    ) : <div className="py-16 text-center border-2 border-dashed rounded-xl opacity-20"><Box className="h-10 w-10 mx-auto mb-3" /><p className="text-[9px] font-black uppercase tracking-widest">No dealer fit options configured.</p></div>}
+                                    ) : <div className="py-16 text-center border-2 border-dashed rounded-xl opacity-20"><Box className="h-10 w-10 mx-auto mb-3" /><p className="text-[9px] font-black uppercase tracking-widest">{groupedDealerFit.length > 0 ? 'No options match your search or filters.' : 'No dealer fit options configured.'}</p></div>}
                                     {/*
                                       v1.11 (Epic 9.2.1 + 9.2.2) — Fit-Up section under Dealer Fit on the
                                       same step. Catalog-wide picker (per-module filtering deferred). Each
@@ -2527,6 +3098,15 @@ export function HighfieldQuoteFlow({
                                       selectedFitUpData and gets snapshotted onto quote.fitUpSelections at
                                       finalize. Customer PDF renders a single summary line per Story 9.2.3.
                                     */}
+                                    {/* NSM MPF — rigging kit from the selected motor-menu slot,
+                                        shown in the Fit-Up & Rigging header area. Info-only; shows
+                                        the org riggingKits retail price when a name match exists. */}
+                                    {selectedMotorMenuSlot?.riggingKit && (
+                                        <NsmRiggingKitLine
+                                            kitName={riggingKitMatch?.name || selectedMotorMenuSlot.riggingKit}
+                                            retailExGst={riggingKitMatch?.retailExGst ?? null}
+                                        />
+                                    )}
                                     {orgId && (
                                         <FitUpQuoteSelector
                                             organisationId={orgId}
@@ -2557,9 +3137,23 @@ export function HighfieldQuoteFlow({
                                             <div className="flex items-center justify-between">
                                                 <div className="space-y-0.5">
                                                     <p className="font-black text-sm uppercase tracking-tight text-slate-900">{range?.name} {model?.name}</p>
-                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMaterial} • {activeVariant?.name || 'Standard Color'}</p>
+                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase">{[selectedMaterial, activeVariant ? (activeVariant.name || 'Standard Color') : 'No hull colour selected'].filter(Boolean).join(' • ')}</p>
                                                 </div>
-                                                <p className="font-black text-primary italic text-sm">${(activeVariant?.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                {/* Resolves through the price level (incl. NSM priceLadder
+                                                    when present) instead of raw sellPriceExclGst. UI-10
+                                                    (2026-07-04 audit): a silent $0 on the customer-facing
+                                                    summary is the class stakeholders catch — when no hull
+                                                    variant is selected (or it resolves to no price) show an
+                                                    explicit marker instead. */}
+                                                {(() => {
+                                                    const basePrice = activeVariant ? getPriceForLevel(activeVariant, priceLevel) : 0;
+                                                    if (basePrice > 0) return <p className="font-black text-primary italic text-sm">${basePrice.toLocaleString()}</p>;
+                                                    return (
+                                                        <span className="text-[9px] font-black uppercase tracking-widest text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full whitespace-nowrap">
+                                                            {activeVariant ? 'Not priced at this level' : 'Select hull colour on Step 1'}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </div>
                                             {isRegoSelected && (
                                                 <div className="mt-4 pt-4 border-t border-dashed space-y-2">
@@ -2643,11 +3237,15 @@ export function HighfieldQuoteFlow({
                                                         <div className="flex items-center gap-3">
                                                             <div className="group/remove h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
                                                                 <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
-                                                                <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(true); }}><X className="h-3 w-3" /></Button>
+                                                                <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => { setSelectedMotor(null); setSelectedMotorAccessoryIds([]); setPropComesStandard(false); setMotorExplicitlyDeselected(true); setSelectedMotorMenuSlot(null); }}><X className="h-3 w-3" /></Button>
                                                             </div>
                                                             <div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{getMotorDisplayName(selectedMotor)}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">{selectedMotor['HP Rating']} HP Performance</p></div>
                                                         </div>
-                                                        <p className="font-black text-primary italic text-sm">${(selectedMotor.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                        {/* UI-9 (2026-07-04 fleet-walk handoff) — the Powertrain line must
+                                                            resolve through the SAME price level as the running total
+                                                            (raw sellPriceExclGst rendered Store Price $13,912.21 while the
+                                                            total used NSM Retail $17,643). */}
+                                                        <p className="font-black text-primary italic text-sm">${getPriceForLevel(selectedMotor, priceLevel).toLocaleString()}</p>
                                                     </div>
                                                     {selectedMotorAccessories.length > 0 && (
                                                         <div className="divide-y bg-slate-50/50">
@@ -2660,7 +3258,9 @@ export function HighfieldQuoteFlow({
                                                                         </div>
                                                                         <div><p className="text-[10px] font-black uppercase tracking-tight">{acc.name}</p><Badge variant="outline" className="text-[7px] font-black h-3.5 px-1 border-primary/10 text-primary/60">{acc.category || 'Standard'}</Badge></div>
                                                                     </div>
-                                                                    <p className="text-[10px] font-bold text-slate-600">+${(acc.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                                    {/* UI-9 companion — accessories on the Powertrain card resolve
+                                                                        through the price level like the total does. */}
+                                                                    <p className="text-[10px] font-bold text-slate-600">+${getPriceForLevel(acc, priceLevel).toLocaleString()}</p>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -2717,7 +3317,7 @@ export function HighfieldQuoteFlow({
                                                         <div className="flex items-center gap-3">
                                                             <div className="group/remove h-6 w-6 rounded-lg bg-slate-100 flex items-center justify-center relative transition-all hover:bg-destructive/10">
                                                                 <Check className="h-3 w-3 text-emerald-500 group-hover/remove:opacity-0 transition-opacity" />
-                                                                <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={() => setSelectedTrailerId(null)}><X className="h-3 w-3" /></Button>
+                                                                <Button variant="ghost" size="icon" className="absolute inset-0 h-full w-full p-0 opacity-0 group-hover/remove:opacity-100 text-destructive" onClick={clearTrailerSelection}><X className="h-3 w-3" /></Button>
                                                             </div>
                                                             <div className="space-y-0.5"><p className="font-black text-sm uppercase tracking-tight text-slate-900">{effectiveTrailerConfig.name}</p><p className="text-[9px] font-bold text-muted-foreground uppercase">Precision Chassis</p></div>
                                                         </div>
@@ -2876,6 +3476,17 @@ export function HighfieldQuoteFlow({
                                             </Card>
                                         )}
 
+                                        {/* NSM MPF — deposit schedule (percentages × running total inc
+                                            GST, whole-dollar ceil) + estimated lead time. The card
+                                            renders nothing when the model has neither field. */}
+                                        {((model as any)?.depositSchedule || (model as any)?.leadTimesDays) && (
+                                            <DepositScheduleCard
+                                                schedule={(model as any)?.depositSchedule ?? null}
+                                                leadTimesDays={(model as any)?.leadTimesDays ?? null}
+                                                totalIncGst={Math.ceil(Math.max(0, finalPrice) * 1.1)}
+                                            />
+                                        )}
+
                                         {/* Admin & Trade-In Section */}
                                         <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
                                             <CardHeader className="bg-muted/30 border-b p-4">
@@ -3019,7 +3630,9 @@ export function HighfieldQuoteFlow({
             <Dialog open={showFeatures} onOpenChange={setShowFeatures}>
                 <DialogContent className="sm:max-w-2xl rounded-3xl border-4 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-6 border-b bg-muted/5"><DialogTitle className="text-xl font-black uppercase tracking-tight italic text-primary">Standard Features</DialogTitle></DialogHeader>
-                    <ScrollArea className="max-h-[60vh]"><div className="p-0"><Table><TableBody>{model?.standardFeatures?.map((f: string, i: number) => (<TableRow key={i} className="hover:bg-primary/5 border-b"><TableCell className="w-10 pl-6"><Check className="h-4 w-4 text-emerald-500" /></TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{f}</TableCell></TableRow>))}</TableBody></Table></div></ScrollArea>
+                    {/* NSM MPF — merged standardFeatures + standardInclusions (deduped).
+                        Identical to model.standardFeatures when no MPF data exists. */}
+                    <ScrollArea className="max-h-[60vh]"><div className="p-0"><Table><TableBody>{mergedStandardFeatures.map((f: string, i: number) => (<TableRow key={i} className="hover:bg-primary/5 border-b"><TableCell className="w-10 pl-6"><Check className="h-4 w-4 text-emerald-500" /></TableCell><TableCell className="font-black uppercase text-[10px] text-slate-900 pr-6 py-3">{f}</TableCell></TableRow>))}</TableBody></Table></div></ScrollArea>
                 </DialogContent>
             </Dialog>
 
@@ -3075,7 +3688,9 @@ export function HighfieldQuoteFlow({
                                 const brand = t?.brandName || '';
                                 const series = t?.seriesName || '';
                                 const sell = (t?.sellPriceExclGst ?? cfg?.sellPriceExclGst) ?? null;
-                                const imageUrl = t?.imageUrl || cfg?.imageUrl || '';
+                                const rawSpecImageUrl = t?.imageUrl || cfg?.imageUrl || '';
+                                // UI-3 — auth-walled SharePoint / known-dead URLs never render.
+                                const imageUrl = isRenderableImageUrl(rawSpecImageUrl) ? rawSpecImageUrl : '';
 
                                 const rows: Array<{ label: string; value: any }> = [];
                                 if (code) rows.push({ label: 'Code', value: code });
@@ -3099,7 +3714,7 @@ export function HighfieldQuoteFlow({
                                         {imageUrl && (
                                             <div className="px-6 pt-6">
                                                 <div className="relative h-40 w-full bg-slate-50 rounded-2xl overflow-hidden border-2 border-slate-100">
-                                                    <img src={imageUrl} alt={cfg?.name || 'Trailer'} className="w-full h-full object-contain p-4" />
+                                                    <img src={imageUrl} alt={cfg?.name || 'Trailer'} className="w-full h-full object-contain p-4" onError={() => markImageDead(imageUrl)} />
                                                 </div>
                                             </div>
                                         )}
@@ -3150,6 +3765,10 @@ export function HighfieldQuoteFlow({
                     customOptions,
                     selectedMotor,
                     selectedMotorAccessories,
+                    // NSM MPF — the motor-menu slot picked on Step 3 (rigging
+                    // kit / prop / engine hole relationship data). null when
+                    // the motor came from the standard grid or no menu exists.
+                    selectedMotorMenuSlot,
                     selectedTrailerOptionsData,
                     customTrailerOptions,
                     selectedDealerFitData,

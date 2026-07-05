@@ -58,7 +58,7 @@ for catId, catName, tone, items in CATS:
         patch(f"organisations/{ORG}/dealerFitSelections/{did}", {
             "name": nm, "type": "item", "categoryId": catId, "category": catName,
             "items": [{"vendorId": "LafOLpLb6QIFE856TiD4", "rowId": did,
-                       "data": {"Description": desc, "Act Sell": sell, "Act CTD": ctd, "imageLink": img(nm, tone)}}],
+                       "data": {"Description": desc, "Act Sell": sell, "Act CTD": ctd}}],  # no imageLink — operator adds real photos via admin
         })
         n+=1
         print(f"  [{catName}] {nm}  ${sell}")

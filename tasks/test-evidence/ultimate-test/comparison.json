@@ -1,0 +1,131 @@
+{
+ "generatedUtc": "2026-07-03T11:04:19.312059Z",
+ "config": {
+  "boat": "Highfield SP560 (PVC) W-W-WB \u2014 MPF Boat Module row 829, model code HBS113; HL variant sku HBS113 (colour 'White / White / White/Blue')",
+  "motor": "Yamaha - F90XB \u2014 MPF motor menu slot 1 (Recommended); HL NSM-menu Slot 1 card",
+  "riggingKit": "Mech Rigging Kit - 6X3 Concealed (Left Hand) Mount w 6Y5 2 Gauges, 5m Harness, 15' Cables & Filter (6X3-6Y52L-LS-15-05) \u2014 carried on the slot; HL shows it as pre-rig info (not a priced line)",
+  "prop": "6FP-45943-00 Propeller - Aluminium SDS GP K Series - 15\" \u2014 supplied with slot; HL accessory line +$0",
+  "trailer": "REDCO Custom / Highfield SP560 Aluminium - TA600-MOB (standard, auto-assigned in HL)",
+  "dealerFit": [
+   "Tube Covers to suit PVC Boat - 5.6 Mtr",
+   "VHF Radio - GME GX750B Hideaway with 1.8m Aerial"
+  ],
+  "rego": "boat + trailer rego ON (QLD)",
+  "factoryOptions": [],
+  "fitUp": [],
+  "priceLevel": "Cash Price (hull_cash / NSM Retail)"
+ },
+ "interpretation": {
+  "whatAnMpfQuoteIs": "The MPF has no interactive configurator or quote sheet (verified: all 17 workbooks' sheet census + Dropdowns row-1 cells are vocabulary plumbing, e.g. Dropdowns!C1='Boat Module'!C950). A quote IS the boat row plus display-name joins into sibling modules: hull ladder QR829 (Cash, inc GST, hand-entered), motor menu KZ829, rigging LA829, prop LB/LC829 (live VLOOKUPs into Motor Library col 200 -> Parts Maintenance), std trailer NZ829, dealer-fit OL/OM829, rego band KM829, landed cost IY829 (live formula, recalculated).",
+  "gstConventions": "MPF hull ladder prices are inc GST (hand-rounded); motor NSM Retail / trailer Sell / dealer-fit Act Sell are catalog figures HelmLogic stores raw and treats as ex GST (NSM's own GST basis for these columns is the documented Phase-4 open question); rego is GST-free in the real world but HL sums it into the ex-GST subtotal and applies 10% on top (documented deviation).",
+  "comparisonBasis": "Component-level raw catalog figures (the numbers each system quotes for the same component) compared to the cent; package totals compared under HelmLogic's summation convention (sum ex-GST + 10%)."
+ },
+ "modeUsed": {
+  "mpf": "recalculated (LibreOffice --convert-to xlsx) \u2014 all sibling modules also recalculated via LibreOffice; recalc-vs-saved drift on row 829: {\"hullCashGp\": {\"saved\": 0.3345186260280599, \"recalc\": 0.33451862602806}}",
+  "hl": "real browser (Playwright chromium, production Next build on localhost:9002, live Firestore)"
+ },
+ "mpf": {
+  "components": {
+   "boatHull": {
+    "figure": 37581.82,
+    "listed": "41340 inc GST (QR829, hand-entered ladder literal)",
+    "source": "Boat Module.xlsx row 829 col 460 (recalculated)"
+   },
+   "motor": {
+    "figure": 17643.0,
+    "listed": "17,643 NSM Retail",
+    "source": "Motor Module.xlsx#Motor Library row 82 col BC (recalculated)"
+   },
+   "trailer": {
+    "figure": 10430.0,
+    "listed": "10,430 Sell",
+    "source": "Trailer Module.xlsx#Trailer Module row 143 col BW (recalculated)"
+   },
+   "dfTubeCovers": {
+    "figure": 4634.0,
+    "listed": "4,634 Act Sell",
+    "source": "Parts Module.xlsx#Dealer Fit Module row 715 (recalculated)"
+   },
+   "dfVhf": {
+    "figure": 1016.0,
+    "listed": "1,016 Act Sell",
+    "source": "Parts Module.xlsx#Dealer Fit Module row 32 (recalculated)"
+   },
+   "boatRego": {
+    "figure": 250.0,
+    "listed": "250 SELL, REGO 2 '4.51m to 6.0m' (GST-free)",
+    "source": "Registration Module.xlsx row 10 (recalculated)"
+   },
+   "trailerRego": {
+    "figure": 283.0,
+    "listed": "283 SELL, REGO 7 'Large Trailers - Over 1.021t' (GST-free)",
+    "source": "Registration Module.xlsx row 17 (recalculated)"
+   }
+  },
+  "exGstSum": 71837.82,
+  "packageIncGstUnderHlConvention": 79022
+ },
+ "hl": {
+  "totalExGst": 71838.0,
+  "totalIncGst": 79022.0,
+  "proposalUrl": "http://localhost:9002/modules/highfield/proposals/ZHbVgS3yd5K3N0HcAusJ",
+  "regoMode": "MPF band selected: 4.51m to 6.0m$250",
+  "selections": {
+   "colour": "SP560 \u2014 White / White / White/Blue",
+   "motorMenuCard": "Slot 1Yamaha - F90XB Recommended SelectedMech Rigging Kit - 6X3 Concealed (Left Hand) Mount w 6Y5 2 Gauges, 5m Harness, 15' Cables & FilterPropeller - Aluminium SDS GP K Series - 15\" \u00b7 6FP-45943-00Eng",
+   "trailer": "REDCO Custom / Highfield SP560 Aluminium - TA600-MOB Recommended SelectedMatches assigned trailer TA600-MOB (SP560)",
+   "dfTubeCovers": "Tube Covers to suit PVC Boat - 5.6 Mtr",
+   "dfVhf": "VHF Radio - GME GX750B Hideaway with 1.8m Aerial"
+  },
+  "pdf": {
+   "totalInclGst": 79022.0,
+   "gst": 7184.0,
+   "moneyStrings": [
+    "$17,643",
+    "$10,430",
+    "$5,650",
+    "$1,016",
+    "$4,634",
+    "$37,582",
+    "$17,643",
+    "$10,430",
+    "$1,016",
+    "$4,634",
+    "$250",
+    "$283",
+    "$71,838",
+    "$7,184",
+    "$79,022",
+    "$79,022"
+   ]
+  },
+  "summaryLinePresence": {
+   "boatHull": true,
+   "motor": false,
+   "trailer": true,
+   "dfTubeCovers": true,
+   "dfVhf": true,
+   "boatRego250": false,
+   "boatRego163": false,
+   "trailerRego": false
+  }
+ },
+ "hlPdfTotal": 79022.0,
+ "deltas": {
+  "exGstTotal": 0.18,
+  "incGstTotalVsMpfUnderHlConvention": 0.0,
+  "pdfVsBrowser": 0.0
+ },
+ "deltaNotes": {
+  "exGstTotal": "0.18 is display rounding only \u2014 the browser summary prints the ex-GST package to whole dollars (71,838); the underlying HL sum equals the MPF sum exactly (71,837.82 \u2014 the Base Vessel line prints $37,581.82 unrounded, and every other component is a whole-dollar figure).",
+  "incGstTotal": "0.00 \u2014 HL applies ceil(sum \u00d7 1.1) = 79,022; MPF components summed under the same convention give the identical figure. PDF prints subtotal 71,838 / GST 7,184 / total 79,022.",
+  "componentParity": "Every component figure matches its MPF source to the cent: boat 37,581.82 (= 41,340 inc / 1.1), motor 17,643, trailer 10,430, dealer fit 4,634 + 1,016, rego 250 + 283."
+ },
+ "findings": [
+  "F1 (GST basis, pre-documented Phase-4 open question): MPF hull ladder prices are inc GST, but motor NSM Retail / trailer Sell / dealer-fit Act Sell / rego SELL are stored raw in HelmLogic and treated as ex GST \u2014 HL adds 10% on top of figures NSM may already regard as GST-inclusive (and rego is GST-free by law). The two systems agree on every catalog figure; NSM must confirm the intended GST basis of those columns.",
+  "F2 (rego band choice): HL's RegoPicker auto-matches 'Recreational Vessel \u2014 4.5m to 8m' ($163 ex GST, QLD Transport seed) for the 5.6m hull; the MPF band '4.51m to 6.0m' ($250, imported Phase 4 as qld-transport/regoTypes/mpf-rego-2) exists in the same dropdown and was selected manually for this test. NSM's $250 vs the QLD-Transport-derived $163 for the same vessel is a data divergence NSM should reconcile.",
+  "F3 (display bug, cosmetic): the Step-6 'Powertrain' line renders selectedMotor.sellPriceExclGst (stale legacy field, $13,912.21) instead of getPriceForLevel() ($17,643). The motor card, running total, finalize payload and customer PDF all use $17,643 \u2014 display-only, but violates the CLAUDE.md lesson 'price display must use getPriceForLevel()'. File: src/components/highfield-quote-flow.tsx ~line 2934.",
+  "F4 (routing bug): the org-scoped route /{orgSlug}/modules/{id}/quote/{modelId} loses ?range=&vendor= during navigation (OrgSlugLayout slug correction replaces pathname without search params) -> permanent 'Context Error'. The non-org /modules/... route works. File: src/app/(app)/[orgSlug]/layout.tsx line 36.",
+  "F5 (MPF-side): the SP560 Cash ladder value 41,340 is a hand-entered literal; the matrix formula would produce 41,266.50 (deviation +73.50, flagged in extraction). HL correctly snapshots the listed price rather than recomputing \u2014 per the v1.4 lesson."
+ ]
+}

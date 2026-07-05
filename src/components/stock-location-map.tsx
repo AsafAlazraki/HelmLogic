@@ -131,7 +131,7 @@ export function StockLocationMap({ inventory, locations, onItemClick }: StockLoc
             {/* Location Summary Cards */}
             <div className="shrink-0">
                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">Locations</p>
-                <div className="flex gap-3 overflow-x-auto pb-2 px-1">
+                <div className="flex gap-3 overflow-x-auto overflow-y-hidden pb-2 px-1">
                     {locationGroups.length === 0 ? (
                         <p className="text-xs text-slate-400 italic py-4">No stock items</p>
                     ) : (

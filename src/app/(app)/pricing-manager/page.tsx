@@ -23,6 +23,8 @@ import { ExchangeRateManager } from "@/components/exchange-rate-manager";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { HelmLogicLoading } from "@/components/helmlogic-loading";
+import { SavedFiltersBar, type SavedCatalogFilter } from "@/components/saved-filters-bar";
+import { CatalogHierarchyExport } from "@/components/catalog-hierarchy-export";
 
 interface Vendor {
     id: string;
@@ -152,6 +154,12 @@ export default function PricingManagerPage() {
                             <span className="text-[9px] font-bold uppercase opacity-70 tracking-tighter">Every catalog · diff before commit</span>
                         </CardContent>
                     </Card>
+                    {/* v1.18 (Story "Export Data brand -> range -> model")
+                        Catalog hierarchy CSV button. One file, full brand /
+                        range / model tree across every subscribed Boat Brand. */}
+                    <div className="flex items-end pb-1">
+                        <CatalogHierarchyExport vendors={subscribedVendors ?? []} />
+                    </div>
                     <Card
                         className="w-48 bg-gradient-to-br from-amber-600 to-rose-700 text-white border-none shadow-xl group overflow-hidden h-24 relative cursor-pointer hover:scale-[1.02] transition-all active:scale-[0.98]"
                         onClick={() => setIsAuditHistoryOpen(true)}
@@ -218,6 +226,19 @@ export default function PricingManagerPage() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 data-testid="catalog-manager-cross-tab-search"
                             />
+                        </div>
+                        {/* v1.18 (Story 3.10.4) — saved filter views per user.
+                            Chip row below the search input; each chip recalls a
+                            saved query, X removes it, "Save current" appears
+                            when the search has a value. Pins live as an array
+                            field on the user profile doc (no new Firestore
+                            collection so no rules deploy needed). */}
+                        <SavedFiltersBar
+                            savedFilters={(userProfile?.savedCatalogFilters ?? []) as SavedCatalogFilter[]}
+                            currentQuery={searchTerm}
+                            onApply={setSearchTerm}
+                        />
+                        <div className="hidden">
                         </div>
                     </CardHeader>
                     <ScrollArea className="flex-1">

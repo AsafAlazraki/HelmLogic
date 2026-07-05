@@ -1,32 +1,21 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { BreadcrumbNav } from "@/components/breadcrumb-nav";
-import { ClipboardList } from "lucide-react";
+'use client';
 
-// Hardcoded test data removed for production state.
-const reports: any[] = [];
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { BreadcrumbNav } from "@/components/breadcrumb-nav";
+import { ClipboardList, Loader2 } from "lucide-react";
+import { useUser } from "@/firebase/auth/use-user";
+import { useDoc } from "@/firebase/firestore/use-doc";
+import { useFirestore, useMemoFirebase } from "@/firebase/provider";
+import { doc } from "firebase/firestore";
+import { ReportingDashboard } from "@/components/reporting-dashboard";
+import { RecentActivityFeed } from "@/components/recent-activity-feed";
 
 export default function ReportingPage() {
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case "Completed":
-        return "default";
-      case "In Progress":
-        return "secondary";
-      case "Delayed":
-        return "destructive";
-      default:
-        return "outline";
-    }
-  };
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
+  const { data: userProfile } = useDoc<any>(userProfileRef);
+  const organisationId = userProfile?.organisationId;
 
   return (
     <div className="space-y-4">
@@ -34,45 +23,23 @@ export default function ReportingPage() {
         <h1 className="text-2xl font-semibold">Reporting</h1>
         <BreadcrumbNav />
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Activity Reports</CardTitle>
-          <CardDescription>A summary of current vessel journeys and logistical status.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {reports.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Report ID</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Vessel</TableHead>
-                  <TableHead>Route</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {reports.map((report) => (
-                  <TableRow key={report.id}>
-                    <TableCell className="font-medium">{report.id}</TableCell>
-                    <TableCell>{report.date}</TableCell>
-                    <TableCell>{report.vessel}</TableCell>
-                    <TableCell>{report.route}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(report.status) as any}>{report.status}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground opacity-20">
-                <ClipboardList className="h-16 w-16 mb-4" />
-                <p className="font-black uppercase tracking-widest text-sm">No Active Reports Found</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+
+      {/* v1.21 (Story 8.2.1 + 8.1.4) — Reporting & Analytics dashboard +
+          cross-module quotes view. Mounts once we know the org. */}
+      {organisationId ? (
+        <>
+          <ReportingDashboard organisationId={organisationId} />
+          {/* v1.22 (Story 1.7.3) — Recent activity feed. */}
+          <RecentActivityFeed />
+        </>
+      ) : (
+        <Card>
+          <CardContent className="flex items-center justify-center py-20 text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            <span className="text-xs">Loading reporting…</span>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

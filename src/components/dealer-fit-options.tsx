@@ -30,6 +30,8 @@ interface DealerFitSelection {
   name: string;
   type: 'item' | 'package';
   categoryId: string;
+  /** Legacy/module-level category NAME — used for name-based grouping of synthetic categories. */
+  category?: string;
   items: {
     vendorId: string;
     rowId: string;

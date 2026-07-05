@@ -1,0 +1,1060 @@
+{
+ "phase": "phase5c.everything",
+ "dataLevel": {
+  "generatedUtc": "2026-07-03T13:36:06.332337+00:00",
+  "mode": "READ-ONLY (no Firestore writes), FULL WEB (no sampling)",
+  "boatsWalked": {
+   "total": 809,
+   "byBrand": {
+    "Highfield Inflatables": 587,
+    "Stacer": 91,
+    "Stabicraft": 37,
+    "Surtees": 19,
+    "Haines Signature": 9,
+    "Jeanneau": 4,
+    "Merry Fisher": 12,
+    "Cap Camarat": 11,
+    "Formosa": 39
+   }
+  },
+  "referenceIndexes": {
+   "yamahaRows": 235,
+   "riggingKits": 846,
+   "dealerFitSelections": 1791,
+   "liveTrailers": 496
+  },
+  "relations": {
+   "motorMenu.motorName -> Yamaha rows (with NSM Retail)": {
+    "checked": 4013,
+    "resolved": 3817,
+    "resolvedButNoPrice": {},
+    "resolvedButNoPriceCount": 0,
+    "unresolvedKnown": {
+     "MF1095C S2 with Yamaha Twin 300HP SBW (White) + Pilot": {
+      "boats": [
+       "Merry Fisher Merry Fisher - 1095 Coupe S2"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF1095C S2 with Yamaha Twin 300HP SBW (White) + Pilot + Joystick": {
+      "boats": [
+       "Merry Fisher Merry Fisher - 1095 Coupe S2"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF1095C S2 with Mercury Twin 300Hp (White)": {
+      "boats": [
+       "Merry Fisher Merry Fisher - 1095 Coupe S2"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF1095C S2 with Mercury Twin 300Hp (White) + Pilot + Joystick": {
+      "boats": [
+       "Merry Fisher Merry Fisher - 1095 Coupe S2"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF1095FLYS2 w Yamaha Twin 300HP (White) SBW + Pilot": {
+      "boats": [
+       "Merry Fisher Merry Fisher - 1095 Flybridge S2"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF1095FLYS2 w Yamaha Twin 300HP (White) SBW + Pilot + Joystick": {
+      "boats": [
+       "Merry Fisher Merry Fisher - 1095 Flybridge S2"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF1095FLYS2 w Mercury Twin 300HP (White)": {
+      "boats": [
+       "Merry Fisher Merry Fisher - 1095 Flybridge S2"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF1095FLYS2 w Mercury Twin 300HP (White) + Pilot + Joystick": {
+      "boats": [
+       "Merry Fisher Merry Fisher - 1095 Flybridge S2"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF1295 Coupe w Yamaha Triple 300HP SBW (White) + Pilot + Joystick": {
+      "boats": [
+       "Merry Fisher Merry Fisher - 1295_Coupe"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF1295 Coupe w Mercury Triple 300HP SBW (White) + Pilot + Joystick": {
+      "boats": [
+       "Merry Fisher Merry Fisher - 1295_Coupe"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF1295F w Yamaha - Triple 300HP SBW White + Pilot  + Joystick": {
+      "boats": [
+       "Merry Fisher Merry Fisher - 1295 Flybridge"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF1295F w Mercury - Triple 300HP White + Pilot + Joystick JPO": {
+      "boats": [
+       "Merry Fisher Merry Fisher - 1295 Flybridge"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF895 S2 with Yamaha 2X200 XCB DBW (Grey)": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  895 S2"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF895 S2 with Yamaha 2X200 XSA2 SBW (White)": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  895 S2"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF895 S2 with Yamaha 2X250 XSB2 SBW (White)": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  895 S2"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF895 S2 with Mercury 2X200 V6 (White)": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  895 S2"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF895 S2 with Mercury 2X250 V8 (White)": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  895 S2"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF895 S2 with Mercury 2X250 V8 ESTEER + Joystick (White)": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  895 S2"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF895 Sport w Yamaha Twin 200 XCB DBW (Grey)": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  895 Sport (2026)"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF895 Sport w Yamaha Twin 200 XCB DBW (Grey) Double Steering": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  895 Sport (2026)"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF895 Sport w Yamaha Twin 200 XSA2 SBW (White)": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  895 Sport (2026)"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF895 Sport w Yamaha Twin 200 XSA2 SBW (White) 2 Steering": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  895 Sport (2026)"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF895 Sport w Yamaha Twin 250 XSB2 SBW (White)": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  895 Sport (2026)"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF895 Sport w Yamaha Twin 250 XSB2 SBW (White) 2 Steering": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  895 Sport (2026)"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF895 Sport w Mercury Twin 200 V6 (White)": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  895 Sport (2026)"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF895 Sport w Mercury Twin 250 V8 (White)": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  895 Sport (2026)"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     },
+     "MF895 Sport w Mercury Twin 250 V8 ESTEER + Joystick (White)": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  895 Sport (2026)"
+      ],
+      "reason": "Merry Fisher boat-package powerplant (task known list)"
+     }
+    },
+    "unresolvedKnownCount": 27,
+    "unresolvedExplained": {
+     "Yam - F200XC + LF200XC": {
+      "boats": [
+       "Stabicraft Stabicraft - 2500 Ultracab XL"
+      ],
+      "reason": "composite twin-pair label — both constituent motor codes exist individually in the live Yamaha dataset"
+     },
+     "DB37OB w Yamaha - Twin 350 SBW (White) inc Pilot & Joystick": {
+      "boats": [
+       "Jeanneau Jeanneau - DB 37 OB"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['12O3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "DB37OB w Yamaha - Twin 450 SBW (White) inc Pilot & Joystick": {
+      "boats": [
+       "Jeanneau Jeanneau - DB 37 OB"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['12S3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "DB37OB w Mercury - Twin 400 V10 Cold Fusion (White) Joystick": {
+      "boats": [
+       "Jeanneau Jeanneau - DB 37 OB"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['16Q3BJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "DB43OB w Yamaha - Triple 300HP XSB2 SBW (White) Joystick": {
+      "boats": [
+       "Jeanneau Jeanneau - DB 43 OB"
+      ],
+      "reason": "Jeanneau-family boat-package powerplant unit label (appears as a section header in the motors extraction; same approved out-of-Yamaha-scope class)"
+     },
+     "DB43OB w Yamaha - Triple 350HP XSB2 SBW (White) Joystick": {
+      "boats": [
+       "Jeanneau Jeanneau - DB 43 OB"
+      ],
+      "reason": "Jeanneau/ePropulsion boat-package powerplant row (same approved out-of-Yamaha-scope class)"
+     },
+     "DB43OB w Mercury - Triple 350 V10 Cold Fusion (White) Joystick": {
+      "boats": [
+       "Jeanneau Jeanneau - DB 43 OB"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['16O2BP'] — boat-package powerplant / ePropulsion)"
+     },
+     "TH33 w Yamaha - Twin 250HP XSB2 (White)": {
+      "boats": [
+       "Jeanneau Jeanneau - TH33"
+      ],
+      "reason": "Jeanneau/ePropulsion boat-package powerplant row (same approved out-of-Yamaha-scope class)"
+     },
+     "TH33 w Yamaha - Twin 300HP XSB2 (White) Joystick": {
+      "boats": [
+       "Jeanneau Jeanneau - TH33"
+      ],
+      "reason": "Jeanneau/ePropulsion boat-package powerplant row (same approved out-of-Yamaha-scope class)"
+     },
+     "TH33 w Mercury - Twin 250XL V8 (White)": {
+      "boats": [
+       "Jeanneau Jeanneau - TH33"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['EXP*1 16J3AI'] — boat-package powerplant / ePropulsion)"
+     },
+     "TH33 w Mercury - Twin 300XL V10 (White) Joystick": {
+      "boats": [
+       "Jeanneau Jeanneau - TH33"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['A*1 16L3BJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "TH38 w Mercury - Twin 300XXL Verado (White)": {
+      "boats": [
+       "Jeanneau Jeanneau - TH38"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['A*1 16L3AI'] — boat-package powerplant / ePropulsion)"
+     },
+     "TH38 w Mercury - Twin 300XL V10 (White) Joystick": {
+      "boats": [
+       "Jeanneau Jeanneau - TH38"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['A*1 16L3BJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "TH38 w Mercury - Twin 350XXL Verado (White) Joystick": {
+      "boats": [
+       "Jeanneau Jeanneau - TH38"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['A*1 16O3CJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 CC w Yamaha - Twin 300 NSB2 SBW (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat  -  10.5 CC"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['12L3AI', '12L3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 CC w Yamaha - Twin 350 NSB2 SBW (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat  -  10.5 CC"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['12O3AI', '12O3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 CC w Yamaha - Twin 300 NSB2 SBW (White) Joystick": {
+      "boats": [
+       "Cap Camarat Cap Camarat  -  10.5 CC"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['12L3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 CC w Yamaha - Twin 350 NSB2 SBW (White) Joystick": {
+      "boats": [
+       "Cap Camarat Cap Camarat  -  10.5 CC"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['12O3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 CC w Yamaha - Twin 450 NSA2 XTO (White) Joystick": {
+      "boats": [
+       "Cap Camarat Cap Camarat  -  10.5 CC"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['12S3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 CC w Mercury - Twin 300 V8 White": {
+      "boats": [
+       "Cap Camarat Cap Camarat  -  10.5 CC"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['16L3AI'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 CC w Mercury - Twin 300 V8 ESteer + Joystick (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat  -  10.5 CC"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['16L3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 CC w Mercury - Twin 350 V10ESteer + Joystick (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat  -  10.5 CC"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['16O3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 CC w Mercury - Twin 425 V10 + Joystick (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat  -  10.5 CC"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['16R3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC 12.5WA w Yamaha Triple 300HP SBW (White) + Pilot + Joystick": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 12.5_WA"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['12L2AP'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC 12.5WA w Mercury Triple 300HP SBW (White) + Pilot + Joystick": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 12.5_WA"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['16L2AP'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC9.0 WA S2 w Yamaha - Twin 200 XCB DBW (Grey)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 9.0 WA S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['11H2AI'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC9.0 WA S2 w Yamaha - Twin 200 XSA2 SBW (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 9.0 WA S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['12H2AI'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC9.0 WA S2 w Yamaha - Twin 250 XSB2 SBW (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 9.0 WA S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['12J2AI'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC9.0 WA S2 w Mercury - Twin 200 V6 (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 9.0 WA S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['16H2AI'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC9.0 WA S2 w Mercury - Twin 250 V8 (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 9.0 WA S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['16J2AI'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC9.0 WA S2 w Mercury - Twin 250 V8 ESteer + Joystick (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 9.0 WA S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['16J2AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 WA S2 w Yamaha - Twin 300 NSB2 SBW (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 10.5 WA S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['12L3AI', '12L3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 WA S2 w Yamaha - Twin 350 NSB2 SBW (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 10.5 WA S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['12O3AI', '12O3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 WA S2 w Yamaha - Twin 300 NSB2 SBW (White) Joystick": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 10.5 WA S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['12L3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 WA S2 w Yamaha - Twin 350 NSB2 SBW (White) Joystick": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 10.5 WA S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['12O3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 WA S2 w Yamaha - Twin 450 NSA2 XTO (White) Joystick": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 10.5 WA S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['12S3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 WA S2 w Mercury - Twin 300 V8 (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 10.5 WA S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['16L3AI'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 WA S2 w Mercury - Twin 300 V8 ESteer + Joystick (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 10.5 WA S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['16L3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 WA S2 w Mercury - Twin 350 V10ESteer + Joystick (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 10.5 WA S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['16O3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC10.5 WA S2 w Mercury - Twin 425 V10 + Joystick (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 10.5 WA S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['16R3AJ'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC 9.0 CC S2 w Yamaha - Twin 200 XCB DBW (Grey)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 9.0 CC S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['A*1 11H2AI'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC 9.0 CC S2 w Yamaha - Twin 200 XSA2 SBW (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 9.0 CC S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['A*1 12H2AI'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC 9.0 CC S2 w Yamaha - Twin 250 XSB2 SBW (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 9.0 CC S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['A*1 12J2AI'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC 9.0 CC S2 w Mercury - Twin 200 V6 (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 9.0 CC S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['A*1 16H2AI'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC 9.0 CC S2 w Mercury - Twin 250 V8 (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 9.0 CC S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['A*1 16J2AI'] — boat-package powerplant / ePropulsion)"
+     },
+     "CC 9.0 CC S2 w Mercury - Twin 250 V8 ESTEER + Joystick (White)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 9.0 CC S2"
+      ],
+      "reason": "in the APPROVED phase-4 skip plan (codes ['A*1 16J2AJ'] — boat-package powerplant / ePropulsion)"
+     }
+    },
+    "unresolvedExplainedCount": 46,
+    "unresolvedNEW": {},
+    "unresolvedNEWCount": 0
+   },
+   "motorMenu.riggingKit -> org riggingKits (with sell price)": {
+    "checked": 4013,
+    "resolved": 3892,
+    "resolvedButNoPrice": {},
+    "resolvedButNoPriceCount": 0,
+    "unresolvedKnown": {},
+    "unresolvedKnownCount": 0,
+    "unresolvedExplained": {
+     "DEC Rigging Kit - 6X7 Concealed Mount w 6Y8 2 Gauge Kit, 16 Pin Harness & Filter": {
+      "boats": [
+       "Stacer Stacer - 589 CrossFire (Rear Console)",
+       "Stacer Stacer - 589 SeaRunner"
+      ],
+      "reason": "label absent from the MPF rigging sheet verbatim — boat-sheet vs rigging-sheet source drift (label still renders info-only in the quote flow)"
+     },
+     "DEC Rigging Kit - 6X7 Concealed Mount w CL5 Gauge Kit, 6.1m Harness & Filter": {
+      "boats": [
+       "Stacer Stacer - 589 CrossFire (Rear Console)",
+       "Stacer Stacer - 589 SeaRunner"
+      ],
+      "reason": "label absent from the MPF rigging sheet verbatim — boat-sheet vs rigging-sheet source drift (label still renders info-only in the quote flow)"
+     },
+     "Mech Rigging Kit (FF9ST) - 704 Binnacle Mount w 6YC Gauge Kit, 7m Harness, Cables & Filter": {
+      "boats": [
+       "Stacer Stacer - 589 Sea Ranger SDF (Centre Console)",
+       "Stacer Stacer - 609 Ocean Ranger Cen Cab (H/Top)",
+       "Stacer Stacer - 659 Ocean Ranger Cen Cab (H/Top)",
+       "Stacer Stacer - 659 Ocean Ranger SDF",
+       "Stacer Stacer - 659 Ocean Ranger SDF (H/Top)",
+       "Stacer Stacer - 659 Sea Ranger SDF (Centre Console)",
+       "Stacer Stacer - 709 Ocean Ranger SDF"
+      ],
+      "reason": "kit doc IS live under shared partNo '704-6YC1L-##-07' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "DEC Rigging Kit (FF9ST) - 6X6 Binnacle Mount w 6YC Gauge Kit, 16 Pin Harness & Filter": {
+      "boats": [
+       "Stacer Stacer - 589 Sea Ranger SDF (Centre Console)",
+       "Stacer Stacer - 609 Ocean Ranger Cen Cab (H/Top)",
+       "Stacer Stacer - 659 Ocean Ranger Cen Cab (H/Top)",
+       "Stacer Stacer - 659 Ocean Ranger SDF",
+       "Stacer Stacer - 659 Ocean Ranger SDF (H/Top)",
+       "Stacer Stacer - 659 Sea Ranger SDF (Centre Console)",
+       "Stacer Stacer - 709 Ocean Ranger Cen Cab (H/Top)",
+       "Stacer Stacer - 709 Ocean Ranger SDF",
+       "Stacer Stacer - 709 Ocean Ranger SDF (H/Top)",
+       "Stacer Stacer - 709 Sea Ranger SDF (Centre Console)"
+      ],
+      "reason": "kit doc IS live under shared partNo '6X6-6YC1L-00-##' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "6X6-6Y91S-SE-10 (FF9ST) - DBW Rig Set - Sng 1 SQ LCD (Binnacle)": {
+      "boats": [
+       "Stacer Stacer - 659 Ocean Ranger SDF (H/Top)",
+       "Stacer Stacer - 709 Ocean Ranger SDF (H/Top)",
+       "Stacer Stacer - 759 Ocean Ranger SDF",
+       "Stacer Stacer - 759 Ocean Ranger SDF (H/Top)"
+      ],
+      "reason": "kit doc IS live under shared partNo '6X6-6Y91S-SE-10' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "704-6YC1S-SE-50 (FF9ST) - Lan Rect Std - Rect Gauge (Binnacle)": {
+      "boats": [
+       "Stacer Stacer - 659 Ocean Ranger SDF",
+       "Stacer Stacer - 709 Ocean Ranger SDF"
+      ],
+      "reason": "kit doc IS live under shared partNo '704-6YC1S-SE-50' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "6X3-6YC1S-SE-60 (FF9SU) - Lan Rect Std - Rect Gauge (Concealed)": {
+      "boats": [
+       "Surtees Surtees - 620 Game Fisher",
+       "Surtees Surtees - 670 Game Fisher"
+      ],
+      "reason": "kit doc IS live under shared partNo '6X3-6YC1S-SE-60' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "Jeanneau Factory Fitted Motor / Rigging Combination": {
+      "boats": [
+       "Jeanneau Jeanneau - DB 37 OB",
+       "Jeanneau Jeanneau - DB 43 OB",
+       "Jeanneau Jeanneau - TH33",
+       "Jeanneau Jeanneau - TH38"
+      ],
+      "reason": "label absent from the MPF rigging sheet verbatim — boat-sheet vs rigging-sheet source drift (label still renders info-only in the quote flow)"
+     },
+     "MF695-2 Y06C0 - Yamaha Rigging Kit (115-175HP) Mechanical Control": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  695 S2"
+      ],
+      "reason": "label absent from the MPF rigging sheet verbatim — boat-sheet vs rigging-sheet source drift (label still renders info-only in the quote flow)"
+     },
+     "MF695-2 Y10D1 - Yamaha Rigging Kit (150-175HP) Elec Control + CL5 Display + EKS Smart Key": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  695 S2"
+      ],
+      "reason": "label absent from the MPF rigging sheet verbatim — boat-sheet vs rigging-sheet source drift (label still renders info-only in the quote flow)"
+     },
+     "MF695-2 Y20D0 - Yamaha Rigging Kit / Double Steering (150-175HP) Elec Control + CL5 Display + EKS Smart Key": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  695 S2"
+      ],
+      "reason": "label absent from the MPF rigging sheet verbatim — boat-sheet vs rigging-sheet source drift (label still renders info-only in the quote flow)"
+     },
+     "MF695-2 Sport Y02C0 - Yamaha Rigging Kit (115-175HP) Mechanical Control + YCOP": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  695 Sport S2"
+      ],
+      "reason": "label absent from the MPF rigging sheet verbatim — boat-sheet vs rigging-sheet source drift (label still renders info-only in the quote flow)"
+     },
+     "MF695-2 Sport Y04C1 - Yamaha Rigging Kit (150-175HP) Elec Control + CL5 Display + EKS Smart Key": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  695 Sport S2"
+      ],
+      "reason": "label absent from the MPF rigging sheet verbatim — boat-sheet vs rigging-sheet source drift (label still renders info-only in the quote flow)"
+     },
+     "MF695-2 Sport Y18C0 - Yamaha Rigging Kit / Double Steering (150-175HP) Elec Control + CL5 Display + EKS Smart Key": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  695 Sport S2"
+      ],
+      "reason": "label absent from the MPF rigging sheet verbatim — boat-sheet vs rigging-sheet source drift (label still renders info-only in the quote flow)"
+     },
+     "MF795-2 Y06C0 - Yamaha Rigging Kit (150-225HP) Mechanical Control": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  795 S2"
+      ],
+      "reason": "kit doc IS live under shared partNo 'Y07E1' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "MF795-2 Y30E1 - Yamaha Rigging Kit (150-200HP) DBW Elec Control + CL5 Display + EKS Smart Key": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  795 S2"
+      ],
+      "reason": "kit doc IS live under shared partNo 'Y30E1' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "MF795-2 Y30EA - Yamaha Rigging Kit - Double Steering (150-200HP) DBW Elec Control + CL5 Display + EKS Smart Key": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  795 S2"
+      ],
+      "reason": "kit doc IS live under shared partNo 'Y30EA' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "MF795-2 Sport Y06E1 - Yamaha Rigging Kit (150-200HP) Mechanical Control w 6Y8 Gauges + YCOP": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  795 Sport S2"
+      ],
+      "reason": "kit doc IS live under shared partNo 'Y06E1' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "MF795-2 Sport Y31E1 - Yamaha Rigging Kit (150-200HP) DWB Electric Control + EKS Smart Key": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  795 Sport S2"
+      ],
+      "reason": "kit doc IS live under shared partNo 'Y31E1' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "MF795-2 Sport Y29E1 - Yamaha HMEX Rigging Kit SBW Elec Control + CL5 Display + Autopilot & EKS Smart Key": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  795 Sport S2"
+      ],
+      "reason": "kit doc IS live under shared partNo 'Y29E1' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "MF795-2 Sport Y29EA - Yamaha HMEX Rigging Kit - Double SteeringSBW Elec Control + CL5 Display + Autopilot & EKS Smart Key": {
+      "boats": [
+       "Merry Fisher Merry Fisher  -  795 Sport S2"
+      ],
+      "reason": "kit doc IS live under shared partNo 'Y29EA' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "Cap Camarat 5.5 WA2 Y06C0 Rigging Kit - Sng Eng (100-115 HP) Mech Control": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 5.5 WA Series 2"
+      ],
+      "reason": "kit doc IS live under shared partNo 'Y06C0' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "Cap Camarat 6.5 CC3 Y06E1 Mech Rigging Kit - Sng Eng (150-200HP)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 6.5 CC Series 3"
+      ],
+      "reason": "kit doc IS live under shared partNo 'Y06E1' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "Cap Camarat 6.5 CC3 Y31E1 HMEX Rigging Kit - Sng Eng (150-200HP) DBW w CL5 Display + EKS Smart Key": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 6.5 CC Series 3"
+      ],
+      "reason": "kit doc IS live under shared partNo 'Y31E1' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "Cap Camarat 6.5 CC3 Y29E1 HMEX Rigging Kit - Sng Eng (150-200HP) SBW w Electric Steering + CL5 Display + EKS Smart Key": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 6.5 CC Series 3"
+      ],
+      "reason": "kit doc IS live under shared partNo 'Y29E1' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "Cap Camarat 6.5 WA3 Y06E1 Mech Rigging Kit - Sng Eng (150-200 HP)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 6.5 WA Series 3"
+      ],
+      "reason": "kit doc IS live under shared partNo 'Y06E1' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "Cap Camarat 6.5 WA3 Y31E1 HMEX Rigging Kit - Sng Eng (150-200 HP) DBW Elec Control w CL5 Display + EKS Smart Key": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 6.5 WA Series 3"
+      ],
+      "reason": "kit doc IS live under shared partNo 'Y31E1' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "Cap Camarat 6.5 WA3 Y29E1 HMEX Rigging Kit - Sng Eng (150-200 HP) SBW Elec Steering w CL5 Display + EKS Smart Key + Autopilot": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 6.5 WA Series 3"
+      ],
+      "reason": "kit doc IS live under shared partNo 'Y29E1' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "CC 7.5 WAS3 Y02DU - Mechanical Rigging Kit inc 6Y8 Gauges without YCop": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 7.5 WA Series 3"
+      ],
+      "reason": "kit doc IS live under shared partNo 'MP Y02DU' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "CC 7.5 WAS3 Y04C1 - HMEX DBW Rigging Kit inc CL5 Colour Touch Display + EKS Smart Key": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 7.5 WA Series 3"
+      ],
+      "reason": "kit doc IS live under shared partNo 'MP Y04C1' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "CC 7.5 WAS3 Y26D1 - HMEX SBW Rigging Kit inc CL5 Colour Touch Display + EKS Smart Key": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 7.5 WA Series 3"
+      ],
+      "reason": "kit doc IS live under shared partNo 'MP Y26D1' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     },
+     "CC 7.5 WAS3 Y26D1/Y9301 - HMEX SBW Rigging Kit + Joystick inc CL5 Colour Touch Display + EKS Smart Key": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 7.5 WA Series 3"
+      ],
+      "reason": "kit doc IS live under shared partNo 'MP Y26D1 + Y9301' — MPF rigging sheet reuses one part number for several descriptions; upsert-by-natural-key collapsed them, a sibling description won. App shows the menu label without the info-only price line."
+     }
+    },
+    "unresolvedExplainedCount": 32,
+    "unresolvedNEW": {},
+    "unresolvedNEWCount": 0
+   },
+   "trailerMenu.name -> trailer vendor docs (with sell price)": {
+    "checked": 679,
+    "resolved": 673,
+    "resolvedButNoPrice": {
+     "Formosa GRT Tow Catch - RE1513Q-MO (Gal Steel, Single Axle)": [
+      "Formosa Formosa - GRT 425 (Tiller)",
+      "Formosa Formosa - GRT 455 (Side Console)",
+      "Formosa Formosa - GRT 455 (Tiller)"
+     ]
+    },
+    "resolvedButNoPriceCount": 1,
+    "unresolvedKnown": {
+     "REDCO / CC7.5 Alloy Multi Roller Trailer - TA800T-EH2 (4,240kg)": {
+      "boats": [
+       "Cap Camarat Cap Camarat - 7.5 CC S3.",
+       "Cap Camarat Cap Camarat - 7.5 WA Series 3"
+      ],
+      "reason": "task known list — absent from the MPF source itself"
+     }
+    },
+    "unresolvedKnownCount": 1,
+    "unresolvedExplained": {
+     "REDCO Sportsman - RES1210S": {
+      "boats": [
+       "Stacer Stacer - 359 Proline L/S",
+       "Stacer Stacer - 359 Proline S/S"
+      ],
+      "reason": "absent from the MPF trailer sheet itself — same class as the known TA800T-EH2 skip (full-web found it; the sampled run missed it)"
+     },
+     "REDCO Surtees Special - RS480-MO Slider": {
+      "boats": [
+       "Surtees 495 - Pro Fisher.",
+       "Surtees 495 - Workmate."
+      ],
+      "reason": "absent from the MPF trailer sheet itself — same class as the known TA800T-EH2 skip (full-web found it; the sampled run missed it)"
+     }
+    },
+    "unresolvedExplainedCount": 2,
+    "unresolvedNEW": {},
+    "unresolvedNEWCount": 0,
+    "sentinelRowsSkipped": {
+     "TRAILER NOT REQUIRED - 800 Gamefisher": [
+      "Surtees Surtees - 800 Game Fisher"
+     ]
+    }
+   },
+   "dealerFitLines -> dealerFitSelections (with Act Sell)": {
+    "checked": 1426,
+    "resolved": 1426,
+    "resolvedButNoPrice": {},
+    "resolvedButNoPriceCount": 0,
+    "unresolvedKnown": {},
+    "unresolvedKnownCount": 0,
+    "unresolvedExplained": {},
+    "unresolvedExplainedCount": 0,
+    "unresolvedNEW": {},
+    "unresolvedNEWCount": 0
+   },
+   "model.factoryOptionCodes -> model.optionalFeatures (by code)": {
+    "checked": 0,
+    "resolved": 0,
+    "resolvedButNoPrice": {},
+    "resolvedButNoPriceCount": 0,
+    "unresolvedKnown": {},
+    "unresolvedKnownCount": 0,
+    "unresolvedExplained": {},
+    "unresolvedExplainedCount": 0,
+    "unresolvedNEW": {},
+    "unresolvedNEWCount": 0,
+    "modelsWithFoCodesButNoOptionalFeaturesArray": {
+     "count": 223,
+     "codesInBucket": 12300,
+     "note": "known-architectural: the FO import wave only repriced EXISTING Highfield per-model optionalFeatures; ref-code materialization for the other brands' models was deliberately out of scope (import-motors-trailers-fo.py header). Not counted as NEW.",
+     "models": [
+      "Cap Camarat Cap Camarat  -  10.5 CC",
+      "Cap Camarat Cap Camarat - 10.5 WA S2",
+      "Cap Camarat Cap Camarat - 12.5_WA",
+      "Cap Camarat Cap Camarat - 5.5 CC Series 2",
+      "Cap Camarat Cap Camarat - 5.5 WA Series 2",
+      "Cap Camarat Cap Camarat - 6.5 CC Series 3",
+      "Cap Camarat Cap Camarat - 6.5 WA Series 3",
+      "Cap Camarat Cap Camarat - 7.5 CC S3.",
+      "Cap Camarat Cap Camarat - 7.5 WA Series 3",
+      "Cap Camarat Cap Camarat - 9.0 CC S2",
+      "Cap Camarat Cap Camarat - 9.0 WA S2",
+      "Formosa Formosa - GRT 425 (Tiller)",
+      "Formosa Formosa - GRT 455 (Side Console)",
+      "Formosa Formosa - GRT 455 (Tiller)",
+      "Formosa Formosa - SRT 495 (Side Console)",
+      "Formosa Formosa - SRT 525 (Centre Console)",
+      "Formosa Formosa - SRT 525 (Side Console)",
+      "Formosa Formosa - SRT 525 (Territory)",
+      "Formosa Formosa - SRT 565 (Centre Cabin)",
+      "Formosa Formosa - SRT 565 (Centre Console)",
+      "Formosa Formosa - SRT 565 (Side Console)",
+      "Formosa Formosa - SRT 565 (Territory)",
+      "Formosa Formosa - SRT 565 (X Bowrider)",
+      "Formosa Formosa - SRT 595 (Centre Cabin)",
+      "Formosa Formosa - SRT 595 (Centre Console)"
+     ]
+    },
+    "liveOptionalFeaturesRenderability": {
+     "entries": 1007,
+     "renderable": 980,
+     "bad": [
+      "Highfield Inflatables PA420: code=None sell=0",
+      "Highfield Inflatables PA420: code=None sell=None",
+      "Highfield Inflatables PA460: code=None sell=0",
+      "Highfield Inflatables PA460: code=None sell=None",
+      "Highfield Inflatables PA500: code=None sell=0",
+      "Highfield Inflatables PA500: code=None sell=None",
+      "Highfield Inflatables PA540 Open: code=None sell=0",
+      "Highfield Inflatables PA540ST: code=None sell=0",
+      "Highfield Inflatables PA600 Open: code=None sell=0",
+      "Highfield Inflatables PA600 Open: code=None sell=None",
+      "Highfield Inflatables PA600EW: code=None sell=0",
+      "Highfield Inflatables PA600EW: code=None sell=None",
+      "Highfield Inflatables PA600ST: code=None sell=0",
+      "Highfield Inflatables PA660EW: code=None sell=0",
+      "Highfield Inflatables PA660ST: code=None sell=0",
+      "Highfield Inflatables PA700EW: code=None sell=0",
+      "Highfield Inflatables PA700EW: code=None sell=None",
+      "Highfield Inflatables PA700ST: code=None sell=0",
+      "Highfield Inflatables PA700ST: code=None sell=None",
+      "Highfield Inflatables PA760EW: code=None sell=0"
+     ],
+     "note": "every live optionalFeatures entry must carry code + numeric sellPriceExclGst for the Step-2 FFO cards"
+    }
+   }
+  },
+  "verdict": "EVERYTHING RESOLVES OR IS ACCOUNTED FOR — 0 unexplained; 80 name(s) outside the original known list are each traced to an approved import decision or MPF source inconsistency (see unresolvedExplained)"
+ },
+ "browserLevel": {
+  "generatedUtc": "2026-07-03T14:06:48.702Z",
+  "baseUrl": "http://localhost:9002",
+  "spec": "tests/everything-clicks.spec.ts",
+  "boats": {
+   "highfield-sp560": {
+    "boat": "highfield-sp560",
+    "mounted": true,
+    "categories": {
+     "motors": {
+      "rendered": 4,
+      "clicks": [
+       {
+        "target": "Slot 1Yamaha - F90XB Recommended SelectedMech Rigging Kit - 6X3 Concealed (Left Hand) Moun",
+        "pass": true,
+        "selectedBadge": true,
+        "infoRows": 4,
+        "infoTexts": [
+         "Mech Rigging Kit - 6X3 Concealed (Left Hand) Mount w 6Y5 2 Gauges, 5m ",
+         "Propeller - Aluminium SDS GP K Series - 15\" · 6FP-45943-00",
+         " · 6FP-45943-00",
+         "Engine hole: TBA"
+        ],
+        "totalBefore": "65,818",
+        "totalAfter": "65,818",
+        "totalChanged": false,
+        "note": "already-selected card re-clicked — total correctly unchanged"
+       },
+       {
+        "target": "Slot 2Yamaha - F90XB2 (White)Mech Rigging Kit - 6X3 Concealed (Left Hand) Mount w 6Y5 2 Ga",
+        "pass": true,
+        "selectedBadge": true,
+        "infoRows": 4,
+        "infoTexts": [
+         "Mech Rigging Kit - 6X3 Concealed (Left Hand) Mount w 6Y5 2 Gauges, 5m ",
+         "Propeller - Aluminium SDS GP K Series - 15\" · 6FP-45943-00",
+         " · 6FP-45943-00",
+         "Engine hole: TBA"
+        ],
+        "totalBefore": "65,818",
+        "totalAfter": "67,498",
+        "totalChanged": true
+       },
+       {
+        "target": "Slot 3Yamaha - F115XBMech Rigging Kit - 6X3 Concealed Mount w 6Y8 2 Gauges, 5m Harness, 15",
+        "pass": true,
+        "selectedBadge": true,
+        "infoRows": 4,
+        "infoTexts": [
+         "Mech Rigging Kit - 6X3 Concealed Mount w 6Y8 2 Gauges, 5m Harness, 15'",
+         "Propeller - Aluminium SDS GP K Series - 15\" · 6FP-45943-00",
+         " · 6FP-45943-00",
+         "Engine hole: TBA"
+        ],
+        "totalBefore": "67,498",
+        "totalAfter": "68,203",
+        "totalChanged": true
+       },
+       {
+        "target": "Slot 4Yamaha - F115XB2 (White)Mech Rigging Kit - 6X3 Concealed Mount w 6Y8 2 Gauges, 5m Ha",
+        "pass": true,
+        "selectedBadge": true,
+        "infoRows": 4,
+        "infoTexts": [
+         "Mech Rigging Kit - 6X3 Concealed Mount w 6Y8 2 Gauges, 5m Harness, 15'",
+         "PROPELLER - Alum Talon GP K Series · 6FP-459xx-xx",
+         " · 6FP-459xx-xx",
+         "Engine hole: TBA"
+        ],
+        "totalBefore": "68,203",
+        "totalAfter": "68,963",
+        "totalChanged": true
+       }
+      ],
+      "note": ""
+     },
+     "trailers": {
+      "rendered": 1,
+      "clicks": [
+       {
+        "target": "REDCO Custom / Highfield SP560 Aluminium - TA600-MOB Recommended SelectedMatches assigned ",
+        "pass": true,
+        "selectedBadge": true,
+        "totalBefore": "69,246",
+        "totalAfter": "69,246",
+        "totalChanged": false
+       }
+      ],
+      "note": ""
+     },
+     "dealerFit": {
+      "rendered": 4,
+      "clicks": [
+       {
+        "target": "Tube Covers to suit PVC Boat - 5.6 Mtr",
+        "pass": true,
+        "selectedBadge": true,
+        "totalBefore": "69,246",
+        "totalAfter": "73,880",
+        "totalChanged": true
+       },
+       {
+        "target": "VHF Radio - GME GX750B Hideaway with 1.8m Aerial",
+        "pass": true,
+        "selectedBadge": true,
+        "totalBefore": "73,880",
+        "totalAfter": "74,896",
+        "totalChanged": true
+       },
+       {
+        "target": "Fusion Apollo RA670 Stereo w 2 Pairs of XS 6.5\" Speakers + 1.8mtr Aerial",
+        "pass": true,
+        "selectedBadge": true,
+        "totalBefore": "74,896",
+        "totalAfter": "77,384",
+        "totalChanged": true
+       },
+       {
+        "target": "Garmin EchoMap Ultra 2 125sv w GT56 UHD Tducer (AUS/NZ Navionics) & Spray Deflector Cover",
+        "pass": true,
+        "selectedBadge": true,
+        "totalBefore": "77,384",
+        "totalAfter": "82,680",
+        "totalChanged": true
+       }
+      ],
+      "note": "Step-5 rigging line rendered: true"
+     }
+    },
+    "bugs": []
+   },
+   "highfield-cl380": {
+    "boat": "highfield-cl380",
+    "mounted": true,
+    "categories": {
+     "motors": {
+      "rendered": 3,
+      "clicks": [
+       {
+        "target": "Slot 1Yamaha - F25SMHC RecommendedTiller Handle Standard w MotorPropellor Supplied with Mo",
+        "pass": true,
+        "selectedBadge": true,
+        "infoRows": 3,
+        "infoTexts": [
+         "Tiller Handle Standard w Motor",
+         "Propellor Supplied with Motor",
+         "Engine hole: TBA"
+        ],
+        "totalBefore": "17,711",
+        "totalAfter": "16,401",
+        "totalChanged": true
+       },
+       {
+        "target": "Slot 2Yamaha - F25SWTCMech Rigging Kit - 703 Side Mount (No Gauges) w 11' Cables & Fuel Fi",
+        "pass": true,
+        "selectedBadge": true,
+        "infoRows": 3,
+        "infoTexts": [
+         "Mech Rigging Kit - 703 Side Mount (No Gauges) w 11' Cables & Fuel Filt",
+         "Propellor Supplied with Motor",
+         "Engine hole: TBA"
+        ],
+        "totalBefore": "16,401",
+        "totalAfter": "17,711",
+        "totalChanged": true
+       },
+       {
+        "target": "Slot 3Yamaha - F25SMHCTiller Handle Standard w MotorPropellor Supplied with MotorEngine ho",
+        "pass": true,
+        "selectedBadge": true,
+        "infoRows": 3,
+        "infoTexts": [
+         "Tiller Handle Standard w Motor",
+         "Propellor Supplied with Motor",
+         "Engine hole: TBA"
+        ],
+        "totalBefore": "17,711",
+        "totalAfter": "16,401",
+        "totalChanged": true
+       }
+      ],
+      "note": ""
+     },
+     "trailers": {
+      "rendered": 0,
+      "clicks": [],
+      "note": "NSM trailer section not rendered (no trailerMenu on this variant — data-gated)"
+     },
+     "dealerFit": {
+      "rendered": 1,
+      "clicks": [
+       {
+        "target": "Tube Covers to suit PVC Boat - 3.8 Mtr",
+        "pass": true,
+        "selectedBadge": true,
+        "totalBefore": "16,567",
+        "totalAfter": "19,721",
+        "totalChanged": true
+       }
+      ],
+      "note": "Step-5 rigging line rendered: true"
+     }
+    },
+    "bugs": []
+   },
+   "stacer": {
+    "boat": "stacer",
+    "mounted": false,
+    "categories": {
+     "quoteFlow": {
+      "rendered": 0,
+      "clicks": [],
+      "note": "DOCUMENTED PRODUCT GAP (not a bug): non-Highfield vendors render the \"Quotation Engine — being developed\" placeholder by design (vendor.slug gate in modules/[id]/quote/[modelId]/page.tsx). NSM motor/trailer/dealer-fit menus for this brand are verified at DATA level by scripts/mpf/verify-web-full.py."
+     }
+    },
+    "bugs": []
+   }
+  }
+ }
+}

@@ -1,0 +1,327 @@
+{
+ "specInventory": [
+  {
+   "file": "bm-email-checklist-sport.spec.ts",
+   "tests": 1,
+   "assertions": 20
+  },
+  {
+   "file": "bm-email-checklist.spec.ts",
+   "tests": 1,
+   "assertions": 20
+  },
+  {
+   "file": "cl380-fully-specced.spec.ts",
+   "tests": 1,
+   "assertions": 1
+  },
+  {
+   "file": "critical-paths.spec.ts",
+   "tests": 6,
+   "assertions": 8
+  },
+  {
+   "file": "diag.spec.ts",
+   "tests": 1,
+   "assertions": 1
+  },
+  {
+   "file": "firestore-rules-deployed.spec.ts",
+   "tests": 1,
+   "assertions": 1
+  },
+  {
+   "file": "fit-up-dialog-shot.spec.ts",
+   "tests": 1,
+   "assertions": 0
+  },
+  {
+   "file": "forensic.spec.ts",
+   "tests": 1,
+   "assertions": 1
+  },
+  {
+   "file": "hotfixes-v1.3.spec.ts",
+   "tests": 11,
+   "assertions": 31
+  },
+  {
+   "file": "just-grab-pdf.spec.ts",
+   "tests": 1,
+   "assertions": 1
+  },
+  {
+   "file": "pdf-debug.spec.ts",
+   "tests": 1,
+   "assertions": 1
+  },
+  {
+   "file": "persistence.spec.ts",
+   "tests": 4,
+   "assertions": 16
+  },
+  {
+   "file": "quote-builder.spec.ts",
+   "tests": 9,
+   "assertions": 17
+  },
+  {
+   "file": "roadmap-reflective.spec.ts",
+   "tests": 1,
+   "assertions": 0
+  },
+  {
+   "file": "settings.spec.ts",
+   "tests": 5,
+   "assertions": 10
+  },
+  {
+   "file": "smoke.spec.ts",
+   "tests": 1,
+   "assertions": 1
+  },
+  {
+   "file": "sp560-full-quote.spec.ts",
+   "tests": 1,
+   "assertions": 1
+  },
+  {
+   "file": "stock-management.spec.ts",
+   "tests": 6,
+   "assertions": 10
+  },
+  {
+   "file": "v1.11-allup.spec.ts",
+   "tests": 1,
+   "assertions": 10
+  },
+  {
+   "file": "v1.11-audit-trail.spec.ts",
+   "tests": 3,
+   "assertions": 4
+  },
+  {
+   "file": "v1.11-catalog-mgr.spec.ts",
+   "tests": 1,
+   "assertions": 9
+  },
+  {
+   "file": "v1.11-content-block-styling.spec.ts",
+   "tests": 1,
+   "assertions": 8
+  },
+  {
+   "file": "v1.11-fitup-complexity.spec.ts",
+   "tests": 1,
+   "assertions": 2
+  },
+  {
+   "file": "v1.11-followup.spec.ts",
+   "tests": 1,
+   "assertions": 11
+  },
+  {
+   "file": "v1.11-responsive-matrix.spec.ts",
+   "tests": 1,
+   "assertions": 2
+  },
+  {
+   "file": "v1.11-service-quoting.spec.ts",
+   "tests": 1,
+   "assertions": 5
+  },
+  {
+   "file": "v1.11-sport-e2e.spec.ts",
+   "tests": 1,
+   "assertions": 3
+  },
+  {
+   "file": "v1.11-submitted-sweep.spec.ts",
+   "tests": 1,
+   "assertions": 2
+  },
+  {
+   "file": "v1.12-customer-schema.spec.ts",
+   "tests": 1,
+   "assertions": 0
+  },
+  {
+   "file": "v1.12-service-quoting-walkthrough.spec.ts",
+   "tests": 1,
+   "assertions": 0
+  },
+  {
+   "file": "v1.12-v1.13-smoke.spec.ts",
+   "tests": 3,
+   "assertions": 5
+  },
+  {
+   "file": "v1.13-everything.spec.ts",
+   "tests": 4,
+   "assertions": 0
+  },
+  {
+   "file": "v1.14-everything.spec.ts",
+   "tests": 7,
+   "assertions": 0
+  },
+  {
+   "file": "v1.14-v1.16-everything.spec.ts",
+   "tests": 5,
+   "assertions": 1
+  },
+  {
+   "file": "v1.15-everything.spec.ts",
+   "tests": 3,
+   "assertions": 0
+  },
+  {
+   "file": "v1.16-allup.spec.ts",
+   "tests": 9,
+   "assertions": 0
+  },
+  {
+   "file": "v1.17-everything.spec.ts",
+   "tests": 9,
+   "assertions": 0
+  },
+  {
+   "file": "v1.18-everything.spec.ts",
+   "tests": 6,
+   "assertions": 0
+  },
+  {
+   "file": "v1.18-v1.19-browser.spec.ts",
+   "tests": 3,
+   "assertions": 0
+  },
+  {
+   "file": "v1.19-everything.spec.ts",
+   "tests": 4,
+   "assertions": 0
+  },
+  {
+   "file": "v1.2-features.spec.ts",
+   "tests": 16,
+   "assertions": 19
+  },
+  {
+   "file": "v1.20-browser.spec.ts",
+   "tests": 3,
+   "assertions": 0
+  },
+  {
+   "file": "v1.20-everything.spec.ts",
+   "tests": 4,
+   "assertions": 0
+  },
+  {
+   "file": "v1.21-browser.spec.ts",
+   "tests": 2,
+   "assertions": 0
+  },
+  {
+   "file": "v1.21-everything.spec.ts",
+   "tests": 5,
+   "assertions": 0
+  },
+  {
+   "file": "v1.22-browser.spec.ts",
+   "tests": 3,
+   "assertions": 0
+  },
+  {
+   "file": "v1.22-everything.spec.ts",
+   "tests": 7,
+   "assertions": 0
+  },
+  {
+   "file": "v1.23-browser.spec.ts",
+   "tests": 2,
+   "assertions": 0
+  },
+  {
+   "file": "v1.23-everything.spec.ts",
+   "tests": 3,
+   "assertions": 0
+  },
+  {
+   "file": "v1.24-browser.spec.ts",
+   "tests": 1,
+   "assertions": 0
+  },
+  {
+   "file": "v1.24-everything.spec.ts",
+   "tests": 3,
+   "assertions": 0
+  },
+  {
+   "file": "v1.25-browser.spec.ts",
+   "tests": 1,
+   "assertions": 0
+  },
+  {
+   "file": "v1.25-everything.spec.ts",
+   "tests": 4,
+   "assertions": 0
+  },
+  {
+   "file": "v1.26-browser.spec.ts",
+   "tests": 1,
+   "assertions": 0
+  },
+  {
+   "file": "v1.26-everything.spec.ts",
+   "tests": 2,
+   "assertions": 0
+  },
+  {
+   "file": "v1.4-trailers.spec.ts",
+   "tests": 7,
+   "assertions": 20
+  },
+  {
+   "file": "v127-v21-browser.spec.ts",
+   "tests": 1,
+   "assertions": 0
+  },
+  {
+   "file": "v127-v21-everything.spec.ts",
+   "tests": 3,
+   "assertions": 0
+  },
+  {
+   "file": "yamaha-motors.spec.ts",
+   "tests": 6,
+   "assertions": 13
+  }
+ ],
+ "verificationCommits": [
+  "74b0915 test(evidence): route Chromium through sandbox proxy + disable PQ/ECH TLS features that reset the CONNECT tunnel",
+  "fd984a7 fix(infra): collection-group indexes + recursive variations rule (E2E-caught)",
+  "b378d08 fix(test): rules-deployed probe used reserved id + confirm rules published",
+  "1e27492 test(v1.24+v1.25): browser GREEN on dev + flag flips + ship statuses",
+  "28bab56 test(v1.23): browser 3/3 GREEN on dev + flag flip",
+  "34fe6ed test(v1.22): browser 5/5 GREEN on dev + flag flip",
+  "79e0942 test(v1.21): browser walkthrough 5/5 GREEN on dev URL",
+  "7ad7326 fix(v1.21): silent collectionGroup quotes + recursive rule (E2E-caught white-screen)",
+  "95a34d9 test(v1.20): full v1.20 walkthrough 5/5 GREEN on dev URL",
+  "64802be test(v1.20): browser walkthrough 3/3 GREEN against dev URL",
+  "f4c727c feat(v1.20/2.4.2) + test(v1.20): Record Deposit dialog + browser walkthrough scaffold",
+  "76e3525 test(v1.18+v1.19): browser walkthrough against dev URL",
+  "96bd146 test(hotfix): firestore rules deployment regression test",
+  "6f1ad30 test(v1.16): rewire BoatsTable test to Highfield surface + file-based",
+  "65f94b1 test(v1.13-v1.15): convert brittle UI walkthroughs to file-based assertions",
+  "d2d7479 test(v1.12-v1.16): per-release coverage specs for every shipped ticket",
+  "ffbec60 test(v1.12): service-quoting end-to-end walkthrough spec",
+  "87712a3 test(v1.14+v1.15+v1.16): comprehensive surface coverage spec",
+  "447a874 test(v1.12+v1.13): smoke spec for service-quote dashboard + trailers table + inline edit",
+  "2214084 v1.11 Fit-Up Release \u2014 end-to-end + expansion + pre-launch hardening (Mark's checklist 11/11)",
+  "8ee2e60 fix(v1.7): pre-load every image as data URL to bypass @react-pdf CORS",
+  "cd70279 docs(v1.4): tester checklist for day-1 remediation commits",
+  "9ee4379 feat: comprehensive Playwright E2E test suite for v1.2 + v1.3",
+  "62ba989 docs: standardize release notes format \u2014 remove checklist, align layout",
+  "b196f2a Update RELEASE_NOTES_v1.2.md to remove checklist",
+  "7a4b531 docs: final QA results \u2014 all 30+ tests passing, release checklist updated"
+ ]
+}

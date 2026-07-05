@@ -19,6 +19,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Loader2, Plus, Pencil, Trash2, Search, Users } from 'lucide-react';
+import { CustomerDetailSheet } from '@/components/customer-detail-sheet';
 
 interface CustomerListProps {
   organisationId: string;
@@ -52,6 +53,9 @@ export function CustomerList({ organisationId, subDealerOrgIds, readOnly = false
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
   const [deleting, setDeleting] = useState(false);
+  /** v1.21 (Story 8.1.2) — customer detail sheet. Opens when a customer
+   *  name is clicked. */
+  const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
 
   const orgIds = useMemo(() => {
     const ids = [organisationId];
@@ -227,7 +231,14 @@ export function CustomerList({ organisationId, subDealerOrgIds, readOnly = false
                 <tr key={customer.id} className="group text-xs hover:bg-slate-50/50 border-b border-slate-100">
                   <td className="px-4 py-3 font-medium">
                     <div className="flex items-center gap-2">
-                      <span>{customer.name}</span>
+                      <button
+                        type="button"
+                        data-testid="customer-name-link"
+                        className="text-left hover:text-primary hover:underline font-bold"
+                        onClick={() => setDetailCustomer(customer)}
+                      >
+                        {customer.name}
+                      </button>
                       {subDealerOrgIds?.length && customer.organisationId !== organisationId && (
                         <Badge variant="outline" className="text-[8px] font-bold py-0 h-4 border-2">
                           {orgNameMap[customer.organisationId] || 'Sub-dealer'}
@@ -359,6 +370,13 @@ export function CustomerList({ organisationId, subDealerOrgIds, readOnly = false
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* v1.21 (Story 8.1.2) — Customer detail sheet. */}
+      <CustomerDetailSheet
+        open={!!detailCustomer}
+        onOpenChange={(o) => { if (!o) setDetailCustomer(null); }}
+        customer={detailCustomer}
+      />
     </div>
   );
 }

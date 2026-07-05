@@ -465,7 +465,7 @@ export function MasterPriceFileWorkspace({ vendorId, organisationId, isAdmin }: 
             </div>
 
             {/* Dataset tabs */}
-            <div className="shrink-0 px-8 py-3 flex items-center gap-2 border-b overflow-x-auto">
+            <div className="shrink-0 px-8 py-3 flex items-center gap-2 border-b overflow-x-auto overflow-y-hidden">
                 {dataSetsLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
                 ) : dataSets && dataSets.length > 0 ? (

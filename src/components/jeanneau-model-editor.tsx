@@ -157,7 +157,9 @@ function VisualAssetsCard({ model, isModuleView }: { model: any, isModuleView: b
     
     const coverImageUrl = watch("coverImageUrl");
     const galleryUrls = watch("galleryImageUrls") || [];
-    const { append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' });
+    // react-hook-form's FieldArrayPath type excludes primitive arrays (string[]) even though
+    // they work at runtime — cast the name so galleryImageUrls stays usable as a field array.
+    const { append: appendGalleryImage, remove: removeGalleryImage } = useFieldArray({ control, name: 'galleryImageUrls' as any });
 
     return (
         <Collapsible className="group overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>

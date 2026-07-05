@@ -1,0 +1,25 @@
+{
+ "step1CardTexts": [
+  "SP560 — White / White / White/Blue",
+  "SP560 — Light Grey / White / White/Blue",
+  "SP560 — Light Grey / White / Dark Blue",
+  "SP560 — Black / White / Carbon",
+  "SP560 — Dark Grey / Grey / Military Black",
+  "SP560 — Black / Black / Dark Blue",
+  "SP560 — Black / Black / Black"
+ ],
+ "chosenColourCard": "SP560 — White / White / White/Blue",
+ "regoMode": "MPF band selected: 4.51m to 6.0m$250",
+ "motorCardCount": 2,
+ "motorCardClicked": "Slot 1Yamaha - F90XB Recommended SelectedMech Rigging Kit - 6X3 Concealed (Left Hand) Mount w 6Y5 2 Gauges, 5m Harness, 15' Cables & FilterPropeller - Aluminium SDS GP K Series - 15\" · 6FP-45943-00Eng",
+ "trailerCardText": "REDCO Custom / Highfield SP560 Aluminium - TA600-MOB Recommended SelectedMatches assigned trailer TA600-MOB (SP560)",
+ "trailerCardClass": "relative flex flex-col text-left border-2 rounded-[1.5rem] overflow-hidden transition-all p-5 gap-3 h-full bg-primary/5 border-primary shadow-md ring-2 ring-primary/20",
+ "trailerClicked": "already selected",
+ "trailerRego": "toggle not found on step 4",
+ "df-tubeCovers": "Tube Covers to suit PVC Boat - 5.6 Mtr",
+ "df-vhf": "VHF Radio - GME GX750B Hideaway with 1.8m Aerial",
+ "hlTotalIncGst": "79,022",
+ "hlTotalExGst": "71,838",
+ "proposalUrl": "http://localhost:9002/modules/highfield/proposals/ZHbVgS3yd5K3N0HcAusJ",
+ "pdfBytes": 654436
+}

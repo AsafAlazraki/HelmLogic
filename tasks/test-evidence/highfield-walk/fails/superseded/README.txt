@@ -1,0 +1,1 @@
+These screenshots are from interim runs whose failures were test-harness artifacts (NSM-menu card matched instead of assignment card; late-arriving auto-rego anchor; fit-up mount poll too short). All three models re-ran clean — see results.json (0 failures).

@@ -25,7 +25,7 @@
 import { test, expect } from '@playwright/test';
 import { initializeApp, getApps, deleteApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, collection, query, limit, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, collectionGroup, where, query, limit, getDocs } from 'firebase/firestore';
 
 // Same Firebase web config the app uses (public + safe to embed; gating
 // is on the security rules, not the API key).
@@ -38,6 +38,15 @@ const FIREBASE_CONFIG = {
 const BILL_EMAIL = process.env.E2E_EMAIL || 'billh@nsmarine.com.au';
 const BILL_PASSWORD = process.env.E2E_PASSWORD || 'Bill2026!';
 const NSM_ORG_ID = 'AcFZVEFA5UDJG2hyetWT';
+
+/** Collections under users/{uid}/quotes/{qid}/ that we list at runtime.
+ *  Same rules-deploy concern as the org subcollections — if a new path
+ *  ships without a rules update, customers hit "Something went wrong"
+ *  on the very next read. */
+const USER_QUOTE_SUBPATHS = [
+    'variations', // v1.19 — quote variations (post-contract delta sheets)
+    'contracts',  // v1.20/2.4.1 — contracts when a quote is converted
+];
 
 /** Collections we ship code for that were added v1.10–v1.17.
  *  If any of these denies LIST in prod, customers see "Something went wrong"
@@ -95,6 +104,61 @@ test('Bill Hull can LIST every v1.10-v1.17 org subcollection (rules deployed)', 
                 }
                 tick(`rules/organisations.${sub}.list`, false);
             }
+        }
+
+        // v1.19 — verify the user-quote subcollections (variations etc.)
+        // are reachable. We list against the current user's own uid so
+        // no cross-user permission gymnastics are needed.
+        const currentUserId = auth.currentUser?.uid;
+        if (currentUserId) {
+            // List the quotes collection once to get a real quote id we can
+            // probe the subpath under. Some test users have no quotes yet,
+            // in which case we still need to verify the rule by listing the
+            // subcollection on a synthetic quote id (Firestore returns
+            // empty + the rule check still fires).
+            for (const sub of USER_QUOTE_SUBPATHS) {
+                try {
+                    const probeQuoteId = 'rulesprobe';
+                    const q = query(collection(db, 'users', currentUserId, 'quotes', probeQuoteId, sub), limit(1));
+                    await getDocs(q);
+                    tick(`rules/users.quotes.${sub}.list`, true);
+                } catch (err: any) {
+                    const msg = err?.message ?? String(err);
+                    const denied = /permission-denied|Missing or insufficient permissions/i.test(msg);
+                    if (denied) {
+                        console.log(`   ↳ DENIED: ${msg.slice(0, 200)}`);
+                    }
+                    tick(`rules/users.quotes.${sub}.list`, false);
+                }
+            }
+        }
+
+        // v1.21 — collection-group read of quotes (reporting dashboard +
+        // cross-module view + customer detail sheet). Requires the
+        // recursive-wildcard rule match /{path=**}/quotes/{quoteId}.
+        try {
+            const cg = query(collectionGroup(db, 'quotes'), limit(1));
+            await getDocs(cg);
+            tick('rules/collectionGroup.quotes.list', true);
+        } catch (err: any) {
+            const msg = err?.message ?? String(err);
+            if (/permission-denied|Missing or insufficient permissions/i.test(msg)) {
+                console.log(`   ↳ DENIED: ${msg.slice(0, 200)}`);
+            }
+            tick('rules/collectionGroup.quotes.list', false);
+        }
+
+        // v1.22 — collection-group read of contracts (cross-module view).
+        try {
+            const cg = query(collectionGroup(db, 'contracts'), limit(1));
+            await getDocs(cg);
+            tick('rules/collectionGroup.contracts.list', true);
+        } catch (err: any) {
+            const msg = err?.message ?? String(err);
+            if (/permission-denied|Missing or insufficient permissions/i.test(msg)) {
+                console.log(`   ↳ DENIED: ${msg.slice(0, 200)}`);
+            }
+            tick('rules/collectionGroup.contracts.list', false);
         }
     } finally {
         await deleteApp(app).catch(() => {});

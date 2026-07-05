@@ -63,6 +63,7 @@ import { useUser } from '@/firebase/auth/use-user';
 import { ModelConfigurationEditor } from '@/components/model-configuration-editor';
 import { FitUpCatalogManager } from '@/components/fit-up-catalog-manager';
 import { ServiceQuoteDashboard } from '@/components/service-quote-flow';
+import { CounterQuoteEntryButton } from '@/components/catalog-item-picker';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -673,10 +674,14 @@ export default function ModuleDetailsPage() {
                                     {moduleData.name}
                                 </h1>
                             </div>
-                            <Button variant="ghost" className="h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 group shadow-xl flex items-center" onClick={() => router.push('/dashboard')}>
-                                <X className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
-                                <span>Back to Hub</span>
-                            </Button>
+                            <div className="flex items-center gap-3 shrink-0">
+                                {/* Counter-quote entry — deep-links into Service & Counter Quotes with the Motors tab preselected */}
+                                <CounterQuoteEntryButton tab="motors" label="New Motor Quote" />
+                                <Button variant="ghost" className="h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 group shadow-xl flex items-center" onClick={() => router.push('/dashboard')}>
+                                    <X className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
+                                    <span>Back to Hub</span>
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -720,10 +725,14 @@ export default function ModuleDetailsPage() {
                                     {moduleData.name}
                                 </h1>
                             </div>
-                            <Button variant="ghost" className="h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 group shadow-xl flex items-center" onClick={() => router.push('/dashboard')}>
-                                <X className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
-                                <span>Back to Hub</span>
-                            </Button>
+                            <div className="flex items-center gap-3 shrink-0">
+                                {/* Counter-quote entry — deep-links into Service & Counter Quotes with the Trailers tab preselected */}
+                                <CounterQuoteEntryButton tab="trailers" label="New Trailer Quote" />
+                                <Button variant="ghost" className="h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 group shadow-xl flex items-center" onClick={() => router.push('/dashboard')}>
+                                    <X className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
+                                    <span>Back to Hub</span>
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -808,6 +817,8 @@ export default function ModuleDetailsPage() {
                                     Master fit-up catalogue, multi-level assignment (Modules / Brands / Ranges / Models), and quote-flow integration.
                                 </p>
                             </div>
+                            {/* Counter-quote entry — deep-links into Service & Counter Quotes with the Rigging Kits tab preselected */}
+                            <CounterQuoteEntryButton tab="rigging" label="New Rigging Quote" className="shrink-0" />
                         </div>
                     </div>
                 </div>
@@ -1253,7 +1264,8 @@ export default function ModuleDetailsPage() {
                         {/* Price List */}
                         <TabsContent value="pricing" className="m-0 h-full animate-in fade-in duration-500 overflow-hidden">
                             <PriceListViewer
-                                parentOrganisationId={currentMemberOrg.parentOrganisationId}
+                                // Guarded by the isSubDealer branch above — isSubDealer implies parentOrganisationId is set
+                                parentOrganisationId={currentMemberOrg.parentOrganisationId!}
                                 subDealerOrgId={currentMemberOrg.id}
                                 vendorId={moduleData.mainVendorId}
                             />

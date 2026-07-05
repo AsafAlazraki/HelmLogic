@@ -23,6 +23,60 @@
 /** GST multiplier. Australia is 10%. */
 export const GST_MULTIPLIER = 1.1;
 
+/**
+ * v1.18 (Story 2.1.1) — Structured Price Sources.
+ *
+ * Canonical price-level resolver. Every read site that picks a price
+ * (motor cards, hero card, accessory rows, finalize payload) goes
+ * through this so the fallback chain is identical across surfaces.
+ *
+ *   1. If level is non-default AND item.priceLevels[level] exists -> use it.
+ *   2. Otherwise walk the fallback fields in order and use the first
+ *      numeric value.
+ *   3. Default to 0.
+ *
+ * The fallback order matches the pre-existing inline behaviour on
+ * highfield-quote-flow.tsx::getPriceForLevel (the legacy import shapes
+ * Yamaha / Sam Allen / generic catalog all use one of these keys).
+ */
+export const PRICE_FALLBACK_FIELDS = [
+    'sellPriceExclGst',
+    'Act Sell',
+    'Sell Price',
+    'Store Price',
+    'NSM Retail',
+    'PARTS',
+    'RRP',
+    'Price',
+    'Retail',
+    'Trade',
+] as const;
+
+export function resolvePriceLevel(item: any, level: string | null | undefined, fallbackFields: readonly string[] = PRICE_FALLBACK_FIELDS): number {
+    if (!item) return 0;
+    if (level && level !== 'default' && item?.priceLevels) {
+        const levelPrice = item.priceLevels[level];
+        const coerced = coerceNumber(levelPrice);
+        if (coerced !== null) return coerced;
+    }
+    for (const field of fallbackFields) {
+        const v = item[field];
+        const coerced = coerceNumber(v);
+        if (coerced !== null) return coerced;
+    }
+    return 0;
+}
+
+function coerceNumber(v: any): number | null {
+    if (v == null) return null;
+    if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+    if (typeof v === 'string') {
+        const n = parseFloat(v);
+        return Number.isFinite(n) ? n : null;
+    }
+    return null;
+}
+
 export interface PricingInput {
     /** Dealer cost in the trading currency (ex GST). */
     cost?: number | null;

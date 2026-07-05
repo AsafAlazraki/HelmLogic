@@ -1,0 +1,2854 @@
+{
+ "meta": {
+  "startedUtc": "2026-07-04T07:56:44.204987+00:00",
+  "finishedUtc": "2026-07-04T08:01:18.312193+00:00",
+  "identity": "billh@nsmarine.com.au (operator test user)",
+  "org": "AcFZVEFA5UDJG2hyetWT",
+  "mode": "audit-only",
+  "reproduce": "python3 scripts/mpf/audit-presentation.py"
+ },
+ "counts": {
+  "dealerFitSelections": {
+   "docs": 1791,
+   "categories": 93,
+   "hidden": 21,
+   "model": 50,
+   "general": 22,
+   "modelSections": [
+    "HIGHFIELD - Patrol 420",
+    "HIGHFIELD - Patrol 460",
+    "HIGHFIELD - Patrol 500",
+    "HIGHFIELD - Patrol 540",
+    "HIGHFIELD - Patrol 600",
+    "HIGHFIELD - Patrol 660",
+    "HIGHFIELD - Patrol 700",
+    "HIGHFIELD - Patrol 760",
+    "HIGHFIELD - Patrol 860",
+    "HIGHFIELD - Roll-Up 200 w Airmat Floor",
+    "HIGHFIELD - Roll-Up 200 w Aluminium Floor",
+    "HIGHFIELD - Roll-Up 230 w Airmat Floor",
+    "HIGHFIELD - Roll-Up 230 w Aluminium Floor",
+    "HIGHFIELD - Roll-Up 250 w Airmat Floor",
+    "HIGHFIELD - Roll-Up 250 w Aluminium Floor",
+    "HIGHFIELD - Roll-Up 280 w Airmat Floor",
+    "HIGHFIELD - Roll-Up 280 w Aluminium Floor",
+    "HIGHFIELD - Roll-Up 320 w Airmat Floor",
+    "HIGHFIELD - Roll-Up 320 w Aluminium Floor",
+    "HIGHFIELD - Sport 300",
+    "HIGHFIELD - Sport 330",
+    "HIGHFIELD - Sport 360",
+    "HIGHFIELD - Sport 390",
+    "HIGHFIELD - Sport 420",
+    "HIGHFIELD - Sport 460",
+    "HIGHFIELD - Sport 520",
+    "HIGHFIELD - Sport 560",
+    "HIGHFIELD - Sport 600",
+    "HIGHFIELD - Sport 660",
+    "HIGHFIELD - Sport 700",
+    "HIGHFIELD - Sport 760",
+    "HIGHFIELD - Sport 900",
+    "HIGHFIELD - ZeroJet 330",
+    "Highfield - Classic 260",
+    "Highfield - Classic 290",
+    "Highfield - Classic 310",
+    "Highfield - Classic 340",
+    "Highfield - Classic 360",
+    "Highfield - Classic 380",
+    "Highfield - Classic 400",
+    "Highfield - Classic 420",
+    "Highfield - Classic 460",
+    "Highfield - Ultralite 220",
+    "Highfield - Ultralite 240",
+    "Highfield - Ultralite 260",
+    "Highfield - Ultralite 290",
+    "Highfield - Ultralite 310",
+    "Highfield - Ultralite 340",
+    "JEANNEAU SPECIFIC OPTIONS",
+    "STABICRAFT SPECIFIC OPTIONS"
+   ],
+   "hiddenSections": [
+    "### OBSELETE MODEL LIST ### - NB: DFO's / Units no longer in production",
+    "ADD ON KITS - DES & Helm Master",
+    "DEC RIGGING KITS",
+    "DEC RIGGING KITS (Twin Engine)",
+    "HELM MASTER - LEVEL 2 - RIGGING KITS (Bolt On DES)",
+    "HELM MASTER - LEVEL 2 - RIGGING KITS (Built In DES)",
+    "HELM MASTER - LEVEL 3 - RIGGING KITS w AUTOPILOT (Bolt On DES)",
+    "HELM MASTER - LEVEL 3 - RIGGING KITS w AUTOPILOT (Built In DES)",
+    "HELM MASTER - LEVEL 4 - RIGGING KITS w Full Maneauverability (Bolt On DES)",
+    "HELM MASTER - LEVEL 4 - RIGGING KITS w Full Maneauverability (Built In DES)",
+    "MECHANICAL RIGGING KITS (F75 to F350HP)",
+    "MECHANICAL RIGGING KITS (Twin Engine)",
+    "MECHANICAL RIGGING KITS (Up to 70HP)",
+    "MECHANICAL RIGGING KITS - 6X3 Concealed (Left Hand Mounts)",
+    "PRE DELIVERY & ENGINE INSTALLATIONS",
+    "PRE DELIVERY OPERATIONS - Cap Camarat",
+    "PRE DELIVERY OPERATIONS - Haines Signature",
+    "PRE DELIVERY OPERATIONS - Merry Fisher",
+    "PRE DELIVERY OPERATIONS - Stabicraft",
+    "PRE DELIVERY OPERATIONS - Stacer",
+    "PRE DELIVERY OPERATIONS - Surtees"
+   ],
+   "generalSections": [
+    "BATTERY INSTALLATIONS",
+    "ENGINE REMOVALS",
+    "FRESHWATER PLUMBING OPTIONS",
+    "FUSION STEREO OPTIONS",
+    "GARMIN ELECTRONIC OPTIONS",
+    "HIGHFIELD - Patrol",
+    "LONESTAR WINCH OPTIONS",
+    "LOWRANCE ELECTRONIC OPTIONS",
+    "MAJESTIC TV OPTIONS",
+    "MINN KOTA MOTOR OPTIONS",
+    "MOMENTUM - Electric Motor Packs",
+    "MPF \u2013 Uncategorised",
+    "NAVICO ELECTRONIC OPTIONS",
+    "OUTBOARD ACCESSORIES",
+    "RAYMARINE ELECTRONIC OPTIONS",
+    "SARCA ANCHOR INSTALLS",
+    "SIMRAD ELECTRONIC OPTIONS",
+    "SOLAR SETUPS",
+    "SURVEYING SUBLETS",
+    "TILLER FITTING KITS",
+    "TRAILER SETUPS",
+    "TUBE COVER OPTIONS - To suit Highfield Boats"
+   ]
+  },
+  "fitUpItems": {
+   "docs": 3672,
+   "negativeSellVisible": 0
+  },
+  "models": {
+   "total": 307,
+   "highfield": 85
+  },
+  "motorRows": {
+   "docs": 235,
+   "dupDisplayNames": 0,
+   "dupDisplayNamesDiffPrice": 0,
+   "menuNames": 216,
+   "menuMissingRetail": 0
+  },
+  "trailers": {
+   "docs": 496,
+   "missingSell": 0,
+   "zeroSellOnMenus": 2
+  },
+  "regoTypes": {
+   "docs": 28
+  },
+  "serviceOperations": {
+   "docs": 369,
+   "negativeSell": 0,
+   "junkNames": 0
+  },
+  "serviceParts": {
+   "docs": 26378,
+   "negativeSell": 0,
+   "junkNames": 145
+  },
+  "engineServiceSchedules": {
+   "docs": 189,
+   "negativeSell": 0,
+   "junkNames": 0
+  },
+  "riggingKits": {
+   "docs": 846,
+   "negativeSell": 0,
+   "junkNames": 0
+  },
+  "pdChecklists": {
+   "consumersInSrc": 0,
+   "verdict": "dormant, safe \u2014 variant.pdChecklists (mpdc/dpdc) rendered nowhere; re-audit for boilerplate-wall risk before any consumer ships"
+  }
+ },
+ "severity": {
+  "high": 104,
+  "medium": 209,
+  "low": 10
+ },
+ "findings": [
+  {
+   "surface": "dealerFitSelections",
+   "severity": "high",
+   "id": "HIGHFIELD - Patrol",
+   "issue": "brand+range section with no model digits evades the 'model' bucket and classifies 'general' \u2014 its 100 options show on EVERY boat of every brand",
+   "disposition": "handoff",
+   "detail": {
+    "items": 100
+   }
+  },
+  {
+   "surface": "dealerFitSelections",
+   "severity": "medium",
+   "id": "ENGINE REMOVALS",
+   "issue": "workshop-operation category classifies 'general' and renders as a Step-5 heading (16 items)",
+   "disposition": "handoff",
+   "detail": {
+    "items": 16
+   }
+  },
+  {
+   "surface": "dealerFitSelections",
+   "severity": "low",
+   "id": "MPF \u2013 Uncategorised",
+   "issue": "import fallback bucket renders verbatim as a customer-facing heading (21 items)",
+   "disposition": "handoff",
+   "detail": {
+    "items": 21
+   }
+  },
+  {
+   "surface": "dealerFitSelections",
+   "severity": "medium",
+   "id": "SURVEYING SUBLETS",
+   "issue": "workshop-operation category classifies 'general' and renders as a Step-5 heading (2 items)",
+   "disposition": "handoff",
+   "detail": {
+    "items": 2
+   }
+  },
+  {
+   "surface": "fitUpItems",
+   "severity": "medium",
+   "id": "000-15406-001-nb-obsolete",
+   "issue": "item name contains MPF artifact: 'Simrad NSS Evo3S - 12\" Display ###'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "fitUpItems",
+   "severity": "low",
+   "id": "2-x-mfm70-2",
+   "issue": "negative sellPrice -519 on 'CREDIT - Batteries (2 x MFM70)' is hidden:true \u2014 sanctioned patch verified (reason: MPF deduction line \u2014 not directly sellable)",
+   "disposition": "patched",
+   "detail": {}
+  },
+  {
+   "surface": "fitUpItems",
+   "severity": "low",
+   "id": "bs-6007-2",
+   "issue": "negative sellPrice -115 on 'CREDIT - Battery Switch - Dual (Blue Sea)' is hidden:true \u2014 sanctioned patch verified (reason: MPF deduction line \u2014 not directly sellable)",
+   "disposition": "patched",
+   "detail": {}
+  },
+  {
+   "surface": "fitUpItems",
+   "severity": "medium",
+   "id": "hfi-rollbar-l",
+   "issue": "item name contains MPF artifact: 'Roll Bar - SP520 ###'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "low",
+   "id": "Highfield/ADV9",
+   "issue": "residual bullet char in inclusion: '\u25cf Non Skid Deck   \u25cf Hypalon Tube   \u25cf Cabin Furniture   \u25cf Gla'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Highfield/ADV9",
+   "issue": "inclusion is a 655-char render wall: '\u25cf Non Skid Deck   \u25cf Hypalon Tube   \u25cf Cabin Furniture   \u25cf Glass/Screens/Cabin Doo\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SA409APR",
+   "issue": "inclusion is a 587-char render wall: 'Accessory Kit  -  Anchorwell (moulded)  -  Battery Tray in Casting Platform  -  \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SA429APR",
+   "issue": "inclusion is a 587-char render wall: 'Accessory Kit  -  Anchorwell (moulded)  -  Battery Tray in Casting Platform  -  \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SA449APR",
+   "issue": "inclusion is a 587-char render wall: 'Accessory Kit  -  Anchorwell (moulded)  -  Battery Tray in Casting Platform  -  \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SA459APR",
+   "issue": "inclusion is a 606-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SA469APTR",
+   "issue": "inclusion is a 708-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SA489APR",
+   "issue": "inclusion is a 651-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SA509APTR",
+   "issue": "inclusion is a 733-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SA519APR",
+   "issue": "inclusion is a 645-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SA529APTR",
+   "issue": "inclusion is a 733-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCA519SRR",
+   "issue": "inclusion is a 1110-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCA539SRR",
+   "issue": "inclusion is a 1110-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCA589SRR",
+   "issue": "inclusion is a 1111-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCCP589SRXLN",
+   "issue": "inclusion is a 866-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCCP659SRK",
+   "issue": "inclusion is a 866-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCCP709SRK",
+   "issue": "inclusion is a 866-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCP589ORCCHTR",
+   "issue": "inclusion is a 1226-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCP609ORCCHTR",
+   "issue": "inclusion is a 1226-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCP609ORHTR",
+   "issue": "inclusion is a 1367-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCP609ORR",
+   "issue": "inclusion is a 1150-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCP659ORCCHTR",
+   "issue": "inclusion is a 1226-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCP659ORHTR",
+   "issue": "inclusion is a 1367-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCP659ORR",
+   "issue": "inclusion is a 1150-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCP709ORCCHTR",
+   "issue": "inclusion is a 1226-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCP709ORHTR",
+   "issue": "inclusion is a 1367-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCP709ORR",
+   "issue": "inclusion is a 1150-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCP759ORCCHTR",
+   "issue": "inclusion is a 1226-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCP759ORHTR",
+   "issue": "inclusion is a 1367-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SCP759ORR",
+   "issue": "inclusion is a 1150-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SD319SS2SP",
+   "issue": "inclusion is a 252-char render wall: 'Flat Foredeck  -  Glove Box  -  Handles Transom (2)  -  Handle Bow (1)  -  Rowlo\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SD379SS2LP",
+   "issue": "inclusion is a 252-char render wall: 'Flat Foredeck  -  Glove Box  -  Handles Transom (2)  -  Handle Bow (1)  -  Rowlo\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SD399SS2LP",
+   "issue": "inclusion is a 315-char render wall: 'Anchor Gusset  -  Casting Platform  -  Floor Carpeted Low  -  Fuel Tank Rack (ca\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SD429RTSQ",
+   "issue": "inclusion is a 471-char render wall: 'Anchorwell (Roto)  -  Carpeted/Form Plywood Floor/Sealed Edges  -  Casting Platf\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SD449RTSQ",
+   "issue": "inclusion is a 471-char render wall: 'Anchorwell (Roto)  -  Carpeted/Form Plywood Floor/Sealed Edges  -  Casting Platf\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SN429OLSCR",
+   "issue": "inclusion is a 741-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SN429OLTSR",
+   "issue": "inclusion is a 663-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SN449OLCCR",
+   "issue": "inclusion is a 766-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SN449OLSCR",
+   "issue": "inclusion is a 790-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SN449OLTSR",
+   "issue": "inclusion is a 663-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SN469OLCCR",
+   "issue": "inclusion is a 766-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SN469OLSCR",
+   "issue": "inclusion is a 790-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SN469OLTSR",
+   "issue": "inclusion is a 663-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SN489OLCCR",
+   "issue": "inclusion is a 766-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SN489OLSCR",
+   "issue": "inclusion is a 790-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SN529OLCCR",
+   "issue": "inclusion is a 730-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SN529OLSCR",
+   "issue": "inclusion is a 759-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SN539RR",
+   "issue": "inclusion is a 541-char render wall: 'CARPET  -  Carpeted/Form Plywood Floor/Sealed Edges  -  Fuel Tank Rack (carpeted\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SN589RR",
+   "issue": "inclusion is a 545-char render wall: 'CARPET  -  Carpeted/Form Plywood Floor/Sealed Edges  -  Fuel Tank Rack (carpeted\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SP309S2SP",
+   "issue": "inclusion is a 257-char render wall: 'Boweye (2 Hole)  -  Bung (40mm)  -  Flat Foredeck  -  Handles Transom (2)  -  Ha\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SP319S2SP",
+   "issue": "inclusion is a 257-char render wall: 'Boweye (2 Hole)  -  Bung (40mm)  -  Flat Foredeck  -  Handles Transom (2)  -  Ha\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SP319SHSSR",
+   "issue": "inclusion is a 257-char render wall: 'Boweye (2 Hole)  -  Bung (40mm)  -  Flat Foredeck  -  Handles Transom (2)  -  Ha\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SP359PL2LP",
+   "issue": "inclusion is a 249-char render wall: 'Anchor Gusset  -  Flat Foredeck  -  Glove Box  -  Handles Transom (2)  -  Handle\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SP359PL2SP",
+   "issue": "inclusion is a 249-char render wall: 'Anchor Gusset  -  Flat Foredeck  -  Glove Box  -  Handles Transom (2)  -  Handle\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SP359PSE2LP",
+   "issue": "inclusion is a 294-char render wall: 'Anchor Gusset  -  Flat Foredeck  -  Glove Box  -  Handles Transom (2)  -  Handle\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SP359S2SP",
+   "issue": "inclusion is a 257-char render wall: 'Boweye (2 Hole)  -  Bung (40mm)  -  Flat Foredeck  -  Handles Transom (2)  -  Ha\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SP359SHSSR",
+   "issue": "inclusion is a 257-char render wall: 'Boweye (2 Hole)  -  Bung (40mm)  -  Flat Foredeck  -  Handles Transom (2)  -  Ha\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SP359TS2LP",
+   "issue": "inclusion is a 264-char render wall: 'Anchor Gusset  -  Flat Foredeck  -  Glove Box  -  Handles Transom (2)  -  Handle\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SP359TS2SP",
+   "issue": "inclusion is a 264-char render wall: 'Anchor Gusset  -  Flat Foredeck  -  Glove Box  -  Handles Transom (2)  -  Handle\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SP379PL2LP",
+   "issue": "inclusion is a 249-char render wall: 'Anchor Gusset  -  Flat Foredeck  -  Glove Box  -  Handles Transom (2)  -  Handle\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SP379PSE2LP",
+   "issue": "inclusion is a 294-char render wall: 'Anchor Gusset  -  Flat Foredeck  -  Glove Box  -  Handles Transom (2)  -  Handle\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SP379TS2LQ",
+   "issue": "inclusion is a 264-char render wall: 'Anchor Gusset  -  Flat Foredeck  -  Glove Box  -  Handles Transom (2)  -  Handle\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SP399TS2LQ",
+   "issue": "inclusion is a 264-char render wall: 'Anchor Gusset  -  Flat Foredeck  -  Glove Box  -  Handles Transom (2)  -  Handle\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SPS399PL2LP",
+   "issue": "inclusion is a 249-char render wall: 'Anchor Gusset  -  Flat Foredeck  -  Glove Box  -  Handles Transom (2)  -  Handle\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SPS409PALR",
+   "issue": "inclusion is a 581-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SPS429PALR",
+   "issue": "inclusion is a 581-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SPS449PALR",
+   "issue": "inclusion is a 581-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SRB499WRR",
+   "issue": "inclusion is a 1350-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SRB519WRR",
+   "issue": "inclusion is a 1397-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SRB539WRR",
+   "issue": "inclusion is a 1397-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SRB589WRR",
+   "issue": "inclusion is a 1398-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SRB619WRR",
+   "issue": "inclusion is a 1398-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SRR429SMR",
+   "issue": "inclusion is a 1147-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SRR449SMR",
+   "issue": "inclusion is a 1147-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SRR481SMR",
+   "issue": "inclusion is a 1147-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "medium",
+   "id": "Stacer/SRR499SMR",
+   "issue": "1 duplicate option name(s) within model (worst 'deluxe rear lounge & backrest - 499 seamaster' x2)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": {
+     "deluxe rear lounge & backrest - 499 seamaster": 2
+    }
+   }
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SRR499SMR",
+   "issue": "inclusion is a 1121-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SRR519SMR",
+   "issue": "inclusion is a 1210-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "medium",
+   "id": "Stacer/SRR539SMR",
+   "issue": "1 duplicate option name(s) within model (worst 'deluxe rear lounge & backrest - 539 seamaster' x2)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": {
+     "deluxe rear lounge & backrest - 539 seamaster": 2
+    }
+   }
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SRR539SMR",
+   "issue": "inclusion is a 1210-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "medium",
+   "id": "Stacer/SRR589SMR",
+   "issue": "1 duplicate option name(s) within model (worst 'deluxe rear lounge & backrest - 589 seamaster' x2)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": {
+     "deluxe rear lounge & backrest - 589 seamaster": 2
+    }
+   }
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SRR589SMR",
+   "issue": "inclusion is a 1211-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SS499SRCCL",
+   "issue": "inclusion is a 865-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SS499SRSCL",
+   "issue": "inclusion is a 919-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SS519SRCCL",
+   "issue": "inclusion is a 865-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SS519SRSCL",
+   "issue": "inclusion is a 919-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SS539SRCCL",
+   "issue": "inclusion is a 865-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SS539SRSCL",
+   "issue": "inclusion is a 919-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SX449CFSCR",
+   "issue": "inclusion is a 1058-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SX481CFSCR",
+   "issue": "inclusion is a 1032-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "medium",
+   "id": "Stacer/SX499CFSCR",
+   "issue": "1 duplicate option name(s) within model (worst 'v bunk infill (cushion) - 499 crossfire' x2)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": {
+     "v bunk infill (cushion) - 499 crossfire": 2
+    }
+   }
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SX499CFSCR",
+   "issue": "inclusion is a 1032-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "medium",
+   "id": "Stacer/SX519CFSCR",
+   "issue": "1 duplicate option name(s) within model (worst 'v bunk infill (cushion) - 519 crossfire' x2)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": {
+     "v bunk infill (cushion) - 519 crossfire": 2
+    }
+   }
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SX519CFSCR",
+   "issue": "inclusion is a 1064-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SX539CFRCR",
+   "issue": "inclusion is a 1093-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SX539CFSCR",
+   "issue": "inclusion is a 1064-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SX589CFRCR",
+   "issue": "inclusion is a 1094-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stacer/SX589CFSCR",
+   "issue": "inclusion is a 1129-char render wall: 'Accessory Kit (Nav Lights, Bilge, Batt Box, Batt Switch, Switches, Harness & Rea\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "low",
+   "id": "Stabicraft/7001816000",
+   "issue": "1 duplicate inclusion line(s)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": [
+     "usb ports x2 & 12v port x1"
+    ]
+   }
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "medium",
+   "id": "Stabicraft/7001817000",
+   "issue": "1 duplicate option name(s) within model (worst 'u-dek flooring' x2)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": {
+     "u-dek flooring": 2
+    }
+   }
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "low",
+   "id": "Stabicraft/7001817000",
+   "issue": "1 duplicate inclusion line(s)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": [
+     "usb ports x2 & 12v port x1"
+    ]
+   }
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "low",
+   "id": "Stabicraft/7001818000",
+   "issue": "1 duplicate inclusion line(s)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": [
+     "usb ports x2 & 12v port x1"
+    ]
+   }
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "medium",
+   "id": "Stabicraft/7001819000",
+   "issue": "1 duplicate option name(s) within model (worst 'u-dek flooring' x2)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": {
+     "u-dek flooring": 2
+    }
+   }
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "low",
+   "id": "Stabicraft/7001819000",
+   "issue": "1 duplicate inclusion line(s)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": [
+     "usb ports x2 & 12v port x1"
+    ]
+   }
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7001823025",
+   "issue": "NEGATIVE option price -420 on 'No Steering System (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7001823025",
+   "issue": "inclusion is a 808-char render wall: 'Powder coated cabin  -  Towing eye in bow & 2 x aft trailer tie down lugs  -  LE\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7001824025",
+   "issue": "NEGATIVE option price -420 on 'No Steering System (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7001824025",
+   "issue": "inclusion is a 1037-char render wall: 'Powder coated cabin  -  Towing eye in bow & 2 x aft trailer tie down lugs  -  LE\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7001825025",
+   "issue": "NEGATIVE option price -1140 on 'Storage Box Seat Base for Helm Seat - Strb'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7001825025",
+   "issue": "NEGATIVE option price -1140 on 'Storage Box Seat Base for Passenger Seat - Port'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7001825025",
+   "issue": "NEGATIVE option price -1360 on 'Blade Style Seat Base for Helm Seat - Strb'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7001825025",
+   "issue": "NEGATIVE option price -1360 on 'Blade Style Seat Base for Passenger Seat - Port'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7001825025",
+   "issue": "NEGATIVE option price -1460 on 'Bolt On Bait Board for Rigging Box Transom'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7001825025",
+   "issue": "NEGATIVE option price -500 on 'Central Transom Fish Box w Lower Battery Storage'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7001825025",
+   "issue": "NEGATIVE option price -1720 on 'No Steering System (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7001825025",
+   "issue": "inclusion is a 1257-char render wall: 'Powder coated cabin  -  Towing eye in bow & 2 x aft trailer tie down lugs  -  LE\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002006025",
+   "issue": "NEGATIVE option price -2590 on 'Raised Battery Rigging Box'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002006025",
+   "issue": "NEGATIVE option price -1550 on 'Central Fish Box Transom w Lower Battery Storage'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002006025",
+   "issue": "NEGATIVE option price -340 on '3/4 Fish Box Transom w Lower Battery Storage'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002006025",
+   "issue": "NEGATIVE option price -2300 on 'No Steering System for Forward Consoles (Steering Wheel Only'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002006025",
+   "issue": "NEGATIVE option price -2300 on 'No Steering System for Rear Console (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002006025",
+   "issue": "inclusion is a 906-char render wall: 'Navigation Lights  -  Access Step w 4 x Rod Holders in Forward Casting Deck  -  \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002007025",
+   "issue": "NEGATIVE option price -1480 on 'Single Helm Storage Box Base w Swivel-Slider'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002007025",
+   "issue": "NEGATIVE option price -2590 on 'Raised Battery Rigging Box'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002007025",
+   "issue": "NEGATIVE option price -1550 on 'Central Fish Box Transom w Lower Battery Storage'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002007025",
+   "issue": "NEGATIVE option price -340 on '3/4 Fish Box Transom w Lower Battery Storage'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002007025",
+   "issue": "NEGATIVE option price -2300 on 'No Steering System for Forward Consoles (Steering Wheel Only'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002007025",
+   "issue": "NEGATIVE option price -2300 on 'No Steering System for Rear Console (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002007025",
+   "issue": "inclusion is a 1098-char render wall: 'Navigation Lights  -  Access Step w 4 x Rod Holders in Forward Casting Deck  -  \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002008025",
+   "issue": "NEGATIVE option price -920 on 'Rear Console Package w Aft Single-Width Console & Pedestal S'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002008025",
+   "issue": "NEGATIVE option price -3320 on 'Raised Battery Rigging Box'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002008025",
+   "issue": "NEGATIVE option price -2280 on 'Central Fish Box Transom w Lower Battery Storage'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002008025",
+   "issue": "NEGATIVE option price -1080 on '3/4 Fish Box Transom w Lower Battery Storage'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002008025",
+   "issue": "NEGATIVE option price -2300 on 'No Steering System for Forward Consoles (Steering Wheel Only'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002008025",
+   "issue": "NEGATIVE option price -2300 on 'No Steering System for Rear Console (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002008025",
+   "issue": "inclusion is a 1458-char render wall: 'Navigation Lights  -  Access Step w 4 x Rod Holders in Forward Casting Deck  -  \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002010000",
+   "issue": "NEGATIVE option price -1820 on 'No Steering Supplied (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002011000",
+   "issue": "NEGATIVE option price -1040 on 'Transom Centre Rigging Box Transom'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002011000",
+   "issue": "NEGATIVE option price -1820 on 'No Steering Supplied (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002012000",
+   "issue": "NEGATIVE option price -1210 on 'Fish Box - Transom Centre'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002012000",
+   "issue": "NEGATIVE option price -2250 on 'Transom Centre Rigging Box Transom'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002012000",
+   "issue": "NEGATIVE option price -1820 on 'No Steering Supplied (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002023025",
+   "issue": "NEGATIVE option price -1720 on 'No Steering System (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002023025",
+   "issue": "inclusion is a 933-char render wall: 'Powder coated cabin  -  Towing eye in bow & 2 x aft trailer tie down lugs  -  LE\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002024025",
+   "issue": "NEGATIVE option price -1720 on 'No Steering System (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002024025",
+   "issue": "inclusion is a 1109-char render wall: 'Powder coated cabin  -  Towing eye in bow & 2 x aft trailer tie down lugs  -  LE\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002025025",
+   "issue": "NEGATIVE option price -1360 on 'Blade Style Seat Base for Helm Seat - Strb'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002025025",
+   "issue": "NEGATIVE option price -1360 on 'Blade Style Seat Base for Passenger Seat - Port'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002025025",
+   "issue": "NEGATIVE option price -1140 on 'Storage Box Seat Base for Helm Seat - Strb'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002025025",
+   "issue": "NEGATIVE option price -1140 on 'Storage Box Seat Base for Passenger Seat - Port'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002025025",
+   "issue": "NEGATIVE option price -970 on 'Central Transom Box w Lower Battery Storage'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002025025",
+   "issue": "NEGATIVE option price -1460 on 'Bolt On Bait Board for Rigging Box Transom'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002025025",
+   "issue": "NEGATIVE option price -1720 on 'No Steering System (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002025025",
+   "issue": "inclusion is a 1431-char render wall: 'Powder coated cabin  -  Towing eye in bow & 2 x aft trailer tie down lugs  -  LE\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002323000",
+   "issue": "NEGATIVE option price -1990 on 'No Steering System Supplied (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002323000",
+   "issue": "inclusion is a 1271-char render wall: 'Supercab Cabin (PWC Spica Pearl Grey)  -  Supercab Roof w PWC Rod Storage for 11\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002324000",
+   "issue": "NEGATIVE option price -1970 on 'Blade Style Seat Base for Helm Seat - Starboard'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002324000",
+   "issue": "NEGATIVE option price -1970 on 'Blade Style Seat Base for Passenger Seat - Port'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002324000",
+   "issue": "NEGATIVE option price -1760 on 'Footrest with Cargo Zone'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002324000",
+   "issue": "NEGATIVE option price -820 on 'Fishbox (Insulated) - 3/4 Width w Livewell Provision (Exclud'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002324000",
+   "issue": "NEGATIVE option price -3910 on 'Fishbox (Insulated) - Central w Livewell Provision (Excludin'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002324000",
+   "issue": "NEGATIVE option price -1990 on 'No Steering System Supplied (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002324000",
+   "issue": "inclusion is a 1497-char render wall: 'Supercab Cabin (PWC Spica Pearl Grey)  -  Supercab Roof w PWC Rod Storage for 11\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002325000",
+   "issue": "NEGATIVE option price -1090 on 'Cabin Seating, Fold-Away - Starboard Side'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002325000",
+   "issue": "NEGATIVE option price -1090 on 'Cabin Seating, Fold-Away - Portside'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002325000",
+   "issue": "NEGATIVE option price -1970 on 'Blade Style Seat Base for Helm Seat - Starboard'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002325000",
+   "issue": "NEGATIVE option price -1970 on 'Blade Style Seat Base for Passenger Seat - Port'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002325000",
+   "issue": "NEGATIVE option price -1760 on 'Footrest with Cargo Zone'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002325000",
+   "issue": "NEGATIVE option price -960 on 'Stereo - Fusion RA210 w 2 x 200W Speakers in Cabin'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002325000",
+   "issue": "NEGATIVE option price -3910 on 'Fishbox (Insulated) - Central w Livewell Provision (Excludin'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002325000",
+   "issue": "NEGATIVE option price -820 on 'Fishbox (Insulated) - 3/4 Width w Livewell Provision (Exclud'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002325000",
+   "issue": "NEGATIVE option price -1990 on 'No Steering System Supplied (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "medium",
+   "id": "Stabicraft/7002325000",
+   "issue": "1 duplicate option name(s) within model (worst 'transom cages w low rails, dual boarding ladders & spica pea' x2)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": {
+     "transom cages w low rails, dual boarding ladders & spica pearl pwc rails": 2
+    }
+   }
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002325000",
+   "issue": "inclusion is a 1724-char render wall: 'Supercab Cabin (PWC Spica Pearl Grey)  -  Supercab Roof w PWC Rod Storage for 11\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002342025",
+   "issue": "NEGATIVE option price -1990 on 'No Steering System (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002342025",
+   "issue": "inclusion is a 1056-char render wall: 'Lean Forward Windscreen w Walkthru Bow Access Door  -  Ultracab WT Cabin (Powder\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002343025",
+   "issue": "NEGATIVE option price -1970 on 'Blade Style Seat Base for Helm Seat - Strb'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002343025",
+   "issue": "NEGATIVE option price -1970 on 'Blade Style Seat Base for Passenger Seat - Port'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002343025",
+   "issue": "NEGATIVE option price -1760 on 'Footrest w Cargo Zone'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002343025",
+   "issue": "NEGATIVE option price -820 on 'Insulated Fishbox, 3/4 Width, w Livewell Provision (Exc Pump'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002343025",
+   "issue": "NEGATIVE option price -3910 on 'Insulated Fishbox, Central w Livewell Provision (Exc Pump)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002343025",
+   "issue": "NEGATIVE option price -1990 on 'No Steering System (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002343025",
+   "issue": "inclusion is a 1358-char render wall: 'Lean Forward Windscreen w Walkthru Bow Access Door  -  Ultracab WT Cabin (Powder\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002344025",
+   "issue": "NEGATIVE option price -1970 on 'Blade Style Seat Base for Helm Seat - Strb'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002344025",
+   "issue": "NEGATIVE option price -1970 on 'Blade Style Seat Base for Passenger Seat - Port'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002344025",
+   "issue": "NEGATIVE option price -1090 on 'Cabin Seating, Fold-Away - Strb Side'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002344025",
+   "issue": "NEGATIVE option price -1090 on 'Cabin Seating, Fold-Away - Portside'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002344025",
+   "issue": "NEGATIVE option price -1760 on 'Footrest w Cargo Zone'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002344025",
+   "issue": "NEGATIVE option price -960 on 'Fusion RA210 Stereo w 2x 200W Speakers in Cabin'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002344025",
+   "issue": "NEGATIVE option price -820 on 'Insulated Fishbox, 3/4 Width, w Livewell Provision (Exc Pump'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002344025",
+   "issue": "NEGATIVE option price -3910 on 'Insulated Fishbox, Central w Livewell Provision (Exc Pump)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002344025",
+   "issue": "NEGATIVE option price -1990 on 'No Steering System (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002344025",
+   "issue": "inclusion is a 1807-char render wall: 'Lean Forward Windscreen w Walkthru Bow Access Door  -  Ultracab WT Cabin (Powder\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002350025",
+   "issue": "NEGATIVE option price -1990 on 'No Steering System (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002350025",
+   "issue": "inclusion is a 1068-char render wall: 'Ultra Centrecab Cabin (Powder Coated Spica Pearl Grey)  -  Ultra Centrecab Roof \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002353025",
+   "issue": "NEGATIVE option price -1970 on 'Blade Style Seat Base for Helm Seat - Strb'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002353025",
+   "issue": "NEGATIVE option price -1970 on 'Blade Style Seat Base for Passenger Seat - Port'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002353025",
+   "issue": "NEGATIVE option price -1760 on 'Footrest w Cargo Zone'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002353025",
+   "issue": "NEGATIVE option price -820 on 'Insulated Fishbox, 3/4 Width, w Livewell Provision (Exc Pump'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002353025",
+   "issue": "NEGATIVE option price -3910 on 'Insulated Fishbox, Central w Livewell Provision (Exc Pump)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002353025",
+   "issue": "NEGATIVE option price -1990 on 'No Steering System (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002353025",
+   "issue": "inclusion is a 1266-char render wall: 'Ultra Centrecab Cabin (Powder Coated Spica Pearl Grey)  -  Ultra Centrecab Roof \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002354025",
+   "issue": "NEGATIVE option price -1970 on 'Blade Style Seat Base for Helm Seat - Strb'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002354025",
+   "issue": "NEGATIVE option price -1970 on 'Blade Style Seat Base for Passenger Seat - Port'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002354025",
+   "issue": "NEGATIVE option price -1760 on 'Footrest w Cargo Zone'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002354025",
+   "issue": "NEGATIVE option price -960 on 'Fusion RA210 Stereo w 2x 200W Speakers in Cabin'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002354025",
+   "issue": "NEGATIVE option price -3910 on 'Insulated Fishbox, Central w Livewell Provision (Exc Pump)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002354025",
+   "issue": "NEGATIVE option price -820 on 'Insulated Fishbox, 3/4 Width, w Livewell Provision (Exc Pump'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002354025",
+   "issue": "NEGATIVE option price -1990 on 'No Steering System (Steering Wheel Only)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002354025",
+   "issue": "inclusion is a 1711-char render wall: 'Ultra Centrecab Cabin (Powder Coated Spica Pearl Grey)  -  Ultra Centrecab Roof \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002561000",
+   "issue": "NEGATIVE option price -2310 on 'No Hydraulic Steering (Fitted or Supplied)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "medium",
+   "id": "Stabicraft/7002561000",
+   "issue": "1 duplicate option name(s) within model (worst 'external coaming handrails' x2)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": {
+     "external coaming handrails": 2
+    }
+   }
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002561000",
+   "issue": "inclusion is a 1524-char render wall: 'LED Navigation Lights  -  Powder Coated, Dash & Remote Panel  -  Portside Dash w\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Stabicraft/7002750000",
+   "issue": "NEGATIVE option price -4480 on 'No Hydraulic Steering (Fitted or Supplied)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Stabicraft/7002750000",
+   "issue": "inclusion is a 1675-char render wall: 'Navigation Lights - Rear 2 Step Boarding Ladder w Boarding Rail - Red/White Dome\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "low",
+   "id": "Surtees/495 - Pro Fisher",
+   "issue": "3 duplicate inclusion line(s)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": [
+     "0"
+    ]
+   }
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "low",
+   "id": "Surtees/575 - Workmate",
+   "issue": "1 duplicate inclusion line(s)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": [
+     "large dashboard"
+    ]
+   }
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "medium",
+   "id": "Surtees/610 - Workmate",
+   "issue": "1 duplicate option name(s) within model (worst 'cabin stepdown for electric toilet' x2)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": {
+     "cabin stepdown for electric toilet": 2
+    }
+   }
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Surtees/SUR-620GF",
+   "issue": "inclusion is a 1148-char render wall: 'Super Smooth Riding Hull  -  Stability Ballast Technology  -  Shut off gate for \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "medium",
+   "id": "Surtees/SUR-670GF",
+   "issue": "1 duplicate option name(s) within model (worst 'underwater lights - led xt4 (midnight blue) (ea)' x2)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": {
+     "underwater lights - led xt4 (midnight blue) (ea)": 2
+    }
+   }
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Surtees/SUR-670GF",
+   "issue": "inclusion is a 1153-char render wall: 'Super Smooth Riding Hull  -  Stability Ballast Technology  -  Shut off gate for \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Surtees/SUR-770GF-261",
+   "issue": "inclusion is a 1355-char render wall: 'Super Smooth Riding Hull  -  Stability Ballast Technology  -  Shut off gate for \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Surtees/SUR-770GFXL",
+   "issue": "inclusion is a 1608-char render wall: 'Super Smooth Riding Hull  -  Stability Ballast Technology  -  Shut Off Gate for \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Surtees/SUR-800GF",
+   "issue": "inclusion is a 1586-char render wall: 'Stability Ballast Technology  -  Shut-off Gate for additional stability underway\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Haines Signature/Bow Rider 550BR",
+   "issue": "inclusion is a 1093-char render wall: 'GELCOAT:  Single Tone Hull & Deck   -   SEATING & UPHOLSTERY:  Bow Upholstered S\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Haines Signature/Bow Rider 620BRX",
+   "issue": "inclusion is a 1344-char render wall: 'GELCOAT:  Single Tone Hull & Deck   -   SEATING & UPHOLSTERY:  Bow Upholstered S\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Haines Signature/Fisher 525F",
+   "issue": "inclusion is a 1020-char render wall: 'GELCOAT  -  Two Tone Deck  -  SEATING & UPHOLSTERY  -  Bunk Cushions & Panels  -\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Haines Signature/Fisher 545F",
+   "issue": "NEGATIVE option price -754 on 'Delete GT51UHD-TM Transducer (Only for GPSMap 84 Series)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Haines Signature/Fisher 545F",
+   "issue": "inclusion is a 1054-char render wall: 'GELCOAT: Two Tone Deck  -  SEATING & UPHOLSTERY: Bunk Cushions & Panels, Moulded\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Haines Signature/Fisher 620F",
+   "issue": "NEGATIVE option price -754 on 'Delete GT51UHD-TM Transducer (Only for GPSMap 84 Series)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Haines Signature/Fisher 620F",
+   "issue": "inclusion is a 1346-char render wall: 'GELCOAT:  Single Tone Hull & Deck (White)   -   SEATING & UPHOLSTERY: AFT Foldin\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Haines Signature/Fisher 640F",
+   "issue": "NEGATIVE option price -754 on 'Delete GT51UHD-TM Transducer (Only for GPSMap 84 Series)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Haines Signature/Fisher 640F",
+   "issue": "inclusion is a 1480-char render wall: 'SEATING & UPHOLSTERY: AFT lounge, Folding Bunk Cushions & Panels, THG Bolster Bu\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Haines Signature/Fisher 680F",
+   "issue": "NEGATIVE option price -754 on 'Delete GT51UHD-TM Transducer (Only for GPSMap 84 Series)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Haines Signature/Fisher 680F",
+   "issue": "inclusion is a 1557-char render wall: 'GELCOAT:  Single Tone Hull & Deck (White)   -   SEATING & UPHOLSTERY:  Bunk Cush\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Haines Signature/Sports Fisher 543SF CC",
+   "issue": "NEGATIVE option price -754 on 'Delete GT51UHD-TM Transducer (Only for GPSMap 84 Series)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Haines Signature/Sports Fisher 543SF CC",
+   "issue": "inclusion is a 1282-char render wall: 'GELCOAT:  Hull (White), Single Tone Deck (White)   -   SEATING & UPHOLSTERY:  TH\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Haines Signature/Sports Fisher 543SF SC",
+   "issue": "NEGATIVE option price -754 on 'Delete GT51UHD-TM Transducer (Only for GPSMap 84 Series)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Haines Signature/Sports Fisher 543SF SC",
+   "issue": "inclusion is a 1280-char render wall: 'GELCOAT:  Hull (White), Single Tone Deck (White)   -   SEATING & UPHOLSTERY:  TH\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Jeanneau (MPF)/JEA-DB37OB-B2026",
+   "issue": "inclusion is a 1399-char render wall: 'A Unique Line Delivering Style and Performance\nElegance and power are at your se\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Jeanneau (MPF)/JEA-DB43OB-B2026",
+   "issue": "inclusion is a 1082-char render wall: 'A Powerful, Luxurious, Distinguished Day Boat\nBoasting a strong outboard engine,\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Jeanneau (MPF)/JEA-TH33-B2026",
+   "issue": "inclusion is a 1135-char render wall: 'SAFETY & NAVIGATION - Steering wheel with tilt base, Compass, Navigation lights,\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Jeanneau (MPF)/JEA-TH38-B2026",
+   "issue": "inclusion is a 1398-char render wall: 'SAFETY & NAVIGATION - Steering wheel with tilt base, Engine electric remote cont\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Merry Fisher/JEA-MF1095CS2-A2026",
+   "issue": "option name/category has MPF artifact: 'Removable Exterior Carpet Set (Infinity)' / 'PREVIOUS VERSION OPTIONS (NLA)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Merry Fisher/JEA-MF695SPS2-25000",
+   "issue": "option name/category has MPF artifact: 'Swimming Platforms with Teak ### NLA ###' / '- Storage for Fishing Rods'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Merry Fisher/JEA-MF795S2-25000",
+   "issue": "option name/category has MPF artifact: 'Swimming Platforms with Teak ### NLA ###' / '- Requires the Cockpit Sun Awning Option'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "high",
+   "id": "Merry Fisher/JEA-MF795SPS2-25000",
+   "issue": "option name/category has MPF artifact: 'Swimming Platforms with Teak ### NLA ###' / '- Not compatible w Gas Stove, Plancha or'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Cap Camarat/CAPC 10.5 CC",
+   "issue": "inclusion is a 425-char render wall: 'The Cap Camarat 10.5 CC adapts to suit all preferences!  Whether you are dreamin\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Cap Camarat/CAPC 12.5WA26",
+   "issue": "inclusion is a 386-char render wall: 'Sculpted design, high performance, and total comfort! The Cap Camarat 12.5 WA is\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Cap Camarat/CAPC 5.5 CC S2",
+   "issue": "inclusion is a 356-char render wall: 'With her tapered V-shaped hull, the Cap Camarat 5.5 CC her excellent handling at\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Cap Camarat/CAPC 6.5 CC S3",
+   "issue": "inclusion is a 336-char render wall: 'This Cap Camarat 6.5 Center Console benefits from hull design, guaranteeing exce\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Cap Camarat/CAPC 6.5 WA",
+   "issue": "inclusion is a 326-char render wall: 'The Cap Camarat 6.5 WA benefits from the strong, solid hull true to the Cap Cama\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Cap Camarat/CAPC 9.0 WA S2",
+   "issue": "inclusion is a 497-char render wall: 'Boasting a V-shaped hull and twin engines, for up to 2 x 250 HP, the Cap Camarat\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Cap Camarat/CC10.5 WA S2",
+   "issue": "inclusion is a 415-char render wall: 'With a sporty design the Cap Camarat 10.5 WA offers high performance and exempla\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Cap Camarat/CC7.5 CC S3 *1 1A0",
+   "issue": "inclusion is a 656-char render wall: 'The Cap Camarat 7.5 CC prioritizes exterior spaces, with spacious and welcoming \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "optionalFeatures",
+   "severity": "medium",
+   "id": "Cap Camarat/CC75WAS3",
+   "issue": "3 duplicate option name(s) within model (worst 'front sundeck mattress w lifting backrest' x2)",
+   "disposition": "handoff",
+   "detail": {
+    "dups": {
+     "backrests for aft cockpit side seat luxe": 2,
+     "double berth complement": 2,
+     "front sundeck mattress w lifting backrest": 2
+    }
+   }
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Cap Camarat/JEA-CC9.0CCS2",
+   "issue": "inclusion is a 1644-char render wall: 'The Cap Camarat 9.0 CC Series 2 is the family boat, combining comfort and perfor\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/GRT 425 TIL",
+   "issue": "inclusion is a 403-char render wall: '4mm 5083 High Tensile Bottom Sheets  -  4mm Plate Sides  -  Fully Welded Top Dec\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/GRT 455 SC",
+   "issue": "inclusion is a 544-char render wall: '4mm 5083 High Tensile Bottom Sheets  -  4mm Plate Sides  -  Fully Welded Top Dec\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/GRT 455 TIL",
+   "issue": "inclusion is a 502-char render wall: '4mm 5083 High Tensile Bottom Sheets  -  4mm Plate Sides  -  Fully Welded Top Dec\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 495 SC",
+   "issue": "inclusion is a 937-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 525 CC",
+   "issue": "inclusion is a 933-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 525 SC",
+   "issue": "inclusion is a 957-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Active Transom \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 525 TR",
+   "issue": "inclusion is a 950-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 565 BR",
+   "issue": "inclusion is a 1071-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Active Transom \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 565 CAB",
+   "issue": "inclusion is a 1230-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 565 CC",
+   "issue": "inclusion is a 1016-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 565 SC",
+   "issue": "inclusion is a 881-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Active Transom \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 565 TR",
+   "issue": "inclusion is a 950-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 595 BR",
+   "issue": "inclusion is a 1071-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Active Transom \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 595 CAB",
+   "issue": "inclusion is a 1230-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 595 CC",
+   "issue": "inclusion is a 1016-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 595 SC",
+   "issue": "inclusion is a 881-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Active Transom \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 595 TR",
+   "issue": "inclusion is a 950-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 635 BR",
+   "issue": "inclusion is a 1071-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Active Transom \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 635 CAB",
+   "issue": "inclusion is a 1304-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 635 CC",
+   "issue": "inclusion is a 1016-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 635 ECC",
+   "issue": "inclusion is a 1264-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 635 EHC",
+   "issue": "inclusion is a 1133-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 635 SC",
+   "issue": "inclusion is a 901-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Active Transom \u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 635 TR",
+   "issue": "inclusion is a 950-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 675 BR",
+   "issue": "inclusion is a 1072-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 675 CAB",
+   "issue": "inclusion is a 1304-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 675 CC",
+   "issue": "inclusion is a 1016-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 675 ECC",
+   "issue": "inclusion is a 1264-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "standardInclusions",
+   "severity": "medium",
+   "id": "Formosa/SRT 675 EHC",
+   "issue": "inclusion is a 1133-char render wall: 'Australian Made  -  Formosa SRT Hull Plate Boat Construction  -  Single Access A\u2026'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "trailers",
+   "severity": "high",
+   "id": "data-warehouse/mackay-trailers/series/offroad-kr-2010-series-trailers/trailers/trailer-not-required",
+   "issue": "sentinel row imported as a real trailer: 'TRAILER NOT REQUIRED' \u2014 would render as a selectable $0 trailer card",
+   "disposition": "handoff",
+   "detail": {
+    "referencedBy": []
+   }
+  },
+  {
+   "surface": "trailers",
+   "severity": "high",
+   "id": "data-warehouse/mackay-trailers/series/offroad-kr-2010-series-trailers/trailers/trailer-not-required-800-gamefisher",
+   "issue": "sentinel row imported as a real trailer: 'TRAILER NOT REQUIRED - 800 Gamefisher' \u2014 would render as a selectable $0 trailer card",
+   "disposition": "handoff",
+   "detail": {
+    "referencedBy": [
+     "SUR-800GF"
+    ]
+   }
+  },
+  {
+   "surface": "trailers",
+   "severity": "high",
+   "id": "data-warehouse/mackay-trailers/series/offroad-kr-2010-series-trailers/trailers/trailer-not-required-800-gamefisher",
+   "issue": "'TRAILER NOT REQUIRED - 800 Gamefisher' has sellPriceExclGst == 0 but is on 1 boats' trailer menus \u2014 menu card shows $0 / free trailer",
+   "disposition": "nsm-ask+handoff",
+   "detail": {
+    "referencedBy": [
+     "SUR-800GF"
+    ]
+   }
+  },
+  {
+   "surface": "trailers",
+   "severity": "high",
+   "id": "data-warehouse/redco-tinka-trailers/series/redco-formosa/trailers/NXlNKluVeCNZc4OC9c0R",
+   "issue": "'Formosa GRT Tow Catch - RE1513Q-MO (Gal Steel, Single Axle)' has sellPriceExclGst == 0 but is on 3 boats' trailer menus \u2014 menu card shows $0 / free trailer",
+   "disposition": "nsm-ask+handoff",
+   "detail": {
+    "referencedBy": [
+     "GRT 425 TIL",
+     "GRT 455 SC",
+     "GRT 455 TIL"
+    ]
+   }
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "9ho-06193-zw5-020",
+   "issue": "name has MPF artifact: '### NLA ### HE PUMP KIT,IMPELL'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "9me-815935t",
+   "issue": "name has MPF artifact: 'S/S NLA 9/22'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "9me-815954t",
+   "issue": "name has MPF artifact: 'S/S NLA 9/22'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "atl-mwr4",
+   "issue": "name has MPF artifact: 'WINCH STRAP 6M X 50MM  NLA 24'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bbb-81026wbl",
+   "issue": "name has MPF artifact: 'NARVA CIG SOCKET 20A    NLA'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bbb-bbb-bbss473",
+   "issue": "name has MPF artifact: 'BOAT BRITE SUPER SOAP  (NLA)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bbb-bbb-br203lrnp",
+   "issue": "name has MPF artifact: 'DXE 12 LED TLR LIGHT NLA 4/8/2'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bbb-bbb-cb552034",
+   "issue": "name has MPF artifact: '12V INFLATOR DEFLATOR 500 NLA'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bbb-bbb-comp3845",
+   "issue": "name has MPF artifact: 'COMPANION FAMILY FIRST AID NLA'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bbb-bbb-dalamptl",
+   "issue": "name has MPF artifact: 'TRAILER LIGHT PAIR - NLA FEB20'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bbb-bbb-ejm86620",
+   "issue": "name has MPF artifact: 'INFLATOR 12V 280LPM  (NLA)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bbb-bbb-eprotbun",
+   "issue": "name has MPF artifact: 'PRO BUNGEE TUBE ROPE- NLA'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bbb-bbb-gmrbb",
+   "issue": "name has MPF artifact: 'BURLEY BUCKET MASHER NLA 4/8/2'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bbb-bbb-mw5000",
+   "issue": "name has MPF artifact: 'VIGIL LED BUNG LIGHT NLA 4/8/2'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bbb-bbb-pisl1m3528red",
+   "issue": "name has MPF artifact: '1M STRIP LIGHT - RED (NLA)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bbb-bbb-piulbw",
+   "issue": "name has MPF artifact: 'UNDERWATER LIGH NLA 08/20'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bbb-bbb-shrma3bt",
+   "issue": "name has MPF artifact: 'DNA ROUND STEREO NLA'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bbb-bbb-shrmm32",
+   "issue": "name has MPF artifact: 'BURLEY MINCER - LARGE NLA'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bbb-bbb-shrms552",
+   "issue": "name has MPF artifact: 'DNA SPEAKERS 100W 5\" PAIR NLA'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bla-116130",
+   "issue": "name has MPF artifact: 'WIPER BLADE BLK 460MM NLA'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bla-123048",
+   "issue": "name has MPF artifact: 'LIGHT WATER RESIST (NLA)'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bla-176104",
+   "issue": "name has MPF artifact: 'FAN OSCILLATING NLA'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bla-193298",
+   "issue": "name has MPF artifact: 'CATCH POLY - 55 X 25MM ###'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bla-194513",
+   "issue": "name has MPF artifact: 'EDGE TRIM BLACK PVC 6.4MM NLA'",
+   "disposition": "handoff",
+   "detail": {}
+  },
+  {
+   "surface": "serviceParts",
+   "severity": "medium",
+   "id": "bla-212922",
+   "issue": "name has MPF artifact: 'WINCH CABLE SNAP HOOK 7.6 NLA'",
+   "disposition": "handoff",
+   "detail": {}
+  }
+ ]
+}

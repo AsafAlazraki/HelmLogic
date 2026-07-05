@@ -1,0 +1,259 @@
+{
+ "generatedUtc": "2026-07-03T10:37:19.698513+00:00",
+ "phase": "mpf-phase5-parity",
+ "mode": "READ-ONLY (no Firestore writes)",
+ "diffInputs": {
+  "boats-diff.json": "2026-07-03T10:01:12.097200+00:00",
+  "parts-diff.json": "2026-07-03T09:59:29.535150+00:00",
+  "mtf-diff.json": "2026-07-03T09:58:39.100262+00:00",
+  "service-config-diff.json": "2026-07-03T09:58:40.600188+00:00"
+ },
+ "modules": {
+  "boats (Highfield variants)": {
+   "checked": 588,
+   "matched": 587,
+   "sellDriftAbs": 0.0,
+   "costDriftAbs": 0.0,
+   "intentionalDeltas": {
+    "junkSourceSkuSkipped": [
+     "HBS15##"
+    ],
+    "hlOnlyLegacyVariantsKept": {
+     "distinct": 46,
+     "note": "45 legacy HB* variants (RU200AL/RU200KAM/RU250-300 Easy Go/UL220/CL340-380MAX obsolete SKUs) + demo-default-pvc placeholder reused on 8 models \u2014 deliberately preserved, never in MPF current section"
+    }
+   },
+   "unexpectedDeltas": 0
+  },
+  "motors (Yamaha rows)": {
+   "checked": 208,
+   "matched": 208,
+   "liveRows": 235,
+   "intentionalDeltas": {
+    "plannedSkipsNotInLive": {
+     "count": 71,
+     "breakdown": "39 Jeanneau boat-package powerplants + 32 EPROPULSION electric outboards \u2014 both skip groups present verbatim in the approved mtf-import-dryrun.json plan (71 skips)"
+    }
+   },
+   "unexpectedDeltas": 0
+  },
+  "trailers": {
+   "checked": 431,
+   "matched": 427,
+   "intentionalDeltas": {
+    "duplicateSourceNameCollision": {
+     "rows": 4,
+     "names": [
+      "MACKAY MLJ Series Trailer - MLJ6000T-14-HB",
+      "MACKAY PU Series Trailer - PU5000-14-M"
+     ],
+     "note": "MPF source has 2 distinct trailers per name; upsert-by-name collapses each pair onto one live doc, so the other source row diffs \u2014 recorded in trailers.json duplicatedNames"
+    },
+    "staleInLiveKept": {
+     "count": 65,
+     "note": "live trailers absent from MPF current sheet (incl. the obsolete-trailers vendor, untouched per decision D1)"
+    }
+   },
+   "unexpectedDeltas": 0
+  },
+  "factoryOptions (Highfield)": {
+   "checked": 1038,
+   "matched": 1011,
+   "intentionalDeltas": {
+    "preservedLegacyOptions": {
+     "count": 27,
+     "note": "27 live codes absent from the MPF Highfield catalog (No Seat / Bollard per-model options) \u2014 deliberately preserved, never repriced"
+    },
+    "mpfCatalogOptionsUnreferenced": 869
+   },
+   "unexpectedDeltas": 0
+  },
+  "parts.dealerFitSelections": {
+   "checked": 1791,
+   "matched": 1791,
+   "live": 1791,
+   "intentionalDeltas": {
+    "liveOnlyKept": 0,
+    "note": "9 df-* seed placeholders no longer exist (hard-deleted pre-apply by another actor; verified 404 in Phase 5)"
+   },
+   "unexpectedDeltas": 0
+  },
+  "parts.fitUpItems": {
+   "checked": 3660,
+   "matched": 3660,
+   "live": 3672,
+   "intentionalDeltas": {
+    "liveOnlyKept": 12,
+    "note": "12 pre-existing v1.10 fit-up items kept (upsert never deletes)"
+   },
+   "unexpectedDeltas": 0
+  },
+  "parts.serviceParts": {
+   "checked": 26345,
+   "matched": 26345,
+   "live": 26378,
+   "intentionalDeltas": {
+    "liveOnlyKept": 33,
+    "note": "6 pre-existing serviceParts + 27 MPF Oils&Lubes consumables written by the service-config wave (different natural key set)"
+   },
+   "unexpectedDeltas": 0
+  },
+  "parts.riggingKits": {
+   "checked": 846,
+   "matched": 846,
+   "live": 846,
+   "intentionalDeltas": {
+    "liveOnlyKept": 0,
+    "note": "128 quarantined NLA/#N/A rows correctly excluded from import"
+   },
+   "unexpectedDeltas": 0
+  },
+  "parts.suppliers": {
+   "checked": 1606,
+   "matched": 1606,
+   "live": 1606,
+   "intentionalDeltas": {
+    "liveOnlyKept": 0,
+    "note": ""
+   },
+   "unexpectedDeltas": 0
+  },
+  "serviceOperations": {
+   "checked": 285,
+   "matched": 285,
+   "live": 369,
+   "intentionalDeltas": {
+    "legacyOpsKept": [
+     "DIAG",
+     "IMP-REP",
+     "WINTER",
+     "YAM-100",
+     "YAM-200"
+    ],
+    "note": "live 369 = 364 MPF ops (285 unique keys + dedupe-suffix doc ids) + 5 legacy ops preserved"
+   },
+   "unexpectedDeltas": 0
+  },
+  "exchangeRates": {
+   "checked": 4,
+   "matched": 4,
+   "intentionalDeltas": {},
+   "unexpectedDeltas": 0
+  },
+  "pricingMatrix": {
+   "checked": 48,
+   "matched": 48,
+   "intentionalDeltas": {},
+   "unexpectedDeltas": 0
+  },
+  "engineServiceSchedules": {
+   "checked": 189,
+   "matched": 189,
+   "intentionalDeltas": {},
+   "unexpectedDeltas": 0
+  },
+  "freightConfig": {
+   "checked": 2,
+   "matched": 2,
+   "intentionalDeltas": {},
+   "unexpectedDeltas": 0
+  },
+  "regoCatalog (QLD)": {
+   "checked": 19,
+   "matched": 19,
+   "intentionalDeltas": {
+    "seededIndicativeTypesKept": 9,
+    "note": "pre-MPF seeded indicative regoTypes left in place for review per import policy (flag, don't delete)"
+   },
+   "unexpectedDeltas": 0
+  }
+ },
+ "unexpectedDeltas": [],
+ "verdict": "PARITY PROVEN \u2014 zero unexpected deltas",
+ "placeholderFix": {
+  "sanctioned": "patch 9 df-* docs with seedPlaceholder/superseded if still active",
+  "found": {
+   "df-electronic-packages-garmin-gpsmap-package": "404-not-found",
+   "df-electronic-packages-lowrance-sounder-combo": "404-not-found",
+   "df-electronic-packages-vhf- -aerial-package": "404-not-found",
+   "df-general-engine-flush-kit": "404-not-found",
+   "df-general-fuel-water-separator": "404-not-found",
+   "df-propeller-spare-alloy-propeller": "404-not-found",
+   "df-propeller-stainless-propeller": "404-not-found",
+   "df-rigging-hydraulic-steering-kit": "404-not-found",
+   "df-rigging-single-engine-rigging-kit": "404-not-found"
+  },
+  "action": "NO WRITE \u2014 all 9 docs hard-deleted (404) by another actor between the 06:54Z phase-2 diff and the 09:27Z phase-4 parts apply; PATCH would CREATE new shell docs, exceeding the sanctioned soft-mark intent. Deletion already achieves the goal (placeholders inactive). Verification logged to tasks/mpf-audit/apply-log-parts.jsonl (9 soft-replace-check entries)."
+ },
+ "smoke": {
+  "I. MPF parity": {
+   "total": 2025,
+   "passed": 2025,
+   "failed": []
+  },
+  "J. Assignment web": {
+   "total": 15,
+   "passed": 3,
+   "failed": [
+    {
+     "name": "motorMenu -> Yamaha rows: unresolved name",
+     "detail": "MF1295F w Mercury - Triple 300HP White + Pilot + Joystick JPO"
+    },
+    {
+     "name": "motorMenu -> Yamaha rows: unresolved name",
+     "detail": "MF1295F w Yamaha - Triple 300HP SBW White + Pilot  + Joystick"
+    },
+    {
+     "name": "motorMenu -> Yamaha rows: unresolved name",
+     "detail": "MF895 Sport w Mercury Twin 200 V6 (White)"
+    },
+    {
+     "name": "motorMenu -> Yamaha rows: unresolved name",
+     "detail": "MF895 Sport w Mercury Twin 250 V8 (White)"
+    },
+    {
+     "name": "motorMenu -> Yamaha rows: unresolved name",
+     "detail": "MF895 Sport w Mercury Twin 250 V8 ESTEER + Joystick (White)"
+    },
+    {
+     "name": "motorMenu -> Yamaha rows: unresolved name",
+     "detail": "MF895 Sport w Yamaha Twin 200 XCB DBW (Grey)"
+    },
+    {
+     "name": "motorMenu -> Yamaha rows: unresolved name",
+     "detail": "MF895 Sport w Yamaha Twin 200 XCB DBW (Grey) Double Steering"
+    },
+    {
+     "name": "motorMenu -> Yamaha rows: unresolved name",
+     "detail": "MF895 Sport w Yamaha Twin 200 XSA2 SBW (White)"
+    },
+    {
+     "name": "motorMenu -> Yamaha rows: unresolved name",
+     "detail": "MF895 Sport w Yamaha Twin 200 XSA2 SBW (White) 2 Steering"
+    },
+    {
+     "name": "motorMenu -> Yamaha rows: unresolved name",
+     "detail": "MF895 Sport w Yamaha Twin 250 XSB2 SBW (White)"
+    },
+    {
+     "name": "motorMenu -> Yamaha rows: unresolved name",
+     "detail": "MF895 Sport w Yamaha Twin 250 XSB2 SBW (White) 2 Steering"
+    },
+    {
+     "name": "trailerMenu -> trailer vendor docs: unresolved name",
+     "detail": "REDCO / CC7.5 Alloy Multi Roller Trailer - TA800T-EH2 (4,240kg)"
+    }
+   ]
+  },
+  "batteryTotal": {
+   "total": 34512,
+   "passed": 34498,
+   "failed": 14
+  },
+  "matchRates": {
+   "motorMenu -> Yamaha rows: match rate": "460/486 = 94.7% across 100 sampled boats",
+   "trailerMenu -> trailer vendor docs: match rate": "99/100 = 99.0% across 100 sampled boats",
+   "dealerFitLines -> dealerFitSelections: match rate": "179/179 = 100.0% across 100 sampled boats"
+  }
+ }
+}

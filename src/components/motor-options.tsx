@@ -481,7 +481,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         ]
     };
 
-    const motorCombinations = useMemo(() => {
+    const motorCombinations = useMemo<Array<{ configType: string; combinations: any[][] }>>(() => {
         if (!motorDataSet || motorConfigurations.length === 0 || !motorVendor) return [];
 
         return motorConfigurations.map((config: MotorConfig) => {
@@ -523,7 +523,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
             const visibleMotors = allPossible.filter(m => !overrides.hiddenIds.includes(m.id));
             
             return { configType: config.type || 'Single', combinations: visibleMotors.map(m => [m]) };
-        }).filter(c => c.combinations.length > 0);
+        }).filter((c: { configType: string; combinations: any[][] }) => c.combinations.length > 0);
 
     }, [motorDataSet, motorConfigurations, motorVendor, motorOverrides]);
 
@@ -588,7 +588,7 @@ export function MotorOptions({ model, module }: { model: any, module: any }) {
         const current = motorOverrides[activeConfigType] || { hiddenIds: [], manualIds: [] };
         const newManualIds = [...(current.manualIds || []), ...selection.items.map((i: any) => i.rowId)];
         const uniqueManualIds = Array.from(new Set(newManualIds));
-        const newHidden = (current.hiddenIds || []).filter(id => !uniqueManualIds.includes(id));
+        const newHidden = (current.hiddenIds || []).filter((id: string) => !uniqueManualIds.includes(id));
         setValue('motorOverrides', { ...motorOverrides, [activeConfigType]: { hiddenIds: newHidden, manualIds: uniqueManualIds } }, { shouldDirty: true });
         setIsEngineManagerOpen(false);
         setActiveConfigType(null);

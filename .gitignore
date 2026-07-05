@@ -70,3 +70,18 @@ tasks/*-source/*.xlsm
 data-import/*.xlsx
 data-import/*.xls
 data-import/*.xlsm
+
+# NSM Master Price File source workbooks — vendor source data lives in
+# Firestore after import; the spreadsheets must never enter git history
+# (see CLAUDE.md lesson: 6.6MB trailer xlsx → LFS → blocked pushes).
+tasks/mpf-source/
+
+# MPF migration — bulky derived extracts (reproducible via scripts/mpf/*; evidence lives in diffs + audit log)
+tasks/mpf-audit/extracted/*.json
+!tasks/mpf-audit/extracted/*-diff.json
+!tasks/mpf-audit/extracted/pricing-matrix.json
+!tasks/mpf-audit/extracted/exchange-rates.json
+!tasks/mpf-audit/extracted/rego-catalog.json
+!tasks/mpf-audit/extracted/freight-config.json
+# parts apply log grows to ~35MB during the run — committed ONCE on completion, not per snapshot
+tasks/mpf-audit/apply-log-parts.jsonl

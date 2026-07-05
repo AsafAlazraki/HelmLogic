@@ -1,0 +1,284 @@
+{
+ "description": "Failure \u2192 Fix \u2192 Re-test ledger. Every test failure encountered during the 2026-07 hardening + MPF migration cycle, with root cause, the fixing commit, and the green re-test evidence. A suite that is only ever green proves nothing; this ledger proves the tests can fail, and that failures get fixed and re-proven \u2014 never ignored.",
+ "entries": [
+  {
+   "id": "FFR-1",
+   "failed": "Firestore rules-deployed regression test: 2 probes errored (users/{uid}/quotes subcollection checks)",
+   "firstSeen": "2026-07-02",
+   "rootCause": "Test bug \u2014 probe used '__rules_probe__' as a quote id; double-underscore ids are RESERVED in Firestore and return 400 INVALID_ARGUMENT, miscounted as a denial.",
+   "fix": "Probe id changed to 'rulesprobe' (tests/firestore-rules-deployed.spec.ts), commit b378d08",
+   "retest": "21/21 PASS against live deployed rules",
+   "class": "test-bug"
+  },
+  {
+   "id": "FFR-2",
+   "failed": "End-to-end data-chain test 8/10: collectionGroup quotes queries FAILED_PRECONDITION; accept-variation collectionGroup read 403",
+   "firstSeen": "2026-07-02",
+   "rootCause": "Product gap \u2014 missing collection-group indexes (quotes.organisationId etc.) and missing recursive variations read rule.",
+   "fix": "5 fieldOverrides added to firestore.indexes.json + recursive match /{path=**}/variations rule, commit fd984a7; deployed via Firebase CLI; index backfill awaited",
+   "retest": "10/10 PASS (full lifecycle customer\u2192quote\u2192contract\u2192deposit\u2192variation\u2192cross-module reads)",
+   "class": "product-fix"
+  },
+  {
+   "id": "FFR-3",
+   "failed": "Data-chain step 'collectionGroup quotes finds new quote' still failing after index backfill (9/10)",
+   "firstSeen": "2026-07-03",
+   "rootCause": "Test bug \u2014 unordered limit-50 probe across 136 org quotes can't guarantee a fresh quote appears; also wrote createdAt as timestampValue while the app stores ISO strings (different Firestore type buckets sort separately).",
+   "fix": "Probe rewritten to mirror the app's real query (org filter + createdAt DESC on the composite index) with string createdAt",
+   "retest": "10/10 PASS",
+   "class": "test-bug"
+  },
+  {
+   "id": "FFR-4",
+   "failed": "Smoke battery first run 2011/2014: contentOverrides, compatibilityRules, sentEmails org-path LISTs returned 403",
+   "firstSeen": "2026-07-03",
+   "rootCause": "Test bug \u2014 probes targeted organisations/{org}/... but the rules place sentEmails + contentOverrides under the QUOTE subtree and compatibilityRules under modules/{id}. Deployed rules were correct; the checks were wrong.",
+   "fix": "scripts/smoke-1000.py section B re-pointed at the real rule parents, commit f38ff66",
+   "retest": "2076/2076 PASS",
+   "class": "test-bug"
+  },
+  {
+   "id": "FFR-5",
+   "failed": "Smoke battery route checks: /proposals HTTP 404; /feature-tracking flagged for error-boundary text",
+   "firstSeen": "2026-07-03",
+   "rootCause": "Test bugs \u2014 /proposals only exists as /proposals/[quoteNumber] (bare-path 404 is correct); 'Something went wrong' legitimately appears 3\u00d7 inside the v1.9.5 release-notes CONTENT baked into /feature-tracking.",
+   "fix": "Route list corrected + error check narrowed to Next's real crash marker ('Application error'), commit 3456e16",
+   "retest": "2076/2076 PASS (all 20 routes \u00d7 3 checks green)",
+   "class": "test-bug"
+  },
+  {
+   "id": "FFR-6",
+   "failed": "Playwright browser suite: all tests ERR_CONNECTION_RESET against dev URL and localhost login timeout in the sandbox",
+   "firstSeen": "2026-07-03",
+   "rootCause": "Environment \u2014 Chromium doesn't inherit HTTPS_PROXY, and its post-quantum/ECH TLS ClientHello breaks the sandbox's TLS-intercepting proxy mid-CONNECT.",
+   "fix": "playwright.evidence.config.ts: explicit proxy config with localhost bypass + --disable-features=EncryptedClientHello,PostQuantumKeyAgreement,... launch flags",
+   "retest": "In-browser Firebase auth verified working through the proxy; visual-regression suite login flow exercises it end-to-end",
+   "class": "environment-fix"
+  },
+  {
+   "id": "FFR-7",
+   "failed": "TypeScript typecheck: 93 errors repo-wide (build only passed because ignoreBuildErrors was set)",
+   "firstSeen": "2026-07-03",
+   "rootCause": "Accumulated type debt: RHF field-path collapse from a passthrough index signature, firebase/react-day-picker API drift, missing icon imports, implicit anys, es2018 regex flags under an ES2017 target.",
+   "fix": "All 93 fixed properly (types only, zero runtime changes) across ~20 files + tsconfig target ES2020",
+   "retest": "tsc --noEmit: 0 errors; production build succeeds; 451 unit tests green on the combined tree",
+   "class": "product-fix"
+  },
+  {
+   "id": "FFR-8",
+   "failed": "Unit tests exposed 3 money-math defects (pinned with TODO-BUG markers): over-discount drives totals negative; explicit cost:0 overridden by margin heuristics (|| vs ??); >100% payment allocation yields a negative final line",
+   "firstSeen": "2026-07-03",
+   "rootCause": "Product bugs in src/lib/quote-financials.ts + payment-schedule lib.",
+   "fix": "buildQuoteFinancials clamps discount to subtotal (finalTotalPriceExclGst = Math.max(0, subtotal - discount); GST from the floored value); all 0.7/0.8/0.85 cost fallbacks switched from || to ?? so an explicit cost of 0 is honoured (boat, selected/custom options, motor, motor accessories, trailer); buildPaymentSchedule clamps the final remainder line at Math.max(0, total - allocated) so >100% allocation never yields a negative line. Pinned TODO-BUG tests flipped to assert corrected behavior + 9 new edge tests (3 per fix).",
+   "retest": "GREEN \u2014 12 unit tests assert corrected behavior (3 flipped + 9 new edges); full suite 460/460 PASS; tsc --noEmit 0 errors; production build passes",
+   "class": "product-fix"
+  },
+  {
+   "id": "FFR-9",
+   "failed": "Boats import dry-run planned duplicate vendors (data-warehouse/stacer alongside existing Stacer vendor LWgHuGoKfUBeKZ8eWnEi)",
+   "firstSeen": "2026-07-03",
+   "rootCause": "Importer written before the live-vendor probe; 5 of 8 brands already had vendors + modules; Merry Fisher/Cap Camarat are Jeanneau lines.",
+   "fix": "BRAND_ROUTING map added to scripts/mpf/import-boats.py \u2014 existing vendor ids, MF/CC as Jeanneau ranges, only Formosa net-new",
+   "retest": "Dry-run re-run confirms zero duplicate vendors; verified before any --apply",
+   "class": "migration-fix"
+  },
+  {
+   "id": "FFR-10",
+   "failed": "CL380 quote flow: 'NO DEALER FIT OPTIONS CONFIGURED' (field report)",
+   "firstSeen": "2026-07-03",
+   "rootCause": "Data loss \u2014 organisations/{org}/dealerFitSelections was completely empty (0 docs) for every org; not model-specific.",
+   "fix": "Reseeded via committed scripts/seed-dealerfit.py; junk E2E_TEMP_* categories cleaned off the module doc; permanent fix = MPF import of NSM's real 1,795 dealer-fit options",
+   "retest": "9 options verified live via REST + user-confirmed in browser; MPF import supersedes",
+   "class": "data-fix"
+  },
+  {
+   "id": "FFR-11",
+   "failed": "Customer PDF printed literal <p> tags inside bullet lists (field report, Finance & Insurance block)",
+   "firstSeen": "2026-07-03",
+   "rootCause": "tiptap-pdf list parser passed TipTap's <p> wrapper inside <li> through to an inline renderer that doesn't know block tags.",
+   "fix": "List items unwrap paragraph tags (boundaries \u2192 <br/>), commit 3456e16",
+   "retest": "Transform verified against the exact strings from the field report; PDF renders clean",
+   "class": "product-fix"
+  },
+  {
+   "id": "FFR-12",
+   "failed": "Boats apply died at write 334/1042 (connection reset by peer)",
+   "firstSeen": "2026-07-03",
+   "rootCause": "Environment \u2014 transient proxy connection reset; writer had token refresh but no transient retry.",
+   "fix": "Store._req retries connection resets + 429/5xx with exponential backoff (4 attempts)",
+   "retest": "GREEN \u2014 boats apply completed 1042/1042 (334 skipped-unchanged on resume, 248 updates, 460 creates), APPLY-2B-BOATS OK",
+   "class": "environment-fix"
+  },
+  {
+   "id": "FFR-13",
+   "failed": "Motors/Trailers/FO apply: HTTP 400 Bad Request on the first motor write",
+   "firstSeen": "2026-07-03",
+   "rootCause": "Product-of-migration bug \u2014 Yamaha motor rows keep original column names with spaces ('NSM Retail'); Firestore updateMask requires backtick-quoted field paths for non-identifier names.",
+   "fix": "_fs.patch_doc quotes flat field names whole (preserving literal dots e.g. 'Prop Part No.') and treats explicit masks as dotted nesting",
+   "retest": "GREEN \u2014 MTF apply completed 608 writes (motors updated+created, trailers 267 upd + 47 new, 1,011 factory options repriced), APPLY-3B-MTF OK",
+   "class": "migration-fix"
+  },
+  {
+   "id": "FFR-15",
+   "failed": "Image audit: 1,921 dealer-fit refs 403-blocked by NSM's own website WAF; 153 motor refs behind Incapsula; 314 SharePoint-internal refs; 4 dead links",
+   "firstSeen": "2026-07-03",
+   "rootCause": "MPF image links depend on external hosts: NSM WAF blocks non-browser fetchers, Yamaha runs a JS challenge, SharePoint links need M365 auth \u2014 none reliable for customer rendering.",
+   "fix": "164 WAF-blocked images mirrored via weserv to Firebase Storage (mpf-mirror/), 896 dealerFitSelections docs re-pointed (1,792 refs); 7 recoverable Yamaha images mirrored (31 motor rows patched); unfetchable remainder documented for NSM (38 Yamaha + 7 SharePoint exports + 4 dead)",
+   "retest": "GREEN \u2014 all 171 mirrored Storage URLs re-probed 200 image/*; live doc spot-checks confirm Storage URLs serving",
+   "class": "data-fix"
+  },
+  {
+   "id": "FFR-16",
+   "failed": "CL380 checklist walkthrough failed at first assertion (land on Step 1) after 3 dialog-open attempts; smoke suite same window passed 5/6 (1 flaky, recovered on retry)",
+   "firstSeen": "2026-07-03",
+   "rootCause": "CONFIRMED environment contention, twice over: the original failure ran beside the ultimate-test browser leg; a second 'solo' attempt (2026-07-04) failed the same way while two Firestore REST audits (invariants + per-boat) were saturating the sandbox proxy \u2014 the module page starved at 'Synchronizing maritime data sets\u2026'. The flow itself was never at fault.",
+   "fix": "Serialize: production build server on :9002, verified ZERO concurrent Firestore jobs, then ran tests/bm-email-checklist.spec.ts alone.",
+   "retest": "GREEN 2026-07-04 \u2014 11/11 checklist ticks passed solo (2.2m) on the post-curation, post-FFR-31 build, so Mark's 8 items also re-validate against the Step-5 curation engine.",
+   "class": "environment-fix"
+  },
+  {
+   "id": "FFR-17",
+   "failed": "Service module white-screened on one keystroke in the engine-schedule search (module-quotes verification, MQ-1)",
+   "firstSeen": "2026-07-03",
+   "rootCause": "MPF-imported engineServiceSchedules doc carries numeric familyCode (6000); engine-schedule-picker called .toLowerCase() on it.",
+   "fix": "String() casts on searchable fields in engine-schedule-picker.tsx",
+   "retest": "GREEN \u2014 production build rebuilt, picker re-driven in browser, line added successfully (evidence: module-quotes/debug-schedule-picker.png)",
+   "class": "product-fix"
+  },
+  {
+   "id": "FFR-18",
+   "failed": "Step 5 dealer-fit rendered 'jibberish' for boats (field report, CL290): obsolete list heading (### OBSELETE MODEL LIST ###, 191 items), other models' option packs (Patrol 600 on a CL290), and workshop sections (PRE DELIVERY, RIGGING KITS) flooding the customer-facing step",
+   "firstSeen": "2026-07-03",
+   "rootCause": "MPF import faithfully carried all 93 Dealer Fit sheet sections as categories; the quote flow grouped ALL 1,791 options for every boat with no section relevance model.",
+   "fix": "Section classifier in groupedDealerFit: hidden (### / OBSELETE / PRE DELIVERY / RIGGING KIT / HELM MASTER / ADD ON KITS), model-scoped packs shown only on the matching boat (digits + range-word/brand agreement), general accessory categories always shown. Boat's own dealerFitLines strip unchanged on top.",
+   "retest": "typecheck 0 + build green; deployed to dev for field re-check on CL290; UI-audit after-pass covers the step",
+   "class": "product-fix"
+  },
+  {
+   "id": "FFR-19",
+   "failed": "UI audit (UI-1): FFR-18 classifier gap \u2014 digitless range packs ('HIGHFIELD - PATROL', 100 options) still rendered on every boat (seen on SP560)",
+   "firstSeen": "2026-07-03",
+   "rootCause": "classifySection required digits to mark a section model-scoped; range-word-only sections fell through to 'general'.",
+   "fix": "Range words now mark sections model-scoped; a section naming a range only shows on that range; cross-digit mismatches hard-fail; brand-only packs still match by vendor.",
+   "retest": "typecheck 0; UI-audit after-pass re-screenshots SP560 + CL290 Step 5",
+   "class": "product-fix"
+  },
+  {
+   "id": "FFR-20",
+   "failed": "UI audit UI-2/UI-3/UI-5: dead-image white voids \u2014 selected-motor card + hero carousel render a huge blank panel when the Yamaha CDN URL is Incapsula-blocked; trailer cards render broken-img for MPF-imported auth-walled SharePoint imageUrls; models with zero imagery show a bare white hero with orphan carousel arrows",
+   "firstSeen": "2026-07-04",
+   "rootCause": "No onError handling on external-CDN <Image> sites; SharePoint document URLs saved as imageUrl by the MPF import can never render client-side (auth wall); carouselSlides renders arrows unconditionally and has no empty state.",
+   "fix": "highfield-quote-flow.tsx: deadImageUrls state + markImageDead onError on hero/motor/trailer image sites; isRenderableImageUrl() treats *.sharepoint.com as broken up front and is applied in resolveImageUrl + carouselSlides + trailer card/spec-sheet gates (dead images collapse to the existing Ship-icon/no-image states); hero renders a Ship + 'No imagery on file' placeholder when 0 slides and hides arrows when <2 slides.",
+   "retest": "typecheck 0 + build green; browser spot-check on CL290/SP560/RU Step 3 (evidence config, after fleet walk released the server)",
+   "class": "product-fix"
+  },
+  {
+   "id": "FFR-21",
+   "failed": "UI audit UI-4: quote-flow header title overlaps the 'STEP x OF 6' sub-label for long model names (e.g. STACER - 409 ASSAULT PRO), both viewports",
+   "firstSeen": "2026-07-04",
+   "rootCause": "Title h2 was whitespace-nowrap inside a fixed sm:w-56 container \u2014 anything wider than 14rem painted over the adjacent flex sibling.",
+   "fix": "h2 whitespace-nowrap -> truncate min-w-0 + title={model.name} for hover recovery.",
+   "retest": "typecheck 0 + build green; visual check in browser spot-check pass",
+   "class": "product-fix"
+  },
+  {
+   "id": "FFR-22",
+   "failed": "Field report (Asaf): selecting 'no trailer' clears everything trailer EXCEPT the trailer registration \u2014 the rego line still shows on the final quote/summary and its price stays in the saved financials",
+   "firstSeen": "2026-07-04",
+   "rootCause": "The four trailer-deselect paths cleared selectedTrailerId/catalogTrailerSnapshot but never reset isTrailerRegoSelected/trailerRegoSnapshot; finalize-quote-dialog then wrote registration.trailerRego/trailerRegoPrice ungated by trailer presence, so proposal-view/pdf + quote-financials rendered and summed it (the quote flow's own running total was gated, so Step 6 totals and the saved quote disagreed).",
+   "fix": "highfield-quote-flow.tsx: clearTrailerSelection() helper (id + snapshot + options + isTrailerRegoSelected=false + trailerRegoSnapshot=null) wired into all four deselect paths ('No trailer' pill, card untick, legacy card untick, Step-6 remove). finalize-quote-dialog.tsx: registration.trailerRego/trailerRegoPrice/trailerRegoSnapshot gated on (selectedTrailerId && trailerSource) \u2014 defense-in-depth since Step 4 lets rego be toggled with no trailer selected.",
+   "retest": "typecheck 0 + build green; browser spot-check: deselect trailer -> no trailer-rego line on Step 6 + total drops",
+   "class": "product-fix"
+  },
+  {
+   "id": "FFR-23",
+   "failed": "UI audit UI-10: Step-6 Base Vessel line shows a silent $0 at the default Cash Price level (SP560, 'PVC \u00b7 STANDARD COLOR \u2014 $0' while package total was real money)",
+   "firstSeen": "2026-07-04",
+   "rootCause": "Two layers. (1) The audited $0 was a null activeVariant \u2014 material picked but no hull colour clicked; nothing gates Step 6 on a variant and getPriceForLevel(null) returns 0, rendered as $0. (2) Latent resolution bug confirmed by data probe: boat variants carry legacy-polluted priceLevels values (e.g. hull_subdealer: 31, hull_aus_sailing: 30 \u2014 percent-off notes, not dollars) which resolvePriceLevel would serve as dollars whenever a level missed the MPF priceLadder. Cash basis must come from sellPriceExclGst (MPF decision D2).",
+   "fix": "getPriceForLevel: ladder-carrying items never fall through to item.priceLevels \u2014 mapped levels use priceLadder exGst, everything else resolves the plain fallback chain starting at sellPriceExclGst. Step-6 Base Vessel line renders an explicit amber marker ('Select hull colour on Step 1' / 'Not priced at this level') instead of a silent $0; subtitle no longer claims 'Standard Color' when no variant is selected.",
+   "retest": "typecheck 0 + build green; SP560 Firestore probe confirms hull_cash==sellPriceExclGst so selected-variant prices are unchanged; browser spot-check Step 6",
+   "class": "product-fix"
+  },
+  {
+   "id": "FFR-24",
+   "failed": "PER_BOAT_SETS NEW-1 + NEW-2: residual Step-5 dealer-fit pack leaks after FFR-19 \u2014 digit-collision on unrecognised range words (HIGHFIELD - ZeroJet 330 visible on SP330), digitless/rangeless brand packs classified 'general' (TUBE COVER OPTIONS - To suit Highfield Boats visible on Surtees/Stacer hulls), and every RU boat seeing BOTH Airmat and Aluminium floor packs for its size",
+   "firstSeen": "2026-07-04",
+   "rootCause": "classifySection only marked brand sections model-scoped when digits or a known range word were present; ZEROJET was not in the range vocabulary; modelSectionMatches had no brand<->vendor agreement check; the classifier could not distinguish Roll-Up floor variants (RU230KAM=Airmat vs RU230AL=Aluminium).",
+   "fix": "Any section naming a brand is model-scoped; brand<->vendor agreement enforced first in modelSectionMatches; ZEROJET added to the section-side range vocabulary; floor-keyword gate \u2014 AIRMAT sections require /\\dKAM\\b/ (or AIRMAT) in the model name, ALUMINIUM sections require /\\dAL\\b/ (or ALUMINIUM); Easy Go RU models match neither and see neither pack.",
+   "retest": "Classifier ported verbatim to a 33-case harness covering FFR-19 regression guards + every NEW-1/NEW-2 example from PER_BOAT_SETS (CL290/SP560/SP330/CL460/Coaster/Surtees/Stacer/Jeanneau/Stabicraft/RU*KAM/RU*AL/Easy Go/UL): ALL 33 PASS. typecheck 0 + build green; CL290+SP560+RU browser Step-5 spot-check",
+   "class": "product-fix"
+  },
+  {
+   "id": "FFR-25",
+   "failed": "Asaf field audit (2026-07-04) of Step-5 dealer-fit: data-consistent but product-senseless presentation \u2014 8 near-identical per-SKU 'HIGHFIELD - CLASSIC 380' pack cards (all $813) on a CL380; F115+ cowl covers and '115 to 225HP' fuel lines on a 15-30hp tender; 5.6m tube covers on a 3.8m hull; 'SUPPLY & INSTALL -' job-card sub-items and 'Engine Removal' workshop rows selectable on a NEW-boat quote; tiller kits / outboard accessories / trailer setups on the boat step instead of the motor/trailer sections; jarring MPF supplier headings ('MAJESTIC TV OPTIONS'); no search/filter; cramped 2-col grid with clipped text at 1366/1920 and inconsistent some-top/some-bottom image placement",
+   "firstSeen": "2026-07-04",
+   "rootCause": "The MPF Dealer Fit sheet imported verbatim: 93 sections x 1,791 rows with no item-level relevance model. The FFR-24 classifier only decided section visibility (hidden/model/general) \u2014 nothing narrowed a visible section's CONTENTS to the boat being quoted (variant SKU, motor envelope, hull length, tube material, steering config, boat class), nothing routed motor/trailer-domain sections off the boat step, and headings/cards rendered raw import data.",
+   "fix": "New pure curation engine src/lib/step5-curation.ts consumed by highfield-quote-flow.tsx: classifier moved out of the component (verbatim, + new 'workshop' class for ENGINE REMOVALS / SURVEYING SUBLETS); per-SKU model-pack dedupe via selectVariantRows (primary: MPF part code embeds variant SKU 9HI_HBC 065_PD<->HBC065; fallback: model-token + material + colour-code name parse); NAMED fail-open item rules R-SUBITEM / R-NEWBOAT / R-HP / R-LEN / R-MATERIAL / R-CONFIG / R-SIZE-TV(>=7.0m) / R-SIZE-RADAR(>=6.0m) / R-SIZE-UWLIGHT(>=5.0m) / R-SIZE-EREEL(>=6.0m), each documented with rationale in RELEVANCE_RULES; routeSection keyword routing (OUTBOARD/TILLER/PROP -> motor DF, TRAILER ACCESSOR/SETUP -> trailer DF); prettifySectionName display map for the 93 headings with raw name in title attr; Step-5 toolbar with debounced search + category chips + 'Show all items' escape hatch (selected items never hide \u2014 narrowing can never hard-block a sale); title-top card layout with image area only when a real image resolves; grid xl:3 / 2xl:4 with line-clamp titles. verify-per-boat-sets.py C1F port synced.",
+   "retest": "FFR-24 33-case classifier harness ported to tests/unit/step5-curation.test.ts against the REAL module (drift now impossible) + one suite per named rule = 67 tests ALL PASS (33 legacy + 34 new); full unit suite 527/527; typecheck 0. Live-data simulation over all 1,791 dealerFitSelections: CL380 Boat Pack 8->1 cards, Tube Covers 60->6 (PVC 3.4-4.2m only), 14 radomes + 3 underwater-light kits + electric-reel wiring hidden, 18 workshop rows + 20 Supply&Install sub-items hidden, 15 rows routed to motor/trailer steps; SP760 keeps radar/TV/underwater lights (7.6m). Browser spot-check GREEN post-walk: tests/step5-curation-spotcheck.spec.ts on the fresh :9002 prod build (evidence config / TLS bridge) \u2014 toolbar + chips + '85 items hidden' footer + 'Boat Pack \u2014 Classic 380: 1 option \u00b7 7 hidden' single PVC W-W card + no Supply&Install/Engine Removal/radomes + Show-all reveal + search narrowing + zero h-overflow at 1366/1920. Screenshots: tasks/test-evidence/step5-curation/*.png.",
+   "class": "presentation-relevance"
+  },
+  {
+   "id": "FFR-26",
+   "failed": "Most Step-5 dealer-fit cards rendered the NSM LOGO as their product image \u2014 1,526 of 1,792 mpf-mirror references in dealerFitSelections pointed at mirror files that are actually the Northside Marine logo",
+   "firstSeen": "2026-07-04",
+   "rootCause": "During the 12.4.1 image remediation, www.northsidemarine.com.au's WAF served its logo PNG (with 200 image/*) to the datacenter mirror fetch for most dealer-fit product URLs; the mirror saved and re-hosted it as if it were the product image. Detection: hashed all 164 mpf-mirror/dfo objects via Storage metadata md5 \u2014 one hash (+24G3Ur1sX74DFuazslxNw==, mpf-mirror/dfo/22c076311adbe49d.png) accounted for 1,526 doc references; downloaded and visually verified as the NSM logo ('life beyond the shore').",
+   "fix": "Sanctioned data patch (logged to tasks/mpf-audit/apply-log-images.jsonl, class dfo-logo-mirror): nulled imageLink + items[].data['Image Link'] on every dealerFitSelections doc pointing at the logo-hash mirror \u2014 763 docs / 1,525 fields, updateMask-scoped PATCHes. Card rule updated in the same pass: no image -> NO image area at all (title-top layout), so logo-less cards render clean instead of an empty void.",
+   "retest": "Post-patch full scan of all 1,791 dealerFitSelections docs: 0 logo refs remaining. Idempotency proven: sweep re-run patched the 4 transient-network failures and skipped 759 already-clean docs. Genuine product images (Minn Kota / Garmin / Lone Star mirrors with distinct hashes) untouched and still render.",
+   "class": "data-imagery"
+  },
+  {
+   "id": "FFR-27",
+   "failed": "During rule development the live-data simulation showed FUSION STEREO OPTIONS 8->0: every Fusion stereo hidden by R-LEN on every boat",
+   "firstSeen": "2026-07-04",
+   "rootCause": "parseLengthSpec treated '+ 1.8mtr Aerial' as a hull-length scope \u2014 component dimensions (aerials, sensor cables) carry the same MTR token as tube-cover lengths.",
+   "fix": "COMPONENT_LENGTH_WORDS guard in src/lib/step5-curation.ts: a metre figure immediately followed by AERIAL/ANTENNA/CABLE/HARNESS/SENSOR/TRANSDUCER/LOOM/etc is an accessory dimension and never length-scopes the item ('10mtr Sensor Cable' also covered).",
+   "retest": "Harness cases added (Fusion Apollo + 6mtr Cable + 10mtr Sensor Cable) \u2014 pass; live-data re-simulation shows Fusion 8/8 visible on CL380 and SP760 while tube covers still narrow correctly (60->6 on CL380). Demonstrates the fail->fix->retest loop working INSIDE the curation cycle: the harness extension caught the regression before any browser or operator did.",
+   "class": "rule-false-positive"
+  },
+  {
+   "id": "FFR-28",
+   "failed": "Fleet-walk handoff (UI-9): Step-6 Project Build Summary Powertrain line rendered Store Price ($13,912.21) while the running total correctly used NSM Retail ($17,643) \u2014 a money-visible mismatch on the operator-facing summary",
+   "firstSeen": "2026-07-04",
+   "rootCause": "The Powertrain line (and its accessory sub-lines) rendered raw selectedMotor.sellPriceExclGst / acc.sellPriceExclGst instead of resolving through getPriceForLevel(item, priceLevel) \u2014 the exact class already codified in CLAUDE.md ('Price display must use getPriceForLevel(), never hardcoded sellPriceExclGst') but this render site predated the lesson.",
+   "fix": "highfield-quote-flow.tsx Step-6 Powertrain card: motor line and each accessory line now render getPriceForLevel(selectedMotor|acc, priceLevel) \u2014 the SAME resolution the totalPrice memo uses, so line display and total can never diverge by price basis again.",
+   "retest": "typecheck 0; unit suite 536/536; Step-6 line now shows the NSM Retail figure matching the total's motor contribution (verified by code-path identity \u2014 both sides call getPriceForLevel with the same args).",
+   "class": "money-display"
+  },
+  {
+   "id": "FFR-29",
+   "failed": "Fleet-walk handoff: RegoPicker auto-match parsed HBS-sku model codes as hull length (HBS113 -> '1.13m' nonsense band), and the QLD catalog's overlapping band sets picked the legacy seeded band ($163 'Recreational Vessel \u2014 4.5m to 8m') over the MPF band ($250 '4.51m to 6.0m') for a 5.6m hull",
+   "firstSeen": "2026-07-04",
+   "rootCause": "(1) boatLengthM took the FIRST 3-digit group in modelCode||name \u2014 correct for range-prefixed Highfield codes (CL380) but nonsense for MPF part-number codes (HBS113 -> 113 -> 1.13m). (2) The v1.4 seeded QLD bands and the v1.31 MPF-imported bands coexist in data-warehouse/qld-transport/regoTypes with overlapping length ranges; auto-match used options.find() = first-in-load-order, and pensioner/concession MPF bands were also eligible.",
+   "fix": "New pure module src/lib/rego-automatch.ts: parseBoatLengthM prefers a Length spec row (mm/cm/m normalised), then a range-prefixed Highfield code (CL|SP|RU|UL|PA|AL|AD|CO + 3 digits), then a SPACE-BOUNDED 3-digit token ('Coaster 540', 'Surtees - 770 Game Fisher'); glued SKU digits (HBS113, SUR-770GF-261) parse as NOTHING \u2014 no auto-match beats a wrong one. pickAutoRegoBand scores candidates: pensioner/concession bands are NEVER auto-applied (manual pick only), 'mpf-*' bands (NSM source of truth) beat legacy seeds. highfield-quote-flow.tsx boatLengthM + rego-picker.tsx auto-match effect both delegate to the lib.",
+   "retest": "New harness tests/unit/rego-automatch.test.ts (9 tests: HBS113/SUR-770GF-261 -> undefined, CL380 -> 3.8, Coaster 540 -> 5.4, spec mm/cm normalisation, 5.6m -> mpf-rego-2 $250 over legacy $163, concession never auto-applied, legacy fallback when no MPF band, trailer ATM prefers mpf-rego-6) ALL PASS; full unit suite 536/536; typecheck 0.",
+   "class": "data-automatch"
+  },
+  {
+   "id": "FFR-30",
+   "failed": "Field bug (Asaf's SP560 video): on Step 3, clicking/selecting a motor made the hero carousel show the REDCO TRAILER image instead of the motor",
+   "firstSeen": "2026-07-04",
+   "rootCause": "(1) Hero image resolution had no fallback CHAIN: resolveImageUrl picked the FIRST populated field (imageUrl -> imageLink -> 'Image Link' -> SummaryImage -> ...) and returned null if that single URL was dead/denylisted -- SP560's Yamaha menu motors carry ONLY SummaryImage (Yamaha CDN .ashx), so any image failure (Incapsula/hotlink) dropped the motor slide entirely via the dead-URL onError path. (2) Slide order is boat -> variant -> build -> motor -> trailer; when the motor slide vanished, embla's reInit kept the current NUMERIC index so the auto-assigned trailer slide shifted into the motor slide's place, and the Step-3 auto-scroll effect bailed on motorIdx === -1, leaving the carousel parked on the trailer brand shot.",
+   "fix": "New pure module src/lib/hero-carousel.ts: resolveItemImageUrl() walks the FULL candidate chain (imageUrl -> imageLink -> 'Image Link' -> SummaryImage -> url -> image, Yamaha-path normalisation preserved) returning the first RENDERABLE url (dead-set/SharePoint denylist injected); findSelectionScrollIndex() returns the desired slide type's index when it exists, else falls back variant -> boat (hull imagery) and returns -1 (no scroll) when no safe slide exists -- NEVER an unrelated type. highfield-quote-flow.tsx: resolveImageUrl delegates to the lib; Step-3 motor effect and Step-4 trailer effect both scroll via findSelectionScrollIndex (same function re-runs on embla reInit, so a mid-view image death that drops a slide self-corrects onto hull imagery instead of the shifted trailer).",
+   "retest": "New harness tests/unit/hero-carousel.test.ts (15 tests: dead-imageUrl-but-good-SummaryImage fallback, SharePoint-denylist skip-and-continue, Yamaha CDN prefixing, SP560 regression layout [boat,variant,trailer,gallery] + desired 'motor' -> variant index NOT trailer, -1 when no safe slide, trailer symmetry, exhaustive never-unrelated sweep) ALL PASS; full unit suite 551/551; typecheck 0; prod build green. Browser spot-check tests/ffr30-motor-carousel-spotcheck.spec.ts vs fresh prod build on :9002 (evidence config, --workers=1): SP560 Step 3, 5 motor selection changes (auto-default + F115XB + F90XB + F115XB2 White + F90XB2 White) -- sandbox blocks the Yamaha CDN so the no-motor-slide field condition reproduces on every click, and the active hero slide stayed on SP560 hull imagery every time (never trailer), 0 page errors; screenshots in tasks/test-evidence/ffr30-motor-carousel/.",
+   "class": "ui-carousel"
+  },
+  {
+   "id": "FFR-31",
+   "failed": "Invariants audit I5 (financial-invariants hunter, 2026-07-04): on twin-capable hulls with both motorEnvelope bounds set (e.g. Stabicraft 2350, envelope 225-350 total HP, curated twin F150s), the Step-5 curation rule R-HP hid every dealer-fit item named for the per-engine motor ('Cowl Cover to suit F150' parsed as [150,150], tested against the TOTAL-HP envelope 225-350, no overlap -> hidden)",
+   "firstSeen": "2026-07-04",
+   "rootCause": "MPF Min/Max HP columns are TOTAL installed HP (source-verified: twin-F150 boats carry min 225 / max 350) while dealer-fit item names carry PER-ENGINE HP. R-HP compared the per-engine item interval directly against the total envelope with no engine-count scaling. Same semantic slip produced 49 false alarms in the audit itself (fixed there too). NSM Recommended motor menus were never affected -- they render unfiltered.",
+   "fix": "CurationContext gains maxEngines (derived in highfield-quote-flow.tsx from motorEnvelope.shaft 'Twin/Triple/Quad' wording or motorConfigurations[0].type); R-HP tests each parsed HP interval scaled by every plausible engine count k=1..maxEngines and stays fail-open. Audit script I5 corrected to accept per-engine OR total HP; I9's asserted sell-side identity replaced with the source-verified cost-side identity (totalCostInstalled == kitCost + labour + parts + sundry + sum(components ctd)).",
+   "retest": "tests/unit/step5-curation.test.ts +4 cases (twin hull keeps F150 gear; genuinely-too-small and too-big gear still hidden; single-engine behaviour unchanged) -- 70/70 suite, 554/554 all-unit green; audit re-run with corrected formulas recorded in INVARIANTS_AUDIT.md",
+   "class": "app-bug + audit-formula"
+  },
+  {
+   "id": "FFR-32",
+   "failed": "Field bug (Asaf, 2026-07-05): selecting a GT console on a Highfield Classic offered a seat pick \u2014 the RS7 seat was auto-locked AND auto-charged on top of the GT price. Product ruling: the GT console includes the FCT (fibreglass console tank) as standard; there is NO seat choice with a GT.",
+   "firstSeen": "2026-07-05",
+   "rootCause": "The pre-MPF console-seat pairing hotfix (main 712ec71) blanket-paired every Highfield console with an RS7 seat via associatedSeatId, GT included. The quote flow honors that field verbatim: toggleOption pushes the paired seat id (and its sellPriceExclGst) onto the quote on console select. 27 GT console entries across 9 Classic models carried the wrong pairing, plus 4 more (incl. one operator-created GT) inside the cl340 modelOverrides doc \u2014 the override copy would have survived a catalog-only fix (the v1.3 modelOverrides-merge lesson).",
+   "fix": "Data: scripts/fix-gt-console-seat-pairing.py \u2014 every Consoles feature named GT* gets associatedSeatId=null + seatsIncludedNote='FCT comes standard with this console \u2014 seating included'; applied to the 9 catalog models AND the cl340 override; every write before/after-logged to tasks/mpf-audit/apply-log-gt-console.jsonl; read-back 0 mispaired. Code: the Seats panel renders the console's seatsIncludedNote in place of the generic 'No paired seat' line, so the customer-facing story is explicit.",
+   "retest": "GREEN 2026-07-05 \u2014 tests/gt-console-spotcheck.spec.ts 1/1 against the local release build: GT select shows 'FCT comes standard with this console \u2014 seating included' with zero locked/offered seats; control click on a non-GT console locks its paired seat (pairedSeatLocked=true), proving the pairing mechanism itself is intact. Screenshots: tasks/test-evidence/ffr32-gt-console/. Note: the data half of the fix is already live on the dev deployment (shared Firestore) \u2014 the seat stopped being offered/charged the moment the patch applied; the FCT note renders on the next dev deploy.",
+   "class": "product-fix"
+  }
+ ]
+}

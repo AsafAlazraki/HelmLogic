@@ -57,6 +57,9 @@ export interface ServiceQuotePartInput {
     qty: number;
     sellPrice: number;
     cost?: number;
+    /** Counter-quote catalog lines — 'motor' | 'trailer' | 'dealer-fit' |
+     *  'rigging-kit'. Absent on classic serviceParts lines. */
+    itemType?: string;
 }
 
 export interface ServiceQuoteDocInput {
@@ -117,6 +120,7 @@ const styles = StyleSheet.create({
     partLineLeft: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
     partDot: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: GREEN, marginRight: 5 },
     partName: { fontSize: 7.5, color: SLATE, flexShrink: 1 },
+    partTypeTag: { fontSize: 6, fontWeight: 'bold', color: GOLD, letterSpacing: 1, marginRight: 4 },
     partAmount: { fontSize: 7.5, fontWeight: 'bold', color: NAVY, marginLeft: 8 },
     totalsBlock: { borderTopWidth: 2, borderTopColor: BRAND, marginTop: 16, paddingTop: 10 },
     totalRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
@@ -224,18 +228,23 @@ export function ServiceQuotePDFDocument({ quote, organisation }: Props) {
                     </>
                 )}
 
-                {/* Parts */}
+                {/* Parts (+ counter-quote catalog items — motors / trailers /
+                    dealer fit / rigging kits, tagged via itemType) */}
                 {parts.length > 0 && (
                     <>
-                        <Text style={styles.sectionTitle}>Parts</Text>
+                        <Text style={styles.sectionTitle}>
+                            {parts.some(p => p.itemType) ? 'Parts & Catalog Items' : 'Parts'}
+                        </Text>
                         <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 6, padding: 10 }}>
                             {parts.map(p => {
                                 const qty = Math.max(1, p.qty || 1);
                                 const lineTotal = (p.sellPrice || 0) * qty;
+                                const typeTag = p.itemType ? String(p.itemType).replace('-', ' ').toUpperCase() : null;
                                 return (
                                     <View key={p.id} style={styles.partLine}>
                                         <View style={styles.partLineLeft}>
                                             <View style={styles.partDot} />
+                                            {typeTag && <Text style={styles.partTypeTag}>{typeTag}</Text>}
                                             <Text style={styles.partName}>
                                                 {qty > 1 ? `${p.name} ×${qty}` : p.name}
                                                 {p.partNumber ? `  ·  ${p.partNumber}` : ''}
