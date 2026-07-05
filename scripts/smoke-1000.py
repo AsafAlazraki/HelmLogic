@@ -100,7 +100,8 @@ APP = os.environ.get("SMOKE_APP_URL", "http://localhost:9002")
 # NOTE: /proposals deliberately absent — it only exists as /proposals/[quoteNumber].
 ROUTES = ["/login", "/dashboard", "/customers", "/pipeline", "/contracts", "/reporting",
           "/my-work", "/quote-comparison", "/search", "/audit-log", "/feature-tracking",
-          "/manage", "/modules", "/pricing-manager", "/price-book",
+          # /price-book removed 2026-07-05 (dormant page deleted, structure-audit H9)
+          "/manage", "/modules", "/pricing-manager",
           "/sub-dealers", "/suggestions", "/data-warehouse", "/organisations", "/admin"]
 for route in ROUTES:
     try:

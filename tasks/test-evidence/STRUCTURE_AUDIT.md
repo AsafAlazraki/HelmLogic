@@ -98,12 +98,12 @@ Sampled 50 docs each: boat variants, dealerFitSelections, fitUpItems, servicePar
 | H1 | P0 | Add rules for `organisations/{org}/priceLists` (live 403 on the module price-list surface) + `serviceQuotes/{id}/sentEmails` & nested `auditLog` (make `serviceQuotes/{quoteId}` block cover subcollections or add explicit matches) — full-file paste + post-publish spot-check per CLAUDE.md | firestore.rules |
 | H2 | P0 | collectionGroup `models` + `ranges`: add `/{path=**}/models/{id}` + `/{path=**}/ranges/{id}` read rules, or rewrite the 4 callsites to path-scoped queries (stock-import, delivered-deals-import, maritime-assistant) | firestore.rules or src |
 | H3 | P1 | `dealerFitCategories` write is HelmLogic-admin-only but org-admin surfaces write it (incl. Audit Workbook import) — decide: relax rule or gate UI | firestore.rules / src |
-| H4 | P1 | Cross-user notification writes (hold requests, @-mentions) 403 for non-admins — route via a rule allowing `create` by any signed-in user on `users/*/notifications`, or a server-side writer | firestore.rules / src |
-| H5 | P1 | `features/{id}/auditLog` write in suggestion-approval-queue has no write rule | firestore.rules |
+| H4 | P1 | ~~Cross-user notification writes 403~~ **FIXED in repo (commit `3a0a350`)**: `users/*/notifications` allows `create` by any signed-in user; read/update/delete stay owner/admin. Needs console publish. | firestore.rules ✅ (publish pending) |
+| H5 | P1 | ~~`features/{id}/auditLog` write unruled~~ **FIXED in repo (commit `3a0a350`)**: explicit read/write block added inside `features`. Needs console publish. | firestore.rules ✅ (publish pending) |
 | H6 | P1 | serviceParts: 101 duplicate partNumbers with differing prices — dedupe/reconcile before any upsert-by-key re-import | data fix (scripted) |
 | H7 | P2 | 26 zero-variant ghost models (Jeanneau 21, Stabicraft 3 incl. `tet` test doc, Surtees 2) — seed variants or hide/delete | data fix |
 | H8 | P2 | Picker dup identities: 2 MACKAY trailers, 16 fitUpItems groups (esp. 7 "DISCONTINUED" placeholders), 6 Helm Master DFS pairs — rename or merge | data fix |
-| H9 | P3 | Decide fate of dormant `/price-book` page (`brands`/`products`/`priceLevelDefinitions`/`productPrices` all unruled + 403) — delete page or add rules | src cleanup |
+| H9 | P3 | ~~Decide fate of dormant `/price-book` page~~ **RESOLVED 2026-07-05 (release prep)**: page + `price-book-table.tsx` deleted (zero inbound refs, not nav-linked, all four backing collections unruled). The unruled top-level `brands`/`products` collections now have zero code references. | src cleanup ✅ |
 | H10 | P3 | `importedAt` is an ISO string on all MPF collections — document convention; never `orderBy` it as a timestamp | docs/CONVENTIONS |
 
 Re-run: `python3 scripts/mpf/audit-structure.py` (read-only, ~4 min).
