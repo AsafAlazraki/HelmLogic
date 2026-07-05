@@ -32,7 +32,7 @@ Fourteen dev releases (185 commits since main's v1.17 tip `c9b8b2c`), each with 
 | v1.28 | Co-buyers, refunds, promotion stacking |
 | v1.29 | (window skipped, empty) |
 | v1.30 | Notification system foundation (10.1.1–10.1.5) |
-| v1.31 | **MPF migration + Testing & Evidence overhaul** — NSM's 17-workbook Master Price File migrated 1:1 (36,551 writes / 0 errors), parity proven, NSM Recommended quote-flow wiring, MPF Data admin tab, Step-5 curation engine, hunt-wave audits |
+| v1.31 | **MPF migration + Testing & Evidence overhaul** — NSM's 17-workbook Master Price File migrated 1:1 (36,551 writes / 0 errors), parity proven, NSM Recommended quote-flow wiring, MPF Data admin tab, Counter Quotes (standalone motor / trailer / rigging quoting), Step-5 curation engine, hunt-wave audits |
 
 ## The proof (v1.31 evidence package)
 
@@ -43,6 +43,7 @@ Fourteen dev releases (185 commits since main's v1.17 tip `c9b8b2c`), each with 
 - **Three adversarial audits** (interface / structure / financial invariants) closed with every flag source-verified; zero data patches needed on our side (`UI_AUDIT.md`, `STRUCTURE_AUDIT.md`, `INVARIANTS_AUDIT.md`)
 - **Fail→Fix→Retest ledger**: FFR-1…31, every failure with root cause, fix and green re-run (`fail-fix-retest.json`)
 - **Unit suite**: 554/554 (money math + curation + carousel + rego), CI gate + nightly synthetic battery
+- **Release-tip battery**: fresh full run at this PR's tip (`40a44bf`): **34,580 / 34,594** — the only 14 fails are the standing, individually-explained set (2 negative-sell rows faithful to NSM's own Parts Maintenance sheet + 12 documented menu skips: 11 Mercury/Jeanneau package powerplants approved as import skips + the CC7.5 trailer reference dangling in NSM's own source)
 - **Grand report**: `tasks/HelmLogic_Evidence_Report.pdf` (31 pp, regenerated 2026-07-05, all 26 data sources live)
 
 ## 🚨 Deploy-day checklist (after merge)
