@@ -270,6 +270,15 @@
    "fix": "CurationContext gains maxEngines (derived in highfield-quote-flow.tsx from motorEnvelope.shaft 'Twin/Triple/Quad' wording or motorConfigurations[0].type); R-HP tests each parsed HP interval scaled by every plausible engine count k=1..maxEngines and stays fail-open. Audit script I5 corrected to accept per-engine OR total HP; I9's asserted sell-side identity replaced with the source-verified cost-side identity (totalCostInstalled == kitCost + labour + parts + sundry + sum(components ctd)).",
    "retest": "tests/unit/step5-curation.test.ts +4 cases (twin hull keeps F150 gear; genuinely-too-small and too-big gear still hidden; single-engine behaviour unchanged) -- 70/70 suite, 554/554 all-unit green; audit re-run with corrected formulas recorded in INVARIANTS_AUDIT.md",
    "class": "app-bug + audit-formula"
+  },
+  {
+   "id": "FFR-32",
+   "failed": "Field bug (Asaf, 2026-07-05): selecting a GT console on a Highfield Classic offered a seat pick \u2014 the RS7 seat was auto-locked AND auto-charged on top of the GT price. Product ruling: the GT console includes the FCT (fibreglass console tank) as standard; there is NO seat choice with a GT.",
+   "firstSeen": "2026-07-05",
+   "rootCause": "The pre-MPF console-seat pairing hotfix (main 712ec71) blanket-paired every Highfield console with an RS7 seat via associatedSeatId, GT included. The quote flow honors that field verbatim: toggleOption pushes the paired seat id (and its sellPriceExclGst) onto the quote on console select. 27 GT console entries across 9 Classic models carried the wrong pairing, plus 4 more (incl. one operator-created GT) inside the cl340 modelOverrides doc \u2014 the override copy would have survived a catalog-only fix (the v1.3 modelOverrides-merge lesson).",
+   "fix": "Data: scripts/fix-gt-console-seat-pairing.py \u2014 every Consoles feature named GT* gets associatedSeatId=null + seatsIncludedNote='FCT comes standard with this console \u2014 seating included'; applied to the 9 catalog models AND the cl340 override; every write before/after-logged to tasks/mpf-audit/apply-log-gt-console.jsonl; read-back 0 mispaired. Code: the Seats panel renders the console's seatsIncludedNote in place of the generic 'No paired seat' line, so the customer-facing story is explicit.",
+   "retest": "PENDING \u2014 browser spot-check tests/gt-console-spotcheck.spec.ts (GT select shows FCT note + no locked seat; control console proves the pairing mechanism itself stays intact)",
+   "class": "product-fix"
   }
  ]
 }

@@ -2209,7 +2209,12 @@ export function HighfieldQuoteFlow({
                                                             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{cat}</h3>
                                                         </div>
                                                         <div className="px-6 py-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 text-center">
-                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">No paired seat for this console</p>
+                                                            {/* FFR-32 (Asaf field bug): consoles like the GT include their
+                                                                seating as standard (the FCT tank), so instead of the generic
+                                                                no-seat line we surface the console's own inclusion note. */}
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                                                {(activeConsoleFeature as any)?.seatsIncludedNote || 'No paired seat for this console'}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 );
