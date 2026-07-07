@@ -1,26 +1,20 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>SP560 price difference — found and fixed</title></head>
+<html><head><meta charset="utf-8"><title>SP560 price difference — found</title></head>
 <body style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1a1a1a; line-height: 1.45; max-width: 760px; margin: 24px;">
 
 <p>Hi Mark,</p>
 
-<p>Thank you for running this test. This is exactly what this release window is for, and your comparison found something real. Here is what happened, in plain English, and what has been done about it.</p>
+<p>Good test. Found it, and it reconciles to the dollar. The Master Price File data itself matches your sheet to the cent; the $4,619 came from how the quote was <b>assembled</b>:</p>
 
-<p>First, what was <b>not</b> wrong: the Master Price File data inside HelmLogic. Every figure on your sheet matches what the system holds, to the cent. The difference came from how the quote was <b>assembled</b>, in three ways.</p>
+<p style="margin-left: 28px;"><b>1.</b> An old pre-migration customization layer was overriding a few option prices (your stern shade: $247 old vs $630 correct). <b>Cleared on every boat, already live.</b></p>
 
-<p style="margin-left: 28px;"><b>1. An older customization layer.</b> Before the Master Price File migration, some boats carried hand-entered option prices from an earlier setup. On the SP560, that old layer was still overriding the new, correct prices; the stern shade was the big one, $247 from the old setup instead of $630 from the Master Price File. That old layer has now been cleared on <b>every boat</b>, not just this one, so the Master Price File is the single source of truth end to end.</p>
+<p style="margin-left: 28px;"><b>2.</b> Your sheet's package auto-includes boat, motor and trailer pre-delivery plus installation ($5,831 here). Ours didn't add them. <b>Being changed now to compose exactly like your sheet.</b></p>
 
-<p style="margin-left: 28px;"><b>2. Pre-delivery and installation.</b> Your sheet's package price automatically includes boat pre-delivery, motor pre-delivery and installation, and trailer pre-delivery. HelmLogic holds those figures correctly but was not adding them into the package automatically. We are changing it now so it composes the package the same way your sheet does.</p>
+<p style="margin-left: 28px;"><b>3.</b> Your sheet adds option prices straight into the GST-inclusive total; ours was adding 10% on top ($1,212 here). <b>Adopting your sheet's behaviour.</b></p>
 
-<p style="margin-left: 28px;"><b>3. GST handling on options.</b> Your sheet adds option prices straight into the GST-inclusive package. HelmLogic was treating the same figures as GST-exclusive and adding 10 percent on top. We are adopting the sheet's behaviour, so the same options land at the same money.</p>
+<p>$5,831 minus $1,212 is the $4,619 exactly.</p>
 
-<p>Those three together are the whole difference, reconciled to the dollar: $5,831 of pre-delivery and installation your sheet included and ours did not, less $1,212 of GST ours added to options and yours did not, which is exactly the $4,619 between $103,731 and $99,112.</p>
-
-<p>And so this cannot happen again: this exact comparison, your sheet's package against HelmLogic's, is becoming an automated check that runs for <b>every boat, every night</b>. If any boat ever drifts a dollar from the Master Price File's assembly, it fails the next morning and we see it before you do.</p>
-
-<p>Item 1 is already fixed and live across every boat. Items 2 and 3 are being made now, and I will let you know the moment they are live, with the rebuilt SP560 quote alongside your sheet: same boat, same options, same number.</p>
-
-<p>Thanks again for testing it properly,</p>
+<p>This comparison also becomes an automated nightly check for <b>every boat</b>, so a drift of a single dollar fails before anyone quotes it. I will send the rebuilt SP560 next to your sheet the moment 2 and 3 are live: same boat, same options, same number.</p>
 
 <p>Asaf</p>
 
