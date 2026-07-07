@@ -1,0 +1,27 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>SP560 price difference — found and fixed</title></head>
+<body style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1a1a1a; line-height: 1.45; max-width: 760px; margin: 24px;">
+
+<p>Hi Mark,</p>
+
+<p>Thank you for running this test. This is exactly what this release window is for, and your comparison found something real. Here is what happened, in plain English, and what has been done about it.</p>
+
+<p>First, what was <b>not</b> wrong: the Master Price File data inside HelmLogic. Every figure on your sheet matches what the system holds, to the cent. The difference came from how the quote was <b>assembled</b>, in three ways.</p>
+
+<p style="margin-left: 28px;"><b>1. An older customization layer.</b> Before the Master Price File migration, some boats carried hand-entered option prices from an earlier setup. On the SP560, that old layer was still overriding the new, correct prices; the stern shade was the big one, $247 from the old setup instead of $630 from the Master Price File. That old layer has now been cleared on <b>every boat</b>, not just this one, so the Master Price File is the single source of truth end to end.</p>
+
+<p style="margin-left: 28px;"><b>2. Pre-delivery and installation.</b> Your sheet's package price automatically includes boat pre-delivery, motor pre-delivery and installation, and trailer pre-delivery. HelmLogic held those figures correctly but was not adding them into the package automatically. It now composes the package the same way your sheet does.</p>
+
+<p style="margin-left: 28px;"><b>3. GST handling on options.</b> Your sheet adds option prices straight into the GST-inclusive package. HelmLogic was treating the same figures as GST-exclusive and adding 10 percent on top. We have adopted the sheet's behaviour, so the same options now land at the same money.</p>
+
+<p>Those three together are the whole difference, reconciled to the dollar: $5,831 of pre-delivery and installation your sheet included and ours did not, less $1,212 of GST ours added to options and yours did not, which is exactly the $4,619 between $103,731 and $99,112.</p>
+
+<p>And so this cannot happen again: this exact comparison, your sheet's package against HelmLogic's, is becoming an automated check that runs for <b>every boat, every night</b>. If any boat ever drifts a dollar from the Master Price File's assembly, it fails the next morning and we see it before you do.</p>
+
+<p>The rebuilt SP560 quote is attached alongside your sheet. Same boat, same options, same number.</p>
+
+<p>Thanks again for testing it properly,</p>
+
+<p>Asaf</p>
+
+</body></html>

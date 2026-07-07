@@ -279,6 +279,15 @@
    "fix": "Data: scripts/fix-gt-console-seat-pairing.py \u2014 every Consoles feature named GT* gets associatedSeatId=null + seatsIncludedNote='FCT comes standard with this console \u2014 seating included'; applied to the 9 catalog models AND the cl340 override; every write before/after-logged to tasks/mpf-audit/apply-log-gt-console.jsonl; read-back 0 mispaired. Code: the Seats panel renders the console's seatsIncludedNote in place of the generic 'No paired seat' line, so the customer-facing story is explicit.",
    "retest": "GREEN 2026-07-05 \u2014 tests/gt-console-spotcheck.spec.ts passed against the LIVE post-publish rules: GT select renders 'FCT comes standard' with zero seat cards and no 'Paired with GT' lock; control (non-GT) console still locks its paired seat (pairedSeatLocked=true), proving the pairing mechanism itself is intact. Ran alongside the full CL380 checklist (11/11) in the same session. Screenshots: tasks/test-evidence/ffr32-gt-console/.",
    "class": "product-fix"
+  },
+  {
+   "id": "FFR-33",
+   "failed": "Field test (Mark, 2026-07-07): the same SP560 (HYP) quote came out $103,731 on the MPF Display Sheet vs $99,112 in HelmLogic \u2014 a $4,619 gap, after we claimed value-for-value parity.",
+   "firstSeen": "2026-07-07",
+   "rootCause": "Three distinct causes, reconciled to the dollar: (1) STALE OVERRIDE LAYER \u2014 organisations/{org}/modelOverrides docs carried pre-migration optionalFeatures copies (the USD-as-AUD cost==sell era) that the quote flow merges OVER the migrated catalog; SP560 Stern Shade priced $247 instead of the MPF's $630. The migration wrote the catalog but never swept the override layer, and every verification checked the catalog, not the merged view the app renders. Blast radius: 29 shadowed prices across 6 models (cl290, cl340, cl340ft, sp560, sp660, ul310). (2) PD COMPOSITION \u2014 the Display Sheet package auto-includes boat PD, motor PD + rigging installation, and trailer PD ($5,831 on this quote); the HL flow holds the figures but does not compose them into the package. (3) GST ON OPTIONS \u2014 their sheet sums option figures raw into the inc-GST package; HL treated the same figures as ex-GST and added 10% (+$1,212 on this quote). Net: -5,831 + 1,212 = -4,619 exactly.",
+   "fix": "Ruling (Asaf): the Display Sheet is the spec. Phase 1 audit (scripts/audit-override-staleness.py, read-only) itemized the blast radius; Phase 2 sweep (scripts/sweep-override-staleness.py --apply) synced all 29 stale prices to the MPF catalog with before/after logs (apply-log-override-sweep.jsonl) and priceSyncedFromCatalogAt stamps \u2014 re-audit shows 0 shadows across all 10 override docs. Phases 3-5 in flight: PD/install lines composed into every boat quote per the Display Sheet, options GST treated per the sheet, and a permanent nightly battery section asserting HL package == Display Sheet package for EVERY boat.",
+   "retest": "PENDING \u2014 phases 3-5 land, then the rebuilt SP560 (HYP) quote reproducing Mark's exact configuration must equal $103,731, plus the every-boat package-parity battery section green.",
+   "class": "product-fix-pending"
   }
  ]
 }
