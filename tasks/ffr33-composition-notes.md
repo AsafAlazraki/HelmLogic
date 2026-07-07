@@ -62,3 +62,25 @@ Mark's SP560 (HYP) LG-W-WB + F90XB + TA600-MOB + options:
 - The ultimate test's $79,022 was computed under the OLD HL convention (GST added to
   components, no PD). Under Display-Sheet parity the same config produces THEIR number.
   Evidence docs to be updated after implementation; the email to Mark already explains.
+
+
+## DECOMPOSITION COMPLETE (agent, 2026-07-07) — see analysis/display-sheet-composition.md
+
+$85,648 = straight sum of 8 already-inc-GST catalog sells (residual +$10 = prop/rigging rounding, immaterial):
+Hull Cash 48,350 (QR838) + Boat rego 250 (Registration K10) + **PD tier 5,300 (TF838)** +
+Motor NSM Retail 17,643 (Motor Library r82 BC) + Rigging kit+install 3,110 (Rigging r382 AC) +
+Prop supply+fit 272 (Parts r2676 Y) + Trailer 10,430 (Trailer r143 BW) + Trailer rego 283 (BZ143).
+
+**PD tier mechanism**: Est Hrs = boat PD 18h + ROUNDUP(motor PD 0.372 + install 4.0 + rigging 5.8) = 29h;
+Sell = ROUNDUP(ROUNDUP(29 x 130.09, -2) x 1.25 x 1.1, -2) = 5,300. Motor PD materials ($90) already
+inside motor retail; trailer PD ($176.06) inside trailer sell.
+
+GENERAL FORMULA: PACKAGE = hullLadder[level] + boatRegoBand + pdTier(tier, motorSlot) + motorRetail
++ riggingTotal + propIncInstall + trailerSell + trailerRegoBand; options added RAW; exGst = total/1.1.
+
+MISSING IMPORTS: per-boat PD tiers (cols 516-550: 3 tiers hrs+sell), boat PD hrs (col 274), handover
+hrs + PD parts lines, motor PD/install hrs as first-class motor fields.
+
+RULE: rounding is heterogeneous per line — SNAPSHOT stored sells, never recompute.
+
+Options add-on verification: all 8 exact; 85,648 + options = 103,731 exact; ex 94,300.91 = /1.1 exact.
