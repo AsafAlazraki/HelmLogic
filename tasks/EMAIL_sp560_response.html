@@ -4,15 +4,13 @@
 
 <p>Hi Mark,</p>
 
-<p>Good test. Found it, and it reconciles to the dollar. The Master Price File data itself matches your sheet to the cent; the $4,619 came from how the quote was <b>assembled</b>:</p>
+<p>Good test. Found it, and the whole $4,619 between $103,731 and $99,112 is reconciled line by line. The Master Price File data itself matches your sheet to the cent; the difference is in how the quote is <b>assembled</b>:</p>
 
-<p style="margin-left: 28px;"><b>1.</b> An old pre-migration customization layer was overriding a few option prices (your stern shade: $247 old vs $630 correct). <b>Cleared on every boat, already live.</b></p>
+<p style="margin-left: 28px;"><b>1.</b> An old pre-migration customization layer was overriding a few option prices; your stern shade is the clean example, $247 from the old setup instead of the correct $630. <b>Cleared on every boat, already live.</b></p>
 
-<p style="margin-left: 28px;"><b>2.</b> Your sheet's package auto-includes boat, motor and trailer pre-delivery plus installation ($5,831 here). Ours didn't add them. <b>Being changed now to compose exactly like your sheet.</b></p>
+<p style="margin-left: 28px;"><b>2.</b> Your sheet's package price automatically bundles the rigging kit, propeller, pre-delivery and installation for boat, motor and trailer. Ours priced the components correctly but did not compose those lines into the package. <b>Being changed now to assemble exactly like your sheet.</b></p>
 
-<p style="margin-left: 28px;"><b>3.</b> Your sheet adds option prices straight into the GST-inclusive total; ours was adding 10% on top ($1,212 here). <b>Adopting your sheet's behaviour.</b></p>
-
-<p>$5,831 minus $1,212 is the $4,619 exactly.</p>
+<p style="margin-left: 28px;"><b>3.</b> Your figures are GST-inclusive as they stand, and your sheet totals them that way. Ours was treating motor, trailer and option figures as GST-exclusive and adding 10% on top. <b>Adopting your sheet's treatment.</b></p>
 
 <p>This comparison also becomes an automated nightly check for <b>every boat</b>, so a drift of a single dollar fails before anyone quotes it. When this work goes into the next release I will send you the rebuilt SP560 next to your sheet: same boat, same options, same number.</p>
 
