@@ -40,6 +40,10 @@ export default defineConfig({
     // Modern Chromium's post-quantum/ECH TLS ClientHello breaks the
     // TLS-intercepting proxy (CONNECT resets mid-handshake). Disable.
     launchOptions: {
+      // Managed containers pre-install Chromium at /opt/pw-browsers/chromium;
+      // when the project's Playwright pin wants a different browser build,
+      // launch the pre-installed one instead of downloading (env rule).
+      executablePath: process.env.PLAYWRIGHT_BROWSERS_PATH ? '/opt/pw-browsers/chromium' : undefined,
       args: [
         '--disable-features=EncryptedClientHello,PostQuantumKeyAgreement,X25519MLKEM768,X25519Kyber768,UseDnsHttpsSvcb',
       ],
