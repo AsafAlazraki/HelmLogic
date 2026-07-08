@@ -1965,7 +1965,13 @@ export function HighfieldQuoteFlow({
                     try {
                         const partSnap = await getDocs(query(collection(firestore, `organisations/${orgId}/serviceParts`), where('partNumber', '==', String(propPartNo).trim()), limit(1)));
                         const part: any = partSnap.docs[0]?.data();
-                        const propSell = typeof part?.sellPrice === 'number' ? part.sellPrice : null;
+                        // Display-Sheet convention: figures are inc-GST money,
+                        // so prefer the part's inc retail; ex-normalized
+                        // sellPrice is the fallback. (This prop has 4
+                        // coexisting prices in NSM's own file — documented in
+                        // display-sheet-composition.md.)
+                        const propSell = typeof part?.retailIncGst === 'number' ? part.retailIncGst
+                            : (typeof part?.sellPrice === 'number' ? part.sellPrice : null);
                         if (propSell && propSell > 0) {
                             lines.push({ id: `slot-prop-${propPartNo}`, name: selectedMotorMenuSlot?.propDesc || `Propeller ${propPartNo}`, category: 'Propeller', sellPriceExclGst: propSell });
                         }
