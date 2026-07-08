@@ -224,6 +224,14 @@ def load_mpf(name):
     with open(os.path.join(MPF_EXT, name)) as f:
         return json.load(f)
 
+def mpf_extracts_present():
+    """The MPF extraction JSONs are gitignored (they derive from the source
+    xlsx, which lives outside git per the LFS lesson). On a fresh checkout
+    (nightly CI, new container) sections I/J that diff against the extract
+    are SKIPPED VISIBLY rather than crashing — the live-only sections
+    (A-H, K, M, N) still run and still guard the system."""
+    return os.path.exists(os.path.join(MPF_EXT, "boats.json"))
+
 def fdec(v):
     """Full recursive Firestore value decode (fv keeps maps/arrays raw)."""
     for t in ("stringValue", "booleanValue", "timestampValue"):
@@ -249,222 +257,234 @@ def mpf_slug(s):
     # import-service-config.py slug (keeps dots — rego doc ids like mpf-heavy-trailers-over-4.55t)
     return re.sub(r"-+", "-", re.sub(r"[^a-z0-9.]+", "-", str(s).lower())).strip("-")
 
-# --- I.1 Highfield variants: ALL sell + cost vs boats.json (full verify) ---
-boats_ext = load_mpf("boats.json")["boats"]
-# HBS15## is a junk source SKU (literal '##') — intentionally never imported.
-hf_boats = [b for b in boats_ext if b["brand"] == "Highfield Inflatables" and b["modelCode"] != "HBS15##"]
-for b in hf_boats:
-    sku = b["modelCode"]
-    lv = HF_LIVE_VARIANTS.get(sku)
-    if lv is None:
-        check("I. MPF parity", f"boats: variant {sku} exists live", False, "no live variant doc")
-        continue
-    mpf_sell = b["sellLadder"]["cashExGst"]
-    mpf_cost = b["landedCostChain"]["landedAUD"]
-    if mpf_sell is not None:
-        check("I. MPF parity", f"boats: {sku} sellPriceExclGst == MPF cash exGst",
-              near(lv["sell"], mpf_sell), f"live={lv['sell']} mpf={mpf_sell}")
-    if mpf_cost is not None:
-        check("I. MPF parity", f"boats: {sku} cost == MPF landed AUD",
-              near(lv["cost"], mpf_cost), f"live={lv['cost']} mpf={mpf_cost}")
-
-# --- I.2 Motors: 50-code sample, every mapped price level + cost vs motors.json ---
-YAMAHA_ROWS_PATH = "data-warehouse/mRAzkE8PUX8GMHELCvJo/dataSets/FQ5uTMyUorrJPlpbWIY8/rows"
-motors_ext = load_mpf("motors.json")["motors"]
-def pick_primary_motors(motors):  # same selection rule as scripts/mpf/diff-motors-trailers-fo.py
-    by_code = {}
-    def score(m):
-        s = (m.get("section") or "")
-        primary_display = (m.get("displayName") or "").strip() == f"Yamaha - {m['modelCode']}"
-        powerplant = s.lower().startswith("powerplants") or " w " in s.lower()
-        return (0 if primary_display else 1, 1 if powerplant else 0, m["sourceRow"])
-    for m in motors:
-        k = m["modelCode"]
-        if k not in by_code or score(m) < score(by_code[k]):
-            by_code[k] = m
-    return by_code
-primary_motors = pick_primary_motors(motors_ext)
-yam_rows = [ddec(d) for d in list_docs(YAMAHA_ROWS_PATH)]
-yam_by_code = {}
-for rrow in yam_rows:
-    code = str(rrow.get("MODEL CODE") or "").strip()
-    if code:
-        yam_by_code.setdefault(code, rrow)
-MOTOR_FIELD_MAP = [("NSM Retail", "hull_cash"), ("Trade Price", "hull_trade"),
-                   ("Commercial Price", "hull_commercial"),
-                   ("Boating Alliance Price", "hull_boating_alliance"),
-                   ("Sell Price", "hull_campaign"), ("Total CTD", "cost")]
-motor_codes = sorted(set(primary_motors) & set(yam_by_code))
-for code in RNG.sample(motor_codes, min(50, len(motor_codes))):
-    m, lrow = primary_motors[code], yam_by_code[code]
-    for lf, ef in MOTOR_FIELD_MAP:
-        mv = m["cost"] if ef == "cost" else m["priceLevels"].get(ef)
-        if mv is None:
+# Sections I + J diff live data against the MPF extraction JSONs, which are
+# gitignored (derived from the source xlsx kept outside git). On checkouts
+# without extracts (nightly CI, fresh containers) they skip VISIBLY and the
+# live-only sections still guard everything.
+try:
+    # --- I.1 Highfield variants: ALL sell + cost vs boats.json (full verify) ---
+    boats_ext = load_mpf("boats.json")["boats"]
+    # HBS15## is a junk source SKU (literal '##') — intentionally never imported.
+    hf_boats = [b for b in boats_ext if b["brand"] == "Highfield Inflatables" and b["modelCode"] != "HBS15##"]
+    for b in hf_boats:
+        sku = b["modelCode"]
+        lv = HF_LIVE_VARIANTS.get(sku)
+        if lv is None:
+            check("I. MPF parity", f"boats: variant {sku} exists live", False, "no live variant doc")
             continue
-        check("I. MPF parity", f"motors: {code} {lf}", near(lrow.get(lf), mv),
-              f"live={lrow.get(lf)} mpf={mv}")
+        mpf_sell = b["sellLadder"]["cashExGst"]
+        mpf_cost = b["landedCostChain"]["landedAUD"]
+        if mpf_sell is not None:
+            check("I. MPF parity", f"boats: {sku} sellPriceExclGst == MPF cash exGst",
+                  near(lv["sell"], mpf_sell), f"live={lv['sell']} mpf={mpf_sell}")
+        if mpf_cost is not None:
+            check("I. MPF parity", f"boats: {sku} cost == MPF landed AUD",
+                  near(lv["cost"], mpf_cost), f"live={lv['cost']} mpf={mpf_cost}")
 
-# --- I.3 Trailers: 50-trailer sample vs trailers.json ---
-TRAILER_VENDORS = ["dunbier-trailers", "dunbier-haines-bmt", "gfab-trailers",
-                   "mackay-trailers", "redco-tinka-trailers", "stacer-trailers",
-                   "obsolete-trailers"]
-trailers_ext = load_mpf("trailers.json")
-live_trailer_by_name = {}
-for tv in TRAILER_VENDORS:
-    for sdoc in list_docs(f"data-warehouse/{tv}/series"):
-        sid = sdoc["name"].rsplit("/", 1)[-1]
-        for tdoc in list_docs(f"data-warehouse/{tv}/series/{sid}/trailers"):
-            t = ddec(tdoc)
-            live_trailer_by_name.setdefault(str(t.get("name") or "").strip(), t)
-dup_trailer_names = set(trailers_ext.get("duplicatedNames") or [])
-trailer_cands = [t for t in trailers_ext["trailers"] if t["name"].strip() not in dup_trailer_names]
-for t in RNG.sample(trailer_cands, min(50, len(trailer_cands))):
-    lt = live_trailer_by_name.get(t["name"].strip())
-    if lt is None:
-        check("I. MPF parity", f"trailers: {t['name'][:60]} exists live", False, "no live doc")
-        continue
-    spec = lt.get("specifications") or {}
-    for label, lv, mv in [("sellPriceExclGst", lt.get("sellPriceExclGst"), t["sellExGst"]),
-                          ("cost", lt.get("cost"), t["cost"]),
-                          ("atmKg", spec.get("atmKg"), t["atm"]),
-                          ("tareKg", spec.get("tareKg"), t["tare"])]:
-        if mv is None:
+    # --- I.2 Motors: 50-code sample, every mapped price level + cost vs motors.json ---
+    YAMAHA_ROWS_PATH = "data-warehouse/mRAzkE8PUX8GMHELCvJo/dataSets/FQ5uTMyUorrJPlpbWIY8/rows"
+    motors_ext = load_mpf("motors.json")["motors"]
+    def pick_primary_motors(motors):  # same selection rule as scripts/mpf/diff-motors-trailers-fo.py
+        by_code = {}
+        def score(m):
+            s = (m.get("section") or "")
+            primary_display = (m.get("displayName") or "").strip() == f"Yamaha - {m['modelCode']}"
+            powerplant = s.lower().startswith("powerplants") or " w " in s.lower()
+            return (0 if primary_display else 1, 1 if powerplant else 0, m["sourceRow"])
+        for m in motors:
+            k = m["modelCode"]
+            if k not in by_code or score(m) < score(by_code[k]):
+                by_code[k] = m
+        return by_code
+    primary_motors = pick_primary_motors(motors_ext)
+    yam_rows = [ddec(d) for d in list_docs(YAMAHA_ROWS_PATH)]
+    yam_by_code = {}
+    for rrow in yam_rows:
+        code = str(rrow.get("MODEL CODE") or "").strip()
+        if code:
+            yam_by_code.setdefault(code, rrow)
+    MOTOR_FIELD_MAP = [("NSM Retail", "hull_cash"), ("Trade Price", "hull_trade"),
+                       ("Commercial Price", "hull_commercial"),
+                       ("Boating Alliance Price", "hull_boating_alliance"),
+                       ("Sell Price", "hull_campaign"), ("Total CTD", "cost")]
+    motor_codes = sorted(set(primary_motors) & set(yam_by_code))
+    for code in RNG.sample(motor_codes, min(50, len(motor_codes))):
+        m, lrow = primary_motors[code], yam_by_code[code]
+        for lf, ef in MOTOR_FIELD_MAP:
+            mv = m["cost"] if ef == "cost" else m["priceLevels"].get(ef)
+            if mv is None:
+                continue
+            check("I. MPF parity", f"motors: {code} {lf}", near(lrow.get(lf), mv),
+                  f"live={lrow.get(lf)} mpf={mv}")
+
+    # --- I.3 Trailers: 50-trailer sample vs trailers.json ---
+    TRAILER_VENDORS = ["dunbier-trailers", "dunbier-haines-bmt", "gfab-trailers",
+                       "mackay-trailers", "redco-tinka-trailers", "stacer-trailers",
+                       "obsolete-trailers"]
+    trailers_ext = load_mpf("trailers.json")
+    live_trailer_by_name = {}
+    for tv in TRAILER_VENDORS:
+        for sdoc in list_docs(f"data-warehouse/{tv}/series"):
+            sid = sdoc["name"].rsplit("/", 1)[-1]
+            for tdoc in list_docs(f"data-warehouse/{tv}/series/{sid}/trailers"):
+                t = ddec(tdoc)
+                live_trailer_by_name.setdefault(str(t.get("name") or "").strip(), t)
+    dup_trailer_names = set(trailers_ext.get("duplicatedNames") or [])
+    trailer_cands = [t for t in trailers_ext["trailers"] if t["name"].strip() not in dup_trailer_names]
+    for t in RNG.sample(trailer_cands, min(50, len(trailer_cands))):
+        lt = live_trailer_by_name.get(t["name"].strip())
+        if lt is None:
+            check("I. MPF parity", f"trailers: {t['name'][:60]} exists live", False, "no live doc")
             continue
-        check("I. MPF parity", f"trailers: {t['name'][:60]} {label}", near(lv, mv),
-              f"live={lv} mpf={mv}")
+        spec = lt.get("specifications") or {}
+        for label, lv, mv in [("sellPriceExclGst", lt.get("sellPriceExclGst"), t["sellExGst"]),
+                              ("cost", lt.get("cost"), t["cost"]),
+                              ("atmKg", spec.get("atmKg"), t["atm"]),
+                              ("tareKg", spec.get("tareKg"), t["tare"])]:
+            if mv is None:
+                continue
+            check("I. MPF parity", f"trailers: {t['name'][:60]} {label}", near(lv, mv),
+                  f"live={lv} mpf={mv}")
 
-# --- I.4 Dealer fit: 100-doc sample actSell/actCtd vs dealer-fit.json ---
-dfo_rows = load_mpf("dealer-fit.json")["rows"]
-dfs_docs = [ddec(d) for d in list_docs(f"organisations/{ORG}/dealerFitSelections")]
-dfs_by_id = {d["_id"]: d for d in dfs_docs}
-dfo_by_id = {}
-for rw in dfo_rows:
-    dfo_by_id.setdefault(rw["docId"], rw)  # dup docIds were dupSkipped at import
-for did in RNG.sample(sorted(dfo_by_id), min(100, len(dfo_by_id))):
-    rw, ld = dfo_by_id[did], dfs_by_id.get(did)
-    if ld is None:
-        check("I. MPF parity", f"dealer-fit: {did} exists live", False, "no live doc")
-        continue
-    data = ((ld.get("items") or [{}])[0].get("data") or {})
-    for lf, ef in (("Act Sell", "actSell"), ("Act CTD", "actCtd")):
-        mv = rw.get(ef)
-        if mv is None:
+    # --- I.4 Dealer fit: 100-doc sample actSell/actCtd vs dealer-fit.json ---
+    dfo_rows = load_mpf("dealer-fit.json")["rows"]
+    dfs_docs = [ddec(d) for d in list_docs(f"organisations/{ORG}/dealerFitSelections")]
+    dfs_by_id = {d["_id"]: d for d in dfs_docs}
+    dfo_by_id = {}
+    for rw in dfo_rows:
+        dfo_by_id.setdefault(rw["docId"], rw)  # dup docIds were dupSkipped at import
+    for did in RNG.sample(sorted(dfo_by_id), min(100, len(dfo_by_id))):
+        rw, ld = dfo_by_id[did], dfs_by_id.get(did)
+        if ld is None:
+            check("I. MPF parity", f"dealer-fit: {did} exists live", False, "no live doc")
             continue
-        check("I. MPF parity", f"dealer-fit: {did} {lf}", near(data.get(lf), mv),
-              f"live={data.get(lf)} mpf={mv}")
+        data = ((ld.get("items") or [{}])[0].get("data") or {})
+        for lf, ef in (("Act Sell", "actSell"), ("Act CTD", "actCtd")):
+            mv = rw.get(ef)
+            if mv is None:
+                continue
+            check("I. MPF parity", f"dealer-fit: {did} {lf}", near(data.get(lf), mv),
+                  f"live={data.get(lf)} mpf={mv}")
 
-# --- I.5 Service operations: 50-op sample vs service-operations.json ---
-ops_ext = load_mpf("service-operations.json")["operations"]
-live_ops_docs = [ddec(d) for d in list_docs(f"organisations/{ORG}/serviceOperations")]
-ops_by_code = {}
-for o in live_ops_docs:
-    ops_by_code.setdefault(str(o.get("code") or "").strip(), o)
-ops_ext_by_key = {}
-for o in ops_ext:
-    ops_ext_by_key.setdefault(o["opCode"] or o["syntheticKey"], o)
-for k in RNG.sample(sorted(ops_ext_by_key), min(50, len(ops_ext_by_key))):
-    e, l = ops_ext_by_key[k], ops_by_code.get(k)
-    if l is None:
-        check("I. MPF parity", f"service-ops: {k} exists live", False, "no live doc")
-        continue
-    if e["labourHrs"] is not None:
-        check("I. MPF parity", f"service-ops: {k} flatRateHours",
-              near(l.get("flatRateHours"), e["labourHrs"], 0.001),
-              f"live={l.get('flatRateHours')} mpf={e['labourHrs']}")
-    if e["sellExGst"] is not None:
-        check("I. MPF parity", f"service-ops: {k} sellPrice",
-              near(l.get("sellPrice"), e["sellExGst"], 0.02),
-              f"live={l.get('sellPrice')} mpf={e['sellExGst']}")
-    if e["totalCtd"] is not None:
-        check("I. MPF parity", f"service-ops: {k} cost",
-              near(l.get("cost"), e["totalCtd"], 0.02),
-              f"live={l.get('cost')} mpf={e['totalCtd']}")
-
-# --- I.6 Exchange rates: all 4 ---
-for r_fx in load_mpf("exchange-rates.json")["rates"]:
-    resp = requests.get(f"{BASE}/organisations/{ORG}/exchangeRates/{r_fx['code']}", headers=H, timeout=20)
-    live_rate = fv(resp.json(), "rate") if resp.status_code == 200 else None
-    check("I. MPF parity", f"fx: {r_fx['code']} rate", resp.status_code == 200 and near(live_rate, r_fx["rate"], 1e-6),
-          f"live={live_rate} mpf={r_fx['rate']} (HTTP {resp.status_code})")
-
-# --- I.7 Pricing matrix: count (47 franchises + retail-sliding-scale) ---
-pmx = load_mpf("pricing-matrix.json")
-pm_docs = list_docs(f"organisations/{ORG}/pricingMatrix")
-pm_expected = len(pmx["franchises"]) + 1
-check("I. MPF parity", "pricingMatrix: doc count == franchises + sliding-scale",
-      len(pm_docs) == pm_expected, f"live={len(pm_docs)} expected={pm_expected}")
-check("I. MPF parity", "pricingMatrix: retail-sliding-scale doc present",
-      any(d["name"].endswith("/retail-sliding-scale") for d in pm_docs))
-
-# --- I.8 Rego bands: every MPF QLD band present with correct sell ---
-rego_ext = load_mpf("rego-catalog.json")
-rego_live = {d["_id"]: d for d in (ddec(x) for x in list_docs("data-warehouse/qld-transport/regoTypes"))}
-for it in rego_ext["items"]:
-    did = "mpf-" + mpf_slug(it["revCode"] or it["name"])
-    ld = rego_live.get(did)
-    check("I. MPF parity", f"rego: {did} present + sellExclGst",
-          ld is not None and near(ld.get("sellExclGst"), it["sell"]),
-          f"live={None if ld is None else ld.get('sellExclGst')} mpf={it['sell']}")
-
-# ---------- J. Assignment web (menus on boats resolve against live collections) ----------
-boats_with_menus = [b for b in boats_ext
-                    if (b.get("motorMenu") or b.get("trailerMenu") or b.get("dealerFitLines"))]
-sample_boats = RNG.sample(boats_with_menus, min(100, len(boats_with_menus)))
-yam_names = set()
-for rrow in yam_rows:
-    for kf in ("MODEL CODE", "MODEL", "DESCRIPTION"):
-        vv = rrow.get(kf)
-        if isinstance(vv, str) and vv.strip():
-            yam_names.add(vv.strip().lower())
-live_trailer_names = {n.strip().lower() for n in live_trailer_by_name if n}
-dfs_names = {str(d.get("name") or "").strip().lower() for d in dfs_docs}
-
-def motor_resolves(nm):
-    n = nm.strip().lower()
-    base = re.sub(r"\s*\([^)]*\)$", "", n).strip()  # drop trailing "(Tiller)" / "(White)" qualifier
-    for cand in (n, base, base.replace("yamaha - ", ""), n.replace("yamaha - ", "")):
-        if cand in yam_names:
-            return True
-    return False
-
-j_stats = {"motorMenu -> Yamaha rows": [0, 0],
-           "trailerMenu -> trailer vendor docs": [0, 0],
-           "dealerFitLines -> dealerFitSelections": [0, 0]}
-j_unmatched = {k: set() for k in j_stats}
-for b in sample_boats:
-    for e in (b.get("motorMenu") or []):
-        nm = (e.get("motorName") or "").strip()
-        if not nm:
+    # --- I.5 Service operations: 50-op sample vs service-operations.json ---
+    ops_ext = load_mpf("service-operations.json")["operations"]
+    live_ops_docs = [ddec(d) for d in list_docs(f"organisations/{ORG}/serviceOperations")]
+    ops_by_code = {}
+    for o in live_ops_docs:
+        ops_by_code.setdefault(str(o.get("code") or "").strip(), o)
+    ops_ext_by_key = {}
+    for o in ops_ext:
+        ops_ext_by_key.setdefault(o["opCode"] or o["syntheticKey"], o)
+    for k in RNG.sample(sorted(ops_ext_by_key), min(50, len(ops_ext_by_key))):
+        e, l = ops_ext_by_key[k], ops_by_code.get(k)
+        if l is None:
+            check("I. MPF parity", f"service-ops: {k} exists live", False, "no live doc")
             continue
-        j_stats["motorMenu -> Yamaha rows"][1] += 1
-        if motor_resolves(nm):
-            j_stats["motorMenu -> Yamaha rows"][0] += 1
-        else:
-            j_unmatched["motorMenu -> Yamaha rows"].add(nm)
-    for e in (b.get("trailerMenu") or []):
-        nm = (e.get("name") or "").strip()
-        if not nm:
-            continue
-        j_stats["trailerMenu -> trailer vendor docs"][1] += 1
-        if nm.lower() in live_trailer_names:
-            j_stats["trailerMenu -> trailer vendor docs"][0] += 1
-        else:
-            j_unmatched["trailerMenu -> trailer vendor docs"].add(nm)
-    for nm in (b.get("dealerFitLines") or []):
-        nm = (nm or "").strip()
-        if not nm:
-            continue
-        j_stats["dealerFitLines -> dealerFitSelections"][1] += 1
-        if nm.lower() in dfs_names:
-            j_stats["dealerFitLines -> dealerFitSelections"][0] += 1
-        else:
-            j_unmatched["dealerFitLines -> dealerFitSelections"].add(nm)
-for rel, (hit, tot) in j_stats.items():
-    rate = (100.0 * hit / tot) if tot else 100.0
-    check("J. Assignment web", f"{rel}: match rate", True,
-          f"{hit}/{tot} = {rate:.1f}% across {len(sample_boats)} sampled boats")
-    for nm in sorted(j_unmatched[rel]):
-        check("J. Assignment web", f"{rel}: unresolved name", False, nm)
+        if e["labourHrs"] is not None:
+            check("I. MPF parity", f"service-ops: {k} flatRateHours",
+                  near(l.get("flatRateHours"), e["labourHrs"], 0.001),
+                  f"live={l.get('flatRateHours')} mpf={e['labourHrs']}")
+        if e["sellExGst"] is not None:
+            check("I. MPF parity", f"service-ops: {k} sellPrice",
+                  near(l.get("sellPrice"), e["sellExGst"], 0.02),
+                  f"live={l.get('sellPrice')} mpf={e['sellExGst']}")
+        if e["totalCtd"] is not None:
+            check("I. MPF parity", f"service-ops: {k} cost",
+                  near(l.get("cost"), e["totalCtd"], 0.02),
+                  f"live={l.get('cost')} mpf={e['totalCtd']}")
+
+    # --- I.6 Exchange rates: all 4 ---
+    for r_fx in load_mpf("exchange-rates.json")["rates"]:
+        resp = requests.get(f"{BASE}/organisations/{ORG}/exchangeRates/{r_fx['code']}", headers=H, timeout=20)
+        live_rate = fv(resp.json(), "rate") if resp.status_code == 200 else None
+        check("I. MPF parity", f"fx: {r_fx['code']} rate", resp.status_code == 200 and near(live_rate, r_fx["rate"], 1e-6),
+              f"live={live_rate} mpf={r_fx['rate']} (HTTP {resp.status_code})")
+
+    # --- I.7 Pricing matrix: count (47 franchises + retail-sliding-scale) ---
+    pmx = load_mpf("pricing-matrix.json")
+    pm_docs = list_docs(f"organisations/{ORG}/pricingMatrix")
+    pm_expected = len(pmx["franchises"]) + 1
+    check("I. MPF parity", "pricingMatrix: doc count == franchises + sliding-scale",
+          len(pm_docs) == pm_expected, f"live={len(pm_docs)} expected={pm_expected}")
+    check("I. MPF parity", "pricingMatrix: retail-sliding-scale doc present",
+          any(d["name"].endswith("/retail-sliding-scale") for d in pm_docs))
+
+    # --- I.8 Rego bands: every MPF QLD band present with correct sell ---
+    rego_ext = load_mpf("rego-catalog.json")
+    rego_live = {d["_id"]: d for d in (ddec(x) for x in list_docs("data-warehouse/qld-transport/regoTypes"))}
+    for it in rego_ext["items"]:
+        did = "mpf-" + mpf_slug(it["revCode"] or it["name"])
+        ld = rego_live.get(did)
+        check("I. MPF parity", f"rego: {did} present + sellExclGst",
+              ld is not None and near(ld.get("sellExclGst"), it["sell"]),
+              f"live={None if ld is None else ld.get('sellExclGst')} mpf={it['sell']}")
+
+    # ---------- J. Assignment web (menus on boats resolve against live collections) ----------
+    boats_with_menus = [b for b in boats_ext
+                        if (b.get("motorMenu") or b.get("trailerMenu") or b.get("dealerFitLines"))]
+    sample_boats = RNG.sample(boats_with_menus, min(100, len(boats_with_menus)))
+    yam_names = set()
+    for rrow in yam_rows:
+        for kf in ("MODEL CODE", "MODEL", "DESCRIPTION"):
+            vv = rrow.get(kf)
+            if isinstance(vv, str) and vv.strip():
+                yam_names.add(vv.strip().lower())
+    live_trailer_names = {n.strip().lower() for n in live_trailer_by_name if n}
+    dfs_names = {str(d.get("name") or "").strip().lower() for d in dfs_docs}
+
+    def motor_resolves(nm):
+        n = nm.strip().lower()
+        base = re.sub(r"\s*\([^)]*\)$", "", n).strip()  # drop trailing "(Tiller)" / "(White)" qualifier
+        for cand in (n, base, base.replace("yamaha - ", ""), n.replace("yamaha - ", "")):
+            if cand in yam_names:
+                return True
+        return False
+
+    j_stats = {"motorMenu -> Yamaha rows": [0, 0],
+               "trailerMenu -> trailer vendor docs": [0, 0],
+               "dealerFitLines -> dealerFitSelections": [0, 0]}
+    j_unmatched = {k: set() for k in j_stats}
+    for b in sample_boats:
+        for e in (b.get("motorMenu") or []):
+            nm = (e.get("motorName") or "").strip()
+            if not nm:
+                continue
+            j_stats["motorMenu -> Yamaha rows"][1] += 1
+            if motor_resolves(nm):
+                j_stats["motorMenu -> Yamaha rows"][0] += 1
+            else:
+                j_unmatched["motorMenu -> Yamaha rows"].add(nm)
+        for e in (b.get("trailerMenu") or []):
+            nm = (e.get("name") or "").strip()
+            if not nm:
+                continue
+            j_stats["trailerMenu -> trailer vendor docs"][1] += 1
+            if nm.lower() in live_trailer_names:
+                j_stats["trailerMenu -> trailer vendor docs"][0] += 1
+            else:
+                j_unmatched["trailerMenu -> trailer vendor docs"].add(nm)
+        for nm in (b.get("dealerFitLines") or []):
+            nm = (nm or "").strip()
+            if not nm:
+                continue
+            j_stats["dealerFitLines -> dealerFitSelections"][1] += 1
+            if nm.lower() in dfs_names:
+                j_stats["dealerFitLines -> dealerFitSelections"][0] += 1
+            else:
+                j_unmatched["dealerFitLines -> dealerFitSelections"].add(nm)
+    for rel, (hit, tot) in j_stats.items():
+        rate = (100.0 * hit / tot) if tot else 100.0
+        check("J. Assignment web", f"{rel}: match rate", True,
+              f"{hit}/{tot} = {rate:.1f}% across {len(sample_boats)} sampled boats")
+        for nm in sorted(j_unmatched[rel]):
+            check("J. Assignment web", f"{rel}: unresolved name", False, nm)
+
+except FileNotFoundError:
+    check("I. MPF parity", "SKIPPED — MPF extraction JSONs not present on this checkout "
+          "(gitignored; run scripts/mpf/extract-*.py against the source xlsx to enable)", True,
+          "extract-diff sections skipped; live-only sections M/N still assert composition + drift")
+    check("J. Assignment web", "SKIPPED — requires the MPF extraction JSONs (see I)", True, "")
+    dfs_docs = [ddec(d) for d in list_docs(f"organisations/{ORG}/dealerFitSelections")]
 
 # ---------- K. Presentation relevance (FFR-18 class hunt, permanent) ----------
 # Full audit + rationale: scripts/mpf/audit-presentation.py +

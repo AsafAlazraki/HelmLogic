@@ -700,6 +700,17 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
             lineItems.push({ label: 'Fit-up & Rigging', sub: 'Installation & Preparation', amount: f.fitUpTotal });
         }
     }
+    // FFR-33 — Display-Sheet quotes carry the PD tier (boat pre-delivery +
+    // motor install + rigging labour) as a first-class package line, exactly
+    // what NSM's own sheet means by "Including Pre Delivery and
+    // Installation". Legacy quotes have no pdTier and skip this.
+    if ((quote as any).pdTier?.sellIncGst > 0) {
+        lineItems.push({
+            label: 'Pre-Delivery & Installation',
+            sub: `Boat PD · Motor Install · Rigging (${(quote as any).pdTier.estHrs || '—'} hrs)`,
+            amount: (quote as any).pdTier.sellIncGst,
+        });
+    }
     // Registration & Compliance — itemised by component (boat rego, stickers,
     // tender-to decals, trailer rego) so the customer sees what every dollar
     // pays for. Falls back to a single rollup if none of the components have

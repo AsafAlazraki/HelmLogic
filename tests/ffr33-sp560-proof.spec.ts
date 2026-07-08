@@ -191,5 +191,24 @@ test.describe('FFR-33 — SP560 Display-Sheet parity proof', () => {
         console.log(`RUNNING TOTAL: $${total.toLocaleString()} (expected ~$${EXPECTED_INC.toLocaleString()})`);
         await page.screenshot({ path: `${SHOTS}/total.png` });
         expect(Math.abs(total - EXPECTED_INC), 'inc-GST package within $5 of the Display-Sheet composition').toBeLessThanOrEqual(5);
+
+        // ── Step 6 → Finalize → customer PDF (the deliverable for Mark) ──
+        await clickNext(page);
+        await page.screenshot({ path: `${SHOTS}/s6-summary.png`, fullPage: true });
+        await page.locator('button:has-text("Finalize Project"), button:has-text("Finalize")').first().click({ force: true });
+        await page.waitForTimeout(2000);
+        await page.locator('#cust-name, input[placeholder="John Smith"]').first().fill('SP560 Display-Sheet Proof');
+        const email = page.locator('#cust-email, input[type="email"]').first();
+        if (await email.isVisible().catch(() => false)) await email.fill('proof@nsmarine.com.au');
+        await page.locator('button:has-text("Create Proposal")').first().click({ force: true });
+        await page.waitForURL(/\/proposals\//, { timeout: 30000 });
+        await page.waitForLoadState('domcontentloaded');
+        await page.waitForTimeout(6000);
+        await page.screenshot({ path: `${SHOTS}/proposal-view.png`, fullPage: true });
+        const dlPromise = page.waitForEvent('download', { timeout: 150000 });
+        await page.locator('button:has-text("Download"), button:has-text("PDF")').first().click({ force: true });
+        const dl = await dlPromise;
+        await dl.saveAs(`${SHOTS}/SP560-display-sheet-proof.pdf`);
+        console.log('PDF saved: SP560-display-sheet-proof.pdf');
     });
 });
