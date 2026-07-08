@@ -50,6 +50,8 @@ async function pickRego(page: Page, label: string, preferRe?: RegExp) {
         const before = await readRunningTotal(page).catch(() => -1);
         await boxes.nth(i).click({ force: true });
         await page.waitForTimeout(600);
+        const optTexts = await page.locator('[role="option"]').allInnerTexts().catch(() => [] as string[]);
+        console.log(`${label} rego options: ${JSON.stringify(optTexts.map(t => t.replace(/\n/g, ' ')))}`);
         const preferred = preferRe ? page.locator('[role="option"]').filter({ hasText: preferRe }).first() : null;
         const opt = (preferred && await preferred.isVisible().catch(() => false)) ? preferred : page.locator('[role="option"]').first();
         if (await opt.isVisible().catch(() => false)) {
@@ -104,7 +106,7 @@ test.describe('FFR-33 — SP560 Display-Sheet parity proof', () => {
         await page.waitForTimeout(1400);
         // Boat rego — the RegoPicker select on Step 1. Log every combobox so
         // a locator miss self-diagnoses; pick the first rego-looking one.
-        await pickRego(page, 'boat', /4\.51.*6\.0|\$250/);
+        await pickRego(page, 'boat', /\$250(\.00)?$|\$250\b/);
         await page.screenshot({ path: `${SHOTS}/s1-variant.png` });
         await clickNext(page);
 
