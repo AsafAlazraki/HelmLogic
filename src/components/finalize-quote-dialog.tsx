@@ -104,6 +104,12 @@ interface FinalizeQuoteDialogProps {
         boatRegoSnapshot?: any;
         trailerRegoSnapshot?: any;
         priceLevelUsed?: string;
+        /** FFR-33 — Display-Sheet parity: 'display-sheet-v2' on MPF boats
+         *  (inc-GST composition per NSM's sheet), null on legacy boats. */
+        pricingConvention?: string | null;
+        /** FFR-33 — PD tier snapshot (tier/estHrs/totalCtd/sellIncGst,
+         *  verbatim MPF figures). */
+        pdTier?: any;
         appliedPromotions?: any[];
         promotionDiscount?: number;
         dealerServices?: { extendedWarranty: boolean; servicePlan: boolean };
@@ -475,7 +481,17 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
             })),
 
             // Pricing
-            totalPriceExclGst: totalPrice || 0,
+            // FFR-33 — under display-sheet-v2 the flow's running total IS the
+            // inc-GST package (NSM's figures are inc-GST money); ex-GST is
+            // back-derived /1.1 like their sheet. Legacy quotes unchanged.
+            totalPriceExclGst: quoteData.pricingConvention === 'display-sheet-v2'
+                ? Math.round(((totalPrice || 0) / 1.1) * 100) / 100
+                : (totalPrice || 0),
+            totalPriceIncGst: quoteData.pricingConvention === 'display-sheet-v2'
+                ? Math.round((totalPrice || 0) * 100) / 100
+                : null,
+            pricingConvention: quoteData.pricingConvention || null,
+            pdTier: quoteData.pdTier || null,
             priceLevelUsed: priceLevelUsed || 'hull_cash',
 
             // Promotions

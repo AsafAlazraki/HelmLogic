@@ -620,7 +620,7 @@ describe("FFR-33 — Display-Sheet parity (pricingConvention: 'display-sheet-v2'
   });
 
   it('sums components RAW — no GST added on top of inc-GST figures', () => {
-    const f = buildQuoteFinancials(marksSp560);
+    const f: any = buildQuoteFinancials(marksSp560);
     // hull uses the hand-rounded ladder figure, not ex*1.1 drift
     expect(f.boatBasePriceInc).toBe(48350);
     expect(f.pdTierTotalInc).toBe(5300);
