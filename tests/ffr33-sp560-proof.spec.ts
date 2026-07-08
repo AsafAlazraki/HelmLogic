@@ -92,30 +92,76 @@ test.describe('FFR-33 — SP560 Display-Sheet parity proof', () => {
         await page.screenshot({ path: `${SHOTS}/s3-motor.png` });
         await clickNext(page);
 
-        // ── Step 4: trailer TA600-MOB + spare wheel + trailer rego ──
+        // ── Step 4: trailer TA600-MOB (auto-selected from the menu on MPF
+        // boats — verify, don't blind-click) + spare wheel + both regos ──
         const trailer = page.locator('button, [role="button"]').filter({ hasText: /TA600-MOB/i }).first();
-        if (await trailer.isVisible().catch(() => false)) { await trailer.click({ force: true }); await page.waitForTimeout(1200); }
+        if (await trailer.isVisible().catch(() => false)) {
+            const before = await readRunningTotal(page);
+            await trailer.click({ force: true });
+            await page.waitForTimeout(1200);
+            const after = await readRunningTotal(page);
+            // If the click DESELECTED the auto-selected trailer (total dropped), click again.
+            if (after < before) { await trailer.click({ force: true }); await page.waitForTimeout(1200); }
+        }
+        // Spare wheel — delta-verified (+760).
         const spare = page.locator('button, label, [role="button"]').filter({ hasText: /Spare Wheel/i }).first();
-        if (await spare.isVisible().catch(() => false)) { await spare.click({ force: true }); await page.waitForTimeout(700); }
+        if (await spare.isVisible().catch(() => false)) {
+            for (let attempt = 0; attempt < 2; attempt++) {
+                const before = await readRunningTotal(page);
+                await spare.click({ force: true });
+                await page.waitForTimeout(900);
+                const after = await readRunningTotal(page);
+                if (Math.abs((after - before) - 760) <= 2) break;
+                console.log(`spare wheel moved ${before} -> ${after}; ${attempt === 0 ? 'retrying' : 'FAILED'}`);
+            }
+        }
+        // Regos — shadcn Selects (boat + trailer). Pick the first offered
+        // band in each rego select on this page; delta-verify.
+        const regoTriggers = page.locator('button[role="combobox"]').filter({ hasText: /registration type|Select a registration/i });
+        const regoCount = await regoTriggers.count();
+        console.log(`rego selects visible on Step 4: ${regoCount}`);
+        for (let i = 0; i < regoCount; i++) {
+            const before = await readRunningTotal(page);
+            await regoTriggers.nth(0).click({ force: true }); // always the first unset one
+            await page.waitForTimeout(600);
+            const opt = page.locator('[role="option"]').first();
+            if (await opt.isVisible().catch(() => false)) {
+                await opt.click({ force: true });
+                await page.waitForTimeout(900);
+                console.log(`rego pick ${i + 1}: total ${before} -> ${await readRunningTotal(page)}`);
+            } else {
+                await page.keyboard.press('Escape');
+            }
+        }
         await page.screenshot({ path: `${SHOTS}/s4-trailer.png` });
         await clickNext(page);
 
         // ── Step 5: the four DFO items + rego decals ──
+        // Each pick is VERIFIED by its effect on the running total: after a
+        // click the total must move UP by the item's price (a click on an
+        // already-selected card toggles it off — retry once to re-select).
         const search = page.locator('input[placeholder="Search dealer fit options..."]').first();
         await search.waitFor({ timeout: 25000 });
-        const picks = [
-            'Tube Covers to suit Hypalon Boat - 5.6',
-            'GME GX750B',
-            'Fusion Apollo RA670',
-            'EchoMap Ultra 2 125sv',
-            'Rego Decals (Std) t/s Hypalon',
+        const picks: Array<[string, number]> = [
+            ['Tube Covers to suit Hypalon Boat - 5.6', 5004],
+            ['GME GX750B', 1016],
+            ['Fusion Apollo RA670', 2488],
+            ['EchoMap Ultra 2 125sv', 5296],
+            ['Rego Decals (Std) t/s Hypalon', 169],
         ];
-        for (const term of picks) {
+        for (const [term, price] of picks) {
             await search.fill(term);
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(1100);
             const card = page.locator('button').filter({ hasText: new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') }).first();
-            if (await card.isVisible().catch(() => false)) await card.click({ force: true });
-            await page.waitForTimeout(700);
+            expect(await card.isVisible().catch(() => false), `card visible: ${term}`).toBe(true);
+            for (let attempt = 0; attempt < 2; attempt++) {
+                const before = await readRunningTotal(page);
+                await card.click({ force: true });
+                await page.waitForTimeout(900);
+                const after = await readRunningTotal(page);
+                if (Math.abs((after - before) - price) <= 2) break; // selected ✓
+                console.log(`pick '${term}' moved total ${before} -> ${after} (wanted +${price}); ${attempt === 0 ? 'retrying' : 'FAILED'}`);
+            }
         }
         await search.fill('');
         await page.waitForTimeout(800);

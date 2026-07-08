@@ -2112,7 +2112,7 @@ export function HighfieldQuoteFlow({
                                         <option value="hull_aus_sailing">AUS Sailing</option>
                                     </select>
                                 </div>
-                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Package Pricing (Excl. GST)</span>
+                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">{displaySheetPricing ? 'Package Pricing (Inc. GST)' : 'Package Pricing (Excl. GST)'}</span>
                                 {promotionDiscount > 0 && (
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm font-black text-slate-400 line-through">${totalPrice.toLocaleString()}</span>
