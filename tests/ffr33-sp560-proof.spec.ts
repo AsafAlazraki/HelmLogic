@@ -35,6 +35,35 @@ async function clickNext(page: Page) {
     await page.waitForTimeout(1800);
 }
 
+/** Open the first rego-looking combobox on the current step and pick the
+ *  first offered band. Logs every combobox's text so misses self-diagnose. */
+async function pickRego(page: Page, label: string) {
+    const boxes = page.locator('button[role="combobox"]');
+    const n = await boxes.count();
+    const texts: string[] = [];
+    for (let i = 0; i < n; i++) texts.push((await boxes.nth(i).innerText().catch(() => '')).slice(0, 60));
+    console.log(`comboboxes on ${label} step (${n}): ${JSON.stringify(texts)}`);
+    for (let i = 0; i < n; i++) {
+        const t = texts[i].toLowerCase();
+        if (!/registration|rego/.test(t)) continue;
+        if (/\$\d/.test(t)) { console.log(`${label} rego already selected: ${texts[i]}`); return; }
+        const before = await readRunningTotal(page).catch(() => -1);
+        await boxes.nth(i).click({ force: true });
+        await page.waitForTimeout(600);
+        const opt = page.locator('[role="option"]').first();
+        if (await opt.isVisible().catch(() => false)) {
+            await opt.click({ force: true });
+            await page.waitForTimeout(900);
+            console.log(`${label} rego picked: total ${before} -> ${await readRunningTotal(page).catch(() => -1)}`);
+        } else {
+            await page.keyboard.press('Escape');
+            console.log(`${label} rego: no options offered`);
+        }
+        return;
+    }
+    console.log(`${label} rego combobox NOT FOUND`);
+}
+
 async function readRunningTotal(page: Page): Promise<number> {
     // The running card's big number is the inc-GST package under
     // display-sheet pricing.
@@ -72,6 +101,9 @@ test.describe('FFR-33 — SP560 Display-Sheet parity proof', () => {
             await page.locator('button.rounded-\\[1\\.5rem\\]').first().click({ force: true });
         }
         await page.waitForTimeout(1400);
+        // Boat rego — the RegoPicker select on Step 1. Log every combobox so
+        // a locator miss self-diagnoses; pick the first rego-looking one.
+        await pickRego(page, 'boat');
         await page.screenshot({ path: `${SHOTS}/s1-variant.png` });
         await clickNext(page);
 
@@ -115,24 +147,8 @@ test.describe('FFR-33 — SP560 Display-Sheet parity proof', () => {
                 console.log(`spare wheel moved ${before} -> ${after}; ${attempt === 0 ? 'retrying' : 'FAILED'}`);
             }
         }
-        // Regos — shadcn Selects (boat + trailer). Pick the first offered
-        // band in each rego select on this page; delta-verify.
-        const regoTriggers = page.locator('button[role="combobox"]').filter({ hasText: /registration type|Select a registration/i });
-        const regoCount = await regoTriggers.count();
-        console.log(`rego selects visible on Step 4: ${regoCount}`);
-        for (let i = 0; i < regoCount; i++) {
-            const before = await readRunningTotal(page);
-            await regoTriggers.nth(0).click({ force: true }); // always the first unset one
-            await page.waitForTimeout(600);
-            const opt = page.locator('[role="option"]').first();
-            if (await opt.isVisible().catch(() => false)) {
-                await opt.click({ force: true });
-                await page.waitForTimeout(900);
-                console.log(`rego pick ${i + 1}: total ${before} -> ${await readRunningTotal(page)}`);
-            } else {
-                await page.keyboard.press('Escape');
-            }
-        }
+        // Trailer rego — the RegoPicker select on Step 4.
+        await pickRego(page, 'trailer');
         await page.screenshot({ path: `${SHOTS}/s4-trailer.png` });
         await clickNext(page);
 
