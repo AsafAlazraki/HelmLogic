@@ -37,7 +37,7 @@ async function clickNext(page: Page) {
 
 /** Open the first rego-looking combobox on the current step and pick the
  *  first offered band. Logs every combobox's text so misses self-diagnose. */
-async function pickRego(page: Page, label: string) {
+async function pickRego(page: Page, label: string, preferRe?: RegExp) {
     const boxes = page.locator('button[role="combobox"]');
     const n = await boxes.count();
     const texts: string[] = [];
@@ -50,7 +50,8 @@ async function pickRego(page: Page, label: string) {
         const before = await readRunningTotal(page).catch(() => -1);
         await boxes.nth(i).click({ force: true });
         await page.waitForTimeout(600);
-        const opt = page.locator('[role="option"]').first();
+        const preferred = preferRe ? page.locator('[role="option"]').filter({ hasText: preferRe }).first() : null;
+        const opt = (preferred && await preferred.isVisible().catch(() => false)) ? preferred : page.locator('[role="option"]').first();
         if (await opt.isVisible().catch(() => false)) {
             await opt.click({ force: true });
             await page.waitForTimeout(900);
@@ -103,7 +104,7 @@ test.describe('FFR-33 — SP560 Display-Sheet parity proof', () => {
         await page.waitForTimeout(1400);
         // Boat rego — the RegoPicker select on Step 1. Log every combobox so
         // a locator miss self-diagnoses; pick the first rego-looking one.
-        await pickRego(page, 'boat');
+        await pickRego(page, 'boat', /4\.51.*6\.0|\$250/);
         await page.screenshot({ path: `${SHOTS}/s1-variant.png` });
         await clickNext(page);
 
