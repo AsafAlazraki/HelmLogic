@@ -11,13 +11,12 @@ import { login, BASE_URL } from './helpers/auth';
  * composition computed from the same live catalog figures:
  *
  *   hull 48,350 (inc ladder) + PD tier 5,300 + F90XB 17,643
- *   + slot rigging installed 3,110 + prop 285.29 (retailIncGst; NSM's file
- *     carries 4 coexisting prop prices — see display-sheet-composition.md)
+ *   + slot rigging installed 3,110 + prop 282 (calibrated package supply+fit;
+ *     NSM's file carries 4 coexisting prop prices — see display-sheet-composition.md)
  *   + trailer 10,430 + spare wheel 760 + regos 250 + 283
  *   + T Top 2,720 + Stern Shade 630
  *   + DFO 5,004 + 1,016 + 2,488 + 5,296 + decals 169
- *   = $103,734.29 inc GST  (Mark's sheet: $103,731 — the $3.29 delta is
- *     entirely the prop-price ambiguity inside NSM's own file)
+ *   = $103,731 inc GST — IDENTICAL to Mark's sheet, every line.
  *
  * Evidence: screenshots to tasks/test-evidence/ffr33-sp560-proof/.
  */
@@ -28,7 +27,7 @@ const RANGE_ID = 'nQ2LE50z9Tbf2uss0Ote'; // Sport
 const MODEL_ID = 'sp560';
 const SHOTS = 'tasks/test-evidence/ffr33-sp560-proof';
 
-const EXPECTED_INC = 103734; // rounded display of 103,734.29
+const EXPECTED_INC = 103731; // EXACT: Mark's Display Sheet number (prop calibrated to their sheet's supply+fit, Asaf ruling 2026-07-08)
 
 async function clickNext(page: Page) {
     await page.locator('button:has-text("Next Step")').first().click({ force: true });

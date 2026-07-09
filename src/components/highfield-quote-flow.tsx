@@ -1965,13 +1965,16 @@ export function HighfieldQuoteFlow({
                     try {
                         const partSnap = await getDocs(query(collection(firestore, `organisations/${orgId}/serviceParts`), where('partNumber', '==', String(propPartNo).trim()), limit(1)));
                         const part: any = partSnap.docs[0]?.data();
-                        // Display-Sheet convention: figures are inc-GST money,
-                        // so prefer the part's inc retail; ex-normalized
-                        // sellPrice is the fallback. (This prop has 4
-                        // coexisting prices in NSM's own file — documented in
-                        // display-sheet-composition.md.)
-                        const propSell = typeof part?.retailIncGst === 'number' ? part.retailIncGst
-                            : (typeof part?.sellPrice === 'number' ? part.sellPrice : null);
+                        // Display-Sheet package pricing (Asaf ruling
+                        // 2026-07-08: every line must match their sheet):
+                        // prefer the calibrated package supply+fit figure
+                        // (their listed Parts supply+fit + package sundry),
+                        // then the part's inc retail, then ex sellPrice.
+                        // Props carry 4 coexisting prices in NSM's own file —
+                        // display-sheet-composition.md; NSM asked to rule.
+                        const propSell = typeof part?.packageSupplyFitIncGst === 'number' ? part.packageSupplyFitIncGst
+                            : (typeof part?.retailIncGst === 'number' ? part.retailIncGst
+                            : (typeof part?.sellPrice === 'number' ? part.sellPrice : null));
                         if (propSell && propSell > 0) {
                             lines.push({ id: `slot-prop-${propPartNo}`, name: selectedMotorMenuSlot?.propDesc || `Propeller ${propPartNo}`, category: 'Propeller', sellPriceExclGst: propSell });
                         }
