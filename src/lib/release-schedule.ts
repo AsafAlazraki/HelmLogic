@@ -49,7 +49,7 @@ export interface ReleaseWindow {
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 32;
+const FORWARD_RUNWAY_START = 33;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -260,6 +260,12 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // (3 bugs fixed), CI gate + nightly synthetic, visual regression +
     // TLS bridge, 34,512-check parity battery, fail-fix-retest ledger.
     'v1.31': { shipped: true },
+    // v1.32 — Display-Sheet pricing engine (FFR-33): quotes compose and
+    // price exactly like NSM's Display Sheet for every MPF boat (PD tier +
+    // rigging + prop composition, inc-GST convention, stale-override sweep).
+    // Proof: Mark's SP560 rebuilt in-browser + customer PDF at the sheet's
+    // own number. See tasks/RELEASE_NOTES_v1.32.0.md.
+    'v1.32': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
