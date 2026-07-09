@@ -361,10 +361,27 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
             },
             0,
         );
-        const subtotalExclGst = boatBasePrice + optionsTotal + regoTotal + motorTotal + trailerTotal + dealerFitTotal + fitUpTotal;
-        const finalTotalPriceExclGst = subtotalExclGst - localDiscount;
-        const gstAmount = finalTotalPriceExclGst * 0.1;
-        const totalInclGst = finalTotalPriceExclGst + gstAmount;
+        // FFR-33 — Display-Sheet parity quotes compute in INC-GST money
+        // (NSM's figures are already inc-GST; their sheet sums them raw and
+        // back-derives ex as total/1.1). Legacy quotes keep the original
+        // ex-primary math below. This mirrors lib/quote-financials.ts —
+        // the inline copy here exists for the landed-cost view extras.
+        const isDisplaySheet = quote.pricingConvention === 'display-sheet-v2';
+        const pdTierTotal = isDisplaySheet ? (quote.pdTier?.sellIncGst || 0) : 0;
+        let subtotalExclGst: number, finalTotalPriceExclGst: number, gstAmount: number, totalInclGst: number;
+        if (isDisplaySheet) {
+            const hullInc = (quote.variant?.priceIncGst as number) || Math.round(boatBasePrice * 1.1 * 100) / 100;
+            const packageInc = hullInc + pdTierTotal + optionsTotal + regoTotal + motorTotal + trailerTotal + dealerFitTotal + fitUpTotal;
+            totalInclGst = Math.max(0, Math.round((packageInc - localDiscount) * 100) / 100);
+            finalTotalPriceExclGst = Math.round((totalInclGst / 1.1) * 100) / 100;
+            gstAmount = Math.round((totalInclGst - finalTotalPriceExclGst) * 100) / 100;
+            subtotalExclGst = Math.round((packageInc / 1.1) * 100) / 100;
+        } else {
+            subtotalExclGst = boatBasePrice + optionsTotal + regoTotal + motorTotal + trailerTotal + dealerFitTotal + fitUpTotal;
+            finalTotalPriceExclGst = subtotalExclGst - localDiscount;
+            gstAmount = finalTotalPriceExclGst * 0.1;
+            totalInclGst = finalTotalPriceExclGst + gstAmount;
+        }
         const boatCost = getLandedCost(quote.variant?.id, quote.variant?.cost || 0);
         const optionsCost = (quote.selectedOptions || []).reduce((a: number, o: any) => a + getLandedCost(o.id, o.cost || 0), 0)
             + (quote.customOptions || []).reduce((a: number, o: any) => a + (o.cost || (o.sellPriceExclGst * 0.8)), 0);
@@ -377,6 +394,7 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
         const marginPercent = finalTotalPriceExclGst > 0 ? (grossProfit / finalTotalPriceExclGst) * 100 : 0;
         return {
             boatBasePrice, optionsTotal, regoTotal, motorTotal, trailerTotal, dealerFitTotal, fitUpTotal,
+            pdTierTotal,
             subtotalExclGst, finalTotalPriceExclGst, gstAmount, totalInclGst,
             boatCost, optionsCost, motorCost, trailerCost, dealerFitCost, fitUpCost,
             totalDealCostExclGst, grossProfit, marginPercent

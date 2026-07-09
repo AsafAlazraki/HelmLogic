@@ -4,7 +4,7 @@ import { formatMetres } from '@/lib/units';
 import { resolvePriceLevel } from '@/lib/catalog/derive-pricing';
 import { Fragment, useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, query, orderBy, doc, where, getDoc, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, doc, where, getDoc, getDocs, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -342,6 +342,10 @@ export function HighfieldQuoteFlow({
     // NSM MPF — org riggingKits doc matched by name to the selected menu
     // slot's riggingKit. Info-only display (Step 5 header area).
     const [riggingKitMatch, setRiggingKitMatch] = useState<{ name: string; retailExGst: number | null } | null>(null);
+    /** FFR-33 — priced powertrain lines from the selected NSM menu slot
+     *  (rigging kit installed + prop), composed into the package exactly
+     *  like the Display Sheet. Empty when no menu motor is selected. */
+    const [slotPowertrainLines, setSlotPowertrainLines] = useState<{ id: string; name: string; category: string; sellPriceExclGst: number }[]>([]);
     // Tracks whether the operator clicked-off the auto-selected motor. The
     // auto-select effect won't re-fire while this is true, so deselect stays
     // sticky. Clears the moment they pick any motor again.
@@ -1126,8 +1130,40 @@ export function HighfieldQuoteFlow({
             .filter(([, items]) => items.length > 0);
     }, [dealerFitSelections, trailerModuleCategories, curationCtx, dfShowAll, selectedDealerFitIds]);
 
+    /** FFR-33 — Display-Sheet parity pricing. Boats that carry the imported
+     *  MPF PD tiers (all 809 current-MPF variants) price EXACTLY like NSM's
+     *  Display Sheet: every catalog figure is already GST-inclusive money
+     *  (their motor column is literally titled "RRP + Freight Inc GST"), so
+     *  the running total sums figures RAW with the hull at its hand-rounded
+     *  ladder figure, plus the PD tier line, and the ex-GST value is
+     *  back-derived as total / 1.1. Legacy boats keep the old convention. */
+    const displaySheetPricing = useMemo(() => {
+        const v: any = activeVariant;
+        return !!(v?.pdTiers?.length && (v?.priceIncGst || v?.priceLadder));
+    }, [activeVariant]);
+    const pdTier = useMemo(() => {
+        if (!displaySheetPricing) return null;
+        return ((activeVariant as any).pdTiers || [])[0] || null;
+    }, [displaySheetPricing, activeVariant]);
+    /** Hull's INC-GST ladder figure for the active price level (snapshot —
+     *  the ladder is hand-rounded in the MPF; never recompute from ex). */
+    const hullIncForLevel = useMemo(() => {
+        const v: any = activeVariant;
+        if (!v) return 0;
+        const ladderKey = PRICE_LADDER_LEVEL_MAP[priceLevel];
+        const inc = ladderKey ? v.priceLadder?.[ladderKey]?.incGst : null;
+        if (typeof inc === 'number' && inc > 0) return inc;
+        if (typeof v.priceIncGst === 'number' && v.priceIncGst > 0 && (!ladderKey)) return v.priceIncGst;
+        return Math.round(getPriceForLevel(v, priceLevel) * 1.1 * 100) / 100;
+    }, [activeVariant, priceLevel]);
+
     const totalPrice = useMemo(() => {
-        let total = getPriceForLevel(activeVariant, priceLevel);
+        let total = displaySheetPricing ? hullIncForLevel : getPriceForLevel(activeVariant, priceLevel);
+        // Display-Sheet composition: the PD tier (boat pre-delivery + motor
+        // PD + install + rigging labour) is part of every package, and the
+        // slot's rigging kit + prop join as powertrain lines.
+        if (displaySheetPricing && pdTier) total += (pdTier.sellIncGst || 0);
+        if (displaySheetPricing) slotPowertrainLines.forEach(l => { total += (l.sellPriceExclGst || 0); });
         selectedOptionsData.forEach(opt => { total += getPriceForLevel(opt, priceLevel); });
         customOptions.forEach(opt => { total += (opt.sellPriceExclGst || 0); });
         // Boat rego: snapshot (v1.4 rego module) wins over legacy toggle
@@ -1165,7 +1201,7 @@ export function HighfieldQuoteFlow({
         // quote-financials.ts at finalize/render time, not here.
         selectedFitUpItems.forEach(sel => { total += resolveFitUpLineSell(sel); });
         return total;
-    }, [activeVariant, selectedOptionsData, customOptions, customTrailerOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, effectiveTrailerConfig, selectedTrailerOptionsData, selectedDealerFitData, selectedFitUpItems, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, boatRegoSnapshot, trailerRegoSnapshot, model.registration, priceLevel]);
+    }, [activeVariant, selectedOptionsData, customOptions, customTrailerOptions, selectedMotor, selectedMotorAccessories, selectedTrailerId, effectiveTrailerConfig, selectedTrailerOptionsData, selectedDealerFitData, selectedFitUpItems, isRegoSelected, isStickerSelected, isTenderToSelected, isTrailerRegoSelected, boatRegoSnapshot, trailerRegoSnapshot, model.registration, priceLevel, displaySheetPricing, pdTier, hullIncForLevel, slotPowertrainLines]);
 
     // Promotions Derived Memos
     const appliedPromotions = useMemo(() => {
@@ -1892,11 +1928,12 @@ export function HighfieldQuoteFlow({
     }, [model?.standardFeatures, modelStandardInclusions]);
 
     // Look up the org rigging-kit doc matching the selected menu slot's
-    // riggingKit name (info-only price display on Step 5). Fetch is lazy —
-    // only fires once a menu motor with a rigging kit is selected.
+    // riggingKit name (info display on Step 5 + FFR-33 pricing line). Fetch
+    // is lazy — only fires once a menu motor with a rigging kit is selected.
     useEffect(() => {
         const kitName = selectedMotorMenuSlot?.riggingKit;
-        if (!firestore || !orgId || !kitName) { setRiggingKitMatch(null); return; }
+        const propPartNo = selectedMotorMenuSlot?.propPartNo;
+        if (!firestore || !orgId || !kitName) { setRiggingKitMatch(null); setSlotPowertrainLines([]); return; }
         let cancelled = false;
         (async () => {
             try {
@@ -1910,17 +1947,46 @@ export function HighfieldQuoteFlow({
                     kits.find(k => { const l = norm(kitLabel(k)); return !!l && (l.includes(target) || target.includes(l)); }) ||
                     null;
                 if (cancelled) return;
-                if (!hit) { setRiggingKitMatch(null); return; }
+                if (!hit) { setRiggingKitMatch(null); setSlotPowertrainLines([]); return; }
                 const retail = typeof hit.retailExGst === 'number' ? hit.retailExGst
                     : typeof hit.kitSellPrice === 'number' ? hit.kitSellPrice
                     : null;
                 setRiggingKitMatch({ name: kitLabel(hit) || kitName, retailExGst: retail });
+                // FFR-33 — Display-Sheet composition: the slot's rigging kit
+                // (installed) and prop are PRICED package lines, exactly like
+                // NSM's sheet. totalSellInstalledExclGst is the MPF's own
+                // installed figure (inc-GST money, snapshot verbatim).
+                const lines: { id: string; name: string; category: string; sellPriceExclGst: number }[] = [];
+                const installed = typeof hit.totalSellInstalledExclGst === 'number' ? hit.totalSellInstalledExclGst : null;
+                if (installed && installed > 0) {
+                    lines.push({ id: `slot-rigging-${hit.id}`, name: `${kitLabel(hit) || kitName} (installed)`, category: 'Rigging', sellPriceExclGst: installed });
+                }
+                if (propPartNo) {
+                    try {
+                        const partSnap = await getDocs(query(collection(firestore, `organisations/${orgId}/serviceParts`), where('partNumber', '==', String(propPartNo).trim()), limit(1)));
+                        const part: any = partSnap.docs[0]?.data();
+                        // Display-Sheet package pricing (Asaf ruling
+                        // 2026-07-08: every line must match their sheet):
+                        // prefer the calibrated package supply+fit figure
+                        // (their listed Parts supply+fit + package sundry),
+                        // then the part's inc retail, then ex sellPrice.
+                        // Props carry 4 coexisting prices in NSM's own file —
+                        // display-sheet-composition.md; NSM asked to rule.
+                        const propSell = typeof part?.packageSupplyFitIncGst === 'number' ? part.packageSupplyFitIncGst
+                            : (typeof part?.retailIncGst === 'number' ? part.retailIncGst
+                            : (typeof part?.sellPrice === 'number' ? part.sellPrice : null));
+                        if (propSell && propSell > 0) {
+                            lines.push({ id: `slot-prop-${propPartNo}`, name: selectedMotorMenuSlot?.propDesc || `Propeller ${propPartNo}`, category: 'Propeller', sellPriceExclGst: propSell });
+                        }
+                    } catch { /* prop line optional — fail open */ }
+                }
+                if (!cancelled) setSlotPowertrainLines(lines);
             } catch {
-                if (!cancelled) setRiggingKitMatch(null);
+                if (!cancelled) { setRiggingKitMatch(null); setSlotPowertrainLines([]); }
             }
         })();
         return () => { cancelled = true; };
-    }, [firestore, orgId, selectedMotorMenuSlot?.riggingKit]);
+    }, [firestore, orgId, selectedMotorMenuSlot?.riggingKit, selectedMotorMenuSlot?.propPartNo]);
 
     return (
         <div className="fixed inset-0 z-[40] bg-background flex flex-col overflow-hidden text-left">
@@ -2049,18 +2115,22 @@ export function HighfieldQuoteFlow({
                                         <option value="hull_aus_sailing">AUS Sailing</option>
                                     </select>
                                 </div>
-                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Package Pricing (Excl. GST)</span>
+                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">{displaySheetPricing ? 'Package Pricing (Inc. GST)' : 'Package Pricing (Excl. GST)'}</span>
                                 {promotionDiscount > 0 && (
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm font-black text-slate-400 line-through">${totalPrice.toLocaleString()}</span>
                                         <span className="text-[9px] font-black uppercase tracking-widest text-emerald-500">SAVE ${promotionDiscount.toLocaleString()}</span>
                                     </div>
                                 )}
+                                {/* FFR-33 — under Display-Sheet pricing the running total IS
+                                    the inc-GST package (their figures are inc-GST money); the
+                                    ex figure is back-derived /1.1 exactly like their sheet.
+                                    Legacy boats keep the v1.16 ex-primary + ceil convention. */}
                                 <div className="text-4xl font-black text-slate-950 tracking-tighter leading-none flex items-baseline"><span className="text-primary text-xl mr-1">$</span><span>{Math.round(finalPrice).toLocaleString()}</span></div>
-                                {/* v1.16 (E7fCW6Oh + mqXYkQbT) — Inc-GST sub-line. Rounded up to
-                                    whole dollars per the v1.3 lesson. */}
                                 <div className="text-[10px] font-black uppercase text-emerald-700 tracking-[0.2em] mt-1">
-                                    ${Math.ceil(finalPrice * 1.1).toLocaleString()} <span className="text-slate-500">inc GST</span>
+                                    {displaySheetPricing
+                                        ? <>inc GST <span className="text-slate-500">· ${Math.round(finalPrice / 1.1).toLocaleString()} ex GST</span></>
+                                        : <>${Math.ceil(finalPrice * 1.1).toLocaleString()} <span className="text-slate-500">inc GST</span></>}
                                 </div>
                             </div>
                         </div>
@@ -3483,7 +3553,7 @@ export function HighfieldQuoteFlow({
                                             <DepositScheduleCard
                                                 schedule={(model as any)?.depositSchedule ?? null}
                                                 leadTimesDays={(model as any)?.leadTimesDays ?? null}
-                                                totalIncGst={Math.ceil(Math.max(0, finalPrice) * 1.1)}
+                                                totalIncGst={displaySheetPricing ? Math.round(Math.max(0, finalPrice)) : Math.ceil(Math.max(0, finalPrice) * 1.1)}
                                             />
                                         )}
 
@@ -3764,11 +3834,20 @@ export function HighfieldQuoteFlow({
                     selectedOptionsData,
                     customOptions,
                     selectedMotor,
-                    selectedMotorAccessories,
+                    // FFR-33 — slot powertrain lines (rigging installed +
+                    // prop) ride with the accessories so the finalize
+                    // snapshot and financials see one list, like the sheet.
+                    selectedMotorAccessories: displaySheetPricing
+                        ? [...selectedMotorAccessories, ...slotPowertrainLines]
+                        : selectedMotorAccessories,
                     // NSM MPF — the motor-menu slot picked on Step 3 (rigging
                     // kit / prop / engine hole relationship data). null when
                     // the motor came from the standard grid or no menu exists.
                     selectedMotorMenuSlot,
+                    // FFR-33 — Display-Sheet parity: convention stamp + the
+                    // PD tier snapshot (sellIncGst verbatim from the MPF).
+                    pricingConvention: displaySheetPricing ? 'display-sheet-v2' : null,
+                    pdTier: displaySheetPricing ? pdTier : null,
                     selectedTrailerOptionsData,
                     customTrailerOptions,
                     selectedDealerFitData,

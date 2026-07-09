@@ -1,0 +1,19 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>SP560 price difference — found</title></head>
+<body style="font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1a1a1a; line-height: 1.45; max-width: 760px; margin: 24px;">
+
+<p>Hi Mark,</p>
+
+<p>Good test. Found it, and the whole $4,619 between $103,731 and $99,112 is reconciled line by line. The Master Price File data itself matches your sheet to the cent; the difference is in how the quote is <b>assembled</b>:</p>
+
+<p style="margin-left: 28px;"><b>1.</b> An old pre-migration customization layer was overriding a few option prices; your stern shade is the clean example, $247 from the old setup instead of the correct $630. <b>Cleared on every boat, already live.</b></p>
+
+<p style="margin-left: 28px;"><b>2.</b> Your sheet's package price automatically bundles the rigging kit, propeller, pre-delivery and installation for boat, motor and trailer. Ours priced the components correctly but did not compose those lines into the package. <b>Being changed now to assemble exactly like your sheet.</b></p>
+
+<p style="margin-left: 28px;"><b>3.</b> Your figures are GST-inclusive as they stand, and your sheet totals them that way. Ours was treating motor, trailer and option figures as GST-exclusive and adding 10% on top. <b>Adopting your sheet's treatment.</b></p>
+
+<p>This comparison also becomes an automated nightly check for <b>every boat</b>, so a drift of a single dollar fails before anyone quotes it. When this work goes into the next release I will send you the rebuilt SP560 next to your sheet: same boat, same options, same number.</p>
+
+<p>Asaf</p>
+
+</body></html>

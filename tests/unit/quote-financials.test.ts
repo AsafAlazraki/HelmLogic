@@ -576,3 +576,67 @@ describe('buildQuoteFinancials — margin percent', () => {
     expect(f.marginPercent).toBeCloseTo(30, 8);
   });
 });
+
+describe("FFR-33 — Display-Sheet parity (pricingConvention: 'display-sheet-v2')", () => {
+  // Mark's real SP560 (HYP) LG-W-WB test quote, 2026-07-07 — the fixture that
+  // caught the $4,619 gap. Every figure below is a verbatim MPF sell (see
+  // tasks/mpf-audit/analysis/display-sheet-composition.md): hull Cash 48,350
+  // (Boat Module QR838) · PD tier 1 5,300 (TF838) · F90XB NSM Retail 17,643 ·
+  // rigging kit installed 3,110 · prop supply+fit 282 · trailer TA600-MOB
+  // 10,430 · regos 250 + 283 · options/DFO added RAW. Their sheet total:
+  // $103,731 inc GST, ex-GST back-derived 94,300.91.
+  const marksSp560 = {
+    pricingConvention: 'display-sheet-v2',
+    variant: { priceIncGst: 48350, sellPriceExclGst: 43954.55, cost: 32166 },
+    pdTier: { tier: 1, estHrs: 29, totalCtd: 3800, sellIncGst: 5300 },
+    motor: {
+      sellPriceExclGst: 17643, // NSM Retail — "RRP + Freight Inc GST" in their file
+      cost: 13035.51,
+      accessories: [
+        { name: 'Mech Rigging Kit - 703 Side Mount 7m (installed)', sellPriceExclGst: 3110 },
+        { name: 'Propeller - Aluminium SDS GP K Series - 15"', sellPriceExclGst: 282 },
+      ],
+    },
+    trailer: { sellPriceExclGst: 10430, options: [{ name: 'Spare Wheel & Carrier', sellPriceExclGst: 760 }] },
+    registration: { boatRegoPrice: 250, trailerRegoPrice: 283 },
+    selectedOptions: [
+      { name: 'Fabric T Top for SUS750', sellPriceExclGst: 2720 },
+      { name: 'Stern shade for SP560', sellPriceExclGst: 630 },
+    ],
+    dealerFit: [{ items: [
+      { name: 'Tube Covers to suit Hypalon Boat - 5.6 Mtr', sellPriceExclGst: 5004 },
+      { name: 'VHF Radio - GME GX750B Hideaway with 1.8m Aerial', sellPriceExclGst: 1016 },
+      { name: 'Fusion Apollo RA670 Stereo', sellPriceExclGst: 2488 },
+      { name: 'Garmin EchoMap Ultra 2 125sv', sellPriceExclGst: 5296 },
+      { name: 'Rego Decals (Std) t/s Hypalon Tubes', sellPriceExclGst: 169 },
+    ]}],
+  };
+
+  it("prices Mark's SP560 at exactly $103,731 inc GST — the Display Sheet's own number", () => {
+    const f = buildQuoteFinancials(marksSp560);
+    expect(f.totalInclGst).toBe(103731);
+    expect(f.finalTotalPriceExclGst).toBeCloseTo(94300.91, 2);
+    expect(f.gstAmount).toBeCloseTo(103731 - 94300.91, 2);
+  });
+
+  it('sums components RAW — no GST added on top of inc-GST figures', () => {
+    const f: any = buildQuoteFinancials(marksSp560);
+    // hull uses the hand-rounded ladder figure, not ex*1.1 drift
+    expect(f.boatBasePriceInc).toBe(48350);
+    expect(f.pdTierTotalInc).toBe(5300);
+    // motor bucket contributes 17,643 + 3,110 + 282 raw
+    expect(f.motorTotal).toBeCloseTo((17643 + 3110 + 282) / 1.1, 2);
+  });
+
+  it('legacy quotes (no pricingConvention) keep the original ex-GST + ceil convention', () => {
+    const legacy = { variant: { sellPriceExclGst: 100 } };
+    const f = buildQuoteFinancials(legacy);
+    expect(f.totalInclGst).toBe(111); // the documented float-quirk ceil behavior
+  });
+
+  it('discount applies to the inc total and floors at 0 (FFR-8 clamp preserved)', () => {
+    const f = buildQuoteFinancials(marksSp560, 200000);
+    expect(f.totalInclGst).toBe(0);
+    expect(f.finalTotalPriceExclGst).toBe(0);
+  });
+});
