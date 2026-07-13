@@ -179,6 +179,13 @@ export function startTelemetry(opts: {
         path: window.location.pathname,
     }).catch(() => {});
 
+    // The provider's logNav(pathname) fires on mount BEFORE the org resolves
+    // and telemetry starts, so enqueue drops it — on a fresh page load the
+    // landing nav would never be captured (a user who opens the app and
+    // reads without clicking would look like zero activity). Capture the
+    // landing route here, at start, where state.started is guaranteed.
+    enqueue('nav', window.location.pathname, null);
+
     // Input listeners mark activity (throttled by assignment cost only).
     const markInput = () => { if (state) state.lastInputAt = Date.now(); };
     for (const evt of ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const) {

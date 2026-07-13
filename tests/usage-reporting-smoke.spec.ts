@@ -41,10 +41,20 @@ test('telemetry captures a session and the reports render it', async ({ page }) 
     const hasExplorer = /Event explorer/i.test(body);
     const hasBill = /Bill/i.test(body);
     console.log(`sections: sessions=${hasSessions} leaderboard=${hasLeaderboard} explorer=${hasExplorer} billVisible=${hasBill}`);
-    await page.screenshot({ path: `${SHOTS}/usage-tab.png`, fullPage: true });
 
     expect(hasLeaderboard && hasExplorer, 'report sections render').toBe(true);
     expect(hasBill, 'the freshly-captured test session appears').toBe(true);
+
+    // EVENTS must land too, not just sessions. This page's own telemetry
+    // (landing nav + tab click + toggle click) flushes on the 15s cycle,
+    // and the explorer is a live subscription — wait a cycle out and the
+    // rows stream in without a reload.
+    await page.waitForTimeout(20000);
+    const body2 = await page.evaluate(() => document.body.innerText);
+    const explorerCount = Number((body2.match(/\((\d[\d,]*) in view\)/) || [])[1]?.replace(/,/g, '') ?? 0);
+    console.log(`events in view after flush cycle: ${explorerCount}`);
+    await page.screenshot({ path: `${SHOTS}/usage-tab.png`, fullPage: true });
+    expect(explorerCount, 'captured events stream into the explorer').toBeGreaterThan(0);
 
     // PDF export of the current view.
     const dlPromise = page.waitForEvent('download', { timeout: 120000 });
