@@ -243,6 +243,7 @@ export function HighfieldQuoteFlow({
     rangeId,
     initialState,
     defaultPriceLevel,
+    publicPricing = false,
 }: {
     module: any,
     model: any,
@@ -251,6 +252,9 @@ export function HighfieldQuoteFlow({
     rangeId: string,
     initialState?: DuplicateInitialState,
     defaultPriceLevel?: string,
+    /** v1.33 (Bill: Build-A-Boat on the NSM website) — lock pricing to
+     *  Cash and hide the price-level picker for public embeds. */
+    publicPricing?: boolean,
 }) {
     const firestore = useFirestore();
     const storage = useStorage();
@@ -263,8 +267,9 @@ export function HighfieldQuoteFlow({
 
     // Auto-set price level from prop (e.g. for sub-dealers)
     useEffect(() => {
+        if (publicPricing) { setPriceLevel('hull_cash'); return; }
         if (defaultPriceLevel) setPriceLevel(defaultPriceLevel);
-    }, [defaultPriceLevel]);
+    }, [defaultPriceLevel, publicPricing]);
 
     /** Get the price for a given item based on the selected price level.
      *  Falls back to sellPriceExclGst when no priceLevels exist (backward compat). */
@@ -2225,6 +2230,12 @@ export function HighfieldQuoteFlow({
                             {activeVariant ? (
                             <div className="flex flex-col items-start xl:items-end px-1 gap-1 shrink-0">
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                    {/* v1.33 (Bill) — public Build-A-Boat embeds lock to Cash
+                                        and never expose the internal price levels. */}
+                                    {publicPricing ? (
+                                        <span className="text-[9px] uppercase tracking-widest font-black text-slate-400">Cash Price</span>
+                                    ) : (
+                                    <>
                                     <span className="text-[9px] uppercase tracking-widest font-black text-slate-400">Price Level</span>
                                     <select
                                         value={priceLevel}
@@ -2238,6 +2249,8 @@ export function HighfieldQuoteFlow({
                                         <option value="hull_subdealer_excl">Sub-Dealer Excl</option>
                                         <option value="hull_aus_sailing">AUS Sailing</option>
                                     </select>
+                                    </>
+                                    )}
                                 </div>
                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">{displaySheetPricing ? 'Package Pricing (Inc. GST)' : 'Package Pricing (Excl. GST)'}</span>
                                 {promotionDiscount > 0 && (
