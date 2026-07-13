@@ -240,7 +240,9 @@ test("Mark's checklist — Sport end-to-end (SP600 / SP560)", async ({ page }) =
     expect(riggingMarker, 'Picking Medium should reveal fit-up + rigging selections').toBeGreaterThan(0);
     ticks['4-rigging-step5'] = true;
 
-    // ── Step 6: Summary ──
+    // ── Step 6 (Administration, new in v1.33) → Step 7: Summary ──
+    await page.locator('button:has-text("Next Step"), button:has-text("Administration")').first().click({ force: true });
+    await page.waitForTimeout(1500);
     await page.locator('button:has-text("Next Step"), button:has-text("Summary")').first().click({ force: true });
     await page.waitForTimeout(4500);
     await shot('s6-summary', true);

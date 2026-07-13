@@ -227,10 +227,13 @@ test('ULTIMATE: SP560 PVC W-W-WB — MPF-identical quote', async ({ page }) => {
   console.log('  dealer fit:', notes['df-tubeCovers'], '|', notes['df-vhf']);
   await shot('hl-step5-dealerfit', true);
 
-  // ── STEP 6: summary ──
+  // ── STEP 6: Administration (new v1.33) → STEP 7: summary ──
+  await page.locator('button:has-text("Next Step")').first().click({ force: true });
+  await page.waitForTimeout(2000);
+  await shot('hl-step6-administration', true);
   await page.locator('button:has-text("Next Step")').first().click({ force: true });
   await page.waitForTimeout(4000);
-  await shot('hl-step6-summary', true);
+  await shot('hl-step7-summary', true);
 
   // Extract the whole summary text + the headline totals.
   const summaryText = await page.evaluate(() => document.body.innerText);

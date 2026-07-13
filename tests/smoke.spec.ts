@@ -71,10 +71,13 @@ test('smoke: fit-up captures + PDF size', async ({ page }) => {
     console.log('  ⚠ No fit-up section visible');
   }
 
-  // Advance to summary
+  // Advance through Administration (new v1.33 step) to Summary
+  await page.locator('button:has-text("Next Step")').first().click({ force: true });
+  await page.waitForTimeout(2000);
+  await shot('step6-administration');
   await page.locator('button:has-text("Next Step")').first().click({ force: true });
   await page.waitForTimeout(3000);
-  await shot('step6-summary');
+  await shot('step7-summary');
 
   // Finalize
   await page.locator('button:has-text("Finalize Project"), button:has-text("Finalize")').first().click({ force: true });

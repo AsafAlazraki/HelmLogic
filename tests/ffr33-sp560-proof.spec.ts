@@ -191,9 +191,12 @@ test.describe('FFR-33 — SP560 Display-Sheet parity proof', () => {
         await page.screenshot({ path: `${SHOTS}/total.png` });
         expect(Math.abs(total - EXPECTED_INC), 'inc-GST package within $5 of the Display-Sheet composition').toBeLessThanOrEqual(5);
 
-        // ── Step 6 → Finalize → customer PDF (the deliverable for Mark) ──
+        // ── Step 6 (Administration, new in v1.33) → Step 7 Summary →
+        //    Finalize → customer PDF (the deliverable for Mark) ──
         await clickNext(page);
-        await page.screenshot({ path: `${SHOTS}/s6-summary.png`, fullPage: true });
+        await page.screenshot({ path: `${SHOTS}/s6-administration.png`, fullPage: true });
+        await clickNext(page);
+        await page.screenshot({ path: `${SHOTS}/s7-summary.png`, fullPage: true });
         await page.locator('button:has-text("Finalize Project"), button:has-text("Finalize")').first().click({ force: true });
         await page.waitForTimeout(2000);
         await page.locator('#cust-name, input[placeholder="John Smith"]').first().fill('SP560 Display-Sheet Proof');
