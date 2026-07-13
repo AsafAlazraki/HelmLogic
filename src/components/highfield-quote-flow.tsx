@@ -1514,6 +1514,18 @@ export function HighfieldQuoteFlow({
         setTrailerRegoSnapshot(null);
     };
     const nextStep = () => {
+        // v1.33 (Bill: "you can move forward without choosing a colour or
+        // material" + Mark: "an erroneous price shows immediately") — Step 1
+        // hard-gates on a full variant choice. The toast tells the operator
+        // exactly what's missing; the price card stays hidden until then.
+        if (currentStep === 1 && !activeVariant) {
+            toast({
+                variant: 'destructive',
+                title: hasMaterialAxis && !selectedMaterial ? 'Choose a material first' : 'Choose a colour first',
+                description: 'Pick the material and colour for this boat before moving on — the price is built from that exact configuration.',
+            });
+            return;
+        }
         if (currentStep < STEPS.length) {
             // Skip trailer step (4) if this model has no trailer configured
             const next = currentStep === 3 && !hasTrailer ? 5 : currentStep + 1;
@@ -2114,6 +2126,10 @@ export function HighfieldQuoteFlow({
                                     {selectedTrailerId && <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowTrailerSpecs(true)}><Truck className="h-3.5 w-3.5 mr-2 text-primary" /> Trailer Specs</Button>}
                                 </div>
                             </div>
+                            {/* v1.33 (Mark: "an erroneous price shows immediately") — no
+                                running price until the boat's material + colour are chosen;
+                                the package only exists once the exact variant does. */}
+                            {activeVariant ? (
                             <div className="flex flex-col items-start xl:items-end px-1 gap-1 shrink-0">
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                                     <span className="text-[9px] uppercase tracking-widest font-black text-slate-400">Price Level</span>
@@ -2148,6 +2164,13 @@ export function HighfieldQuoteFlow({
                                         : <>${Math.ceil(finalPrice * 1.1).toLocaleString()} <span className="text-slate-500">inc GST</span></>}
                                 </div>
                             </div>
+                            ) : (
+                            <div className="flex flex-col items-start xl:items-end px-1 gap-1 shrink-0">
+                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Package Pricing</span>
+                                <div className="text-sm font-black uppercase tracking-widest text-slate-300 mt-1">Select material &amp; colour</div>
+                                <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Your price builds from the exact configuration</div>
+                            </div>
+                            )}
                         </div>
                     </div>
                 </div>
