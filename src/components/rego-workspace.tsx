@@ -37,7 +37,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { FileCheck, Settings as SettingsIcon, Plus, Pencil, Trash2, Ship, Truck } from 'lucide-react';
+import { FileCheck, Settings as SettingsIcon, Plus, Pencil, Trash2, Ship, Truck, Tag } from 'lucide-react';
 import { ModuleSettingsPanel } from '@/components/module-settings-panel';
 import { formatCurrency } from '@/lib/currency-utils';
 
@@ -53,7 +53,12 @@ interface RegoType {
     id: string;
     name: string;
     sellExclGst?: number;
-    appliesTo?: 'boat' | 'trailer' | 'both';
+    /** v1.33 (Bill: "Build pricing into rego STICKER data base module") —
+     *  buy price so sticker margin is tracked alongside sell. */
+    costExclGst?: number;
+    /** 'sticker' + 'fee' kinds live alongside boat/trailer rego bands —
+     *  MPF-imported rows already carry 'fee'. */
+    appliesTo?: 'boat' | 'trailer' | 'both' | 'sticker' | 'fee';
     description?: string;
     isActive?: boolean;
     vendorId?: string;
@@ -81,6 +86,7 @@ const TABS: { key: TabKey; label: string; icon: ReactNode }[] = [
 function appliesToIcon(applies?: string) {
     if (applies === 'boat') return <Ship className="h-3 w-3" />;
     if (applies === 'trailer') return <Truck className="h-3 w-3" />;
+    if (applies === 'sticker') return <Tag className="h-3 w-3" />;
     return <FileCheck className="h-3 w-3" />;
 }
 
@@ -88,6 +94,8 @@ function appliesToLabel(applies?: string) {
     if (applies === 'boat') return 'Boat';
     if (applies === 'trailer') return 'Trailer';
     if (applies === 'both') return 'Boat + Trailer';
+    if (applies === 'sticker') return 'Sticker';
+    if (applies === 'fee') return 'Fee';
     return 'Both';
 }
 
@@ -112,7 +120,8 @@ function RegoTypeFormDialog({
     const { toast } = useToast();
     const [name, setName] = useState('');
     const [sell, setSell] = useState('');
-    const [appliesTo, setAppliesTo] = useState<'boat' | 'trailer' | 'both'>('both');
+    const [cost, setCost] = useState('');
+    const [appliesTo, setAppliesTo] = useState<'boat' | 'trailer' | 'both' | 'sticker' | 'fee'>('both');
     const [description, setDescription] = useState('');
     const [isActive, setIsActive] = useState(true);
     const [minLengthM, setMinLengthM] = useState('');
@@ -125,6 +134,7 @@ function RegoTypeFormDialog({
         if (!open) return;
         setName(existing?.name || '');
         setSell(existing?.sellExclGst != null ? String(existing.sellExclGst) : '');
+        setCost(existing?.costExclGst != null ? String(existing.costExclGst) : '');
         setAppliesTo(existing?.appliesTo || 'both');
         setDescription(existing?.description || '');
         setIsActive(existing?.isActive !== false);
@@ -147,6 +157,7 @@ function RegoTypeFormDialog({
             const payload: any = {
                 name: name.trim(),
                 sellExclGst: sell.trim() === '' ? null : Number(sell),
+                costExclGst: cost.trim() === '' ? null : Number(cost),
                 appliesTo,
                 description: description.trim() || null,
                 isActive,
@@ -184,10 +195,14 @@ function RegoTypeFormDialog({
                         <Label className="text-[10px] font-black uppercase tracking-widest">Name</Label>
                         <Input value={name} onChange={e => setName(e.target.value)} placeholder="Small Trailers - Up to 1.02t" />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-black uppercase tracking-widest">Sell Ex GST</Label>
                             <Input type="number" inputMode="decimal" value={sell} onChange={e => setSell(e.target.value)} placeholder="151" />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black uppercase tracking-widest">Cost Ex GST</Label>
+                            <Input type="number" inputMode="decimal" value={cost} onChange={e => setCost(e.target.value)} placeholder="90" />
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-[10px] font-black uppercase tracking-widest">Applies To</Label>
@@ -197,6 +212,8 @@ function RegoTypeFormDialog({
                                     <SelectItem value="both">Boat + Trailer</SelectItem>
                                     <SelectItem value="boat">Boat</SelectItem>
                                     <SelectItem value="trailer">Trailer</SelectItem>
+                                    <SelectItem value="sticker">Sticker</SelectItem>
+                                    <SelectItem value="fee">Fee</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -323,6 +340,9 @@ function VendorSection({ vendor, isAdmin }: { vendor: RegoVendor; isAdmin: boole
                                 {t.description && <p className="text-[9px] text-slate-400 mt-0.5 truncate">{t.description}</p>}
                                 <p className="text-[10px] font-black text-primary mt-1">
                                     {t.sellExclGst != null ? `${formatCurrency(t.sellExclGst)} ex GST` : '—'}
+                                    {t.costExclGst != null && (
+                                        <span className="text-slate-400 font-bold"> · cost {formatCurrency(t.costExclGst)}</span>
+                                    )}
                                 </p>
                             </div>
                             {isAdmin && (

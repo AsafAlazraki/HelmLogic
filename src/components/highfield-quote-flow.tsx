@@ -2545,50 +2545,9 @@ export function HighfieldQuoteFlow({
                                     {/* --- MOTOR ACCESSORIES (Propeller, Rigging, etc.) --- */}
                                     {selectedMotor && (
                                         <>
-                                            {/* Pre-Rig Information */}
-                                            {(() => {
-                                                const installationText = selectedMotor['Installation'] || selectedMotor['installation']?.opCode;
-                                                const standardRiggingAccessories = (selectedMotor.masterAccessories || []).filter(
-                                                    (a: any) => a.isStandard && (a.category || '').toLowerCase() === 'rigging'
-                                                );
-                                                if (!installationText && standardRiggingAccessories.length === 0) return null;
-                                                return (
-                                                    <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-700">
-                                                        <div className="flex items-center gap-3 bg-slate-500 px-6 py-3 rounded-2xl shadow-xl w-full">
-                                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Pre-Rig Information</h3>
-                                                        </div>
-                                                        <div className="rounded-[2rem] border-2 border-slate-200 bg-slate-50 p-6 shadow-sm">
-                                                            <div className="flex items-start gap-4">
-                                                                <div className="h-10 w-10 rounded-2xl flex items-center justify-center bg-slate-200 text-slate-600 shrink-0">
-                                                                    <Info className="h-5 w-5" />
-                                                                </div>
-                                                                <div className="space-y-3 min-w-0">
-                                                                    {installationText && (
-                                                                        <div>
-                                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Installation Type</p>
-                                                                            <p className="text-sm font-bold text-slate-800">{installationText}</p>
-                                                                        </div>
-                                                                    )}
-                                                                    {standardRiggingAccessories.length > 0 && (
-                                                                        <div>
-                                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Included Rigging</p>
-                                                                            <div className="space-y-1.5">
-                                                                                {standardRiggingAccessories.map((acc: any) => (
-                                                                                    <div key={acc.id} className="flex items-center gap-2">
-                                                                                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                                                                                        <span className="text-xs font-bold text-slate-700">{acc.name || acc.description || acc.id}</span>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })()}
+                                            {/* v1.33 (Bill): the Pre-Rig Information panel that used to sit
+                                                here was removed — install type + included rigging now flow
+                                                through the slot rigging/PD lines instead of an info card. */}
 
                                             {/* Prop Comes Standard toggle */}
                                             <div ref={el => { categoryRefs.current['PropStandard'] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">

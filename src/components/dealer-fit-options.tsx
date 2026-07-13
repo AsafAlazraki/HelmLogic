@@ -7,7 +7,7 @@ import { Loader2, AlertCircle, PlusCircle, Trash2, Zap, Box, Layers, ChevronRigh
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from './ui/button';
 import { MasterDataBrowserDialog } from './master-data-browser-dialog';
-import { collection, addDoc, serverTimestamp, doc, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, serverTimestamp, doc, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -230,6 +230,17 @@ export function DealerFitOptions({
     }
   };
 
+  // v1.33 (Bill: "remove one item at a time and not just CLEAR ALL")
+  const handleDeleteSelection = async (selection: DealerFitSelection) => {
+    if (!organisationId) return;
+    try {
+        await deleteDoc(doc(firestore, `organisations/${organisationId}/dealerFitSelections/${selection.id}`));
+        toast({ title: 'Selection Removed', description: selection.name });
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Failed to remove selection' });
+    }
+  };
+
   const handleSeedCategory = async (category: DealerFitCategory) => {
     if (!organisationId) return;
     setIsSeeding(category.id);
@@ -364,6 +375,15 @@ export function DealerFitOptions({
                                         <p className="text-[10px] font-black text-primary">AUD BASE</p>
                                         <p className="font-black text-xs">${selection.items.reduce((acc, i) => acc + (i.data.sellPriceExclGst || 0), 0).toLocaleString()}</p>
                                     </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10"
+                                        title={`Remove ${selection.name}`}
+                                        onClick={() => handleDeleteSelection(selection)}
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
                                     <ChevronRight className="h-4 w-4 text-slate-300" />
                                 </div>
                             </div>

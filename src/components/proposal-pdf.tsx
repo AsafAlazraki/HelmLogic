@@ -513,11 +513,18 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
         return acc;
     }, {});
 
+    // v1.33 (Bill: "Change Name from DEALER to NORTHSIDE MARINE") — the
+    // customer PDF never says "Dealer"; it names the organisation. Falls
+    // back to "Dealer" only when the org doc hasn't loaded.
+    const orgLabel = organisation?.name || 'Dealer';
+
     // v1.11 launch — `indent` lets factory options / motor accessories /
     // trailer options / dealer-fit items render as sub-rows under their
     // parent (Vessel / Propulsion / Trailer) instead of as peer top-level
     // rows. Cleaner read for the customer; the maths is unchanged.
-    const lineItems: { label: string; sub?: string; amount: number; indent?: boolean }[] = [];
+    // v1.33 — `heading` renders a mini section divider inside the summary
+    // (no amount), used to split Factory Options from Standard Inclusions.
+    const lineItems: { label: string; sub?: string; amount: number; indent?: boolean; heading?: boolean }[] = [];
     if (f.boatBasePrice > 0) lineItems.push({
         label: `${quote.modelName} — Base Vessel`,
         sub: quote.variant?.name && quote.variant.name !== 'Standard'
@@ -529,10 +536,19 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
     // Investment Summary is a literal itemisation of everything in the build,
     // not just the billable extras. Grouped right under the base vessel.
     const standardInclusions: string[] = Array.isArray(quote.standardFeatures) ? quote.standardFeatures : [];
+    if (standardInclusions.some(feat => feat && feat.trim())) {
+        lineItems.push({ label: 'Standard Inclusions', amount: 0, indent: true, heading: true });
+    }
     standardInclusions.forEach((feat: string) => {
         if (!feat || !feat.trim()) return;
         lineItems.push({ label: feat.trim(), sub: 'Standard Inclusion', amount: 0, indent: true });
     });
+    // v1.33 (Bill: "Factory Options to have its own Heading") — factory
+    // options stay grouped under the Base Vessel but no longer run on
+    // from the Standard Inclusions; a divider heading separates them.
+    if (factoryOptions.length > 0) {
+        lineItems.push({ label: 'Factory Options', amount: 0, indent: true, heading: true });
+    }
     factoryOptions.forEach((opt: any) => {
         const base = formatOptionName(opt.name.replace(/\s*\([^)]+\)\s*$/, '').trim());
         const color = extractFirstColor(opt.name);
@@ -609,7 +625,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                 const amount = quote.hideOptionPrices ? 0 : rawAmount;
                 lineItems.push({
                     label: real,
-                    sub: (g?.category || g?.name) ? `Dealer Fit · ${g.category || g.name}` : 'Dealer Fit',
+                    sub: (g?.category || g?.name) ? `${orgLabel} Fit · ${g.category || g.name}` : `${orgLabel} Fit`,
                     amount,
                     indent: true,
                 });
@@ -621,8 +637,8 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
         customDealerFit.forEach((it: any) => {
             const amount = it.sellPriceExclGst || it.amount || 0;
             lineItems.push({
-                label: it.name || it.label || 'Dealer Fit (custom)',
-                sub: it.category ? `Dealer Fit · ${it.category} · Custom` : 'Dealer Fit · Custom',
+                label: it.name || it.label || 'Custom accessory',
+                sub: it.category ? `${orgLabel} Fit · ${it.category} · Custom` : `${orgLabel} Fit · Custom`,
                 amount,
                 indent: true,
             });
@@ -630,7 +646,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
         // Fallback rollup if we couldn't itemise (legacy quotes with no
         // dealerFit groups array) so the total still appears.
         if (!pushedAny && customDealerFit.length === 0 && f.dealerFitTotal > 0) {
-            lineItems.push({ label: 'Dealer Accessories & Preparation', sub: 'Dealer Fitout', amount: f.dealerFitTotal });
+            lineItems.push({ label: `${orgLabel} Accessories & Preparation`, sub: `Supplied & fitted by ${orgLabel}`, amount: f.dealerFitTotal });
         }
     }
     // v1.11 (Story 9.2.3 + "Toggle detailed view for customer") — Fit-Up
@@ -1090,7 +1106,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                         separate dump at the bottom. */}
                                     {motorDealerItems.length > 0 && (
                                         <View>
-                                            <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: BRAND, marginBottom: 3 }}>Motor Dealer Fit</Text>
+                                            <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: BRAND, marginBottom: 3 }}>Motor — Fitted by {orgLabel}</Text>
                                             {motorDealerItems.map((it: any, i: number) => (
                                                 <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 1.5 }}>
                                                     <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
@@ -1151,7 +1167,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                         categories live here under the trailer band. */}
                                     {trailerDealerItems.length > 0 && (
                                         <View style={{ marginTop: trailerOptions.length > 0 ? 6 : 0 }}>
-                                            <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: BRAND, marginBottom: 3 }}>Trailer Dealer Fit</Text>
+                                            <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: BRAND, marginBottom: 3 }}>Trailer — Fitted by {orgLabel}</Text>
                                             {trailerDealerItems.map((it: any, i: number) => (
                                                 <View key={i} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 1.5 }}>
                                                     <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
@@ -1173,8 +1189,8 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                             {dealerItems.length > 0 && (
                                 <BuildBand
                                     n={++bandNo}
-                                    title="Dealer Accessories & Preparation"
-                                    subtitle={`${dealerItems.length} item${dealerItems.length === 1 ? '' : 's'}`}
+                                    title={`${orgLabel} Accessories & Preparation`}
+                                    subtitle={`${dealerItems.length} accessory item${dealerItems.length === 1 ? '' : 's'} supplied & fitted`}
                                     price={currency(f.dealerFitTotal)}
                                 >
                                     {dealerItems.map((it: any, i: number) => (
@@ -1196,7 +1212,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                 <BuildBand
                                     n={++bandNo}
                                     title="Fit-Up & Rigging"
-                                    subtitle={Array.from(fitGroups.values())[0]?.name ? `${Array.from(fitGroups.values())[0]?.name} Package` : `${fitSels.length} item${fitSels.length === 1 ? '' : 's'}`}
+                                    subtitle={Array.from(fitGroups.values())[0]?.name ? `${Array.from(fitGroups.values())[0]?.name} Package · workshop installation & rigging` : `${fitSels.length} workshop installation item${fitSels.length === 1 ? '' : 's'}`}
                                     price={currency(f.fitUpTotal)}
                                 >
                                     {Array.from(fitGroups.values()).map((g, gi) => (
@@ -1262,6 +1278,16 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                         more rows per page so a long quote doesn't bleed onto a
                         nearly-empty second page. */}
                     {lineItems.map((item, i) => {
+                        // v1.33 — mini divider heading inside the summary
+                        // (Standard Inclusions / Factory Options split).
+                        if (item.heading) {
+                            return (
+                                <View key={i} wrap={false} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 3, paddingLeft: 18, marginTop: 4 }}>
+                                    <View style={{ width: 10, height: 2, backgroundColor: BRAND, marginRight: 5 }} />
+                                    <Text style={{ fontSize: 6.5, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: NAVY }}>{item.label}</Text>
+                                </View>
+                            );
+                        }
                         const isIncluded = item.amount === 0;
                         const isDiscount = item.amount < 0;
                         const valueColor = isDiscount ? GREEN : (isIncluded ? MUTED : NAVY);
