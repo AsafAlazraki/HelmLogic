@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2, Trash2, ChevronDown, X, Image as ImageIcon, Plus, ShieldCheck, DollarSign } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { FactoryConfiguratorSection } from '@/components/highfield-model-editor';
 import { Label } from '@/components/ui/label';
 
 const motorConfigSchema = z.object({
@@ -41,6 +42,9 @@ export const jeanneauModelSchema = z.object({
         otherSpecs: z.array(z.object({ id: z.string(), label: z.string(), value: z.string() })).default([]),
     }).optional(),
     standardFeatures: z.array(z.string()).default([]),
+    // v1.33 — Factory Configurator is shared across brand editors now;
+    // without this key zod would strip authored options on submit.
+    optionalFeatures: z.array(z.any()).default([]),
     packages: z.array(z.any()).default([]),
     colors: z.array(z.any()).default([]),
     documents: z.array(z.object({ id: z.string(), name: z.string(), url: z.string() })).default([]),
@@ -136,13 +140,19 @@ function RegistrationCard() {
   );
 }
 
-export function JeanneauModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
+export function JeanneauModelEditor({ model, vendorId, rangeId, isModuleView }: { model: any, vendorId?: string, rangeId?: string, isModuleView?: boolean }) {
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden text-left">
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start text-left">
                 <div className="lg:col-span-4 space-y-8">
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
                     <RegistrationCard />
+                </div>
+                <div className="lg:col-span-3 space-y-8 min-w-0 text-left">
+                    {/* v1.33 (Bill) — Factory Configurator shared from the
+                        Highfield editor so every brand can author option
+                        categories (Paint Options, Cockpit Options, ...). */}
+                    <FactoryConfiguratorSection model={model} vendorId={vendorId} rangeId={rangeId} />
                 </div>
             </div>
         </div>

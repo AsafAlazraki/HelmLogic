@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2, Trash2, ChevronDown, X, Image as ImageIcon, Plus, ShieldCheck, DollarSign } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { FactoryConfiguratorSection } from '@/components/highfield-model-editor';
 import { Label } from '@/components/ui/label';
 
 export const stacerModelSchema = z.object({
@@ -124,13 +125,19 @@ function RegistrationCard() {
   );
 }
 
-export function StacerModelEditor({ model, isModuleView }: { model: any, isModuleView?: boolean }) {
+export function StacerModelEditor({ model, vendorId, rangeId, isModuleView }: { model: any, vendorId?: string, rangeId?: string, isModuleView?: boolean }) {
     return (
         <div className="space-y-8 max-w-full overflow-x-hidden text-left">
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start text-left">
                 <div className="lg:col-span-4 space-y-8">
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
                     <RegistrationCard />
+                </div>
+                <div className="lg:col-span-3 space-y-8 min-w-0 text-left">
+                    {/* v1.33 (Bill) — Factory Configurator shared from the
+                        Highfield editor so every brand can author option
+                        categories (Paint Options, Cockpit Options, ...). */}
+                    <FactoryConfiguratorSection model={model} vendorId={vendorId} rangeId={rangeId} />
                 </div>
             </div>
         </div>
