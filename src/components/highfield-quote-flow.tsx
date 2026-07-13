@@ -1264,6 +1264,85 @@ export function HighfieldQuoteFlow({
         );
     };
 
+    /** v1.33 (Bill: "list Rebates for new Products — Yamaha rebate on the
+     *  motor section, Hull/Highfield rebates on the Hull section") — the
+     *  promotions band is parameterised by source so hull rebates render
+     *  on Step 1 and motor rebates on Step 3, instead of everything
+     *  landing on the motor step. */
+    const renderPromotionsBand = (promos: any[], title: string) => {
+        if (promos.length === 0) return null;
+        const anyApplied = promos.some(p => appliedPromotionIds.includes(p.id));
+        return (
+            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
+                <div className="flex items-center gap-3 bg-emerald-600 px-6 py-3 rounded-2xl shadow-xl w-full">
+                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                    <Gift className="h-4 w-4 text-white" />
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{title}</h3>
+                </div>
+                <div className="space-y-4">
+                    {promos.map(promo => {
+                        const isApplied = appliedPromotionIds.includes(promo.id);
+                        const startDate = promo.startDate ? (promo.startDate.toDate ? promo.startDate.toDate() : new Date(promo.startDate)) : null;
+                        const endDate = promo.endDate ? (promo.endDate.toDate ? promo.endDate.toDate() : new Date(promo.endDate)) : null;
+                        const discountLabel = promo.type === 'fixed-amount' ? `$${(promo.fixedAmount || 0).toLocaleString()} OFF`
+                            : promo.type === 'per-hp' ? `$${(promo.perHpAmount || 0)} / HP`
+                            : promo.type === 'percentage' || promo.type === 'category-discount' ? `${promo.percentage || 0}% OFF`
+                            : 'OFFER';
+                        return (
+                            <div key={promo.id} onClick={() => togglePromotion(promo.id)} className={cn("rounded-[2rem] border-2 overflow-hidden transition-all cursor-pointer bg-white shadow-xl", isApplied ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-transparent hover:border-emerald-500/20")}>
+                                {promo.showImageOnQuote && promo.imageUrl && (
+                                    <div className="relative w-full aspect-[21/9] bg-emerald-50/30">
+                                        <img src={promo.imageUrl} alt={promo.name} className="w-full h-full object-cover" />
+                                    </div>
+                                )}
+                                <div className="p-6 flex items-start gap-4">
+                                    <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner shrink-0 mt-0.5", isApplied ? "bg-emerald-500 border-emerald-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}>
+                                        <Check className="h-5 w-5" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <p className={cn("text-[11px] font-black uppercase tracking-widest", isApplied ? "text-emerald-700" : "text-slate-600")}>{promo.name}</p>
+                                            <Badge className="bg-emerald-500 text-white border-none font-black text-[8px] uppercase h-5 px-2">{discountLabel}</Badge>
+                                        </div>
+                                        {promo.description && <p className="text-[9px] font-bold text-muted-foreground mt-1.5 leading-relaxed">{promo.description}</p>}
+                                        <div className="flex items-center gap-3 mt-2 flex-wrap">
+                                            {(startDate || endDate) && (
+                                                <Badge variant="outline" className="text-[7px] font-black h-5 px-2 gap-1 border-emerald-200 text-emerald-600 bg-emerald-50">
+                                                    <Calendar className="h-2.5 w-2.5" />
+                                                    {startDate && endDate ? `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}` : startDate ? `From ${startDate.toLocaleDateString()}` : `Until ${endDate!.toLocaleDateString()}`}
+                                                </Badge>
+                                            )}
+                                            {promo.appliesTo && promo.appliesTo !== 'total' && (
+                                                <Badge variant="outline" className="text-[7px] font-black h-5 px-2 border-slate-200 text-slate-500">
+                                                    Applies to: {promo.appliesTo}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        {promo.showPdfOnQuote && promo.pdfUrl && (
+                                            <a href={promo.pdfUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1.5 mt-2 text-[9px] font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition-colors">
+                                                <FileText className="h-3 w-3" /> View Promotion Details
+                                                <ExternalLink className="h-2.5 w-2.5" />
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+                {anyApplied && promotionDiscount > 0 && (
+                    <div className="flex items-center justify-between p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-200">
+                        <div className="flex items-center gap-3">
+                            <Percent className="h-5 w-5 text-emerald-600" />
+                            <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700">Total Promotion Savings (all sections)</span>
+                        </div>
+                        <span className="text-lg font-black text-emerald-600 italic">-${promotionDiscount.toLocaleString()}</span>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     // 4. Selection Handlers
     const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
         if (selectedMaterial === mat) return;
@@ -1759,7 +1838,8 @@ export function HighfieldQuoteFlow({
     // Fetch promotions from boat module and motor vendor module
     useEffect(() => {
         const fetchPromotions = async () => {
-            if (currentStep < 3) return;
+            // v1.33 — hull rebates now render on Step 1, so promotions load
+            // as soon as the flow mounts (was gated to Step 3+).
             try {
                 const allPromos: any[] = [];
                 const now = new Date();
@@ -1808,7 +1888,7 @@ export function HighfieldQuoteFlow({
             } catch (e) { console.error('Failed to fetch promotions:', e); }
         };
         fetchPromotions();
-    }, [currentStep, firestore, module]);
+    }, [firestore, module]);
 
     const getMotorDisplayName = (m: any) => {
         const vendor = (m?.vendorName || 'YAMAHA').toUpperCase();
@@ -2263,6 +2343,10 @@ export function HighfieldQuoteFlow({
                                             </Card>
                                         </div>
                                     )}
+
+                                    {/* v1.33 (Bill) — hull/factory rebates listed on the Hull
+                                        step (Yamaha motor rebates stay on Step 3). */}
+                                    {renderPromotionsBand(availablePromotions.filter(p => p.source !== 'motor'), 'Factory Promotions & Rebates')}
                                 </div>
                             )}
                             {currentStep === 2 && (
@@ -2665,76 +2749,9 @@ export function HighfieldQuoteFlow({
                                         </>
                                     )}
 
-                                    {/* --- PROMOTIONS & OFFERS --- */}
-                                    {availablePromotions.length > 0 && (
-                                        <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
-                                            <div className="flex items-center gap-3 bg-emerald-600 px-6 py-3 rounded-2xl shadow-xl w-full">
-                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                <Gift className="h-4 w-4 text-white" />
-                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Promotions & Offers</h3>
-                                            </div>
-                                            <div className="space-y-4">
-                                                {availablePromotions.map(promo => {
-                                                    const isApplied = appliedPromotionIds.includes(promo.id);
-                                                    const startDate = promo.startDate ? (promo.startDate.toDate ? promo.startDate.toDate() : new Date(promo.startDate)) : null;
-                                                    const endDate = promo.endDate ? (promo.endDate.toDate ? promo.endDate.toDate() : new Date(promo.endDate)) : null;
-                                                    const discountLabel = promo.type === 'fixed-amount' ? `$${(promo.fixedAmount || 0).toLocaleString()} OFF`
-                                                        : promo.type === 'per-hp' ? `$${(promo.perHpAmount || 0)} / HP`
-                                                        : promo.type === 'percentage' || promo.type === 'category-discount' ? `${promo.percentage || 0}% OFF`
-                                                        : 'OFFER';
-                                                    return (
-                                                        <div key={promo.id} onClick={() => togglePromotion(promo.id)} className={cn("rounded-[2rem] border-2 overflow-hidden transition-all cursor-pointer bg-white shadow-xl", isApplied ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-transparent hover:border-emerald-500/20")}>
-                                                            {promo.showImageOnQuote && promo.imageUrl && (
-                                                                <div className="relative w-full aspect-[21/9] bg-emerald-50/30">
-                                                                    <img src={promo.imageUrl} alt={promo.name} className="w-full h-full object-cover" />
-                                                                </div>
-                                                            )}
-                                                            <div className="p-6 flex items-start gap-4">
-                                                                <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner shrink-0 mt-0.5", isApplied ? "bg-emerald-500 border-emerald-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}>
-                                                                    <Check className="h-5 w-5" />
-                                                                </div>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                                        <p className={cn("text-[11px] font-black uppercase tracking-widest", isApplied ? "text-emerald-700" : "text-slate-600")}>{promo.name}</p>
-                                                                        <Badge className="bg-emerald-500 text-white border-none font-black text-[8px] uppercase h-5 px-2">{discountLabel}</Badge>
-                                                                    </div>
-                                                                    {promo.description && <p className="text-[9px] font-bold text-muted-foreground mt-1.5 leading-relaxed">{promo.description}</p>}
-                                                                    <div className="flex items-center gap-3 mt-2 flex-wrap">
-                                                                        {(startDate || endDate) && (
-                                                                            <Badge variant="outline" className="text-[7px] font-black h-5 px-2 gap-1 border-emerald-200 text-emerald-600 bg-emerald-50">
-                                                                                <Calendar className="h-2.5 w-2.5" />
-                                                                                {startDate && endDate ? `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}` : startDate ? `From ${startDate.toLocaleDateString()}` : `Until ${endDate!.toLocaleDateString()}`}
-                                                                            </Badge>
-                                                                        )}
-                                                                        {promo.appliesTo && promo.appliesTo !== 'total' && (
-                                                                            <Badge variant="outline" className="text-[7px] font-black h-5 px-2 border-slate-200 text-slate-500">
-                                                                                Applies to: {promo.appliesTo}
-                                                                            </Badge>
-                                                                        )}
-                                                                    </div>
-                                                                    {promo.showPdfOnQuote && promo.pdfUrl && (
-                                                                        <a href={promo.pdfUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1.5 mt-2 text-[9px] font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition-colors">
-                                                                            <FileText className="h-3 w-3" /> View Promotion Details
-                                                                            <ExternalLink className="h-2.5 w-2.5" />
-                                                                        </a>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                            {promotionDiscount > 0 && (
-                                                <div className="flex items-center justify-between p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-200">
-                                                    <div className="flex items-center gap-3">
-                                                        <Percent className="h-5 w-5 text-emerald-600" />
-                                                        <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700">Total Savings</span>
-                                                    </div>
-                                                    <span className="text-lg font-black text-emerald-600 italic">-${promotionDiscount.toLocaleString()}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                                    {/* --- PROMOTIONS & OFFERS (motor-source only; hull rebates
+                                        render on Step 1 — v1.33 split per Bill) --- */}
+                                    {renderPromotionsBand(availablePromotions.filter(p => p.source === 'motor'), 'Motor Promotions & Rebates')}
                                 </div>
                             )}
                             {currentStep === 4 && (
