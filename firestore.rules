@@ -125,8 +125,14 @@ service cloud.firestore {
         // by writing arbitrary fields directly to Firestore.
         allow read: if isSignedIn();
         allow create, delete: if isSignedIn();
+        // v1.33 hardening: docs created before the lock feature (or by
+        // paths that never set isLocked) have NO isLocked field, and
+        // `resource.data.isLocked` ERRORS on a missing key — poisoning the
+        // not-locked branch and denying legitimate draft updates unless
+        // they happened to match a whitelist. get() with a default makes
+        // the lock check total.
         allow update: if isSignedIn() && (
-          !(resource.data.isLocked == true)
+          !(resource.data.get('isLocked', false) == true)
           || onlyLockFieldsChanged()
           || onlyLifecycleFieldsChanged()
           || onlySharePointFieldsChanged()

@@ -536,7 +536,15 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 },
             } : null,
 
-            finalPriceExclGst: Math.max(0, (totalPrice || 0) - (promotionDiscount || 0)),
+            // FFR-33 — under display-sheet-v2 the flow total is INC-GST;
+            // the legacy ex-GST field derives /1.1 so downstream consumers
+            // (reporting dashboard etc.) never double-apply GST.
+            finalPriceExclGst: quoteData.pricingConvention === 'display-sheet-v2'
+                ? Math.round((Math.max(0, (totalPrice || 0) - (promotionDiscount || 0)) / 1.1) * 100) / 100
+                : Math.max(0, (totalPrice || 0) - (promotionDiscount || 0)),
+            finalPriceIncGst: quoteData.pricingConvention === 'display-sheet-v2'
+                ? Math.round(Math.max(0, (totalPrice || 0) - (promotionDiscount || 0)) * 100) / 100
+                : null,
         };
     };
 
