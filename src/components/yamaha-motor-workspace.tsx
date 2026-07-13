@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { resolveItemImageUrl } from '@/lib/hero-carousel';
 import { collection } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -87,8 +88,14 @@ function getMotorShaft(motor: MotorRow): string {
     return motor['Shaft Length'] || motor.shaft || motor['Shaft'] || '';
 }
 
+/** v1.33 (Mark: "Engine thumbnails aren't showing in engine config") —
+ *  resolve through the FFR-30 fallback chain (imageUrl → imageLink →
+ *  'Image Link' → SummaryImage → …, Yamaha path normalisation included)
+ *  instead of three raw fields. Rows whose only image is a bot-walled
+ *  Yamaha URL still need the NSM asset drop (on the asks list); those
+ *  render the placeholder, never a broken-image icon. */
 function getMotorImage(motor: MotorRow): string | null {
-    return motor.SummaryImage || motor.imageUrl || motor['Image URL'] || null;
+    return resolveItemImageUrl(motor as any, () => true);
 }
 
 function getHpRange(hp: number): string {
@@ -128,7 +135,7 @@ function MotorCard({ motor, onClick }: { motor: MotorRow; onClick: () => void })
         >
             <CardHeader className="h-24 bg-slate-50 flex items-center justify-center p-3 border-b">
                 {image ? (
-                    <img src={image} alt={name} className="h-full object-contain" />
+                    <img src={image} alt={name} className="h-full object-contain" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
                 ) : (
                     <Ship className="h-10 w-10 text-slate-300" />
                 )}
@@ -206,7 +213,7 @@ function MotorDetailSheet({
                 {/* Hero image */}
                 <div className="h-40 bg-slate-50 rounded-xl flex items-center justify-center mb-6">
                     {image ? (
-                        <img src={image} alt={name} className="h-full object-contain" />
+                        <img src={image} alt={name} className="h-full object-contain" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
                     ) : (
                         <Ship className="h-16 w-16 text-slate-300" />
                     )}
