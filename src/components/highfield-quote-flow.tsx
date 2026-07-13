@@ -3,7 +3,8 @@
 import { formatMetres } from '@/lib/units';
 import { resolvePriceLevel } from '@/lib/catalog/derive-pricing';
 import { Fragment, useState, useMemo, useEffect, useRef } from 'react';
-import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useDoc, useStorage } from '@/firebase';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, orderBy, doc, where, getDoc, getDocs, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -53,7 +54,9 @@ import {
     Paperclip,
     Search,
     Eye,
-    EyeOff
+    EyeOff,
+    IdCard,
+    Upload
 } from 'lucide-react';
 import { isVariantRowItem,
     classifySection,
@@ -185,7 +188,10 @@ const STEPS: Step[] = [
     { id: 3, label: 'Motor' },
     { id: 4, label: 'Trailer' },
     { id: 5, label: 'Dealer Fit' },
-    { id: 6, label: 'Summary' },
+    // v1.33 (Bill) — dedicated Administration step: rego + rego numbers +
+    // warranty + trade-in + delivery + insurance + finance + licence upload.
+    { id: 6, label: 'Administration' },
+    { id: 7, label: 'Summary' },
 ];
 
 const HARDWARE_BLOCKLIST = ['MOTOR', 'ENGINE', 'FUEL', 'TRAILER', 'OUTBOARD', 'RAM SUPPORT', 'PROP'];
@@ -247,6 +253,7 @@ export function HighfieldQuoteFlow({
     defaultPriceLevel?: string,
 }) {
     const firestore = useFirestore();
+    const storage = useStorage();
     const router = useRouter();
     const { user } = useUser();
     const { toast } = useToast();
@@ -296,7 +303,7 @@ export function HighfieldQuoteFlow({
     }
 
     // 1. Core State — seeded from initialState when duplicating an existing quote
-    const [currentStep, setCurrentStep] = useState(initialState ? 6 : 1);
+    const [currentStep, setCurrentStep] = useState(initialState ? 7 : 1);
     const [selectedMaterial, setSelectedMaterial] = useState<'PVC' | 'HYP' | null>(initialState?.material ?? null);
     const [selectedColor, setSelectedColor] = useState<string | null>(initialState?.colorVariantId ?? null);
     const [isRegoSelected, setIsRegoSelected] = useState(initialState?.isRegoSelected ?? false);
@@ -405,6 +412,12 @@ export function HighfieldQuoteFlow({
     const [financeNotes, setFinanceNotes] = useState('');
     const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState('');
     const [timingNotes, setTimingNotes] = useState('');
+    // v1.33 (Bill) — Administration step additions: assigned rego numbers
+    // + customer driver's-licence upload.
+    const [boatRegoNumber, setBoatRegoNumber] = useState('');
+    const [trailerRegoNumber, setTrailerRegoNumber] = useState('');
+    const [licenceUrl, setLicenceUrl] = useState<string | null>(null);
+    const [licenceUploading, setLicenceUploading] = useState(false);
 
     // Refs for Auto-Scroll
     const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -2657,37 +2670,8 @@ export function HighfieldQuoteFlow({
                                                 </div>
                                             </div>
 
-                                            {/* NSM Extended Warranty & Service Plan toggles */}
-                                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
-                                                <div className="flex items-center gap-3 bg-blue-500 px-6 py-3 rounded-2xl shadow-xl w-full">
-                                                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Dealer Services</h3>
-                                                </div>
-                                                <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", extendedWarranty ? "bg-blue-50 border-blue-500 ring-2 ring-blue-500/20 shadow-md" : "border-transparent hover:border-blue-500/20")} onClick={() => setExtendedWarranty(!extendedWarranty)}>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", extendedWarranty ? "bg-blue-500 border-blue-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Star className="h-5 w-5" /></div>
-                                                        <div>
-                                                            <p className={cn("text-[11px] font-black uppercase tracking-widest", extendedWarranty ? "text-blue-700" : "text-slate-600")}>NSM 6 Year Extended Warranty</p>
-                                                            <p className="text-[9px] font-bold text-muted-foreground mt-0.5">Extend factory warranty to 6 years with NSM coverage</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className={cn("h-8 w-8 rounded-full flex items-center justify-center", extendedWarranty ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-300")}>
-                                                        <Check className="h-4 w-4" />
-                                                    </div>
-                                                </div>
-                                                <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", servicePlan ? "bg-blue-50 border-blue-500 ring-2 ring-blue-500/20 shadow-md" : "border-transparent hover:border-blue-500/20")} onClick={() => setServicePlan(!servicePlan)}>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", servicePlan ? "bg-blue-500 border-blue-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Wrench className="h-5 w-5" /></div>
-                                                        <div>
-                                                            <p className={cn("text-[11px] font-black uppercase tracking-widest", servicePlan ? "text-blue-700" : "text-slate-600")}>Direct Debit Service Plan</p>
-                                                            <p className="text-[9px] font-bold text-muted-foreground mt-0.5">Scheduled servicing via convenient direct debit payments</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className={cn("h-8 w-8 rounded-full flex items-center justify-center", servicePlan ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-300")}>
-                                                        <Check className="h-4 w-4" />
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            {/* v1.33 — Dealer Services (6yr warranty + service plan)
+                                                moved to the Administration step. */}
 
                                             {groupedMotorAccessories.map(([cat, opts]) => (
                                                 <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
@@ -3220,6 +3204,253 @@ export function HighfieldQuoteFlow({
                                 </div>
                             )}
                             {currentStep === 6 && (
+                                <div className="space-y-12 animate-in fade-in duration-1000 mt-4">
+                                    {/* v1.33 (Bill) — ADMINISTRATION step. Consolidates the
+                                        paperwork: rego selections recap + assigned rego numbers,
+                                        dealer services (6yr warranty / service plan), trade-in,
+                                        delivery, insurance, finance, and the customer's driver's
+                                        licence upload. Deposit stays at Finalize (document
+                                        defaults set the schedule). */}
+
+                                    {/* Registration recap + rego numbers */}
+                                    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
+                                        <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Registration</h3>
+                                        </div>
+                                        <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white space-y-5">
+                                            <div className="flex flex-wrap gap-2">
+                                                <button type="button" onClick={handleRegoToggle} className={cn("px-4 py-2 rounded-full border-2 text-[9px] font-black uppercase tracking-widest transition-all", isRegoSelected ? "bg-primary text-white border-primary" : "bg-slate-50 text-slate-500 border-slate-200 hover:border-primary/40")}>
+                                                    Boat Rego {isRegoSelected ? '✓' : ''}
+                                                </button>
+                                                <button type="button" onClick={handleStickerToggle} className={cn("px-4 py-2 rounded-full border-2 text-[9px] font-black uppercase tracking-widest transition-all", isStickerSelected ? "bg-primary text-white border-primary" : "bg-slate-50 text-slate-500 border-slate-200 hover:border-primary/40")}>
+                                                    Rego Stickers {isStickerSelected ? '✓' : ''}
+                                                </button>
+                                                <button type="button" onClick={handleTenderToToggle} className={cn("px-4 py-2 rounded-full border-2 text-[9px] font-black uppercase tracking-widest transition-all", isTenderToSelected ? "bg-primary text-white border-primary" : "bg-slate-50 text-slate-500 border-slate-200 hover:border-primary/40")}>
+                                                    "Tender To" Decal {isTenderToSelected ? '✓' : ''}
+                                                </button>
+                                                <button type="button" onClick={() => setIsTrailerRegoSelected(!isTrailerRegoSelected)} className={cn("px-4 py-2 rounded-full border-2 text-[9px] font-black uppercase tracking-widest transition-all", isTrailerRegoSelected ? "bg-primary text-white border-primary" : "bg-slate-50 text-slate-500 border-slate-200 hover:border-primary/40")}>
+                                                    Trailer Rego {isTrailerRegoSelected ? '✓' : ''}
+                                                </button>
+                                            </div>
+                                            <p className="text-[9px] font-bold text-muted-foreground">Pricing for these selections is set on the Boat Base and Trailer steps — this recap just confirms what's included.</p>
+                                            <Separator />
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="boat-rego-number" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Boat Rego Number</Label>
+                                                    <Input id="boat-rego-number" placeholder="e.g. AB123Q" value={boatRegoNumber} onChange={e => setBoatRegoNumber(e.target.value)} className="h-11 rounded-xl border-2 font-bold text-sm uppercase" />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="trailer-rego-number" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trailer Rego Number</Label>
+                                                    <Input id="trailer-rego-number" placeholder="e.g. 123ABC" value={trailerRegoNumber} onChange={e => setTrailerRegoNumber(e.target.value)} className="h-11 rounded-xl border-2 font-bold text-sm uppercase" />
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    </div>
+
+                                            {/* NSM Extended Warranty & Service Plan toggles */}
+                                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
+                                                <div className="flex items-center gap-3 bg-blue-500 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Dealer Services</h3>
+                                                </div>
+                                                <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", extendedWarranty ? "bg-blue-50 border-blue-500 ring-2 ring-blue-500/20 shadow-md" : "border-transparent hover:border-blue-500/20")} onClick={() => setExtendedWarranty(!extendedWarranty)}>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", extendedWarranty ? "bg-blue-500 border-blue-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Star className="h-5 w-5" /></div>
+                                                        <div>
+                                                            <p className={cn("text-[11px] font-black uppercase tracking-widest", extendedWarranty ? "text-blue-700" : "text-slate-600")}>NSM 6 Year Extended Warranty</p>
+                                                            <p className="text-[9px] font-bold text-muted-foreground mt-0.5">Extend factory warranty to 6 years with NSM coverage</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className={cn("h-8 w-8 rounded-full flex items-center justify-center", extendedWarranty ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-300")}>
+                                                        <Check className="h-4 w-4" />
+                                                    </div>
+                                                </div>
+                                                <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", servicePlan ? "bg-blue-50 border-blue-500 ring-2 ring-blue-500/20 shadow-md" : "border-transparent hover:border-blue-500/20")} onClick={() => setServicePlan(!servicePlan)}>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", servicePlan ? "bg-blue-500 border-blue-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Wrench className="h-5 w-5" /></div>
+                                                        <div>
+                                                            <p className={cn("text-[11px] font-black uppercase tracking-widest", servicePlan ? "text-blue-700" : "text-slate-600")}>Direct Debit Service Plan</p>
+                                                            <p className="text-[9px] font-bold text-muted-foreground mt-0.5">Scheduled servicing via convenient direct debit payments</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className={cn("h-8 w-8 rounded-full flex items-center justify-center", servicePlan ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-300")}>
+                                                        <Check className="h-4 w-4" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                    {/* Driver's licence upload */}
+                                    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
+                                        <div className="flex items-center gap-3 bg-slate-900 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                            <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Driver's Licence</h3>
+                                        </div>
+                                        <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white">
+                                            <div className="flex items-center justify-between gap-4 flex-wrap">
+                                                <div className="flex items-center gap-4 min-w-0">
+                                                    <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner shrink-0", licenceUrl ? "bg-emerald-500 border-emerald-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}>
+                                                        <IdCard className="h-5 w-5" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[11px] font-black uppercase tracking-widest text-slate-600">Customer Driver's Licence</p>
+                                                        <p className="text-[9px] font-bold text-muted-foreground mt-0.5 truncate">{licenceUrl ? 'Uploaded — attached to this quote at finalize' : 'Photo or scan (image / PDF)'}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    {licenceUrl && (
+                                                        <a href={licenceUrl} target="_blank" rel="noopener noreferrer" className="text-[9px] font-black uppercase tracking-widest text-primary hover:underline">View</a>
+                                                    )}
+                                                    <Button type="button" variant="outline" className="h-10 rounded-xl border-2 font-black uppercase text-[9px] tracking-widest" disabled={licenceUploading} onClick={(e) => ((e.currentTarget.nextElementSibling as HTMLInputElement))?.click()}>
+                                                        {licenceUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                                                        {licenceUrl ? 'Replace' : 'Upload'}
+                                                    </Button>
+                                                    <input type="file" hidden accept="image/*,.pdf" onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        e.target.value = '';
+                                                        if (!file || !storage) return;
+                                                        setLicenceUploading(true);
+                                                        try {
+                                                            const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+                                                            const url = await uploadFileToStorage(storage, file, `licence-uploads/${Date.now()}-licence.${ext}`);
+                                                            setLicenceUrl(url);
+                                                            toast({ title: "Driver's licence uploaded" });
+                                                        } catch (err: any) {
+                                                            toast({ variant: 'destructive', title: 'Upload failed', description: err?.message });
+                                                        } finally {
+                                                            setLicenceUploading(false);
+                                                        }
+                                                    }} />
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    </div>
+
+                                    {/* Admin & Trade-In (moved from Summary) */}
+                                        {/* Admin & Trade-In Section */}
+                                        <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
+                                            <CardHeader className="bg-muted/30 border-b p-4">
+                                                <div className="flex items-center gap-2">
+                                                    <ClipboardList className="h-4 w-4 text-primary" />
+                                                    <CardTitle className="text-xs font-black uppercase tracking-widest">Admin & Trade-In</CardTitle>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="p-5 space-y-6">
+
+                                                {/* Trade-In */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Car className="h-3.5 w-3.5 text-primary" />
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trade-In Vehicle</Label>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Textarea
+                                                            placeholder="Description (make, model, year, condition...)"
+                                                            value={tradeInDescription}
+                                                            onChange={(e) => setTradeInDescription(e.target.value)}
+                                                            className="min-h-[72px] rounded-xl border-2 text-sm font-bold resize-none"
+                                                        />
+                                                        <div className="space-y-1.5">
+                                                            <Label htmlFor="trade-in-value" className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5">
+                                                                <DollarSign className="h-3 w-3" /> Agreed Trade-In Value
+                                                            </Label>
+                                                            <Input
+                                                                id="trade-in-value"
+                                                                type="number"
+                                                                placeholder="0"
+                                                                value={tradeInValue}
+                                                                onChange={(e) => setTradeInValue(e.target.value)}
+                                                                className="h-11 rounded-xl border-2 font-bold text-sm"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <Separator />
+
+                                                {/* Insurance Quote */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <Checkbox
+                                                            id="wants-insurance"
+                                                            checked={wantsInsurance}
+                                                            onCheckedChange={(checked) => setWantsInsurance(checked === true)}
+                                                            className="h-5 w-5 rounded border-2"
+                                                        />
+                                                        <Label htmlFor="wants-insurance" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 cursor-pointer">
+                                                            <Shield className="h-3.5 w-3.5 text-primary" /> I would like an Insurance Quote
+                                                        </Label>
+                                                    </div>
+                                                    {wantsInsurance && (
+                                                        <Textarea
+                                                            placeholder="Insurance notes (coverage preferences, existing policies...)"
+                                                            value={insuranceNotes}
+                                                            onChange={(e) => setInsuranceNotes(e.target.value)}
+                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none animate-in fade-in slide-in-from-top-1 duration-200"
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                <Separator />
+
+                                                {/* Finance Quote */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <Checkbox
+                                                            id="wants-finance"
+                                                            checked={wantsFinance}
+                                                            onCheckedChange={(checked) => setWantsFinance(checked === true)}
+                                                            className="h-5 w-5 rounded border-2"
+                                                        />
+                                                        <Label htmlFor="wants-finance" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 cursor-pointer">
+                                                            <Banknote className="h-3.5 w-3.5 text-primary" /> I would like a Finance Quote
+                                                        </Label>
+                                                    </div>
+                                                    {wantsFinance && (
+                                                        <Textarea
+                                                            placeholder="Finance notes (deposit amount, term preference, trade equity...)"
+                                                            value={financeNotes}
+                                                            onChange={(e) => setFinanceNotes(e.target.value)}
+                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none animate-in fade-in slide-in-from-top-1 duration-200"
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                <Separator />
+
+                                                {/* Timing / Delivery */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="h-3.5 w-3.5 text-primary" />
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Timing & Delivery</Label>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <div className="space-y-1.5">
+                                                            <Label htmlFor="delivery-date" className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5">
+                                                                <Calendar className="h-3 w-3" /> Estimated Delivery Date
+                                                            </Label>
+                                                            <Input
+                                                                id="delivery-date"
+                                                                type="date"
+                                                                value={estimatedDeliveryDate}
+                                                                onChange={(e) => setEstimatedDeliveryDate(e.target.value)}
+                                                                className="h-11 rounded-xl border-2 font-bold text-sm"
+                                                            />
+                                                        </div>
+                                                        <Textarea
+                                                            placeholder="Timing notes (slot availability, special delivery instructions...)"
+                                                            value={timingNotes}
+                                                            onChange={(e) => setTimingNotes(e.target.value)}
+                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                            </CardContent>
+                                        </Card>
+                                </div>
+                            )}
+                            {currentStep === 7 && (
                                 <div className="space-y-8 animate-in fade-in duration-1000 mt-4">
                                     <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0"><div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /><h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Project Build Summary</h3></div>
                                     <div className="space-y-4">
@@ -3577,127 +3808,7 @@ export function HighfieldQuoteFlow({
                                             />
                                         )}
 
-                                        {/* Admin & Trade-In Section */}
-                                        <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
-                                            <CardHeader className="bg-muted/30 border-b p-4">
-                                                <div className="flex items-center gap-2">
-                                                    <ClipboardList className="h-4 w-4 text-primary" />
-                                                    <CardTitle className="text-xs font-black uppercase tracking-widest">Admin & Trade-In</CardTitle>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent className="p-5 space-y-6">
-
-                                                {/* Trade-In */}
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <Car className="h-3.5 w-3.5 text-primary" />
-                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trade-In Vehicle</Label>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Textarea
-                                                            placeholder="Description (make, model, year, condition...)"
-                                                            value={tradeInDescription}
-                                                            onChange={(e) => setTradeInDescription(e.target.value)}
-                                                            className="min-h-[72px] rounded-xl border-2 text-sm font-bold resize-none"
-                                                        />
-                                                        <div className="space-y-1.5">
-                                                            <Label htmlFor="trade-in-value" className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5">
-                                                                <DollarSign className="h-3 w-3" /> Agreed Trade-In Value
-                                                            </Label>
-                                                            <Input
-                                                                id="trade-in-value"
-                                                                type="number"
-                                                                placeholder="0"
-                                                                value={tradeInValue}
-                                                                onChange={(e) => setTradeInValue(e.target.value)}
-                                                                className="h-11 rounded-xl border-2 font-bold text-sm"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <Separator />
-
-                                                {/* Insurance Quote */}
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <Checkbox
-                                                            id="wants-insurance"
-                                                            checked={wantsInsurance}
-                                                            onCheckedChange={(checked) => setWantsInsurance(checked === true)}
-                                                            className="h-5 w-5 rounded border-2"
-                                                        />
-                                                        <Label htmlFor="wants-insurance" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 cursor-pointer">
-                                                            <Shield className="h-3.5 w-3.5 text-primary" /> I would like an Insurance Quote
-                                                        </Label>
-                                                    </div>
-                                                    {wantsInsurance && (
-                                                        <Textarea
-                                                            placeholder="Insurance notes (coverage preferences, existing policies...)"
-                                                            value={insuranceNotes}
-                                                            onChange={(e) => setInsuranceNotes(e.target.value)}
-                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none animate-in fade-in slide-in-from-top-1 duration-200"
-                                                        />
-                                                    )}
-                                                </div>
-
-                                                <Separator />
-
-                                                {/* Finance Quote */}
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <Checkbox
-                                                            id="wants-finance"
-                                                            checked={wantsFinance}
-                                                            onCheckedChange={(checked) => setWantsFinance(checked === true)}
-                                                            className="h-5 w-5 rounded border-2"
-                                                        />
-                                                        <Label htmlFor="wants-finance" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 cursor-pointer">
-                                                            <Banknote className="h-3.5 w-3.5 text-primary" /> I would like a Finance Quote
-                                                        </Label>
-                                                    </div>
-                                                    {wantsFinance && (
-                                                        <Textarea
-                                                            placeholder="Finance notes (deposit amount, term preference, trade equity...)"
-                                                            value={financeNotes}
-                                                            onChange={(e) => setFinanceNotes(e.target.value)}
-                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none animate-in fade-in slide-in-from-top-1 duration-200"
-                                                        />
-                                                    )}
-                                                </div>
-
-                                                <Separator />
-
-                                                {/* Timing / Delivery */}
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <Clock className="h-3.5 w-3.5 text-primary" />
-                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Timing & Delivery</Label>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <div className="space-y-1.5">
-                                                            <Label htmlFor="delivery-date" className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5">
-                                                                <Calendar className="h-3 w-3" /> Estimated Delivery Date
-                                                            </Label>
-                                                            <Input
-                                                                id="delivery-date"
-                                                                type="date"
-                                                                value={estimatedDeliveryDate}
-                                                                onChange={(e) => setEstimatedDeliveryDate(e.target.value)}
-                                                                className="h-11 rounded-xl border-2 font-bold text-sm"
-                                                            />
-                                                        </div>
-                                                        <Textarea
-                                                            placeholder="Timing notes (slot availability, special delivery instructions...)"
-                                                            value={timingNotes}
-                                                            onChange={(e) => setTimingNotes(e.target.value)}
-                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                            </CardContent>
-                                        </Card>
+                                        {/* v1.33 — Admin & Trade-In moved to the Administration step. */}
                                     </div>
                                 </div>
                             )}
@@ -3886,6 +3997,12 @@ export function HighfieldQuoteFlow({
                     promotionDiscount,
                     dealerServices: { extendedWarranty, servicePlan },
                     adminDetails: {
+                        // v1.33 — Administration step additions
+                        regoNumbers: {
+                            boat: boatRegoNumber.trim() || null,
+                            trailer: trailerRegoNumber.trim() || null,
+                        },
+                        driversLicenceUrl: licenceUrl,
                         tradeIn: {
                             description: tradeInDescription,
                             value: tradeInValue ? parseFloat(tradeInValue) : 0,

@@ -114,6 +114,10 @@ interface FinalizeQuoteDialogProps {
         promotionDiscount?: number;
         dealerServices?: { extendedWarranty: boolean; servicePlan: boolean };
         adminDetails?: {
+            /** v1.33 — Administration step: assigned rego numbers. */
+            regoNumbers?: { boat: string | null; trailer: string | null };
+            /** v1.33 — Administration step: customer licence upload (Storage URL). */
+            driversLicenceUrl?: string | null;
             tradeIn: { description: string; value: number };
             insurance: { requested: boolean; notes: string };
             finance: { requested: boolean; notes: string };
@@ -518,6 +522,14 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
 
             // Admin & Trade-In
             adminDetails: adminDetails ? {
+                // v1.33 — Administration step fields; both ends of the
+                // pipeline (flow payload + this snapshot) carry them, per
+                // the pick-time-snapshot lesson.
+                regoNumbers: {
+                    boat: adminDetails.regoNumbers?.boat ?? null,
+                    trailer: adminDetails.regoNumbers?.trailer ?? null,
+                },
+                driversLicenceUrl: adminDetails.driversLicenceUrl ?? null,
                 tradeIn: {
                     description: adminDetails.tradeIn.description || '',
                     value: adminDetails.tradeIn.value || 0,
