@@ -1,5 +1,6 @@
 'use client';
 
+import { TelemetryProvider } from '@/components/telemetry-provider';
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { FirebaseClientProvider } from "@/firebase/client-provider";
 import dynamic from "next/dynamic";
@@ -43,6 +44,8 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   
   return (
       <SidebarProvider defaultOpen={false}>
+        {/* v1.33 (Epic 14) — usage telemetry: sessions + labeled events. */}
+        <TelemetryProvider />
         <AppSidebar />
         <SidebarInset className="overflow-hidden flex flex-col h-screen max-w-full relative bg-background">
           <main className={cn(
