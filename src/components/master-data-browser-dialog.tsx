@@ -257,8 +257,12 @@ export function MasterDataBrowserDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  {/* v1.33 (Mark: category showing as "otherother") — the
+                      dedupe was case/whitespace-sensitive, so a lowercase or
+                      padded 'other' initialCategory rendered NEXT TO the
+                      hardcoded 'Other' as two adjacent items. Normalise. */}
                   <SelectItem value={initialCategory || 'Other'}>{initialCategory || 'Other'}</SelectItem>
-                  {initialCategory !== 'Other' && <SelectItem value="Other">Other</SelectItem>}
+                  {(initialCategory || 'Other').trim().toLowerCase() !== 'other' && <SelectItem value="Other">Other</SelectItem>}
                 </SelectContent>
               </Select>
             </div>

@@ -34,7 +34,9 @@ export default function MyWorkPage() {
     () => uid ? query(collectionGroup(firestore, 'quotes'), where('createdByUid', '==', uid)) : null,
     [firestore, uid],
   );
-  const { data: myQuotes } = useCollection<any>(myQuotesQuery, { silent: true });
+  const { data: myQuotesRaw } = useCollection<any>(myQuotesQuery, { silent: true });
+  // v1.33 — archived (soft-deleted) quotes never show in My Work.
+  const myQuotes = useMemo(() => myQuotesRaw ? myQuotesRaw.filter((q: any) => !q.deletedAt) : myQuotesRaw, [myQuotesRaw]);
 
   const myContractsQuery = useMemoFirebase(
     () => uid ? query(collectionGroup(firestore, 'contracts'), where('createdByUid', '==', uid)) : null,

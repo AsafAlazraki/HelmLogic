@@ -1438,6 +1438,21 @@ export function HighfieldQuoteFlow({
         packageMeta?: { id: string; name: string; tier?: 'simple' | 'medium' | 'complex' | null },
     ) => {
         setSelectedFitUpItems(prev => {
+            // v1.33 (Mark: "selected Medium, can't go back to Simple — it lets
+            // me select all three together and I can't undo"):
+            // (1) TOGGLE — clicking a package whose items are ALL already on
+            //     removes those items (a second click undoes the first).
+            // (2) TIER EXCLUSIVITY — Simple / Medium / Complex are one-of:
+            //     adding a tiered package first drops every item that came
+            //     from a DIFFERENT tiered package.
+            const clickedIds = new Set(items.map(i => i.id));
+            const allOn = items.length > 0 && items.every(i => prev.some(s => s.item.id === i.id));
+            if (allOn) {
+                return prev.filter(s => !clickedIds.has(s.item.id));
+            }
+            if (packageMeta?.tier) {
+                prev = prev.filter(s => !(s.packageTier && s.packageId !== packageMeta.id));
+            }
             const existingIds = new Set(prev.map(s => s.item.id));
             const next: FitUpSelection[] = [...prev];
             for (const item of items) {

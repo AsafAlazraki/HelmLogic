@@ -49,6 +49,20 @@ service cloud.firestore {
     }
 
     /**
+     * v1.33 (Mark: "can't remove a quote from my list") — soft-delete /
+     * archive guard. Removing a quote from lists sets `deletedAt` (the doc
+     * and its sub-collections stay for audit). A LOCKED (sent) quote could
+     * never take this update because deletedAt wasn't on any whitelist —
+     * the exact failure Mark hit. Restore (deletedAt -> null) rides the
+     * same guard.
+     */
+    function onlySoftDeleteFieldsChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'deletedAt', 'lastUpdateAt', 'updatedAt'
+      ]);
+    }
+
+    /**
      * v1.9 (story 1.4.1) — Quote lifecycle-state guard. Returns true when
      * an update ONLY touches lifecycle-state fields, so a LOCKED quote can
      * still transition through its sales journey (Sent → Viewed → Accepted
@@ -116,6 +130,7 @@ service cloud.firestore {
           || onlyLockFieldsChanged()
           || onlyLifecycleFieldsChanged()
           || onlySharePointFieldsChanged()
+          || onlySoftDeleteFieldsChanged()
         );
         match /service_items/{itemId} {
           allow read, write: if isSignedIn();

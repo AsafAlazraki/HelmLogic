@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { useUser } from '@/firebase/auth/use-user';
@@ -59,8 +60,15 @@ export default function ProposalsPage() {
     }, [firestore, user?.uid, userProfile?.organisationId]);
     const { data: orgQuotesList } = useCollection<any>(orgQuotesQuery, { silent: true });
 
-    // Prefer org-wide when available, fall back to user-scoped
-    const quotes = orgQuotesList || userQuotesList;
+    // Prefer org-wide when available, fall back to user-scoped.
+    // v1.33 (Mark: "can't remove a quote from my list") — soft-deleted
+    // quotes (deletedAt set) are archived, not shown; this list never
+    // filtered them, so removed quotes kept appearing here.
+    const rawQuotes = orgQuotesList || userQuotesList;
+    const quotes = useMemo(
+        () => rawQuotes ? rawQuotes.filter((q: any) => !q.deletedAt) : rawQuotes,
+        [rawQuotes],
+    );
     const isLoading = !quotes && userLoading;
 
     const moduleLabel = id.replace(/-/g, ' ');
