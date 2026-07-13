@@ -1,13 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useMemo, useRef, useState } from 'react';
+import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase, useStorage } from '@/firebase';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, AlertCircle, PlusCircle, Trash2, Zap, Box, Layers, ChevronRight } from 'lucide-react';
+import { Loader2, AlertCircle, PlusCircle, Trash2, Zap, Box, Layers, ChevronRight, ImagePlus } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from './ui/button';
 import { MasterDataBrowserDialog } from './master-data-browser-dialog';
-import { collection, addDoc, deleteDoc, serverTimestamp, doc, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, serverTimestamp, doc, query, where, getDocs, writeBatch, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
@@ -32,6 +33,9 @@ interface DealerFitSelection {
   categoryId: string;
   /** Legacy/module-level category NAME — used for name-based grouping of synthetic categories. */
   category?: string;
+  /** v1.33 (Bill: "upload images to dealer fit parts") — manual image
+   *  set by the operator; overrides any item-data image downstream. */
+  imageUrl?: string | null;
   items: {
     vendorId: string;
     rowId: string;
@@ -51,6 +55,7 @@ export function DealerFitOptions({
     moduleOnly?: boolean;
 }) {
   const firestore = useFirestore();
+  const storage = useStorage();
   const { toast } = useToast();
   
   const orgRef = useMemoFirebase(() => 
@@ -230,6 +235,33 @@ export function DealerFitOptions({
     }
   };
 
+  // v1.33 (Bill: "upload images to dealer fit parts, e.g. Garmin head
+  // unit") — manual image per selection for parts whose MPF row carries
+  // no image link. Native hidden input (shadcn Input+label doesn't fire,
+  // per CLAUDE.md lesson); value reset after upload so the same file can
+  // be re-picked.
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadTargetId, setUploadTargetId] = useState<string | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    const selectionId = uploadTargetId;
+    setUploadTargetId(null);
+    if (!file || !selectionId || !organisationId) return;
+    setUploadingId(selectionId);
+    try {
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const url = await uploadFileToStorage(storage, file, `organisations/${organisationId}/dealerFitSelections/${selectionId}/image.${ext}`);
+        await updateDoc(doc(firestore, `organisations/${organisationId}/dealerFitSelections/${selectionId}`), { imageUrl: url });
+        toast({ title: 'Image uploaded' });
+    } catch (err: any) {
+        toast({ variant: 'destructive', title: 'Image upload failed', description: err?.message });
+    } finally {
+        setUploadingId(null);
+    }
+  };
+
   // v1.33 (Bill: "remove one item at a time and not just CLEAR ALL")
   const handleDeleteSelection = async (selection: DealerFitSelection) => {
     if (!organisationId) return;
@@ -362,9 +394,17 @@ export function DealerFitOptions({
                         <Card key={selection.id} className="bg-slate-50 border-2 hover:border-primary/20 transition-all shadow-sm group/sel rounded-xl overflow-hidden text-left">
                             <div className="p-4 flex items-center justify-between text-left">
                                 <div className="flex items-center gap-3 text-left">
-                                    <div className="h-8 w-8 bg-white border-2 rounded-lg flex items-center justify-center text-primary/40 shadow-inner group-hover/sel:text-primary group-hover/sel:border-primary/20 transition-all">
-                                        {selection.type === 'package' ? <Layers className="h-4 w-4" /> : <Box className="h-4 w-4" />}
-                                    </div>
+                                    {(selection.imageUrl || selection.items?.[0]?.data?.imageUrl) ? (
+                                        <img
+                                            src={selection.imageUrl || selection.items[0].data.imageUrl}
+                                            alt={selection.name}
+                                            className="h-10 w-14 object-contain bg-white border-2 rounded-lg shadow-inner shrink-0"
+                                        />
+                                    ) : (
+                                        <div className="h-8 w-8 bg-white border-2 rounded-lg flex items-center justify-center text-primary/40 shadow-inner group-hover/sel:text-primary group-hover/sel:border-primary/20 transition-all">
+                                            {selection.type === 'package' ? <Layers className="h-4 w-4" /> : <Box className="h-4 w-4" />}
+                                        </div>
+                                    )}
                                     <div className="text-left">
                                         <p className="font-black text-xs uppercase tracking-tight text-slate-900">{selection.name}</p>
                                         <p className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest">{selection.items.length} Components Staged</p>
@@ -375,6 +415,16 @@ export function DealerFitOptions({
                                         <p className="text-[10px] font-black text-primary">AUD BASE</p>
                                         <p className="font-black text-xs">${selection.items.reduce((acc, i) => acc + (i.data.sellPriceExclGst || 0), 0).toLocaleString()}</p>
                                     </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-muted-foreground/40 hover:text-primary hover:bg-primary/10"
+                                        title={`Upload image for ${selection.name}`}
+                                        disabled={uploadingId === selection.id}
+                                        onClick={() => { setUploadTargetId(selection.id); fileInputRef.current?.click(); }}
+                                    >
+                                        {uploadingId === selection.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                                    </Button>
                                     <Button
                                         variant="ghost"
                                         size="icon"
@@ -404,6 +454,7 @@ export function DealerFitOptions({
           )
         })}
       </div>
+      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleImageFile} />
        {activeCategoryId && (
         <MasterDataBrowserDialog
           isOpen={isBrowserOpen}

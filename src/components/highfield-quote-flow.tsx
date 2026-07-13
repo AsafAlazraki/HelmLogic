@@ -2347,9 +2347,13 @@ export function HighfieldQuoteFlow({
                                                     return (
                                                     <button key={opt.id} onClick={() => toggleOption(opt.id)} disabled={isLocked} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20", isLocked && "cursor-default opacity-90")}>
                                                         <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !opt.imageUrl && "hidden")}>{opt.imageUrl && <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
+                                                        {/* v1.33 (Bill: "increase the size of font inside the box",
+                                                            Four Winns reference) — option name bumped 10px → 14px,
+                                                            colour + price up a step, tighter tracking so names
+                                                            still hold one line. */}
                                                         <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                            {(() => { const { base, color } = formatOptionDisplayLabel(opt.name); return (<><p className={cn("text-[10px] font-black uppercase tracking-widest leading-tight", isSelected ? "text-primary" : "text-slate-700")}>{base}</p>{color && <p className={cn("text-[9px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{color}</p>}</>); })()}
-                                                            <p className={cn("text-[9px] font-black", isSelected ? "text-primary" : "text-slate-400")}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            {(() => { const { base, color } = formatOptionDisplayLabel(opt.name); return (<><p className={cn("text-sm font-black uppercase tracking-wide leading-snug", isSelected ? "text-primary" : "text-slate-700")}>{base}</p>{color && <p className={cn("text-[11px] font-black uppercase tracking-wide", isSelected ? "text-primary/70" : "text-slate-400")}>{color}</p>}</>); })()}
+                                                            <p className={cn("text-xs font-black", isSelected ? "text-primary" : "text-slate-400")}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                             {isLocked && (
                                                                 <div className="flex items-center gap-1 mt-1">
                                                                     <CheckCircle2 className="h-3 w-3 text-primary/60" />
@@ -3104,7 +3108,9 @@ export function HighfieldQuoteFlow({
                                                         const isSelected = selectedDealerFitIds.includes(sel.id);
                                                         // Detect if items in this (unselected) selection are already included via another category
                                                         const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
-                                                        const imgUrl = resolveImageUrl(sel.items?.[0]?.data);
+                                                        // v1.33 — operator-uploaded selection image (Catalog →
+                                                        // Dealer Fit) beats the MPF item-data image link.
+                                                        const imgUrl = sel.imageUrl || resolveImageUrl(sel.items?.[0]?.data);
                                                         return (
                                                         <div key={sel.id} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent relative min-w-0", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-primary/20")}>
                                                             {hasOverlap && <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5"><CopyCheck className="h-3 w-3 text-amber-600" /><span className="text-[7px] font-black uppercase tracking-wide text-amber-700">Already Included</span></div>}
