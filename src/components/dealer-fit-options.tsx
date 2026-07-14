@@ -19,6 +19,13 @@ interface DealerFitCategory {
   name: string;
 }
 
+/** v1.33 — same price-resolution chain the quote flow uses for dealer-fit
+ *  items ('Act Sell' is the MPF primary). This view used to read only
+ *  sellPriceExclGst and showed $0 on every MPF row. */
+function itemPrice(d: any): number {
+  return d?.['Act Sell'] || d?.sellPriceExclGst || d?.['Store Price'] || d?.PARTS || d?.RRP || d?.Price || d?.Retail || d?.Trade || 0;
+}
+
 interface Organisation {
   id: string;
   dealerFitCategories?: string[];
@@ -447,7 +454,7 @@ export function DealerFitOptions({
                                 <div className="flex items-center gap-4 text-left">
                                     <div className="text-right text-left">
                                         <p className="text-[10px] font-black text-primary">AUD BASE</p>
-                                        <p className="font-black text-xs">${selection.items.reduce((acc, i) => acc + (i.data.sellPriceExclGst || 0), 0).toLocaleString()}</p>
+                                        <p className="font-black text-xs">${selection.items.reduce((acc, i) => acc + itemPrice(i.data), 0).toLocaleString()}</p>
                                     </div>
                                     <Button
                                         variant="ghost"

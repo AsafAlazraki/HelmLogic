@@ -22,7 +22,10 @@ test('CL380 config tabs render their MPF-driven content', async ({ page }) => {
     // was (org-slug route + URL-persisted view state, SP560 loaded).
     await page.goto(`${BASE_URL}/northside-marine/modules/highfield?tab=bmt&view=bmt&range=nQ2LE50z9Tbf2uss0Ote&model=sp560`);
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(8000);
+    // Cold-start can sit on the "Loading Precision Build" splash for a
+    // while — wait for the config tabs themselves, not a fixed delay.
+    await page.getByRole('tab', { name: /Dealer Fit Options/i }).waitFor({ timeout: 90000 });
+    await page.waitForTimeout(2000);
     await page.screenshot({ path: `${SHOTS}/00-explorer.png`, fullPage: false });
 
     for (const tab of ['Series Details', 'Motor Options', 'Fit Up', 'Trailer Options', 'Dealer Fit Options']) {
