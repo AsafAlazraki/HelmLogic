@@ -146,8 +146,27 @@ export function DealerFitOptions({
         }
       }
     }
+    // v1.33 HOTFIX (Asaf: "showing everything as empty... this should all
+    // tie to the MPF stuff, this is what drives the quotes") — the v1.31
+    // MPF import wrote 300 selections with mpf-* categoryIds that were
+    // never added to the global/org/module category config, so this view
+    // rendered only the 4 old demo categories with zero selections while
+    // the SAME selections drive every quote (the quote flow groups by the
+    // selections' own category names). The category cards are now ALSO
+    // derived from the selections themselves — this surface can never
+    // again disagree with what quoting uses.
+    const discovered: DealerFitCategory[] = [];
+    for (const sel of selections || []) {
+      const name = (sel.category || '').trim() || sel.categoryId || 'Uncategorised';
+      if (!cats.some(c => c.name.toLowerCase() === name.toLowerCase()) &&
+          !discovered.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+        discovered.push({ id: sel.categoryId || `derived-${name}`, name } as DealerFitCategory);
+      }
+    }
+    discovered.sort((a, b) => a.name.localeCompare(b.name));
+    cats.push(...discovered);
     return cats;
-  }, [allCategories, organisation, isAdmin, module, moduleOnly, linkedModules]);
+  }, [allCategories, organisation, isAdmin, module, moduleOnly, linkedModules, selections]);
 
   const activeCategory = useMemo(() => {
     return assignedCategories.find(c => c.id === activeCategoryId);
@@ -188,10 +207,13 @@ export function DealerFitOptions({
         byName.get(catName)!.push(selection);
       }
     });
-    // Merge: for synthetic module/motor IDs, look up by name
+    // Merge: for synthetic IDs (module/motor/trailer/linked/derived),
+    // look up by name. v1.33: also fall back to name-matching for ANY
+    // category whose id has no direct selections — belt-and-braces so a
+    // rename or id drift can't hide selections again.
     const merged = new Map(byId);
     assignedCategories.forEach(cat => {
-      if ((cat.id.startsWith('module-') || cat.id.startsWith('motor-') || cat.id.startsWith('trailer-')) && !merged.has(cat.id)) {
+      if (!merged.has(cat.id)) {
         const nameMatches = byName.get(cat.name.toLowerCase()) || [];
         if (nameMatches.length > 0) merged.set(cat.id, nameMatches);
       }
