@@ -221,6 +221,18 @@ export function DealerFitOptions({
     return merged;
   }, [selections, assignedCategories]);
 
+  /** v1.33 — categories WITH selections render first so the page never
+   *  opens on a wall of empty demo cards while the MPF categories sit
+   *  below the fold. */
+  const orderedCategories = useMemo(() => {
+    return [...assignedCategories].sort((a, b) => {
+      const na = (selectionsByCategory.get(a.id) || []).length;
+      const nb = (selectionsByCategory.get(b.id) || []).length;
+      if ((nb > 0 ? 1 : 0) !== (na > 0 ? 1 : 0)) return (nb > 0 ? 1 : 0) - (na > 0 ? 1 : 0);
+      return a.name.localeCompare(b.name);
+    });
+  }, [assignedCategories, selectionsByCategory]);
+
   const handleOpenBrowser = (categoryId: string) => {
     setActiveCategoryId(categoryId);
     setIsBrowserOpen(true);
@@ -379,7 +391,7 @@ export function DealerFitOptions({
             </Button>
           </div>
         )}
-        {assignedCategories.map(category => {
+        {orderedCategories.map(category => {
           const categorySelections = selectionsByCategory.get(category.id) || [];
           const nameLower = category.name.toLowerCase();
           const hasSeeder = nameLower.includes('safety') || nameLower.includes('sounder') || nameLower.includes('audio');
