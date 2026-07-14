@@ -18,21 +18,11 @@ test('CL380 config tabs render their MPF-driven content', async ({ page }) => {
     page.on('console', m => { if (m.type() === 'error') errors.push(m.text().slice(0, 200)); });
     await login(page);
 
-    // Deep-link into the Catalog Explorer with CL380 loaded (URL params
-    // restore view state per the v1.3.1 refresh-persistence work).
-    await page.goto(`${BASE_URL}/modules/${MODULE_ID}?tab=pricing`);
+    // Deep-link into the Catalog Explorer exactly the way Asaf's browser
+    // was (org-slug route + URL-persisted view state, SP560 loaded).
+    await page.goto(`${BASE_URL}/northside-marine/modules/highfield?tab=bmt&view=bmt&range=nQ2LE50z9Tbf2uss0Ote&model=sp560`);
     await page.waitForLoadState('domcontentloaded');
-    await page.waitForTimeout(6000);
-
-    // Find CL380 in the explorer (search box or card click).
-    const searchBox = page.locator('input[placeholder*="earch"]').first();
-    if (await searchBox.isVisible().catch(() => false)) {
-        await searchBox.fill('CL380');
-        await page.waitForTimeout(1500);
-    }
-    const cl380 = page.locator('text=/CL380/').first();
-    await cl380.click({ force: true }).catch(() => {});
-    await page.waitForTimeout(4000);
+    await page.waitForTimeout(8000);
     await page.screenshot({ path: `${SHOTS}/00-explorer.png`, fullPage: false });
 
     for (const tab of ['Series Details', 'Motor Options', 'Fit Up', 'Trailer Options', 'Dealer Fit Options']) {
