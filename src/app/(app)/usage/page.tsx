@@ -7,10 +7,17 @@ import { useUser } from "@/firebase/auth/use-user";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useFirestore, useMemoFirebase } from "@/firebase/provider";
 import { doc } from "firebase/firestore";
-import { ReportingDashboard } from "@/components/reporting-dashboard";
-import { RecentActivityFeed } from "@/components/recent-activity-feed";
+import { UsageReportingWorkspace } from "@/components/usage-reporting-workspace";
 
-export default function ReportingPage() {
+/**
+ * v1.33 (Epic 14) — Usage & Activity gets its own sidebar page (Asaf:
+ * "that is what I want in its own tab"). Sessions, active-vs-idle time,
+ * every click / field / page view / error, coverage of what each person
+ * has and has NOT touched, per-session traces, filters + PDF export.
+ * Separate from /reporting so opening it never pays the Business
+ * dashboard's heavy cross-module queries.
+ */
+export default function UsagePage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -20,27 +27,17 @@ export default function ReportingPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold">Reporting</h1>
+        <h1 className="text-2xl font-semibold">Usage &amp; Activity</h1>
         <BreadcrumbNav />
       </div>
 
       {organisationId ? (
-        <div className="space-y-4">
-          {/* v1.21 (Story 8.2.1 + 8.1.4) — Reporting & Analytics dashboard +
-              cross-module quotes view. */}
-          <ReportingDashboard organisationId={organisationId} />
-          {/* v1.22 (Story 1.7.3) — Recent activity feed. */}
-          <RecentActivityFeed />
-          {/* v1.33 — Usage & Activity telemetry lives on its own sidebar
-              page at /usage (it briefly lived here as a tab; moved so
-              this page's heavy business queries never sit in front of
-              the monitoring reports). */}
-        </div>
+        <UsageReportingWorkspace organisationId={organisationId} />
       ) : (
         <Card>
           <CardContent className="flex items-center justify-center py-20 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            <span className="text-xs">Loading reporting…</span>
+            <span className="text-xs">Loading usage &amp; activity…</span>
           </CardContent>
         </Card>
       )}

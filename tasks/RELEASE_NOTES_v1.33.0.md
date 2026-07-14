@@ -11,24 +11,34 @@
 - **1 production rules publish** (telemetry paths + locked-quote soft-delete + `isLocked` hardening), verified live against real quotes after publish
 - **Gates**: TypeScript clean · FFR-33 SP560 proof GREEN on the new 7-step flow (**$103,731 exact**, customer PDF re-rendered) · usage-reporting browser smoke green (sessions AND events captured) · 58 files, +1,917/−508 vs v1.32
 
-## 1. Usage & Activity Reporting (Epic 14, story 14.1.1)
+## 1. Usage & Activity Reporting (Epic 14, story 14.1.1) — own sidebar page
 
-The receipts system: who actually logs in, how long they are genuinely active versus idle with the tab open, and every click, page view and domain action — filterable and exportable.
+The receipts system: who actually logs in, how long they are genuinely active versus idle with the tab open, and **every tiny thing they do and don't do** — filterable, traceable per session, and exportable. Lives at **`/usage` as its own sidebar item** (management-gated like Settings), deliberately separate from `/reporting` so opening it never pays the Business dashboard's heavy cross-module queries.
 
-### Telemetry engine (`src/lib/telemetry.ts` + `telemetry-provider.tsx`)
+### Telemetry engine (`src/lib/telemetry.ts` + `telemetry-provider.tsx`) — extreme capture
 - One session doc per app-open at `organisations/{orgId}/activitySessions/{id}` — startedAt / lastSeenAt / activeMs / idleMs. "Active" = tab visible AND pointer/keyboard/scroll input within the last 60s; visible-but-silent time accrues as idle; hidden tabs accrue neither.
-- Batched events at `organisations/{orgId}/activityEvents/{id}` — `nav` (route changes, including the landing route), `click` (labeled interactive elements) and `action` (explicit domain events via `logAction()`). 15s flush cadence, 40/batch, flush-on-tab-exit.
-- Everything is fire-and-forget: a failed telemetry write can never break the app.
+- Batched events at `organisations/{orgId}/activityEvents/{id}` across **seven kinds**:
+  - `nav` — every route landed (including the fresh-load landing route)
+  - `dwell` — every route left: seconds on page + max scroll depth
+  - `click` — **every click**, anywhere: interactive elements report their label, dead-zone clicks report the nearest readable text
+  - `input` — every form field focused or changed, identified by its label/placeholder/name — **values are never captured** (passwords excluded entirely)
+  - `action` — explicit domain events via `logAction()`
+  - `visibility` — tab hidden/visible, window focus/blur
+  - `error` — uncaught JS errors + unhandled promise rejections, message + source
+- 15s flush cadence, 40/batch, flush-on-tab-exit; everything fire-and-forget — a failed telemetry write can never break or slow the app.
 - **Test-account tagging**: sessions and events from the shared test login (billh) are stamped `isTestAccount`. When the dedicated test login changes, update `TEST_ACCOUNT_EMAILS` in `telemetry.ts` — history keeps its stamps.
 - Fix landed mid-cycle: the landing nav event used to be dropped on every fresh page load (the provider logged it before the org profile resolved); the engine now records the landing route itself at start.
 
-### Reports (`/reporting` → Usage & Activity tab)
-- Filters: date range (7/30/90 days), person, event type, free-text search, and an **Include test accounts** switch (off by default — Bill's testing does not pollute the numbers).
-- KPI tiles (active users / sessions / active hours / idle hours / actions), a daily active-vs-idle bar chart, the **"Who actually uses it"** leaderboard (click a row to focus that person), and an event explorer over the live stream.
-- **Export PDF** renders the current filtered view (filter header, KPI row, per-person table, event feed) on the same navy/gold @react-pdf pipeline as the customer documents.
+### Reports (`/usage` — Usage & Activity)
+- Filters: date range (7/30/90 days — defaults to 7 for a fast first paint), person, event kind, free-text search, and an **Include test accounts** switch (off by default — Bill's testing does not pollute the numbers).
+- KPI tiles (active users / sessions / active hours / idle hours / events / **errors seen**), a daily active-vs-idle bar chart, and the **"Who actually uses it"** leaderboard (click a row to focus that person).
+- **Top pages** — views + total time-on-page per route, from the dwell stream.
+- **Coverage matrix** — people × app areas (Dashboard, Quoting, Customers, Pipeline, Contracts, My Work, Catalog, Reporting, Feature Tracking, Settings…): a green count where they've been, a **red dash where they have never gone** — the "they clearly don't use it" receipt.
+- **Session drill-down** — every session with person, start, length, active/idle minutes, event count and device; click one to expand its **full second-by-second trace**.
+- **Event explorer** over the raw stream, and **Export PDF** rendering the current filtered view on the same navy/gold @react-pdf pipeline as the customer documents.
 
 ### Proof
-The browser smoke is its own telemetry subject: it signs in, browses, waits out a flush cycle, then opens the report and asserts its own freshly-captured session AND events render, then exports the PDF. Evidence: `tasks/test-evidence/usage-reporting/`.
+The browser smoke is its own telemetry subject: it signs in, browses, waits out a flush cycle, then opens `/usage` and asserts its own freshly-captured session AND events render, then exports the PDF. Evidence: `tasks/test-evidence/usage-reporting/`.
 
 ## 2. Rules publish (applied to production mid-cycle)
 

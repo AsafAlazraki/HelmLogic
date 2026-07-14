@@ -34,8 +34,8 @@
 
 **v1.33 new Firestore surface (Epic 14 — Usage Reporting telemetry):**
 - `organisations/{orgId}/activitySessions/{sessionId}` — one doc per app-open: `{ uid, name, email, isTestAccount, startedAt, lastSeenAt, activeMs, idleMs, userAgent, path, endedAt? }`. Heartbeat every 60s (`increment()` on activeMs/idleMs); read/create/update signed-in, **delete admin-only** (nobody scrubs their own history).
-- `organisations/{orgId}/activityEvents/{eventId}` — batched stream: `{ ts, uid, name, sessionId, type: 'nav'|'click'|'action', label, path, meta?, isTestAccount }`. 15s flush, 40/batch, fire-and-forget; read/create signed-in, update/delete admin-only.
-- Engine: `src/lib/telemetry.ts` (TEST_ACCOUNT_EMAILS — update when the new test login lands) + `src/components/telemetry-provider.tsx` (mounted in the app layout). Consumers: `usage-reporting-workspace.tsx` + `activity-report-pdf.tsx` on `/reporting`.
+- `organisations/{orgId}/activityEvents/{eventId}` — batched stream: `{ ts, uid, name, sessionId, type: 'nav'|'dwell'|'click'|'input'|'action'|'visibility'|'error', label, path, meta?, isTestAccount }` (dwell carries `meta.ms` + `meta.scrollPct`; input events carry field identifiers, NEVER values). 15s flush, 40/batch, fire-and-forget; read/create signed-in, update/delete admin-only.
+- Engine: `src/lib/telemetry.ts` (TEST_ACCOUNT_EMAILS — update when the new test login lands) + `src/components/telemetry-provider.tsx` (mounted in the app layout). Consumers: `usage-reporting-workspace.tsx` + `activity-report-pdf.tsx` on the dedicated `/usage` page (sidebar item, gated like Settings via can_access_settings).
 - v1.33 quote payload additions: `adminDetails.regoNumbers {boat, trailer}` + `adminDetails.driversLicenceUrl` (Administration step); `dealerFitSelections/{id}.imageUrl` (manual DFO image).
 
 **v1.10 new Firestore surface (Phase B — Fit-Up admin):**

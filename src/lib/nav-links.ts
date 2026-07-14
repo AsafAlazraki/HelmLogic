@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Shield, Warehouse, Building2, Settings, Blocks, Coins, Bot, Lightbulb, Users, FileSignature, BarChart3, Briefcase, GitBranch } from 'lucide-react';
+import { LayoutDashboard, Shield, Warehouse, Building2, Settings, Blocks, Coins, Bot, Lightbulb, Users, FileSignature, BarChart3, Briefcase, GitBranch, Activity } from 'lucide-react';
 
 export type SubNavLink = {
   href: string;
@@ -31,6 +31,10 @@ export const navLinks: NavLink[] = [
     ],
   },
   { href: '/pricing-manager', label: 'Catalog Manager', icon: Coins },
+  // v1.33 (Epic 14) — Usage & Activity as its own menu item. Gated in
+  // app-sidebar like Settings (can_access_settings) so salespeople
+  // don't monitor each other; management sees everything.
+  { href: '/usage', label: 'Usage & Activity', icon: Activity },
   { href: '/feature-tracking', label: 'Feature Tracking', icon: Lightbulb },
   { href: '/manage', label: 'Settings', icon: Settings },
   {

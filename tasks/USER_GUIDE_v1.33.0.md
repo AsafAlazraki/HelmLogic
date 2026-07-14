@@ -6,8 +6,10 @@
 
 | What you want to do | Where | Section |
 |---|---|---|
-| See who actually uses HelmLogic — sessions, active time, every click | Reporting → Usage & Activity | 1 |
-| Export a usage report as a PDF | Reporting → Usage & Activity → Export PDF | 1 |
+| See who actually uses HelmLogic — sessions, active time, every click | Sidebar → **Usage & Activity** | 1 |
+| See what someone has NEVER touched | Usage & Activity → Coverage | 1 |
+| Replay a person's session second by second | Usage & Activity → Sessions → click a row | 1 |
+| Export a usage report as a PDF | Usage & Activity → Export PDF | 1 |
 | Remove a sent quote from your lists (and get it back) | Proposals / My Work → quote menu | 2 |
 | Do the paperwork on a quote (rego numbers, warranty, trade-in, licence) | Quote flow → Step 6 ADMINISTRATION | 3 |
 | Remove ONE dealer-fit option instead of clearing all | Catalog → Dealer Fit rows | 4 |
@@ -20,15 +22,19 @@
 
 ## 1. Usage & Activity reports
 
-**Reporting** now has two tabs. **Business** is the dashboard you know. **Usage & Activity** is new: it shows who logged on, how long they were genuinely active versus idle with the tab open, and every click, page view and action — captured automatically from the moment this release went live.
+**Usage & Activity** is its own item in the left sidebar (visible to management — same access as Settings). It shows who logged on, how long they were genuinely active versus idle with the tab open, and every tiny thing they did: every click anywhere on a page, every form field they touched (never what they typed), every page view with time-on-page and how far they scrolled, when the tab lost focus, and any errors that happened in front of them.
 
-**To do it:** open **Reporting → Usage & Activity**. Pick a date range (7/30/90 days), a person, an event type, or type into the search box. Click a row in **Who actually uses it** to focus that person. The event explorer at the bottom lists the raw stream.
+**To do it:** open **Usage & Activity** in the sidebar. Pick a date range (defaults to the last 7 days), a person, an event kind, or type into the search box. Click a row in **Who actually uses it** to focus that person.
 
-**Test accounts:** activity from the shared test login is tagged TEST and **excluded by default** — flip the *Include test accounts* switch to see it. So "I used it and did this" claims can be checked against the record, and our own testing never pollutes the numbers.
+**What they DON'T do:** the **Coverage** panel is a grid of people × app areas — a green count where they've been, a **red dash where they have never gone** in the selected range. That's the receipt for "I use it all the time."
+
+**Full traceability:** the **Sessions** panel lists every sitting (person, start, length, active vs idle minutes, device). Click a session to expand its complete second-by-second trace — every page, click, field and error in order.
+
+**Test accounts:** activity from the shared test login is tagged TEST and **excluded by default** — flip the *Include test accounts* switch to see it, so our own testing never pollutes the numbers.
 
 **PDF:** the **Export PDF** button renders exactly what you have filtered — period, people, KPIs, per-person table and the event feed — as a branded document you can table in a meeting.
 
-**What this affects:** nothing about how anyone works — capture is automatic and invisible, and it can never slow down or break the app.
+**What this affects:** nothing about how anyone works — capture is automatic and invisible, values typed into fields are never recorded, and telemetry can never slow down or break the app.
 
 ## 2. Removing (and restoring) sent quotes
 
@@ -72,7 +78,7 @@ To embed the quote flow publicly (the "build a boat" idea for the NSM website), 
 
 ## How the usage telemetry works
 
-Every app-open starts a session. While the tab is visible and you're touching the keyboard/mouse, time accrues as **active**; visible but untouched accrues as **idle (tab open)**; a hidden tab accrues nothing. Clicks on buttons/links/tabs, page navigations and key actions are captured with labels, batched, and written every 15 seconds. All of it is org-scoped, admins are the only ones who can delete history, and a telemetry failure can never affect the app itself.
+Every app-open starts a session. While the tab is visible and you're touching the keyboard/mouse, time accrues as **active**; visible but untouched accrues as **idle (tab open)**; a hidden tab accrues nothing. Seven kinds of events are captured with labels and batched every 15 seconds: page views, time-on-page with scroll depth, every click (with the text of what was clicked), field focus/changes (field names only — never the values, and password fields are excluded entirely), key domain actions, tab focus/visibility changes, and errors. All of it is org-scoped, only admins can delete history, and a telemetry failure can never affect the app itself.
 
 ## What this release did NOT ship (deferred)
 

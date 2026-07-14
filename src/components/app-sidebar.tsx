@@ -142,6 +142,9 @@ export function AppSidebar() {
           return !!userPermissions.can_access_pricing_manager || isMD;
         }
         if (link.label === 'Settings') return isOrgMember && !!userPermissions.can_access_settings;
+        // v1.33 — Usage & Activity monitoring: management-only, same
+        // gate as Settings.
+        if (link.label === 'Usage & Activity') return isOrgMember && !!userPermissions.can_access_settings;
         // Feature Tracking is internal-only — sub-dealer orgs (those
         // with parentOrganisationId set) must not see the product
         // roadmap. Spec §5 / v1.6 design §3. Defense in depth: page

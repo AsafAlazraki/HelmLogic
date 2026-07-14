@@ -24,10 +24,10 @@ test('telemetry captures a session and the reports render it', async ({ page }) 
     // Let the 15s flush + first heartbeat land.
     await page.waitForTimeout(20000);
 
-    // Open the reports.
-    await page.goto(`${BASE_URL}/reporting`);
+    // Open the reports — own sidebar page since the v1.33 close-out
+    // (was a tab on /reporting for one dev cycle).
+    await page.goto(`${BASE_URL}/usage`);
     await page.waitForLoadState('domcontentloaded');
-    await page.getByRole('tab', { name: /Usage & Activity/i }).click();
     await page.waitForTimeout(4000);
 
     // Include test accounts (the harness user IS the test account).
