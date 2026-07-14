@@ -49,7 +49,7 @@ export interface ReleaseWindow {
  * overwrote `{shipped: true}` to `{}`, the SHIPPED pill never rendered
  * on the Roadmap — caught by the user "why isn't 1.10 green?")
  */
-const FORWARD_RUNWAY_START = 33;
+const FORWARD_RUNWAY_START = 34;
 const FORWARD_RUNWAY_END = 40;
 function buildV1MinorReleases(): Record<string, ReleaseWindow> {
     const out: Record<string, ReleaseWindow> = {};
@@ -266,6 +266,18 @@ export const RELEASE_WINDOWS: Record<string, ReleaseWindow> = {
     // Proof: Mark's SP560 rebuilt in-browser + customer PDF at the sheet's
     // own number. See tasks/RELEASE_NOTES_v1.32.0.md.
     'v1.32': { shipped: true },
+    // v1.33 — Submitted-backlog burn-down + Usage Reporting. Epic 14
+    // telemetry (activitySessions + activityEvents, active-vs-idle time,
+    // every click/nav/action, test-account tagging, Reporting → Usage &
+    // Activity tab with filters + PDF export) + 11 operator asks from the
+    // submitted backlog: per-item dealer-fit remove, Pre-Rig removal,
+    // PDF Factory Options heading + Dealer → org-name rename, PDF section
+    // whole-row drag, rego sticker pricing, larger option text, DFO image
+    // upload, Factory Configurator on every brand editor, per-section
+    // rebates, ADMINISTRATION quote step (flow is 7 steps now), public
+    // Build-A-Boat cash-only pricing lock. Rules published mid-cycle
+    // (telemetry paths + locked-quote soft-delete + isLocked hardening).
+    'v1.33': { shipped: true },
     ...buildV1MinorReleases(),
 };
 
