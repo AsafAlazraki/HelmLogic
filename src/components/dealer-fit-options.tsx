@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
+import { classifySection } from '@/lib/step5-curation';
 
 interface DealerFitCategory {
   id: string;
@@ -229,14 +230,23 @@ export function DealerFitOptions({
     return merged;
   }, [selections, assignedCategories]);
 
-  /** v1.33 — categories WITH selections render first so the page never
-   *  opens on a wall of empty demo cards while the MPF categories sit
-   *  below the fold. */
+  /** v1.33 — ordering honours the MPF's own show-on-quote signifiers
+   *  (same classifier the quote flow uses): genuine accessory categories
+   *  with selections first, then empty ones, then the MPF-internal /
+   *  Excel-artifact sections (### markers, OBSOLETE lists, PD packs,
+   *  rigging-kit pools, workshop ops) LAST — they exist because the MPF
+   *  needs one flat dropdown source, not because NSM wants them offered. */
   const orderedCategories = useMemo(() => {
+    const rank = (c: DealerFitCategory) => {
+      const cls = classifySection(c.name);
+      const internal = cls === 'hidden' || cls === 'workshop';
+      const populated = (selectionsByCategory.get(c.id) || []).length > 0;
+      if (internal) return 2;
+      return populated ? 0 : 1;
+    };
     return [...assignedCategories].sort((a, b) => {
-      const na = (selectionsByCategory.get(a.id) || []).length;
-      const nb = (selectionsByCategory.get(b.id) || []).length;
-      if ((nb > 0 ? 1 : 0) !== (na > 0 ? 1 : 0)) return (nb > 0 ? 1 : 0) - (na > 0 ? 1 : 0);
+      const ra = rank(a), rb = rank(b);
+      if (ra !== rb) return ra - rb;
       return a.name.localeCompare(b.name);
     });
   }, [assignedCategories, selectionsByCategory]);
@@ -421,6 +431,11 @@ export function DealerFitOptions({
                           {categorySelections.length > 0 && (
                             <span className="text-primary/70"> · ${categorySelections.reduce((acc, s) => acc + s.items.reduce((a, i) => a + itemPrice(i.data), 0), 0).toLocaleString()} total</span>
                           )}
+                          {(() => { const cls = classifySection(category.name); return (cls === 'hidden' || cls === 'workshop') ? (
+                            <span className="ml-2 inline-block px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 normal-case tracking-normal font-bold" title="MPF-internal section (Excel dropdown source / obsolete list / workshop ops) — the quote flow's pickers hide or reroute it; composition still uses its data where needed (e.g. rigging kits price the motor bundle)">
+                              MPF internal · auto-hidden on quotes
+                            </span>
+                          ) : null; })()}
                         </CardDescription>
                     </div>
                   </button>

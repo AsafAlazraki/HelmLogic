@@ -88,7 +88,20 @@ The payload carries the new fields through **both** ends of the pipeline (flow p
 
 All nine quote-flow test specs were updated for the 7-step traversal, and the FFR-33 SP560 proof re-ran GREEN end-to-end on the new flow — **$103,731 exact** on screen and on a freshly rendered customer PDF.
 
-## 6. Roadmap triage
+## 6. Catalog Explorer config-tab hotfix (field-reported at release close)
+
+Asaf's dev test found the boat-module Catalog Explorer's **Dealer Fit Options tab rendering only 4 empty demo-category cards** while hundreds of MPF-imported selections (rigging kits, add-on kits, obsolete lists…) exist and drive every quote. Root cause: the v1.31 MPF import wrote selections under `mpf-*` categoryIds that were never added to the category config this tab drew its cards from; the quote flow groups by the selections' own category names, so quoting never broke — the admin view and the quote engine were reading different layers. Data verified intact by direct read-back before any code change.
+
+Fixes, all browser-verified on SP560:
+- Category cards are now **derived from the selections themselves** (union with the configured categories) — the surface can no longer disagree with what quoting uses. Name-fallback lookup hardened for any card id without direct hits.
+- Row prices resolve through the **same 'Act Sell'-first chain the quote flow charges** (they read $0 before — this view only knew `sellPriceExclGst`).
+- **Sections are collapsible** (Asaf's ask): big MPF categories and empty demo categories start closed, header shows count + category total.
+- Ordering honours the MPF's own show-on-quote signifiers via the quote flow's `classifySection`: genuine accessory categories first, **MPF-internal / Excel-artifact sections (### markers, OBSOLETE lists, PD packs, rigging pools, workshop ops) last**, each badged "MPF internal · auto-hidden on quotes".
+- Motor Options and Trailer Options tabs were probed in the same pass and render correctly (SP560: 4 compatible Yamaha layouts, 2 trailer assignments).
+
+The signifier system itself (what the MPF boat page marks as want-shown vs what exists due to Excel limitations, and where HelmLogic honours each) is documented in `tasks/mpf-boat-page-signifiers.md`.
+
+## 7. Roadmap triage
 
 All 26 items in the Submitted column were dispositioned (`scripts/seed-v133-triage.py`): 13 closed as shipped-with-evidence, 12 targeted and built in this release, 1 held pending a product ruling (splitting Highfield models per console configuration — restructures 85 models, awaiting Asaf). Epic 14 (Usage Reporting) seeded with story 14.1.1.
 
