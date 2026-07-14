@@ -289,7 +289,12 @@ const INLINE_PARSERS: { re: RegExp; transform: (m: RegExpExecArray) => InlineTok
 function tokenizeInline(html: string): InlineToken[] {
     const tokens: InlineToken[] = [];
     let cursor = 0;
-    const TAG = /<(\/)?(strong|b|em|i|a|br)(?:\s[^>]*)?\/?>/gi;
+    // v1.33 (Mark: "weird control codes" in the PDF's Finance/Insurance
+    // block) — any tag OUTSIDE this list used to fall through as literal
+    // text. TipTap also emits u/s/span/mark/code/sub/sup (underline,
+    // strikethrough, colour spans): consume them all; unknown styling
+    // renders as plain text rather than as visible markup.
+    const TAG = /<(\/)?(strong|b|em|i|a|br|u|s|del|ins|mark|code|span|sub|sup)(?:\s[^>]*)?\/?>/gi;
     const stack: { bold: boolean; italic: boolean }[] = [{ bold: false, italic: false }];
     let m: RegExpExecArray | null;
     TAG.lastIndex = 0;
@@ -334,7 +339,15 @@ function decodeHtml(s: string): string {
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
         .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'");
+        .replace(/&#39;/g, "'")
+        // v1.33 — numeric entities (smart quotes &#8217;, dashes &#8211;,
+        // zero-width &#8203; …) rendered literally in the PDF before.
+        .replace(/&#(\d+);/g, (_, code) => {
+            const n = Number(code);
+            if (n === 8203 || n === 65279) return ''; // zero-width chars
+            return String.fromCodePoint(n);
+        })
+        .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)));
 }
 
 function renderInline(html: string, baseStyle: Style): ReactNode {

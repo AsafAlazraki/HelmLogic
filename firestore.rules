@@ -49,6 +49,20 @@ service cloud.firestore {
     }
 
     /**
+     * v1.33 (Mark: "can't remove a quote from my list") — soft-delete /
+     * archive guard. Removing a quote from lists sets `deletedAt` (the doc
+     * and its sub-collections stay for audit). A LOCKED (sent) quote could
+     * never take this update because deletedAt wasn't on any whitelist —
+     * the exact failure Mark hit. Restore (deletedAt -> null) rides the
+     * same guard.
+     */
+    function onlySoftDeleteFieldsChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'deletedAt', 'lastUpdateAt', 'updatedAt'
+      ]);
+    }
+
+    /**
      * v1.9 (story 1.4.1) — Quote lifecycle-state guard. Returns true when
      * an update ONLY touches lifecycle-state fields, so a LOCKED quote can
      * still transition through its sales journey (Sent → Viewed → Accepted
@@ -111,11 +125,18 @@ service cloud.firestore {
         // by writing arbitrary fields directly to Firestore.
         allow read: if isSignedIn();
         allow create, delete: if isSignedIn();
+        // v1.33 hardening: docs created before the lock feature (or by
+        // paths that never set isLocked) have NO isLocked field, and
+        // `resource.data.isLocked` ERRORS on a missing key — poisoning the
+        // not-locked branch and denying legitimate draft updates unless
+        // they happened to match a whitelist. get() with a default makes
+        // the lock check total.
         allow update: if isSignedIn() && (
-          !(resource.data.isLocked == true)
+          !(resource.data.get('isLocked', false) == true)
           || onlyLockFieldsChanged()
           || onlyLifecycleFieldsChanged()
           || onlySharePointFieldsChanged()
+          || onlySoftDeleteFieldsChanged()
         );
         match /service_items/{itemId} {
           allow read, write: if isSignedIn();
@@ -432,6 +453,20 @@ service cloud.firestore {
       // gating, consistent with the rest of the org subcollection pattern.
       match /emailTemplates/{templateId} {
         allow read, write: if isSignedIn();
+      }
+      // v1.33 (Epic 14 — Usage Reporting) — telemetry. Sessions carry
+      // active/idle time per app-open; events are the batched click/nav/
+      // action stream. Any signed-in org member writes their own capture
+      // and reads the reports (org-scoped by path). Updates allowed so the
+      // session heartbeat can increment counters; deletes admin-only so
+      // nobody can scrub their own usage history.
+      match /activitySessions/{sessionId} {
+        allow read, create, update: if isSignedIn();
+        allow delete: if isAdmin();
+      }
+      match /activityEvents/{eventId} {
+        allow read, create: if isSignedIn();
+        allow update, delete: if isAdmin();
       }
       // v1.9 (story 1.3.3) — SharePoint integration config. Single doc
       // per org at `default`. Public identifiers only (tenantId, clientId,

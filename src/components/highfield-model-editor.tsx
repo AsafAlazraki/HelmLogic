@@ -1297,8 +1297,16 @@ function RulesSection({ model, modelCode }: { model: any; modelCode: string }) {
     );
 }
 
-export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }: { model: any, vendorId: string, rangeId: string, isModuleView?: boolean }) {
-    const { control, watch, setValue } = useFormContext<ModelFormData>();
+/**
+ * v1.33 (Bill: "ability to add extra headings in Catalog Explorer -
+ * Factory Configurator, e.g. Paint Options - Cockpit Options") — the
+ * configurator (CREATE CATEGORY + per-category feature groups) used to
+ * be welded into the Highfield editor only, so every other brand's
+ * editor had NO way to author optional-feature headings at all. It's
+ * now a shared section mounted by all five brand editors.
+ */
+export function FactoryConfiguratorSection({ model, vendorId, rangeId }: { model: any, vendorId?: string, rangeId?: string }) {
+    const { control } = useFormContext<ModelFormData>();
     const { fields: optionalFeatureFields, append: appendOptionalFeature, remove: removeOptionalFeature } = useFieldArray({ control, name: "optionalFeatures" });
     const watchedOptionalFeatures = useWatch({ control, name: 'optionalFeatures' }) || [];
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -1310,10 +1318,10 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
     const categorizedFeatures = useMemo(() => {
         const features = optionalFeatureFields.map((field, idx) => ({ field, idx, data: watchedOptionalFeatures[idx] }));
         const groups: Record<string, typeof features> = {};
-        features.forEach(item => { 
-            const cat = item.data?.category || 'General Options'; 
-            if (!groups[cat]) groups[cat] = []; 
-            groups[cat].push(item); 
+        features.forEach(item => {
+            const cat = item.data?.category || 'General Options';
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(item);
         });
         return Object.entries(groups).sort(([a], [b]) => {
             if (a === 'Consoles') return -1; if (b === 'Consoles') return 1;
@@ -1323,6 +1331,56 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
         });
     }, [optionalFeatureFields, watchedOptionalFeatures]);
 
+    return (
+        <Collapsible className="group/config overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
+            <CollapsibleCardHeader title="Factory Configurator" />
+            <CollapsibleContent>
+                <div className="p-6 space-y-8 text-left">
+                    <div className="inline-flex items-center p-1.5 bg-white rounded-full border-2 shadow-sm focus-within:border-primary/40 transition-colors w-full text-left">
+                        <Input
+                            placeholder="CREATE CATEGORY..."
+                            value={newCategoryName}
+                            onChange={e => setNewCategoryName(e.target.value)}
+                            className="h-8 flex-1 border-none bg-transparent shadow-none font-black text-[10px] uppercase tracking-[0.2em] focus-visible:ring-0 pl-4"
+                        />
+                        <Button
+                            type="button"
+                            size="sm"
+                            className="h-8 px-5 rounded-full font-black uppercase text-[9px] tracking-widest bg-primary text-white hover:scale-105 transition-transform shrink-0"
+                            disabled={!newCategoryName.trim()}
+                            onClick={() => {
+                                if(newCategoryName.trim()) {
+                                    appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: newCategoryName, imageUrl: null, code: '', applicableVariantIds: [], associatedSkus: [], associatedSeatId: null, isStandard: false });
+                                    setNewCategoryName('');
+                                }
+                            }}
+                        >
+                            CREATE
+                        </Button>
+                    </div>
+
+                    <div className="space-y-10 text-left">
+                        {categorizedFeatures.map(([cat, items]) => (
+                            <Collapsible key={cat} defaultOpen className="space-y-4 text-left">
+                                <div className="flex items-center justify-between border-b-2 border-primary/5 pb-2 px-1 text-left">
+                                    <div className="flex items-center gap-2 text-left">
+                                        <CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 rounded-full border shadow-sm group-data-[state=open]:bg-muted"><ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger>
+                                        <span className="font-black text-[9px] uppercase tracking-[0.15em] text-slate-900 italic">{cat}</span>
+                                        <Badge className="bg-primary/10 text-primary border-none font-black text-[7px] h-4 px-1.5">{items.length}</Badge>
+                                    </div>
+                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat === 'General Options' ? null : cat, imageUrl: null, code: '', applicableVariantIds: [], associatedSkus: [], associatedSeatId: null, isStandard: false })}><Plus className="h-3 w-3" /></Button>
+                                </div>
+                                <CollapsibleContent><div className="grid gap-2 animate-in slide-in-from-top-1 duration-200 text-left">{items.map(item => (<OptionalFeatureItem key={item.field.id} index={item.idx} remove={removeOptionalFeature} categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'General Options' && n !== 'Consoles' && n !== 'Seats')} variants={variants ?? []} allFeatures={watchedOptionalFeatures} />))}</div></CollapsibleContent>
+                            </Collapsible>
+                        ))}
+                    </div>
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
+    );
+}
+
+export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }: { model: any, vendorId: string, rangeId: string, isModuleView?: boolean }) {
     return (
         <div className="space-y-8 pb-32 text-left">
             <div className="grid grid-cols-1 lg:grid-cols-7 gap-8 items-start text-left">
@@ -1338,51 +1396,7 @@ export function HighfieldModelEditor({ model, vendorId, rangeId, isModuleView }:
                 <div className="lg:col-span-3 space-y-8 min-w-0 text-left">
                     <VisualAssetsCard model={model} isModuleView={!!isModuleView} />
 
-                    <Collapsible className="group/config overflow-hidden rounded-xl border bg-card shadow-sm text-left" defaultOpen>
-                        <CollapsibleCardHeader title="Factory Configurator" />
-                        <CollapsibleContent>
-                            <div className="p-6 space-y-8 text-left">
-                                <div className="inline-flex items-center p-1.5 bg-white rounded-full border-2 shadow-sm focus-within:border-primary/40 transition-colors w-full text-left">
-                                    <Input 
-                                        placeholder="CREATE CATEGORY..." 
-                                        value={newCategoryName} 
-                                        onChange={e => setNewCategoryName(e.target.value)} 
-                                        className="h-8 flex-1 border-none bg-transparent shadow-none font-black text-[10px] uppercase tracking-[0.2em] focus-visible:ring-0 pl-4" 
-                                    />
-                                    <Button 
-                                        type="button" 
-                                        size="sm" 
-                                        className="h-8 px-5 rounded-full font-black uppercase text-[9px] tracking-widest bg-primary text-white hover:scale-105 transition-transform shrink-0" 
-                                        disabled={!newCategoryName.trim()} 
-                                        onClick={() => {
-                                            if(newCategoryName.trim()) { 
-                                                appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: newCategoryName, imageUrl: null, code: '', applicableVariantIds: [], associatedSkus: [], associatedSeatId: null, isStandard: false }); 
-                                                setNewCategoryName(''); 
-                                            }
-                                        }}
-                                    >
-                                        CREATE
-                                    </Button>
-                                </div>
-
-                                <div className="space-y-10 text-left">
-                                    {categorizedFeatures.map(([cat, items]) => (
-                                        <Collapsible key={cat} defaultOpen className="space-y-4 text-left">
-                                            <div className="flex items-center justify-between border-b-2 border-primary/5 pb-2 px-1 text-left">
-                                                <div className="flex items-center gap-2 text-left">
-                                                    <CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6 rounded-full border shadow-sm group-data-[state=open]:bg-muted"><ChevronDown className="h-3 w-3 transition-transform duration-200 group-data-[state=open]:rotate-180" /></Button></CollapsibleTrigger>
-                                                    <span className="font-black text-[9px] uppercase tracking-[0.15em] text-slate-900 italic">{cat}</span>
-                                                    <Badge className="bg-primary/10 text-primary border-none font-black text-[7px] h-4 px-1.5">{items.length}</Badge>
-                                                </div>
-                                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => appendOptionalFeature({ id: `feat-${Date.now()}`, name: '', category: cat === 'General Options' ? null : cat, imageUrl: null, code: '', applicableVariantIds: [], associatedSkus: [], associatedSeatId: null, isStandard: false })}><Plus className="h-3 w-3" /></Button>
-                                            </div>
-                                            <CollapsibleContent><div className="grid gap-2 animate-in slide-in-from-top-1 duration-200 text-left">{items.map(item => (<OptionalFeatureItem key={item.field.id} index={item.idx} remove={removeOptionalFeature} categories={categorizedFeatures.map(([name]) => name).filter(n => n !== 'General Options' && n !== 'Consoles' && n !== 'Seats')} variants={variants ?? []} allFeatures={watchedOptionalFeatures} />))}</div></CollapsibleContent>
-                                        </Collapsible>
-                                    ))}
-                                </div>
-                            </div>
-                        </CollapsibleContent>
-                    </Collapsible>
+                    <FactoryConfiguratorSection model={model} vendorId={vendorId} rangeId={rangeId} />
 
                     <DocumentsSection />
                     <RulesSection model={model} modelCode={model.modelCode} />

@@ -408,9 +408,10 @@ export function TrailersTableView({ canEdit = true, organisationId, initialSearc
                             </Button>
                         </div>
                     )}
-                    <div className="overflow-x-auto border-2 rounded-xl">
+                    {/* v1.33 (Mark: catalog scroll bug) — contained scroll + frozen headers. */}
+                    <div className="overflow-auto max-h-[70vh] border-2 rounded-xl">
                         <table className="w-full text-xs">
-                            <thead className="bg-slate-50 border-b-2">
+                            <thead className="bg-slate-50 border-b-2 sticky top-0 z-10 shadow-sm">
                                 <tr>
                                     <th className="w-8 px-2 py-2">
                                         {/* v1.17 (3.10.1) — select-all-filtered header checkbox */}

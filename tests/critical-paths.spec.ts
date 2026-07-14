@@ -143,8 +143,8 @@ test.describe('Critical Paths (Smoke)', () => {
       await page.waitForTimeout(4000);
     }
 
-    // Attempt to advance through the steps by clicking "Next Step" up to 5 times.
-    for (let i = 0; i < 5; i++) {
+    // Attempt to advance through the steps by clicking "Next Step" up to 6 times (7 steps since v1.33).
+    for (let i = 0; i < 6; i++) {
       const nextBtn = page.locator('button:has-text("Next Step")').first();
       const visible = await nextBtn.isVisible().catch(() => false);
       if (!visible) break;

@@ -98,10 +98,13 @@ test('CL380 fully specced', async ({ page }) => {
     }
   }
 
-  // Step 6 summary
+  // Step 6 Administration (new v1.33) then Step 7 summary
+  await page.locator('button:has-text("Next Step")').first().click({ force: true });
+  await page.waitForTimeout(2000);
+  await shot('s07-administration', true);
   await page.locator('button:has-text("Next Step")').first().click({ force: true });
   await page.waitForTimeout(3500);
-  await shot('s07-summary', true);
+  await shot('s07b-summary', true);
 
   // Finalize
   await page.locator('button:has-text("Finalize Project")').first().click({ force: true });

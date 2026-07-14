@@ -152,7 +152,8 @@ async function driveBrandQuote(page: Page, opts: {
     expect(onDealerFit, `${opts.brand}: Step 5 Dealer Fit must mount`).toBe(true);
     await shot(page, `${opts.shotPrefix}-step5`);
 
-    // ── Step 6: summary totals compute ──
+    // ── Step 6 Administration (v1.33) → Step 7: summary totals compute ──
+    await nextStep(page);
     await nextStep(page);
     bodyNow = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
     const onSummary = /Summary|Finalize Project/i.test(bodyNow);

@@ -90,13 +90,13 @@ test('SP560 maximal full quote (1920)', async ({ page }) => {
   // already auto-assigned (size-matched Dunbier) with its standard
   // options pre-ticked; clicking every card would jump to a wrong
   // trailer (e.g. a PA600 unit) with coded option names.
-  const names = ['s2-factory-options', 's3-motor', 's4-trailer', 's5-dealerfit-fitup', 's6-summary'];
+  const names = ['s2-factory-options', 's3-motor', 's4-trailer', 's5-dealerfit-fitup', 's6-administration', 's7-summary'];
   for (const nm of names) {
     const next = page.locator('button:has-text("Next Step")').first();
     if (!(await next.isVisible().catch(() => false))) break;
     await next.click().catch(() => {});
     await page.waitForTimeout(2800);
-    if (nm !== 's6-summary' && nm !== 's4-trailer') await clickAllCards(nm);
+    if (nm !== 's7-summary' && nm !== 's6-administration' && nm !== 's4-trailer') await clickAllCards(nm);
     await shot(nm);
   }
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { BreadcrumbNav } from "@/components/breadcrumb-nav";
-import { ClipboardList, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useUser } from "@/firebase/auth/use-user";
 import { useDoc } from "@/firebase/firestore/use-doc";
 import { useFirestore, useMemoFirebase } from "@/firebase/provider";
@@ -24,14 +24,18 @@ export default function ReportingPage() {
         <BreadcrumbNav />
       </div>
 
-      {/* v1.21 (Story 8.2.1 + 8.1.4) — Reporting & Analytics dashboard +
-          cross-module quotes view. Mounts once we know the org. */}
       {organisationId ? (
-        <>
+        <div className="space-y-4">
+          {/* v1.21 (Story 8.2.1 + 8.1.4) — Reporting & Analytics dashboard +
+              cross-module quotes view. */}
           <ReportingDashboard organisationId={organisationId} />
           {/* v1.22 (Story 1.7.3) — Recent activity feed. */}
           <RecentActivityFeed />
-        </>
+          {/* v1.33 — Usage & Activity telemetry lives on its own sidebar
+              page at /usage (it briefly lived here as a tab; moved so
+              this page's heavy business queries never sit in front of
+              the monitoring reports). */}
+        </div>
       ) : (
         <Card>
           <CardContent className="flex items-center justify-center py-20 text-muted-foreground">

@@ -3,7 +3,8 @@
 import { formatMetres } from '@/lib/units';
 import { resolvePriceLevel } from '@/lib/catalog/derive-pricing';
 import { Fragment, useState, useMemo, useEffect, useRef } from 'react';
-import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useDoc, useStorage } from '@/firebase';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { collection, query, orderBy, doc, where, getDoc, getDocs, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -53,7 +54,9 @@ import {
     Paperclip,
     Search,
     Eye,
-    EyeOff
+    EyeOff,
+    IdCard,
+    Upload
 } from 'lucide-react';
 import { isVariantRowItem,
     classifySection,
@@ -185,7 +188,10 @@ const STEPS: Step[] = [
     { id: 3, label: 'Motor' },
     { id: 4, label: 'Trailer' },
     { id: 5, label: 'Dealer Fit' },
-    { id: 6, label: 'Summary' },
+    // v1.33 (Bill) — dedicated Administration step: rego + rego numbers +
+    // warranty + trade-in + delivery + insurance + finance + licence upload.
+    { id: 6, label: 'Administration' },
+    { id: 7, label: 'Summary' },
 ];
 
 const HARDWARE_BLOCKLIST = ['MOTOR', 'ENGINE', 'FUEL', 'TRAILER', 'OUTBOARD', 'RAM SUPPORT', 'PROP'];
@@ -237,6 +243,7 @@ export function HighfieldQuoteFlow({
     rangeId,
     initialState,
     defaultPriceLevel,
+    publicPricing = false,
 }: {
     module: any,
     model: any,
@@ -245,8 +252,12 @@ export function HighfieldQuoteFlow({
     rangeId: string,
     initialState?: DuplicateInitialState,
     defaultPriceLevel?: string,
+    /** v1.33 (Bill: Build-A-Boat on the NSM website) — lock pricing to
+     *  Cash and hide the price-level picker for public embeds. */
+    publicPricing?: boolean,
 }) {
     const firestore = useFirestore();
+    const storage = useStorage();
     const router = useRouter();
     const { user } = useUser();
     const { toast } = useToast();
@@ -256,8 +267,9 @@ export function HighfieldQuoteFlow({
 
     // Auto-set price level from prop (e.g. for sub-dealers)
     useEffect(() => {
+        if (publicPricing) { setPriceLevel('hull_cash'); return; }
         if (defaultPriceLevel) setPriceLevel(defaultPriceLevel);
-    }, [defaultPriceLevel]);
+    }, [defaultPriceLevel, publicPricing]);
 
     /** Get the price for a given item based on the selected price level.
      *  Falls back to sellPriceExclGst when no priceLevels exist (backward compat). */
@@ -296,7 +308,7 @@ export function HighfieldQuoteFlow({
     }
 
     // 1. Core State — seeded from initialState when duplicating an existing quote
-    const [currentStep, setCurrentStep] = useState(initialState ? 6 : 1);
+    const [currentStep, setCurrentStep] = useState(initialState ? 7 : 1);
     const [selectedMaterial, setSelectedMaterial] = useState<'PVC' | 'HYP' | null>(initialState?.material ?? null);
     const [selectedColor, setSelectedColor] = useState<string | null>(initialState?.colorVariantId ?? null);
     const [isRegoSelected, setIsRegoSelected] = useState(initialState?.isRegoSelected ?? false);
@@ -405,6 +417,12 @@ export function HighfieldQuoteFlow({
     const [financeNotes, setFinanceNotes] = useState('');
     const [estimatedDeliveryDate, setEstimatedDeliveryDate] = useState('');
     const [timingNotes, setTimingNotes] = useState('');
+    // v1.33 (Bill) — Administration step additions: assigned rego numbers
+    // + customer driver's-licence upload.
+    const [boatRegoNumber, setBoatRegoNumber] = useState('');
+    const [trailerRegoNumber, setTrailerRegoNumber] = useState('');
+    const [licenceUrl, setLicenceUrl] = useState<string | null>(null);
+    const [licenceUploading, setLicenceUploading] = useState(false);
 
     // Refs for Auto-Scroll
     const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -1264,6 +1282,85 @@ export function HighfieldQuoteFlow({
         );
     };
 
+    /** v1.33 (Bill: "list Rebates for new Products — Yamaha rebate on the
+     *  motor section, Hull/Highfield rebates on the Hull section") — the
+     *  promotions band is parameterised by source so hull rebates render
+     *  on Step 1 and motor rebates on Step 3, instead of everything
+     *  landing on the motor step. */
+    const renderPromotionsBand = (promos: any[], title: string) => {
+        if (promos.length === 0) return null;
+        const anyApplied = promos.some(p => appliedPromotionIds.includes(p.id));
+        return (
+            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
+                <div className="flex items-center gap-3 bg-emerald-600 px-6 py-3 rounded-2xl shadow-xl w-full">
+                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                    <Gift className="h-4 w-4 text-white" />
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">{title}</h3>
+                </div>
+                <div className="space-y-4">
+                    {promos.map(promo => {
+                        const isApplied = appliedPromotionIds.includes(promo.id);
+                        const startDate = promo.startDate ? (promo.startDate.toDate ? promo.startDate.toDate() : new Date(promo.startDate)) : null;
+                        const endDate = promo.endDate ? (promo.endDate.toDate ? promo.endDate.toDate() : new Date(promo.endDate)) : null;
+                        const discountLabel = promo.type === 'fixed-amount' ? `$${(promo.fixedAmount || 0).toLocaleString()} OFF`
+                            : promo.type === 'per-hp' ? `$${(promo.perHpAmount || 0)} / HP`
+                            : promo.type === 'percentage' || promo.type === 'category-discount' ? `${promo.percentage || 0}% OFF`
+                            : 'OFFER';
+                        return (
+                            <div key={promo.id} onClick={() => togglePromotion(promo.id)} className={cn("rounded-[2rem] border-2 overflow-hidden transition-all cursor-pointer bg-white shadow-xl", isApplied ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-transparent hover:border-emerald-500/20")}>
+                                {promo.showImageOnQuote && promo.imageUrl && (
+                                    <div className="relative w-full aspect-[21/9] bg-emerald-50/30">
+                                        <img src={promo.imageUrl} alt={promo.name} className="w-full h-full object-cover" />
+                                    </div>
+                                )}
+                                <div className="p-6 flex items-start gap-4">
+                                    <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner shrink-0 mt-0.5", isApplied ? "bg-emerald-500 border-emerald-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}>
+                                        <Check className="h-5 w-5" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <p className={cn("text-[11px] font-black uppercase tracking-widest", isApplied ? "text-emerald-700" : "text-slate-600")}>{promo.name}</p>
+                                            <Badge className="bg-emerald-500 text-white border-none font-black text-[8px] uppercase h-5 px-2">{discountLabel}</Badge>
+                                        </div>
+                                        {promo.description && <p className="text-[9px] font-bold text-muted-foreground mt-1.5 leading-relaxed">{promo.description}</p>}
+                                        <div className="flex items-center gap-3 mt-2 flex-wrap">
+                                            {(startDate || endDate) && (
+                                                <Badge variant="outline" className="text-[7px] font-black h-5 px-2 gap-1 border-emerald-200 text-emerald-600 bg-emerald-50">
+                                                    <Calendar className="h-2.5 w-2.5" />
+                                                    {startDate && endDate ? `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}` : startDate ? `From ${startDate.toLocaleDateString()}` : `Until ${endDate!.toLocaleDateString()}`}
+                                                </Badge>
+                                            )}
+                                            {promo.appliesTo && promo.appliesTo !== 'total' && (
+                                                <Badge variant="outline" className="text-[7px] font-black h-5 px-2 border-slate-200 text-slate-500">
+                                                    Applies to: {promo.appliesTo}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        {promo.showPdfOnQuote && promo.pdfUrl && (
+                                            <a href={promo.pdfUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1.5 mt-2 text-[9px] font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition-colors">
+                                                <FileText className="h-3 w-3" /> View Promotion Details
+                                                <ExternalLink className="h-2.5 w-2.5" />
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+                {anyApplied && promotionDiscount > 0 && (
+                    <div className="flex items-center justify-between p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-200">
+                        <div className="flex items-center gap-3">
+                            <Percent className="h-5 w-5 text-emerald-600" />
+                            <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700">Total Promotion Savings (all sections)</span>
+                        </div>
+                        <span className="text-lg font-black text-emerald-600 italic">-${promotionDiscount.toLocaleString()}</span>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     // 4. Selection Handlers
     const handleMaterialChange = (mat: 'PVC' | 'HYP') => {
         if (selectedMaterial === mat) return;
@@ -1438,6 +1535,21 @@ export function HighfieldQuoteFlow({
         packageMeta?: { id: string; name: string; tier?: 'simple' | 'medium' | 'complex' | null },
     ) => {
         setSelectedFitUpItems(prev => {
+            // v1.33 (Mark: "selected Medium, can't go back to Simple — it lets
+            // me select all three together and I can't undo"):
+            // (1) TOGGLE — clicking a package whose items are ALL already on
+            //     removes those items (a second click undoes the first).
+            // (2) TIER EXCLUSIVITY — Simple / Medium / Complex are one-of:
+            //     adding a tiered package first drops every item that came
+            //     from a DIFFERENT tiered package.
+            const clickedIds = new Set(items.map(i => i.id));
+            const allOn = items.length > 0 && items.every(i => prev.some(s => s.item.id === i.id));
+            if (allOn) {
+                return prev.filter(s => !clickedIds.has(s.item.id));
+            }
+            if (packageMeta?.tier) {
+                prev = prev.filter(s => !(s.packageTier && s.packageId !== packageMeta.id));
+            }
             const existingIds = new Set(prev.map(s => s.item.id));
             const next: FitUpSelection[] = [...prev];
             for (const item of items) {
@@ -1499,6 +1611,18 @@ export function HighfieldQuoteFlow({
         setTrailerRegoSnapshot(null);
     };
     const nextStep = () => {
+        // v1.33 (Bill: "you can move forward without choosing a colour or
+        // material" + Mark: "an erroneous price shows immediately") — Step 1
+        // hard-gates on a full variant choice. The toast tells the operator
+        // exactly what's missing; the price card stays hidden until then.
+        if (currentStep === 1 && !activeVariant) {
+            toast({
+                variant: 'destructive',
+                title: hasMaterialAxis && !selectedMaterial ? 'Choose a material first' : 'Choose a colour first',
+                description: 'Pick the material and colour for this boat before moving on — the price is built from that exact configuration.',
+            });
+            return;
+        }
         if (currentStep < STEPS.length) {
             // Skip trailer step (4) if this model has no trailer configured
             const next = currentStep === 3 && !hasTrailer ? 5 : currentStep + 1;
@@ -1732,7 +1856,8 @@ export function HighfieldQuoteFlow({
     // Fetch promotions from boat module and motor vendor module
     useEffect(() => {
         const fetchPromotions = async () => {
-            if (currentStep < 3) return;
+            // v1.33 — hull rebates now render on Step 1, so promotions load
+            // as soon as the flow mounts (was gated to Step 3+).
             try {
                 const allPromos: any[] = [];
                 const now = new Date();
@@ -1781,7 +1906,7 @@ export function HighfieldQuoteFlow({
             } catch (e) { console.error('Failed to fetch promotions:', e); }
         };
         fetchPromotions();
-    }, [currentStep, firestore, module]);
+    }, [firestore, module]);
 
     const getMotorDisplayName = (m: any) => {
         const vendor = (m?.vendorName || 'YAMAHA').toUpperCase();
@@ -2099,8 +2224,18 @@ export function HighfieldQuoteFlow({
                                     {selectedTrailerId && <Button variant="ghost" size="sm" className="h-9 px-4 font-black uppercase text-[9px] tracking-widest text-slate-950 bg-slate-50 hover:bg-primary/10 hover:text-primary rounded-full transition-all border-none shadow-sm group" onClick={() => setShowTrailerSpecs(true)}><Truck className="h-3.5 w-3.5 mr-2 text-primary" /> Trailer Specs</Button>}
                                 </div>
                             </div>
+                            {/* v1.33 (Mark: "an erroneous price shows immediately") — no
+                                running price until the boat's material + colour are chosen;
+                                the package only exists once the exact variant does. */}
+                            {activeVariant ? (
                             <div className="flex flex-col items-start xl:items-end px-1 gap-1 shrink-0">
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                    {/* v1.33 (Bill) — public Build-A-Boat embeds lock to Cash
+                                        and never expose the internal price levels. */}
+                                    {publicPricing ? (
+                                        <span className="text-[9px] uppercase tracking-widest font-black text-slate-400">Cash Price</span>
+                                    ) : (
+                                    <>
                                     <span className="text-[9px] uppercase tracking-widest font-black text-slate-400">Price Level</span>
                                     <select
                                         value={priceLevel}
@@ -2114,6 +2249,8 @@ export function HighfieldQuoteFlow({
                                         <option value="hull_subdealer_excl">Sub-Dealer Excl</option>
                                         <option value="hull_aus_sailing">AUS Sailing</option>
                                     </select>
+                                    </>
+                                    )}
                                 </div>
                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">{displaySheetPricing ? 'Package Pricing (Inc. GST)' : 'Package Pricing (Excl. GST)'}</span>
                                 {promotionDiscount > 0 && (
@@ -2133,6 +2270,13 @@ export function HighfieldQuoteFlow({
                                         : <>${Math.ceil(finalPrice * 1.1).toLocaleString()} <span className="text-slate-500">inc GST</span></>}
                                 </div>
                             </div>
+                            ) : (
+                            <div className="flex flex-col items-start xl:items-end px-1 gap-1 shrink-0">
+                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-[0.2em]">Package Pricing</span>
+                                <div className="text-sm font-black uppercase tracking-widest text-slate-300 mt-1">Select material &amp; colour</div>
+                                <div className="text-[9px] font-bold uppercase tracking-widest text-slate-400">Your price builds from the exact configuration</div>
+                            </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -2225,6 +2369,10 @@ export function HighfieldQuoteFlow({
                                             </Card>
                                         </div>
                                     )}
+
+                                    {/* v1.33 (Bill) — hull/factory rebates listed on the Hull
+                                        step (Yamaha motor rebates stay on Step 3). */}
+                                    {renderPromotionsBand(availablePromotions.filter(p => p.source !== 'motor'), 'Factory Promotions & Rebates')}
                                 </div>
                             )}
                             {currentStep === 2 && (
@@ -2309,9 +2457,13 @@ export function HighfieldQuoteFlow({
                                                     return (
                                                     <button key={opt.id} onClick={() => toggleOption(opt.id)} disabled={isLocked} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent h-full p-1", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : "hover:border-primary/20", isLocked && "cursor-default opacity-90")}>
                                                         <div className={cn("relative aspect-video w-full bg-white overflow-hidden shrink-0", !opt.imageUrl && "hidden")}>{opt.imageUrl && <Image src={opt.imageUrl} alt={opt.name} fill className="object-contain mix-blend-multiply transition-transform group-hover:scale-105" />}</div>
+                                                        {/* v1.33 (Bill: "increase the size of font inside the box",
+                                                            Four Winns reference) — option name bumped 10px → 14px,
+                                                            colour + price up a step, tighter tracking so names
+                                                            still hold one line. */}
                                                         <div className="p-3 flex flex-col items-center justify-center text-center gap-1 flex-grow">
-                                                            {(() => { const { base, color } = formatOptionDisplayLabel(opt.name); return (<><p className={cn("text-[10px] font-black uppercase tracking-widest leading-tight", isSelected ? "text-primary" : "text-slate-700")}>{base}</p>{color && <p className={cn("text-[9px] font-black uppercase tracking-widest", isSelected ? "text-primary/70" : "text-slate-400")}>{color}</p>}</>); })()}
-                                                            <p className={cn("text-[9px] font-black", isSelected ? "text-primary" : "text-slate-400")}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
+                                                            {(() => { const { base, color } = formatOptionDisplayLabel(opt.name); return (<><p className={cn("text-sm font-black uppercase tracking-wide leading-snug", isSelected ? "text-primary" : "text-slate-700")}>{base}</p>{color && <p className={cn("text-[11px] font-black uppercase tracking-wide", isSelected ? "text-primary/70" : "text-slate-400")}>{color}</p>}</>); })()}
+                                                            <p className={cn("text-xs font-black", isSelected ? "text-primary" : "text-slate-400")}>${(opt.sellPriceExclGst || 0).toLocaleString()}</p>
                                                             {isLocked && (
                                                                 <div className="flex items-center gap-1 mt-1">
                                                                     <CheckCircle2 className="h-3 w-3 text-primary/60" />
@@ -2507,50 +2659,9 @@ export function HighfieldQuoteFlow({
                                     {/* --- MOTOR ACCESSORIES (Propeller, Rigging, etc.) --- */}
                                     {selectedMotor && (
                                         <>
-                                            {/* Pre-Rig Information */}
-                                            {(() => {
-                                                const installationText = selectedMotor['Installation'] || selectedMotor['installation']?.opCode;
-                                                const standardRiggingAccessories = (selectedMotor.masterAccessories || []).filter(
-                                                    (a: any) => a.isStandard && (a.category || '').toLowerCase() === 'rigging'
-                                                );
-                                                if (!installationText && standardRiggingAccessories.length === 0) return null;
-                                                return (
-                                                    <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-700">
-                                                        <div className="flex items-center gap-3 bg-slate-500 px-6 py-3 rounded-2xl shadow-xl w-full">
-                                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Pre-Rig Information</h3>
-                                                        </div>
-                                                        <div className="rounded-[2rem] border-2 border-slate-200 bg-slate-50 p-6 shadow-sm">
-                                                            <div className="flex items-start gap-4">
-                                                                <div className="h-10 w-10 rounded-2xl flex items-center justify-center bg-slate-200 text-slate-600 shrink-0">
-                                                                    <Info className="h-5 w-5" />
-                                                                </div>
-                                                                <div className="space-y-3 min-w-0">
-                                                                    {installationText && (
-                                                                        <div>
-                                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Installation Type</p>
-                                                                            <p className="text-sm font-bold text-slate-800">{installationText}</p>
-                                                                        </div>
-                                                                    )}
-                                                                    {standardRiggingAccessories.length > 0 && (
-                                                                        <div>
-                                                                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Included Rigging</p>
-                                                                            <div className="space-y-1.5">
-                                                                                {standardRiggingAccessories.map((acc: any) => (
-                                                                                    <div key={acc.id} className="flex items-center gap-2">
-                                                                                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                                                                                        <span className="text-xs font-bold text-slate-700">{acc.name || acc.description || acc.id}</span>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })()}
+                                            {/* v1.33 (Bill): the Pre-Rig Information panel that used to sit
+                                                here was removed — install type + included rigging now flow
+                                                through the slot rigging/PD lines instead of an info card. */}
 
                                             {/* Prop Comes Standard toggle */}
                                             <div ref={el => { categoryRefs.current['PropStandard'] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
@@ -2572,37 +2683,8 @@ export function HighfieldQuoteFlow({
                                                 </div>
                                             </div>
 
-                                            {/* NSM Extended Warranty & Service Plan toggles */}
-                                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
-                                                <div className="flex items-center gap-3 bg-blue-500 px-6 py-3 rounded-2xl shadow-xl w-full">
-                                                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Dealer Services</h3>
-                                                </div>
-                                                <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", extendedWarranty ? "bg-blue-50 border-blue-500 ring-2 ring-blue-500/20 shadow-md" : "border-transparent hover:border-blue-500/20")} onClick={() => setExtendedWarranty(!extendedWarranty)}>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", extendedWarranty ? "bg-blue-500 border-blue-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Star className="h-5 w-5" /></div>
-                                                        <div>
-                                                            <p className={cn("text-[11px] font-black uppercase tracking-widest", extendedWarranty ? "text-blue-700" : "text-slate-600")}>NSM 6 Year Extended Warranty</p>
-                                                            <p className="text-[9px] font-bold text-muted-foreground mt-0.5">Extend factory warranty to 6 years with NSM coverage</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className={cn("h-8 w-8 rounded-full flex items-center justify-center", extendedWarranty ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-300")}>
-                                                        <Check className="h-4 w-4" />
-                                                    </div>
-                                                </div>
-                                                <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", servicePlan ? "bg-blue-50 border-blue-500 ring-2 ring-blue-500/20 shadow-md" : "border-transparent hover:border-blue-500/20")} onClick={() => setServicePlan(!servicePlan)}>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", servicePlan ? "bg-blue-500 border-blue-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Wrench className="h-5 w-5" /></div>
-                                                        <div>
-                                                            <p className={cn("text-[11px] font-black uppercase tracking-widest", servicePlan ? "text-blue-700" : "text-slate-600")}>Direct Debit Service Plan</p>
-                                                            <p className="text-[9px] font-bold text-muted-foreground mt-0.5">Scheduled servicing via convenient direct debit payments</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className={cn("h-8 w-8 rounded-full flex items-center justify-center", servicePlan ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-300")}>
-                                                        <Check className="h-4 w-4" />
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            {/* v1.33 — Dealer Services (6yr warranty + service plan)
+                                                moved to the Administration step. */}
 
                                             {groupedMotorAccessories.map(([cat, opts]) => (
                                                 <div key={cat} ref={el => { categoryRefs.current[cat] = el; }} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
@@ -2664,76 +2746,9 @@ export function HighfieldQuoteFlow({
                                         </>
                                     )}
 
-                                    {/* --- PROMOTIONS & OFFERS --- */}
-                                    {availablePromotions.length > 0 && (
-                                        <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
-                                            <div className="flex items-center gap-3 bg-emerald-600 px-6 py-3 rounded-2xl shadow-xl w-full">
-                                                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                                                <Gift className="h-4 w-4 text-white" />
-                                                <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Promotions & Offers</h3>
-                                            </div>
-                                            <div className="space-y-4">
-                                                {availablePromotions.map(promo => {
-                                                    const isApplied = appliedPromotionIds.includes(promo.id);
-                                                    const startDate = promo.startDate ? (promo.startDate.toDate ? promo.startDate.toDate() : new Date(promo.startDate)) : null;
-                                                    const endDate = promo.endDate ? (promo.endDate.toDate ? promo.endDate.toDate() : new Date(promo.endDate)) : null;
-                                                    const discountLabel = promo.type === 'fixed-amount' ? `$${(promo.fixedAmount || 0).toLocaleString()} OFF`
-                                                        : promo.type === 'per-hp' ? `$${(promo.perHpAmount || 0)} / HP`
-                                                        : promo.type === 'percentage' || promo.type === 'category-discount' ? `${promo.percentage || 0}% OFF`
-                                                        : 'OFFER';
-                                                    return (
-                                                        <div key={promo.id} onClick={() => togglePromotion(promo.id)} className={cn("rounded-[2rem] border-2 overflow-hidden transition-all cursor-pointer bg-white shadow-xl", isApplied ? "border-emerald-500 ring-2 ring-emerald-500/20" : "border-transparent hover:border-emerald-500/20")}>
-                                                            {promo.showImageOnQuote && promo.imageUrl && (
-                                                                <div className="relative w-full aspect-[21/9] bg-emerald-50/30">
-                                                                    <img src={promo.imageUrl} alt={promo.name} className="w-full h-full object-cover" />
-                                                                </div>
-                                                            )}
-                                                            <div className="p-6 flex items-start gap-4">
-                                                                <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner shrink-0 mt-0.5", isApplied ? "bg-emerald-500 border-emerald-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}>
-                                                                    <Check className="h-5 w-5" />
-                                                                </div>
-                                                                <div className="flex-1 min-w-0">
-                                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                                        <p className={cn("text-[11px] font-black uppercase tracking-widest", isApplied ? "text-emerald-700" : "text-slate-600")}>{promo.name}</p>
-                                                                        <Badge className="bg-emerald-500 text-white border-none font-black text-[8px] uppercase h-5 px-2">{discountLabel}</Badge>
-                                                                    </div>
-                                                                    {promo.description && <p className="text-[9px] font-bold text-muted-foreground mt-1.5 leading-relaxed">{promo.description}</p>}
-                                                                    <div className="flex items-center gap-3 mt-2 flex-wrap">
-                                                                        {(startDate || endDate) && (
-                                                                            <Badge variant="outline" className="text-[7px] font-black h-5 px-2 gap-1 border-emerald-200 text-emerald-600 bg-emerald-50">
-                                                                                <Calendar className="h-2.5 w-2.5" />
-                                                                                {startDate && endDate ? `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}` : startDate ? `From ${startDate.toLocaleDateString()}` : `Until ${endDate!.toLocaleDateString()}`}
-                                                                            </Badge>
-                                                                        )}
-                                                                        {promo.appliesTo && promo.appliesTo !== 'total' && (
-                                                                            <Badge variant="outline" className="text-[7px] font-black h-5 px-2 border-slate-200 text-slate-500">
-                                                                                Applies to: {promo.appliesTo}
-                                                                            </Badge>
-                                                                        )}
-                                                                    </div>
-                                                                    {promo.showPdfOnQuote && promo.pdfUrl && (
-                                                                        <a href={promo.pdfUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1.5 mt-2 text-[9px] font-black uppercase tracking-widest text-emerald-600 hover:text-emerald-700 transition-colors">
-                                                                            <FileText className="h-3 w-3" /> View Promotion Details
-                                                                            <ExternalLink className="h-2.5 w-2.5" />
-                                                                        </a>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                            {promotionDiscount > 0 && (
-                                                <div className="flex items-center justify-between p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-200">
-                                                    <div className="flex items-center gap-3">
-                                                        <Percent className="h-5 w-5 text-emerald-600" />
-                                                        <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700">Total Savings</span>
-                                                    </div>
-                                                    <span className="text-lg font-black text-emerald-600 italic">-${promotionDiscount.toLocaleString()}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                                    {/* --- PROMOTIONS & OFFERS (motor-source only; hull rebates
+                                        render on Step 1 — v1.33 split per Bill) --- */}
+                                    {renderPromotionsBand(availablePromotions.filter(p => p.source === 'motor'), 'Motor Promotions & Rebates')}
                                 </div>
                             )}
                             {currentStep === 4 && (
@@ -3107,7 +3122,9 @@ export function HighfieldQuoteFlow({
                                                         const isSelected = selectedDealerFitIds.includes(sel.id);
                                                         // Detect if items in this (unselected) selection are already included via another category
                                                         const hasOverlap = !isSelected && sel.items?.some((i: any) => i.rowId && selectedDealerRowIds.has(i.rowId));
-                                                        const imgUrl = resolveImageUrl(sel.items?.[0]?.data);
+                                                        // v1.33 — operator-uploaded selection image (Catalog →
+                                                        // Dealer Fit) beats the MPF item-data image link.
+                                                        const imgUrl = sel.imageUrl || resolveImageUrl(sel.items?.[0]?.data);
                                                         return (
                                                         <div key={sel.id} className={cn("flex flex-col border-2 rounded-[1.5rem] overflow-hidden transition-all bg-white shadow-lg border-transparent relative min-w-0", isSelected ? "bg-primary/5 border-primary shadow-md ring-2 ring-primary/20" : hasOverlap ? "border-amber-300 opacity-70" : "hover:border-primary/20")}>
                                                             {hasOverlap && <div className="absolute top-2 left-2 z-10 flex items-center gap-1 bg-amber-100 border border-amber-300 rounded-full px-2 py-0.5"><CopyCheck className="h-3 w-3 text-amber-600" /><span className="text-[7px] font-black uppercase tracking-wide text-amber-700">Already Included</span></div>}
@@ -3200,6 +3217,253 @@ export function HighfieldQuoteFlow({
                                 </div>
                             )}
                             {currentStep === 6 && (
+                                <div className="space-y-12 animate-in fade-in duration-1000 mt-4">
+                                    {/* v1.33 (Bill) — ADMINISTRATION step. Consolidates the
+                                        paperwork: rego selections recap + assigned rego numbers,
+                                        dealer services (6yr warranty / service plan), trade-in,
+                                        delivery, insurance, finance, and the customer's driver's
+                                        licence upload. Deposit stays at Finalize (document
+                                        defaults set the schedule). */}
+
+                                    {/* Registration recap + rego numbers */}
+                                    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
+                                        <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
+                                            <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Registration</h3>
+                                        </div>
+                                        <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white space-y-5">
+                                            <div className="flex flex-wrap gap-2">
+                                                <button type="button" onClick={handleRegoToggle} className={cn("px-4 py-2 rounded-full border-2 text-[9px] font-black uppercase tracking-widest transition-all", isRegoSelected ? "bg-primary text-white border-primary" : "bg-slate-50 text-slate-500 border-slate-200 hover:border-primary/40")}>
+                                                    Boat Rego {isRegoSelected ? '✓' : ''}
+                                                </button>
+                                                <button type="button" onClick={handleStickerToggle} className={cn("px-4 py-2 rounded-full border-2 text-[9px] font-black uppercase tracking-widest transition-all", isStickerSelected ? "bg-primary text-white border-primary" : "bg-slate-50 text-slate-500 border-slate-200 hover:border-primary/40")}>
+                                                    Rego Stickers {isStickerSelected ? '✓' : ''}
+                                                </button>
+                                                <button type="button" onClick={handleTenderToToggle} className={cn("px-4 py-2 rounded-full border-2 text-[9px] font-black uppercase tracking-widest transition-all", isTenderToSelected ? "bg-primary text-white border-primary" : "bg-slate-50 text-slate-500 border-slate-200 hover:border-primary/40")}>
+                                                    "Tender To" Decal {isTenderToSelected ? '✓' : ''}
+                                                </button>
+                                                <button type="button" onClick={() => setIsTrailerRegoSelected(!isTrailerRegoSelected)} className={cn("px-4 py-2 rounded-full border-2 text-[9px] font-black uppercase tracking-widest transition-all", isTrailerRegoSelected ? "bg-primary text-white border-primary" : "bg-slate-50 text-slate-500 border-slate-200 hover:border-primary/40")}>
+                                                    Trailer Rego {isTrailerRegoSelected ? '✓' : ''}
+                                                </button>
+                                            </div>
+                                            <p className="text-[9px] font-bold text-muted-foreground">Pricing for these selections is set on the Boat Base and Trailer steps — this recap just confirms what's included.</p>
+                                            <Separator />
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="boat-rego-number" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Boat Rego Number</Label>
+                                                    <Input id="boat-rego-number" placeholder="e.g. AB123Q" value={boatRegoNumber} onChange={e => setBoatRegoNumber(e.target.value)} className="h-11 rounded-xl border-2 font-bold text-sm uppercase" />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="trailer-rego-number" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trailer Rego Number</Label>
+                                                    <Input id="trailer-rego-number" placeholder="e.g. 123ABC" value={trailerRegoNumber} onChange={e => setTrailerRegoNumber(e.target.value)} className="h-11 rounded-xl border-2 font-bold text-sm uppercase" />
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    </div>
+
+                                            {/* NSM Extended Warranty & Service Plan toggles */}
+                                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
+                                                <div className="flex items-center gap-3 bg-blue-500 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                                                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Dealer Services</h3>
+                                                </div>
+                                                <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", extendedWarranty ? "bg-blue-50 border-blue-500 ring-2 ring-blue-500/20 shadow-md" : "border-transparent hover:border-blue-500/20")} onClick={() => setExtendedWarranty(!extendedWarranty)}>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", extendedWarranty ? "bg-blue-500 border-blue-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Star className="h-5 w-5" /></div>
+                                                        <div>
+                                                            <p className={cn("text-[11px] font-black uppercase tracking-widest", extendedWarranty ? "text-blue-700" : "text-slate-600")}>NSM 6 Year Extended Warranty</p>
+                                                            <p className="text-[9px] font-bold text-muted-foreground mt-0.5">Extend factory warranty to 6 years with NSM coverage</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className={cn("h-8 w-8 rounded-full flex items-center justify-center", extendedWarranty ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-300")}>
+                                                        <Check className="h-4 w-4" />
+                                                    </div>
+                                                </div>
+                                                <div className={cn("flex items-center justify-between p-6 rounded-[2rem] border-2 transition-all cursor-pointer bg-white shadow-xl", servicePlan ? "bg-blue-50 border-blue-500 ring-2 ring-blue-500/20 shadow-md" : "border-transparent hover:border-blue-500/20")} onClick={() => setServicePlan(!servicePlan)}>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner", servicePlan ? "bg-blue-500 border-blue-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}><Wrench className="h-5 w-5" /></div>
+                                                        <div>
+                                                            <p className={cn("text-[11px] font-black uppercase tracking-widest", servicePlan ? "text-blue-700" : "text-slate-600")}>Direct Debit Service Plan</p>
+                                                            <p className="text-[9px] font-bold text-muted-foreground mt-0.5">Scheduled servicing via convenient direct debit payments</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className={cn("h-8 w-8 rounded-full flex items-center justify-center", servicePlan ? "bg-blue-500 text-white" : "bg-slate-100 text-slate-300")}>
+                                                        <Check className="h-4 w-4" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                    {/* Driver's licence upload */}
+                                    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
+                                        <div className="flex items-center gap-3 bg-slate-900 px-6 py-3 rounded-2xl shadow-xl w-full">
+                                            <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Driver's Licence</h3>
+                                        </div>
+                                        <Card className="rounded-[2rem] border-2 shadow-xl p-6 bg-white">
+                                            <div className="flex items-center justify-between gap-4 flex-wrap">
+                                                <div className="flex items-center gap-4 min-w-0">
+                                                    <div className={cn("h-10 w-10 rounded-2xl flex items-center justify-center border-2 shadow-inner shrink-0", licenceUrl ? "bg-emerald-500 border-emerald-500 text-white" : "bg-slate-50 border-slate-100 text-slate-300")}>
+                                                        <IdCard className="h-5 w-5" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[11px] font-black uppercase tracking-widest text-slate-600">Customer Driver's Licence</p>
+                                                        <p className="text-[9px] font-bold text-muted-foreground mt-0.5 truncate">{licenceUrl ? 'Uploaded — attached to this quote at finalize' : 'Photo or scan (image / PDF)'}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    {licenceUrl && (
+                                                        <a href={licenceUrl} target="_blank" rel="noopener noreferrer" className="text-[9px] font-black uppercase tracking-widest text-primary hover:underline">View</a>
+                                                    )}
+                                                    <Button type="button" variant="outline" className="h-10 rounded-xl border-2 font-black uppercase text-[9px] tracking-widest" disabled={licenceUploading} onClick={(e) => ((e.currentTarget.nextElementSibling as HTMLInputElement))?.click()}>
+                                                        {licenceUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                                                        {licenceUrl ? 'Replace' : 'Upload'}
+                                                    </Button>
+                                                    <input type="file" hidden accept="image/*,.pdf" onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        e.target.value = '';
+                                                        if (!file || !storage) return;
+                                                        setLicenceUploading(true);
+                                                        try {
+                                                            const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+                                                            const url = await uploadFileToStorage(storage, file, `licence-uploads/${Date.now()}-licence.${ext}`);
+                                                            setLicenceUrl(url);
+                                                            toast({ title: "Driver's licence uploaded" });
+                                                        } catch (err: any) {
+                                                            toast({ variant: 'destructive', title: 'Upload failed', description: err?.message });
+                                                        } finally {
+                                                            setLicenceUploading(false);
+                                                        }
+                                                    }} />
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    </div>
+
+                                    {/* Admin & Trade-In (moved from Summary) */}
+                                        {/* Admin & Trade-In Section */}
+                                        <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
+                                            <CardHeader className="bg-muted/30 border-b p-4">
+                                                <div className="flex items-center gap-2">
+                                                    <ClipboardList className="h-4 w-4 text-primary" />
+                                                    <CardTitle className="text-xs font-black uppercase tracking-widest">Admin & Trade-In</CardTitle>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="p-5 space-y-6">
+
+                                                {/* Trade-In */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Car className="h-3.5 w-3.5 text-primary" />
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trade-In Vehicle</Label>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Textarea
+                                                            placeholder="Description (make, model, year, condition...)"
+                                                            value={tradeInDescription}
+                                                            onChange={(e) => setTradeInDescription(e.target.value)}
+                                                            className="min-h-[72px] rounded-xl border-2 text-sm font-bold resize-none"
+                                                        />
+                                                        <div className="space-y-1.5">
+                                                            <Label htmlFor="trade-in-value" className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5">
+                                                                <DollarSign className="h-3 w-3" /> Agreed Trade-In Value
+                                                            </Label>
+                                                            <Input
+                                                                id="trade-in-value"
+                                                                type="number"
+                                                                placeholder="0"
+                                                                value={tradeInValue}
+                                                                onChange={(e) => setTradeInValue(e.target.value)}
+                                                                className="h-11 rounded-xl border-2 font-bold text-sm"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <Separator />
+
+                                                {/* Insurance Quote */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <Checkbox
+                                                            id="wants-insurance"
+                                                            checked={wantsInsurance}
+                                                            onCheckedChange={(checked) => setWantsInsurance(checked === true)}
+                                                            className="h-5 w-5 rounded border-2"
+                                                        />
+                                                        <Label htmlFor="wants-insurance" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 cursor-pointer">
+                                                            <Shield className="h-3.5 w-3.5 text-primary" /> I would like an Insurance Quote
+                                                        </Label>
+                                                    </div>
+                                                    {wantsInsurance && (
+                                                        <Textarea
+                                                            placeholder="Insurance notes (coverage preferences, existing policies...)"
+                                                            value={insuranceNotes}
+                                                            onChange={(e) => setInsuranceNotes(e.target.value)}
+                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none animate-in fade-in slide-in-from-top-1 duration-200"
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                <Separator />
+
+                                                {/* Finance Quote */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <Checkbox
+                                                            id="wants-finance"
+                                                            checked={wantsFinance}
+                                                            onCheckedChange={(checked) => setWantsFinance(checked === true)}
+                                                            className="h-5 w-5 rounded border-2"
+                                                        />
+                                                        <Label htmlFor="wants-finance" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 cursor-pointer">
+                                                            <Banknote className="h-3.5 w-3.5 text-primary" /> I would like a Finance Quote
+                                                        </Label>
+                                                    </div>
+                                                    {wantsFinance && (
+                                                        <Textarea
+                                                            placeholder="Finance notes (deposit amount, term preference, trade equity...)"
+                                                            value={financeNotes}
+                                                            onChange={(e) => setFinanceNotes(e.target.value)}
+                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none animate-in fade-in slide-in-from-top-1 duration-200"
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                <Separator />
+
+                                                {/* Timing / Delivery */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="h-3.5 w-3.5 text-primary" />
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Timing & Delivery</Label>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <div className="space-y-1.5">
+                                                            <Label htmlFor="delivery-date" className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5">
+                                                                <Calendar className="h-3 w-3" /> Estimated Delivery Date
+                                                            </Label>
+                                                            <Input
+                                                                id="delivery-date"
+                                                                type="date"
+                                                                value={estimatedDeliveryDate}
+                                                                onChange={(e) => setEstimatedDeliveryDate(e.target.value)}
+                                                                className="h-11 rounded-xl border-2 font-bold text-sm"
+                                                            />
+                                                        </div>
+                                                        <Textarea
+                                                            placeholder="Timing notes (slot availability, special delivery instructions...)"
+                                                            value={timingNotes}
+                                                            onChange={(e) => setTimingNotes(e.target.value)}
+                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                            </CardContent>
+                                        </Card>
+                                </div>
+                            )}
+                            {currentStep === 7 && (
                                 <div className="space-y-8 animate-in fade-in duration-1000 mt-4">
                                     <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0"><div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /><h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Project Build Summary</h3></div>
                                     <div className="space-y-4">
@@ -3557,127 +3821,7 @@ export function HighfieldQuoteFlow({
                                             />
                                         )}
 
-                                        {/* Admin & Trade-In Section */}
-                                        <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
-                                            <CardHeader className="bg-muted/30 border-b p-4">
-                                                <div className="flex items-center gap-2">
-                                                    <ClipboardList className="h-4 w-4 text-primary" />
-                                                    <CardTitle className="text-xs font-black uppercase tracking-widest">Admin & Trade-In</CardTitle>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent className="p-5 space-y-6">
-
-                                                {/* Trade-In */}
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <Car className="h-3.5 w-3.5 text-primary" />
-                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trade-In Vehicle</Label>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Textarea
-                                                            placeholder="Description (make, model, year, condition...)"
-                                                            value={tradeInDescription}
-                                                            onChange={(e) => setTradeInDescription(e.target.value)}
-                                                            className="min-h-[72px] rounded-xl border-2 text-sm font-bold resize-none"
-                                                        />
-                                                        <div className="space-y-1.5">
-                                                            <Label htmlFor="trade-in-value" className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5">
-                                                                <DollarSign className="h-3 w-3" /> Agreed Trade-In Value
-                                                            </Label>
-                                                            <Input
-                                                                id="trade-in-value"
-                                                                type="number"
-                                                                placeholder="0"
-                                                                value={tradeInValue}
-                                                                onChange={(e) => setTradeInValue(e.target.value)}
-                                                                className="h-11 rounded-xl border-2 font-bold text-sm"
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <Separator />
-
-                                                {/* Insurance Quote */}
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <Checkbox
-                                                            id="wants-insurance"
-                                                            checked={wantsInsurance}
-                                                            onCheckedChange={(checked) => setWantsInsurance(checked === true)}
-                                                            className="h-5 w-5 rounded border-2"
-                                                        />
-                                                        <Label htmlFor="wants-insurance" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 cursor-pointer">
-                                                            <Shield className="h-3.5 w-3.5 text-primary" /> I would like an Insurance Quote
-                                                        </Label>
-                                                    </div>
-                                                    {wantsInsurance && (
-                                                        <Textarea
-                                                            placeholder="Insurance notes (coverage preferences, existing policies...)"
-                                                            value={insuranceNotes}
-                                                            onChange={(e) => setInsuranceNotes(e.target.value)}
-                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none animate-in fade-in slide-in-from-top-1 duration-200"
-                                                        />
-                                                    )}
-                                                </div>
-
-                                                <Separator />
-
-                                                {/* Finance Quote */}
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center gap-3">
-                                                        <Checkbox
-                                                            id="wants-finance"
-                                                            checked={wantsFinance}
-                                                            onCheckedChange={(checked) => setWantsFinance(checked === true)}
-                                                            className="h-5 w-5 rounded border-2"
-                                                        />
-                                                        <Label htmlFor="wants-finance" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 cursor-pointer">
-                                                            <Banknote className="h-3.5 w-3.5 text-primary" /> I would like a Finance Quote
-                                                        </Label>
-                                                    </div>
-                                                    {wantsFinance && (
-                                                        <Textarea
-                                                            placeholder="Finance notes (deposit amount, term preference, trade equity...)"
-                                                            value={financeNotes}
-                                                            onChange={(e) => setFinanceNotes(e.target.value)}
-                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none animate-in fade-in slide-in-from-top-1 duration-200"
-                                                        />
-                                                    )}
-                                                </div>
-
-                                                <Separator />
-
-                                                {/* Timing / Delivery */}
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <Clock className="h-3.5 w-3.5 text-primary" />
-                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Timing & Delivery</Label>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <div className="space-y-1.5">
-                                                            <Label htmlFor="delivery-date" className="text-[10px] font-bold text-muted-foreground flex items-center gap-1.5">
-                                                                <Calendar className="h-3 w-3" /> Estimated Delivery Date
-                                                            </Label>
-                                                            <Input
-                                                                id="delivery-date"
-                                                                type="date"
-                                                                value={estimatedDeliveryDate}
-                                                                onChange={(e) => setEstimatedDeliveryDate(e.target.value)}
-                                                                className="h-11 rounded-xl border-2 font-bold text-sm"
-                                                            />
-                                                        </div>
-                                                        <Textarea
-                                                            placeholder="Timing notes (slot availability, special delivery instructions...)"
-                                                            value={timingNotes}
-                                                            onChange={(e) => setTimingNotes(e.target.value)}
-                                                            className="min-h-[60px] rounded-xl border-2 text-sm font-bold resize-none"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                            </CardContent>
-                                        </Card>
+                                        {/* v1.33 — Admin & Trade-In moved to the Administration step. */}
                                     </div>
                                 </div>
                             )}
@@ -3866,6 +4010,12 @@ export function HighfieldQuoteFlow({
                     promotionDiscount,
                     dealerServices: { extendedWarranty, servicePlan },
                     adminDetails: {
+                        // v1.33 — Administration step additions
+                        regoNumbers: {
+                            boat: boatRegoNumber.trim() || null,
+                            trailer: trailerRegoNumber.trim() || null,
+                        },
+                        driversLicenceUrl: licenceUrl,
                         tradeIn: {
                             description: tradeInDescription,
                             value: tradeInValue ? parseFloat(tradeInValue) : 0,

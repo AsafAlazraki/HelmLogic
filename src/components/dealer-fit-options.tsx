@@ -1,21 +1,31 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useMemo, useRef, useState } from 'react';
+import { useCollection, useDoc, useUser, useFirestore, useMemoFirebase, useStorage } from '@/firebase';
+import { uploadFileToStorage } from '@/firebase/storage';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, AlertCircle, PlusCircle, Trash2, Zap, Box, Layers, ChevronRight } from 'lucide-react';
+import { Loader2, AlertCircle, PlusCircle, Trash2, Zap, Box, Layers, ChevronRight, ImagePlus } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from './ui/button';
 import { MasterDataBrowserDialog } from './master-data-browser-dialog';
-import { collection, addDoc, serverTimestamp, doc, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, serverTimestamp, doc, query, where, getDocs, writeBatch, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { cn } from '@/lib/utils';
+import { classifySection } from '@/lib/step5-curation';
 
 interface DealerFitCategory {
   id: string;
   name: string;
+}
+
+/** v1.33 — same price-resolution chain the quote flow uses for dealer-fit
+ *  items ('Act Sell' is the MPF primary). This view used to read only
+ *  sellPriceExclGst and showed $0 on every MPF row. */
+function itemPrice(d: any): number {
+  return d?.['Act Sell'] || d?.sellPriceExclGst || d?.['Store Price'] || d?.PARTS || d?.RRP || d?.Price || d?.Retail || d?.Trade || 0;
 }
 
 interface Organisation {
@@ -32,6 +42,9 @@ interface DealerFitSelection {
   categoryId: string;
   /** Legacy/module-level category NAME — used for name-based grouping of synthetic categories. */
   category?: string;
+  /** v1.33 (Bill: "upload images to dealer fit parts") — manual image
+   *  set by the operator; overrides any item-data image downstream. */
+  imageUrl?: string | null;
   items: {
     vendorId: string;
     rowId: string;
@@ -51,6 +64,7 @@ export function DealerFitOptions({
     moduleOnly?: boolean;
 }) {
   const firestore = useFirestore();
+  const storage = useStorage();
   const { toast } = useToast();
   
   const orgRef = useMemoFirebase(() => 
@@ -141,8 +155,27 @@ export function DealerFitOptions({
         }
       }
     }
+    // v1.33 HOTFIX (Asaf: "showing everything as empty... this should all
+    // tie to the MPF stuff, this is what drives the quotes") — the v1.31
+    // MPF import wrote 300 selections with mpf-* categoryIds that were
+    // never added to the global/org/module category config, so this view
+    // rendered only the 4 old demo categories with zero selections while
+    // the SAME selections drive every quote (the quote flow groups by the
+    // selections' own category names). The category cards are now ALSO
+    // derived from the selections themselves — this surface can never
+    // again disagree with what quoting uses.
+    const discovered: DealerFitCategory[] = [];
+    for (const sel of selections || []) {
+      const name = (sel.category || '').trim() || sel.categoryId || 'Uncategorised';
+      if (!cats.some(c => c.name.toLowerCase() === name.toLowerCase()) &&
+          !discovered.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+        discovered.push({ id: sel.categoryId || `derived-${name}`, name } as DealerFitCategory);
+      }
+    }
+    discovered.sort((a, b) => a.name.localeCompare(b.name));
+    cats.push(...discovered);
     return cats;
-  }, [allCategories, organisation, isAdmin, module, moduleOnly, linkedModules]);
+  }, [allCategories, organisation, isAdmin, module, moduleOnly, linkedModules, selections]);
 
   const activeCategory = useMemo(() => {
     return assignedCategories.find(c => c.id === activeCategoryId);
@@ -183,16 +216,40 @@ export function DealerFitOptions({
         byName.get(catName)!.push(selection);
       }
     });
-    // Merge: for synthetic module/motor IDs, look up by name
+    // Merge: for synthetic IDs (module/motor/trailer/linked/derived),
+    // look up by name. v1.33: also fall back to name-matching for ANY
+    // category whose id has no direct selections — belt-and-braces so a
+    // rename or id drift can't hide selections again.
     const merged = new Map(byId);
     assignedCategories.forEach(cat => {
-      if ((cat.id.startsWith('module-') || cat.id.startsWith('motor-') || cat.id.startsWith('trailer-')) && !merged.has(cat.id)) {
+      if (!merged.has(cat.id)) {
         const nameMatches = byName.get(cat.name.toLowerCase()) || [];
         if (nameMatches.length > 0) merged.set(cat.id, nameMatches);
       }
     });
     return merged;
   }, [selections, assignedCategories]);
+
+  /** v1.33 — ordering honours the MPF's own show-on-quote signifiers
+   *  (same classifier the quote flow uses): genuine accessory categories
+   *  with selections first, then empty ones, then the MPF-internal /
+   *  Excel-artifact sections (### markers, OBSOLETE lists, PD packs,
+   *  rigging-kit pools, workshop ops) LAST — they exist because the MPF
+   *  needs one flat dropdown source, not because NSM wants them offered. */
+  const orderedCategories = useMemo(() => {
+    const rank = (c: DealerFitCategory) => {
+      const cls = classifySection(c.name);
+      const internal = cls === 'hidden' || cls === 'workshop';
+      const populated = (selectionsByCategory.get(c.id) || []).length > 0;
+      if (internal) return 2;
+      return populated ? 0 : 1;
+    };
+    return [...assignedCategories].sort((a, b) => {
+      const ra = rank(a), rb = rank(b);
+      if (ra !== rb) return ra - rb;
+      return a.name.localeCompare(b.name);
+    });
+  }, [assignedCategories, selectionsByCategory]);
 
   const handleOpenBrowser = (categoryId: string) => {
     setActiveCategoryId(categoryId);
@@ -227,6 +284,44 @@ export function DealerFitOptions({
         toast({ title: "Category Purged", description: "All local selections have been removed." });
     } catch (e) {
         toast({ variant: 'destructive', title: "Clear Failed" });
+    }
+  };
+
+  // v1.33 (Bill: "upload images to dealer fit parts, e.g. Garmin head
+  // unit") — manual image per selection for parts whose MPF row carries
+  // no image link. Native hidden input (shadcn Input+label doesn't fire,
+  // per CLAUDE.md lesson); value reset after upload so the same file can
+  // be re-picked.
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadTargetId, setUploadTargetId] = useState<string | null>(null);
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const handleImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    const selectionId = uploadTargetId;
+    setUploadTargetId(null);
+    if (!file || !selectionId || !organisationId) return;
+    setUploadingId(selectionId);
+    try {
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const url = await uploadFileToStorage(storage, file, `organisations/${organisationId}/dealerFitSelections/${selectionId}/image.${ext}`);
+        await updateDoc(doc(firestore, `organisations/${organisationId}/dealerFitSelections/${selectionId}`), { imageUrl: url });
+        toast({ title: 'Image uploaded' });
+    } catch (err: any) {
+        toast({ variant: 'destructive', title: 'Image upload failed', description: err?.message });
+    } finally {
+        setUploadingId(null);
+    }
+  };
+
+  // v1.33 (Bill: "remove one item at a time and not just CLEAR ALL")
+  const handleDeleteSelection = async (selection: DealerFitSelection) => {
+    if (!organisationId) return;
+    try {
+        await deleteDoc(doc(firestore, `organisations/${organisationId}/dealerFitSelections/${selection.id}`));
+        toast({ title: 'Selection Removed', description: selection.name });
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Failed to remove selection' });
     }
   };
 
@@ -314,23 +409,42 @@ export function DealerFitOptions({
             </Button>
           </div>
         )}
-        {assignedCategories.map(category => {
+        {orderedCategories.map(category => {
           const categorySelections = selectionsByCategory.get(category.id) || [];
           const nameLower = category.name.toLowerCase();
           const hasSeeder = nameLower.includes('safety') || nameLower.includes('sounder') || nameLower.includes('audio');
 
+          // v1.33 (Asaf: "these sections should be collapsible") — every
+          // category collapses; big MPF categories start closed so the
+          // page scans as a tidy index; only small populated ones open.
           return (
-            <Card key={category.id} className="rounded-xl border-2 shadow-sm overflow-hidden text-left">
+            <Collapsible key={category.id} defaultOpen={categorySelections.length > 0 && categorySelections.length <= 8} asChild>
+            <Card className="rounded-xl border-2 shadow-sm overflow-hidden text-left">
               <CardHeader className="flex flex-row items-center justify-between py-4 px-6 bg-muted/10 border-b text-left shrink-0">
-                <div className="text-left">
-                    <CardTitle className="text-lg font-black uppercase italic tracking-tight">{category.name}</CardTitle>
-                    <CardDescription className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{categorySelections.length} Active Proposals</CardDescription>
-                </div>
-                <div className="flex items-center gap-2 text-left">
+                <CollapsibleTrigger asChild>
+                  <button type="button" className="flex items-center gap-3 text-left min-w-0 flex-1 group/cat">
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 group-data-[state=open]/cat:rotate-90" />
+                    <div className="text-left min-w-0">
+                        <CardTitle className="text-lg font-black uppercase italic tracking-tight truncate">{category.name}</CardTitle>
+                        <CardDescription className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                          {categorySelections.length} Active Proposal{categorySelections.length === 1 ? '' : 's'}
+                          {categorySelections.length > 0 && (
+                            <span className="text-primary/70"> · ${categorySelections.reduce((acc, s) => acc + s.items.reduce((a, i) => a + itemPrice(i.data), 0), 0).toLocaleString()} total</span>
+                          )}
+                          {(() => { const cls = classifySection(category.name); return (cls === 'hidden' || cls === 'workshop') ? (
+                            <span className="ml-2 inline-block px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 normal-case tracking-normal font-bold" title="MPF-internal section (Excel dropdown source / obsolete list / workshop ops) — the quote flow's pickers hide or reroute it; composition still uses its data where needed (e.g. rigging kits price the motor bundle)">
+                              MPF internal · auto-hidden on quotes
+                            </span>
+                          ) : null; })()}
+                        </CardDescription>
+                    </div>
+                  </button>
+                </CollapsibleTrigger>
+                <div className="flex items-center gap-2 text-left shrink-0">
                     {categorySelections.length > 0 && (
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-destructive hover:bg-destructive/10"
                             onClick={() => handleClearCategory(category.id)}
                         >
@@ -344,6 +458,7 @@ export function DealerFitOptions({
                     </Button>
                 </div>
               </CardHeader>
+              <CollapsibleContent>
               <CardContent className="p-6 text-left">
                 {categorySelections.length > 0 ? (
                   <div className="grid gap-3 text-left">
@@ -351,9 +466,17 @@ export function DealerFitOptions({
                         <Card key={selection.id} className="bg-slate-50 border-2 hover:border-primary/20 transition-all shadow-sm group/sel rounded-xl overflow-hidden text-left">
                             <div className="p-4 flex items-center justify-between text-left">
                                 <div className="flex items-center gap-3 text-left">
-                                    <div className="h-8 w-8 bg-white border-2 rounded-lg flex items-center justify-center text-primary/40 shadow-inner group-hover/sel:text-primary group-hover/sel:border-primary/20 transition-all">
-                                        {selection.type === 'package' ? <Layers className="h-4 w-4" /> : <Box className="h-4 w-4" />}
-                                    </div>
+                                    {(selection.imageUrl || selection.items?.[0]?.data?.imageUrl) ? (
+                                        <img
+                                            src={selection.imageUrl || selection.items[0].data.imageUrl}
+                                            alt={selection.name}
+                                            className="h-10 w-14 object-contain bg-white border-2 rounded-lg shadow-inner shrink-0"
+                                        />
+                                    ) : (
+                                        <div className="h-8 w-8 bg-white border-2 rounded-lg flex items-center justify-center text-primary/40 shadow-inner group-hover/sel:text-primary group-hover/sel:border-primary/20 transition-all">
+                                            {selection.type === 'package' ? <Layers className="h-4 w-4" /> : <Box className="h-4 w-4" />}
+                                        </div>
+                                    )}
                                     <div className="text-left">
                                         <p className="font-black text-xs uppercase tracking-tight text-slate-900">{selection.name}</p>
                                         <p className="text-[9px] font-black uppercase text-muted-foreground/60 tracking-widest">{selection.items.length} Components Staged</p>
@@ -362,8 +485,27 @@ export function DealerFitOptions({
                                 <div className="flex items-center gap-4 text-left">
                                     <div className="text-right text-left">
                                         <p className="text-[10px] font-black text-primary">AUD BASE</p>
-                                        <p className="font-black text-xs">${selection.items.reduce((acc, i) => acc + (i.data.sellPriceExclGst || 0), 0).toLocaleString()}</p>
+                                        <p className="font-black text-xs">${selection.items.reduce((acc, i) => acc + itemPrice(i.data), 0).toLocaleString()}</p>
                                     </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-muted-foreground/40 hover:text-primary hover:bg-primary/10"
+                                        title={`Upload image for ${selection.name}`}
+                                        disabled={uploadingId === selection.id}
+                                        onClick={() => { setUploadTargetId(selection.id); fileInputRef.current?.click(); }}
+                                    >
+                                        {uploadingId === selection.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10"
+                                        title={`Remove ${selection.name}`}
+                                        onClick={() => handleDeleteSelection(selection)}
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
                                     <ChevronRight className="h-4 w-4 text-slate-300" />
                                 </div>
                             </div>
@@ -380,10 +522,13 @@ export function DealerFitOptions({
                   </div>
                 )}
               </CardContent>
+              </CollapsibleContent>
             </Card>
+            </Collapsible>
           )
         })}
       </div>
+      <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleImageFile} />
        {activeCategoryId && (
         <MasterDataBrowserDialog
           isOpen={isBrowserOpen}

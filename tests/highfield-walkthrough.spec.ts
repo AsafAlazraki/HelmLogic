@@ -403,9 +403,9 @@ async function nextStep(page: Page, settleMs: number) {
     await page.locator('button:has-text("Next Step"), button:has-text("Summary")').first().click({ force: true });
     await page.waitForTimeout(settleMs);
 }
-/** Read the "STEP N OF 6" indicator so asserts never run against the wrong step. */
+/** Read the "STEP N OF M" indicator so asserts never run against the wrong step. */
 async function stepNo(page: Page): Promise<number | null> {
-    const t = await page.locator('text=/STEP \\d+ OF 6/i').first().innerText({ timeout: 4000 }).catch(() => '');
+    const t = await page.locator('text=/STEP \\d+ OF \\d+/i').first().innerText({ timeout: 4000 }).catch(() => '');
     const m = t.match(/STEP\s+(\d+)/i);
     return m ? parseInt(m[1], 10) : null;
 }
@@ -958,11 +958,12 @@ async function walkModel(page: Page, rg: any, master: any, res: ModelResult) {
         }
     }
 
-    /* -------------- Step 6 — summary lines + sum of picks -------------- */
-    await nextStep(page, 3500);
+    /* -------------- Step 6 Administration (v1.33) → Step 7 — summary lines + sum of picks -------------- */
+    await nextStep(page, 2000); // Administration (new v1.33)
+    await nextStep(page, 3500); // Summary
     res.steps.s6 = 'pass';
     pa.s6_summary = { checked: 0, failed: 0 };
-    if ((await stepNo(page)) !== 6) { res.steps.s6 = 'fail'; fail('s6', 'not on STEP 6 OF 6 after Next'); await shot('s6-step'); }
+    if ((await stepNo(page)) !== 7) { res.steps.s6 = 'fail'; fail('s6', 'not on STEP 7 (Summary) after Next'); await shot('s6-step'); }
     const vPrice = getPriceForLevel(activeVariant);
     pa.s6_summary.checked++;
     const baseLine = `$${vPrice.toLocaleString('en-US')}`;

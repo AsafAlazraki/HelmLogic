@@ -440,9 +440,11 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
                         </Button>
                     </div>
                 )}
-                <div className="rounded-xl border-2 overflow-hidden">
+                {/* v1.33 (Mark: catalog scroll bug) — contained scroll: horizontal
+                    scrollbar lives on the table (not the page bottom), headers freeze. */}
+                <div className="rounded-xl border-2 overflow-auto max-h-[70vh]">
                     <table className="w-full text-xs">
-                        <thead className="bg-slate-50 border-b-2">
+                        <thead className="bg-slate-50 border-b-2 sticky top-0 z-10 shadow-sm">
                             <tr className="text-left">
                                 <th className="w-8 px-2 py-2">
                                     {/* v1.17 (3.10.1) — select-all-filtered header checkbox */}

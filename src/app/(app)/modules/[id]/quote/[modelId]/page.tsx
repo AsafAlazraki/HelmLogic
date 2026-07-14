@@ -211,6 +211,11 @@ function QuoteFlowContent() {
                 range={range}
                 rangeId={rangeId!}
                 initialState={initialState}
+                /* v1.33 (Bill: Build-A-Boat on the NSM website) — append
+                   ?priceMode=public to the URL when embedding: locks
+                   pricing to Cash and hides the price-level picker so
+                   trade/sub-dealer levels never show to the public. */
+                publicPricing={searchParams.get('priceMode') === 'public'}
             />
         );
     }

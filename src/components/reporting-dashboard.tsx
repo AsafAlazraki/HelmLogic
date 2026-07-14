@@ -36,7 +36,7 @@ function quoteTotal(q: any): number {
     // (`finalPriceExclGst` / `totalPriceExclGst`) — the incl-GST fields only
     // exist on newer docs. Fall back and apply the whole-dollar inc-GST ceil
     // rule so the table doesn't render $0 for every real quote.
-    const incl = q.financials?.totalInclGst ?? q.totalInclGst;
+    const incl = q.financials?.totalInclGst ?? q.totalInclGst ?? q.finalPriceIncGst ?? q.totalPriceIncGst;
     if (incl != null && Number(incl) > 0) return Number(incl);
     const ex = q.finalPriceExclGst ?? q.totalPriceExclGst;
     if (ex != null) return Math.ceil(Math.max(0, Number(ex)) * 1.1);

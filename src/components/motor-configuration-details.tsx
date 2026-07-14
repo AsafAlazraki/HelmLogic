@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from './ui/badge';
 import Image from 'next/image';
+import { resolveItemImageUrl } from '@/lib/hero-carousel';
 import { Ship, Wrench, Package, ShieldCheck, Globe, DollarSign, Save, Loader2, PlusCircle, Trash2, Upload, X } from 'lucide-react';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -29,7 +30,10 @@ export function MotorConfigurationDetails({ motor, module, vendorId, dataSetId }
     const [isBrowserOpen, setIsBrowserOpen] = useState(false);
     const [activeCategory, setActiveCategory] = useState<'Propeller' | 'Rigging' | 'Other'>('Other');
 
-    const imgPath = imageOverride ?? motor.SummaryImage ?? motor.imageUrl;
+    // v1.33 — FFR-30 fallback chain instead of two raw fields (Mark:
+    // engine thumbnails missing). Override from a fresh upload still wins.
+    const resolvedMotorImage = resolveItemImageUrl(motor as any, () => true);
+    const imgPath = imageOverride ?? resolvedMotorImage ?? motor.SummaryImage ?? motor.imageUrl;
     const getImageUrl = (path: string) => {
         if (!path) return null;
         const clean = path.trim().replace(/\\/g, '/');

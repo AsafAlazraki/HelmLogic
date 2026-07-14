@@ -166,8 +166,14 @@ function SectionRow({ section, selectedBlockType, onSelectContentBlock, blockByT
         const block = blockByType.get(blockType);
         const hasContent = !!(block?.html && block.html.trim());
         const isSelected = blockType === selectedBlockType;
+        // v1.33 (Bill: "Drag to reorder not working, each section is locked")
+        // — the drag listeners used to live ONLY on the 14px grip icon, so
+        // grabbing the row body (what everyone naturally does) did nothing
+        // and read as locked. Whole row now drags; the 5px activation
+        // distance keeps plain clicks opening the editor (v1.5 Kanban
+        // pattern).
         return (
-            <li ref={setNodeRef} style={style} className={cn('flex items-stretch group', isDragging && 'shadow-lg')}>
+            <li ref={setNodeRef} style={style} {...listeners} {...attributes} className={cn('flex items-stretch group', isDragging && 'shadow-lg', !anchored && 'cursor-grab active:cursor-grabbing')}>
                 <DragHandle anchored={anchored} listeners={listeners} attributes={attributes} />
                 <button
                     type="button"
@@ -200,7 +206,7 @@ function SectionRow({ section, selectedBlockType, onSelectContentBlock, blockByT
     // System row — non-clickable, draggable (unless anchored)
     const systemKey = section.key as SystemSectionKey;
     return (
-        <li ref={setNodeRef} style={style} className={cn('flex items-stretch bg-slate-50/40', isDragging && 'shadow-lg')}>
+        <li ref={setNodeRef} style={style} {...listeners} {...attributes} className={cn('flex items-stretch bg-slate-50/40', isDragging && 'shadow-lg', !anchored && 'cursor-grab active:cursor-grabbing')}>
             <DragHandle anchored={anchored} listeners={listeners} attributes={attributes} />
             <div className="flex-1 px-2 py-3 flex items-start gap-3">
                 <span className="mt-0.5 shrink-0" aria-hidden>

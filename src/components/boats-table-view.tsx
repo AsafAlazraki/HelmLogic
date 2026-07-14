@@ -281,9 +281,10 @@ function BoatsTableBody({ vendorId, initialSearch }: { vendorId: string; initial
                 </p>
             </div>
 
-            <div className="rounded-xl border-2 overflow-hidden">
+            {/* v1.33 (Mark: catalog scroll bug) — contained scroll + frozen headers. */}
+            <div className="rounded-xl border-2 overflow-auto max-h-[70vh]">
                 <table className="w-full text-xs">
-                    <thead className="bg-slate-50 border-b-2">
+                    <thead className="bg-slate-50 border-b-2 sticky top-0 z-10 shadow-sm">
                         <tr className="text-left">
                             <th className="w-8 px-2 py-2"></th>
                             <th className="px-3 py-2 font-bold uppercase tracking-widest text-[10px]">Code</th>
