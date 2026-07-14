@@ -6,6 +6,7 @@ import { uploadFileToStorage } from '@/firebase/storage';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Loader2, AlertCircle, PlusCircle, Trash2, Zap, Box, Layers, ChevronRight, ImagePlus } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from './ui/button';
 import { MasterDataBrowserDialog } from './master-data-browser-dialog';
 import { collection, addDoc, deleteDoc, serverTimestamp, doc, query, where, getDocs, writeBatch, updateDoc } from 'firebase/firestore';
@@ -403,18 +404,32 @@ export function DealerFitOptions({
           const nameLower = category.name.toLowerCase();
           const hasSeeder = nameLower.includes('safety') || nameLower.includes('sounder') || nameLower.includes('audio');
 
+          // v1.33 (Asaf: "these sections should be collapsible") — every
+          // category collapses; big MPF categories start closed so the
+          // page scans as a tidy index; only small populated ones open.
           return (
-            <Card key={category.id} className="rounded-xl border-2 shadow-sm overflow-hidden text-left">
+            <Collapsible key={category.id} defaultOpen={categorySelections.length > 0 && categorySelections.length <= 8} asChild>
+            <Card className="rounded-xl border-2 shadow-sm overflow-hidden text-left">
               <CardHeader className="flex flex-row items-center justify-between py-4 px-6 bg-muted/10 border-b text-left shrink-0">
-                <div className="text-left">
-                    <CardTitle className="text-lg font-black uppercase italic tracking-tight">{category.name}</CardTitle>
-                    <CardDescription className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{categorySelections.length} Active Proposals</CardDescription>
-                </div>
-                <div className="flex items-center gap-2 text-left">
+                <CollapsibleTrigger asChild>
+                  <button type="button" className="flex items-center gap-3 text-left min-w-0 flex-1 group/cat">
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 group-data-[state=open]/cat:rotate-90" />
+                    <div className="text-left min-w-0">
+                        <CardTitle className="text-lg font-black uppercase italic tracking-tight truncate">{category.name}</CardTitle>
+                        <CardDescription className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                          {categorySelections.length} Active Proposal{categorySelections.length === 1 ? '' : 's'}
+                          {categorySelections.length > 0 && (
+                            <span className="text-primary/70"> · ${categorySelections.reduce((acc, s) => acc + s.items.reduce((a, i) => a + itemPrice(i.data), 0), 0).toLocaleString()} total</span>
+                          )}
+                        </CardDescription>
+                    </div>
+                  </button>
+                </CollapsibleTrigger>
+                <div className="flex items-center gap-2 text-left shrink-0">
                     {categorySelections.length > 0 && (
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             className="h-8 px-4 font-black uppercase text-[9px] tracking-widest text-destructive hover:bg-destructive/10"
                             onClick={() => handleClearCategory(category.id)}
                         >
@@ -428,6 +443,7 @@ export function DealerFitOptions({
                     </Button>
                 </div>
               </CardHeader>
+              <CollapsibleContent>
               <CardContent className="p-6 text-left">
                 {categorySelections.length > 0 ? (
                   <div className="grid gap-3 text-left">
@@ -491,7 +507,9 @@ export function DealerFitOptions({
                   </div>
                 )}
               </CardContent>
+              </CollapsibleContent>
             </Card>
+            </Collapsible>
           )
         })}
       </div>
