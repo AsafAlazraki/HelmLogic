@@ -306,7 +306,16 @@ export function FitUpQuoteSelector({
         () => collection(firestore, 'organisations', organisationId, 'fitUpItems'),
         [firestore, organisationId],
     );
-    const { data: items, isLoading } = useCollection<FitUpItem>(itemsRef);
+    const { data: itemsRaw, isLoading } = useCollection<FitUpItem>(itemsRef);
+    /** v1.34 — honour the sanctioned hide class (audit-presentation.py):
+     *  negative-price MPF deduction/CREDIT lines carry {hidden: true} and
+     *  must never be offered by a customer-facing picker. The flag existed
+     *  since v1.31 but no consumer filtered it (caught by nightly section E
+     *  flagging two CREDIT lines, 2026-07-15). */
+    const items = useMemo(
+        () => (itemsRaw ? itemsRaw.filter((i: any) => i.hidden !== true) : itemsRaw),
+        [itemsRaw],
+    );
 
     const packagesRef = useMemoFirebase(
         () => collection(firestore, 'organisations', organisationId, 'fitUpPackages'),
