@@ -11,3 +11,4 @@ JSON is saved beside this file as `YYYY-MM-DD-<sha>.json`.
 | 2026-07-05 | `c6067aa` | 34580 / 34594 | 14 (standing-explained; release-tip run for the v1.18 → v1.31 merge) |
 | 2026-07-05 | `03c767b` | 34581 / 34595 | 14 (standing-explained; POST-RULES-PUBLISH verification — section B 26/26 against the live deployed rules) |
 | 2026-07-15 | `023c3a3` | 32580 / 32580 | 0 |
+| 2026-07-16 | `023c3a3` | 32581 / 32581 | 0 |
