@@ -1,0 +1,39 @@
+{
+ "kitsUnresolved": [
+  "6x3-6yc1s-se-60 (ff9su) - lan rect std - rect gauge (concealed)",
+  "6x6-6y91s-se-10 (ff9st) - dbw rig set - sng 1 sq lcd (binnacle)",
+  "704-6yc1s-se-50 (ff9st) - lan rect std - rect gauge (binnacle)",
+  "cap camarat 5.5 wa2 y06c0 rigging kit - sng eng (100-115 hp) mech control",
+  "cap camarat 6.5 cc3 y06e1 mech rigging kit - sng eng (150-200hp)",
+  "cap camarat 6.5 cc3 y29e1 hmex rigging kit - sng eng (150-200hp) sbw w electric steering + cl5 display + eks smart key",
+  "cap camarat 6.5 cc3 y31e1 hmex rigging kit - sng eng (150-200hp) dbw w cl5 display + eks smart key",
+  "cap camarat 6.5 wa3 y06e1 mech rigging kit - sng eng (150-200 hp)",
+  "cap camarat 6.5 wa3 y29e1 hmex rigging kit - sng eng (150-200 hp) sbw elec steering w cl5 display + eks smart key + autopilot",
+  "cap camarat 6.5 wa3 y31e1 hmex rigging kit - sng eng (150-200 hp) dbw elec control w cl5 display + eks smart key",
+  "cc 7.5 was3 y02du - mechanical rigging kit inc 6y8 gauges without ycop",
+  "cc 7.5 was3 y04c1 - hmex dbw rigging kit inc cl5 colour touch display + eks smart key",
+  "cc 7.5 was3 y26d1 - hmex sbw rigging kit inc cl5 colour touch display + eks smart key",
+  "cc 7.5 was3 y26d1/y9301 - hmex sbw rigging kit + joystick inc cl5 colour touch display + eks smart key",
+  "dec rigging kit (ff9st) - 6x6 binnacle mount w 6yc gauge kit, 16 pin harness & filter",
+  "dec rigging kit - 6x7 concealed mount w 6y8 2 gauge kit, 16 pin harness & filter",
+  "dec rigging kit - 6x7 concealed mount w cl5 gauge kit, 6.1m harness & filter",
+  "mech rigging kit (ff9st) - 704 binnacle mount w 6yc gauge kit, 7m harness, cables & filter",
+  "mf695-2 sport y02c0 - yamaha rigging kit (115-175hp) mechanical control + ycop",
+  "mf695-2 sport y04c1 - yamaha rigging kit (150-175hp) elec control + cl5 display + eks smart key",
+  "mf695-2 sport y18c0 - yamaha rigging kit / double steering (150-175hp) elec control + cl5 display + eks smart key",
+  "mf695-2 y06c0 - yamaha rigging kit (115-175hp) mechanical control",
+  "mf695-2 y10d1 - yamaha rigging kit (150-175hp) elec control + cl5 display + eks smart key",
+  "mf695-2 y20d0 - yamaha rigging kit / double steering (150-175hp) elec control + cl5 display + eks smart key",
+  "mf795-2 sport y06e1 - yamaha rigging kit (150-200hp) mechanical control w 6y8 gauges + ycop",
+  "mf795-2 sport y29e1 - yamaha hmex rigging kit sbw elec control + cl5 display + autopilot & eks smart key",
+  "mf795-2 sport y29ea - yamaha hmex rigging kit - double steeringsbw elec control + cl5 display + autopilot & eks smart key",
+  "mf795-2 sport y31e1 - yamaha rigging kit (150-200hp) dwb electric control + eks smart key",
+  "mf795-2 y06c0 - yamaha rigging kit (150-225hp) mechanical control",
+  "mf795-2 y30e1 - yamaha rigging kit (150-200hp) dbw elec control + cl5 display + eks smart key",
+  "mf795-2 y30ea - yamaha rigging kit - double steering (150-200hp) dbw elec control + cl5 display + eks smart key"
+ ],
+ "kitsUnpriced": [],
+ "propsUnresolved": [
+  "68F-45932-20"
+ ]
+}

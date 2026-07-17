@@ -183,6 +183,11 @@ for coll, price_fields in (("fitUpItems", ("sellPriceExclGst", "price", "sellPri
     check("E. Org config", f"{coll} listable", True, f"{len(docs)} docs")
     for d in docs:
         did = d["name"].rsplit("/", 1)[-1]
+        # Sanctioned hide class (audit-presentation.py): negative-price MPF
+        # deduction/CREDIT lines carry {hidden: true, hiddenReason} and are
+        # excluded from customer-facing pickers — exempt them here too.
+        if fv(d, "hidden") is True:
+            continue
         for pf in price_fields:
             val = fv(d, pf)
             if val is not None and isinstance(val, float):
@@ -485,6 +490,22 @@ except FileNotFoundError:
           "extract-diff sections skipped; live-only sections M/N still assert composition + drift")
     check("J. Assignment web", "SKIPPED — requires the MPF extraction JSONs (see I)", True, "")
     dfs_docs = [ddec(d) for d in list_docs(f"organisations/{ORG}/dealerFitSelections")]
+    # Section K mixes extract-diff checks with LIVE checks; hydrate the live
+    # inputs here so a fresh checkout (nightly CI) still runs every live
+    # check instead of dying on NameError (caught 2026-07-14: the first
+    # extract-less run crashed at K's yam_rows loop before writing results).
+    boats_ext = []  # extract-only loops become no-ops
+    YAMAHA_ROWS_PATH = "data-warehouse/mRAzkE8PUX8GMHELCvJo/dataSets/FQ5uTMyUorrJPlpbWIY8/rows"
+    yam_rows = [ddec(d) for d in list_docs(YAMAHA_ROWS_PATH)]
+    live_trailer_by_name = {}
+    for tv in ["dunbier-trailers", "dunbier-haines-bmt", "gfab-trailers",
+               "mackay-trailers", "redco-tinka-trailers", "stacer-trailers",
+               "obsolete-trailers"]:
+        for sdoc in list_docs(f"data-warehouse/{tv}/series"):
+            sid = sdoc["name"].rsplit("/", 1)[-1]
+            for tdoc in list_docs(f"data-warehouse/{tv}/series/{sid}/trailers"):
+                t = ddec(tdoc)
+                live_trailer_by_name.setdefault(str(t.get("name") or "").strip(), t)
 
 # ---------- K. Presentation relevance (FFR-18 class hunt, permanent) ----------
 # Full audit + rationale: scripts/mpf/audit-presentation.py +
@@ -685,6 +706,215 @@ for coll, name_keys, sell_key, junk_budget in (
     k_bad_secs = [s for s in k_secs if s.startswith("###")]
     check(K, f"{coll}: no ###-marker section labels (picker group headings)",
           len(k_bad_secs) == 0, "; ".join(k_bad_secs[:3]))
+
+
+# ---------- M. Display-Sheet composition inputs (live-only, EVERY MPF boat) ----------
+# FFR-33 battery section M: v1.32 composes every quote like NSM's Display
+# Sheet (hull inc price + PD tier + slot rigging kit + prop). This section
+# asserts those composition INPUTS exist and are priced for every MPF
+# variant so a data regression fails the nightly, not Mark's field test.
+# Mirrors the quote flow's own resolution (highfield-quote-flow.tsx):
+# rigging kit by normalised-name exact-then-substring match on
+# name/desc/description with totalSellInstalledExclGst as the priced line;
+# prop by serviceParts.partNumber with packageSupplyFitIncGst ->
+# retailIncGst -> sellPrice preference.
+M = "M. Display-Sheet inputs"
+MPF_BRAND_RANGES = [
+    ("Highfield", HIGHFIELD, "qo7IePnRzJxjrYyLWhTn"),
+    ("Highfield", HIGHFIELD, "EqcKQ51svI1I2Q5poFdl"),
+    ("Highfield", HIGHFIELD, "QsGZuVwutEr5yyMkp97j"),
+    ("Highfield", HIGHFIELD, "nQ2LE50z9Tbf2uss0Ote"),
+    ("Highfield", HIGHFIELD, "sEzdrM2fZsrOKA3ACrJp"),
+    ("Highfield", HIGHFIELD, "vfXxDuMpChteKncb7LnG"),
+    ("Highfield", HIGHFIELD, "coaster"),
+    ("Stacer", "LWgHuGoKfUBeKZ8eWnEi", "mpf-catalog"),
+    ("Stabicraft", "0cUm736tE9ON2WFLRHD0", "mpf-catalog"),
+    ("Surtees", "gLAi5eHYiZDgrvjDUaos", "mpf-catalog"),
+    ("Haines Signature", "DJ5GVMzLaNWNcOlRqzJV", "mpf-catalog"),
+    ("Jeanneau (MPF)", "lwGHoqdqNPuSZYYQAgG7", "jeanneau-mpf"),
+    ("Merry Fisher", "lwGHoqdqNPuSZYYQAgG7", "merry-fisher"),
+    ("Cap Camarat", "lwGHoqdqNPuSZYYQAgG7", "cap-camarat"),
+    ("Formosa", "formosa", "mpf-catalog"),
+]
+m_variants = []
+for m_brand, m_vid, m_rid in MPF_BRAND_RANGES:
+    for m_mdoc in list_docs(f"data-warehouse/{m_vid}/ranges/{m_rid}/models"):
+        m_mid = m_mdoc["name"].rsplit("/", 1)[-1]
+        for m_vdoc in list_docs(f"data-warehouse/{m_vid}/ranges/{m_rid}/models/{m_mid}/variants"):
+            m_v = ddec(m_vdoc)
+            if m_v.get("mpfSource"):
+                m_variants.append((m_brand, m_mid, m_v))
+check(M, "MPF variant walk non-trivial (>=700 variants)", len(m_variants) >= 700,
+      f"{len(m_variants)} MPF-sourced variants walked")
+
+m_missing_pd, m_missing_hull = [], []
+m_kit_names, m_prop_nos = set(), set()
+for m_brand, m_mid, m_v in m_variants:
+    m_tiers = [t for t in (m_v.get("pdTiers") or []) if isinstance(t, dict)]
+    m_t1 = next((t for t in m_tiers if t.get("tier") == 1), m_tiers[0] if m_tiers else None)
+    m_sell = (m_t1 or {}).get("sellIncGst")
+    if not (isinstance(m_sell, (int, float)) and m_sell > 0):
+        m_missing_pd.append(f"{m_brand}/{m_mid}/{m_v['_id']}")
+    if m_v.get("priceIncGst") is None and not m_v.get("priceLadder"):
+        m_missing_hull.append(f"{m_brand}/{m_mid}/{m_v['_id']}")
+    for m_slot in (m_v.get("motorMenu") or []):
+        if not isinstance(m_slot, dict):
+            continue
+        if m_slot.get("riggingKit"):
+            m_kit_names.add(re.sub(r"\s+", " ", str(m_slot["riggingKit"])).strip().lower())
+        if m_slot.get("propPartNo"):
+            m_prop_nos.add(str(m_slot["propPartNo"]).strip())
+check(M, "every MPF variant carries PD tier 1 with sellIncGst > 0",
+      len(m_missing_pd) == 0, f"{len(m_missing_pd)} missing; first: {m_missing_pd[:5]}")
+check(M, "every MPF variant carries an inc-GST hull price (priceIncGst or priceLadder)",
+      len(m_missing_hull) == 0, f"{len(m_missing_hull)} missing; first: {m_missing_hull[:5]}")
+
+m_kits = [ddec(d) for d in list_docs(f"organisations/{ORG}/riggingKits")]
+def m_kit_label(k):
+    return str(k.get("name") or k.get("desc") or k.get("description") or "")
+m_kit_norm = {re.sub(r"\s+", " ", m_kit_label(k)).strip().lower(): k for k in m_kits if m_kit_label(k).strip()}
+def m_kit_resolves(target):
+    if target in m_kit_norm:
+        return m_kit_norm[target]
+    for lbl, k in m_kit_norm.items():
+        if lbl and (target in lbl or lbl in target):
+            return k
+    return None
+# Semantic no-kit markers (MPF want-shown signifiers meaning "no
+# separately-priced rigging"): NR fillers, tiller-steer motors, kits the
+# factory fits inside the boat price. They are EXPECTED not to resolve
+# or price — see tasks/mpf-boat-page-signifiers.md.
+def m_no_kit(nm):
+    return (nm.startswith(("nr -", "nr-")) or "not required" in nm
+            or "tiller handle" in nm or "factory fit" in nm)
+m_kit_real = sorted(n for n in m_kit_names if not m_no_kit(n))
+m_kits_unresolved, m_kits_unpriced = [], []
+for m_nm in m_kit_real:
+    m_hit = m_kit_resolves(m_nm)
+    if m_hit is None:
+        m_kits_unresolved.append(m_nm)
+    else:
+        m_inst = m_hit.get("totalSellInstalledExclGst")
+        if not (isinstance(m_inst, (int, float)) and m_inst > 0):
+            m_kits_unpriced.append(m_nm)
+# Known-gaps ratchet: standing day-1 gaps live in a committed allowlist;
+# the nightly FAILS only on regressions (new names beyond the list) and
+# keeps the standing count visible as a passing check. Shrink the file as
+# the mapping work lands (v1.34 work item).
+m_known = {"kitsUnresolved": [], "kitsUnpriced": [], "propsUnresolved": []}
+m_known_path = "tasks/mpf-audit/known-gaps-composition.json"
+if os.path.exists(m_known_path):
+    m_known.update(json.load(open(m_known_path)))
+m_new_unresolved = sorted(set(m_kits_unresolved) - set(m_known["kitsUnresolved"]))
+m_new_unpriced = sorted(set(m_kits_unpriced) - set(m_known["kitsUnpriced"]))
+check(M, "slot rigging kits: NO NEW unresolved names beyond the known-gaps allowlist",
+      len(m_new_unresolved) == 0,
+      f"{len(m_new_unresolved)} NEW: {m_new_unresolved[:5]}")
+check(M, "slot rigging kits: standing known-gap count (mapping backlog, v1.34)",
+      True, f"{len(m_kits_unresolved)} unresolved / {len(m_kits_unpriced)} unpriced of {len(m_kit_real)} real kit names (+{len(m_kit_names)-len(m_kit_real)} semantic no-kit markers)")
+check(M, "slot rigging kits: NO NEW unpriced kits beyond the known-gaps allowlist",
+      len(m_new_unpriced) == 0, f"{len(m_new_unpriced)} NEW: {m_new_unpriced[:5]}")
+
+# Prop placeholder grammar (Excel-limitation signifiers): '0' = no prop,
+# 'xx' wildcards = pitch chosen at rigging time, 'A / B' = dual options,
+# TBA/TBC. Expected not to resolve to a single part.
+def m_prop_placeholder(pn):
+    u = pn.upper()
+    return (pn == "0" or "XX" in u or "/" in pn or "TBA" in u or "TBC" in u
+            or "SUPPLIED WITH MOTOR" in u)  # semantic no-prop marker
+m_prop_real = sorted(p for p in m_prop_nos if not m_prop_placeholder(p))
+m_props_unresolved, m_props_unpriced = [], []
+for m_pn in m_prop_real:
+    m_resp = requests.post(f"{BASE}/organisations/{ORG}:runQuery",
+                           headers=H, timeout=30, json={"structuredQuery": {
+        "from": [{"collectionId": "serviceParts"}],
+        "where": {"fieldFilter": {"field": {"fieldPath": "partNumber"}, "op": "EQUAL",
+                                  "value": {"stringValue": m_pn}}},
+        "limit": 1}}).json()
+    m_doc = next((row["document"] for row in m_resp if isinstance(row, dict) and "document" in row), None)
+    if m_doc is None:
+        m_props_unresolved.append(m_pn)
+        continue
+    m_part = ddec(m_doc)
+    m_price = next((m_part.get(k) for k in ("packageSupplyFitIncGst", "retailIncGst", "sellPrice")
+                    if isinstance(m_part.get(k), (int, float)) and m_part.get(k) > 0), None)
+    if m_price is None:
+        m_props_unpriced.append(m_pn)
+m_new_props = sorted(set(m_props_unresolved) - set(m_known["propsUnresolved"]))
+check(M, "slot props: NO NEW unresolved real part numbers beyond the known-gaps allowlist",
+      len(m_new_props) == 0, f"{len(m_new_props)} NEW: {m_new_props[:5]}")
+check(M, "slot props: standing counts (placeholders are expected-unresolvable)",
+      True, f"{len(m_props_unresolved)} unresolved of {len(m_prop_real)} real part numbers (+{len(m_prop_nos)-len(m_prop_real)} placeholders)")
+check(M, "every resolved slot prop carries a usable price (packageSupplyFitIncGst/retailIncGst/sellPrice)",
+      len(m_props_unpriced) == 0,
+      f"{len(m_props_unpriced)} unpriced; first: {m_props_unpriced[:5]}")
+os.makedirs("test-results", exist_ok=True)
+json.dump({"kitsUnresolved": m_kits_unresolved, "kitsUnpriced": m_kits_unpriced,
+           "propsUnresolved": m_props_unresolved,
+           "noKitMarkers": sorted(n for n in m_kit_names if m_no_kit(n)),
+           "propPlaceholders": sorted(p for p in m_prop_nos if m_prop_placeholder(p))},
+          open("test-results/composition-gaps.json", "w"), indent=1)
+
+# ---------- N. Override drift alarm (live-only) ----------
+# FFR-33 battery section N: the v1.32 root cause #1 was the org
+# modelOverrides layer silently shadowing migrated catalog prices. The
+# fleet was swept to 0 shadows; this section keeps it at 0 forever —
+# any operator/import that re-introduces a shadow fails the nightly.
+# (Port of scripts/audit-override-staleness.py's same-name diff.)
+N = "N. Override drift"
+n_hf_ranges = {"qo7IePnRzJxjrYyLWhTn": None, "EqcKQ51svI1I2Q5poFdl": None,
+               "QsGZuVwutEr5yyMkp97j": None, "nQ2LE50z9Tbf2uss0Ote": None,
+               "sEzdrM2fZsrOKA3ACrJp": None, "vfXxDuMpChteKncb7LnG": None, "coaster": None}
+n_catalog = {}
+n_model_range = {}
+for n_rid in n_hf_ranges:
+    for n_mdoc in list_docs(f"data-warehouse/{HIGHFIELD}/ranges/{n_rid}/models"):
+        n_m = ddec(n_mdoc)
+        n_catalog[n_m["_id"]] = n_m
+        n_model_range[n_m["_id"]] = n_rid
+def n_norm(s):
+    return re.sub(r"\s+", " ", str(s or "")).strip().lower()
+def n_price(f):
+    for k in ("sellPriceExclGst", "price"):
+        v = f.get(k)
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            return float(v)
+    return None
+n_shadows = []
+n_overrides = [ddec(d) for d in list_docs(f"organisations/{ORG}/modelOverrides")]
+for n_ov in n_overrides:
+    n_cat = n_catalog.get(n_ov["_id"])
+    if not n_cat:
+        continue  # override for another vendor / deleted model — staleness audit covers classification
+    n_cat_fo = {n_norm(f.get("name")): f for f in (n_cat.get("optionalFeatures") or []) if isinstance(f, dict)}
+    for n_f in (n_ov.get("optionalFeatures") or []):
+        if not isinstance(n_f, dict):
+            continue
+        n_cf = n_cat_fo.get(n_norm(n_f.get("name")))
+        if not n_cf:
+            continue  # override-only feature: legitimate operator addition
+        n_po, n_pc = n_price(n_f), n_price(n_cf)
+        if n_po is not None and n_pc is not None and abs(n_po - n_pc) > 0.005:
+            n_shadows.append(f"{n_ov['_id']}: {n_f.get('name')} override={n_po} catalog={n_pc}")
+    for n_k in ("sellPriceExclGst", "cost"):
+        n_vo, n_vc = n_ov.get(n_k), n_cat.get(n_k)
+        if isinstance(n_vo, (int, float)) and isinstance(n_vc, (int, float)) and abs(n_vo - n_vc) > 0.005:
+            n_shadows.append(f"{n_ov['_id']}: model.{n_k} override={n_vo} catalog={n_vc}")
+    n_vov = n_ov.get("variantOverrides")
+    if isinstance(n_vov, dict) and n_vov:
+        n_cvars = {d2["_id"]: d2 for d2 in
+                   (ddec(x) for x in list_docs(
+                       f"data-warehouse/{HIGHFIELD}/ranges/{n_model_range[n_ov['_id']]}/models/{n_ov['_id']}/variants"))}
+        for n_vid2, n_vdata in n_vov.items():
+            if not isinstance(n_vdata, dict):
+                continue
+            n_cv = n_cvars.get(n_vid2) or {}
+            for n_k in ("sellPriceExclGst", "priceIncGst", "cost"):
+                n_a, n_b = n_vdata.get(n_k), n_cv.get(n_k)
+                if isinstance(n_a, (int, float)) and isinstance(n_b, (int, float)) and abs(n_a - n_b) > 0.005:
+                    n_shadows.append(f"{n_ov['_id']}/{n_vid2}: {n_k} override={n_a} catalog={n_b}")
+check(N, f"modelOverrides drift: 0 shadowed prices across {len(n_overrides)} override docs",
+      len(n_shadows) == 0, f"{len(n_shadows)} shadows; first: {n_shadows[:5]}")
 
 # ---------- write ----------
 os.makedirs("test-results", exist_ok=True)
