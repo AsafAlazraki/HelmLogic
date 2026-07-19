@@ -59,12 +59,17 @@ const S = StyleSheet.create({
  *  (downscale + jpeg + CORS-friendly server-side fetch); Yamaha CDN
  *  hosts are hotlink-blocked even via weserv → collapse the slot. */
 const BLOCKED_IMAGE_DOMAINS = ['yamaha-motor.com.au', 'yamaha-motor.com'];
+/** Firebase Storage tokened URLs 404 THROUGH weserv but fetch fine raw
+ *  (CORS is open on the bucket) — same rule as WESERV_SKIP_HOSTS in
+ *  image-preload.ts. Verified by isolated render 2026-07-19. */
+const PROXY_SKIP_HOSTS = ['firebasestorage.googleapis.com', 'firebasestorage.app'];
 function pdfImg(url: string | undefined | null, w = 700): string | undefined {
     if (!url || typeof url !== 'string') return undefined;
     const u = url.trim();
     if (!u) return undefined;
     if (u.startsWith('data:')) return u;
     if (BLOCKED_IMAGE_DOMAINS.some(d => u.includes(d))) return undefined;
+    if (PROXY_SKIP_HOSTS.some(d => u.includes(d))) return u;
     const noProto = u.replace(/^https?:\/\//i, '');
     return `https://images.weserv.nl/?url=${encodeURIComponent(noProto)}&w=${w}&output=jpg&q=72`;
 }
@@ -139,8 +144,16 @@ export function MotorQuotePDFDocument({ input, organisation }: { input: MotorQuo
         .filter(t => blocks[t] && blocks[t]!.trim() && !placed.has(t))
         .map(t => ({ type: t, html: blocks[t] }));
 
+    // Firestore maps round-trip alphabetically — restore the customer-
+    // friendly spec order.
+    const SPEC_ORDER = ['HP Rating', 'Shaft Length', 'Control', 'Starting', 'Tilt & Trim',
+        'Cylinders / Displacement', 'Engine Colour', 'Fuel Tank', 'Propeller', 'Warranty'];
     const specEntries = Object.entries(snap?.specs ?? {})
-        .filter(([, v]) => !['opt', 'std', '.', '-', 'n/a'].includes(String(v).trim().toLowerCase()));
+        .filter(([, v]) => !['opt', 'std', '.', '-', 'n/a'].includes(String(v).trim().toLowerCase()))
+        .sort(([a], [b]) => {
+            const ia = SPEC_ORDER.indexOf(a), ib = SPEC_ORDER.indexOf(b);
+            return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+        });
 
     return (
         <Document title={`${title} ${input.quoteNumber ?? ''} — ${snap?.name ?? ''}`} author={organisation?.name ?? 'HelmLogic'}>

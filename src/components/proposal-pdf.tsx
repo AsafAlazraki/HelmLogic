@@ -290,12 +290,18 @@ const BLOCKED_IMAGE_DOMAINS = [
     'yamaha-motor.com',
 ];
 
+/** v1.34 — Firebase Storage tokened URLs 404 THROUGH weserv but fetch
+ *  fine raw (bucket CORS is open; same rule as WESERV_SKIP_HOSTS in
+ *  image-preload.ts). Without this skip, every mirrored mpf-mirror/
+ *  image silently failed in the PDF. Verified by isolated render. */
+const PDF_PROXY_SKIP_HOSTS = ['firebasestorage.googleapis.com', 'firebasestorage.app'];
 function pdfImg(url: string | undefined | null, w = 700): string | undefined {
     if (!url || typeof url !== 'string') return undefined;
     const u = url.trim();
     if (!u) return undefined;
     if (u.startsWith('data:')) return u;
     if (BLOCKED_IMAGE_DOMAINS.some(d => u.includes(d))) return undefined;
+    if (PDF_PROXY_SKIP_HOSTS.some(d => u.includes(d))) return u;
     const noProto = u.replace(/^https?:\/\//i, '');
     return `https://images.weserv.nl/?url=${encodeURIComponent(noProto)}&w=${w}&output=jpg&q=72`;
 }
