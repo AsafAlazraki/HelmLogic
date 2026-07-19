@@ -131,14 +131,17 @@ export function ServiceQuoteDashboard({ organisationId, organisation }: { organi
      *  auto-opens the create wizard with the catalog picker preselected.
      *  Params are stripped after consumption so a refresh doesn't re-open. */
     const [initialCatalogTab, setInitialCatalogTab] = useState<string | null>(null);
+    const [initialKind, setInitialKind] = useState<string | null>(null);
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const sp = new URLSearchParams(window.location.search);
         if (sp.get('newQuote') !== '1') return;
         setInitialCatalogTab(sp.get('catalogTab'));
+        setInitialKind(sp.get('kind'));
         setCreateOpen(true);
         sp.delete('newQuote');
         sp.delete('catalogTab');
+        sp.delete('kind');
         const qs = sp.toString();
         window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''));
     }, []);
@@ -237,6 +240,7 @@ export function ServiceQuoteDashboard({ organisationId, organisation }: { organi
             </CardContent>
 
             <ServiceQuoteCreateDialog
+                initialKind={initialKind}
                 open={createOpen}
                 onOpenChange={(o) => { setCreateOpen(o); if (!o) setInitialCatalogTab(null); }}
                 organisationId={organisationId}
@@ -329,13 +333,15 @@ const WIZARD_STEPS = [
 ];
 
 function ServiceQuoteCreateDialog({
-    open, onOpenChange, organisationId, initialCatalogTab,
+    open, onOpenChange, organisationId, initialCatalogTab, initialKind,
 }: {
     open: boolean;
     onOpenChange: (o: boolean) => void;
     organisationId: string;
     /** Deep-link preselection for the CatalogItemPicker tab. */
     initialCatalogTab?: string | null;
+    /** v1.34 — 'motor' = the dedicated motor-sale / repower quote kind. */
+    initialKind?: string | null;
 }) {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -348,6 +354,12 @@ function ServiceQuoteCreateDialog({
     const [selectedOps, setSelectedOps] = useState<ServiceQuoteLineOp[]>([]);
     const [selectedParts, setSelectedParts] = useState<ServiceQuoteLinePart[]>([]);
     const [saving, setSaving] = useState(false);
+    /* ── v1.34 motor-quote kind (Asaf: motor-only sale + repower) ── */
+    const isMotorQuote = initialKind === 'motor';
+    const [saleType, setSaleType] = useState<'new' | 'repower'>('new');
+    const [tradeInDesc, setTradeInDesc] = useState('');
+    const [tradeInValue, setTradeInValue] = useState('');
+    const [motorSnapshot, setMotorSnapshot] = useState<any | null>(null);
 
     useEffect(() => {
         if (!open) {
@@ -358,6 +370,10 @@ function ServiceQuoteCreateDialog({
             setNotes('');
             setSelectedOps([]);
             setSelectedParts([]);
+            setSaleType('new');
+            setTradeInDesc('');
+            setTradeInValue('');
+            setMotorSnapshot(null);
         }
     }, [open]);
 
@@ -403,6 +419,16 @@ function ServiceQuoteCreateDialog({
                 status: 'draft' as ServiceQuoteStatus,
                 totalSell,
                 totalCost,
+                // v1.34 motor quotes — kind + sale type + trade-in + the
+                // pick-time motor snapshot (image + full specs + vendor
+                // branding) that drives the dedicated branded PDF.
+                quoteKind: isMotorQuote ? 'motor' : 'service',
+                saleType: isMotorQuote ? saleType : null,
+                tradeIn: isMotorQuote && (tradeInDesc.trim() || tradeInValue.trim()) ? {
+                    description: tradeInDesc.trim() || null,
+                    value: parseFloat(tradeInValue) || 0,
+                } : null,
+                motorSnapshot: motorSnapshot || null,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
             });
@@ -480,6 +506,37 @@ function ServiceQuoteCreateDialog({
                                 <label className="text-xs font-semibold">Notes — optional</label>
                                 <Textarea value={notes} onChange={e => setNotes(e.target.value)} className="rounded-xl border-2 text-xs" rows={3} placeholder="Service-advisor notes (internal)." />
                             </div>
+                            {/* v1.34 — motor quote kind: New sale vs Repower.
+                                Repower auto-adds the Engine Removals charge from
+                                the picked motor's own MPF row + captures the
+                                old-motor trade-in. */}
+                            {isMotorQuote && (
+                                <div className="rounded-xl border-2 p-3 space-y-3 bg-slate-50/50">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">Motor quote type</p>
+                                    <div className="flex gap-2">
+                                        <button type="button" onClick={() => setSaleType('new')}
+                                            className={cn('flex-1 rounded-lg border-2 px-3 py-2 text-xs font-bold transition-colors', saleType === 'new' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-200 hover:bg-slate-50')}>
+                                            New motor sale
+                                        </button>
+                                        <button type="button" onClick={() => setSaleType('repower')}
+                                            className={cn('flex-1 rounded-lg border-2 px-3 py-2 text-xs font-bold transition-colors', saleType === 'repower' ? 'border-primary bg-primary/5 text-primary' : 'border-slate-200 hover:bg-slate-50')}>
+                                            Repower (replace existing)
+                                        </button>
+                                    </div>
+                                    {saleType === 'repower' && (
+                                        <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                                            <div className="space-y-1.5">
+                                                <label className="text-xs font-semibold">Old motor — trade-in description</label>
+                                                <Input value={tradeInDesc} onChange={e => setTradeInDesc(e.target.value)} placeholder="e.g. 2015 F115 approx 900hrs" className="rounded-xl border-2" />
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-xs font-semibold">Agreed trade-in value ($)</label>
+                                                <Input type="number" value={tradeInValue} onChange={e => setTradeInValue(e.target.value)} placeholder="0" className="rounded-xl border-2" />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -505,9 +562,13 @@ function ServiceQuoteCreateDialog({
                             <CatalogItemPicker
                                 organisationId={organisationId}
                                 initialTab={initialCatalogTab}
-                                onAdd={({ part, installOp, bundleParts }: CatalogAdd) => {
+                                repowerMode={isMotorQuote && saleType === 'repower'}
+                                onAdd={({ part, installOp, bundleParts, removalOp, motorMeta }: CatalogAdd) => {
                                     setSelectedParts(prev => [...prev, part, ...(bundleParts ?? [])]);
-                                    if (installOp) setSelectedOps(prev => [...prev, installOp]);
+                                    setSelectedOps(prev => [...prev,
+                                        ...(installOp ? [installOp] : []),
+                                        ...(removalOp ? [removalOp] : [])]);
+                                    if (motorMeta) setMotorSnapshot(motorMeta);
                                 }}
                             />
                         </div>

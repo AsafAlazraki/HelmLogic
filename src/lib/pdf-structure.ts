@@ -87,7 +87,9 @@ export interface PdfStructure {
     updatedAt?: Timestamp;
 }
 
-export type DocumentType = 'quote' | 'contract';
+// v1.34 — 'motor-quote' gets its own orderable structure doc at
+// organisations/{orgId}/pdfStructure/motor-quote (rules wildcard covers it).
+export type DocumentType = 'quote' | 'contract' | 'motor-quote';
 
 /* ──────────────────────────────────────────────────────────────────
  * DEFAULT ORDER — matches the pre-1.8.11 proposal-pdf layout.

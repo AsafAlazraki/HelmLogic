@@ -20,25 +20,23 @@ test('Catalog Manager motors tab shows the MPF rows quotes use', async ({ page }
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(4000);
 
-    // Find and click the Motors tab if the URL param didn't land it.
-    const motorsTab = page.getByRole('tab', { name: /^Motors$/i }).first();
-    if (await motorsTab.isVisible().catch(() => false)) {
-        await motorsTab.click({ force: true });
-        await page.waitForTimeout(2000);
+    // The Catalog Manager is brand-first: MotorsTableView mounts when the
+    // Motor Brand vendor is selected in the LEFT brand list.
+    const yamahaRow = page.locator('text=/^YAMAHA$/i').first();
+    await yamahaRow.click({ force: true });
+    await page.waitForTimeout(6000);
+    // If the view exposes a vendor combobox instead, drive that too.
+    const trigger = page.locator('button[role="combobox"]').filter({ hasText: /brand|Select/i }).first();
+    if (await trigger.isVisible().catch(() => false)) {
+        await trigger.click({ force: true }).catch(() => {});
+        await page.waitForTimeout(800);
+        const yamahaOption = page.getByRole('option', { name: /Yamaha/i }).first();
+        if (await yamahaOption.isVisible().catch(() => false)) await yamahaOption.click({ force: true });
+        await page.waitForTimeout(5000);
     }
-
-    // Pick the Yamaha brand in the vendor select.
-    const trigger = page.locator('button[role="combobox"]').filter({ hasText: /brand|Yamaha|Select/i }).first();
-    await trigger.click({ force: true }).catch(() => {});
-    await page.waitForTimeout(800);
-    const yamahaOption = page.getByRole('option', { name: /Yamaha/i }).first();
-    if (await yamahaOption.isVisible().catch(() => false)) {
-        await yamahaOption.click({ force: true });
-    }
-    await page.waitForTimeout(5000);
 
     const body = await page.evaluate(() => document.body.innerText);
-    const counted = body.match(/(\d+) of (\d+)/);
+    const counted = body.match(/(\d+) of (\d+)/i);
     const priceTokens = (body.match(/\$[\d,]{3,}/g) || []).length;
     const hasEmpty = /No motors found/i.test(body);
     const pseudoNote = /MPF section rows hidden/i.test(body);

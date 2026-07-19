@@ -811,9 +811,14 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                 its content auto-migrates into a `terms-and-conditions` block
                                 on first open of the Quote sub-tab. */}
                             <Tabs defaultValue="quote" className="space-y-4">
-                                <TabsList className="grid w-full grid-cols-3 max-w-md">
+                                <TabsList className="grid w-full grid-cols-4 max-w-lg">
                                     <TabsTrigger value="quote">Quote</TabsTrigger>
                                     <TabsTrigger value="contract">Contract</TabsTrigger>
+                                    {/* v1.34 — the dedicated motor-sale / repower document.
+                                        Same content-block system; admin decides whether it
+                                        shares boat-quote content (tag a block for both) or
+                                        diverges. */}
+                                    <TabsTrigger value="motor-quote">Motor Quote</TabsTrigger>
                                     {/* v1.8 (story 1.2.4.b) — Email templates
                                         sub-tab. Authors the subject + body for
                                         Send Quote emails. Send Quote button
@@ -835,6 +840,17 @@ export default function ManageOrganisationPage({ orgId }: { orgId: string }) {
                                     <ContentBlockManager
                                         orgId={orgId}
                                         documentType="contract"
+                                        legacyTermsAndConditions={(organisation as any)?.termsAndConditions}
+                                        enabledModuleSubscriptions={(organisation as any)?.enabledModuleSubscriptions}
+                                        organisationName={organisation?.name}
+                                        primaryLogoUrl={organisation?.primaryLogoUrl}
+                                        secondaryLogoUrl={organisation?.secondaryLogoUrl}
+                                    />
+                                </TabsContent>
+                                <TabsContent value="motor-quote">
+                                    <ContentBlockManager
+                                        orgId={orgId}
+                                        documentType="motor-quote"
                                         legacyTermsAndConditions={(organisation as any)?.termsAndConditions}
                                         enabledModuleSubscriptions={(organisation as any)?.enabledModuleSubscriptions}
                                         organisationName={organisation?.name}

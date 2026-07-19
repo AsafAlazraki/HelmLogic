@@ -240,15 +240,53 @@ export function ServiceQuoteDetailSheet({ open, onOpenChange, organisationId, qu
         };
     };
 
+    /** v1.34 — render the right document for the quote kind. Motor quotes
+     *  get the branded motor-quote PDF (vendor logo + photo + spec grid +
+     *  package + admin content blocks for documentType 'motor-quote');
+     *  everything else keeps the generic service document. */
+    const renderQuoteBlob = async () => {
+        const { pdf } = await import('@react-pdf/renderer');
+        if ((quote as any)?.quoteKind === 'motor') {
+            const [{ MotorQuotePDFDocument }, cb, ps] = await Promise.all([
+                import('@/components/motor-quote-pdf'),
+                import('@/lib/content-blocks'),
+                import('@/lib/pdf-structure'),
+            ]);
+            let contentBlocks: any = {};
+            let sections: any = null;
+            try {
+                contentBlocks = await cb.resolveContentBlocksForQuote(firestore, organisationId, null, 'motor-quote');
+                sections = await ps.getOrSeedPdfStructure(firestore, organisationId, 'motor-quote');
+            } catch (e) {
+                console.warn('[motor-quote-pdf] content resolution failed open', e);
+            }
+            const input = {
+                quoteNumber: quote!.quoteNumber,
+                createdAt: (quote as any)?.createdAt?.toDate?.() ?? null,
+                customerName,
+                customerPhone,
+                vehicle,
+                saleType: (quote as any)?.saleType ?? null,
+                tradeIn: (quote as any)?.tradeIn ?? null,
+                operations: quote!.operations ?? [],
+                parts: quote!.parts ?? [],
+                motorSnapshot: (quote as any)?.motorSnapshot ?? null,
+                contentBlocks,
+                sections,
+            };
+            return pdf(<MotorQuotePDFDocument input={input} organisation={organisation ?? { name: 'HelmLogic' }} />).toBlob();
+        }
+        const { ServiceQuotePDFDocument } = await import('@/components/service-quote-pdf');
+        const input = buildPdfInput();
+        if (!input) throw new Error('no quote');
+        return pdf(<ServiceQuotePDFDocument quote={input} organisation={organisation ?? { name: 'HelmLogic' }} />).toBlob();
+    };
+
     const handleDownload = async () => {
         if (!quote) return;
         setDownloading(true);
         try {
-            const { pdf } = await import('@react-pdf/renderer');
-            const { ServiceQuotePDFDocument } = await import('@/components/service-quote-pdf');
-            const input = buildPdfInput();
-            if (!input) throw new Error('no quote');
-            const blob = await pdf(<ServiceQuotePDFDocument quote={input} organisation={organisation ?? { name: 'HelmLogic' }} />).toBlob();
+            const blob = await renderQuoteBlob();
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -282,11 +320,7 @@ export function ServiceQuoteDetailSheet({ open, onOpenChange, organisationId, qu
         }
         setSending(true);
         try {
-            const { pdf } = await import('@react-pdf/renderer');
-            const { ServiceQuotePDFDocument } = await import('@/components/service-quote-pdf');
-            const input = buildPdfInput();
-            if (!input) throw new Error('no quote');
-            const blob = await pdf(<ServiceQuotePDFDocument quote={input} organisation={organisation ?? { name: 'HelmLogic' }} />).toBlob();
+            const blob = await renderQuoteBlob();
 
             // Allocate sentEmails id + upload PDF
             const sentRef = collection(firestore, 'organisations', organisationId, 'serviceQuotes', quote.id, 'sentEmails');

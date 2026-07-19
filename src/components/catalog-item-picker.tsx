@@ -102,6 +102,12 @@ interface CatalogRow {
      *  masterAccessories — the MPF package defaults. */
     stdRigging?: { name: string; sell: number; cost: number } | null;
     stdProp?: { name: string; sell: number; cost: number } | null;
+    /** Repower: the MPF row's own Engine Removals charge. */
+    engineRemoval?: number;
+    /** Full spec map for the motor-quote PDF (label → value). */
+    specs?: Record<string, string>;
+    vendorName?: string;
+    vendorLogoUrl?: string | null;
 }
 
 export type CatalogTabId = 'motors' | 'trailers' | 'dealer-fit' | 'rigging';
@@ -142,6 +148,7 @@ async function loadMotors(firestore: any): Promise<CatalogRow[]> {
     const out: CatalogRow[] = [];
     const vendorsSnap = await getDocs(query(collection(firestore, 'data-warehouse'), where('vendorType', '==', 'Motor Brand')));
     for (const v of vendorsSnap.docs) {
+        const vendorData = v.data() as any;
         try {
             const dsSnap = await getDocs(collection(firestore, 'data-warehouse', v.id, 'dataSets'));
             const datasets = dsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
@@ -177,6 +184,19 @@ async function loadMotors(firestore: any): Promise<CatalogRow[]> {
                     const a = accs.find(x => String(x?.category) === cat && (x?.isStandard || x?.standard));
                     return a ? { name: String(a.name || cat), sell: accPrice(a), cost: accCost(a) } : null;
                 };
+                // Full spec map for the motor-quote PDF — every MPF spec
+                // column that has a value, in customer-friendly order.
+                const specs: Record<string, string> = {};
+                for (const [label, key] of [
+                    ['HP Rating', 'HP Rating'], ['Shaft Length', 'Shaft Length'],
+                    ['Control', 'Control'], ['Starting', 'Starting'],
+                    ['Tilt & Trim', 'Tilt & Trim'], ['Cylinders / Displacement', 'Cylinders / Displacement'],
+                    ['Engine Colour', 'Engine Colour'], ['Fuel Tank', 'Fuel\nTank'],
+                    ['Propeller', 'Prop'], ['Warranty', 'Warranty'],
+                ] as const) {
+                    const vv = r[key];
+                    if (vv != null && String(vv).trim() && String(vv).trim() !== '.') specs[label] = String(vv).trim();
+                }
                 out.push({
                     id: d.id, name, code: code || undefined, sell, cost,
                     image: resolveItemImageUrl(r, () => true),
@@ -188,6 +208,10 @@ async function loadMotors(firestore: any): Promise<CatalogRow[]> {
                     installHrs: num(r['Labour (Hrs)']) || 0,
                     stdRigging: std('Rigging'),
                     stdProp: std('Propeller'),
+                    engineRemoval: num(r['Engine Removals']) || 0,
+                    specs,
+                    vendorName: String(vendorData?.name ?? 'Yamaha'),
+                    vendorLogoUrl: (vendorData?.logoUrl as string) ?? null,
                 });
             }
         } catch (err) {
@@ -269,6 +293,19 @@ export interface CatalogAdd {
      *  same add (std rigging + std prop). Emitted in the SAME callback so
      *  detail-sheet consumers still write ONE Firestore patch. */
     bundleParts?: CatalogPartLine[];
+    /** Repower — the Engine Removals charge from the motor's own MPF row. */
+    removalOp?: CatalogOpLine;
+    /** Motor snapshot for the branded motor-quote PDF: image + full spec
+     *  map + vendor branding, captured at pick time (pick-time-snapshot
+     *  lesson: the renderer must never re-fetch). */
+    motorMeta?: {
+        name: string;
+        code?: string;
+        image?: string | null;
+        specs: Record<string, string>;
+        vendorName?: string;
+        vendorLogoUrl?: string | null;
+    };
 }
 
 export function CatalogItemPicker({
@@ -276,12 +313,16 @@ export function CatalogItemPicker({
     disabled,
     onAdd,
     initialTab,
+    repowerMode,
 }: {
     organisationId: string;
     disabled?: boolean;
     onAdd: (add: CatalogAdd) => Promise<void> | void;
     /** Deep-link preselection (module entry points pass ?catalogTab=…). */
     initialTab?: string | null;
+    /** v1.34 — repower motor quotes: a motor package also carries the
+     *  Engine Removals charge from the motor's own MPF row. */
+    repowerMode?: boolean;
 }) {
     const firestore = useFirestore();
     const [activeTab, setActiveTab] = useState<TabId>(isCatalogTabId(initialTab) ? initialTab : 'motors');
@@ -361,7 +402,28 @@ export function CatalogItemPicker({
             // (Install - Sell from the row's CI–CY band) + the standard
             // rigging kit + standard prop from masterAccessories. Exactly
             // how the Motor Module sheet composes a motor quote.
+            if (activeTab === 'motors') {
+                add.motorMeta = {
+                    name: row.name,
+                    code: row.code,
+                    image: row.image ?? null,
+                    specs: row.specs ?? {},
+                    vendorName: row.vendorName,
+                    vendorLogoUrl: row.vendorLogoUrl ?? null,
+                };
+            }
             if (activeTab === 'motors' && asPackage) {
+                if (repowerMode && row.engineRemoval && row.engineRemoval > 0) {
+                    add.removalOp = {
+                        id: `motor-removal-${row.id}-${Date.now()}`,
+                        code: 'REMOVAL',
+                        name: 'Engine removal (existing motor)',
+                        hours: 0,
+                        rate: 0,
+                        sellPrice: row.engineRemoval,
+                        cost: 0,
+                    };
+                }
                 if (row.installSell && row.installSell > 0) {
                     const hrs = row.installHrs || 0;
                     add.installOp = {
@@ -600,7 +662,7 @@ export function CounterQuoteEntryButton({
     return (
         <Button
             variant="ghost"
-            onClick={() => router.push(`/modules/${serviceModuleId}?newQuote=1&catalogTab=${tab}`)}
+            onClick={() => router.push(`/modules/${serviceModuleId}?newQuote=1&catalogTab=${tab}${tab === 'motors' ? '&kind=motor' : ''}`)}
             className={cn(
                 'h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 shadow-xl flex items-center',
                 className,

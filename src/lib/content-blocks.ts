@@ -43,12 +43,16 @@ export type BlockType =
     | 'value-summary'
     | 'terms-and-conditions';
 
-/** v1.7 (1.8.6) — which document(s) this block appears on. */
-export type DocumentType = 'quote' | 'contract';
-export const DOCUMENT_TYPES: DocumentType[] = ['quote', 'contract'];
+/** v1.7 (1.8.6) — which document(s) this block appears on.
+ *  v1.34 — 'motor-quote': the dedicated motor-sale / repower document.
+ *  Admin controls its content independently (Document Templates → Motor
+ *  Quote tab) or tags a block for several document types at once. */
+export type DocumentType = 'quote' | 'contract' | 'motor-quote';
+export const DOCUMENT_TYPES: DocumentType[] = ['quote', 'contract', 'motor-quote'];
 export const DOCUMENT_TYPE_LABEL: Record<DocumentType, string> = {
     quote: 'Quote',
     contract: 'Contract',
+    'motor-quote': 'Motor Quote',
 };
 
 export interface ContentBlock {

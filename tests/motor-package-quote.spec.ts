@@ -38,9 +38,19 @@ test('motor package quote composes like the MPF Motor Module sheet', async ({ pa
         await page.waitForTimeout(4000);
     }
 
-    // Wizard step 1 — customer.
+    // Wizard step 1 — customer + REPOWER sale type + trade-in.
     const nameInput = page.locator('input').filter({ hasNot: page.locator('[type="hidden"]') }).first();
     await nameInput.fill('Motor Package Probe');
+    const repowerBtn = page.getByRole('button', { name: /Repower/i }).first();
+    if (await repowerBtn.isVisible().catch(() => false)) {
+        await repowerBtn.click({ force: true });
+        await page.waitForTimeout(500);
+        await page.locator('input[placeholder*="F115"], input[placeholder*="900hrs"]').first().fill('2015 F115 approx 900hrs').catch(() => {});
+        await page.locator('input[type="number"]').last().fill('4500').catch(() => {});
+        console.log('repower mode engaged with trade-in');
+    } else {
+        console.log('repower toggle NOT visible');
+    }
     await page.getByRole('button', { name: /^Next/i }).click({ force: true });
     await page.waitForTimeout(800);
     // Step 2 — vehicle/notes (optional) → Next.
@@ -90,4 +100,15 @@ test('motor package quote composes like the MPF Motor Module sheet', async ({ pa
     console.log('quote created and visible:', created);
     await page.screenshot({ path: `${SHOTS}/motor-quote-created.png`, fullPage: false });
     expect(created, 'created quote visible on the dashboard').toBe(true);
+
+    // Open the created quote and download the BRANDED motor-quote PDF.
+    await page.locator('text=Motor Package Probe').first().click({ force: true });
+    await page.waitForTimeout(3000);
+    const sheet = await page.evaluate(() => document.body.innerText);
+    console.log('detail sheet mentions repower/motor:', /repower|motor/i.test(sheet));
+    const dlPromise = page.waitForEvent('download', { timeout: 120000 });
+    await page.getByRole('button', { name: /Download/i }).first().click({ force: true });
+    const dl = await dlPromise;
+    await dl.saveAs(`${SHOTS}/motor-quote.pdf`);
+    console.log('MOTOR QUOTE PDF downloaded');
 });
