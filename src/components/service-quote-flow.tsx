@@ -505,8 +505,8 @@ function ServiceQuoteCreateDialog({
                             <CatalogItemPicker
                                 organisationId={organisationId}
                                 initialTab={initialCatalogTab}
-                                onAdd={({ part, installOp }: CatalogAdd) => {
-                                    setSelectedParts(prev => [...prev, part]);
+                                onAdd={({ part, installOp, bundleParts }: CatalogAdd) => {
+                                    setSelectedParts(prev => [...prev, part, ...(bundleParts ?? [])]);
                                     if (installOp) setSelectedOps(prev => [...prev, installOp]);
                                 }}
                             />

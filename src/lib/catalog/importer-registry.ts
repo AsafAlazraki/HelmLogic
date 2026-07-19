@@ -61,6 +61,12 @@ export function listImporters(): VendorImporter[] {
 // is just another registerImporter() call.
 // ----------------------------------------------------------------------
 
+// ⚠️ v1.34 NOTE: this registry is DORMANT scaffolding (no component
+// consumers as of v1.34). If you wire it up, the Yamaha target below is
+// WRONG for motors — live motor rows the quote flow prices from sit at
+// data-warehouse/{vendorId}/dataSets/{dataSetId}/rows (see
+// motors-table-view.tsx dataset discovery), NOT /parts. MPF is source
+// of truth; imports upsert by MODEL CODE.
 registerImporter({
     id: 'yamaha-mpf',
     label: 'Yamaha Master Price File',

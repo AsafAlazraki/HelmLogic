@@ -192,18 +192,24 @@ export function ServiceQuoteDetailSheet({ open, onOpenChange, organisationId, qu
      *  op line — written in ONE patch so totals stay honest against the
      *  captured `quote` snapshot. Line shapes match the create wizard's, so
      *  totals / lifecycle / PDF need no schema change. */
-    const handleAddCatalogItem = async ({ part, installOp }: CatalogAdd) => {
+    const handleAddCatalogItem = async ({ part, installOp, bundleParts }: CatalogAdd) => {
         if (!quote || isLocked) return;
+        // v1.34 — the motor package (motor + std rigging + std prop + install)
+        // arrives in ONE callback and lands in ONE patch (stale-snapshot rule).
+        const newParts = [part, ...(bundleParts ?? [])];
+        const partsSell = newParts.reduce((s, p) => s + (p.sellPrice ?? 0) * (p.qty ?? 1), 0);
+        const partsCost = newParts.reduce((s, p) => s + (p.cost ?? 0) * (p.qty ?? 1), 0);
         const fields: Record<string, any> = {
-            parts: [...(quote.parts ?? []), part],
-            totalSell: (quote.totalSell ?? 0) + (part.sellPrice ?? 0) * (part.qty ?? 1) + (installOp?.sellPrice ?? 0),
-            totalCost: (quote.totalCost ?? 0) + (part.cost ?? 0) * (part.qty ?? 1) + (installOp?.cost ?? 0),
+            parts: [...(quote.parts ?? []), ...newParts],
+            totalSell: (quote.totalSell ?? 0) + partsSell + (installOp?.sellPrice ?? 0),
+            totalCost: (quote.totalCost ?? 0) + partsCost + (installOp?.cost ?? 0),
         };
         if (installOp) fields.operations = [...(quote.operations ?? []), installOp];
         await patch(fields);
+        const extras = (bundleParts?.length ?? 0) + (installOp ? 1 : 0);
         toast({
-            title: 'Catalog item added',
-            description: installOp ? `${part.name} + install labour` : part.name,
+            title: extras > 0 ? 'Package added' : 'Catalog item added',
+            description: extras > 0 ? `${part.name} + ${extras} package line${extras === 1 ? '' : 's'}` : part.name,
         });
     };
 

@@ -50,6 +50,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Anchor, Loader2, Plus, Ship, Wrench, Package2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { resolveItemImageUrl } from '@/lib/hero-carousel';
 
 /* ─── Emitted line shapes (match service-quote-flow's wizard lines) ─── */
 
@@ -87,6 +88,20 @@ interface CatalogRow {
     /** Rigging only — install labour hours + MPF labour dollars. */
     installHours?: number;
     installLabour?: number;
+    /* ── Motors only (v1.34 motor-package quoting; MPF is source of truth) ── */
+    image?: string | null;
+    hp?: string | null;
+    shaft?: string | null;
+    control?: string | null;
+    /** The motor row's own MPF install economics (CI–CY band): the
+     *  "Install - Sell" figure + the Installation description + labour hrs. */
+    installSell?: number;
+    installName?: string | null;
+    installHrs?: number;
+    /** Standard (isStandard) rigging + prop from the motor's
+     *  masterAccessories — the MPF package defaults. */
+    stdRigging?: { name: string; sell: number; cost: number } | null;
+    stdProp?: { name: string; sell: number; cost: number } | null;
 }
 
 export type CatalogTabId = 'motors' | 'trailers' | 'dealer-fit' | 'rigging';
@@ -138,11 +153,42 @@ async function loadMotors(firestore: any): Promise<CatalogRow[]> {
             const rowsSnap = await getDocs(collection(firestore, 'data-warehouse', v.id, 'dataSets', target.id, 'rows'));
             for (const d of rowsSnap.docs) {
                 const r = d.data() as any;
-                const name = String(r['Model Name'] ?? r['MODEL'] ?? r['MODEL CODE'] ?? r['Model'] ?? r.name ?? '').trim() || d.id;
+                const code = String(r['MODEL CODE'] ?? r['Part Number'] ?? '').trim();
+                // MPF section pseudo-rows ("TWIN RIG OPTIONS - …") carry no
+                // code — layout, not motors.
+                if (!code) continue;
+                const name = String(r['Model Name'] ?? r['MODEL'] ?? r['Model'] ?? r.name ?? '').trim() || d.id;
                 // hull_cash = NSM Retail (CLAUDE.md motor priceLevels mapping)
                 const sell = num(r['NSM Retail']) || num(r['Store Price']) || num(r['Sell Price']) || num(r.priceLevels?.hull_cash) || num(r.sellPriceExclGst);
-                const cost = num(r['Dealer Buy']) || num(r['Total CTD']) || num(r.cost);
-                out.push({ id: d.id, name, code: String(r['MODEL CODE'] ?? r['Part Number'] ?? '').trim() || undefined, sell, cost });
+                // Total CTD is the MPF's true landed cost (AX band).
+                const cost = num(r.cost) || num(r['Total CTD']) || num(r['Dealer Buy']);
+                // v1.34 — the MPF package ingredients live on the motor row:
+                // install economics + the standard rigging/prop accessories.
+                const accs: any[] = Array.isArray(r.masterAccessories) ? r.masterAccessories : [];
+                const accPrice = (a: any) => (a.items || []).reduce((s2: number, it: any) => {
+                    const dd = it?.data || {};
+                    return s2 + (num(dd['Act Sell']) || num(dd.sellPriceExclGst) || num(dd['Store Price']) || num(dd.RRP) || num(dd.Price) || 0);
+                }, 0);
+                const accCost = (a: any) => (a.items || []).reduce((s2: number, it: any) => {
+                    const dd = it?.data || {};
+                    return s2 + (num(dd['Act CTD']) || num(dd.cost) || num(dd['Dealer Buy']) || 0);
+                }, 0);
+                const std = (cat: string) => {
+                    const a = accs.find(x => String(x?.category) === cat && (x?.isStandard || x?.standard));
+                    return a ? { name: String(a.name || cat), sell: accPrice(a), cost: accCost(a) } : null;
+                };
+                out.push({
+                    id: d.id, name, code: code || undefined, sell, cost,
+                    image: resolveItemImageUrl(r, () => true),
+                    hp: r['HP Rating'] != null ? String(r['HP Rating']) : null,
+                    shaft: r['Shaft Length'] != null ? String(r['Shaft Length']) : (r.Shaft != null ? String(r.Shaft) : null),
+                    control: r.Control != null ? String(r.Control) : null,
+                    installSell: num(r['Install - Sell']) || num(r['Sales Install']) || 0,
+                    installName: r.Installation != null ? String(r.Installation) : null,
+                    installHrs: num(r['Labour (Hrs)']) || 0,
+                    stdRigging: std('Rigging'),
+                    stdProp: std('Propeller'),
+                });
             }
         } catch (err) {
             console.warn(`[CatalogItemPicker] motor vendor ${v.id} unavailable (non-fatal)`, err);
@@ -219,6 +265,10 @@ async function loadRiggingKits(firestore: any, organisationId: string): Promise<
 export interface CatalogAdd {
     part: CatalogPartLine;
     installOp?: CatalogOpLine;
+    /** v1.34 motor-package quoting — additional lines that belong to the
+     *  same add (std rigging + std prop). Emitted in the SAME callback so
+     *  detail-sheet consumers still write ONE Firestore patch. */
+    bundleParts?: CatalogPartLine[];
 }
 
 export function CatalogItemPicker({
@@ -293,7 +343,7 @@ export function CatalogItemPicker({
 
     const tabMeta = TABS.find(t => t.id === activeTab)!;
 
-    const handleAdd = async (row: CatalogRow) => {
+    const handleAdd = async (row: CatalogRow, asPackage = false) => {
         setAddingId(row.id);
         try {
             const add: CatalogAdd = {
@@ -307,6 +357,48 @@ export function CatalogItemPicker({
                     itemType: tabMeta.itemType,
                 },
             };
+            // v1.34 — MPF motor package: motor + its own install economics
+            // (Install - Sell from the row's CI–CY band) + the standard
+            // rigging kit + standard prop from masterAccessories. Exactly
+            // how the Motor Module sheet composes a motor quote.
+            if (activeTab === 'motors' && asPackage) {
+                if (row.installSell && row.installSell > 0) {
+                    const hrs = row.installHrs || 0;
+                    add.installOp = {
+                        id: `motor-install-${row.id}-${Date.now()}`,
+                        code: 'INSTALL',
+                        name: row.installName ? `Install: ${row.installName}` : `Install: ${row.name}`,
+                        hours: hrs,
+                        rate: hrs > 0 ? Math.round((row.installSell / hrs) * 100) / 100 : 0,
+                        sellPrice: row.installSell,
+                        cost: 0,
+                    };
+                }
+                const bundle: CatalogPartLine[] = [];
+                if (row.stdRigging && row.stdRigging.sell > 0) {
+                    bundle.push({
+                        id: `motor-rigging-${row.id}-${Date.now()}`,
+                        partNumber: 'RIGGING',
+                        name: row.stdRigging.name,
+                        qty: 1,
+                        cost: row.stdRigging.cost ?? 0,
+                        sellPrice: row.stdRigging.sell,
+                        itemType: 'rigging-kit',
+                    });
+                }
+                if (row.stdProp && row.stdProp.sell > 0) {
+                    bundle.push({
+                        id: `motor-prop-${row.id}-${Date.now()}`,
+                        partNumber: 'PROP',
+                        name: row.stdProp.name,
+                        qty: 1,
+                        cost: row.stdProp.cost ?? 0,
+                        sellPrice: row.stdProp.sell,
+                        itemType: 'propeller',
+                    });
+                }
+                if (bundle.length) add.bundleParts = bundle;
+            }
             // Rigging kits with install hours also carry the shop-rate labour
             // as a clearly-labelled op-style line (mirrors how wizard op lines
             // carry hours/rate; sell comes from the kit's MPF installLabour).
@@ -392,14 +484,36 @@ export function CatalogItemPicker({
                         <div className="max-h-56 overflow-y-auto divide-y rounded-xl border-2 border-slate-200">
                             {rendered.map(row => {
                                 const busy = addingId === row.id;
+                                const isMotor = activeTab === 'motors';
+                                const pkgBits: string[] = [];
+                                if (isMotor) {
+                                    if (row.installSell) pkgBits.push(`install ${currency(row.installSell)}`);
+                                    if (row.stdRigging?.sell) pkgBits.push(`rigging ${currency(row.stdRigging.sell)}`);
+                                    if (row.stdProp?.sell) pkgBits.push(`prop ${currency(row.stdProp.sell)}`);
+                                }
+                                const pkgTotal = isMotor
+                                    ? (row.sell ?? 0) + (row.installSell ?? 0) + (row.stdRigging?.sell ?? 0) + (row.stdProp?.sell ?? 0)
+                                    : 0;
                                 return (
                                     <div key={row.id} className="flex items-center justify-between gap-3 px-3 py-1.5">
+                                        {isMotor && (
+                                            row.image
+                                                ? <img src={row.image} alt="" className="h-9 w-12 object-contain shrink-0 mix-blend-multiply" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                                                : <div className="h-9 w-12 shrink-0 rounded bg-slate-50 border flex items-center justify-center"><Anchor className="h-3.5 w-3.5 text-slate-300" /></div>
+                                        )}
                                         <div className="min-w-0 flex-1">
                                             <p className="text-xs font-semibold truncate">{row.name}</p>
-                                            <p className="text-[9px] text-muted-foreground">
+                                            <p className="text-[9px] text-muted-foreground truncate">
                                                 {row.code && <span className="font-mono font-bold">{row.code}</span>}
+                                                {isMotor && row.hp ? ` · ${row.hp} HP` : ''}
+                                                {isMotor && row.shaft ? ` · ${row.shaft}` : ''}
                                                 {row.installHours ? `${row.code ? ' · ' : ''}install ${row.installHours}h${row.installLabour ? ` (+${currency(row.installLabour)} labour)` : ''}` : ''}
                                             </p>
+                                            {isMotor && pkgBits.length > 0 && (
+                                                <p className="text-[9px] text-emerald-700 font-bold truncate" title={pkgBits.join(' + ')}>
+                                                    Package: + {pkgBits.join(' + ')}
+                                                </p>
+                                            )}
                                         </div>
                                         <span className="text-xs font-bold tabular-nums shrink-0">{currency(row.sell)}</span>
                                         <Button
@@ -413,6 +527,19 @@ export function CatalogItemPicker({
                                             {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
                                             <span className="ml-1">Add</span>
                                         </Button>
+                                        {isMotor && pkgBits.length > 0 && (
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                disabled={disabled || busy}
+                                                onClick={() => handleAdd(row, true)}
+                                                className="rounded-lg h-7 px-2 text-[10px] font-bold shrink-0"
+                                                title={`Motor + ${pkgBits.join(' + ')} = ${currency(pkgTotal)}`}
+                                            >
+                                                {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                                                <span className="ml-1">Package {currency(pkgTotal)}</span>
+                                            </Button>
+                                        )}
                                     </div>
                                 );
                             })}

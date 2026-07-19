@@ -2,15 +2,21 @@
 'use client';
 
 /**
- * MotorsTableView (v1.11 — Story 3.7.3).
+ * MotorsTableView (v1.11 — Story 3.7.3; v1.34 repoint).
  *
- * Read-view of the motor catalogue, mirror of BoatsTableView but
- * for Motor Brand vendors. Motors don't have ranges/variants like
- * boats — they're flat per-vendor lists keyed by model name + HP.
+ * Table view of the motor catalogue for Motor Brand vendors.
  *
- * Read-only by design — edits stay in module + master-price-file
- * editors. Fast audit surface to scan the whole motor catalogue
- * and spot pricing anomalies.
+ * v1.34 (Asaf: "MPF data is source of truth") — this table now reads the
+ * SAME MPF dataset rows the quote flow prices from
+ * (data-warehouse/{vendor}/dataSets/{ds}/rows). It previously read
+ * data-warehouse/{vendor}/parts, which is EMPTY for Yamaha — the same
+ * admin-surface-vs-quote-engine split-brain as the v1.33 dealer-fit tab.
+ * Two field-naming worlds coexist on rows (MPF Motor-Module columns +
+ * importer names); accessors below read both, and every write keeps the
+ * mirrors in sync (e.g. a Sell edit writes NSM Retail +
+ * priceLevels.hull_cash + sellPriceExclGst) so no consumer forks.
+ * Operator edits are provisional by design: the next MPF import upserts
+ * by MODEL CODE and wins.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -51,6 +57,36 @@ interface MotorRow {
     [k: string]: any;
 }
 
+/* ------- dual-world accessors (MPF columns first-class) ------- */
+const mPart = (r: MotorRow) => (r['Part Number'] ?? r['MODEL CODE'] ?? null) as string | null;
+const mModel = (r: MotorRow) => (r['Model Name'] ?? r['MODEL'] ?? null) as string | null;
+const mSeries = (r: MotorRow) => (r.Series ?? r.mpfSection ?? null) as string | null;
+const mHp = (r: MotorRow) => (r['HP Rating'] ?? null) as string | number | null;
+const mShaft = (r: MotorRow) => (r.Shaft ?? r['Shaft Length'] ?? null) as string | null;
+const mCost = (r: MotorRow): number | null =>
+    typeof r.cost === 'number' ? r.cost : (typeof r['Total CTD'] === 'number' ? r['Total CTD'] : null);
+const mSell = (r: MotorRow): number | null => {
+    for (const v of [r.sellPriceExclGst, r.priceLevels?.hull_cash, r['NSM Retail'], r['Store Price'], r['Sell Price']]) {
+        if (typeof v === 'number') return v;
+    }
+    return null;
+};
+/** Excel section pseudo-rows ("TWIN RIG OPTIONS - …") carry neither a
+ *  part number nor a model code — they are MPF layout, not motors. */
+const isPseudoRow = (r: MotorRow) => !mPart(r);
+/** Inline edits write EVERY mirror of a logical field so the quote flow,
+ *  workspace and this table never disagree. */
+function writeFieldsFor(field: string, next: any): Record<string, any> {
+    switch (field) {
+        case 'model': return { 'MODEL': next, 'Model Name': next };
+        case 'hp': return { 'HP Rating': next };
+        case 'shaft': return { 'Shaft Length': next, 'Shaft': next };
+        case 'cost': return { cost: next, 'Total CTD': next };
+        case 'sell': return { 'NSM Retail': next, sellPriceExclGst: next, 'priceLevels.hull_cash': next };
+        default: return { [field]: next };
+    }
+}
+
 export function MotorsTableView({ organisationId, initialSearch }: { organisationId?: string | null; initialSearch?: string } = {}) {
     const firestore = useFirestore();
 
@@ -83,7 +119,7 @@ export function MotorsTableView({ organisationId, initialSearch }: { organisatio
                             Motors Catalogue (read-view)
                         </CardTitle>
                         <CardDescription className="text-xs">
-                            Every motor in the selected brand. Click a cell to edit inline · Import opens the master-price-file workspace inline.
+                            Reads the SAME Master Price File rows quotes price from. Click a cell to edit inline (a Sell edit updates NSM Retail + the cash price level everywhere) · the next MPF import wins.
                         </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
@@ -156,6 +192,10 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
     const { toast } = useToast();
     const [rows, setRows] = useState<MotorRow[]>([]);
     const [loading, setLoading] = useState(true);
+    /** v1.34 — the resolved MPF dataset (rows live under it); null until
+     *  discovery completes. All writes target this path. */
+    const [dataSetId, setDataSetId] = useState<string | null>(null);
+    const [pseudoHidden, setPseudoHidden] = useState(0);
     /** v1.17 (Story 3.10.3) — initial seed comes from the Catalog Manager's
      *  cross-tab search box. Local edits override afterwards. */
     const [search, setSearch] = useState(initialSearch ?? '');
@@ -174,16 +214,27 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
     /** v1.17 (Story 3.10.2) — paste-from-spreadsheet dialog state. */
     const [pasteOpen, setPasteOpen] = useState(false);
 
-    /** v1.14 (3.8.1 retrofit) — inline-edit handler for motors. Writes
-     *  straight to the vendor part doc; toasts on success/failure. */
+    /** v1.14 (3.8.1 retrofit; v1.34 repoint) — inline-edit handler. Writes
+     *  every mirror of the logical field to the MPF dataset row; the next
+     *  MPF import upserts by MODEL CODE and wins (source-of-truth rule). */
     const patchMotor = async (motorId: string, field: string, next: any) => {
+        if (!dataSetId) return;
+        const update = writeFieldsFor(field, next);
         try {
             await updateDoc(
-                doc(firestore, 'data-warehouse', vendorId, 'parts', motorId),
-                { [field]: next, updatedAt: serverTimestamp() },
+                doc(firestore, 'data-warehouse', vendorId, 'dataSets', dataSetId, 'rows', motorId),
+                { ...update, updatedAt: serverTimestamp() },
             );
-            // Optimistic local update so the row reflects the change without a re-fetch.
-            setRows(prev => prev.map(r => r.id === motorId ? { ...r, [field]: next } : r));
+            // Optimistic local update (dot-path priceLevels applied to the map).
+            setRows(prev => prev.map(r => {
+                if (r.id !== motorId) return r;
+                const nextRow: MotorRow = { ...r };
+                for (const [k, v] of Object.entries(update)) {
+                    if (k === 'priceLevels.hull_cash') nextRow.priceLevels = { ...(nextRow.priceLevels || {}), hull_cash: v };
+                    else nextRow[k] = v;
+                }
+                return nextRow;
+            }));
             toast({ title: 'Saved' });
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
@@ -193,7 +244,7 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
 
     /** v1.14 (Story 3.8.8) — CSV export of the currently-filtered rows. */
     const handleExport = () => {
-        const header = ['Part Number', 'Model Name', 'Series', 'HP Rating', 'Shaft', 'Cost', 'Sell (ex GST)'];
+        const header = ['Part Number', 'Model Name', 'Series', 'HP Rating', 'Shaft', 'Cost', 'Sell (NSM Retail)'];
         const escape = (v: any) => {
             if (v == null) return '';
             const s = String(v);
@@ -203,13 +254,13 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
         const lines = [header.join(',')];
         for (const r of filtered) {
             lines.push([
-                r['Part Number'] ?? '',
-                r['Model Name'] ?? '',
-                r.Series ?? '',
-                r['HP Rating'] ?? '',
-                r.Shaft ?? '',
-                r.cost ?? '',
-                r.sellPriceExclGst ?? '',
+                mPart(r) ?? '',
+                mModel(r) ?? '',
+                mSeries(r) ?? '',
+                mHp(r) ?? '',
+                mShaft(r) ?? '',
+                mCost(r) ?? '',
+                mSell(r) ?? '',
             ].map(escape).join(','));
         }
         const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
@@ -231,14 +282,27 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
             setLoading(true);
             setRows([]);
             try {
-                // Motors live under data-warehouse/{vendorId}/parts (Yamaha MPF pattern).
-                const partsSnap = await getDocs(collection(firestore, 'data-warehouse', vendorId, 'parts'));
+                // v1.34 — MPF source of truth: motors live in the vendor's
+                // dataSet rows (the exact collection the quote flow prices
+                // from). Same dataset-discovery heuristic as the workspace
+                // and quote flow.
+                const dsSnap = await getDocs(collection(firestore, 'data-warehouse', vendorId, 'dataSets'));
                 if (cancelled) return;
-                const list: MotorRow[] = [];
-                partsSnap.forEach(d => list.push({ id: d.id, ...(d.data() as any) }));
+                const datasets = dsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+                const preferred = datasets.find((s: any) =>
+                    String(s.name || '').toLowerCase().match(/outboard|motor|library|engine/)) || datasets[0];
+                if (!preferred) { setRows([]); setDataSetId(null); return; }
+                setDataSetId(preferred.id);
+                const rowsSnap = await getDocs(collection(firestore, 'data-warehouse', vendorId, 'dataSets', preferred.id, 'rows'));
+                if (cancelled) return;
+                const all: MotorRow[] = [];
+                rowsSnap.forEach(d => all.push({ id: d.id, ...(d.data() as any) }));
+                // MPF layout pseudo-rows (section headers) are not motors.
+                const list = all.filter(r => !isPseudoRow(r));
+                setPseudoHidden(all.length - list.length);
                 list.sort((a, b) => {
-                    const aKey = `${a.Series ?? ''}|${a['Model Name'] ?? a.id}`;
-                    const bKey = `${b.Series ?? ''}|${b['Model Name'] ?? b.id}`;
+                    const aKey = `${mSeries(a) ?? ''}|${mModel(a) ?? a.id}`;
+                    const bKey = `${mSeries(b) ?? ''}|${mModel(b) ?? b.id}`;
                     return aKey.localeCompare(bKey);
                 });
                 setRows(list);
@@ -253,19 +317,19 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
 
     const seriesOptions = useMemo(() => {
         const s = new Set<string>();
-        for (const r of rows) if (r.Series) s.add(String(r.Series));
+        for (const r of rows) { const v = mSeries(r); if (v) s.add(String(v)); }
         return ['all', ...Array.from(s).sort()];
     }, [rows]);
 
     const filtered = useMemo(() => {
         let list = rows;
-        if (seriesFilter !== 'all') list = list.filter(r => String(r.Series) === seriesFilter);
+        if (seriesFilter !== 'all') list = list.filter(r => String(mSeries(r)) === seriesFilter);
         if (search.trim()) {
             const q = search.toLowerCase();
             list = list.filter(r =>
-                String(r['Model Name'] ?? '').toLowerCase().includes(q) ||
-                String(r['Part Number'] ?? '').toLowerCase().includes(q) ||
-                String(r['HP Rating'] ?? '').toLowerCase().includes(q),
+                String(mModel(r) ?? '').toLowerCase().includes(q) ||
+                String(mPart(r) ?? '').toLowerCase().includes(q) ||
+                String(mHp(r) ?? '').toLowerCase().includes(q),
             );
         }
         return list;
@@ -332,14 +396,18 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
         const factor = 1 + pct / 100;
         try {
             for (const r of rowsToWrite) {
-                if (r.cost == null || typeof r.cost !== 'number') { skipped += 1; continue; }
-                const nextSell = Math.round(r.cost * factor);
+                const cost = mCost(r);
+                if (cost == null || !dataSetId) { skipped += 1; continue; }
+                const nextSell = Math.round(cost * factor);
+                const update = writeFieldsFor('sell', nextSell);
                 try {
                     await updateDoc(
-                        doc(firestore, 'data-warehouse', vendorId, 'parts', r.id),
-                        { sellPriceExclGst: nextSell, updatedAt: serverTimestamp() },
+                        doc(firestore, 'data-warehouse', vendorId, 'dataSets', dataSetId, 'rows', r.id),
+                        { ...update, updatedAt: serverTimestamp() },
                     );
-                    setRows(prev => prev.map(x => x.id === r.id ? { ...x, sellPriceExclGst: nextSell } : x));
+                    setRows(prev => prev.map(x => x.id === r.id
+                        ? { ...x, 'NSM Retail': nextSell, sellPriceExclGst: nextSell, priceLevels: { ...(x.priceLevels || {}), hull_cash: nextSell } }
+                        : x));
                     updated += 1;
                 } catch (err) {
                     console.error('bulk-markup row write failed', r.id, err);
@@ -380,6 +448,7 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
                 </Select>
                 <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground ml-auto">
                     {filtered.length} of {rows.length}
+                    {pseudoHidden > 0 && <span className="text-muted-foreground/60"> · {pseudoHidden} MPF section rows hidden</span>}
                 </p>
                 <Button variant="outline" size="sm" onClick={handleExport} className="rounded-xl text-xs h-9" disabled={filtered.length === 0}>
                     <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
@@ -389,13 +458,15 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
                     <ClipboardPaste className="h-3.5 w-3.5 mr-1" /> Paste
                 </Button>
             </div>
-            <PasteFromSpreadsheet
-                open={pasteOpen}
-                onOpenChange={setPasteOpen}
-                collectionPath={['data-warehouse', vendorId, 'parts']}
-                existingRows={rows as any}
-                resourceLabel="motors"
-            />
+            {dataSetId && (
+                <PasteFromSpreadsheet
+                    open={pasteOpen}
+                    onOpenChange={setPasteOpen}
+                    collectionPath={['data-warehouse', vendorId, 'dataSets', dataSetId, 'rows']}
+                    existingRows={rows as any}
+                    resourceLabel="motors"
+                />
+            )}
 
             <TooltipProvider>
                 {/* v1.17 (Story 3.10.1) — bulk-action toolbar. Renders when
@@ -454,13 +525,13 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
                                         aria-label="Select all filtered rows"
                                     />
                                 </th>
-                                <ColumnHeader label="Part #" hint="Manufacturer's part number / SKU. Used by Yamaha MPF imports." />
+                                <ColumnHeader label="Part #" hint="MODEL CODE / part number — the MPF natural key. Imports upsert by this; read-only here." />
                                 <ColumnHeader label="Model" hint="Model name as it appears on the data sheet." />
                                 <ColumnHeader label="Series" hint="Series the motor belongs to (e.g. F25, F70). Drives the series filter chip row." />
                                 <ColumnHeader label="HP" hint="Horsepower rating. Multi-engine syntax 'N × HP' is parsed at the quote-flow side." />
                                 <ColumnHeader label="Shaft" hint="Shaft length code (S / L / X / U). Matters for transom compatibility." />
                                 <ColumnHeader label="Cost" align="right" hint="Dealer cost. Inline-editable — click the cell to edit." />
-                                <ColumnHeader label="Sell (ex GST)" align="right" hint="Retail price excluding GST. Inline-editable. GST gets added at finalize." />
+                                <ColumnHeader label="Sell" align="right" hint="NSM Retail (the cash price level). Editing writes NSM Retail + priceLevels.hull_cash + sellPriceExclGst so every surface agrees. The next MPF import wins." />
                             </tr>
                         </thead>
                         <tbody>
@@ -471,38 +542,38 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
                                         <Checkbox
                                             checked={selected.has(row.id)}
                                             onCheckedChange={() => toggleRow(row.id)}
-                                            aria-label={`Select ${row['Model Name'] ?? row.id}`}
+                                            aria-label={`Select ${mModel(row) ?? row.id}`}
                                         />
                                     </td>
-                                    <td className="px-3 py-2 font-mono font-bold">{row['Part Number'] ?? '—'}</td>
+                                    <td className="px-3 py-2 font-mono font-bold">{mPart(row) ?? '—'}</td>
                                     <td className="px-3 py-2">
                                         <InlineEditCell
                                             type="text"
-                                            value={row['Model Name'] as string}
-                                            onSave={(v) => patchMotor(row.id, 'Model Name', v)}
+                                            value={mModel(row) as string}
+                                            onSave={(v) => patchMotor(row.id, 'model', v)}
                                         />
                                     </td>
                                     <td className="px-3 py-2">
-                                        {row.Series && <Badge variant="outline" className="text-[10px]">{row.Series}</Badge>}
+                                        {mSeries(row) && <Badge variant="outline" className="text-[10px]">{mSeries(row)}</Badge>}
                                     </td>
                                     <td className="px-3 py-2 tabular-nums">
                                         <InlineEditCell
                                             type="text"
-                                            value={row['HP Rating'] as string}
-                                            onSave={(v) => patchMotor(row.id, 'HP Rating', v)}
+                                            value={mHp(row) as string}
+                                            onSave={(v) => patchMotor(row.id, 'hp', v)}
                                         />
                                     </td>
                                     <td className="px-3 py-2">
                                         <InlineEditCell
                                             type="text"
-                                            value={row.Shaft as string}
-                                            onSave={(v) => patchMotor(row.id, 'Shaft', v)}
+                                            value={mShaft(row) as string}
+                                            onSave={(v) => patchMotor(row.id, 'shaft', v)}
                                         />
                                     </td>
                                     <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                                         <InlineEditCell
                                             type="currency"
-                                            value={row.cost as number | null | undefined}
+                                            value={mCost(row)}
                                             validate={(n) => (n != null && (typeof n !== 'number' || n < 0) ? 'Positive number' : null)}
                                             onSave={(v) => patchMotor(row.id, 'cost', v)}
                                         />
@@ -510,9 +581,9 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
                                     <td className="px-3 py-2 text-right tabular-nums font-bold">
                                         <InlineEditCell
                                             type="currency"
-                                            value={row.sellPriceExclGst as number | null | undefined}
+                                            value={mSell(row)}
                                             validate={(n) => (n != null && (typeof n !== 'number' || n < 0) ? 'Positive number' : null)}
-                                            onSave={(v) => patchMotor(row.id, 'sellPriceExclGst', v)}
+                                            onSave={(v) => patchMotor(row.id, 'sell', v)}
                                         />
                                     </td>
                                 </tr>
