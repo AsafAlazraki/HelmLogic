@@ -25,6 +25,8 @@ test('capture every motor surface', async ({ page }) => {
 
     // 2+3. Wizard via New Motor Quote
     const btn = page.getByRole('button', { name: /New Motor Quote/i }).first();
+    // service-module lookup is a one-shot getDocs — give it time to mount
+    await btn.waitFor({ state: 'visible', timeout: 25000 }).catch(() => {});
     if (await btn.isVisible().catch(() => false)) {
         await btn.click();
         await page.waitForTimeout(4000);

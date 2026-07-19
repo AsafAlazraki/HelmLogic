@@ -69,7 +69,9 @@ function pdfImg(url: string | undefined | null, w = 700): string | undefined {
     if (!u) return undefined;
     if (u.startsWith('data:')) return u;
     if (BLOCKED_IMAGE_DOMAINS.some(d => u.includes(d))) return undefined;
-    if (PROXY_SKIP_HOSTS.some(d => u.includes(d))) return u;
+    // Storage sends no CORS headers and weserv 404s tokened URLs —
+    // stream same-origin via our own /api/pdf-img proxy (v1.34).
+    if (PROXY_SKIP_HOSTS.some(d => u.includes(d))) return `/api/pdf-img?url=${encodeURIComponent(u)}`;
     const noProto = u.replace(/^https?:\/\//i, '');
     return `https://images.weserv.nl/?url=${encodeURIComponent(noProto)}&w=${w}&output=jpg&q=72`;
 }
