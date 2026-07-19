@@ -2630,7 +2630,15 @@ export function HighfieldQuoteFlow({
                                                     const mUrl = resolveImageUrl(m);
                                                     const displayName = getMotorDisplayName(m);
                                                     return (
-                                                        <button key={m.id} onClick={() => { setSelectedMotor(m); setMotorExplicitlyDeselected(false); setPropComesStandard(false); setSelectedMotorMenuSlot(null); const standardIds = (m.masterAccessories || []).filter((a: any) => a.isStandard).map((a: any) => a.id); if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds); setTimeout(() => motorDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400); }} className="group relative flex flex-col border-4 rounded-[2rem] overflow-hidden transition-all bg-white shadow-2xl h-full border-transparent hover:border-primary/20">
+                                                        <button key={m.id} onClick={() => {
+                                                            // v1.34 (grid-motor bundles) — a grid pick that IS one of
+                                                            // the boat's curated menu motors adopts that slot, so the
+                                                            // FFR-33 rigging + prop composition prices identically no
+                                                            // matter which surface the motor was picked from. Motors
+                                                            // genuinely outside the menu honestly carry no bundle.
+                                                            const menuEntry = resolvedMotorMenu.find(e => e.motor?.id === m.id);
+                                                            if (menuEntry) { selectMenuMotor(menuEntry); setTimeout(() => motorDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400); return; }
+                                                            setSelectedMotor(m); setMotorExplicitlyDeselected(false); setPropComesStandard(false); setSelectedMotorMenuSlot(null); const standardIds = (m.masterAccessories || []).filter((a: any) => a.isStandard).map((a: any) => a.id); if (standardIds.length > 0) setSelectedMotorAccessoryIds(standardIds); setTimeout(() => motorDetailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 400); }} className="group relative flex flex-col border-4 rounded-[2rem] overflow-hidden transition-all bg-white shadow-2xl h-full border-transparent hover:border-primary/20">
                                                             <div className="relative aspect-video w-full bg-slate-50 border-b flex items-center justify-center">
                                                                 {mUrl ? (
                                                                     <Image src={mUrl} alt="Motor" fill className="object-contain p-6 mix-blend-multiply transition-transform group-hover:scale-110" onError={() => markImageDead(mUrl)} />
