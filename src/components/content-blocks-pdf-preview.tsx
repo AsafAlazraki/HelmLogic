@@ -19,12 +19,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { collection, doc, getDoc, getDocs, limit, query } from 'firebase/firestore';
 import { PDFViewer } from '@react-pdf/renderer';
+import { MotorQuotePDFDocument } from '@/components/motor-quote-pdf';
 import { useFirestore, useMemoFirebase, useUser } from '@/firebase/provider';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { ProposalPDFDocument } from '@/components/proposal-pdf';
 import { Button } from '@/components/ui/button';
 import { Loader2, Maximize2, Minimize2 } from 'lucide-react';
-import {
+import { DOCUMENT_TYPE_LABEL,
     blockBelongsTo,
     type BlockType,
     type ContentBlock,
@@ -547,6 +548,44 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                       messageHtml: stableProfile.messageHtml ? swapImgUrlsInHtml(stableProfile.messageHtml, imageDataUrls) : stableProfile.messageHtml,
                   }
                 : stableProfile;
+            // v1.34 — the Motor Quote tab previews the MOTOR document (its
+            // own sample package), not the boat proposal fixture: what the
+            // admin sees is what the customer gets.
+            if (documentType === 'motor-quote') {
+                return (
+                    <MotorQuotePDFDocument
+                        organisation={fixture.organisation}
+                        input={{
+                            quoteNumber: 'SAMPLE-001',
+                            createdAt: null,
+                            customerName: 'Sample Customer',
+                            vehicle: '2022 Stacer 529',
+                            saleType: 'repower',
+                            tradeIn: { description: '2015 F115, approx 900 hrs', value: 4500 },
+                            operations: [
+                                { id: 'op-1', code: 'INSTALL', name: 'Install Motor (4.0)', hours: 4, sellPrice: 680 },
+                                { id: 'op-2', code: 'REMOVAL', name: 'Engine removal (existing motor)', hours: 0, sellPrice: 350 },
+                            ],
+                            parts: [
+                                { id: 'p-1', partNumber: 'F90XB', name: 'Yamaha - F90XB', qty: 1, sellPrice: 17643, itemType: 'motor' },
+                                { id: 'p-2', partNumber: 'RIGGING', name: 'Mech Rigging Kit - 703 Side Mount', qty: 1, sellPrice: 2350, itemType: 'rigging-kit' },
+                                { id: 'p-3', partNumber: 'PROP', name: 'PROPELLER - Saltwater T II SDS - 15"', qty: 1, sellPrice: 282, itemType: 'propeller' },
+                            ],
+                            motorSnapshot: {
+                                name: 'Yamaha - F90XB', code: 'F90XB', image: null,
+                                specs: {
+                                    'HP Rating': '90', 'Shaft Length': '25"', 'Control': 'Remote mech',
+                                    'Starting': 'Electric', 'Tilt & Trim': 'Power Trim & Tilt',
+                                    'Cylinders / Displacement': 'L4 / 1832cc', 'Engine Colour': 'Grey',
+                                },
+                                vendorName: 'Yamaha', vendorLogoUrl: null,
+                            },
+                            contentBlocks: mappedHtml,
+                            sections: stableSections,
+                        }}
+                    />
+                );
+            }
             return (
                 <ProposalPDFDocument
                     quote={fixture.quote}
@@ -570,7 +609,7 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                         <div className="min-w-0">
                             <div className="flex items-center gap-2">
                                 <p className="text-[11px] font-black uppercase tracking-widest">
-                                    {documentType === 'quote' ? 'Quote' : 'Contract'} PDF preview
+                                    {DOCUMENT_TYPE_LABEL[documentType]} PDF preview
                                 </p>
                                 {pendingUpdate && (
                                     <span className="inline-flex items-center gap-1 text-[10px] text-amber-700 font-medium">
@@ -625,7 +664,7 @@ export function ContentBlocksPdfPreview({ orgId, blocks, documentType, organisat
                         <div className="flex items-center gap-3">
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">PDF Preview · Focus mode</p>
                             <p className="text-xs text-slate-300">
-                                {documentType === 'quote' ? 'Quote' : 'Contract'} · Sample: Highfield Sport 560
+                                {DOCUMENT_TYPE_LABEL[documentType]} · Sample: {documentType === 'motor-quote' ? 'Yamaha F90XB repower' : 'Highfield Sport 560'}
                             </p>
                         </div>
                         <Button

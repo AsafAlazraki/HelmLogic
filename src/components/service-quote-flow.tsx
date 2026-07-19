@@ -451,7 +451,7 @@ function ServiceQuoteCreateDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
                 <DialogHeader>
-                    <DialogTitle>New Service Quote</DialogTitle>
+                    <DialogTitle>{isMotorQuote ? (saleType === 'repower' ? 'New Repower Quote' : 'New Motor Quote') : 'New Service Quote'}</DialogTitle>
                     <DialogDescription className="text-xs">
                         Step {step} of {WIZARD_STEPS.length}: {WIZARD_STEPS[step - 1].label}
                     </DialogDescription>
@@ -526,12 +526,15 @@ function ServiceQuoteCreateDialog({
                                     {saleType === 'repower' && (
                                         <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-1 duration-200">
                                             <div className="space-y-1.5">
-                                                <label className="text-xs font-semibold">Old motor — trade-in description</label>
+                                                <label className="text-xs font-semibold">Trade-in description — optional</label>
                                                 <Input value={tradeInDesc} onChange={e => setTradeInDesc(e.target.value)} placeholder="e.g. 2015 F115 approx 900hrs" className="rounded-xl border-2" />
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-xs font-semibold">Agreed trade-in value ($)</label>
-                                                <Input type="number" value={tradeInValue} onChange={e => setTradeInValue(e.target.value)} placeholder="0" className="rounded-xl border-2" />
+                                                <label className="text-xs font-semibold">Agreed trade-in value — optional</label>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">$</span>
+                                                    <Input type="number" value={tradeInValue} onChange={e => setTradeInValue(e.target.value)} placeholder="4,500" className="rounded-xl border-2 pl-7" />
+                                                </div>
                                             </div>
                                         </div>
                                     )}
@@ -784,7 +787,9 @@ function PartsPicker({
                     Showing the first {PARTS_RENDER_CAP} of {matches.length.toLocaleString()} matches — refine your search to narrow the list.
                 </p>
             )}
-            <p className="text-[10px] text-muted-foreground">{selected.length} part type{selected.length === 1 ? '' : 's'} selected.</p>
+            {selected.length > 0 && (
+                <p className="text-[10px] text-muted-foreground">{selected.length} part type{selected.length === 1 ? '' : 's'} selected.</p>
+            )}
         </div>
     );
 }

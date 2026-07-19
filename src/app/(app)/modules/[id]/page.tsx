@@ -654,6 +654,15 @@ export default function ModuleDetailsPage() {
         );
     }
 
+    // v1.34 pixel pass — a module WITH a mainVendorId must not render any
+    // dashboard until the vendor doc resolves: every branch below keys off
+    // vendorType, and painting the generic dashboard in the interim
+    // flashes the wrong surface (the UX audit caught the Yamaha motor
+    // module rendering as a boat-style dashboard for several seconds).
+    if (moduleData?.mainVendorId && mainVendorLoading && currentMemberOrg) {
+        return <HelmLogicLoading label={`Loading ${moduleData?.name ?? 'module'}`} />;
+    }
+
     // Motor Brand module (Yamaha, etc.) — catalog + pricing workspace
     if ((moduleType === 'motor-brand' || mainVendor?.vendorType === 'Motor Brand') && moduleData && currentMemberOrg) {
         return (

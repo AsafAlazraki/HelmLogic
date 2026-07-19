@@ -124,10 +124,16 @@ export function MotorQuotePDFDocument({ input, organisation }: { input: MotorQuo
     const sortedParts = [...input.parts].sort((a, b) =>
         LINE_ORDER.indexOf(a.itemType || '') - LINE_ORDER.indexOf(b.itemType || ''));
     for (const p of sortedParts) {
-        lines.push({ label: p.name, sub: p.itemType === 'motor' ? (p.partNumber || undefined) : (p.itemType || '').replace('-', ' '), qty: p.qty, amount: (p.sellPrice || 0) * (p.qty || 1) });
+        lines.push({
+            label: p.name,
+            sub: p.itemType === 'motor'
+                ? (p.partNumber && !p.name.toUpperCase().includes(p.partNumber.toUpperCase()) ? p.partNumber : undefined)
+                : (p.itemType || '').replace('-', ' '),
+            qty: p.qty, amount: (p.sellPrice || 0) * (p.qty || 1) });
     }
     for (const o of input.operations) {
-        lines.push({ label: o.name, sub: (o.hours && o.hours >= 1) ? `${o.hours} hrs` : 'installation', amount: o.sellPrice || 0 });
+        const label = o.name.replace(/^Install:\s*(?=install)/i, '');
+        lines.push({ label, sub: (o.hours && o.hours >= 1) ? `${o.hours} hrs` : 'installation', amount: o.sellPrice || 0 });
     }
 
     // Content zones from the admin-ordered structure (fail-open to a
@@ -181,11 +187,12 @@ export function MotorQuotePDFDocument({ input, organisation }: { input: MotorQuo
 
                 {/* Hero */}
                 {snap && (
-                    <View style={S.hero}>
+                    <View style={[S.hero, !pdfImg(snap.image, 500) ? { paddingVertical: 12 } : {}]}>
                         {pdfImg(snap.image, 500) ? <Image src={pdfImg(snap.image, 500)!} style={S.heroImg} /> : null}
                         <View style={{ flex: 1 }}>
                             <Text style={S.heroName}>{snap.name}</Text>
-                            {snap.code ? <Text style={{ fontSize: 8, color: MUTED, marginTop: 2 }}>{snap.code}</Text> : null}
+                            {snap.code && !snap.name.toUpperCase().includes(snap.code.toUpperCase())
+                                ? <Text style={{ fontSize: 8, color: MUTED, marginTop: 2 }}>{snap.code}</Text> : null}
                             {snap.specs?.['HP Rating'] ? <Text style={S.hpBadge}>{snap.specs['HP Rating']} HP</Text> : null}
                             {isRepower && input.tradeIn?.description ? (
                                 <Text style={{ fontSize: 8, color: SLATE, marginTop: 8 }}>Replacing: {input.tradeIn.description}</Text>
@@ -212,6 +219,11 @@ export function MotorQuotePDFDocument({ input, organisation }: { input: MotorQuo
                                     <Text style={{ fontSize: 6, color: MUTED, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</Text>
                                     <Text style={{ fontSize: 8.5, fontWeight: 'bold', color: NAVY, marginTop: 2 }}>{value}</Text>
                                 </View>
+                            ))}
+                            {/* filler cells complete the last row so the grid
+                                never ends ragged */}
+                            {Array.from({ length: (3 - (specEntries.length % 3)) % 3 }).map((_, i) => (
+                                <View key={`fill-${i}`} style={S.specCell} />
                             ))}
                         </View>
                     </>
@@ -243,17 +255,16 @@ export function MotorQuotePDFDocument({ input, organisation }: { input: MotorQuo
                     </View>
                 ))}
                 <View style={{ borderTopWidth: 1, borderTopColor: BORDER, marginTop: 4 }}>
-                    <View style={S.totalRow}>
-                        <Text style={{ fontSize: 7.5, color: MUTED, textTransform: 'uppercase', letterSpacing: 1.5 }}>Subtotal excl. GST</Text>
-                        <Text style={{ fontSize: 8.5, fontWeight: 'bold', color: SLATE }}>{currency(totalEx)}</Text>
-                    </View>
-                    <View style={S.totalRow}>
-                        <Text style={{ fontSize: 7.5, color: MUTED, textTransform: 'uppercase', letterSpacing: 1.5 }}>GST</Text>
-                        <Text style={{ fontSize: 8.5, fontWeight: 'bold', color: SLATE }}>{currency(gst)}</Text>
-                    </View>
-                    <View style={[S.totalRow, { backgroundColor: NAVY, borderRadius: 4 }]}>
+                    {/* Package lines are GST-INCLUSIVE (MPF money) — so the
+                        inclusive total leads, and the ex/GST split is an
+                        explanatory sub-line. Never show an "excl. GST
+                        subtotal" that doesn't equal the visible line sum. */}
+                    <View style={[S.totalRow, { backgroundColor: NAVY, borderRadius: 4, marginTop: 2 }]}>
                         <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#fff', textTransform: 'uppercase', letterSpacing: 1.5 }}>Total incl. GST</Text>
                         <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#fff' }}>{currency(totalInc)}</Text>
+                    </View>
+                    <View style={S.totalRow}>
+                        <Text style={{ fontSize: 7, color: MUTED }}>Includes GST of {currency(gst)} · total excluding GST {currency(totalEx)}</Text>
                     </View>
                     {isRepower && tradeInValue > 0 && (
                         <>

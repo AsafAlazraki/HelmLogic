@@ -57,3 +57,28 @@ Guards today: smoke I.2 (50-code price parity), J (menu names resolve), K.4 (dup
 9. Two HP parsers (`parseHpRating` in the flow vs `getMotorHp` in the workspace) — same intent, duplicated, divergence risk.
 10. Dataset discovery by name heuristic in three places vs hardcoded id in scripts.
 11. Motor promotions: 1 test promo; `hull_campaign` level populated but unsurfaced as a rebate story.
+
+## v1.34 pixel-pass ledger (2026-07-19)
+
+**26 audit findings confirmed by adversarial verification; fixed this cycle:**
+PDF money presentation (inc-GST total leads, ex/GST as sub-line), admin
+preview mislabel (Contract → DOCUMENT_TYPE_LABEL) + motor tab now previews
+the MOTOR document with a sample package, motors-table twin-HP wrap +
+header copy + empty Series column, picker skeleton loading rows +
+catalogue copy, orphaned part-count line, trade-in $ affordance + label
+consistency, wizard title per quote kind, module-page wrong-dashboard
+flash (vendor-loading gate), PDF install-line stutter / code echo /
+ragged spec grid / image-less hero tightening.
+
+**Recorded, deliberately deferred (generic surfaces / cosmetic lows):**
+generic module dashboard dead zone (all modules, not motor-specific),
+active-tab underline width, X icon on Back to Hub, picker tab icon
+metaphors, disabled-Back affordance, anchored-row triple status icons,
+Export/Import JSON toolbar row, model-name normalisation (MPF data),
+stock-card copy redundancy, PDF-sections selected-state repro.
+
+**MPF data contradiction for the NSM asks list:** the twin-rig row
+"Yam - F130XA + LF130XA" carries HP Rating "2 × 300" in NSM's own file
+(should be 2 × 130 by its own model name). Same class as the 29
+menu-vs-envelope contradictions — reported, not hand-patched (MPF is
+source of truth).

@@ -386,7 +386,7 @@ export function ContentBlockDetail({ orgId, documentType, blockType, block, allB
                                 {BLOCK_TYPE_LABEL[blockType]}
                             </h3>
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
-                                {hasContentInCurrentSurface ? 'Has content' : 'Empty'} · {DOCUMENT_TYPE_LABEL[documentType]} tab
+                                {hasContentInCurrentSurface ? 'Has content' : 'Empty'} · {DOCUMENT_TYPE_LABEL[documentType]}
                             </p>
                         </div>
                     </div>

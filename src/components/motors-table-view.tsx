@@ -116,10 +116,10 @@ export function MotorsTableView({ organisationId, initialSearch }: { organisatio
                     <div>
                         <CardTitle className="flex items-center gap-2 text-base font-bold">
                             <Anchor className="h-4 w-4" />
-                            Motors Catalogue (read-view)
+                            Motors Catalogue
                         </CardTitle>
                         <CardDescription className="text-xs">
-                            Reads the SAME Master Price File rows quotes price from. Click a cell to edit inline (a Sell edit updates NSM Retail + the cash price level everywhere) · the next MPF import wins.
+                            These are the same Master Price File rows quotes price from. Click a cell to edit — a Sell edit updates NSM Retail and the cash price level everywhere. Edits are provisional: the next Master Price File import replaces them.
                         </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
@@ -320,6 +320,9 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
         for (const r of rows) { const v = mSeries(r); if (v) s.add(String(v)); }
         return ['all', ...Array.from(s).sort()];
     }, [rows]);
+    /** v1.34 pixel pass — MPF rows carry no Series; don't render a wide
+     *  empty column (and the filter) when nothing would ever fill it. */
+    const hasSeries = seriesOptions.length > 1;
 
     const filtered = useMemo(() => {
         let list = rows;
@@ -436,6 +439,7 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
                         className="rounded-xl border-2 text-xs pl-9"
                     />
                 </div>
+                {hasSeries && (
                 <Select value={seriesFilter} onValueChange={setSeriesFilter}>
                     <SelectTrigger className="rounded-xl border-2 text-xs w-40">
                         <SelectValue />
@@ -446,6 +450,7 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
                         ))}
                     </SelectContent>
                 </Select>
+                )}
                 <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground ml-auto">
                     {filtered.length} of {rows.length}
                     {pseudoHidden > 0 && <span className="text-muted-foreground/60"> · {pseudoHidden} MPF section rows hidden</span>}
@@ -527,7 +532,7 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
                                 </th>
                                 <ColumnHeader label="Part #" hint="MODEL CODE / part number — the MPF natural key. Imports upsert by this; read-only here." />
                                 <ColumnHeader label="Model" hint="Model name as it appears on the data sheet." />
-                                <ColumnHeader label="Series" hint="Series the motor belongs to (e.g. F25, F70). Drives the series filter chip row." />
+                                {hasSeries && <ColumnHeader label="Series" hint="Series the motor belongs to (e.g. F25, F70). Drives the series filter chip row." />}
                                 <ColumnHeader label="HP" hint="Horsepower rating. Multi-engine syntax 'N × HP' is parsed at the quote-flow side." />
                                 <ColumnHeader label="Shaft" hint="Shaft length code (S / L / X / U). Matters for transom compatibility." />
                                 <ColumnHeader label="Cost" align="right" hint="Dealer cost. Inline-editable — click the cell to edit." />
@@ -553,10 +558,12 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
                                             onSave={(v) => patchMotor(row.id, 'model', v)}
                                         />
                                     </td>
+                                    {hasSeries && (
                                     <td className="px-3 py-2">
                                         {mSeries(row) && <Badge variant="outline" className="text-[10px]">{mSeries(row)}</Badge>}
                                     </td>
-                                    <td className="px-3 py-2 tabular-nums">
+                                    )}
+                                    <td className="px-3 py-2 tabular-nums whitespace-nowrap w-24">
                                         <InlineEditCell
                                             type="text"
                                             value={mHp(row) as string}
