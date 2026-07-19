@@ -55,6 +55,20 @@ const S = StyleSheet.create({
     sigBox: { flex: 1, borderTopWidth: 1, borderTopColor: SLATE, paddingTop: 6 },
 });
 
+/** Same proven image path as the boat proposal PDF: weserv proxy
+ *  (downscale + jpeg + CORS-friendly server-side fetch); Yamaha CDN
+ *  hosts are hotlink-blocked even via weserv → collapse the slot. */
+const BLOCKED_IMAGE_DOMAINS = ['yamaha-motor.com.au', 'yamaha-motor.com'];
+function pdfImg(url: string | undefined | null, w = 700): string | undefined {
+    if (!url || typeof url !== 'string') return undefined;
+    const u = url.trim();
+    if (!u) return undefined;
+    if (u.startsWith('data:')) return u;
+    if (BLOCKED_IMAGE_DOMAINS.some(d => u.includes(d))) return undefined;
+    const noProto = u.replace(/^https?:\/\//i, '');
+    return `https://images.weserv.nl/?url=${encodeURIComponent(noProto)}&w=${w}&output=jpg&q=72`;
+}
+
 function currency(n: number | null | undefined) {
     if (n == null || isNaN(n)) return '—';
     return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n);
@@ -106,7 +120,7 @@ export function MotorQuotePDFDocument({ input, organisation }: { input: MotorQuo
         lines.push({ label: p.name, sub: p.itemType === 'motor' ? (p.partNumber || undefined) : (p.itemType || '').replace('-', ' '), qty: p.qty, amount: (p.sellPrice || 0) * (p.qty || 1) });
     }
     for (const o of input.operations) {
-        lines.push({ label: o.name, sub: o.hours ? `${o.hours} hrs` : 'labour', amount: o.sellPrice || 0 });
+        lines.push({ label: o.name, sub: (o.hours && o.hours >= 1) ? `${o.hours} hrs` : 'installation', amount: o.sellPrice || 0 });
     }
 
     // Content zones from the admin-ordered structure (fail-open to a
@@ -125,18 +139,19 @@ export function MotorQuotePDFDocument({ input, organisation }: { input: MotorQuo
         .filter(t => blocks[t] && blocks[t]!.trim() && !placed.has(t))
         .map(t => ({ type: t, html: blocks[t] }));
 
-    const specEntries = Object.entries(snap?.specs ?? {});
+    const specEntries = Object.entries(snap?.specs ?? {})
+        .filter(([, v]) => !['opt', 'std', '.', '-', 'n/a'].includes(String(v).trim().toLowerCase()));
 
     return (
         <Document title={`${title} ${input.quoteNumber ?? ''} — ${snap?.name ?? ''}`} author={organisation?.name ?? 'HelmLogic'}>
             <Page size="A4" style={S.page}>
                 {/* Header: org + vendor branding */}
                 <View style={S.headerRow}>
-                    {organisation?.primaryLogoUrl
-                        ? <Image src={organisation.primaryLogoUrl} style={{ height: 34, maxWidth: 160, objectFit: 'contain' }} />
+                    {pdfImg(organisation?.primaryLogoUrl, 440)
+                        ? <Image src={pdfImg(organisation?.primaryLogoUrl, 440)!} style={{ height: 34, width: 150, objectFit: 'contain' }} />
                         : <Text style={{ fontSize: 13, fontWeight: 'bold', color: NAVY }}>{organisation?.name ?? ''}</Text>}
-                    {snap?.vendorLogoUrl
-                        ? <Image src={snap.vendorLogoUrl} style={{ height: 30, maxWidth: 140, objectFit: 'contain' }} />
+                    {pdfImg(snap?.vendorLogoUrl, 440)
+                        ? <Image src={pdfImg(snap?.vendorLogoUrl, 440)!} style={{ height: 30, width: 132, objectFit: 'contain' }} />
                         : (snap?.vendorName ? <Text style={{ fontSize: 12, fontWeight: 'bold', color: RED }}>{snap.vendorName.toUpperCase()}</Text> : null)}
                 </View>
 
@@ -152,7 +167,7 @@ export function MotorQuotePDFDocument({ input, organisation }: { input: MotorQuo
                 {/* Hero */}
                 {snap && (
                     <View style={S.hero}>
-                        {snap.image ? <Image src={snap.image} style={S.heroImg} /> : null}
+                        {pdfImg(snap.image, 500) ? <Image src={pdfImg(snap.image, 500)!} style={S.heroImg} /> : null}
                         <View style={{ flex: 1 }}>
                             <Text style={S.heroName}>{snap.name}</Text>
                             {snap.code ? <Text style={{ fontSize: 8, color: MUTED, marginTop: 2 }}>{snap.code}</Text> : null}
