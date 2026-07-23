@@ -87,9 +87,55 @@ function writeFieldsFor(field: string, next: any): Record<string, any> {
         case 'commercial': return { 'Commercial Price': next, 'priceLevels.hull_commercial': next };
         case 'alliance': return { 'Boating Alliance Price': next, 'priceLevels.hull_boating_alliance': next };
         case 'installSell': return { 'Install - Sell': next };
+        case 'installation': return { 'Installation': next };
+        case 'labourHrs': return { 'Labour (Hrs)': next };
         default: return { [field]: next };
     }
 }
+
+/** v1.34 — "define everything" detail-sheet field groups. Each field:
+ *  logical key (writeFieldsFor), label, reader, kind. One place to add
+ *  the next MPF column an operator needs to touch. */
+const SHEET_GROUPS: Array<{ title: string; fields: Array<{ key: string; label: string; read: (r: MotorRow) => any; kind: 'text' | 'money' }> }> = [
+    {
+        title: 'Identity',
+        fields: [
+            { key: 'model', label: 'Model name', read: r => mModel(r), kind: 'text' },
+        ],
+    },
+    {
+        title: 'Specifications',
+        fields: [
+            { key: 'hp', label: 'HP rating', read: r => mHp(r), kind: 'text' },
+            { key: 'shaft', label: 'Shaft length', read: r => mShaft(r), kind: 'text' },
+            { key: 'Control', label: 'Control', read: r => r['Control'], kind: 'text' },
+            { key: 'Starting', label: 'Starting', read: r => r['Starting'], kind: 'text' },
+            { key: 'Tilt & Trim', label: 'Tilt & trim', read: r => r['Tilt & Trim'], kind: 'text' },
+            { key: 'Fuel\r\nTank', label: 'Fuel tank', read: r => r['Fuel\r\nTank'] ?? r['Fuel\nTank'], kind: 'text' },
+            { key: 'Prop', label: 'Propeller', read: r => r['Prop'], kind: 'text' },
+            { key: 'Cylinders / Displacement', label: 'Cylinders / displacement', read: r => r['Cylinders / Displacement'], kind: 'text' },
+            { key: 'Engine Colour', label: 'Engine colour', read: r => r['Engine Colour'], kind: 'text' },
+        ],
+    },
+    {
+        title: 'Pricing',
+        fields: [
+            { key: 'cost', label: 'Cost (Total CTD)', read: r => mCost(r), kind: 'money' },
+            { key: 'sell', label: 'Sell (NSM Retail / cash)', read: r => mSell(r), kind: 'money' },
+            { key: 'trade', label: 'Trade price', read: r => r.priceLevels?.hull_trade ?? r['Trade Price'], kind: 'money' },
+            { key: 'commercial', label: 'Commercial price', read: r => r.priceLevels?.hull_commercial ?? r['Commercial Price'], kind: 'money' },
+            { key: 'alliance', label: 'Boating Alliance price', read: r => r.priceLevels?.hull_boating_alliance ?? r['Boating Alliance Price'], kind: 'money' },
+        ],
+    },
+    {
+        title: 'Installation',
+        fields: [
+            { key: 'installation', label: 'Install description', read: r => r['Installation'], kind: 'text' },
+            { key: 'installSell', label: 'Install sell', read: r => r['Install - Sell'], kind: 'money' },
+            { key: 'labourHrs', label: 'Labour hours', read: r => r['Labour (Hrs)'], kind: 'text' },
+        ],
+    },
+];
 
 /** v1.34 — the motor CSV round-trip column set. Each entry: CSV header,
  *  logical field key for writeFieldsFor (null = read-only key column),
@@ -290,6 +336,9 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
     const [bulkApplying, setBulkApplying] = useState(false);
     /** v1.17 (Story 3.10.2) — paste-from-spreadsheet dialog state. */
     const [pasteOpen, setPasteOpen] = useState(false);
+    /** v1.34 — "define everything" detail sheet. Click the Part # to open.
+     *  Resolved against live rows so sheet edits render fresh. */
+    const [detailMotorId, setDetailMotorId] = useState<string | null>(null);
 
     /** v1.14 (3.8.1 retrofit; v1.34 repoint) — inline-edit handler. Writes
      *  every mirror of the logical field to the MPF dataset row; the next
@@ -737,7 +786,17 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
                                             aria-label={`Select ${mModel(row) ?? row.id}`}
                                         />
                                     </td>
-                                    <td className="px-3 py-2 font-mono font-bold">{mPart(row) ?? '—'}</td>
+                                    <td className="px-3 py-2 font-mono font-bold">
+                                        {/* v1.34 — opens the define-everything sheet */}
+                                        <button
+                                            type="button"
+                                            className="hover:text-primary hover:underline underline-offset-2"
+                                            onClick={() => setDetailMotorId(row.id)}
+                                            title="Open full motor editor"
+                                        >
+                                            {mPart(row) ?? '—'}
+                                        </button>
+                                    </td>
                                     <td className="px-3 py-2">
                                         <InlineEditCell
                                             type="text"
@@ -786,7 +845,144 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
                     </table>
                 </div>
             </TooltipProvider>
+
+            {/* v1.34 — define-everything sheet (resolved fresh from rows) */}
+            {detailMotorId && (() => {
+                const m = rows.find(r => r.id === detailMotorId);
+                return m ? (
+                    <MotorDetailSheet
+                        motor={m}
+                        onPatch={patchMotor}
+                        onClose={() => setDetailMotorId(null)}
+                    />
+                ) : null;
+            })()}
         </div>
+    );
+}
+
+/** v1.34 — "define everything" sheet: every editable MPF field for ONE
+ *  motor, grouped (identity / specs / pricing / install) + the motor's
+ *  accessory package with isStandard toggles. All writes go through the
+ *  same writeFieldsFor mirrors as the inline cells and the CSV import,
+ *  so no consumer ever forks. */
+function MotorDetailSheet({ motor, onPatch, onClose }: {
+    motor: MotorRow;
+    onPatch: (motorId: string, field: string, next: any) => Promise<void>;
+    onClose: () => void;
+}) {
+    const accs: any[] = Array.isArray(motor.masterAccessories) ? motor.masterAccessories : [];
+    return (
+        <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
+            <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+                <SheetHeader>
+                    <SheetTitle className="flex items-center gap-2">
+                        <Anchor className="h-4 w-4" />
+                        {mModel(motor) ?? mPart(motor)}
+                        <Badge variant="outline" className="font-mono text-[10px]">{mPart(motor)}</Badge>
+                    </SheetTitle>
+                    <SheetDescription className="text-xs">
+                        Everything about this motor in one place. Edits save on blur and update every mirror
+                        (quote flow, workspace, exports). The next Master Price File import wins.
+                    </SheetDescription>
+                </SheetHeader>
+                <div className="py-4 space-y-5">
+                    {SHEET_GROUPS.map(group => (
+                        <section key={group.title} className="space-y-2">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{group.title}</p>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                                {group.fields.map(f => (
+                                    <SheetField
+                                        key={f.key}
+                                        label={f.label}
+                                        kind={f.kind}
+                                        value={f.read(motor)}
+                                        onSave={(v) => onPatch(motor.id, f.key, v)}
+                                    />
+                                ))}
+                            </div>
+                        </section>
+                    ))}
+
+                    {/* Accessory package (rigging / prop / options). Full
+                        add/remove lives in the Yamaha workspace Catalog tab —
+                        here the operator flips what comes standard. */}
+                    <section className="space-y-2">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                            Accessory package ({accs.length})
+                        </p>
+                        {accs.length === 0 ? (
+                            <p className="text-xs text-muted-foreground italic">
+                                No accessories assigned. Assign rigging kits, props and options from the brand module&apos;s Catalog tab.
+                            </p>
+                        ) : (
+                            <div className="rounded-xl border-2 divide-y">
+                                {accs.map((a: any, i: number) => (
+                                    <div key={a.id ?? i} className="flex items-center gap-2 p-2">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-semibold truncate">{a.name ?? 'Accessory'}</p>
+                                            <p className="text-[10px] text-muted-foreground">{a.category ?? '—'}</p>
+                                        </div>
+                                        <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase cursor-pointer shrink-0">
+                                            <Checkbox
+                                                checked={!!(a.isStandard || a.standard)}
+                                                onCheckedChange={(checked) => {
+                                                    const next = accs.map((x: any, j: number) =>
+                                                        j === i ? { ...x, isStandard: !!checked } : x);
+                                                    void onPatch(motor.id, 'masterAccessories', next);
+                                                }}
+                                            />
+                                            Standard
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                </div>
+            </SheetContent>
+        </Sheet>
+    );
+}
+
+/** Save-on-blur field for the detail sheet. Money fields parse "$17,643"
+ *  style input; blank never writes. */
+function SheetField({ label, value, kind, onSave }: {
+    label: string;
+    value: any;
+    kind: 'text' | 'money';
+    onSave: (v: any) => Promise<void>;
+}) {
+    const display = value == null ? '' : String(value);
+    const [draft, setDraft] = useState(display);
+    const [busy, setBusy] = useState(false);
+    useEffect(() => { setDraft(display); }, [display]);
+    const commit = async () => {
+        if (draft.trim() === display.trim()) return;
+        let next: any = draft.trim();
+        if (next === '') return; // blank never erases
+        if (kind === 'money') {
+            const n = Number(next.replace(/[$,\s]/g, ''));
+            if (!Number.isFinite(n) || n < 0) { setDraft(display); return; }
+            next = n;
+        }
+        setBusy(true);
+        try { await onSave(next); } catch { setDraft(display); } finally { setBusy(false); }
+    };
+    return (
+        <label className="space-y-1 block">
+            <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1">
+                {label}
+                {busy && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+            </span>
+            <Input
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                onBlur={commit}
+                onKeyDown={e => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); if (e.key === 'Escape') setDraft(display); }}
+                className="rounded-lg border-2 h-8 text-xs"
+            />
+        </label>
     );
 }
 
