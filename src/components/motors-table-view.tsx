@@ -20,7 +20,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useToast } from '@/hooks/use-toast';
@@ -83,8 +83,85 @@ function writeFieldsFor(field: string, next: any): Record<string, any> {
         case 'shaft': return { 'Shaft Length': next, 'Shaft': next };
         case 'cost': return { cost: next, 'Total CTD': next };
         case 'sell': return { 'NSM Retail': next, sellPriceExclGst: next, 'priceLevels.hull_cash': next };
+        case 'trade': return { 'Trade Price': next, 'priceLevels.hull_trade': next, 'priceLevels.hull_subdealer': next };
+        case 'commercial': return { 'Commercial Price': next, 'priceLevels.hull_commercial': next };
+        case 'alliance': return { 'Boating Alliance Price': next, 'priceLevels.hull_boating_alliance': next };
+        case 'installSell': return { 'Install - Sell': next };
         default: return { [field]: next };
     }
+}
+
+/** v1.34 — the motor CSV round-trip column set. Each entry: CSV header,
+ *  logical field key for writeFieldsFor (null = read-only key column),
+ *  reader, and whether values parse as money. The MPF's own field names
+ *  hide two traps a naive round-trip would fall into: the fuel-tank key
+ *  is literally "Fuel\r\nTank" (CRLF inside the Firestore field name) and
+ *  cylinders is "Cylinders / Displacement" with spaces around the slash. */
+const CSV_COLUMNS: Array<{
+    header: string;
+    field: string | null;
+    read: (r: MotorRow) => any;
+    money?: boolean;
+}> = [
+    { header: 'Part Number', field: null, read: r => mPart(r) },
+    { header: 'Model Name', field: 'model', read: r => mModel(r) },
+    { header: 'HP Rating', field: 'hp', read: r => mHp(r) },
+    { header: 'Shaft', field: 'shaft', read: r => mShaft(r) },
+    { header: 'Control', field: 'Control', read: r => r['Control'] },
+    { header: 'Starting', field: 'Starting', read: r => r['Starting'] },
+    { header: 'Tilt & Trim', field: 'Tilt & Trim', read: r => r['Tilt & Trim'] },
+    { header: 'Fuel Tank', field: 'Fuel\r\nTank', read: r => r['Fuel\r\nTank'] ?? r['Fuel\nTank'] },
+    { header: 'Prop', field: 'Prop', read: r => r['Prop'] },
+    { header: 'Cylinders / Displacement', field: 'Cylinders / Displacement', read: r => r['Cylinders / Displacement'] },
+    { header: 'Engine Colour', field: 'Engine Colour', read: r => r['Engine Colour'] },
+    { header: 'Cost', field: 'cost', read: r => mCost(r), money: true },
+    { header: 'Sell (NSM Retail)', field: 'sell', read: r => mSell(r), money: true },
+    { header: 'Trade Price', field: 'trade', read: r => r.priceLevels?.hull_trade ?? r['Trade Price'], money: true },
+    { header: 'Commercial Price', field: 'commercial', read: r => r.priceLevels?.hull_commercial ?? r['Commercial Price'], money: true },
+    { header: 'Boating Alliance Price', field: 'alliance', read: r => r.priceLevels?.hull_boating_alliance ?? r['Boating Alliance Price'], money: true },
+    { header: 'Install Sell', field: 'installSell', read: r => r['Install - Sell'], money: true },
+];
+
+/** Minimal RFC-4180-ish CSV parser (quoted fields, embedded commas,
+ *  doubled quotes, CRLF). Returns array of rows of cells. */
+function parseCsv(text: string): string[][] {
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let cell = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (inQuotes) {
+            if (ch === '"') {
+                if (text[i + 1] === '"') { cell += '"'; i++; }
+                else inQuotes = false;
+            } else cell += ch;
+        } else if (ch === '"') {
+            inQuotes = true;
+        } else if (ch === ',') {
+            row.push(cell); cell = '';
+        } else if (ch === '\n' || ch === '\r') {
+            if (ch === '\r' && text[i + 1] === '\n') i++;
+            row.push(cell); cell = '';
+            if (row.some(c => c.trim() !== '')) rows.push(row);
+            row = [];
+        } else cell += ch;
+    }
+    row.push(cell);
+    if (row.some(c => c.trim() !== '')) rows.push(row);
+    return rows;
+}
+
+/** Money cells arrive as "17,643", "$17,643.00", " -   " (MPF's empty
+ *  marker) or plain numbers. Empty-ish -> null (means "don't write"). */
+function parseCsvValue(raw: string, money: boolean | undefined): any {
+    const s = raw.trim();
+    if (s === '' || s === '.' || /^\$?\s*-\s*$/.test(s)) return null;
+    if (money) {
+        const n = Number(s.replace(/[$,\s]/g, ''));
+        return Number.isFinite(n) ? n : null;
+    }
+    return s;
 }
 
 export function MotorsTableView({ organisationId, initialSearch }: { organisationId?: string | null; initialSearch?: string } = {}) {
@@ -242,26 +319,20 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
         }
     };
 
-    /** v1.14 (Story 3.8.8) — CSV export of the currently-filtered rows. */
+    /** v1.14 (Story 3.8.8; v1.34 round-trip) — CSV export of the
+     *  currently-filtered rows. Columns come from CSV_COLUMNS so the file
+     *  re-imports 1:1: edit specs, details or any price level in a
+     *  spreadsheet and bring it straight back. */
     const handleExport = () => {
-        const header = ['Part Number', 'Model Name', 'Series', 'HP Rating', 'Shaft', 'Cost', 'Sell (NSM Retail)'];
         const escape = (v: any) => {
             if (v == null) return '';
-            const s = String(v);
-            if (s.includes(',') || s.includes('"') || s.includes('\n')) return `"${s.replace(/"/g, '""')}"`;
+            const s = String(v).replace(/\r?\n/g, ' ').trim();
+            if (s.includes(',') || s.includes('"')) return `"${s.replace(/"/g, '""')}"`;
             return s;
         };
-        const lines = [header.join(',')];
+        const lines = [CSV_COLUMNS.map(c => escape(c.header)).join(',')];
         for (const r of filtered) {
-            lines.push([
-                mPart(r) ?? '',
-                mModel(r) ?? '',
-                mSeries(r) ?? '',
-                mHp(r) ?? '',
-                mShaft(r) ?? '',
-                mCost(r) ?? '',
-                mSell(r) ?? '',
-            ].map(escape).join(','));
+            lines.push(CSV_COLUMNS.map(c => escape(c.read(r))).join(','));
         }
         const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
         const url = URL.createObjectURL(blob);
@@ -274,6 +345,100 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 5000);
         toast({ title: `Exported ${filtered.length} motors` });
+    };
+
+    /** v1.34 — CSV import (the other half of the round-trip). Upserts by
+     *  Part Number (MODEL CODE, the MPF natural key): existing rows are
+     *  patched only where the CSV value differs, unknown part numbers
+     *  become new rows, rows absent from the file are left alone. Every
+     *  write goes through writeFieldsFor so all mirrors stay in sync. */
+    const [importing, setImporting] = useState(false);
+    const handleImportFile = async (file: File) => {
+        if (!dataSetId) return;
+        setImporting(true);
+        try {
+            const text = await file.text();
+            const parsed = parseCsv(text);
+            if (parsed.length < 2) {
+                toast({ variant: 'destructive', title: 'Empty CSV', description: 'No data rows found under the header.' });
+                return;
+            }
+            const headerCells = parsed[0].map(h => h.trim().toLowerCase());
+            const colIndex = CSV_COLUMNS.map(c => headerCells.indexOf(c.header.toLowerCase()));
+            const keyIdx = colIndex[0];
+            if (keyIdx === -1) {
+                toast({ variant: 'destructive', title: 'Missing key column', description: 'The CSV needs a "Part Number" column — export first, edit, re-import.' });
+                return;
+            }
+            const byPart = new Map<string, MotorRow>();
+            for (const r of rows) {
+                const p = mPart(r);
+                if (p) byPart.set(String(p).trim().toUpperCase(), r);
+            }
+            let updated = 0, created = 0, unchanged = 0, skipped = 0;
+            const localPatches = new Map<string, Record<string, any>>();
+            const createdRows: MotorRow[] = [];
+            for (const cells of parsed.slice(1)) {
+                const key = String(cells[keyIdx] ?? '').trim();
+                if (!key) { skipped++; continue; }
+                const existing = byPart.get(key.toUpperCase());
+                const update: Record<string, any> = {};
+                for (let c = 1; c < CSV_COLUMNS.length; c++) {
+                    const idx = colIndex[c];
+                    if (idx === -1 || cells[idx] === undefined) continue;
+                    const col = CSV_COLUMNS[c];
+                    const next = parseCsvValue(cells[idx], col.money);
+                    if (next == null) continue; // blank cells never erase data
+                    const current = existing ? col.read(existing) : undefined;
+                    const same = col.money
+                        ? typeof current === 'number' && Math.abs(current - next) < 0.005
+                        : String(current ?? '').trim() === String(next);
+                    if (existing && same) continue;
+                    Object.assign(update, writeFieldsFor(col.field!, next));
+                }
+                if (existing) {
+                    if (Object.keys(update).length === 0) { unchanged++; continue; }
+                    await updateDoc(
+                        doc(firestore, 'data-warehouse', vendorId, 'dataSets', dataSetId, 'rows', existing.id),
+                        { ...update, updatedAt: serverTimestamp() },
+                    );
+                    localPatches.set(existing.id, update);
+                    updated++;
+                } else {
+                    // New motor: seed both naming worlds for the key so every
+                    // consumer (quote flow, workspace, this table) sees it.
+                    const newRef = doc(collection(firestore, 'data-warehouse', vendorId, 'dataSets', dataSetId, 'rows'));
+                    const seed = { 'MODEL CODE': key, 'Part Number': key, ...update, createdAt: serverTimestamp(), createdVia: 'motors-csv-import' };
+                    await setDoc(newRef, seed);
+                    createdRows.push({ id: newRef.id, ...seed } as MotorRow);
+                    created++;
+                }
+            }
+            if (localPatches.size > 0 || createdRows.length > 0) {
+                setRows(prev => {
+                    const next = prev.map(r => {
+                        const patch = localPatches.get(r.id);
+                        if (!patch) return r;
+                        const nr: MotorRow = { ...r };
+                        for (const [k, v] of Object.entries(patch)) {
+                            if (k.startsWith('priceLevels.')) nr.priceLevels = { ...(nr.priceLevels || {}), [k.slice('priceLevels.'.length)]: v };
+                            else nr[k] = v;
+                        }
+                        return nr;
+                    });
+                    return [...next, ...createdRows];
+                });
+            }
+            toast({
+                title: 'CSV imported',
+                description: `${updated} updated · ${created} created · ${unchanged} unchanged · ${skipped} skipped (no part number).`,
+            });
+        } catch (err: any) {
+            console.error('CSV import failed', err);
+            toast({ variant: 'destructive', title: 'Import failed', description: err?.message ?? String(err) });
+        } finally {
+            setImporting(false);
+        }
     };
 
     useEffect(() => {
@@ -458,6 +623,28 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
                 <Button variant="outline" size="sm" onClick={handleExport} className="rounded-xl text-xs h-9" disabled={filtered.length === 0}>
                     <Download className="h-3.5 w-3.5 mr-1" /> Export CSV
                 </Button>
+                {/* v1.34 — CSV import (round-trips the export: specs, details,
+                    every price level; upserts by Part Number). Native hidden
+                    input per the shadcn file-input lesson. */}
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl text-xs h-9"
+                    disabled={importing || !dataSetId}
+                    onClick={(e) => ((e.currentTarget.nextElementSibling as HTMLInputElement) ?? null)?.click()}
+                >
+                    {importing ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <FileUp className="h-3.5 w-3.5 mr-1" />} Import CSV
+                </Button>
+                <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    hidden
+                    onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) void handleImportFile(f);
+                        e.target.value = '';
+                    }}
+                />
                 {/* v1.17 (Story 3.10.2) — paste-from-spreadsheet entry point */}
                 <Button variant="outline" size="sm" onClick={() => setPasteOpen(true)} className="rounded-xl text-xs h-9">
                     <ClipboardPaste className="h-3.5 w-3.5 mr-1" /> Paste
