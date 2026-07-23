@@ -17,6 +17,7 @@
 
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency-utils';
+import { getActiveRebate } from '@/lib/rebates';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -106,6 +107,9 @@ export function NsmMotorMenuSection({
                     const isResolved = !!entry.motor;
                     const isSelected = isResolved && !!selectedMotorId && entry.motor.id === selectedMotorId;
                     const price = isResolved ? getPrice(entry.motor) : 0;
+                    // v1.34 Yamaha Rebates — live stamp on the MPF row
+                    const rebate = isResolved ? getActiveRebate(entry.motor) : null;
+                    const rebateSlashed = !!rebate && rebate.retailPrice > price;
                     return (
                         <button
                             key={`${entry.slot ?? idx}-${entry.motorName ?? idx}`}
@@ -139,6 +143,11 @@ export function NsmMotorMenuSection({
                                             <Check className="h-2 w-2" /> Selected
                                         </Badge>
                                     )}
+                                    {rebateSlashed && (
+                                        <Badge className="bg-red-600 text-white border-none font-black text-[7px] uppercase h-4 px-1.5">
+                                            Rebate
+                                        </Badge>
+                                    )}
                                 </div>
                             </div>
                             <div className="space-y-1.5">
@@ -170,10 +179,15 @@ export function NsmMotorMenuSection({
                                 {isResolved ? (
                                     <>
                                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">Excl. GST</span>
-                                        <span className={cn('font-black italic text-sm', isSelected ? 'text-primary' : 'text-slate-900')}>
-                                            {/* formatCurrency enforces the whole-dollar / 2-dp rule —
-                                                bare toLocaleString() can emit 1-or-3-decimal prices. */}
-                                            {formatCurrency(price)}
+                                        <span className="flex items-center gap-1.5">
+                                            {rebateSlashed && (
+                                                <span className="text-[10px] font-bold text-slate-400 line-through">{formatCurrency(rebate!.retailPrice)}</span>
+                                            )}
+                                            <span className={cn('font-black italic text-sm', rebateSlashed ? 'text-red-600' : isSelected ? 'text-primary' : 'text-slate-900')}>
+                                                {/* formatCurrency enforces the whole-dollar / 2-dp rule —
+                                                    bare toLocaleString() can emit 1-or-3-decimal prices. */}
+                                                {formatCurrency(price)}
+                                            </span>
                                         </span>
                                     </>
                                 ) : (

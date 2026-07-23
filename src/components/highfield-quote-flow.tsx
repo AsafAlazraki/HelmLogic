@@ -2,6 +2,7 @@
 
 import { formatMetres } from '@/lib/units';
 import { resolvePriceLevel } from '@/lib/catalog/derive-pricing';
+import { getActiveRebate } from '@/lib/rebates';
 import { Fragment, useState, useMemo, useEffect, useRef } from 'react';
 import { useCollection, useFirestore, useMemoFirebase, useDoc, useStorage } from '@/firebase';
 import { uploadFileToStorage } from '@/firebase/storage';
@@ -304,7 +305,15 @@ export function HighfieldQuoteFlow({
             // the plain fallback chain resolves first.
             return resolvePriceLevel(item, null);
         }
-        return resolvePriceLevel(item, level);
+        // v1.34 Yamaha Rebates — a live rebate stamp on an MPF motor row
+        // gives the SKU a temporary NEW price (the MPF's own campaign
+        // Sell Price mechanism). It only ever LOWERS the price: trade /
+        // commercial levels that already sit below the rebate keep their
+        // level price. getActiveRebate enforces the start/end window.
+        const resolved = resolvePriceLevel(item, level);
+        const rebate = getActiveRebate(item);
+        if (rebate && rebate.rebatePrice < resolved) return rebate.rebatePrice;
+        return resolved;
     }
 
     // 1. Core State — seeded from initialState when duplicating an existing quote
@@ -1174,6 +1183,22 @@ export function HighfieldQuoteFlow({
         if (typeof v.priceIncGst === 'number' && v.priceIncGst > 0 && (!ladderKey)) return v.priceIncGst;
         return Math.round(getPriceForLevel(v, priceLevel) * 1.1 * 100) / 100;
     }, [activeVariant, priceLevel]);
+
+    /** v1.34 Yamaha Rebates — live rebate programs across the loaded
+     *  motors (derived straight from the MPF row stamps, no extra reads).
+     *  Drives the eye-catching band at the top of the Motor step. */
+    const activeMotorRebates = useMemo(() => {
+        const map = new Map<string, { stamp: any; skuCount: number; maxSave: number }>();
+        (motors ?? []).forEach((m: any) => {
+            const r = getActiveRebate(m);
+            if (!r) return;
+            const cur = map.get(r.rebateId) ?? { stamp: r, skuCount: 0, maxSave: 0 };
+            cur.skuCount += 1;
+            cur.maxSave = Math.max(cur.maxSave, (r.retailPrice ?? 0) - r.rebatePrice);
+            map.set(r.rebateId, cur);
+        });
+        return Array.from(map.values());
+    }, [motors]);
 
     const totalPrice = useMemo(() => {
         let total = displaySheetPricing ? hullIncForLevel : getPriceForLevel(activeVariant, priceLevel);
@@ -2543,6 +2568,49 @@ export function HighfieldQuoteFlow({
                                                 <p className="text-[10px] font-black uppercase tracking-wide leading-relaxed">Pricing not yet configured for this module — motors will show $0. Contact your admin to set up a pricing strategy.</p>
                                             </div>
                                         )}
+                                        {/* v1.34 Yamaha Rebates — the eye-catcher. One band per live
+                                            rebate program across the loaded motors; the customer-facing
+                                            savings story leads, photo included when the program has one. */}
+                                        {!motorsLoading && activeMotorRebates.length > 0 && (
+                                            <div className="space-y-3">
+                                                {activeMotorRebates.map(({ stamp, skuCount, maxSave }) => (
+                                                    <div key={stamp.rebateId} className="relative overflow-hidden rounded-[2rem] border-4 border-red-600 bg-gradient-to-r from-red-600 to-red-500 text-white shadow-2xl">
+                                                        <div className="flex items-stretch">
+                                                            {stamp.imageUrl && (
+                                                                <img src={stamp.imageUrl} alt="" className="w-40 object-cover" />
+                                                            )}
+                                                            <div className="flex-1 p-5 flex items-center justify-between gap-4">
+                                                                <div>
+                                                                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-red-100">Limited-time factory rebate</p>
+                                                                    <p className="text-xl font-black uppercase tracking-tight leading-tight">{stamp.name}</p>
+                                                                    <p className="text-[10px] font-black uppercase tracking-widest text-red-100 mt-1">
+                                                                        {skuCount} motor{skuCount === 1 ? '' : 's'} on special
+                                                                        {stamp.endsAt ? ` · ends ${stamp.endsAt}` : ''}
+                                                                    </p>
+                                                                    {stamp.linkUrl && (
+                                                                        <a
+                                                                            href={stamp.linkUrl}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            onClick={e => e.stopPropagation()}
+                                                                            className="inline-block text-[10px] font-black uppercase tracking-widest underline underline-offset-2 text-white hover:text-red-100 mt-1"
+                                                                        >
+                                                                            See full offer
+                                                                        </a>
+                                                                    )}
+                                                                </div>
+                                                                {maxSave > 0 && (
+                                                                    <div className="text-right shrink-0">
+                                                                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-red-100">Save up to</p>
+                                                                        <p className="text-3xl font-black italic">${Math.round(maxSave).toLocaleString()}</p>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                         {/* NSM MPF — recommended motor menu for this hull (variant.motorMenu).
                                             Renders nothing when the variant has no menu (pre-import). The
                                             existing HP-filtered grid stays below under "All compatible motors". */}
@@ -2586,6 +2654,16 @@ export function HighfieldQuoteFlow({
                                                         <Badge className="absolute bottom-4 left-4 bg-primary text-white font-black text-[10px] uppercase px-3 py-1 rounded-full shadow-lg">
                                                             {selectedMotor['HP Rating']} HP PERFORMANCE
                                                         </Badge>
+                                                        {/* v1.34 Yamaha Rebates — live rebate flash on the hero */}
+                                                        {(() => {
+                                                            const hr = getActiveRebate(selectedMotor);
+                                                            const heroPrice = getPriceForLevel(selectedMotor, priceLevel);
+                                                            return hr && hr.retailPrice > heroPrice ? (
+                                                                <Badge className="absolute bottom-4 right-4 bg-red-600 text-white font-black text-[10px] uppercase px-3 py-1 rounded-full shadow-lg">
+                                                                    Rebate — Save ${(hr.retailPrice - heroPrice).toLocaleString()}
+                                                                </Badge>
+                                                            ) : null;
+                                                        })()}
                                                     </div>
                                                     <div className="p-6 flex items-center justify-between bg-white">
                                                         <div className="space-y-1">
@@ -2596,10 +2674,19 @@ export function HighfieldQuoteFlow({
                                                                 {selectedMotor['Starting'] && <Badge variant="secondary" className="text-[8px] font-black uppercase">{selectedMotor['Starting']}</Badge>}
                                                             </div>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <p className="font-black text-primary italic text-2xl">${getPriceForLevel(selectedMotor, priceLevel).toLocaleString()}</p>
-                                                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Excl. GST</span>
-                                                        </div>
+                                                        {(() => {
+                                                            const hr = getActiveRebate(selectedMotor);
+                                                            const heroPrice = getPriceForLevel(selectedMotor, priceLevel);
+                                                            const slashed = hr && hr.retailPrice > heroPrice;
+                                                            return (
+                                                                <div className="text-right">
+                                                                    {slashed && <p className="text-[9px] font-black uppercase tracking-widest text-red-600">{hr!.name}</p>}
+                                                                    {slashed && <p className="text-sm font-bold text-slate-400 line-through leading-tight">${hr!.retailPrice.toLocaleString()}</p>}
+                                                                    <p className={`font-black italic text-2xl ${slashed ? 'text-red-600' : 'text-primary'}`}>${heroPrice.toLocaleString()}</p>
+                                                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Excl. GST</span>
+                                                                </div>
+                                                            );
+                                                        })()}
                                                     </div>
                                                 </button>
                                                 <div className="flex items-center justify-center gap-2 mt-4">
@@ -2648,13 +2735,31 @@ export function HighfieldQuoteFlow({
                                                                 <Badge className="absolute bottom-4 left-4 bg-primary text-white font-black text-[10px] uppercase px-3 py-1 rounded-full shadow-lg">
                                                                     {m['HP Rating']} HP PERFORMANCE
                                                                 </Badge>
+                                                                {/* v1.34 Yamaha Rebates — grid card ribbon */}
+                                                                {(() => {
+                                                                    const gr = getActiveRebate(m);
+                                                                    const gp = getPriceForLevel(m, priceLevel);
+                                                                    return gr && gr.retailPrice > gp ? (
+                                                                        <Badge className="absolute top-4 left-4 bg-red-600 text-white font-black text-[10px] uppercase px-3 py-1 rounded-full shadow-lg">
+                                                                            Rebate — Save ${(gr.retailPrice - gp).toLocaleString()}
+                                                                        </Badge>
+                                                                    ) : null;
+                                                                })()}
                                                             </div>
                                                             <div className="p-6 flex flex-col items-start text-left gap-2 flex-grow bg-white">
                                                                 <p className="text-sm font-black uppercase tracking-tight leading-tight text-slate-900">{displayName}</p>
-                                                                <div className="flex items-center gap-2 mt-auto">
-                                                                    <p className="font-black text-primary italic text-xl">${getPriceForLevel(m, priceLevel).toLocaleString()}</p>
-                                                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Excl. GST</span>
-                                                                </div>
+                                                                {(() => {
+                                                                    const gr = getActiveRebate(m);
+                                                                    const gp = getPriceForLevel(m, priceLevel);
+                                                                    const slashed = gr && gr.retailPrice > gp;
+                                                                    return (
+                                                                        <div className="flex items-center gap-2 mt-auto">
+                                                                            {slashed && <p className="text-xs font-bold text-slate-400 line-through">${gr!.retailPrice.toLocaleString()}</p>}
+                                                                            <p className={`font-black italic text-xl ${slashed ? 'text-red-600' : 'text-primary'}`}>${gp.toLocaleString()}</p>
+                                                                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Excl. GST</span>
+                                                                        </div>
+                                                                    );
+                                                                })()}
                                                             </div>
                                                         </button>
                                                     );

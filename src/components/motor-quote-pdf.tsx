@@ -101,6 +101,14 @@ export interface MotorQuotePdfInput {
         specs?: Record<string, string>;
         vendorName?: string;
         vendorLogoUrl?: string | null;
+        /** v1.34 Yamaha Rebates — captured at pick time; the motor line's
+         *  sellPrice already IS the rebate price. */
+        rebate?: {
+            name: string;
+            retailPrice: number;
+            rebatePrice: number;
+            linkUrl?: string | null;
+        } | null;
     } | null;
     /** Resolved admin content (documentType 'motor-quote'). */
     contentBlocks?: Partial<Record<BlockType, string>>;
@@ -124,11 +132,16 @@ export function MotorQuotePDFDocument({ input, organisation }: { input: MotorQuo
     const sortedParts = [...input.parts].sort((a, b) =>
         LINE_ORDER.indexOf(a.itemType || '') - LINE_ORDER.indexOf(b.itemType || ''));
     for (const p of sortedParts) {
+        // v1.34 Yamaha Rebates — the motor line tells the rebate story
+        // (was-price + program name) right where the price is read.
+        const rebateSub = p.itemType === 'motor' && snap?.rebate
+            ? `was ${currency(snap.rebate.retailPrice)} — ${snap.rebate.name}`
+            : null;
         lines.push({
             label: p.name,
-            sub: p.itemType === 'motor'
+            sub: rebateSub ?? (p.itemType === 'motor'
                 ? (p.partNumber && !p.name.toUpperCase().includes(p.partNumber.toUpperCase()) ? p.partNumber : undefined)
-                : (p.itemType || '').replace('-', ' '),
+                : (p.itemType || '').replace('-', ' ')),
             qty: p.qty, amount: (p.sellPrice || 0) * (p.qty || 1) });
     }
     for (const o of input.operations) {
@@ -197,6 +210,25 @@ export function MotorQuotePDFDocument({ input, organisation }: { input: MotorQuo
                             {isRepower && input.tradeIn?.description ? (
                                 <Text style={{ fontSize: 8, color: SLATE, marginTop: 8 }}>Replacing: {input.tradeIn.description}</Text>
                             ) : null}
+                        </View>
+                    </View>
+                )}
+
+                {/* v1.34 Yamaha Rebates — everybody sees the rebate: red
+                    banner right under the hero with program name, saving
+                    and the offer link when set. */}
+                {snap?.rebate && (
+                    <View wrap={false} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: RED, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14, marginBottom: 14 }}>
+                        <View style={{ flexShrink: 1, paddingRight: 12 }}>
+                            <Text style={{ fontSize: 6.5, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: '#fecaca' }}>Factory rebate applied</Text>
+                            <Text style={{ fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', color: '#ffffff', marginTop: 2 }}>{snap.rebate.name}</Text>
+                            {snap.rebate.linkUrl ? (
+                                <Text style={{ fontSize: 6, color: '#fee2e2', marginTop: 2 }}>{snap.rebate.linkUrl}</Text>
+                            ) : null}
+                        </View>
+                        <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
+                            <Text style={{ fontSize: 6.5, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: '#fecaca' }}>You save</Text>
+                            <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#ffffff' }}>{currency(Math.max(0, snap.rebate.retailPrice - snap.rebate.rebatePrice))}</Text>
                         </View>
                     </View>
                 )}

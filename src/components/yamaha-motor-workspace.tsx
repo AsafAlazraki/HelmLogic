@@ -11,9 +11,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Ship, Search, Package, Settings as SettingsIcon, DollarSign, ChevronDown, ArrowUpDown, Tag, Wrench } from 'lucide-react';
+import { Ship, Search, Package, Settings as SettingsIcon, DollarSign, ChevronDown, ArrowUpDown, BadgePercent, Wrench } from 'lucide-react';
 import { ModuleFitUpTab } from '@/components/module-fit-up-tab';
-import { ModulePromotions } from '@/components/module-promotions';
+import { YamahaRebates } from '@/components/yamaha-rebates';
 import { MasterPriceFileWorkspace } from '@/components/master-price-file-workspace';
 import { ModuleSettingsPanel } from '@/components/module-settings-panel';
 import { DealerFitOptions } from '@/components/dealer-fit-options';
@@ -446,7 +446,9 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
     const tabs = [
         { key: 'catalog' as const, label: 'Catalog', icon: <Ship className="h-4 w-4" /> },
         { key: 'pricing' as const, label: 'Pricing Manager', icon: <DollarSign className="h-4 w-4" /> },
-        { key: 'promotions' as const, label: 'Promotions', icon: <Tag className="h-4 w-4" /> },
+        // v1.34 — Promotions renamed to Rebates (Asaf). Tab key stays
+        // 'promotions' so old ?motorTab= URLs keep working.
+        { key: 'promotions' as const, label: 'Rebates', icon: <BadgePercent className="h-4 w-4" /> },
         { key: 'fit-up' as const, label: 'Fit-up', icon: <Wrench className="h-4 w-4" /> },
         { key: 'settings' as const, label: 'Settings', icon: <SettingsIcon className="h-4 w-4" /> },
     ];
@@ -615,7 +617,7 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
                 {activeTab === 'promotions' && (
                     <ScrollArea className="h-full">
                         <div className="p-8">
-                            <ModulePromotions
+                            <YamahaRebates
                                 moduleId={moduleId}
                                 vendorId={vendorId}
                                 organisationId={organisationId}

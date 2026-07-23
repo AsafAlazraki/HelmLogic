@@ -574,9 +574,15 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
         const motorAccs: any[] = Array.isArray(quote.motor.accessories) ? quote.motor.accessories : [];
         const accsTotal = motorAccs.reduce((s, a) => s + (a.sellPriceExclGst || 0), 0);
         const motorBase = (f.motorTotal ?? 0) - accsTotal;
+        // v1.34 Yamaha Rebates — the motor line tells the rebate story
+        // inline (name + was-price) and the red banner above the summary
+        // carries the eye-catching version.
+        const mr = (quote.motor as any).rebate;
         lineItems.push({
             label: quote.motor.name,
-            sub: `${quote.motor.brand ?? 'Outboard'} — Propulsion`,
+            sub: mr
+                ? `${quote.motor.brand ?? 'Outboard'} — Propulsion · ${mr.name}: was ${currency(mr.retailPrice)} — save ${currency(mr.discount)}`
+                : `${quote.motor.brand ?? 'Outboard'} — Propulsion`,
             amount: motorBase > 0 ? motorBase : (f.motorTotal ?? 0),
         });
         motorAccs.forEach(a => {
@@ -1285,6 +1291,24 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                         thinner sub-label spacing. The whole block now fits ~50%
                         more rows per page so a long quote doesn't bleed onto a
                         nearly-empty second page. */}
+                    {/* v1.34 Yamaha Rebates — everybody sees the rebate: red
+                        banner at the top of the Investment Summary with the
+                        program name, the saving, and the offer link if set. */}
+                    {(quote.motor as any)?.rebate && (
+                        <View wrap={false} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#d3121a', borderRadius: 6, paddingVertical: 7, paddingHorizontal: 12, marginBottom: 8 }}>
+                            <View style={{ flexShrink: 1, paddingRight: 12 }}>
+                                <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 2, textTransform: 'uppercase', color: '#fecaca' }}>Factory rebate applied</Text>
+                                <Text style={{ fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase', color: '#ffffff', marginTop: 1.5 }}>{(quote.motor as any).rebate.name}</Text>
+                                {(quote.motor as any).rebate.linkUrl ? (
+                                    <Text style={{ fontSize: 5.5, color: '#fee2e2', marginTop: 1.5 }}>{(quote.motor as any).rebate.linkUrl}</Text>
+                                ) : null}
+                            </View>
+                            <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
+                                <Text style={{ fontSize: 6, fontWeight: 'bold', letterSpacing: 1.5, textTransform: 'uppercase', color: '#fecaca' }}>You save</Text>
+                                <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#ffffff' }}>{currency((quote.motor as any).rebate.discount)}</Text>
+                            </View>
+                        </View>
+                    )}
                     {lineItems.map((item, i) => {
                         // v1.33 — mini divider heading inside the summary
                         // (Standard Inclusions / Factory Options split).

@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useFirestore, useStorage, useMemoFirebase } from '@/firebase/provider';
 import { useUser } from '@/firebase/auth/use-user';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { doc, setDoc, updateDoc, serverTimestamp, collection as firestoreCollection } from 'firebase/firestore';
+import { addDoc, doc, setDoc, updateDoc, serverTimestamp, collection as firestoreCollection } from 'firebase/firestore';
 import { uploadFileToStorage } from '@/firebase/storage';
 import { buildQuoteFinancials } from '@/lib/quote-financials';
 import { resolvePriceLevel } from '@/lib/catalog/derive-pricing';
+import { getActiveRebate } from '@/lib/rebates';
 import { evaluateMarginGate, DEFAULT_MARGIN_THRESHOLD_PCT } from '@/lib/catalog/margin-gate';
 import {
     Dialog,
@@ -302,13 +303,31 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 const norm = (s: string) => String(s || '').toLowerCase().replace(/[\s_-]/g, '');
                 const nameKey = allKeys.find(k => ['modelname', 'model', 'description', 'name'].includes(norm(k)));
                 const motorName = (nameKey ? selectedMotor[nameKey] : null) || 'Unknown Motor';
+                // v1.34 Yamaha Rebates — a live rebate stamp gives the SKU a
+                // temporary new price; snapshot BOTH the price actually
+                // charged and the rebate provenance so the PDF can slash the
+                // original and the rebate's sales history stays queryable.
+                const motorRebate = getActiveRebate(selectedMotor);
+                const motorLevelPrice = resolvePrice(selectedMotor);
+                const motorSell = motorRebate && motorRebate.rebatePrice < motorLevelPrice
+                    ? motorRebate.rebatePrice : motorLevelPrice;
                 return {
                 id: selectedMotor.id || null,
                 name: motorName,
                 model: motorName,
                 brand: selectedMotor.brand || 'Yamaha',
                 brandLogoUrl: selectedMotor.vendorLogoUrl || null,
-                sellPriceExclGst: resolvePrice(selectedMotor),
+                sellPriceExclGst: motorSell,
+                rebate: motorRebate && motorRebate.rebatePrice < motorLevelPrice ? {
+                    rebateId: motorRebate.rebateId,
+                    moduleId: motorRebate.moduleId,
+                    name: motorRebate.name,
+                    imageUrl: motorRebate.imageUrl ?? null,
+                    linkUrl: motorRebate.linkUrl ?? null,
+                    retailPrice: motorRebate.retailPrice,
+                    rebatePrice: motorRebate.rebatePrice,
+                    discount: Math.max(0, motorRebate.retailPrice - motorRebate.rebatePrice),
+                } : null,
                 costPrice: selectedMotor.costPrice || 0,
                 imageUrl: selectedMotor.imageUrl || selectedMotor.SummaryImage || null,
                 // Motor spec fields (may not be present on all motors)
@@ -638,6 +657,36 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                     byUid: user.uid,
                     byName: auditByName,
                 });
+
+                // v1.34 Yamaha Rebates — record this deal under its rebate so
+                // the Past Rebates section can show every motor sold, to
+                // whom, and the whole deal. Fire-and-forget: a sales-history
+                // write must never block a proposal.
+                const motorRebate = (payload as any).motor?.rebate;
+                if (motorRebate?.rebateId && motorRebate?.moduleId) {
+                    const sm: any = quoteData.selectedMotor || {};
+                    void addDoc(
+                        firestoreCollection(firestore, 'modules', motorRebate.moduleId, 'rebates', motorRebate.rebateId, 'sales'),
+                        {
+                            quoteId: quoteRef.id,
+                            quoteKind: 'boat',
+                            quoteNumber: payload.quoteNumber,
+                            quotePath: `/modules/${quoteData.module?.slug || quoteData.module?.id}/proposals/${quoteRef.id}`,
+                            customerName: customerName || '',
+                            customerEmail: customerEmail || '',
+                            salespersonId: user.uid,
+                            salespersonName: auditByName,
+                            motorCode: sm['Part Number'] ?? sm['MODEL CODE'] ?? '',
+                            motorName: (payload as any).motor?.name ?? '',
+                            retailPrice: motorRebate.retailPrice,
+                            rebatePrice: motorRebate.rebatePrice,
+                            discount: motorRebate.discount,
+                            dealTotal: quoteData.totalPrice ?? null,
+                            organisationId: organisationId || null,
+                            soldAt: new Date().toISOString(),
+                        },
+                    ).catch(err => console.error('rebate sale record write failed', err));
+                }
 
                 // Upload section PDFs if any attached
                 const sectionPdfs = quoteData.sectionPdfs;

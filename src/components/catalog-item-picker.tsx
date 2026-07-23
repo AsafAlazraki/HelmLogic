@@ -51,6 +51,7 @@ import { Badge } from '@/components/ui/badge';
 import { Anchor, Loader2, Plus, Ship, Wrench, Package2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { resolveItemImageUrl } from '@/lib/hero-carousel';
+import { getActiveRebate } from '@/lib/rebates';
 
 /* ─── Emitted line shapes (match service-quote-flow's wizard lines) ─── */
 
@@ -108,6 +109,17 @@ interface CatalogRow {
     specs?: Record<string, string>;
     vendorName?: string;
     vendorLogoUrl?: string | null;
+    /** v1.34 Yamaha Rebates — live rebate on the MPF row. When present,
+     *  `sell` already IS the rebate price; retailPrice is the slash-from. */
+    rebate?: {
+        rebateId: string;
+        moduleId: string;
+        name: string;
+        imageUrl?: string | null;
+        linkUrl?: string | null;
+        retailPrice: number;
+        rebatePrice: number;
+    } | null;
 }
 
 export type CatalogTabId = 'motors' | 'trailers' | 'dealer-fit' | 'rigging';
@@ -166,7 +178,12 @@ async function loadMotors(firestore: any): Promise<CatalogRow[]> {
                 if (!code) continue;
                 const name = String(r['Model Name'] ?? r['MODEL'] ?? r['Model'] ?? r.name ?? '').trim() || d.id;
                 // hull_cash = NSM Retail (CLAUDE.md motor priceLevels mapping)
-                const sell = num(r['NSM Retail']) || num(r['Store Price']) || num(r['Sell Price']) || num(r.priceLevels?.hull_cash) || num(r.sellPriceExclGst);
+                const retailSell = num(r['NSM Retail']) || num(r['Store Price']) || num(r['Sell Price']) || num(r.priceLevels?.hull_cash) || num(r.sellPriceExclGst);
+                // v1.34 Yamaha Rebates — a live stamp gives the SKU its
+                // temporary rebate price (never raises; guard included).
+                const stamp = getActiveRebate(r);
+                const rebate = stamp && stamp.rebatePrice < retailSell ? stamp : null;
+                const sell = rebate ? rebate.rebatePrice : retailSell;
                 // Total CTD is the MPF's true landed cost (AX band).
                 const cost = num(r.cost) || num(r['Total CTD']) || num(r['Dealer Buy']);
                 // v1.34 — the MPF package ingredients live on the motor row:
@@ -212,6 +229,15 @@ async function loadMotors(firestore: any): Promise<CatalogRow[]> {
                     specs,
                     vendorName: String(vendorData?.name ?? 'Yamaha'),
                     vendorLogoUrl: (vendorData?.logoUrl as string) ?? null,
+                    rebate: rebate ? {
+                        rebateId: rebate.rebateId,
+                        moduleId: rebate.moduleId,
+                        name: rebate.name,
+                        imageUrl: rebate.imageUrl ?? null,
+                        linkUrl: rebate.linkUrl ?? null,
+                        retailPrice: rebate.retailPrice ?? retailSell,
+                        rebatePrice: rebate.rebatePrice,
+                    } : null,
                 });
             }
         } catch (err) {
@@ -305,6 +331,8 @@ export interface CatalogAdd {
         specs: Record<string, string>;
         vendorName?: string;
         vendorLogoUrl?: string | null;
+        /** v1.34 Yamaha Rebates — provenance for the PDF + sales history. */
+        rebate?: CatalogRow['rebate'];
     };
 }
 
@@ -314,6 +342,7 @@ export function CatalogItemPicker({
     onAdd,
     initialTab,
     repowerMode,
+    motorsOnly,
 }: {
     organisationId: string;
     disabled?: boolean;
@@ -323,9 +352,13 @@ export function CatalogItemPicker({
     /** v1.34 — repower motor quotes: a motor package also carries the
      *  Engine Removals charge from the motor's own MPF row. */
     repowerMode?: boolean;
+    /** v1.34 (Asaf: a motor quote must show ONLY motor things) — locks
+     *  the picker to the Motors tab and hides the tab bar + generic
+     *  catalogue copy entirely. */
+    motorsOnly?: boolean;
 }) {
     const firestore = useFirestore();
-    const [activeTab, setActiveTab] = useState<TabId>(isCatalogTabId(initialTab) ? initialTab : 'motors');
+    const [activeTab, setActiveTab] = useState<TabId>(motorsOnly ? 'motors' : (isCatalogTabId(initialTab) ? initialTab : 'motors'));
     const [search, setSearch] = useState('');
     const [addingId, setAddingId] = useState<string | null>(null);
     // Per-tab caches: undefined = not loaded yet, null = loading.
@@ -410,6 +443,10 @@ export function CatalogItemPicker({
                     specs: row.specs ?? {},
                     vendorName: row.vendorName,
                     vendorLogoUrl: row.vendorLogoUrl ?? null,
+                    // v1.34 Yamaha Rebates — provenance rides into the quote
+                    // snapshot so the PDF slashes the original price and the
+                    // rebate's sales history records this deal.
+                    rebate: row.rebate ?? null,
                 };
             }
             if (activeTab === 'motors' && asPackage) {
@@ -487,14 +524,19 @@ export function CatalogItemPicker({
         <section className="rounded-2xl border-2 bg-white p-4 space-y-3">
             <div className="flex items-center gap-2">
                 <Anchor className="h-3 w-3 text-amber-600" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-700">Catalogue items</p>
-                <Badge variant="outline" className="text-[8px] font-black uppercase text-slate-400 border-slate-200">Optional</Badge>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-700">
+                    {motorsOnly ? 'Pick the motor' : 'Catalogue items'}
+                </p>
+                {!motorsOnly && <Badge variant="outline" className="text-[8px] font-black uppercase text-slate-400 border-slate-200">Optional</Badge>}
             </div>
             <p className="text-[10px] text-muted-foreground">
-                Add motors, trailers, dealer-fit options or rigging kits to this quote at catalogue prices — no boat required.
+                {motorsOnly
+                    ? `Master Price File prices. "Package" adds the motor with its rigging kit, prop and installation${repowerMode ? ' plus the engine removal' : ''} in one click.`
+                    : 'Add motors, trailers, dealer-fit options or rigging kits to this quote at catalogue prices — no boat required.'}
             </p>
 
-            {/* Tabs */}
+            {/* Tabs (hidden in motorsOnly mode — a motor quote shows only motor things) */}
+            {!motorsOnly && (
             <div className="flex flex-wrap gap-1.5">
                 {TABS.map(t => {
                     const Icon = t.icon;
@@ -515,6 +557,7 @@ export function CatalogItemPicker({
                     );
                 })}
             </div>
+            )}
 
             {rows === null || rows === undefined ? (
                 /* v1.34 pixel pass — skeleton rows hold the panel's shape
@@ -580,7 +623,14 @@ export function CatalogItemPicker({
                                                 : <div className="h-9 w-12 shrink-0 rounded bg-slate-50 border flex items-center justify-center"><Anchor className="h-3.5 w-3.5 text-slate-300" /></div>
                                         )}
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-xs font-semibold truncate">{row.name}</p>
+                                            <p className="text-xs font-semibold truncate flex items-center gap-1.5">
+                                                <span className="truncate">{row.name}</span>
+                                                {row.rebate && (
+                                                    <Badge className="bg-red-600 text-white border-none text-[8px] font-black uppercase h-4 px-1.5 shrink-0">
+                                                        Rebate
+                                                    </Badge>
+                                                )}
+                                            </p>
                                             <p className="text-[9px] text-muted-foreground truncate">
                                                 {row.code && <span className="font-mono font-bold">{row.code}</span>}
                                                 {isMotor && row.hp ? ` · ${row.hp} HP` : ''}
@@ -593,7 +643,12 @@ export function CatalogItemPicker({
                                                 </p>
                                             )}
                                         </div>
-                                        <span className="text-xs font-bold tabular-nums shrink-0">{currency(row.sell)}</span>
+                                        <span className="text-xs font-bold tabular-nums shrink-0 text-right">
+                                            {row.rebate && (
+                                                <span className="block text-[9px] font-bold text-slate-400 line-through">{currency(row.rebate.retailPrice)}</span>
+                                            )}
+                                            <span className={row.rebate ? 'text-red-600' : undefined}>{currency(row.sell)}</span>
+                                        </span>
                                         <Button
                                             type="button"
                                             size="sm"

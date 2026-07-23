@@ -41,7 +41,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Plus, ChevronLeft, ChevronRight, Loader2, Wrench, Package, User, ClipboardCheck, Check, Trash2 } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, Loader2, Wrench, Package, User, ClipboardCheck, Check, Trash2, Ship, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { CatalogItemPicker, type CatalogAdd } from '@/components/catalog-item-picker';
@@ -332,6 +332,17 @@ const WIZARD_STEPS = [
     { id: 4, label: 'Review', icon: ClipboardCheck },
 ];
 
+/** v1.34 (Asaf: "if I am doing a motor quote, why do I see anything but
+ *  the things relevant to that") — motor-sale / repower quotes get their
+ *  OWN wizard: no service Operations step, no 26k-part service catalogue.
+ *  Customer → Motor (picker locked to motors, package composes rigging +
+ *  prop + install + removal automatically) → Review. */
+const MOTOR_WIZARD_STEPS = [
+    { id: 1, label: 'Customer', icon: User },
+    { id: 2, label: 'Motor', icon: Ship },
+    { id: 3, label: 'Review', icon: ClipboardCheck },
+];
+
 function ServiceQuoteCreateDialog({
     open, onOpenChange, organisationId, initialCatalogTab, initialKind,
 }: {
@@ -377,15 +388,17 @@ function ServiceQuoteCreateDialog({
         }
     }, [open]);
 
+    // v1.34 — motor quotes never touch the service catalogues (their wizard
+    // has no Operations/Parts steps), so don't subscribe to them at all.
     const opsCatalogRef = useMemoFirebase(
-        () => (open ? query(collection(firestore, 'organisations', organisationId, 'serviceOperations'), orderBy('code', 'asc')) : null),
-        [firestore, organisationId, open],
+        () => (open && !isMotorQuote ? query(collection(firestore, 'organisations', organisationId, 'serviceOperations'), orderBy('code', 'asc')) : null),
+        [firestore, organisationId, open, isMotorQuote],
     );
     const { data: opsCatalog } = useCollection<ServiceOperation>(opsCatalogRef);
 
     const partsCatalogRef = useMemoFirebase(
-        () => (open ? query(collection(firestore, 'organisations', organisationId, 'serviceParts'), orderBy('partNumber', 'asc')) : null),
-        [firestore, organisationId, open],
+        () => (open && !isMotorQuote ? query(collection(firestore, 'organisations', organisationId, 'serviceParts'), orderBy('partNumber', 'asc')) : null),
+        [firestore, organisationId, open, isMotorQuote],
     );
     const { data: partsCatalog } = useCollection<ServicePart>(partsCatalogRef);
 
@@ -404,12 +417,12 @@ function ServiceQuoteCreateDialog({
             return;
         }
         if (selectedOps.length === 0 && selectedParts.length === 0) {
-            toast({ variant: 'destructive', title: 'Add at least one operation or part' });
+            toast({ variant: 'destructive', title: isMotorQuote ? 'Pick a motor first' : 'Add at least one operation or part' });
             return;
         }
         setSaving(true);
         try {
-            await addDoc(collection(firestore, 'organisations', organisationId, 'serviceQuotes'), {
+            const quoteRef = await addDoc(collection(firestore, 'organisations', organisationId, 'serviceQuotes'), {
                 customerName: customerName.trim(),
                 customerPhone: customerPhone.trim() || null,
                 vehicle: vehicle.trim() || null,
@@ -432,7 +445,30 @@ function ServiceQuoteCreateDialog({
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
             });
-            toast({ title: 'Service quote created', description: customerName });
+            // v1.34 Yamaha Rebates — a motor quote written under a live
+            // rebate lands in that rebate's sales history (who bought which
+            // motor on which quote). Fire-and-forget.
+            const mr = motorSnapshot?.rebate;
+            if (isMotorQuote && mr?.rebateId && mr?.moduleId) {
+                void addDoc(collection(firestore, 'modules', mr.moduleId, 'rebates', mr.rebateId, 'sales'), {
+                    quoteId: quoteRef.id,
+                    quoteKind: 'motor',
+                    quotePath: '',
+                    customerName: customerName.trim(),
+                    customerEmail: '',
+                    salespersonId: null,
+                    salespersonName: null,
+                    motorCode: motorSnapshot?.code ?? '',
+                    motorName: motorSnapshot?.name ?? '',
+                    retailPrice: mr.retailPrice,
+                    rebatePrice: mr.rebatePrice,
+                    discount: Math.max(0, (mr.retailPrice ?? 0) - mr.rebatePrice),
+                    dealTotal: totalSell,
+                    organisationId,
+                    soldAt: new Date().toISOString(),
+                }).catch(err => console.error('rebate sale record write failed', err));
+            }
+            toast({ title: isMotorQuote ? 'Motor quote created' : 'Service quote created', description: customerName });
             onOpenChange(false);
         } catch (err) {
             console.error(err);
@@ -442,8 +478,12 @@ function ServiceQuoteCreateDialog({
         }
     };
 
+    // v1.34 — motor quotes run their own focused 3-step wizard.
+    const steps = isMotorQuote ? MOTOR_WIZARD_STEPS : WIZARD_STEPS;
+
     const canAdvance = (() => {
         if (step === 1) return customerName.trim().length > 0;
+        if (isMotorQuote && step === 2) return selectedParts.length > 0;
         return true;
     })();
 
@@ -453,13 +493,13 @@ function ServiceQuoteCreateDialog({
                 <DialogHeader>
                     <DialogTitle>{isMotorQuote ? (saleType === 'repower' ? 'New Repower Quote' : 'New Motor Quote') : 'New Service Quote'}</DialogTitle>
                     <DialogDescription className="text-xs">
-                        Step {step} of {WIZARD_STEPS.length}: {WIZARD_STEPS[step - 1].label}
+                        Step {step} of {steps.length}: {steps[step - 1].label}
                     </DialogDescription>
                 </DialogHeader>
 
                 {/* Stepper */}
                 <div className="flex items-center gap-2 px-2 pb-2">
-                    {WIZARD_STEPS.map(s => {
+                    {steps.map(s => {
                         const Icon = s.icon;
                         return (
                             <div key={s.id} className="flex items-center gap-2 flex-1">
@@ -477,7 +517,7 @@ function ServiceQuoteCreateDialog({
                                 )}>
                                     {s.label}
                                 </span>
-                                {s.id < WIZARD_STEPS.length && (
+                                {s.id < steps.length && (
                                     <div className={cn('flex-1 h-0.5', step > s.id ? 'bg-emerald-500' : 'bg-muted')} />
                                 )}
                             </div>
@@ -543,7 +583,53 @@ function ServiceQuoteCreateDialog({
                         </div>
                     )}
 
-                    {step === 2 && (
+                    {/* ── Motor wizard step 2: the motor (and ONLY the motor —
+                        no service ops, no service parts, no trailer tabs) ── */}
+                    {isMotorQuote && step === 2 && (
+                        <div className="space-y-4">
+                            <CatalogItemPicker
+                                organisationId={organisationId}
+                                motorsOnly
+                                repowerMode={saleType === 'repower'}
+                                onAdd={({ part, installOp, bundleParts, removalOp, motorMeta }: CatalogAdd) => {
+                                    setSelectedParts(prev => [...prev, part, ...(bundleParts ?? [])]);
+                                    setSelectedOps(prev => [...prev,
+                                        ...(installOp ? [installOp] : []),
+                                        ...(removalOp ? [removalOp] : [])]);
+                                    if (motorMeta) setMotorSnapshot(motorMeta);
+                                }}
+                            />
+                            {(selectedParts.length > 0 || selectedOps.length > 0) && (
+                                <div className="rounded-xl border-2 p-3 space-y-2 bg-slate-50/50">
+                                    <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">On this quote</p>
+                                    {selectedParts.map(p => (
+                                        <div key={p.id} className="flex items-center justify-between text-xs gap-2">
+                                            <span className="flex-1 truncate font-semibold">{p.name}{p.qty > 1 ? ` × ${p.qty}` : ''}</span>
+                                            <span className="tabular-nums font-bold">${(p.sellPrice * p.qty).toLocaleString()}</span>
+                                            <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => setSelectedParts(prev => prev.filter(x => x.id !== p.id))}>
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {selectedOps.map(o => (
+                                        <div key={o.id} className="flex items-center justify-between text-xs gap-2">
+                                            <span className="flex-1 truncate">{o.name}</span>
+                                            <span className="tabular-nums font-bold">${o.sellPrice.toLocaleString()}</span>
+                                            <button type="button" className="text-muted-foreground hover:text-destructive" onClick={() => setSelectedOps(prev => prev.filter(x => x.id !== o.id))}>
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <div className="flex items-center justify-between text-xs pt-1 border-t">
+                                        <span className="font-bold">Running total</span>
+                                        <span className="tabular-nums font-black">${totalSell.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {!isMotorQuote && step === 2 && (
                         <OperationsPicker
                             catalog={opsCatalog ?? []}
                             selected={selectedOps}
@@ -551,7 +637,7 @@ function ServiceQuoteCreateDialog({
                         />
                     )}
 
-                    {step === 3 && (
+                    {!isMotorQuote && step === 3 && (
                         <div className="space-y-4">
                             <PartsPicker
                                 catalog={partsCatalog ?? []}
@@ -565,7 +651,6 @@ function ServiceQuoteCreateDialog({
                             <CatalogItemPicker
                                 organisationId={organisationId}
                                 initialTab={initialCatalogTab}
-                                repowerMode={isMotorQuote && saleType === 'repower'}
                                 onAdd={({ part, installOp, bundleParts, removalOp, motorMeta }: CatalogAdd) => {
                                     setSelectedParts(prev => [...prev, part, ...(bundleParts ?? [])]);
                                     setSelectedOps(prev => [...prev,
@@ -577,7 +662,7 @@ function ServiceQuoteCreateDialog({
                         </div>
                     )}
 
-                    {step === 4 && (
+                    {step === steps.length && (
                         <ReviewStep
                             customerName={customerName}
                             customerPhone={customerPhone}
@@ -587,6 +672,10 @@ function ServiceQuoteCreateDialog({
                             parts={selectedParts}
                             totalSell={totalSell}
                             totalCost={totalCost}
+                            isMotorQuote={isMotorQuote}
+                            saleType={saleType}
+                            tradeInDesc={tradeInDesc}
+                            tradeInValue={parseFloat(tradeInValue) || 0}
                         />
                     )}
                 </div>
@@ -596,7 +685,7 @@ function ServiceQuoteCreateDialog({
                         <Button variant="outline" disabled={step === 1 || saving} onClick={() => setStep(s => s - 1)} className="rounded-xl">
                             <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Back
                         </Button>
-                        {step < WIZARD_STEPS.length ? (
+                        {step < steps.length ? (
                             <Button disabled={!canAdvance} onClick={() => setStep(s => s + 1)} className="rounded-xl">
                                 Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
                             </Button>
@@ -796,6 +885,7 @@ function PartsPicker({
 
 function ReviewStep({
     customerName, customerPhone, vehicle, notes, operations, parts, totalSell, totalCost,
+    isMotorQuote, saleType, tradeInDesc, tradeInValue,
 }: {
     customerName: string;
     customerPhone: string;
@@ -805,8 +895,15 @@ function ReviewStep({
     parts: ServiceQuoteLinePart[];
     totalSell: number;
     totalCost: number;
+    /** v1.34 — motor quotes get motor-sale language + trade-in + balance. */
+    isMotorQuote?: boolean;
+    saleType?: 'new' | 'repower';
+    tradeInDesc?: string;
+    tradeInValue?: number;
 }) {
     const margin = totalSell > 0 ? ((totalSell - totalCost) / totalSell) * 100 : 0;
+    const tradeIn = isMotorQuote ? (tradeInValue || 0) : 0;
+    const balance = Math.max(0, totalSell - tradeIn);
     return (
         <div className="space-y-4">
             <div className="rounded-xl border-2 p-3 bg-slate-50">
@@ -815,10 +912,32 @@ function ReviewStep({
                 {customerPhone && <p className="text-xs text-muted-foreground">{customerPhone}</p>}
                 {vehicle && <p className="text-xs">{vehicle}</p>}
                 {notes && <p className="text-[11px] text-muted-foreground mt-1 italic">{notes}</p>}
+                {isMotorQuote && (
+                    <Badge variant="outline" className="mt-1.5 text-[9px] font-bold uppercase">
+                        {saleType === 'repower' ? 'Repower' : 'New motor sale'}
+                    </Badge>
+                )}
             </div>
 
             <div className="rounded-xl border-2 p-3 space-y-2">
-                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Operations ({operations.length})</p>
+                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+                    {isMotorQuote ? `Motor & package (${parts.length})` : `Parts (${parts.length})`}
+                </p>
+                {parts.length === 0 ? (
+                    <p className="text-xs italic text-muted-foreground">None.</p>
+                ) : parts.map(p => (
+                    <div key={p.id} className="flex items-center justify-between text-xs">
+                        <span className="font-mono font-bold text-violet-700">{p.partNumber}</span>
+                        <span className="flex-1 mx-2 truncate">{p.name}{p.qty > 1 ? ` × ${p.qty}` : ''}</span>
+                        <span className="tabular-nums font-bold">${(p.sellPrice * p.qty).toLocaleString()}</span>
+                    </div>
+                ))}
+            </div>
+
+            <div className="rounded-xl border-2 p-3 space-y-2">
+                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+                    {isMotorQuote ? `Installation & labour (${operations.length})` : `Operations (${operations.length})`}
+                </p>
                 {operations.length === 0 ? (
                     <p className="text-xs italic text-muted-foreground">None.</p>
                 ) : operations.map(o => (
@@ -830,24 +949,23 @@ function ReviewStep({
                 ))}
             </div>
 
-            <div className="rounded-xl border-2 p-3 space-y-2">
-                <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Parts ({parts.length})</p>
-                {parts.length === 0 ? (
-                    <p className="text-xs italic text-muted-foreground">None.</p>
-                ) : parts.map(p => (
-                    <div key={p.id} className="flex items-center justify-between text-xs">
-                        <span className="font-mono font-bold text-violet-700">{p.partNumber}</span>
-                        <span className="flex-1 mx-2 truncate">{p.name} × {p.qty}</span>
-                        <span className="tabular-nums font-bold">${(p.sellPrice * p.qty).toLocaleString()}</span>
-                    </div>
-                ))}
-            </div>
-
-            <div className="rounded-xl border-2 p-3 bg-emerald-50/50">
+            <div className="rounded-xl border-2 p-3 bg-emerald-50/50 space-y-1">
                 <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold">Total (ex GST)</p>
+                    <p className="text-xs font-bold">{isMotorQuote ? 'Total (inc GST)' : 'Total (ex GST)'}</p>
                     <p className="text-lg font-black tabular-nums">${totalSell.toLocaleString()}</p>
                 </div>
+                {isMotorQuote && tradeIn > 0 && (
+                    <>
+                        <div className="flex items-center justify-between text-xs text-emerald-700">
+                            <span className="font-semibold">Less trade-in{tradeInDesc ? ` — ${tradeInDesc}` : ''}</span>
+                            <span className="tabular-nums font-bold">-${tradeIn.toLocaleString()}</span>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 border-t">
+                            <p className="text-xs font-black uppercase">Balance payable</p>
+                            <p className="text-lg font-black tabular-nums">${balance.toLocaleString()}</p>
+                        </div>
+                    </>
+                )}
                 <p className="text-[10px] text-muted-foreground tabular-nums">
                     Cost ${totalCost.toLocaleString()} · Margin {margin.toFixed(1)}%
                 </p>
