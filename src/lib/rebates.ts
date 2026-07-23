@@ -7,8 +7,10 @@
  * SKUs, and gives each a temporary NEW price. HelmLogic mirrors that
  * mechanism exactly:
  *
- * - The rebate document lives at `modules/{motorModuleId}/rebates/{id}`
- *   (name, photo, dates, per-SKU prices, audit changeLog).
+ * - The rebate document lives at `data-warehouse/{vendorId}/rebates/{id}`
+ *   (name, photo, dates, per-SKU prices, audit changeLog) — WITH the
+ *   catalog data it discounts, and inside the existing recursive
+ *   data-warehouse security-rules wildcard so no rules deploy is needed.
  * - While ACTIVE, every selected MPF motor row is STAMPED with an
  *   `activeRebate` field plus the MPF's own `Rebate Program` /
  *   `Rebate Discount` columns — so the data itself carries the rebate
@@ -63,11 +65,11 @@ export interface Rebate {
 }
 
 /** The stamp written onto each selected MPF motor row while the rebate
- *  is active. `moduleId` rides along so the finalize path can write the
+ *  is active. `vendorId` rides along so the finalize path can write the
  *  sale record to the right rebate without any extra plumbing. */
 export interface ActiveRebateStamp {
     rebateId: string;
-    moduleId: string;
+    vendorId: string;
     name: string;
     imageUrl?: string | null;
     linkUrl?: string | null;
@@ -78,7 +80,7 @@ export interface ActiveRebateStamp {
 }
 
 /** A sale/quote written under a rebate — one doc per finalized quote at
- *  `modules/{moduleId}/rebates/{rebateId}/sales/{saleId}`. */
+ *  `data-warehouse/{vendorId}/rebates/{rebateId}/sales/{saleId}`. */
 export interface RebateSale {
     quoteId: string;
     quoteKind: 'boat' | 'motor';

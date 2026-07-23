@@ -68,9 +68,12 @@ export function YamahaRebates({ moduleId, vendorId, organisationId, vendorName }
 
     const brandLabel = vendorName || 'Yamaha';
 
+    // Rebates live under data-warehouse/{vendorId} — WITH the MPF catalog
+    // they discount, and inside the existing recursive data-warehouse
+    // rules wildcard (no rules deploy needed).
     const rebatesRef = useMemoFirebase(
-        () => query(collection(firestore, 'modules', moduleId, 'rebates'), orderBy('createdAt', 'desc')),
-        [firestore, moduleId],
+        () => query(collection(firestore, 'data-warehouse', vendorId, 'rebates'), orderBy('createdAt', 'desc')),
+        [firestore, vendorId],
     );
     const { data: rebates, isLoading } = useCollection<Rebate>(rebatesRef);
 
@@ -127,7 +130,7 @@ export function YamahaRebates({ moduleId, vendorId, organisationId, vendorName }
             await updateDoc(rowPath(s.rowId), {
                 activeRebate: {
                     rebateId,
-                    moduleId,
+                    vendorId,
                     name: rebate.name,
                     imageUrl: rebate.imageUrl ?? null,
                     linkUrl: rebate.linkUrl ?? null,
@@ -168,7 +171,7 @@ export function YamahaRebates({ moduleId, vendorId, organisationId, vendorName }
         setEndingId(rebate.id);
         try {
             if (dataSetId) await unstampRows((rebate.skus ?? []).map(s => s.rowId));
-            await updateDoc(doc(firestore, 'modules', moduleId, 'rebates', rebate.id), {
+            await updateDoc(doc(firestore, 'data-warehouse', vendorId, 'rebates', rebate.id), {
                 status: 'past',
                 endedAt: serverTimestamp(),
                 endedBy: reason === 'manual' ? userName : 'timer',
@@ -351,7 +354,7 @@ export function YamahaRebates({ moduleId, vendorId, organisationId, vendorName }
                                 removed.length ? `-${removed.length} SKU${removed.length === 1 ? '' : 's'} (${removed.map(r => r.code).join(', ')})` : '',
                                 priceChanges.length ? `${priceChanges.length} price change${priceChanges.length === 1 ? '' : 's'} (${priceChanges.map(p => `${p.code} → ${formatCurrency(p.rebatePrice)}`).join(', ')})` : '',
                             ].filter(Boolean);
-                            await updateDoc(doc(firestore, 'modules', moduleId, 'rebates', editing.id), {
+                            await updateDoc(doc(firestore, 'data-warehouse', vendorId, 'rebates', editing.id), {
                                 ...base,
                                 changeLog: arrayUnion(logEntry('edited', noteBits.length ? noteBits.join(' · ') : 'details updated')),
                             });
@@ -361,7 +364,7 @@ export function YamahaRebates({ moduleId, vendorId, organisationId, vendorName }
                             }
                             toast({ title: 'Rebate updated' });
                         } else {
-                            const ref = await addDoc(collection(firestore, 'modules', moduleId, 'rebates'), {
+                            const ref = await addDoc(collection(firestore, 'data-warehouse', vendorId, 'rebates'), {
                                 ...base,
                                 status: 'active',
                                 createdByUserId: userId,
@@ -382,7 +385,7 @@ export function YamahaRebates({ moduleId, vendorId, organisationId, vendorName }
             {detail && (
                 <RebateDetailDialog
                     rebate={(rebates ?? []).find(r => r.id === detail.id) ?? detail}
-                    moduleId={moduleId}
+                    vendorId={vendorId}
                     onClose={() => setDetail(null)}
                 />
             )}
@@ -766,15 +769,15 @@ function RebateDialog({ open, onOpenChange, editing, rows, brandLabel, onSave }:
 
 /* ────────────────────────── Detail dialog (SKUs · sales · audit) ────────────────────────── */
 
-function RebateDetailDialog({ rebate, moduleId, onClose }: {
+function RebateDetailDialog({ rebate, vendorId, onClose }: {
     rebate: Rebate;
-    moduleId: string;
+    vendorId: string;
     onClose: () => void;
 }) {
     const firestore = useFirestore();
     const salesRef = useMemoFirebase(
-        () => query(collection(firestore, 'modules', moduleId, 'rebates', rebate.id, 'sales'), orderBy('soldAt', 'desc')),
-        [firestore, moduleId, rebate.id],
+        () => query(collection(firestore, 'data-warehouse', vendorId, 'rebates', rebate.id, 'sales'), orderBy('soldAt', 'desc')),
+        [firestore, vendorId, rebate.id],
     );
     const { data: sales, isLoading: salesLoading } = useCollection<RebateSale & { id: string }>(salesRef);
 

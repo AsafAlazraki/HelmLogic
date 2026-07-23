@@ -52,16 +52,10 @@ test('motor package quote composes like the MPF Motor Module sheet', async ({ pa
         console.log('repower toggle NOT visible');
     }
     await page.getByRole('button', { name: /^Next/i }).click({ force: true });
-    await page.waitForTimeout(800);
-    // Step 2 — vehicle/notes (optional) → Next.
-    await page.getByRole('button', { name: /^Next/i }).click({ force: true });
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(3000);
 
-    // Step 3 — catalog. Motors tab should be preselected via the deep link;
-    // click it anyway.
-    const motorsBtn = page.getByRole('button', { name: /^Motors$/i }).first();
-    if (await motorsBtn.isVisible().catch(() => false)) await motorsBtn.click({ force: true });
-    await page.waitForTimeout(4000);
+    // Step 2 (v1.34 3-step motor wizard) — the Motor step. The picker is
+    // locked to motors (motorsOnly): no tabs to click.
 
     // Search a known model and add the PACKAGE.
     const search = page.locator('input[placeholder*="Search motors"]').first();
@@ -81,7 +75,7 @@ test('motor package quote composes like the MPF Motor Module sheet', async ({ pa
     }
     await page.waitForTimeout(1500);
 
-    // Step 4 — review. Assert the package lines + totals.
+    // Step 3 — review. Assert the package lines + totals.
     await page.getByRole('button', { name: /^Next/i }).click({ force: true });
     await page.waitForTimeout(1500);
     const review = await page.evaluate(() => document.body.innerText);

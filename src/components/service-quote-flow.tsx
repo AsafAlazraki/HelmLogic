@@ -449,8 +449,8 @@ function ServiceQuoteCreateDialog({
             // rebate lands in that rebate's sales history (who bought which
             // motor on which quote). Fire-and-forget.
             const mr = motorSnapshot?.rebate;
-            if (isMotorQuote && mr?.rebateId && mr?.moduleId) {
-                void addDoc(collection(firestore, 'modules', mr.moduleId, 'rebates', mr.rebateId, 'sales'), {
+            if (isMotorQuote && mr?.rebateId && mr?.vendorId) {
+                void addDoc(collection(firestore, 'data-warehouse', mr.vendorId, 'rebates', mr.rebateId, 'sales'), {
                     quoteId: quoteRef.id,
                     quoteKind: 'motor',
                     quotePath: '',

@@ -320,7 +320,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 sellPriceExclGst: motorSell,
                 rebate: motorRebate && motorRebate.rebatePrice < motorLevelPrice ? {
                     rebateId: motorRebate.rebateId,
-                    moduleId: motorRebate.moduleId,
+                    vendorId: motorRebate.vendorId,
                     name: motorRebate.name,
                     imageUrl: motorRebate.imageUrl ?? null,
                     linkUrl: motorRebate.linkUrl ?? null,
@@ -663,10 +663,10 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                 // whom, and the whole deal. Fire-and-forget: a sales-history
                 // write must never block a proposal.
                 const motorRebate = (payload as any).motor?.rebate;
-                if (motorRebate?.rebateId && motorRebate?.moduleId) {
+                if (motorRebate?.rebateId && motorRebate?.vendorId) {
                     const sm: any = quoteData.selectedMotor || {};
                     void addDoc(
-                        firestoreCollection(firestore, 'modules', motorRebate.moduleId, 'rebates', motorRebate.rebateId, 'sales'),
+                        firestoreCollection(firestore, 'data-warehouse', motorRebate.vendorId, 'rebates', motorRebate.rebateId, 'sales'),
                         {
                             quoteId: quoteRef.id,
                             quoteKind: 'boat',

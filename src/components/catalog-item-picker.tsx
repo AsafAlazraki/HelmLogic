@@ -113,7 +113,7 @@ interface CatalogRow {
      *  `sell` already IS the rebate price; retailPrice is the slash-from. */
     rebate?: {
         rebateId: string;
-        moduleId: string;
+        vendorId: string;
         name: string;
         imageUrl?: string | null;
         linkUrl?: string | null;
@@ -231,7 +231,7 @@ async function loadMotors(firestore: any): Promise<CatalogRow[]> {
                     vendorLogoUrl: (vendorData?.logoUrl as string) ?? null,
                     rebate: rebate ? {
                         rebateId: rebate.rebateId,
-                        moduleId: rebate.moduleId,
+                        vendorId: rebate.vendorId,
                         name: rebate.name,
                         imageUrl: rebate.imageUrl ?? null,
                         linkUrl: rebate.linkUrl ?? null,
