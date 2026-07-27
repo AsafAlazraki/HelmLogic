@@ -418,3 +418,11 @@ Pricing overhaul (universal publish, price level selector), quote-to-stock with 
 - **Build verify** before every push: `npm run build`
 - **Update this file** after significant changes
 - **Use antigravity skills** for code review and quality checks
+
+## Session 2026-07-23 → 2026-07-27 — v1.34 The Motor Release (dev)
+
+- **"Same damn one" lesson**: when the user says a new surface should work like an existing one, reuse the existing component in a mode, don't build a parallel implementation. The popup motor wizard was rejected; `HighfieldQuoteFlow` + `motorOnly` prop with visibleSteps was accepted. Boat step ids kept stable so every `currentStep === N` gate survives untouched.
+- **Rules-deploy-free by construction**: new collections placed under `data-warehouse/{vendorId}` ride the existing recursive rules wildcard. When a feature must work TODAY, choose paths inside deployed wildcards over new match blocks awaiting a manual publish.
+- **MPF row as the composition unit**: install, removal, rigging, prop, price levels all live ON the motor row (or are named by it) — synthesize package lines from row columns at load, ride existing plumbing (masterAccessories), zero new pipelines.
+- **Stamp + read-gate pattern** (rebates): write temporary state onto the data rows so every consumer sees it join-free, but force all reads through one gate function that enforces validity windows — cleanup jobs become hygiene, not correctness.
+- **Evidence discipline held**: every feature browser-proven same-day; FFR-33 re-run after each pricing-adjacent change ($103,731 exact ×3).

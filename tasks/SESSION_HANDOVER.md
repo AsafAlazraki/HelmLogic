@@ -695,3 +695,22 @@ Key collections and access:
 4. Post-mortem in release notes: `tasks/RELEASE_NOTES_vX.Y.Z.md`
 5. Add regression tests (the class that should have caught it, not just the exact case)
 6. Update `CLAUDE.md` "Known Lessons" + `.agents/evolution.md`
+
+## v1.34 additions (2026-07-27, dev — prod merge pending)
+
+**New Firestore surfaces**
+- `data-warehouse/{vendorId}/rebates/{rebateId}` — Yamaha Rebates docs (name, imageUrl, linkUrl, startsAt/endsAt, skus[{rowId, code, model, hp, retailPrice, rebatePrice}], status active|past, changeLog[], endedReason manual|expired). Deliberately vendor-scoped so it sits inside the existing recursive `data-warehouse/{allPaths=**}` rules wildcard — NO rules deploy needed.
+- `data-warehouse/{vendorId}/rebates/{id}/sales/{saleId}` — one doc per finalized deal under a rebate (quoteKind boat|motor, customer, motorCode, retail→rebate, dealTotal, quotePath).
+- Active rebates STAMP their MPF motor rows: `activeRebate` map + the MPF's own `Rebate Program` / `Rebate Discount` columns. ALL reads go through `getActiveRebate()` in `src/lib/rebates.ts` (start/end window enforced client-side).
+
+**New route** — `/modules/{id}/motor-quote` mounts `HighfieldQuoteFlow` with `motorOnly` (synthetic model, vendor from module.mainVendorId). Steps Motor(3) → Dealer Fit(5) → Administration(6) → Summary(7); `visibleSteps`/`stepPos` drive stepper + nav; boat step ids unchanged so all render gates hold.
+
+**Quote docs** — motor-only quotes carry `quoteKind: 'motor'`, `pricingConvention: 'display-sheet-v2'`, modelName = motor name, coverImageUrl = motor photo, variant/specifications/standardFeatures null. `proposal-view.tsx` + `proposal-pdf.tsx` branch on quoteKind (brand eyebrow, no Vessel band, Acceptance says Motor). `render-quote-pdf.ts` auto-upgrades documentType 'quote'→'motor-quote' for motor proposals AND now passes the admin-ordered pdfStructure to the rendered PDF (all document types).
+
+**Motor row composition (motorOnly)** — fetchMotors appends synthetic masterAccessories per row: `mpf-install-{id}` (Install - Sell, isStandard) + `mpf-removal-{id}` (Engine Removals name priced from org serviceOperations, optional). Grid search state `motorSearch` / `gridMotors`.
+
+**Catalog Manager Motors** — reads MPF dataset rows (dataset-discovery heuristic); CSV_COLUMNS registry drives 17-col export + upsert-by-Part-Number import; MotorDetailSheet (click Part #) edits everything through writeFieldsFor mirrors. Field-name traps: `"Fuel\r\nTank"` (CRLF in key), `"Cylinders / Displacement"` (spaces).
+
+**Gotchas learned** — innerText returns CSS-uppercased text (case-insensitive assertions); input values never in innerText; `pkill -f next-server` self-matches its own shell; zombie next-server holds 9002 across kills (kill by `ps -eo pid,comm | awk '$2=="next-server"'`); Playwright card clicks: target the name <p>, not button-level hasText filters.
+
+**Planning** — `scripts/seed-v134-planning.py`: 14 v1.34 stories (68 pts) seeded shipped, 3.10.5 → v1.35 with progress note, points backfilled on ALL 120 unpointed live stories (explicit overrides for planned backlog + type defaults for historical). Zero live stories without points.
