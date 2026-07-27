@@ -684,8 +684,18 @@ export default function ModuleDetailsPage() {
                                 </h1>
                             </div>
                             <div className="flex items-center gap-3 shrink-0">
-                                {/* Counter-quote entry — deep-links into Service & Counter Quotes with the Motors tab preselected */}
-                                <CounterQuoteEntryButton tab="motors" label="New Motor Quote" />
+                                {/* v1.34 (Asaf: "same quote style as boats") — New Motor
+                                    Quote opens the FULL proposal-style flow in motorOnly
+                                    mode. The popup counter-quote wizard stays available
+                                    from the Service module only. */}
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => router.push(`/modules/${moduleData.slug || moduleData.id}/motor-quote`)}
+                                    className="h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/10 hover:bg-white/20 text-white rounded-full transition-all border border-white/10 shadow-xl flex items-center"
+                                >
+                                    <PlusCircle className="h-4 w-4 mr-2" />
+                                    <span>New Motor Quote</span>
+                                </Button>
                                 <Button variant="ghost" className="h-10 px-6 font-black uppercase tracking-widest text-[10px] bg-white/5 hover:bg-white/10 text-white rounded-full transition-all border border-white/5 group shadow-xl flex items-center" onClick={() => router.push('/dashboard')}>
                                     <X className="h-4 w-4 mr-2 transition-transform group-hover:rotate-90" />
                                     <span>Back to Hub</span>

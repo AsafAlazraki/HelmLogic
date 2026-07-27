@@ -864,9 +864,12 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                             </Text>
                         </View>
 
-                        {/* Range */}
+                        {/* Range (motor quotes: brand eyebrow instead of a
+                            phantom " Series") */}
                         <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#60a5fa', letterSpacing: 3, textTransform: 'uppercase', marginBottom: 4 }}>
-                            {quote.rangeName} Series
+                            {(quote as any).quoteKind === 'motor'
+                                ? (quote.vendorName || 'Outboard Motor')
+                                : `${quote.rangeName ?? ''} Series`}
                         </Text>
 
                         {/* Model name — descenders on italic 56pt are tall;
@@ -1042,7 +1045,9 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     let bandNo = 0;
                     return (
                         <View>
-                            {/* ① VESSEL */}
+                            {/* ① VESSEL — skipped entirely on motor-only quotes
+                                (v1.34); bandNo renumbers automatically. */}
+                            {(quote as any).quoteKind !== 'motor' && (
                             <BuildBand
                                 n={++bandNo}
                                 title={`Vessel — ${quote.modelName}`}
@@ -1072,6 +1077,7 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                                     </View>
                                 )}
                             </BuildBand>
+                            )}
 
                             {/* ② PROPULSION */}
                             {quote.motor && (
@@ -1398,7 +1404,9 @@ export function ProposalPDFDocument({ quote, organisation, financials, contentBl
                     <Text style={{ fontSize: 6.5, fontWeight: 'bold', letterSpacing: 2.5, textTransform: 'uppercase', color: MUTED, marginBottom: 8 }}>Quote Summary</Text>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
                         <View style={{ minWidth: 140 }}>
-                            <Text style={{ fontSize: 6.5, fontWeight: 'bold', color: MUTED, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>Vessel</Text>
+                            <Text style={{ fontSize: 6.5, fontWeight: 'bold', color: MUTED, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 3 }}>
+                                {(quote as any).quoteKind === 'motor' ? 'Motor' : 'Vessel'}
+                            </Text>
                             <Text style={{ fontSize: 9, fontWeight: 'bold', color: NAVY }}>{quote.modelName}</Text>
                             {variantLabel && <Text style={{ fontSize: 7.5, color: SLATE }}>{variantLabel}</Text>}
                         </View>

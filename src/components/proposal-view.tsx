@@ -1187,9 +1187,12 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                     )}
 
                                     <div className="space-y-2">
-                                        <div className="text-[9px] font-black uppercase tracking-[0.4em] text-primary">{quote.rangeName} Range</div>
+                                        {/* v1.34 motorOnly — brand eyebrow instead of a bare " Range" */}
+                                        <div className="text-[9px] font-black uppercase tracking-[0.4em] text-primary">
+                                            {quote.quoteKind === 'motor' ? (quote.vendorName || 'Outboard Motor') : `${quote.rangeName ?? ''} Range`}
+                                        </div>
                                         <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter italic text-slate-900 leading-none">{quote.modelName}</h1>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{quote.modelCode}</p>
+                                        {quote.modelCode && <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{quote.modelCode}</p>}
                                     </div>
 
                                     {quote.variant && (
@@ -2015,9 +2018,15 @@ export function ProposalView({ quoteId, quoteNumber, hideNav }: ProposalViewProp
                                         const { addDoc, collection, doc, updateDoc, serverTimestamp } = await import('firebase/firestore');
                                         const ref = collection(firestore, 'users', auditOwnerUid, 'quotes', quote.id, 'contracts');
                                         const orgShort = (organisation?.shortCode ?? 'ORG').toUpperCase();
-                                        const snapshotLines = [
-                                            { section: 'boat', label: quote.variant?.name ?? 'Boat', quantity: 1, unitPriceExclGst: quote.variant?.sellPriceExclGst ?? 0, lineTotalExclGst: quote.variant?.sellPriceExclGst ?? 0 },
-                                        ];
+                                        // v1.34 motorOnly — a motor quote's contract line is the
+                                        // motor, not a phantom $0 boat.
+                                        const snapshotLines = quote.quoteKind === 'motor'
+                                            ? [
+                                                { section: 'motor', label: quote.motor?.name ?? 'Motor', quantity: 1, unitPriceExclGst: quote.motor?.sellPriceExclGst ?? 0, lineTotalExclGst: quote.motor?.sellPriceExclGst ?? 0 },
+                                            ]
+                                            : [
+                                                { section: 'boat', label: quote.variant?.name ?? 'Boat', quantity: 1, unitPriceExclGst: quote.variant?.sellPriceExclGst ?? 0, lineTotalExclGst: quote.variant?.sellPriceExclGst ?? 0 },
+                                            ];
                                         const totals = computeContractTotals(snapshotLines as any);
                                         const contractRef = buildContractReference(orgShort, new Date(), 1);
                                         const docRef = await addDoc(ref, {

@@ -44,8 +44,11 @@ export interface RenderQuotePdfOptions {
     quote: any;
     organisation: any;
     financials: any;
-    /** Defaults to 'quote'. Pass 'contract' once v1.8 contract-PDF flow lands. */
-    documentType?: 'quote' | 'contract';
+    /** Defaults to 'quote'. Pass 'contract' once v1.8 contract-PDF flow lands.
+     *  Motor-only proposals (quote.quoteKind === 'motor') auto-upgrade
+     *  'quote' to 'motor-quote' so admins control motor-proposal content
+     *  independently (Manage → Document Templates → Motor Quote). */
+    documentType?: 'quote' | 'contract' | 'motor-quote';
 }
 
 export interface RenderQuotePdfResult {
@@ -53,7 +56,13 @@ export interface RenderQuotePdfResult {
 }
 
 export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<RenderQuotePdfResult> {
-    const { firestore, quote, organisation, financials, documentType = 'quote' } = opts;
+    const { firestore, quote, organisation, financials, documentType: rawDocumentType = 'quote' } = opts;
+    // v1.34 motorOnly — motor proposals pull their OWN admin content set
+    // (documentType 'motor-quote'): a "Why Yamaha" block can live on every
+    // motor proposal and never on a boat quote.
+    const documentType = rawDocumentType === 'quote' && quote?.quoteKind === 'motor'
+        ? 'motor-quote' as const
+        : rawDocumentType;
 
     const [
         { pdf },
@@ -94,7 +103,7 @@ export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<Rende
     // per sales-team.ts. Keyed by the QUOTE'S creator (not the current
     // user) because a PDF rendered by anyone must still show the
     // salesperson assigned to that quote.
-    const [contentBlocks, contentBlockSubHeaders, contentBlockStyles, salespersonProfile] = quote.organisationId
+    const [contentBlocks, contentBlockSubHeaders, contentBlockStyles, salespersonProfile, pdfSections] = quote.organisationId
         ? await Promise.all([
             resolveContentBlocksForQuote(firestore, quote.organisationId, quote.vendorId ?? null, documentType, quoteOverrideCtx),
             resolveContentBlockSubHeadersForQuote(firestore, quote.organisationId, documentType, quoteOverrideCtx),
@@ -105,8 +114,15 @@ export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<Rende
                     .then(snap => (snap.exists() ? snap.data() as any : null))
                     .catch(() => null)
                 : Promise.resolve(null),
+            // v1.34 — the admin-ordered PDF structure (Manage → Document
+            // Templates) now drives the RENDERED document, not just the
+            // preview: toggle + reorder + zone-assign per document type.
+            // Fail-open: any error falls back to the built-in order.
+            import('@/lib/pdf-structure')
+                .then(ps => ps.getOrSeedPdfStructure(firestore, quote.organisationId, documentType as any))
+                .catch(() => null),
         ])
-        : [undefined, undefined, undefined, null];
+        : [undefined, undefined, undefined, null, null];
 
     // 3. Collect every URL the PDF will reference, pre-load to data URLs.
     // Includes the salesperson photo + any inline images in their message
@@ -210,6 +226,7 @@ export async function renderQuotePdf(opts: RenderQuotePdfOptions): Promise<Rende
             contentBlockSubHeaders,
             contentBlockStyles,
             salespersonProfile: mappedSalespersonProfile,
+            pdfSections: pdfSections ?? undefined,
         }) as any,
     ).toBlob();
 

@@ -111,6 +111,9 @@ interface FinalizeQuoteDialogProps {
         /** FFR-33 — PD tier snapshot (tier/estHrs/totalCtd/sellIncGst,
          *  verbatim MPF figures). */
         pdTier?: any;
+        /** v1.34 motorOnly — 'motor' for motor-only proposals; the payload
+         *  branches on it (motor hero cover, no vessel band). */
+        quoteKind?: 'boat' | 'motor';
         appliedPromotions?: any[];
         promotionDiscount?: number;
         dealerServices?: { extendedWarranty: boolean; servicePlan: boolean };
@@ -204,8 +207,25 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
          *  through one fallback chain. */
         const resolvePrice = (item: any): number => resolvePriceLevel(item, priceLevelUsed || 'hull_cash');
 
+        // v1.34 motorOnly — a motor quote's identity IS the motor: name the
+        // quote after it and put the Yamaha-branded motor photo on the cover
+        // so every downstream surface (proposal hero, PDF cover, quote
+        // lists) reads right with zero extra branching.
+        const isMotorQuote = quoteData.quoteKind === 'motor';
+        const motorHeroName = (() => {
+            if (!isMotorQuote || !selectedMotor) return null;
+            const allKeys = Object.keys(selectedMotor);
+            const norm = (s: string) => String(s || '').toLowerCase().replace(/[\s_-]/g, '');
+            const nameKey = allKeys.find(k => ['modelname', 'model', 'description', 'name'].includes(norm(k)));
+            return (nameKey ? selectedMotor[nameKey] : null) || 'Motor Quote';
+        })();
+        const motorHeroImage = isMotorQuote && selectedMotor
+            ? (selectedMotor.imageUrl || selectedMotor.SummaryImage || null)
+            : null;
+
         return {
             // Quote metadata
+            quoteKind: isMotorQuote ? 'motor' : 'boat',
             quoteNumber: generateQuoteNumber(),
             status: (mode === 'customer' ? 'proposal' : 'stock') as string,
             createdAt: serverTimestamp(),
@@ -236,13 +256,14 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
             rangeName: range?.name || null,
             rangeImageUrl: range?.imageUrl || null,
 
-            // Model
+            // Model (motor quotes: named after the motor, motor photo as cover,
+            // no boat specs/inclusions)
             modelId: model?.id || null,
-            modelName: model?.name || null,
-            modelCode: model?.modelCode || null,
-            coverImageUrl: model?.coverImageUrl || null,
-            specifications: model?.specifications || null,
-            standardFeatures: model?.standardFeatures || null,
+            modelName: motorHeroName ?? (model?.name || null),
+            modelCode: isMotorQuote ? null : (model?.modelCode || null),
+            coverImageUrl: motorHeroImage ?? (model?.coverImageUrl || null),
+            specifications: isMotorQuote ? null : (model?.specifications || null),
+            standardFeatures: isMotorQuote ? null : (model?.standardFeatures || null),
 
             // Variant (boat base)
             variant: activeVariant ? {
@@ -669,7 +690,7 @@ export function FinalizeQuoteDialog({ isOpen, onOpenChange, quoteData, organisat
                         firestoreCollection(firestore, 'data-warehouse', motorRebate.vendorId, 'rebates', motorRebate.rebateId, 'sales'),
                         {
                             quoteId: quoteRef.id,
-                            quoteKind: 'boat',
+                            quoteKind: (payload as any).quoteKind === 'motor' ? 'motor' : 'boat',
                             quoteNumber: payload.quoteNumber,
                             quotePath: `/modules/${quoteData.module?.slug || quoteData.module?.id}/proposals/${quoteRef.id}`,
                             customerName: customerName || '',

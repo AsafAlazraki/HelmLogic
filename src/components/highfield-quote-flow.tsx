@@ -195,6 +195,17 @@ const STEPS: Step[] = [
     { id: 7, label: 'Summary' },
 ];
 
+/** v1.34 (Asaf: "same quote style as boats — skips straight to motor") —
+ *  the motor-only flow runs the SAME component and step ids, but only
+ *  these steps are visible/navigable. Ids stay the boat ids so every
+ *  `currentStep === N` render gate keeps working untouched. */
+const MOTOR_ONLY_STEPS: Step[] = [
+    { id: 3, label: 'Motor' },
+    { id: 5, label: 'Dealer Fit' },
+    { id: 6, label: 'Administration' },
+    { id: 7, label: 'Summary' },
+];
+
 const HARDWARE_BLOCKLIST = ['MOTOR', 'ENGINE', 'FUEL', 'TRAILER', 'OUTBOARD', 'RAM SUPPORT', 'PROP'];
 
 /** Trailer option source data is messy — the readable label sometimes
@@ -245,6 +256,7 @@ export function HighfieldQuoteFlow({
     initialState,
     defaultPriceLevel,
     publicPricing = false,
+    motorOnly = false,
 }: {
     module: any,
     model: any,
@@ -256,6 +268,11 @@ export function HighfieldQuoteFlow({
     /** v1.33 (Bill: Build-A-Boat on the NSM website) — lock pricing to
      *  Cash and hide the price-level picker for public embeds. */
     publicPricing?: boolean,
+    /** v1.34 — motor-only proposal flow: no boat, no trailer. Enters at
+     *  the Motor step (Motor → Dealer Fit → Administration → Summary),
+     *  prices every line dollar-for-dollar from the MPF motor row's own
+     *  columns, finalizes into the same proposal + PDF pipeline. */
+    motorOnly?: boolean,
 }) {
     const firestore = useFirestore();
     const storage = useStorage();
@@ -317,7 +334,13 @@ export function HighfieldQuoteFlow({
     }
 
     // 1. Core State — seeded from initialState when duplicating an existing quote
-    const [currentStep, setCurrentStep] = useState(initialState ? 7 : 1);
+    const [currentStep, setCurrentStep] = useState(motorOnly ? 3 : (initialState ? 7 : 1));
+    /** v1.34 motorOnly — the steps actually shown/navigable. Ids stay the
+     *  boat step ids; display numbers come from array position. */
+    const visibleSteps = motorOnly ? MOTOR_ONLY_STEPS : STEPS;
+    const stepPos = Math.max(0, visibleSteps.findIndex(s => s.id === currentStep));
+    /** v1.34 motorOnly — grid search over the full MPF catalogue. */
+    const [motorSearch, setMotorSearch] = useState('');
     const [selectedMaterial, setSelectedMaterial] = useState<'PVC' | 'HYP' | null>(initialState?.material ?? null);
     const [selectedColor, setSelectedColor] = useState<string | null>(initialState?.colorVariantId ?? null);
     const [isRegoSelected, setIsRegoSelected] = useState(initialState?.isRegoSelected ?? false);
@@ -456,9 +479,13 @@ export function HighfieldQuoteFlow({
     const { data: userProfile } = useDoc<any>(userProfileRef);
     const orgId = userProfile?.organisationId;
 
+    // v1.34 motorOnly — no boat, no variants collection (an empty rangeId
+    // would build an invalid `ranges//models` path and crash the page).
     const variantsQuery = useMemoFirebase(() =>
-        collection(firestore, `data-warehouse/${vendor.id}/ranges/${rangeId}/models/${model.id}/variants`),
-    [firestore, vendor.id, rangeId, model.id]);
+        motorOnly || !rangeId
+            ? null
+            : collection(firestore, `data-warehouse/${vendor.id}/ranges/${rangeId}/models/${model.id}/variants`),
+    [firestore, vendor.id, rangeId, model.id, motorOnly]);
     const { data: variants } = useCollection<Variant>(variantsQuery);
 
     const dealerFitQuery = useMemoFirebase(() => 
@@ -1165,12 +1192,17 @@ export function HighfieldQuoteFlow({
      *  ladder figure, plus the PD tier line, and the ex-GST value is
      *  back-derived as total / 1.1. Legacy boats keep the old convention. */
     const displaySheetPricing = useMemo(() => {
+        // v1.34 motorOnly — MPF motor money IS Display-Sheet money (the
+        // column is literally "RRP + Freight Inc GST"), so motor-only
+        // quotes always sum raw inc-GST figures; hull contributes 0.
+        if (motorOnly) return true;
         const v: any = activeVariant;
         return !!(v?.pdTiers?.length && (v?.priceIncGst || v?.priceLadder));
-    }, [activeVariant]);
+    }, [activeVariant, motorOnly]);
     const pdTier = useMemo(() => {
         if (!displaySheetPricing) return null;
-        return ((activeVariant as any).pdTiers || [])[0] || null;
+        // v1.34 motorOnly — display-sheet mode without a variant: no PD tier.
+        return (((activeVariant as any)?.pdTiers) || [])[0] || null;
     }, [displaySheetPricing, activeVariant]);
     /** Hull's INC-GST ladder figure for the active price level (snapshot —
      *  the ladder is hand-rounded in the MPF; never recompute from ex). */
@@ -1183,6 +1215,21 @@ export function HighfieldQuoteFlow({
         if (typeof v.priceIncGst === 'number' && v.priceIncGst > 0 && (!ladderKey)) return v.priceIncGst;
         return Math.round(getPriceForLevel(v, priceLevel) * 1.1 * 100) / 100;
     }, [activeVariant, priceLevel]);
+
+    /** v1.34 motorOnly — the grid the Motor step renders: search-filtered
+     *  in motor-only mode, the untouched HP-windowed list for boats. */
+    const gridMotors = useMemo(() => {
+        if (!motorOnly) return motors;
+        const q = motorSearch.trim().toLowerCase();
+        const list = q
+            ? (motors ?? []).filter((m: any) =>
+                String(m['MODEL'] ?? m['Model Name'] ?? '').toLowerCase().includes(q) ||
+                String(m['MODEL CODE'] ?? m['Part Number'] ?? '').toLowerCase().includes(q) ||
+                String(m['HP Rating'] ?? '').toLowerCase().includes(q))
+            : (motors ?? []);
+        return [...list].sort((a: any, b: any) =>
+            String(a['MODEL CODE'] ?? a['Part Number'] ?? '').localeCompare(String(b['MODEL CODE'] ?? b['Part Number'] ?? '')));
+    }, [motors, motorOnly, motorSearch]);
 
     /** v1.34 Yamaha Rebates — live rebate programs across the loaded
      *  motors (derived straight from the MPF row stamps, no extra reads).
@@ -1636,6 +1683,24 @@ export function HighfieldQuoteFlow({
         setTrailerRegoSnapshot(null);
     };
     const nextStep = () => {
+        // v1.34 motorOnly — navigate strictly through the visible steps.
+        // A motor quote without a motor is meaningless: hard-gate step 3.
+        if (motorOnly) {
+            if (currentStep === 3 && !selectedMotor) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Pick a motor first',
+                    description: 'The quote is built from the selected motor and its package — choose one to continue.',
+                });
+                return;
+            }
+            const pos = visibleSteps.findIndex(s => s.id === currentStep);
+            if (pos >= 0 && pos < visibleSteps.length - 1) {
+                setCurrentStep(visibleSteps[pos + 1].id);
+                scrollPanelToTop();
+            }
+            return;
+        }
         // v1.33 (Bill: "you can move forward without choosing a colour or
         // material" + Mark: "an erroneous price shows immediately") — Step 1
         // hard-gates on a full variant choice. The toast tells the operator
@@ -1656,6 +1721,14 @@ export function HighfieldQuoteFlow({
         }
     };
     const prevStep = () => {
+        if (motorOnly) {
+            const pos = visibleSteps.findIndex(s => s.id === currentStep);
+            if (pos > 0) {
+                setCurrentStep(visibleSteps[pos - 1].id);
+                scrollPanelToTop();
+            }
+            return;
+        }
         if (currentStep > 1) {
             // Skip trailer step (4) going backwards too
             const prev = currentStep === 5 && !hasTrailer ? 3 : currentStep - 1;
@@ -1757,6 +1830,26 @@ export function HighfieldQuoteFlow({
                     const targetDS = datasets.find(s => s.name.toLowerCase().includes('outboard') || s.name.toLowerCase().includes('motor')) || datasets[0];
                     
                     if (targetDS) {
+                        // v1.34 motorOnly — the engine-removal charge is named on
+                        // each motor row ("Engine Removals" column) but priced in
+                        // the org's service-operations catalogue. Resolve by name
+                        // once so each motor can carry ITS OWN removal line.
+                        const removalOpPrices = new Map<string, number>();
+                        if (motorOnly && orgId) {
+                            try {
+                                const opsSnap = await getDocs(collection(firestore, 'organisations', orgId, 'serviceOperations'));
+                                opsSnap.forEach(d2 => {
+                                    const o = d2.data() as any;
+                                    const nm = String(o.name || '').trim().toLowerCase();
+                                    const sell = typeof o.sellPrice === 'number' && o.sellPrice > 0
+                                        ? o.sellPrice
+                                        : (o.flatRateHours && o.hourlyRate ? Math.round(o.flatRateHours * o.hourlyRate * 100) / 100 : 0);
+                                    if (nm && sell > 0) removalOpPrices.set(nm, sell);
+                                });
+                            } catch (err) {
+                                console.warn('[motorOnly] serviceOperations lookup unavailable (non-fatal)', err);
+                            }
+                        }
                         const rowsSnap = await getDocs(collection(firestore, `data-warehouse/${motorVendor.id}/dataSets/${targetDS.id}/rows`));
                         const allRows = rowsSnap.docs.map(d => {
                             const row = { id: d.id, ...d.data() as any };
@@ -1780,6 +1873,38 @@ export function HighfieldQuoteFlow({
                                 hull_commercial: commercialPrice || 0,
                                 hull_boating_alliance: boatingAlliancePrice || 0,
                             };
+                            // v1.34 motorOnly — dollar-for-dollar from the MPF row's
+                            // OWN columns: its Install - Sell becomes a standard
+                            // install line, and its named Engine Removals charge
+                            // (priced from the service-operations catalogue) becomes
+                            // an optional repower line. Both ride masterAccessories
+                            // so selection chips, totals, finalize and the PDF need
+                            // zero extra plumbing.
+                            if (motorOnly) {
+                                const installSell = parsePrice(row['Install - Sell']) || 0;
+                                if (installSell > 0) {
+                                    row.masterAccessories = [...(row.masterAccessories || []), {
+                                        id: `mpf-install-${row.id}`,
+                                        name: typeof row['Installation'] === 'string' && row['Installation'].trim()
+                                            ? row['Installation'].trim() : 'Motor Installation',
+                                        category: 'Installation',
+                                        isStandard: true,
+                                        'Act Sell': installSell,
+                                        'Act CTD': parsePrice(row['Install - CTD']) || 0,
+                                    }];
+                                }
+                                const removalName = typeof row['Engine Removals'] === 'string' ? row['Engine Removals'].trim() : '';
+                                const removalPrice = removalName ? removalOpPrices.get(removalName.toLowerCase()) : undefined;
+                                if (removalName && removalPrice) {
+                                    row.masterAccessories = [...(row.masterAccessories || []), {
+                                        id: `mpf-removal-${row.id}`,
+                                        name: removalName,
+                                        category: 'Repower',
+                                        isStandard: false,
+                                        'Act Sell': removalPrice,
+                                    }];
+                                }
+                            }
                             // Build priceLevels on accessories (dealer fit items from MPF)
                             if (row.masterAccessories) {
                                 row.masterAccessories = row.masterAccessories.map((acc: any) => {
@@ -1801,6 +1926,16 @@ export function HighfieldQuoteFlow({
                             }
                             return row;
                         });
+
+                        // v1.34 motorOnly — no hull, no HP window: the whole MPF
+                        // catalogue is quotable (search narrows it). MPF layout
+                        // pseudo-rows (section headers without a code) drop out.
+                        if (motorOnly) {
+                            const list = allRows.filter(r => r['MODEL CODE'] || r['Part Number']);
+                            setMotors(list.map(m => ({ ...m, vendorName: motorVendor.name, vendorLogoUrl: motorVendor.logoUrl || null })));
+                            setMotorsLoading(false);
+                            return;
+                        }
 
                         const motorConfigs = model.specifications?.motorConfigurations || [];
                         if (motorConfigs.length === 0) { setMotors([]); setMotorsLoading(false); return; }
@@ -1849,6 +1984,9 @@ export function HighfieldQuoteFlow({
     // Skips when the operator has explicitly clicked-off the default — a
     // boat-only quote stays motor-less until they pick one.
     useEffect(() => {
+        // v1.34 motorOnly — never auto-pick from the full 228-motor
+        // catalogue; the operator chooses deliberately.
+        if (motorOnly) return;
         if (motors.length === 0 || selectedMotor || motorExplicitlyDeselected) return;
         const maxHp = Number(model.specifications?.motorConfigurations?.[0]?.engines?.[0]?.maxHp || 0);
         const parseHp = (rating?: any): number => {
@@ -2153,13 +2291,13 @@ export function HighfieldQuoteFlow({
                             recovers the full name via title. */}
                         <h2 className="text-sm font-black uppercase tracking-[0.22em] text-primary truncate min-w-0" title={model?.name ?? 'Build'}>{model?.name ?? 'Build'}</h2>
                         <div className="hidden xl:flex flex-col leading-tight min-w-0 border-l border-slate-200 pl-3">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap">Step {currentStep} of {STEPS.length}</span>
-                            <span className="text-[10px] font-semibold text-slate-500 truncate">{STEPS.find(s => s.id === currentStep)?.label ?? ''}</span>
+                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap">Step {stepPos + 1} of {visibleSteps.length}</span>
+                            <span className="text-[10px] font-semibold text-slate-500 truncate">{visibleSteps.find(s => s.id === currentStep)?.label ?? ''}</span>
                         </div>
                     </div>
                     <div className="flex-1 hidden sm:flex items-center justify-center min-w-0">
                         <div className="flex items-center w-full px-2">
-                            {STEPS.map((step, i) => (
+                            {visibleSteps.map((step, i) => (
                                 <Fragment key={step.id}>
                                     {i > 0 && <div className={cn("h-[3px] flex-1 mx-2 lg:mx-3 rounded-full transition-colors", currentStep >= step.id ? "bg-green-500" : "bg-slate-200")} />}
                                     <div className="flex items-center gap-2 shrink-0">
@@ -2168,7 +2306,7 @@ export function HighfieldQuoteFlow({
                                             currentStep === step.id ? "bg-primary text-white ring-4 ring-primary/15 shadow-md"
                                                 : currentStep > step.id ? "bg-green-500 text-white"
                                                 : "bg-slate-100 text-slate-400 border border-slate-200"
-                                        )}>{currentStep > step.id ? <CheckCircle2 className="h-4 w-4" /> : step.id}</div>
+                                        )}>{currentStep > step.id ? <CheckCircle2 className="h-4 w-4" /> : i + 1}</div>
                                         <span className={cn("text-[10px] font-black uppercase tracking-[0.14em] hidden lg:block whitespace-nowrap", currentStep === step.id ? "text-foreground" : "text-slate-400")}>{step.label}</span>
                                     </div>
                                 </Fragment>
@@ -2176,11 +2314,11 @@ export function HighfieldQuoteFlow({
                         </div>
                     </div>
                     <div className="sm:hidden flex-1 min-w-0 text-center">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Step {currentStep}/{STEPS.length} · {STEPS.find(s => s.id === currentStep)?.label ?? ''}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Step {stepPos + 1}/{visibleSteps.length} · {visibleSteps.find(s => s.id === currentStep)?.label ?? ''}</span>
                     </div>
                     <button type="button" className="shrink-0 h-8 px-4 rounded-full border border-destructive/25 text-destructive text-[9px] font-black uppercase tracking-widest hover:bg-destructive/5 transition-colors" onClick={() => router.push(`/modules/${module.slug || module.id}`)}>Exit Build</button>
                 </div>
-                <div className="absolute bottom-0 left-0 h-[2px] bg-green-500/80 transition-all" style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }} />
+                <div className="absolute bottom-0 left-0 h-[2px] bg-green-500/80 transition-all" style={{ width: `${(stepPos / (visibleSteps.length - 1)) * 100}%` }} />
             </div>
 
             <div className="relative z-10 flex-1 flex flex-col lg:flex-row overflow-hidden">
@@ -2251,8 +2389,10 @@ export function HighfieldQuoteFlow({
                             </div>
                             {/* v1.33 (Mark: "an erroneous price shows immediately") — no
                                 running price until the boat's material + colour are chosen;
-                                the package only exists once the exact variant does. */}
-                            {activeVariant ? (
+                                the package only exists once the exact variant does.
+                                v1.34 motorOnly — there is no variant to wait for: the
+                                price card lives from the first motor pick. */}
+                            {(activeVariant || motorOnly) ? (
                             <div className="flex flex-col items-start xl:items-end px-1 gap-1 shrink-0">
                                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                                     {/* v1.33 (Bill) — public Build-A-Boat embeds lock to Cash
@@ -2712,8 +2852,22 @@ export function HighfieldQuoteFlow({
                                                         </Button>
                                                     </div>
                                                 )}
+                                                {/* v1.34 motorOnly — 228 quotable motors need a search.
+                                                    Filters code / name / HP; boat mode keeps its
+                                                    HP-windowed grid untouched. */}
+                                                {motorOnly && (
+                                                    <div className="relative">
+                                                        <Search className="h-4 w-4 absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                                        <Input
+                                                            value={motorSearch}
+                                                            onChange={e => setMotorSearch(e.target.value)}
+                                                            placeholder="Search motors by model, code or HP…"
+                                                            className="rounded-2xl border-2 h-12 pl-11 text-sm font-semibold"
+                                                        />
+                                                    </div>
+                                                )}
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                                {motors.map(m => {
+                                                {gridMotors.map(m => {
                                                     const mUrl = resolveImageUrl(m);
                                                     const displayName = getMotorDisplayName(m);
                                                     return (
@@ -3338,7 +3492,9 @@ export function HighfieldQuoteFlow({
                                         licence upload. Deposit stays at Finalize (document
                                         defaults set the schedule). */}
 
-                                    {/* Registration recap + rego numbers */}
+                                    {/* Registration recap + rego numbers — boat/trailer rego
+                                        has no place on a motor-only quote (v1.34). */}
+                                    {!motorOnly && (
                                     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
                                         <div className="flex items-center gap-3 bg-primary px-6 py-3 rounded-2xl shadow-xl w-full">
                                             <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
@@ -3373,6 +3529,7 @@ export function HighfieldQuoteFlow({
                                             </div>
                                         </Card>
                                     </div>
+                                    )}
 
                                             {/* NSM Extended Warranty & Service Plan toggles */}
                                             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700 scroll-mt-10">
@@ -3580,6 +3737,8 @@ export function HighfieldQuoteFlow({
                                 <div className="space-y-8 animate-in fade-in duration-1000 mt-4">
                                     <div className="flex items-center gap-3 bg-primary px-4 sm:px-6 py-3 rounded-2xl shadow-xl w-full min-w-0"><div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /><h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Project Build Summary</h3></div>
                                     <div className="space-y-4">
+                                        {/* v1.34 motorOnly — no vessel on a motor quote */}
+                                        {!motorOnly && (
                                         <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden"><CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Ship className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Base Vessel</CardTitle></div><div className="flex items-center gap-1.5"><input ref={boatPdfRef} type="file" accept=".pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0] || null; setSectionPdfs(prev => ({ ...prev, boat: f })); }} />{sectionPdfs.boat ? (<span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full"><Paperclip className="h-2.5 w-2.5" />{sectionPdfs.boat.name.length > 18 ? sectionPdfs.boat.name.slice(0, 15) + '...' : sectionPdfs.boat.name}<button type="button" className="ml-0.5 hover:text-destructive" onClick={() => { setSectionPdfs(prev => ({ ...prev, boat: null })); if (boatPdfRef.current) boatPdfRef.current.value = ''; }}><X className="h-2.5 w-2.5" /></button></span>) : (<button type="button" onClick={() => boatPdfRef.current?.click()} className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors"><Paperclip className="h-2.5 w-2.5" />Attach PDF</button>)}</div></div></CardHeader><CardContent className="p-4">
                                             <div className="flex items-center justify-between">
                                                 <div className="space-y-0.5">
@@ -3641,7 +3800,8 @@ export function HighfieldQuoteFlow({
                                                 </div>
                                             )}
                                         </CardContent></Card>
-                                        
+                                        )}
+
                                         {(selectedOptionsData.length > 0 || customOptions.length > 0) && (
                                             <Card className="rounded-[1.5rem] border-2 shadow-lg overflow-hidden">
                                                 <CardHeader className="bg-muted/30 border-b p-4"><div className="flex items-center gap-2"><Package className="h-4 w-4 text-primary" /><CardTitle className="text-xs font-black uppercase tracking-widest">Factory & Custom Options</CardTitle></div></CardHeader>
@@ -3942,7 +4102,7 @@ export function HighfieldQuoteFlow({
                     </ScrollArea>
                     <div className="p-4 sm:p-8 sm:pt-4 bg-slate-50/80 backdrop-blur-xl shrink-0 flex gap-3">
                         {currentStep > 1 && <Button variant="outline" className="h-12 w-20 rounded-xl border-2 border-slate-200 hover:bg-slate-100 shadow-sm" onClick={prevStep}><ChevronLeft className="h-5 w-5" /></Button>}
-                        <Button size="lg" className="flex-1 h-12 rounded-xl font-black uppercase text-[10px] sm:text-xs shadow-xl bg-primary text-white hover:scale-[1.02] active:scale-95 whitespace-normal leading-tight px-2" onClick={currentStep === STEPS.length ? () => setShowFinalizeDialog(true) : nextStep}>{currentStep === STEPS.length ? 'Finalize Project' : `Next Step: ${STEPS[currentStep].label.toUpperCase()}`}</Button>
+                        <Button size="lg" className="flex-1 h-12 rounded-xl font-black uppercase text-[10px] sm:text-xs shadow-xl bg-primary text-white hover:scale-[1.02] active:scale-95 whitespace-normal leading-tight px-2" onClick={currentStep === 7 ? () => setShowFinalizeDialog(true) : nextStep}>{currentStep === 7 ? 'Finalize Project' : `Next Step: ${(visibleSteps[stepPos + 1]?.label ?? '').toUpperCase()}`}</Button>
                     </div>
                 </div>
             </div>
@@ -4104,6 +4264,9 @@ export function HighfieldQuoteFlow({
                     // FFR-33 — Display-Sheet parity: convention stamp + the
                     // PD tier snapshot (sellIncGst verbatim from the MPF).
                     pricingConvention: displaySheetPricing ? 'display-sheet-v2' : null,
+                    // v1.34 motorOnly — the payload branches on this: motor
+                    // hero cover, no vessel band, motor-named quote lists.
+                    quoteKind: motorOnly ? 'motor' : 'boat',
                     pdTier: displaySheetPricing ? pdTier : null,
                     selectedTrailerOptionsData,
                     customTrailerOptions,
