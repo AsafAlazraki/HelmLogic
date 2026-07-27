@@ -20,6 +20,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { collection, doc, endAt, getDocs, limit, orderBy, query, serverTimestamp, setDoc, startAt, updateDoc, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -337,9 +338,32 @@ function MotorsTableBody({ vendorId, initialSearch, organisationId }: { vendorId
     const [bulkApplying, setBulkApplying] = useState(false);
     /** v1.17 (Story 3.10.2) — paste-from-spreadsheet dialog state. */
     const [pasteOpen, setPasteOpen] = useState(false);
-    /** v1.34 — "define everything" detail sheet. Click the Part # to open.
-     *  Resolved against live rows so sheet edits render fresh. */
+    /** v1.34 — "define everything" editor. Part # click navigates to the
+     *  dedicated full-screen editor page (Asaf: no popups); the sheet
+     *  stays as a fallback when no motor module exists for the vendor. */
     const [detailMotorId, setDetailMotorId] = useState<string | null>(null);
+    const router = useRouter();
+    const [motorModuleSlug, setMotorModuleSlug] = useState<string | null>(null);
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const snap = await getDocs(query(collection(firestore, 'modules'), where('mainVendorId', '==', vendorId), limit(1)));
+                if (!cancelled && !snap.empty) {
+                    const d = snap.docs[0];
+                    setMotorModuleSlug((d.data() as any).slug || d.id);
+                }
+            } catch { /* fallback stays the sheet */ }
+        })();
+        return () => { cancelled = true; };
+    }, [firestore, vendorId]);
+    const openMotorEditor = (rowId: string) => {
+        if (motorModuleSlug && dataSetId) {
+            router.push(`/modules/${motorModuleSlug}/motor/${rowId}?vendor=${vendorId}&set=${dataSetId}`);
+        } else {
+            setDetailMotorId(rowId);
+        }
+    };
 
     /** v1.14 (3.8.1 retrofit; v1.34 repoint) — inline-edit handler. Writes
      *  every mirror of the logical field to the MPF dataset row; the next
@@ -788,11 +812,11 @@ function MotorsTableBody({ vendorId, initialSearch, organisationId }: { vendorId
                                         />
                                     </td>
                                     <td className="px-3 py-2 font-mono font-bold">
-                                        {/* v1.34 — opens the define-everything sheet */}
+                                        {/* v1.34 — opens the full-screen motor editor */}
                                         <button
                                             type="button"
                                             className="hover:text-primary hover:underline underline-offset-2"
-                                            onClick={() => setDetailMotorId(row.id)}
+                                            onClick={() => openMotorEditor(row.id)}
                                             title="Open full motor editor"
                                         >
                                             {mPart(row) ?? '—'}
@@ -875,10 +899,9 @@ function MotorsTableBody({ vendorId, initialSearch, organisationId }: { vendorId
  *  from the serviceParts catalogue (part-number prefix search), plus
  *  free-form custom lines. Everything lands in masterAccessories on
  *  the MPF row, which is exactly what every quote surface reads. */
-export function MotorDetailSheet({ motor, onPatch, onClose, organisationId }: {
+export function MotorEditorPanels({ motor, onPatch, organisationId }: {
     motor: MotorRow;
     onPatch: (motorId: string, field: string, next: any) => Promise<void>;
-    onClose: () => void;
     /** Enables the rigging/prop catalogue pickers when provided. */
     organisationId?: string | null;
 }) {
@@ -1012,19 +1035,6 @@ export function MotorDetailSheet({ motor, onPatch, onClose, organisationId }: {
         return q3 ? list.filter(n => norm(n).includes(q3)) : list;
     };
     return (
-        <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
-            <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-                <SheetHeader>
-                    <SheetTitle className="flex items-center gap-2">
-                        <Anchor className="h-4 w-4" />
-                        {mModel(motor) ?? mPart(motor)}
-                        <Badge variant="outline" className="font-mono text-[10px]">{mPart(motor)}</Badge>
-                    </SheetTitle>
-                    <SheetDescription className="text-xs">
-                        Everything about this motor in one place. Edits save on blur and update every mirror
-                        (quote flow, workspace, exports). The next Master Price File import wins.
-                    </SheetDescription>
-                </SheetHeader>
                 <div className="py-4 space-y-5">
                     {SHEET_GROUPS.map(group => (
                         <section key={group.title} className="space-y-2">
@@ -1248,6 +1258,34 @@ export function MotorDetailSheet({ motor, onPatch, onClose, organisationId }: {
                         )}
                     </section>
                 </div>
+    );
+}
+
+/** Thin sheet wrapper around MotorEditorPanels — kept for surfaces that
+ *  still want a quick popup; the primary experience is the dedicated
+ *  full-screen editor at /modules/{id}/motor/{motorId} (Asaf: "full
+ *  dedicated screen like the one for boat catalog"). */
+export function MotorDetailSheet({ motor, onPatch, onClose, organisationId }: {
+    motor: MotorRow;
+    onPatch: (motorId: string, field: string, next: any) => Promise<void>;
+    onClose: () => void;
+    organisationId?: string | null;
+}) {
+    return (
+        <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
+            <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+                <SheetHeader>
+                    <SheetTitle className="flex items-center gap-2">
+                        <Anchor className="h-4 w-4" />
+                        {mModel(motor) ?? mPart(motor)}
+                        <Badge variant="outline" className="font-mono text-[10px]">{mPart(motor)}</Badge>
+                    </SheetTitle>
+                    <SheetDescription className="text-xs">
+                        Everything about this motor in one place. Edits save on blur and update every mirror
+                        (quote flow, workspace, exports). The next Master Price File import wins.
+                    </SheetDescription>
+                </SheetHeader>
+                <MotorEditorPanels motor={motor} onPatch={onPatch} organisationId={organisationId} />
             </SheetContent>
         </Sheet>
     );

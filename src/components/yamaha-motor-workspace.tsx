@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { resolveItemImageUrl } from '@/lib/hero-carousel';
 import { collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
@@ -308,6 +309,7 @@ function MotorDetailSheet({
 
 export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, moduleId, moduleData, organisation, allVendors, allDealerFitCategories, subDealers, onUpdateVendors, onUpdateCategories, onToggleSubDealerAccess }: YamahaMotorWorkspaceProps) {
     const firestore = useFirestore();
+    const router = useRouter();
 
     // Tab state — initialized from URL ?motorTab= param so refresh stays put
     const [activeTab, setActiveTab] = useState<'catalog' | 'pricing' | 'promotions' | 'dealer-fit' | 'fit-up' | 'settings'>(() => {
@@ -429,8 +431,9 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
     // -----------------------------------------------------------------------
 
     function handleMotorClick(motor: MotorRow) {
-        setSelectedMotor(motor);
-        setDetailOpen(true);
+        // v1.34 (Asaf: "full dedicated screen like the one for boat
+        // catalog") — card click navigates to the full-page editor.
+        router.push(`/modules/${moduleData?.slug || moduleId}/motor/${motor.id}?vendor=${vendorId}${motorDataSet ? `&set=${motorDataSet.id}` : ''}`);
     }
 
     /** v1.34 (Asaf: catalog must be easy to MANAGE, changes flow to the
@@ -715,17 +718,8 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
                 )}
             </div>
 
-            {/* v1.34 — the define-everything editor (shared with the Catalog
-                Manager) replaces the old read-only detail sheet. Resolved
-                fresh from the live snapshot so saves render immediately. */}
-            {detailOpen && selectedMotor && (
-                <MotorEditorSheet
-                    motor={(motors ?? []).find((m: any) => m.id === selectedMotor.id) ?? selectedMotor}
-                    onPatch={patchMotor}
-                    onClose={() => setDetailOpen(false)}
-                    organisationId={organisationId}
-                />
-            )}
+            {/* v1.34 — motor editing lives on the dedicated full-screen page
+                (/modules/{id}/motor/{motorId}); card clicks navigate there. */}
         </div>
     );
 }
