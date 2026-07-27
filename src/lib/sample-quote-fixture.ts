@@ -15,6 +15,7 @@
  */
 
 import type { ContentBlock } from '@/lib/content-blocks';
+import { buildQuoteFinancials } from '@/lib/quote-financials';
 
 export interface SampleQuoteFixture {
     quote: any;
@@ -24,6 +25,96 @@ export interface SampleQuoteFixture {
 
 const NOW = new Date();
 const VALID_UNTIL = new Date(NOW.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+/** v1.34 — sample MOTOR-ONLY proposal fixture for the Manage → Document
+ *  Templates → Motor Quote preview. Mirrors what a real finalized motor
+ *  quote carries (quoteKind 'motor', display-sheet convention, no
+ *  variant/trailer, per-MPF-row package lines at the real F90XB figures)
+ *  so the admin previews EXACTLY the document customers receive.
+ *  Financials come from the real buildQuoteFinancials so the preview's
+ *  money math can never drift from production. */
+export function buildSampleMotorQuoteFixture(opts: {
+    organisationName?: string;
+    primaryLogoUrl?: string | null;
+    secondaryLogoUrl?: string | null;
+    vendorLogoUrl?: string | null;
+}): SampleQuoteFixture {
+    const orgName = opts.organisationName || 'Your Organisation';
+    const quote = {
+        quoteKind: 'motor',
+        pricingConvention: 'display-sheet-v2',
+        quoteNumber: `PREVIEW-${NOW.getFullYear()}${String(NOW.getMonth() + 1).padStart(2, '0')}-M01`,
+        status: 'proposal',
+        createdAt: { toDate: () => NOW },
+        createdByUid: 'preview-user',
+        createdByName: 'Sample Salesperson',
+        organisationId: null,
+        customer: {
+            name: 'James Thompson',
+            email: 'james.thompson@example.com',
+            phone: '0421 555 200',
+            company: null,
+            address: '47 Marina Esplanade, Pacific Bay NSW 2480',
+        },
+        moduleId: 'preview-motor-module',
+        moduleName: 'Yamaha Outboards',
+        moduleSlug: 'yamaha',
+        vendorId: null,
+        vendorName: 'Yamaha',
+        vendorLogoUrl: opts.vendorLogoUrl ?? null,
+        vendorCurrency: 'AUD',
+        rangeId: null,
+        rangeName: null,
+        rangeImageUrl: null,
+        modelId: 'motor-only',
+        modelName: 'Yamaha - F90XB',
+        modelCode: null,
+        coverImageUrl: null,
+        specifications: null,
+        standardFeatures: null,
+        variant: null,
+        selectedOptions: [],
+        customOptions: [],
+        registration: { boatRego: false, trailerRego: false, sticker: false, tenderTo: false, boatRegoPrice: 0, trailerRegoPrice: 0, stickerPrice: 0, tenderToPrice: 0 },
+        motor: {
+            id: 'preview-f90xb',
+            name: 'Yamaha - F90XB',
+            model: 'Yamaha - F90XB',
+            brand: 'Yamaha',
+            brandLogoUrl: opts.vendorLogoUrl ?? null,
+            sellPriceExclGst: 17643,
+            costPrice: 13035,
+            imageUrl: null,
+            hpRating: '90',
+            shaftLength: '25"',
+            control: 'Remote mech',
+            starting: 'Electric',
+            tiltTrim: 'Power Trim & Tilt',
+            accessories: [
+                { id: 'acc-rig',     name: 'Mech Rigging Kit - 703 Remote Control', category: 'Rigging',      sellPriceExclGst: 2350 },
+                { id: 'acc-prop',    name: 'Aluminum Propeller 11 1/8 × 13-G',      category: 'Propeller',    sellPriceExclGst: 282 },
+                { id: 'acc-install', name: 'Install Motor (4.0)',                    category: 'Installation', sellPriceExclGst: 680 },
+            ],
+        },
+        trailer: null,
+        dealerFit: [
+            { id: 'df-vhf', name: 'GME GX750B VHF Radio (supplied & fitted)', sellPriceExclGst: 1016, cost: 640 },
+        ],
+        priceLevelUsed: 'hull_cash',
+        promotions: { applied: [], discountTotal: 0 },
+        adminDetails: {},
+    };
+    return {
+        quote,
+        organisation: {
+            name: orgName,
+            shortCode: orgName.slice(0, 3).toUpperCase(),
+            primaryLogoUrl: opts.primaryLogoUrl || null,
+            secondaryLogoUrl: opts.secondaryLogoUrl || null,
+        },
+        financials: buildQuoteFinancials(quote),
+    };
+}
 
 /** Build a fresh fixture each call — keeps quoteNumber + dates current.
  *

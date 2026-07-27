@@ -916,6 +916,129 @@ for n_ov in n_overrides:
 check(N, f"modelOverrides drift: 0 shadowed prices across {len(n_overrides)} override docs",
       len(n_shadows) == 0, f"{len(n_shadows)} shadows; first: {n_shadows[:5]}")
 
+# ---------- O. Motor module invariants (v1.34) ----------
+# The Motor Release made the MPF motor rows a first-class quoting source
+# (motor-only flow, rebates, catalog round-trip). This section keeps the
+# row data honest forever: field-mirror integrity, install-economics
+# presence, engine-removal op resolution (ratcheted), and rebate stamp
+# hygiene (a stale or orphaned stamp must fail the nightly, not price a
+# customer quote).
+O = "O. Motor invariants"
+o_rows_path = "data-warehouse/mRAzkE8PUX8GMHELCvJo/dataSets/FQ5uTMyUorrJPlpbWIY8/rows"
+o_vendor = "mRAzkE8PUX8GMHELCvJo"
+o_rows = [ddec(d) for d in list_docs(o_rows_path)]
+o_real = [r for r in o_rows if str(r.get("MODEL CODE") or r.get("Part Number") or "").strip()]
+check(O, "MPF motor rows present (>= 220 real motors)", len(o_real) >= 220,
+      f"{len(o_real)} real motors of {len(o_rows)} rows")
+
+def o_num(v):
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        return float(v)
+    try:
+        return float(str(v).replace(",", "").replace("$", "").strip())
+    except Exception:
+        return None
+
+# 1. Mirror integrity — wherever an edit-surface mirror exists it must
+#    agree with the MPF column it mirrors (motors-table writeFieldsFor).
+o_mirror_bad = []
+for r in o_real:
+    code = str(r.get("MODEL CODE") or r.get("Part Number"))
+    nsm = o_num(r.get("NSM Retail"))
+    sell_mirror = o_num(r.get("sellPriceExclGst"))
+    cash = o_num((r.get("priceLevels") or {}).get("hull_cash")) if isinstance(r.get("priceLevels"), dict) else None
+    if nsm is not None and sell_mirror is not None and abs(nsm - sell_mirror) > 0.005:
+        o_mirror_bad.append(f"{code}: sellPriceExclGst={sell_mirror} != NSM Retail={nsm}")
+    if nsm is not None and cash is not None and abs(nsm - cash) > 0.005:
+        o_mirror_bad.append(f"{code}: hull_cash={cash} != NSM Retail={nsm}")
+    cost_mirror, ctd = o_num(r.get("cost")), o_num(r.get("Total CTD"))
+    if cost_mirror is not None and ctd is not None and abs(cost_mirror - ctd) > 0.005:
+        o_mirror_bad.append(f"{code}: cost={cost_mirror} != Total CTD={ctd}")
+check(O, "field mirrors agree with their MPF columns (sell/cash/cost)",
+      len(o_mirror_bad) == 0, f"{len(o_mirror_bad)} disagreements; first: {o_mirror_bad[:5]}")
+
+# 2 + 3. Install presence + engine-removal op resolution — ratcheted via
+#    a committed allowlist so standing day-1 gaps stay visible without
+#    failing, and any NEW gap fails the nightly.
+o_known = {"installMissing": [], "removalUnresolved": []}
+o_known_path = "tasks/mpf-audit/known-gaps-motors.json"
+if os.path.exists(o_known_path):
+    o_known.update(json.load(open(o_known_path)))
+o_install_missing = sorted(
+    str(r.get("MODEL CODE") or r.get("Part Number")) for r in o_real
+    if not (o_num(r.get("Install - Sell")) or 0) > 0)
+o_new_install = sorted(set(o_install_missing) - set(o_known["installMissing"]))
+check(O, "install economics: NO NEW motors missing Install - Sell beyond the allowlist",
+      len(o_new_install) == 0, f"{len(o_new_install)} NEW: {o_new_install[:5]}")
+check(O, "install economics: standing gap count (visible, ratcheted)",
+      True, f"{len(o_install_missing)} of {len(o_real)} motors carry no Install - Sell")
+
+o_ops = [ddec(d) for d in list_docs(f"organisations/{ORG}/serviceOperations")]
+o_op_names = set()
+for op in o_ops:
+    nm = re.sub(r"\s+", " ", str(op.get("name") or "")).strip().lower()
+    sell = op.get("sellPrice")
+    if sell is None and op.get("flatRateHours") and op.get("hourlyRate"):
+        sell = op["flatRateHours"] * op["hourlyRate"]
+    if nm and isinstance(sell, (int, float)) and sell > 0:
+        o_op_names.add(nm)
+o_removal_names = {}
+for r in o_real:
+    nm = str(r.get("Engine Removals") or "").strip()
+    if nm:
+        o_removal_names.setdefault(re.sub(r"\s+", " ", nm).lower(), nm)
+o_removal_unresolved = sorted(orig for key, orig in o_removal_names.items() if key not in o_op_names)
+o_new_removal = sorted(set(o_removal_unresolved) - set(o_known["removalUnresolved"]))
+check(O, "engine removals: NO NEW row names unresolvable to a priced serviceOperation",
+      len(o_new_removal) == 0, f"{len(o_new_removal)} NEW: {o_new_removal[:5]}")
+check(O, "engine removals: standing resolution count (visible, ratcheted)",
+      True, f"{len(o_removal_unresolved)} of {len(o_removal_names)} distinct removal names unresolved")
+
+# 4. Rebate stamp hygiene — the v1.34 rebates stamp/read-gate contract:
+#    every stamp must point at a LIVE rebate doc; the MPF rebate columns
+#    only exist alongside a stamp; every active rebate's SKUs are stamped.
+o_rebates = {r["_id"]: r for r in (ddec(d) for d in list_docs(f"data-warehouse/{o_vendor}/rebates"))}
+def o_expired(ends):
+    if not ends:
+        return False
+    try:
+        return datetime.now(timezone.utc) > datetime.fromisoformat(str(ends) + "T23:59:59+10:00")
+    except Exception:
+        return False
+o_stamp_bad, o_orphan_cols = [], []
+o_stamped_rows = {}
+for r in o_real:
+    code = str(r.get("MODEL CODE") or r.get("Part Number"))
+    stamp = r.get("activeRebate")
+    if isinstance(stamp, dict):
+        o_stamped_rows[r["_id"]] = stamp
+        reb = o_rebates.get(str(stamp.get("rebateId")))
+        if reb is None:
+            o_stamp_bad.append(f"{code}: stamp -> missing rebate {stamp.get('rebateId')}")
+        elif reb.get("status") != "active":
+            o_stamp_bad.append(f"{code}: stamp -> {reb.get('status')} rebate '{reb.get('name')}'")
+        elif o_expired(reb.get("endsAt")):
+            o_stamp_bad.append(f"{code}: stamp -> timer-expired rebate '{reb.get('name')}' (sweep pending)")
+    elif str(r.get("Rebate Program") or "").strip():
+        o_orphan_cols.append(f"{code}: 'Rebate Program' column without activeRebate stamp")
+o_unstamped_skus = []
+for rid, reb in o_rebates.items():
+    if reb.get("status") != "active" or o_expired(reb.get("endsAt")):
+        continue
+    for sku in (reb.get("skus") or []):
+        row_id = str(sku.get("rowId"))
+        st = o_stamped_rows.get(row_id)
+        if not st or str(st.get("rebateId")) != rid:
+            o_unstamped_skus.append(f"{reb.get('name')}: SKU {sku.get('code')} not stamped")
+check(O, "rebate stamps: every row stamp points at a LIVE active rebate",
+      len(o_stamp_bad) == 0, f"{len(o_stamp_bad)} stale/orphan stamps; first: {o_stamp_bad[:5]}")
+check(O, "rebate stamps: no MPF Rebate Program columns without a stamp",
+      len(o_orphan_cols) == 0, f"{len(o_orphan_cols)}; first: {o_orphan_cols[:3]}")
+check(O, "rebate stamps: every ACTIVE rebate SKU is stamped on its row",
+      len(o_unstamped_skus) == 0, f"{len(o_unstamped_skus)}; first: {o_unstamped_skus[:3]}")
+json.dump({"installMissing": o_install_missing, "removalUnresolved": o_removal_unresolved},
+          open("test-results/motor-gaps.json", "w"), indent=1)
+
 # ---------- write ----------
 os.makedirs("test-results", exist_ok=True)
 passed = sum(1 for c in checks if c["ok"])

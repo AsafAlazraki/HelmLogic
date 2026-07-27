@@ -864,6 +864,10 @@ export function HighfieldQuoteFlow({
 
     const carouselSlides = useMemo(() => {
         const slides: { type: string; url?: string; content?: React.ReactNode }[] = [];
+        // v1.34 motorOnly (Asaf) — the panel opens on Yamaha brand imagery
+        // instead of a "no imagery" placeholder; the motor photo takes over
+        // on pick (and steps 5+ scroll back here, which reads as branding).
+        if (motorOnly && isRenderableImageUrl(vendor?.logoUrl)) slides.push({ type: 'boat', url: vendor.logoUrl });
         // Only push slides that actually have a renderable URL — empty
         // strings used to push a "broken Build Preview" tile into the
         // carousel.
@@ -882,7 +886,7 @@ export function HighfieldQuoteFlow({
         }
         return slides;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId, effectiveTrailerConfig?.imageUrl, deadImageUrls]);
+    }, [activeVariant, model, buildPreviewSlide, selectedMotor, selectedTrailerId, effectiveTrailerConfig?.imageUrl, deadImageUrls, motorOnly, vendor?.logoUrl]);
 
     const selectedOptionsData = useMemo<any[]>(() => {
         return model.optionalFeatures?.filter((f: any) => selectedOptionIds.includes(f.id)) || [];
@@ -2407,12 +2411,25 @@ export function HighfieldQuoteFlow({
                                         onChange={(e) => setPriceLevel(e.target.value)}
                                         className="text-xs rounded-xl border-2 px-2 py-1 font-bold bg-white"
                                     >
-                                        <option value="default">Published Price</option>
-                                        <option value="hull_cash">Cash Price</option>
-                                        <option value="hull_trade">Trade Price</option>
-                                        <option value="hull_subdealer">Sub-Dealer Price</option>
-                                        <option value="hull_subdealer_excl">Sub-Dealer Excl</option>
-                                        <option value="hull_aus_sailing">AUS Sailing</option>
+                                        {motorOnly ? (
+                                            /* v1.34 motorOnly — the four MPF motor levels only; no
+                                               boat-flavoured Published / Sub-Dealer / AUS Sailing. */
+                                            <>
+                                                <option value="hull_cash">Cash Price (NSM Retail)</option>
+                                                <option value="hull_trade">Trade Price</option>
+                                                <option value="hull_commercial">Commercial Price</option>
+                                                <option value="hull_boating_alliance">Boating Alliance</option>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <option value="default">Published Price</option>
+                                                <option value="hull_cash">Cash Price</option>
+                                                <option value="hull_trade">Trade Price</option>
+                                                <option value="hull_subdealer">Sub-Dealer Price</option>
+                                                <option value="hull_subdealer_excl">Sub-Dealer Excl</option>
+                                                <option value="hull_aus_sailing">AUS Sailing</option>
+                                            </>
+                                        )}
                                     </select>
                                     </>
                                     )}
