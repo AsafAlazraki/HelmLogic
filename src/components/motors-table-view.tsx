@@ -75,8 +75,9 @@ const mSell = (r: MotorRow): number | null => {
  *  part number nor a model code — they are MPF layout, not motors. */
 const isPseudoRow = (r: MotorRow) => !mPart(r);
 /** Inline edits write EVERY mirror of a logical field so the quote flow,
- *  workspace and this table never disagree. */
-function writeFieldsFor(field: string, next: any): Record<string, any> {
+ *  workspace and this table never disagree. Exported (v1.34) so the
+ *  Yamaha module workspace shares the exact same write path. */
+export function writeFieldsFor(field: string, next: any): Record<string, any> {
     switch (field) {
         case 'model': return { 'MODEL': next, 'Model Name': next };
         case 'hp': return { 'HP Rating': next };
@@ -865,8 +866,9 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
  *  motor, grouped (identity / specs / pricing / install) + the motor's
  *  accessory package with isStandard toggles. All writes go through the
  *  same writeFieldsFor mirrors as the inline cells and the CSV import,
- *  so no consumer ever forks. */
-function MotorDetailSheet({ motor, onPatch, onClose }: {
+ *  so no consumer ever forks. Exported (v1.34) — the Yamaha module
+ *  workspace mounts the SAME editor on catalog-card click. */
+export function MotorDetailSheet({ motor, onPatch, onClose }: {
     motor: MotorRow;
     onPatch: (motorId: string, field: string, next: any) => Promise<void>;
     onClose: () => void;

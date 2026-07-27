@@ -2,9 +2,12 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { resolveItemImageUrl } from '@/lib/hero-carousel';
-import { collection } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { useToast } from '@/hooks/use-toast';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { MotorDetailSheet as MotorEditorSheet, writeFieldsFor } from '@/components/motors-table-view';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -430,6 +433,27 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
         setDetailOpen(true);
     }
 
+    /** v1.34 (Asaf: catalog must be easy to MANAGE, changes flow to the
+     *  quote module) — card click now opens the define-everything editor
+     *  (same one as the Catalog Manager). Writes go through the shared
+     *  writeFieldsFor mirrors straight onto the MPF dataset rows the
+     *  quote flow prices from; the live snapshot refreshes this catalog
+     *  instantly. */
+    const { toast } = useToast();
+    const patchMotor = async (motorId: string, field: string, next: any) => {
+        if (!motorDataSet) return;
+        try {
+            await updateDoc(
+                doc(firestore, 'data-warehouse', vendorId, 'dataSets', motorDataSet.id, 'rows', motorId),
+                { ...writeFieldsFor(field, next), updatedAt: serverTimestamp() },
+            );
+            toast({ title: 'Saved', description: 'Live on every quote surface.' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Save failed', description: err?.message ?? String(err) });
+            throw err;
+        }
+    };
+
     function toggleSort(key: SortKey) {
         if (sortKey === key) {
             setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -560,25 +584,39 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
                                 </div>
                             )}
 
-                            {/* Grouped motor grid */}
+                            {/* Grouped motor grid — v1.34 (Asaf: "collapsible and
+                                searchable", dealer-fit-section style): each HP band
+                                is a collapsible section with a count, open by
+                                default, so a 228-motor catalogue folds down to a
+                                scannable index. */}
                             {!isLoading && hpFilter === 'all' && filteredMotors.length > 0 && (
                                 <>
                                     {HP_RANGE_ORDER.map((range) => {
                                         const group = groupedMotors[range];
                                         if (!group || group.length === 0) return null;
                                         return (
-                                            <div key={range}>
-                                                <h2 className="text-sm font-semibold text-slate-600 mb-3">{range}</h2>
-                                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                                                    {group.map((motor) => (
-                                                        <MotorCard
-                                                            key={motor.id}
-                                                            motor={motor}
-                                                            onClick={() => handleMotorClick(motor)}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            </div>
+                                            <Collapsible key={range} defaultOpen className="group/hp rounded-xl border bg-white shadow-sm overflow-hidden">
+                                                <CollapsibleTrigger asChild>
+                                                    <button type="button" className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
+                                                        <div className="flex items-center gap-2">
+                                                            <h2 className="text-sm font-semibold text-slate-700">{range}</h2>
+                                                            <Badge variant="secondary" className="text-[10px]">{group.length}</Badge>
+                                                        </div>
+                                                        <ChevronDown className="h-4 w-4 text-slate-400 transition-transform group-data-[state=closed]/hp:-rotate-90" />
+                                                    </button>
+                                                </CollapsibleTrigger>
+                                                <CollapsibleContent>
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 p-4 pt-1">
+                                                        {group.map((motor) => (
+                                                            <MotorCard
+                                                                key={motor.id}
+                                                                motor={motor}
+                                                                onClick={() => handleMotorClick(motor)}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </CollapsibleContent>
+                                            </Collapsible>
                                         );
                                     })}
                                 </>
@@ -659,15 +697,16 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
                 )}
             </div>
 
-            {/* Motor detail sheet */}
-            <MotorDetailSheet
-                motor={selectedMotor}
-                open={detailOpen}
-                onOpenChange={setDetailOpen}
-                moduleData={moduleData}
-                organisationId={organisationId}
-                isAdmin={isAdmin}
-            />
+            {/* v1.34 — the define-everything editor (shared with the Catalog
+                Manager) replaces the old read-only detail sheet. Resolved
+                fresh from the live snapshot so saves render immediately. */}
+            {detailOpen && selectedMotor && (
+                <MotorEditorSheet
+                    motor={(motors ?? []).find((m: any) => m.id === selectedMotor.id) ?? selectedMotor}
+                    onPatch={patchMotor}
+                    onClose={() => setDetailOpen(false)}
+                />
+            )}
         </div>
     );
 }
