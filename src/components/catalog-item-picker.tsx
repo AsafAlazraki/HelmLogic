@@ -189,14 +189,24 @@ async function loadMotors(firestore: any): Promise<CatalogRow[]> {
                 // v1.34 — the MPF package ingredients live on the motor row:
                 // install economics + the standard rigging/prop accessories.
                 const accs: any[] = Array.isArray(r.masterAccessories) ? r.masterAccessories : [];
-                const accPrice = (a: any) => (a.items || []).reduce((s2: number, it: any) => {
-                    const dd = it?.data || {};
-                    return s2 + (num(dd['Act Sell']) || num(dd.sellPriceExclGst) || num(dd['Store Price']) || num(dd.RRP) || num(dd.Price) || 0);
-                }, 0);
-                const accCost = (a: any) => (a.items || []).reduce((s2: number, it: any) => {
-                    const dd = it?.data || {};
-                    return s2 + (num(dd['Act CTD']) || num(dd.cost) || num(dd['Dealer Buy']) || 0);
-                }, 0);
+                // v1.34 — accessories assigned via the motor editor carry
+                // their price directly ('Act Sell' on the entry, no items[]
+                // sub-array); the legacy MPF shape prices via items[]. Sum
+                // items first, fall back to the entry's own price.
+                const accPrice = (a: any) => {
+                    const fromItems = (a.items || []).reduce((s2: number, it: any) => {
+                        const dd = it?.data || {};
+                        return s2 + (num(dd['Act Sell']) || num(dd.sellPriceExclGst) || num(dd['Store Price']) || num(dd.RRP) || num(dd.Price) || 0);
+                    }, 0);
+                    return fromItems || num(a['Act Sell']) || num(a.sellPriceExclGst) || 0;
+                };
+                const accCost = (a: any) => {
+                    const fromItems = (a.items || []).reduce((s2: number, it: any) => {
+                        const dd = it?.data || {};
+                        return s2 + (num(dd['Act CTD']) || num(dd.cost) || num(dd['Dealer Buy']) || 0);
+                    }, 0);
+                    return fromItems || num(a['Act CTD']) || num(a.costPrice) || 0;
+                };
                 const std = (cat: string) => {
                     const a = accs.find(x => String(x?.category) === cat && (x?.isStandard || x?.standard));
                     return a ? { name: String(a.name || cat), sell: accPrice(a), cost: accCost(a) } : null;

@@ -20,7 +20,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, endAt, getDocs, limit, orderBy, query, serverTimestamp, setDoc, startAt, updateDoc, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useToast } from '@/hooks/use-toast';
@@ -271,7 +271,7 @@ export function MotorsTableView({ organisationId, initialSearch }: { organisatio
                 {!selectedVendorId ? (
                     <EmptyState message="Pick a brand to view the catalogue." />
                 ) : (
-                    <MotorsTableBody vendorId={selectedVendorId} initialSearch={initialSearch} />
+                    <MotorsTableBody vendorId={selectedVendorId} initialSearch={initialSearch} organisationId={organisationId} />
                 )}
             </CardContent>
 
@@ -311,7 +311,7 @@ function EmptyState({ message }: { message: string }) {
     );
 }
 
-function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initialSearch?: string }) {
+function MotorsTableBody({ vendorId, initialSearch, organisationId }: { vendorId: string; initialSearch?: string; organisationId?: string | null }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [rows, setRows] = useState<MotorRow[]>([]);
@@ -855,6 +855,7 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
                         motor={m}
                         onPatch={patchMotor}
                         onClose={() => setDetailMotorId(null)}
+                        organisationId={organisationId}
                     />
                 ) : null;
             })()}
@@ -867,13 +868,149 @@ function MotorsTableBody({ vendorId, initialSearch }: { vendorId: string; initia
  *  accessory package with isStandard toggles. All writes go through the
  *  same writeFieldsFor mirrors as the inline cells and the CSV import,
  *  so no consumer ever forks. Exported (v1.34) — the Yamaha module
- *  workspace mounts the SAME editor on catalog-card click. */
-export function MotorDetailSheet({ motor, onPatch, onClose }: {
+ *  workspace mounts the SAME editor on catalog-card click.
+ *
+ *  Assignment (Asaf: "the riggings and the props and… assigning") —
+ *  rigging kits come from the org's MPF riggingKits catalogue, props
+ *  from the serviceParts catalogue (part-number prefix search), plus
+ *  free-form custom lines. Everything lands in masterAccessories on
+ *  the MPF row, which is exactly what every quote surface reads. */
+export function MotorDetailSheet({ motor, onPatch, onClose, organisationId }: {
     motor: MotorRow;
     onPatch: (motorId: string, field: string, next: any) => Promise<void>;
     onClose: () => void;
+    /** Enables the rigging/prop catalogue pickers when provided. */
+    organisationId?: string | null;
 }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
     const accs: any[] = Array.isArray(motor.masterAccessories) ? motor.masterAccessories : [];
+
+    /* ── assignment state ── */
+    const [assignMode, setAssignMode] = useState<null | 'rigging' | 'prop' | 'custom'>(null);
+    const [assignSearch, setAssignSearch] = useState('');
+    const [assignBusy, setAssignBusy] = useState(false);
+    const [riggingCache, setRiggingCache] = useState<any[] | null>(null);
+    const [propResults, setPropResults] = useState<any[]>([]);
+    const [customDraft, setCustomDraft] = useState({ name: '', category: 'Other', price: '' });
+
+    // Rigging kits: one cached load (≈850 docs), client-filtered.
+    useEffect(() => {
+        if (assignMode !== 'rigging' || riggingCache || !organisationId) return;
+        (async () => {
+            try {
+                const snap = await getDocs(collection(firestore, 'organisations', organisationId, 'riggingKits'));
+                setRiggingCache(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+            } catch { setRiggingCache([]); }
+        })();
+    }, [assignMode, riggingCache, organisationId, firestore]);
+
+    // Props: part-number prefix query against the 26k serviceParts.
+    useEffect(() => {
+        if (assignMode !== 'prop' || !organisationId) return;
+        const q2 = assignSearch.trim().toUpperCase();
+        if (q2.length < 2) { setPropResults([]); return; }
+        const t = setTimeout(async () => {
+            try {
+                const snap = await getDocs(query(
+                    collection(firestore, 'organisations', organisationId, 'serviceParts'),
+                    orderBy('partNumber'), startAt(q2), endAt(q2 + ''), limit(20),
+                ));
+                setPropResults(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+            } catch { setPropResults([]); }
+        }, 350);
+        return () => clearTimeout(t);
+    }, [assignMode, assignSearch, organisationId, firestore]);
+
+    const kitLabel = (k: any) => String(k?.name || k?.desc || k?.description || k?.id || '');
+    const kitSell = (k: any) => [k?.totalSellInstalledExclGst, k?.sellPriceExclGst, k?.retailExGst]
+        .find(v => typeof v === 'number' && v > 0) ?? 0;
+    const partSell = (p: any) => [p?.packageSupplyFitIncGst, p?.retailIncGst, p?.sellPrice]
+        .find(v => typeof v === 'number' && v > 0) ?? 0;
+
+    const riggingResults = (riggingCache ?? [])
+        .filter(k => kitLabel(k).toLowerCase().includes(assignSearch.trim().toLowerCase()))
+        .slice(0, 12);
+
+    const addAccessory = async (entry: any) => {
+        setAssignBusy(true);
+        try {
+            await onPatch(motor.id, 'masterAccessories', [...accs, entry]);
+            setAssignMode(null);
+            setAssignSearch('');
+            setCustomDraft({ name: '', category: 'Other', price: '' });
+        } finally { setAssignBusy(false); }
+    };
+    const removeAccessory = async (idx: number) => {
+        await onPatch(motor.id, 'masterAccessories', accs.filter((_, i) => i !== idx));
+    };
+
+    /* ── MPF option bands (Asaf: "exists in MPF data so should be auto
+       assigned… search filter") — the motor's OWN option lists ingested
+       from the Motor Module workbook (Rigging Option 01-50, Prop Option
+       Default+100, Additional FOs, named accessory slots). One click
+       assigns an option into the package, priced from the org
+       catalogues at assign time. ── */
+    const bands: any = (motor as any).mpfOptionBands || null;
+    const [bandSearch, setBandSearch] = useState('');
+    const [bandBusy, setBandBusy] = useState<string | null>(null);
+    const assignedNames = new Set(accs.map((a: any) => String(a.name || '').toLowerCase()));
+    const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+
+    const ensureRiggingCache = async (): Promise<any[]> => {
+        if (riggingCache) return riggingCache;
+        if (!organisationId) return [];
+        const snap = await getDocs(collection(firestore, 'organisations', organisationId, 'riggingKits'));
+        const kits = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+        setRiggingCache(kits);
+        return kits;
+    };
+
+    const assignFromBand = async (kind: 'rigging' | 'prop' | 'fo' | 'named', name: string) => {
+        if (!organisationId) return;
+        setBandBusy(name);
+        try {
+            if (kind === 'rigging') {
+                const kits = await ensureRiggingCache();
+                const target = norm(name);
+                const hit = kits.find(k => norm(kitLabel(k)) === target)
+                    || kits.find(k => norm(kitLabel(k)).includes(target) || target.includes(norm(kitLabel(k))));
+                if (!hit || !(kitSell(hit) > 0)) {
+                    toast({ variant: 'destructive', title: 'No priced rigging kit found', description: `"${name.slice(0, 60)}…" has no priced match in the rigging catalogue.` });
+                    return;
+                }
+                await onPatch(motor.id, 'masterAccessories', [...accs, {
+                    id: `rk-${hit.id}`, name: kitLabel(hit), category: 'Rigging', isStandard: false,
+                    'Act Sell': kitSell(hit), ...(typeof hit.kitCost === 'number' ? { 'Act CTD': hit.kitCost } : {}),
+                    mpfOption: true,
+                }]);
+            } else {
+                const snap = await getDocs(query(
+                    collection(firestore, 'organisations', organisationId, 'serviceParts'),
+                    where('name', '==', name), limit(1),
+                ));
+                const part: any = snap.docs[0] ? { id: snap.docs[0].id, ...(snap.docs[0].data() as any) } : null;
+                const sell = part ? partSell(part) : 0;
+                if (!part || !(sell > 0)) {
+                    toast({ variant: 'destructive', title: 'No priced part found', description: `"${name.slice(0, 60)}" has no priced match in the parts catalogue — use + Custom to add it manually.` });
+                    return;
+                }
+                await onPatch(motor.id, 'masterAccessories', [...accs, {
+                    id: `part-${part.id}`, name,
+                    category: kind === 'prop' ? 'Propeller' : 'Other',
+                    isStandard: kind === 'prop' && bands?.defaultProp === name,
+                    'Act Sell': sell,
+                    ...(part.partNumber ? { partNumber: part.partNumber } : {}),
+                    mpfOption: true,
+                }]);
+            }
+        } finally { setBandBusy(null); }
+    };
+
+    const bandFiltered = (list: string[]) => {
+        const q3 = norm(bandSearch);
+        return q3 ? list.filter(n => norm(n).includes(q3)) : list;
+    };
     return (
         <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
             <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
@@ -906,24 +1043,30 @@ export function MotorDetailSheet({ motor, onPatch, onClose }: {
                         </section>
                     ))}
 
-                    {/* Accessory package (rigging / prop / options). Full
-                        add/remove lives in the Yamaha workspace Catalog tab —
-                        here the operator flips what comes standard. */}
+                    {/* Accessory package (rigging / prop / options) — view,
+                        toggle standard, REMOVE, and ASSIGN from the org
+                        catalogues. Every write lands in masterAccessories on
+                        the MPF row = what every quote surface reads. */}
                     <section className="space-y-2">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                             Accessory package ({accs.length})
                         </p>
                         {accs.length === 0 ? (
                             <p className="text-xs text-muted-foreground italic">
-                                No accessories assigned. Assign rigging kits, props and options from the brand module&apos;s Catalog tab.
+                                Nothing assigned yet — add the rigging kit, prop and extras below.
                             </p>
                         ) : (
                             <div className="rounded-xl border-2 divide-y">
-                                {accs.map((a: any, i: number) => (
+                                {accs.map((a: any, i: number) => {
+                                    const price = [a['Act Sell'], a.sellPriceExclGst, a['Store Price']]
+                                        .find((v: any) => typeof v === 'number' && v > 0);
+                                    return (
                                     <div key={a.id ?? i} className="flex items-center gap-2 p-2">
                                         <div className="flex-1 min-w-0">
                                             <p className="text-xs font-semibold truncate">{a.name ?? 'Accessory'}</p>
-                                            <p className="text-[10px] text-muted-foreground">{a.category ?? '—'}</p>
+                                            <p className="text-[10px] text-muted-foreground">
+                                                {a.category ?? '—'}{price ? ` · ${formatCurrency(price)}` : ''}
+                                            </p>
                                         </div>
                                         <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase cursor-pointer shrink-0">
                                             <Checkbox
@@ -936,8 +1079,171 @@ export function MotorDetailSheet({ motor, onPatch, onClose }: {
                                             />
                                             Standard
                                         </label>
+                                        <button
+                                            type="button"
+                                            className="text-muted-foreground hover:text-destructive shrink-0"
+                                            title="Remove from this motor"
+                                            onClick={() => void removeAccessory(i)}
+                                        >
+                                            <X className="h-3.5 w-3.5" />
+                                        </button>
                                     </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* ── Assign from the org catalogues ── */}
+                        <div className="flex items-center gap-2 flex-wrap pt-1">
+                            {organisationId && (
+                                <>
+                                    <Button variant={assignMode === 'rigging' ? 'default' : 'outline'} size="sm" className="h-7 rounded-lg text-[10px] font-bold" onClick={() => { setAssignMode(assignMode === 'rigging' ? null : 'rigging'); setAssignSearch(''); }}>
+                                        + Rigging kit
+                                    </Button>
+                                    <Button variant={assignMode === 'prop' ? 'default' : 'outline'} size="sm" className="h-7 rounded-lg text-[10px] font-bold" onClick={() => { setAssignMode(assignMode === 'prop' ? null : 'prop'); setAssignSearch(''); }}>
+                                        + Propeller
+                                    </Button>
+                                </>
+                            )}
+                            <Button variant={assignMode === 'custom' ? 'default' : 'outline'} size="sm" className="h-7 rounded-lg text-[10px] font-bold" onClick={() => setAssignMode(assignMode === 'custom' ? null : 'custom')}>
+                                + Custom
+                            </Button>
+                        </div>
+
+                        {(assignMode === 'rigging' || assignMode === 'prop') && (
+                            <div className="rounded-xl border-2 p-2 space-y-2">
+                                <Input
+                                    autoFocus
+                                    value={assignSearch}
+                                    onChange={e => setAssignSearch(e.target.value)}
+                                    placeholder={assignMode === 'rigging'
+                                        ? 'Search rigging kits by name…'
+                                        : 'Search props by part number (min 2 chars)…'}
+                                    className="rounded-lg border-2 h-8 text-xs"
+                                />
+                                <div className="max-h-44 overflow-y-auto divide-y">
+                                    {(assignMode === 'rigging' ? riggingResults : propResults).map((item: any) => {
+                                        const isKit = assignMode === 'rigging';
+                                        const label = isKit ? kitLabel(item) : String(item.name || item.partNumber || item.id);
+                                        const sell = isKit ? kitSell(item) : partSell(item);
+                                        return (
+                                            <button
+                                                key={item.id}
+                                                type="button"
+                                                disabled={assignBusy}
+                                                className="w-full flex items-center justify-between gap-2 px-2 py-1.5 text-left hover:bg-slate-50"
+                                                onClick={() => void addAccessory({
+                                                    id: `${isKit ? 'rk' : 'prop'}-${item.id}`,
+                                                    name: label,
+                                                    category: isKit ? 'Rigging' : 'Propeller',
+                                                    isStandard: isKit,
+                                                    'Act Sell': sell,
+                                                    ...(isKit && typeof item.kitCost === 'number' ? { 'Act CTD': item.kitCost } : {}),
+                                                    ...(!isKit && item.partNumber ? { partNumber: item.partNumber } : {}),
+                                                })}
+                                            >
+                                                <span className="text-xs font-semibold truncate">{label}</span>
+                                                <span className="text-xs font-bold tabular-nums shrink-0">{sell ? formatCurrency(sell) : '—'}</span>
+                                            </button>
+                                        );
+                                    })}
+                                    {assignMode === 'rigging' && riggingCache === null && (
+                                        <p className="text-[10px] text-muted-foreground italic p-2">Loading rigging catalogue…</p>
+                                    )}
+                                    {assignMode === 'prop' && assignSearch.trim().length >= 2 && propResults.length === 0 && (
+                                        <p className="text-[10px] text-muted-foreground italic p-2">No parts match that part-number prefix.</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── The motor's OWN MPF option lists (auto-ingested from
+                            the Motor Module workbook) — searchable, one click
+                            assigns into the package priced from the org
+                            catalogues. ── */}
+                        {bands && (
+                            <div className="rounded-xl border-2 border-primary/20 bg-primary/[0.02] p-2 space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                                        MPF options for this motor
+                                    </p>
+                                    <Input
+                                        value={bandSearch}
+                                        onChange={e => setBandSearch(e.target.value)}
+                                        placeholder="Filter options…"
+                                        className="rounded-lg border-2 h-7 w-44 text-xs"
+                                    />
+                                </div>
+                                {([
+                                    ['rigging', 'Rigging options', bandFiltered(bands.riggingOptions ?? [])],
+                                    ['prop', 'Prop options', bandFiltered(bands.propOptions ?? [])],
+                                    ['fo', 'Additional factory options', bandFiltered(bands.additionalFOs ?? [])],
+                                    ['named', 'Named accessories', bandFiltered(Object.values(bands.namedAccessories ?? {}) as string[])],
+                                ] as Array<[('rigging' | 'prop' | 'fo' | 'named'), string, string[]]>).map(([kind, label, list]) => (
+                                    list.length === 0 ? null : (
+                                    <details key={kind} open={kind === 'rigging' || !!bandSearch.trim()} className="group rounded-lg border bg-white">
+                                        <summary className="cursor-pointer select-none px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-600 flex items-center justify-between">
+                                            <span>{label}</span>
+                                            <Badge variant="outline" className="text-[9px]">{list.length}</Badge>
+                                        </summary>
+                                        <div className="max-h-40 overflow-y-auto divide-y border-t">
+                                            {list.map(name => {
+                                                const assigned = assignedNames.has(name.toLowerCase());
+                                                const isDefault = kind === 'prop' && bands.defaultProp === name;
+                                                return (
+                                                    <div key={name} className="flex items-center gap-2 px-2 py-1">
+                                                        <span className="text-[11px] flex-1 truncate" title={name}>
+                                                            {name}
+                                                            {isDefault && <Badge className="ml-1.5 bg-emerald-500 text-white text-[8px] font-black uppercase px-1 py-0">Default</Badge>}
+                                                        </span>
+                                                        {assigned ? (
+                                                            <span className="text-[9px] font-black uppercase text-emerald-600 shrink-0">Assigned ✓</span>
+                                                        ) : (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                disabled={bandBusy !== null}
+                                                                className="h-6 rounded-md text-[9px] font-bold px-2 shrink-0"
+                                                                onClick={() => void assignFromBand(kind, name)}
+                                                            >
+                                                                {bandBusy === name ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Assign'}
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </details>
+                                    )
                                 ))}
+                            </div>
+                        )}
+
+                        {assignMode === 'custom' && (
+                            <div className="rounded-xl border-2 p-2 grid grid-cols-[1fr_auto_auto_auto] gap-2 items-center">
+                                <Input value={customDraft.name} onChange={e => setCustomDraft(d => ({ ...d, name: e.target.value }))} placeholder="Accessory name" className="rounded-lg border-2 h-8 text-xs" />
+                                <select
+                                    value={customDraft.category}
+                                    onChange={e => setCustomDraft(d => ({ ...d, category: e.target.value }))}
+                                    className="h-8 rounded-lg border-2 text-xs px-1 bg-white"
+                                >
+                                    {['Rigging', 'Propeller', 'Installation', 'Other'].map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                                <Input value={customDraft.price} onChange={e => setCustomDraft(d => ({ ...d, price: e.target.value }))} placeholder="$ sell" className="rounded-lg border-2 h-8 w-24 text-xs text-right" />
+                                <Button
+                                    size="sm"
+                                    className="h-8 rounded-lg text-[10px] font-bold"
+                                    disabled={assignBusy || !customDraft.name.trim() || !(Number(customDraft.price.replace(/[$,\s]/g, '')) > 0)}
+                                    onClick={() => void addAccessory({
+                                        id: `custom-${Date.now()}`,
+                                        name: customDraft.name.trim(),
+                                        category: customDraft.category,
+                                        isStandard: false,
+                                        'Act Sell': Number(customDraft.price.replace(/[$,\s]/g, '')),
+                                    })}
+                                >
+                                    Add
+                                </Button>
                             </div>
                         )}
                     </section>

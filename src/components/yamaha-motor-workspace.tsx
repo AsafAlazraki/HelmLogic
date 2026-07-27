@@ -310,10 +310,10 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
     const firestore = useFirestore();
 
     // Tab state — initialized from URL ?motorTab= param so refresh stays put
-    const [activeTab, setActiveTab] = useState<'catalog' | 'pricing' | 'promotions' | 'fit-up' | 'settings'>(() => {
+    const [activeTab, setActiveTab] = useState<'catalog' | 'pricing' | 'promotions' | 'dealer-fit' | 'fit-up' | 'settings'>(() => {
         if (typeof window !== 'undefined') {
             const t = new URLSearchParams(window.location.search).get('motorTab');
-            if (t === 'catalog' || t === 'pricing' || t === 'promotions' || t === 'fit-up' || t === 'settings') return t;
+            if (t === 'catalog' || t === 'pricing' || t === 'promotions' || t === 'dealer-fit' || t === 'fit-up' || t === 'settings') return t;
         }
         return 'catalog';
     });
@@ -473,6 +473,9 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
         // v1.34 — Promotions renamed to Rebates (Asaf). Tab key stays
         // 'promotions' so old ?motorTab= URLs keep working.
         { key: 'promotions' as const, label: 'Rebates', icon: <BadgePercent className="h-4 w-4" /> },
+        // v1.34 — Dealer Fit browser gets its own tab (it previously hid
+        // inside the read-only motor sheet).
+        { key: 'dealer-fit' as const, label: 'Dealer Fit', icon: <Package className="h-4 w-4" /> },
         { key: 'fit-up' as const, label: 'Fit-up', icon: <Wrench className="h-4 w-4" /> },
         { key: 'settings' as const, label: 'Settings', icon: <SettingsIcon className="h-4 w-4" /> },
     ];
@@ -664,6 +667,21 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
                     </ScrollArea>
                 )}
 
+                {/* v1.34 — Dealer Fit tab: the same Master Data Browser the
+                    boat modules use (collapsible category sections, search,
+                    MPF-mirrored selections that the quote flows read). */}
+                {activeTab === 'dealer-fit' && (
+                    <ScrollArea className="h-full">
+                        <div className="p-8">
+                            <DealerFitOptions
+                                module={moduleData}
+                                organisationId={organisationId}
+                                isAdmin={isAdmin}
+                            />
+                        </div>
+                    </ScrollArea>
+                )}
+
                 {/* v1.14 (Story 9.2.1) — per-module Fit-up tab. Lists fit-up items
                     in the org's catalog scoped to this moduleId. */}
                 {activeTab === 'fit-up' && (
@@ -705,6 +723,7 @@ export function YamahaMotorWorkspace({ vendorId, organisationId, isAdmin, module
                     motor={(motors ?? []).find((m: any) => m.id === selectedMotor.id) ?? selectedMotor}
                     onPatch={patchMotor}
                     onClose={() => setDetailOpen(false)}
+                    organisationId={organisationId}
                 />
             )}
         </div>
