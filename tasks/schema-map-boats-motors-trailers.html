@@ -1,0 +1,159 @@
+<!-- HelmLogic — Firestore schema map: boats ⇄ motors ⇄ trailers (v1.34) -->
+<style>
+  :root { --navy:#0f1f38; --panel:#16294a; --line:#2b426e; --ink:#e8eefc; --mut:#8ea3c8;
+          --boat:#4da3ff; --motor:#ff5a5a; --trailer:#ffb648; --org:#3ddc97; --tie:#ffd34d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--navy); color:var(--ink);
+         font:13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding:22px; }
+  h1 { font:800 20px/1.2 ui-sans-serif, system-ui; letter-spacing:.02em; margin:0 0 2px; }
+  .sub { color:var(--mut); font:12px ui-sans-serif, system-ui; margin-bottom:18px; }
+  .cols { display:grid; grid-template-columns: 1.25fr .9fr .9fr; gap:18px; align-items:start; }
+  .lane-title { font:800 11px ui-sans-serif,system-ui; text-transform:uppercase; letter-spacing:.25em; margin:0 0 10px; }
+  .lane-boat .lane-title{color:var(--boat)} .lane-motor .lane-title{color:var(--motor)} .lane-trailer .lane-title{color:var(--trailer)}
+  .doc { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:12px; position:relative; }
+  .doc.b{border-left:4px solid var(--boat)} .doc.m{border-left:4px solid var(--motor)}
+  .doc.t{border-left:4px solid var(--trailer)} .doc.o{border-left:4px solid var(--org)}
+  .path { font-size:11px; color:var(--mut); word-break:break-all; }
+  .path b { color:var(--ink); }
+  .nest { margin-left:14px; border-left:1px dashed var(--line); padding-left:12px; }
+  .f { display:flex; gap:8px; padding:1px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .k { color:#9ecbff; } .ty { color:var(--mut); }
+  .money .k{color:#7ef0b2} .tie .k{color:var(--tie); font-weight:700}
+  .tie { background:rgba(255,211,77,.07); border-radius:4px; padding-left:4px; margin-left:-4px; }
+  .chip { display:inline-block; font:700 10px ui-sans-serif,system-ui; letter-spacing:.08em; text-transform:uppercase;
+          border-radius:99px; padding:2px 9px; margin:2px 4px 2px 0; }
+  .chip.tie { background:var(--tie); color:#3a2d00; }
+  .chip.org { background:var(--org); color:#00301c; }
+  .arrow { font:700 11px ui-sans-serif,system-ui; color:var(--tie); margin:6px 0 10px; padding:7px 10px;
+           border:1px dashed var(--tie); border-radius:10px; background:rgba(255,211,77,.05); }
+  .arrow .to { color:var(--mut); font-weight:400; }
+  .legend { display:flex; flex-wrap:wrap; gap:14px; margin:14px 0 0; font:11px ui-sans-serif,system-ui; color:var(--mut); }
+  .sw { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+  .foot { margin-top:16px; border-top:1px solid var(--line); padding-top:10px; color:var(--mut); font:11px ui-sans-serif,system-ui; }
+  @media (max-width:1100px){ .cols{grid-template-columns:1fr} }
+</style>
+
+<h1>HelmLogic Firestore schema — boats ⇄ motors ⇄ trailers</h1>
+<div class="sub">Real field names from the live database (v1.34). <span style="color:var(--tie)">Gold fields</span> are the ties between the three worlds; <span style="color:#7ef0b2">green</span> = money fields; every quote surface reads these exact docs — no copies.</div>
+
+<div class="cols">
+
+  <!-- ═══════════ BOAT LANE ═══════════ -->
+  <div class="lane-boat">
+    <p class="lane-title">⛵ Boats — catalog truth</p>
+
+    <div class="doc b">
+      <div class="path"><b>data-warehouse/{vendorId}</b> &nbsp;· e.g. Highfield <span style="color:var(--mut)">LafOLpLb6QIFE856TiD4</span></div>
+      <div class="f"><span class="k">name</span><span class="ty">"Highfield"</span></div>
+      <div class="f"><span class="k">vendorType</span><span class="ty">"Boat Brand"</span></div>
+      <div class="f money"><span class="k">currency</span><span class="ty">"USD" → converted via org exchangeRates</span></div>
+
+      <div class="nest">
+        <div class="path"><b>ranges/{rangeId}</b> · Classic · Sport · Roll-Up · Adventure · Patrol…</div>
+        <div class="f"><span class="k">name, imageUrl</span></div>
+
+        <div class="nest">
+          <div class="path"><b>models/{modelId}</b> · e.g. <b>sp560</b></div>
+          <div class="f"><span class="k">name, modelCode, coverImageUrl, galleryImageUrls[]</span></div>
+          <div class="f tie"><span class="k">specifications.motorConfigurations[]</span><span class="ty">{type:"Single", engines:[{minHp, maxHp}]}</span></div>
+          <div class="f"><span class="k">standardFeatures[]</span><span class="ty">string[]</span></div>
+          <div class="f money"><span class="k">optionalFeatures[]</span><span class="ty">{id, name, category, sellPriceExclGst, applicableVariantIds[]}</span></div>
+          <div class="f tie"><span class="k">motorOverrides</span><span class="ty">{Single:{hiddenIds[], manualIds[]}}</span></div>
+          <div class="f"><span class="k">registration</span><span class="ty">{price12Months, stickerPrice, trailerPrice12Months}</span></div>
+
+          <div class="nest">
+            <div class="path"><b>variants/{variantId}</b> · SKU level — material × colour · e.g. SP560-GREY-HYP</div>
+            <div class="f"><span class="k">sku, material, colorName, imageUrl</span></div>
+            <div class="f money"><span class="k">cost, sellPriceExclGst, priceIncGst</span></div>
+            <div class="f money"><span class="k">priceLadder</span><span class="ty">{cash|trade|subdealer…: {exGst, incGst}} — hand-rounded MPF figures</span></div>
+            <div class="f money"><span class="k">pdTiers[]</span><span class="ty">{tier, estHrs, totalCtd, sellIncGst} — pre-delivery, always on the package</span></div>
+            <div class="f tie"><span class="k">motorMenu[]</span><span class="ty">{slot, motorName, riggingKit, propPartNo, propDesc, engineHole, recommended}</span></div>
+            <div class="f tie"><span class="k">trailerMenu[]</span><span class="ty">{trailerCode, name} — curated trailers for this hull</span></div>
+            <div class="f tie"><span class="k">dealerFitLines[]</span><span class="ty">curated DFO names for Step 5</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow">motorMenu[].motorName <span class="to">— resolved BY NAME against Yamaha rows → the NSM Recommended slots (motor + rigging kit + prop compose the FFR-33 package)</span> ⟶</div>
+    <div class="arrow">specifications.motorConfigurations HP window <span class="to">— filters the full motor grid (count × HP parse, e.g. "2 × 90")</span> ⟶</div>
+    <div class="arrow">trailerMenu[].trailerCode <span class="to">— auto-selects the curated trailer; rego priced from trailer ATM at quote time</span> ⟶ <span style="color:var(--trailer)">trailer lane</span></div>
+  </div>
+
+  <!-- ═══════════ MOTOR LANE ═══════════ -->
+  <div class="lane-motor">
+    <p class="lane-title">⚙ Motors — MPF rows</p>
+
+    <div class="doc m">
+      <div class="path"><b>data-warehouse/{yamahaId}</b> · <span style="color:var(--mut)">mRAzkE8PUX8GMHELCvJo · vendorType "Motor Brand"</span></div>
+      <div class="nest">
+        <div class="path"><b>dataSets/{dsId}/rows/{rowId}</b> · 235 rows = the Motor Library sheet</div>
+        <div class="f tie"><span class="k">MODEL CODE</span><span class="ty">"F90XB" — natural key, imports upsert by this</span></div>
+        <div class="f"><span class="k">MODEL, HP Rating, Shaft Length, Control, Starting, Tilt &amp; Trim</span></div>
+        <div class="f money"><span class="k">priceLevels</span><span class="ty">{hull_cash←NSM Retail, hull_trade, hull_commercial, hull_boating_alliance, hull_campaign}</span></div>
+        <div class="f money"><span class="k">cost / Total CTD</span><span class="ty">landed dealer cost</span></div>
+        <div class="f money"><span class="k">Install - Sell, Installation, Labour (Hrs)</span><span class="ty">the row's own install economics</span></div>
+        <div class="f tie"><span class="k">Engine Removals</span><span class="ty">names the priced serviceOperation (repower line)</span></div>
+        <div class="f tie"><span class="k">masterAccessories[]</span><span class="ty">{name, category, isStandard, Act Sell} — assigned rigging/prop/extras</span></div>
+        <div class="f tie"><span class="k">mpfOptionBands</span><span class="ty">{riggingOptions[≤50], propOptions[≤100], defaultProp, additionalFOs[], namedAccessories}</span></div>
+        <div class="f tie"><span class="k">activeRebate</span><span class="ty">{rebateId, rebatePrice, endsAt…} — Yamaha Rebates stamp</span></div>
+        <div class="f"><span class="k">SummaryImage / imageUrl</span><span class="ty">mirrored to Storage</span></div>
+      </div>
+      <div class="nest">
+        <div class="path"><b>rebates/{rebateId}</b> · skus[{code, retailPrice, rebatePrice}], timer, changeLog · <b>/sales</b> per deal</div>
+      </div>
+    </div>
+
+    <div class="arrow">mpfOptionBands.riggingOptions <span class="to">— resolved by name →</span> <span style="color:var(--org)">org riggingKits</span> · propOptions <span class="to">→</span> <span style="color:var(--org)">org serviceParts</span></div>
+    <div class="arrow">Engine Removals <span class="to">— resolved by name →</span> <span style="color:var(--org)">org serviceOperations (priced labor)</span></div>
+  </div>
+
+  <!-- ═══════════ TRAILER LANE ═══════════ -->
+  <div class="lane-trailer">
+    <p class="lane-title">🚚 Trailers</p>
+
+    <div class="doc t">
+      <div class="path"><b>data-warehouse/{trailerVendorId}</b> · <span style="color:var(--mut)">vendorType "Trailer Brand" (REDCO, NSM Custom…)</span></div>
+      <div class="nest">
+        <div class="path"><b>trailers/{trailerId}</b> <span style="color:var(--mut)">or</span> <b>series/{sId}/trailers/{tId}</b></div>
+        <div class="f tie"><span class="k">code</span><span class="ty">"TA600-MOB" ← matched by variant.trailerMenu</span></div>
+        <div class="f"><span class="k">name, imageUrl, wheelSize, winch</span></div>
+        <div class="f tie"><span class="k">atmKg</span><span class="ty">drives rego band selection at quote time</span></div>
+        <div class="f"><span class="k">tareKg, boatSizeMtr, lengthMtr</span></div>
+        <div class="f money"><span class="k">cost, sellPriceExclGst</span></div>
+        <div class="f"><span class="k">options[]</span><span class="ty">spare wheel, LED lights…</span></div>
+      </div>
+    </div>
+
+    <!-- ORG OVERLAY -->
+    <p class="lane-title" style="color:var(--org); margin-top:16px">🏢 Org overlay — how NSM sells it</p>
+    <div class="doc o">
+      <div class="path"><b>organisations/{orgId}</b> · <span style="color:var(--mut)">AcFZVEFA5UDJG2hyetWT</span></div>
+      <div class="f tie"><span class="k">modelOverrides/{modelId}</span><span class="ty">merged OVER catalog models (images, features)</span></div>
+      <div class="f money"><span class="k">exchangeRates/USD</span><span class="ty">converts Highfield factory USD</span></div>
+      <div class="f tie"><span class="k">riggingKits/</span><span class="ty">846 kits — price the motor-menu slot kits</span></div>
+      <div class="f tie"><span class="k">serviceParts/</span><span class="ty">26k parts — price props by partNumber/name</span></div>
+      <div class="f tie"><span class="k">serviceOperations/</span><span class="ty">364 ops — install &amp; engine-removal labor</span></div>
+      <div class="f"><span class="k">dealerFitSelections/ · fitUpItems/ · pricingMatrix/ · pdfStructure/ · contentBlocks/</span></div>
+    </div>
+
+    <div class="doc o">
+      <div class="path"><b>modules/{moduleId}</b> · <span style="color:var(--mut)">the access point (Highfield M1Yf…, Yamaha Kdda…)</span></div>
+      <div class="f tie"><span class="k">mainVendorId, associatedVendorIds[]</span><span class="ty">boat module ↔ motor vendor link</span></div>
+      <div class="f"><span class="k">motorDealerFitCategories[]</span><span class="ty">on the BOAT module — DFO configured in boat context</span></div>
+      <div class="f"><span class="k">promotions/</span><span class="ty">hull promo bands (Step 1)</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <span><span class="sw" style="background:var(--boat)"></span>boat catalog</span>
+  <span><span class="sw" style="background:var(--motor)"></span>motor MPF rows</span>
+  <span><span class="sw" style="background:var(--trailer)"></span>trailer catalog</span>
+  <span><span class="sw" style="background:var(--org)"></span>org / module config</span>
+  <span><span class="sw" style="background:var(--tie)"></span>tie fields (joins by name/code — never duplicated data)</span>
+</div>
+
+<div class="foot">
+  How a quote assembles: <b>variant</b> (hull inc-GST ladder + pdTier) + <b>motorMenu slot</b> → motor row (priceLevels) + slot rigging kit (org riggingKits) + slot prop (org serviceParts) + <b>trailerMenu</b> → trailer + ATM-band rego + dealer fit + fit-up. Motor-only quotes skip the hull and compose from the motor row's own columns (Install - Sell, Engine Removals, masterAccessories, mpfOptionBands). Finalized quotes snapshot everything into <b>users/{uid}/quotes/{quoteId}</b> — prices never drift after finalize.
+</div>
