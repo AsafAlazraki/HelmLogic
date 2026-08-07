@@ -1,9 +1,9 @@
 {
  "meta": {
-  "runStartedUtc": "2026-08-06T23:58:15.684389+00:00",
-  "runFinishedUtc": "2026-08-07T00:03:34.852127+00:00",
-  "gitCommit": "002ee5b62c1505c240f465c117b09fa0b073ebb3",
-  "gitBranchTip": "002ee5b chore(ci): nightly synthetic evidence 31039351681 [skip ci]",
+  "runStartedUtc": "2026-08-07T18:54:50.763698+00:00",
+  "runFinishedUtc": "2026-08-07T19:01:36.544023+00:00",
+  "gitCommit": "fe9e7b6b27f636c88273d7324853d694f588929b",
+  "gitBranchTip": "fe9e7b6 chore(ci): nightly synthetic evidence 31132794408 [skip ci]",
   "identity": "billh@nsmarine.com.au (operator test user, Northside Marine)",
   "firebaseProject": "studio-2290360004-3b963",
   "organisationId": "AcFZVEFA5UDJG2hyetWT",
@@ -11,8 +11,8 @@
   "python": "3.12.3",
   "reproduce": "python3 scripts/smoke-1000.py  (requires network access to Firestore + the app URL)"
  },
- "total": 32618,
- "passed": 32618,
+ "total": 32619,
+ "passed": 32619,
  "failed": 0,
  "checks": [
   {
@@ -9319,7 +9319,7 @@
    "section": "D. Quotes",
    "name": "org quotes queryable via collectionGroup",
    "ok": true,
-   "detail": "180 quotes"
+   "detail": "181 quotes"
   },
   {
    "section": "D. Quotes",
@@ -10206,6 +10206,12 @@
   {
    "section": "D. Quotes",
    "name": "quote m51H3uOym0GfuAji827o: organisationId matches org",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "D. Quotes",
+   "name": "quote nfhfGyAG11YGOi1fXHlI: organisationId matches org",
    "ok": true,
    "detail": ""
   },
