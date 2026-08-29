@@ -1,9 +1,9 @@
 {
  "meta": {
-  "runStartedUtc": "2026-08-29T01:29:33.243071+00:00",
-  "runFinishedUtc": "2026-08-29T01:35:06.074710+00:00",
-  "gitCommit": "c363c3e9d9dd0e39af87a4f7a1daa4900017a5d9",
-  "gitBranchTip": "c363c3e chore(ci): nightly synthetic evidence 33134633920 [skip ci]",
+  "runStartedUtc": "2026-08-29T20:25:50.509265+00:00",
+  "runFinishedUtc": "2026-08-29T20:32:57.963627+00:00",
+  "gitCommit": "7bcf6283c55ebbfc6cd990516ab40c90a25dd459",
+  "gitBranchTip": "7bcf628 chore(ci): nightly synthetic evidence 33226432231 [skip ci]",
   "identity": "billh@nsmarine.com.au (operator test user, Northside Marine)",
   "firebaseProject": "studio-2290360004-3b963",
   "organisationId": "AcFZVEFA5UDJG2hyetWT",
@@ -199,7 +199,7 @@
    "section": "A. App routes",
    "name": "/dashboard: app shell renders",
    "ok": true,
-   "detail": "15150 bytes"
+   "detail": "15151 bytes"
   },
   {
    "section": "A. App routes",
@@ -217,7 +217,7 @@
    "section": "A. App routes",
    "name": "/customers: app shell renders",
    "ok": true,
-   "detail": "15565 bytes"
+   "detail": "15566 bytes"
   },
   {
    "section": "A. App routes",
@@ -235,7 +235,7 @@
    "section": "A. App routes",
    "name": "/pipeline: app shell renders",
    "ok": true,
-   "detail": "15329 bytes"
+   "detail": "15330 bytes"
   },
   {
    "section": "A. App routes",
@@ -253,7 +253,7 @@
    "section": "A. App routes",
    "name": "/contracts: app shell renders",
    "ok": true,
-   "detail": "15436 bytes"
+   "detail": "15437 bytes"
   },
   {
    "section": "A. App routes",
@@ -271,7 +271,7 @@
    "section": "A. App routes",
    "name": "/reporting: app shell renders",
    "ok": true,
-   "detail": "15696 bytes"
+   "detail": "15697 bytes"
   },
   {
    "section": "A. App routes",
@@ -289,7 +289,7 @@
    "section": "A. App routes",
    "name": "/my-work: app shell renders",
    "ok": true,
-   "detail": "15271 bytes"
+   "detail": "15272 bytes"
   },
   {
    "section": "A. App routes",
@@ -307,7 +307,7 @@
    "section": "A. App routes",
    "name": "/quote-comparison: app shell renders",
    "ok": true,
-   "detail": "15239 bytes"
+   "detail": "15240 bytes"
   },
   {
    "section": "A. App routes",
@@ -325,7 +325,7 @@
    "section": "A. App routes",
    "name": "/search: app shell renders",
    "ok": true,
-   "detail": "15319 bytes"
+   "detail": "15320 bytes"
   },
   {
    "section": "A. App routes",
@@ -343,7 +343,7 @@
    "section": "A. App routes",
    "name": "/audit-log: app shell renders",
    "ok": true,
-   "detail": "15334 bytes"
+   "detail": "15335 bytes"
   },
   {
    "section": "A. App routes",
@@ -361,7 +361,7 @@
    "section": "A. App routes",
    "name": "/feature-tracking: app shell renders",
    "ok": true,
-   "detail": "907724 bytes"
+   "detail": "907725 bytes"
   },
   {
    "section": "A. App routes",
@@ -379,7 +379,7 @@
    "section": "A. App routes",
    "name": "/manage: app shell renders",
    "ok": true,
-   "detail": "18856 bytes"
+   "detail": "18857 bytes"
   },
   {
    "section": "A. App routes",
@@ -397,7 +397,7 @@
    "section": "A. App routes",
    "name": "/modules: app shell renders",
    "ok": true,
-   "detail": "15426 bytes"
+   "detail": "15427 bytes"
   },
   {
    "section": "A. App routes",
@@ -415,7 +415,7 @@
    "section": "A. App routes",
    "name": "/pricing-manager: app shell renders",
    "ok": true,
-   "detail": "17462 bytes"
+   "detail": "17463 bytes"
   },
   {
    "section": "A. App routes",
@@ -433,7 +433,7 @@
    "section": "A. App routes",
    "name": "/sub-dealers: app shell renders",
    "ok": true,
-   "detail": "15292 bytes"
+   "detail": "15293 bytes"
   },
   {
    "section": "A. App routes",
@@ -451,7 +451,7 @@
    "section": "A. App routes",
    "name": "/suggestions: app shell renders",
    "ok": true,
-   "detail": "15604 bytes"
+   "detail": "15605 bytes"
   },
   {
    "section": "A. App routes",
@@ -469,7 +469,7 @@
    "section": "A. App routes",
    "name": "/data-warehouse: app shell renders",
    "ok": true,
-   "detail": "15937 bytes"
+   "detail": "15938 bytes"
   },
   {
    "section": "A. App routes",
@@ -487,7 +487,7 @@
    "section": "A. App routes",
    "name": "/organisations: app shell renders",
    "ok": true,
-   "detail": "15354 bytes"
+   "detail": "15355 bytes"
   },
   {
    "section": "A. App routes",
@@ -505,7 +505,7 @@
    "section": "A. App routes",
    "name": "/admin: app shell renders",
    "ok": true,
-   "detail": "24682 bytes"
+   "detail": "24683 bytes"
   },
   {
    "section": "A. App routes",
