@@ -1,9 +1,9 @@
 {
  "meta": {
-  "runStartedUtc": "2026-11-20T00:18:37.387503+00:00",
-  "runFinishedUtc": "2026-11-20T00:26:09.786861+00:00",
-  "gitCommit": "79dfbb66f501c6e8f69ed8d51565f186d31d44e3",
-  "gitBranchTip": "79dfbb6 chore(ci): nightly synthetic evidence 44424357808 [skip ci]",
+  "runStartedUtc": "2026-11-20T23:41:58.678787+00:00",
+  "runFinishedUtc": "2026-11-20T23:47:11.994481+00:00",
+  "gitCommit": "78e3a6994fa6ae8ce6891509b7f5c6d16dcbf364",
+  "gitBranchTip": "78e3a69 chore(ci): nightly synthetic evidence 44644571702 [skip ci]",
   "identity": "billh@nsmarine.com.au (operator test user, Northside Marine)",
   "firebaseProject": "studio-2290360004-3b963",
   "organisationId": "AcFZVEFA5UDJG2hyetWT",
